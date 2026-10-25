@@ -50,7 +50,11 @@ Out of scope: other dungeons (forest remaster, swamp, Sima remaster run in paral
   - Contexts `caves`, `caves-flood` (same file, 900 Hz low-pass, gain 0.85) and `caves-guardian`; Lanturn keeps the mid-boss battle theme (`guardian`). Planned `caves` entry removed. CREDITS.md Music section, `public/music/LICENSES.md`, `docs/music-shortlist.md` note.
   - Decision: a new guardian track rather than reusing Boss Battle #2: it was the "Alternate" melodic synth boss pick of the PMD-feel research and keeps each guardian on its own theme.
   - Evidence: music manifest tests changed first (contexts, planned list, the flood variant and Dhelmise's own track) and failed (3) until the manifest change. Not verified: nobody has listened (muted runs); the cross-fade is untested by ear.
-- [ ] T4 Integration: coins/records/unlock, co-op checks, lake entrance, waystone, difficulty hooks, GDD/README (route: same)
+- [x] T4 Integration: coins/records/unlock, co-op checks, lake entrance, waystone, difficulty hooks, GDD/README (route: same)
+  - No new code was needed for coins, records, the waystone or the protocol: the grotto's `role: 'midboss'` pays `COINS.midboss` (25), a victory on floor 10 sets `cleared`, the town and the waystone list `unlockedDungeons` (generic), `start.dungeon` carries any registry id. The lake entrance landed in T1; the difficulty hooks in T1/T2 (`DifficultyTrick`, `withTricks`).
+  - `tests/core/caves-meta.test.ts` (7, characterisation, green on the first run by design): Lanturn pays 25 on top of the guardian; the unlock chain Crypt, Forest, Caves (losing to Dhelmise records floor 10 but not `cleared`); one mouth, in `lago`; `start` round trip with `flooded-caves`; danmaku card, wave index, aim and mark survive encode/decode and land on a guest with no new snapshot fields; easy and normal unchanged, hard adds a trick to each new enemy and boss, nightmare one card more on each boss.
+  - Text: GDD §3 Inundación row, a new "Cuevas Inundadas" block (floors, lines, pools, enemies, the flood, both bosses' cards, positional attacks, dialogue, music, coins) and the §11 mid-boss row; README (the dungeon, `?dungeon=flooded-caves`, `?screen=run`, music list).
+  - Evidence: `npm test` 110 files / 1072 tests passed; `npm run build` ok. Screenshots `/tmp/caves/` (01-17, 02b, 02c).
 
 ## Acceptance criteria
 - The caves are listed only after a Forest victory; a caves run plays 10 floors, the mid-boss floor exits, the run ends on Dhelmise.
@@ -68,3 +72,8 @@ About 2400 authored lines over 4 tasks (T1 ~900, T2 ~900, T3 ~150 plus assets, T
 
 ## Progress
 Created 2026-10-25 on `feat/dungeon-flooded-caves` from `main` 043cb02. Engram mirror: pending (writer has no Engram session; parent owns it).
+- T1 `0bbc922`, T2 `b3b6fcd`, T3 `51314ff`, T4 in the commit after them. Every task ran above the ~400-line heuristic (T1 and T2 most: a dungeon, a floor type and three behaviours; a boss engine with two bosses); not split, since each piece needed the others to be playable.
+- Screenshots: headless Firefox over WebDriver BiDi (no geckodriver; Firefox's own `--remote-debugging-port`), own profile with `media.volume_scale` 0, the game's `muted: true` stored before each load, dev server on 4447, `/tmp/caves/`.
+- Merge notes for the parent: shared unions grow additively (`FloorKind` + `'flood'`, `DungeonId`, `RoomId`, `SpeciesId`, `MusicContext`, `BossStance`, `EnemyDef`, `decor`), so every `DungeonMusic.urgent` record now needs a `flood` entry (added to the Crypt, Forest and Sima); `EnemyAttackDef.pierceRoll` may collide with the difficulty branch's field of the same name (same meaning); `updateEnemies` applies `trickedDef` once per enemy; `updatePlayer` takes an optional `wade` factor; `sprite-meta.json` and the CREDITS sprite table are generated (re-run `node tools/fetch-sprites.mjs` after merging other sprite additions).
+- Not verified: balance by hand (no play-through), the music by ear, a pool close-up on screen (pools show in the flood shot), how the pierceRoll rule feels once the difficulty branch lands.
+- Next: play the caves end to end; listen to both tracks and the flood low-pass; tune Dhelmise's phase-2 density.

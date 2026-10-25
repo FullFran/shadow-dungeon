@@ -70,7 +70,7 @@ Plantas que salen de vez en cuando y te obligan a encontrar las escaleras rápid
 | Planta | Qué pasa | Por qué funciona |
 |---|---|---|
 | Derrumbe | El techo cae desde un extremo hacia las escaleras | Te obliga a avanzar; no puedes volver a por el botín |
-| Inundación | El agua sube y frena a quien no sea de tipo Agua | El tipo de tu Pokémon decide quién va delante |
+| Inundación | El agua sube y frena a quien no sea de tipo Agua | El tipo de tu Pokémon decide quién va delante; sale en las Cuevas Inundadas |
 | Gas tóxico | Una nube avanza desde la entrada y quita vida poco a poco | Aprieta sin matar de golpe |
 | Niebla | La niebla se cierra y cada vez ves menos (el minimapa solo recuerda lo que has visto de cerca) | Hay que encontrar las escaleras antes de quedarse a ciegas; sale en el Bosque Brumoso |
 | Cazador | Un Pokémon que no se puede matar te persigue por la planta | El que más juego da en directo: correr, esconderse, que un compañero lo distraiga. *Me encanta, pero no entra en el MVP; queda para después.* |
@@ -213,6 +213,51 @@ Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los cam
 **Niebla** (planta con prisa del bosque; valores *provisionales*): al llegar ves 7 casillas a tu alrededor; tras 3 segundos la niebla se cierra poco a poco hasta 2,5 casillas en 50 segundos. Fuera de ese círculo todo es niebla, el minimapa solo apunta lo que has tenido dentro y no enseña enemigos fuera de él. Cuando se ha cerrado del todo, el frío quita un 3 % de la vida máxima cada segundo y medio, sin bajar nunca de 1 PS (aprieta, no mata). Se anuncia en la tarjeta con "¡La niebla se cierra!".
 
 **Música del bosque**: "Cathedral in the forest" (congusbongus, CC0) en las plantas; en Niebla, el mismo tema apagado con un filtro paso bajo; Trevenant usa el tema de batalla de Aegislash y Decidueye "Boss Battle #2 [Symphonic Metal]" (nene, CC0), que ya estaba en el juego y gustaba.
+
+**Cuevas Inundadas** (tercera mazmorra; subtítulo "Donde la campana ahogada aún llama a los suyos"). Se abre al vencer a Decidueye; su boca es una escalera hundida al final del embarcadero de la Aldea del Lago Negro. Leyenda: "Bajo el Lago Negro duerme un santuario hundido; su campana suena en cada eclipse. Dicen que un ancla sin barco vela el fondo, atada a un juramento que nadie recuerda." Una línea por planta, al estilo de Touhou: "El agua gotea de un cielo de piedra. Cada gota suena a campana lejana.", "Los cristales guardan la última luz que cayó aquí. Algo se la está bebiendo.", "En las charcas flotan cabos de barco. Ningún barco llegó nunca tan hondo.", "El agua te llega a los tobillos. Más abajo, algo tira de ella.", "Una gruta de luz azul. Ese farol no está ahí para guiarte.", "Pasado el farol, solo queda la luz que tú traes.", "Las paredes rezuman sal. Aquí juraron marineros que nunca volvieron.", "La campana suena más cerca, y no hay corriente que la mueva.", "El agua está tibia, como si algo enorme respirara debajo.", "El pecio. Un ancla vela a una tripulación que se hundió con su juramento." Piedra azul y mojada, cristales que laten en las paredes, gotas que caen y dejan ondas, charcas poco hondas con el borde más oscuro donde tocan la roca, todo dibujado en el código.
+
+| Planta | Qué hay *(provisional)* |
+|---|---|
+| 1 a 4 | Plantas normales; desde la 2 puede salir Inundación |
+| 5 | Jefe intermedio: Lanturn en su gruta (al caer se abre el camino) |
+| 6 a 9 | Plantas normales; más Inundación y algún derrumbe |
+| 10 | Guardián: Dhelmise en el pecio |
+
+Agua poco honda: más o menos la mitad de las salas (nunca la de entrada) tienen una charca; pisarla frena al 70 % a quien ande y no sea de tipo Agua (los que vuelan o flotan pasan por encima). Las charcas salen de la semilla de la planta, igual en todos los jugadores.
+
+| Enemigo | Cómo juega |
+|---|---|
+| Krabby | Se acerca de lado, como un cangrejo, avisa y embiste con la pinza; en difícil y pesadilla encadena una segunda pinza apuntada otra vez |
+| Remoraid | Guarda la distancia, fija un carril y dispara una ráfaga de tres chorros por él (cinco en difícil y pesadilla): apártate de lado |
+| Shellos | Lento; lanza barro a donde estás (el círculo te sigue y se queda quieto mientras vuela) y deja un charco; en difícil y pesadilla el golpe salpica un anillo de gotas |
+| Zubat, Tentacool, Corphish, Chinchou, Wooper, Clauncher | Los del plantel experimental, ahora con mazmorra propia (Zubat en grupos de tres) |
+
+**Inundación** (planta con prisa de las cuevas; valores *provisionales*): tras 4 segundos el agua sube durante 45 segundos; quien no es de tipo Agua anda cada vez más lento, hasta un 45 % más lento con el agua arriba, y desde entonces el frío quita un 2 % de la vida máxima cada 2 segundos, sin bajar nunca de 1 PS. Los de tipo Agua no notan nada. Se anuncia con "¡El agua sube!"; en esas plantas la música suena como desde debajo del agua.
+
+**Lanturn, el farol del abismo** (jefe intermedio). Jefe de cortina de balas: tres cartas de hechizo en orden, cada una con su nombre en pantalla, avisada y seguida de un hueco para castigar. Cuatro rocas con cristales paran sus disparos.
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Burbuja «Anillos del Fondo Callado» | Cuatro anillos de burbujas; cada uno deja un hueco, el primero hacia ti y los siguientes girando | Seguir el hueco |
+| Signo Farol «Espiral del Señuelo» | Su farol escupe chispas en una espiral de dos brazos que gira | Moverse en el hueco entre brazos |
+| Signo Abismo «Descarga del Pez Linterna» | Marca un círculo grande a su alrededor más de un segundo y descarga | Salir del círculo andando: rodar no te salva |
+
+**Dhelmise, el Ancla de los Juramentos Hundidos** (guardián). Pelea en el pecio: la proa y la popa del casco y dos rocas paran burbujas y algas en su columna. En difícil cada jefe añade un truco (un brazo más en la espiral); en pesadilla, una carta más (Lanturn: Signo Hondura «Mar de Faroles»; Dhelmise, en la segunda fase: Signo Naufragio «Vórtice sin Orilla»).
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Ancla «Resaca de la Campana Ahogada» | Avisa un segundo y barre tres cuartos de vuelta con el ancla | Salir de su alcance o ponerte en el cuarto de atrás; rodar no te salva |
+| Signo Marea «Remolino de los Ahogados» | Un remolino de burbujas en espiral de dos brazos | El hueco entre brazos |
+| Signo Alga «Laberinto de Látigos» | Tres muros de algas cruzan la sala desde el extremo lejano, con un carril libre que se mueve a cada muro | Ponerse en el carril libre (o tras el casco) |
+| ¡El ancla despierta! | A la mitad de la vida, una vez y nunca a mitad de carta: un segundo y medio sin atacar (la ocasión) | Pegarle |
+| Signo Fantasma «Corriente que Sube del Pecio» | Se hunde; una marca te sigue y se queda quieta al final; sale bajo ella, golpea y lanza un anillo con un hueco | Salir de la marca cuando se fija; rodar no te salva |
+| Signo Campana «Tañido de los Juramentos Hundidos» | Cinco anillos de burbujas con hueco que gira | Seguir el hueco |
+
+En la segunda fase juega Corriente, Algas, Campana y Ancla, y descansa menos. Ninguna carta suelta más balas de las que caben (90 Lanturn, 110 Dhelmise): si la sala está llena, la bala sobra y el hueco solo crece. Los ataques de posición (la descarga, el ancla y la corriente) están marcados para que rodar no los esquive; esa regla llega con el trabajo de dificultad.
+
+Antes del combate: "La campana te ha traído hasta el pecio. Aquí el agua no deja volver. Juré guardar a los que se hundieron conmigo. Nadie recuerda ya el juramento, pero el ancla sí." Al caer: "La cadena se suelta. Por fin puedo bajar con ellos. Más hondo que el fondo, algo se traga la luz. La campana sonaba para avisaros."
+
+**Música de las cuevas**: "Underwater" (Cleyton Kauffman, CC0) en las plantas, con un filtro paso bajo en Inundación; Lanturn usa el tema de batalla de 16 bits y Dhelmise "Fairy Boss Battles" (MintoDog, CC0). Lanturn paga como los otros jefes intermedios (25 Pokémonedas).
 
 **Sima del Eclipse** (mazmorra sin fondo y contrarreloj, al estilo de la Isla Cero de Mystery Dungeon; subtítulo "Donde la luz cae y nunca toca fondo"). Abierta desde el principio: es la que más se va a jugar en directo. Datos en `src/data/endless.ts`, reglas en `src/core/endless.ts`; todos los valores son *provisionales*.
 
@@ -444,7 +489,7 @@ Cada jugador suma lo suyo en su propio ordenador (también los invitados de una 
 | Enemigo derrotado | 1 × (1 + 0,5 (profundidad − 1)) |
 | Huir de un derrumbe | 20 en menos de 30 s, 12 en menos de 60 s, si no 6 |
 | Derrotar al guardián | 50 |
-| Derrotar a un jefe intermedio (Sableye en la Cripta, Trevenant en el Bosque Brumoso) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
+| Derrotar a un jefe intermedio (Sableye en la Cripta, Trevenant en el Bosque Brumoso, Lanturn en las Cuevas Inundadas) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
 | Minuto jugado | 2 por minuto completo (las pausas no cuentan) |
 | Si caes | Te quedas el 75 % de lo ganado |
 | Dificultad | Todo × la fila de la sección 9 (de momento se juega en Normal, × 1) |
