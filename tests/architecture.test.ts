@@ -8,10 +8,12 @@ import { describe, expect, it } from 'vitest';
  * compiles it without DOM typings, so browser globals fail typecheck.
  * The netcode (src/net) may use the core and the data, never adapters, app, ui or i18n.
  * The UI kit (src/ui) sits with the adapters: neither the core nor the netcode may import it.
+ * The balance harness (src/sim: bots, runner, bands) sits on top of the core:
+ * it may import only the core, the data and itself, and nothing imports it but tests and tools.
  */
 const ROOT = join(__dirname, '..');
 const PURE_LAYERS = ['src/core', 'src/data'];
-const FORBIDDEN = [/\/adapters\//, /\/app\//, /\/ui\//, /\/i18n\//, /\/net\//, /^node:/];
+const FORBIDDEN = [/\/adapters\//, /\/app\//, /\/ui\//, /\/i18n\//, /\/net\//, /\/sim\//, /^node:/];
 const NET_FORBIDDEN = [/\/adapters\//, /\/app\//, /\/ui\//, /\/i18n\//, /^node:/];
 
 function sourceFiles(dir: string): string[] {
@@ -46,6 +48,19 @@ describe('architecture', () => {
         .map((spec) => `${relative(ROOT, file)} -> ${spec}`),
     );
     expect(violations).toEqual([]);
+  });
+
+  it('src/sim imports only the core, the data and itself, and no app layer imports src/sim', () => {
+    const allowed = (spec: string) => spec.startsWith('./') || spec.startsWith('../core/') || spec.startsWith('../data/');
+    const violations = sourceFiles(join(ROOT, 'src/sim')).flatMap((file) =>
+      importsOf(readFileSync(file, 'utf8'))
+        .filter((spec) => !allowed(spec))
+        .map((spec) => `${relative(ROOT, file)} -> ${spec}`),
+    );
+    expect(violations).toEqual([]);
+    const layers = ['src/core', 'src/data', 'src/net', 'src/adapters', 'src/ui', 'src/app', 'src/i18n', 'src/town', 'src/pwa'].flatMap((dir) => sourceFiles(join(ROOT, dir)));
+    const importers = layers.filter((file) => importsOf(readFileSync(file, 'utf8')).some((spec) => /(^|\/)sim\//.test(spec)));
+    expect(importers.map((file) => relative(ROOT, file))).toEqual([]);
   });
 
   it('only the Trystero adapter imports the trystero package, and the app loads it lazily', () => {

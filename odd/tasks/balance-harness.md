@@ -1,0 +1,55 @@
+# Balance harness (bots, metrics, bands, report)
+
+## Objective
+Measure difficulty instead of guessing (docs/souls-difficulty-research.md P7): headless bots play floors and boss arenas of every dungeon on every tier, the harness records time to kill, damage, deaths, hit sizes, telegraph timings and fairness counters, checks them against target bands, and writes a report usable for every future rebalance.
+
+## Problem
+Tier numbers, boss HP and telegraphs were tuned by hand and by feel. Nothing tells us whether the average player clears the Crypt on easy, whether a boss takes 30 s or 5 min, or whether a pattern is unwinnable. P5's fairness rules are not checked anywhere.
+
+## Why
+User request (via the orchestrator, 2026-10-25): build the P7 harness with bots, metrics, bands in CI (WARN for the current content except hard fairness invariants), a "planted unwinnable pattern" test proving the gate can fail, and a report (`npm run balance`).
+
+## Scope
+- T1 Bots (`src/sim/`, imports core and data only; the core never imports sim): perfect, average, novice, masher; they see only the camera view and produce `PlayerInput` per tick; deterministic per seed.
+- T2 Runner + metrics: floor by floor runs and isolated boss arenas, dungeon × tier × bot × party (1–4) × seeds; per floor/boss metrics.
+- T3 Bands + fairness checks in CI: band config, WARN vs FAIL, a planted unwinnable pattern, record current violations.
+- T4 Report: `npm run balance` writes `reports/balance/latest.md` (+ JSON); README and GDD §9 (Spanish).
+
+Out of scope: changing game balance; co-op party scaling itself (another writer adds it; the harness calls it through one adapter, `src/sim/party.ts`).
+
+## Constraints
+- Core pure and deterministic; any core hook must be behaviour-neutral (golden digest `bebcc214` must still pass).
+- Architecture test green and extended (core/data never import sim; sim imports only core/data).
+- `npm test`, `npm run build` green; CI subset < 60 s.
+- Conventional Commits, one work-unit commit per task, explicit paths, no AI attribution, no push.
+- About 400 authored lines per task is advisory only.
+
+## Delivery strategy
+`ask-on-risk` (default). Forecast ~1500 authored lines over four tasks; the parent decides PR slicing (one PR per task commit is the natural chain).
+
+## Tasks
+- [x] T1 Bots + observation + architecture rule (route: inline writer, this agent; one coherent module set in `src/sim/` + tests)
+  - `src/sim/observe.ts`: the screen as a player sees it: camera rect 512 x 320 around the player (same math as `adapters/view.ts`), enemies and enemy shots inside it, each wind-up's real ms left (tier, elite pace, slow-mo), the positional ground it burns (`core/victim.ts` `pierceZone`, which the renderer draws), the map layout (minimap knowledge).
+  - `src/sim/bots.ts`: perfect / average / novice / masher profiles (lag 0/230/400/230 ms, choice +0/100/150 ms, noise, 0/15/40 % wrong choices, novice over-rolls, masher spams attacks and whim rolls). Perception lag = the bot acts on the observation from `reactionMs` ago; its own body (HP, stamina, rolling) it feels at once. Seeded with `core/rng.ts`.
+  - `src/sim/nav.ts`: straight in sight, else downhill on a BFS field (`core/flow.ts`) to the goal tile; unvisited rooms, then the stairs; fixed rooms: middle, then exit once cleared.
+  - Architecture: core/data may not import `/sim/`; sim imports only `./`, `../core/`, `../data/`; no app layer imports sim.
+  - Evidence: `tests/sim/bots.test.ts` (4 tests) written right after the module, so no RED first; mutation checks instead: perfect `dodges: false` fails 2 tests (Poochyena duel, reaction), removing the perception lag fails the reaction test. `tests/architecture.test.ts` 5/5. `npm run typecheck` ok.
+- [ ] T2 Runner + metrics (route: same)
+- [ ] T3 Bands + fairness checks + planted unwinnable pattern + CI subset (route: same)
+- [ ] T4 Report + `npm run balance` + README + GDD §9 (route: same)
+
+## Acceptance criteria
+- Bots are deterministic per seed; the perfect bot dodges a lone telegraphed attack; the delayed bot reacts no earlier than its reaction time.
+- The runner reports per floor/boss: TTK (boss, per enemy), damage taken, deaths, max single hit share, pierceRoll vs normal hits, telegraph→attack distribution, max simultaneous telegraphs, unseen threats.
+- The planted unwinnable pattern makes the gate FAIL.
+- CI subset runs in < 60 s inside `npm test`; hard invariants FAIL, the rest WARN.
+- `npm run balance` writes the report with tables per dungeon/tier/bot/party.
+
+## Checks
+`npm test`, `npm run build`, `npm run balance` (timed), `git log --format=%B -n 4 | grep -ic co-authored` = 0.
+
+## Progress
+(updated per task)
+
+## Next step
+T1.
