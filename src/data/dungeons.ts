@@ -58,6 +58,8 @@ export interface DungeonDef {
   palette: TilePalette;
   /** Unlocked from the start (null), or once this dungeon's guardian has fallen. */
   unlockedBy: DungeonId | null;
+  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers. */
+  decor?: 'crypt';
 }
 
 const loreOf = (id: string): DungeonLore => DUNGEON_LORE.find((l) => l.id === id)!;
@@ -69,22 +71,24 @@ export const CRYPT: DungeonDef = {
   spawns: CRYPT_SPAWNS,
   urgent: [{ kind: 'collapse', chance: URGENT.collapseChance }],
   music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  // Cold grey-violet stone; the candles and braziers bring the only warm light.
   palette: {
-    tileFloorA: '#2b2533',
-    tileFloorB: '#2f2938',
-    tileWallTop: '#1a1523',
-    tileWallBlock: '#211b2c',
-    tileWallFace: '#433a57',
-    tileWallLip: '#5a4f73',
-    mapRim: '#4b4163',
-    floorA: '#1d1a26',
-    floorB: '#211d2c',
-    wall: '#0d0b12',
-    wallEdge: '#3a3350',
-    pillarTop: '#4a4360',
-    pillarSide: '#2c2740',
+    tileFloorA: '#2a2731',
+    tileFloorB: '#2e2b36',
+    tileWallTop: '#16141d',
+    tileWallBlock: '#1e1b27',
+    tileWallFace: '#3c3850',
+    tileWallLip: '#565170',
+    mapRim: '#4a4562',
+    floorA: '#1c1a23',
+    floorB: '#201e28',
+    wall: '#0b0a10',
+    wallEdge: '#3a3550',
+    pillarTop: '#4d4862',
+    pillarSide: '#2c2840',
   },
   unlockedBy: null,
+  decor: 'crypt',
 };
 
 /**

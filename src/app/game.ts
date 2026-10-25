@@ -218,10 +218,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
   function announceFloor(descended: boolean): void {
     const lore = dungeonOf(run).lore;
-    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    // The floor's own lore line, when the dungeon has one (the Crypt).
+    const floorKey = lore.floorKeys?.[run.floor - 1];
+    const floorLore = floorKey ? { lore: t(floorKey) } : {};
+    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, ...floorLore };
     // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
     if (run.floor === 1) {
-      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs };
+      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, ...floorLore };
       card = null;
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
@@ -505,6 +508,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       log,
       coins: coinBreakdown(tally, null).total,
       palette: dungeonOf(run).palette,
+      decor: dungeonOf(run).decor ?? null,
       intro,
       nowPlaying,
       spell,

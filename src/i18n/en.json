@@ -447,5 +447,13 @@
   "spell.sableye.glint": "Gem Sign \"Glint of the Thief\"",
   "spell.sableye.gems": "Jewel Sign \"Rain of Stolen Gems\"",
   "log.itemStolen": "{thief} stole your {item}! Hit it to get it back.",
-  "log.itemReturned": "{name} got {item} back."
+  "log.itemReturned": "{name} got {item} back.",
+  "dungeon.crypt.floor.1": "The halls smell of wax and old iron.",
+  "dungeon.crypt.floor.2": "Here rest those who swore. Some do not rest.",
+  "dungeon.crypt.floor.3": "The king's treasury. Something glints, and it is not gold.",
+  "dungeon.crypt.floor.4": "Fallen swords still rise as you pass.",
+  "dungeon.crypt.floor.5": "The air trembles. Further down, the steel is waiting.",
+  "dungeon.crypt.floor.6": "The throne room. Kneel, or draw.",
+  "boss.stance.glint": "Glint",
+  "boss.stance.gems": "Gems"
 }

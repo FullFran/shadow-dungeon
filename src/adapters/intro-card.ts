@@ -12,6 +12,8 @@ export interface DungeonIntro {
   name: string;
   subtitle: string;
   shownAtMs: number;
+  /** Floor 1's lore line, under the subtitle, if the dungeon has one. */
+  lore?: string;
 }
 
 export interface NowPlaying {
@@ -54,7 +56,7 @@ export function drawDungeonIntro(ctx: CanvasRenderingContext2D, intro: DungeonIn
   const cy = Math.round(height * 0.36 + rise);
   ctx.globalAlpha = alpha * 0.55;
   ctx.fillStyle = '#000000';
-  ctx.fillRect(0, cy - 26, width, 50);
+  ctx.fillRect(0, cy - 26, width, intro.lore ? 64 : 50);
   ctx.globalAlpha = alpha;
   ctx.font = canvasFont(22, true);
   pixelText(ctx, intro.name, width / 2, cy, PALETTE.text, 'center');
@@ -63,6 +65,11 @@ export function drawDungeonIntro(ctx: CanvasRenderingContext2D, intro: DungeonIn
   ctx.fillRect(Math.round(width / 2 - rule / 2), cy + 6, rule, 1);
   ctx.font = canvasFont();
   pixelText(ctx, intro.subtitle, width / 2, cy + 19, PALETTE.textDim, 'center');
+  if (intro.lore) {
+    // The floor's line comes in a beat later, quieter.
+    ctx.globalAlpha = alpha * Math.max(0, Math.min(1, (nowMs - intro.shownAtMs - INTRO.fadeInMs) / INTRO.fadeInMs)) * 0.85;
+    pixelText(ctx, intro.lore, width / 2, cy + 33, PALETTE.textDim, 'center');
+  }
   ctx.globalAlpha = 1;
 }
 

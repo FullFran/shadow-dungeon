@@ -447,5 +447,13 @@
   "spell.sableye.glint": "Signo Gema «Destello del Ladrón»",
   "spell.sableye.gems": "Signo Joya «Lluvia de Gemas Robadas»",
   "log.itemStolen": "¡{thief} te ha robado {item}! Golpéalo para recuperarlo.",
-  "log.itemReturned": "{name} recupera {item}."
+  "log.itemReturned": "{name} recupera {item}.",
+  "dungeon.crypt.floor.1": "Los pasillos huelen a cera y a hierro viejo.",
+  "dungeon.crypt.floor.2": "Aquí descansan los que juraron. Algunos no descansan.",
+  "dungeon.crypt.floor.3": "El tesoro del rey. Algo brilla, y no es oro.",
+  "dungeon.crypt.floor.4": "Las espadas caídas aún se alzan cuando pasas.",
+  "dungeon.crypt.floor.5": "El aire tiembla. Más abajo, el acero espera.",
+  "dungeon.crypt.floor.6": "La sala del trono. Arrodíllate, o desenvaina.",
+  "boss.stance.glint": "Destello",
+  "boss.stance.gems": "Gemas"
 }

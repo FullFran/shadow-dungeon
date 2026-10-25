@@ -19,6 +19,8 @@ export interface FloorCard {
   escape: { floor: number; ms: number } | null;
   /** Real time the card appeared. */
   shownAtMs: number;
+  /** The floor's lore line (already translated), if its dungeon has one. */
+  lore?: string;
 }
 
 export const CARD = {
@@ -47,10 +49,11 @@ export function formatClock(ms: number): string {
 }
 
 /** The card's text lines, top to bottom. */
-export function cardLines(card: FloorCard): { dungeon: string; floor: string; warning: string | null; bonus: string | null } {
+export function cardLines(card: FloorCard): { dungeon: string; floor: string; lore?: string; warning: string | null; bonus: string | null } {
   return {
     dungeon: card.dungeon ?? t('app.title'),
     floor: floorLabel(card.floor),
+    ...(card.lore ? { lore: card.lore } : {}),
     warning: card.kind === 'normal' ? null : t(`card.${card.kind}`),
     bonus: card.escape ? t('card.escaped').replace('{time}', formatClock(card.escape.ms)) : null,
   };
@@ -61,8 +64,10 @@ export function drawFloorCard(ctx: CanvasRenderingContext2D, card: FloorCard, no
   const alpha = cardAlpha(card, nowMs - card.shownAtMs);
   if (alpha <= 0) return;
   const lines = cardLines(card);
-  const extra = (lines.warning ? 1 : 0) + (lines.bonus ? 1 : 0);
-  const w = 232;
+  const extra = (lines.lore ? 1 : 0) + (lines.warning ? 1 : 0) + (lines.bonus ? 1 : 0);
+  ctx.font = canvasFont();
+  // Wide enough for the lore line, never wider than the view.
+  const w = Math.min(width - 16, Math.max(232, lines.lore ? Math.ceil(ctx.measureText(lines.lore).width) + 28 : 0));
   const h = 50 + extra * 14;
   const x = Math.round((width - w) / 2);
   // Rises a few pixels as it fades in.
@@ -77,6 +82,10 @@ export function drawFloorCard(ctx: CanvasRenderingContext2D, card: FloorCard, no
   pixelText(ctx, lines.floor, cx, y + 39, PALETTE.text, 'center');
   ctx.font = canvasFont();
   let line = y + 56;
+  if (lines.lore) {
+    pixelText(ctx, lines.lore, cx, line, PALETTE.textDim, 'center');
+    line += 14;
+  }
   if (lines.warning) {
     pixelText(ctx, lines.warning, cx, line, PALETTE.eclipseGlow, 'center');
     line += 14;

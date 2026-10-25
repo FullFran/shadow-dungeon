@@ -8,6 +8,8 @@ export interface DungeonLore {
   nameKey: string;
   subtitleKey: string;
   loreKeys: readonly string[];
+  /** A short line per floor for the floor card (Touhou style); index 0 is floor 1 (shown under the entry title). */
+  floorKeys?: readonly string[];
 }
 
 export const DUNGEON_LORE: readonly DungeonLore[] = [
@@ -16,6 +18,7 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     nameKey: 'dungeon.crypt.name',
     subtitleKey: 'dungeon.crypt.subtitle',
     loreKeys: ['dungeon.crypt.lore.1', 'dungeon.crypt.lore.2'],
+    floorKeys: [1, 2, 3, 4, 5, 6].map((floor) => `dungeon.crypt.floor.${floor}`),
   },
   {
     id: 'misty-forest',

@@ -7,8 +7,8 @@ import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { collapseFront, type CollapseState } from '../core/collapse';
-import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
-import { isWall, type TileGrid } from '../core/tiles';
+import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState } from '../core/state';
+import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
@@ -23,6 +23,7 @@ import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
+import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -57,6 +58,8 @@ export interface RenderFrame {
   coins?: number;
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
+  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure), if any. */
+  decor?: 'crypt' | null;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
@@ -269,12 +272,75 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number): void {
+  /** Crypt decoration of a generated floor, worked out once per floor. */
+  const decorOf = new WeakMap<TileGrid, CryptDecor>();
+  function cryptFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = decorOf.get(grid);
+    if (!decor) {
+      const stairs = state.arena.stairs ? tileOf({ x: state.arena.stairs.x + 1, y: state.arena.stairs.y + 1 }) : undefined;
+      decor = cryptDecor({ ...grid, rooms: state.arena.rooms ?? [], ...(stairs ? { stairs } : {}) });
+      decorOf.set(grid, decor);
+    }
+    const front = state.collapse ? collapseFront(state.collapse) : 0;
+    const fallen = (x: number, y: number) => {
+      const d = state.collapse ? (state.collapse.dist[y * grid.cols + x] ?? -1) : -1;
+      return front > 0 && d >= 0 && d < front;
+    };
+    const visible = (x: number, y: number) => x * TILE + TILE >= view.x && x * TILE <= view.x + view.width && y * TILE + TILE >= view.y && y * TILE <= view.y + view.height + TILE;
+    for (const s of decor.slabs) if (visible(s.x, s.y) && !fallen(s.x, s.y)) graveSlab(s.x * TILE, s.y * TILE, decorHash(s.x, s.y, 3));
+    for (const c of decor.candles) if (visible(c.x, c.y)) wallCandle(c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
+  }
+
+  /** A grave slab set into the floor: a worn lid with a cross carved in it. */
+  function graveSlab(x: number, y: number, look: number): void {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(x + 5, y + 3, 23, 28);
+    ctx.fillStyle = look < 0.5 ? '#3a3645' : '#363240';
+    ctx.fillRect(x + 4, y + 2, 23, 27);
+    ctx.fillStyle = '#4a4558';
+    ctx.fillRect(x + 4, y + 2, 23, 2);
+    ctx.fillStyle = '#25222d';
+    ctx.fillRect(x + 14, y + 8, 3, 15);
+    ctx.fillRect(x + 10, y + 12, 11, 3);
+  }
+
+  /** A candle on a lit wall face, flickering, with a warm pool of light on the floor below. */
+  function wallCandle(x: number, y: number, timeMs: number, phase: number): void {
+    const flicker = 0.75 + 0.25 * Math.sin(timeMs / 90 + phase * 40) * Math.sin(timeMs / 230 + phase * 13);
+    const cx = x + 8 + Math.round(phase * 16);
+    const glow = ctx.createRadialGradient(cx, y + TILE + 6, 1, cx, y + TILE + 6, 30);
+    glow.addColorStop(0, `rgba(255, 180, 90, ${0.32 * flicker})`);
+    glow.addColorStop(1, 'rgba(255, 180, 90, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 30, y + TILE - 24, 60, 60);
+    ctx.fillStyle = '#d9d0b8';
+    ctx.fillRect(cx - 2, y + TILE - 9, 4, 7);
+    ctx.fillStyle = '#8c826a';
+    ctx.fillRect(cx - 3, y + TILE - 3, 6, 2);
+    ctx.fillStyle = `rgba(255, 210, 120, ${flicker})`;
+    ctx.fillRect(cx - 1, y + TILE - 13 + Math.round(1 - flicker), 2, 4);
+    ctx.fillStyle = 'rgba(255, 250, 220, 0.9)';
+    ctx.fillRect(cx, y + TILE - 11, 1, 2);
+  }
+
+  /** The Crypt's fixed arenas: a worn red carpet up the middle and candles along the top edge. */
+  function cryptArena(width: number, height: number, timeMs: number): void {
+    ctx.fillStyle = 'rgba(110, 24, 36, 0.55)';
+    ctx.fillRect(Math.round(width / 2 - 40), 0, 80, height);
+    ctx.fillStyle = 'rgba(200, 160, 70, 0.35)';
+    ctx.fillRect(Math.round(width / 2 - 40), 0, 2, height);
+    ctx.fillRect(Math.round(width / 2 + 38), 0, 2, height);
+    for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
+  }
+
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       ctx.fillStyle = COLORS.mapVoid;
       ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       tiles(grid, view, state.collapse, timeMs);
+      if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -293,6 +359,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.strokeStyle = COLORS.wallEdge;
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
+    if (decor === 'crypt') cryptArena(width, height, timeMs);
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -339,8 +406,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function pillar(rect: Rect): Drawable {
+  function pillar(rect: Obstacle, decor: 'crypt' | null, timeMs: number): Drawable {
     const lift = 18;
+    if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -348,6 +416,52 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         ctx.fillRect(rect.x, rect.y - lift + rect.height - 4, rect.width, lift + 4);
         ctx.fillStyle = COLORS.pillarTop;
         ctx.fillRect(rect.x, rect.y - lift, rect.width, rect.height);
+        if (decor === 'crypt') brazier(rect, lift, timeMs);
+      },
+    };
+  }
+
+  /** A brazier burning on top of a Crypt pillar. */
+  function brazier(rect: Rect, lift: number, timeMs: number): void {
+    const cx = rect.x + rect.width / 2;
+    const top = rect.y - lift + 6;
+    const flicker = 0.8 + 0.2 * Math.sin(timeMs / 80 + rect.x) * Math.sin(timeMs / 190 + rect.y);
+    const glow = ctx.createRadialGradient(cx, top, 2, cx, top, 46);
+    glow.addColorStop(0, `rgba(255, 160, 70, ${0.3 * flicker})`);
+    glow.addColorStop(1, 'rgba(255, 160, 70, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 46, top - 46, 92, 92);
+    ctx.fillStyle = '#1f1b26';
+    ctx.fillRect(cx - 11, top, 22, 6);
+    ctx.fillStyle = '#6e5a3a';
+    ctx.fillRect(cx - 11, top, 22, 2);
+    const h = Math.round(8 + 4 * flicker);
+    ctx.fillStyle = 'rgba(255, 120, 40, 0.95)';
+    ctx.fillRect(cx - 7, top - h + 2, 14, h);
+    ctx.fillStyle = 'rgba(255, 200, 90, 0.95)';
+    ctx.fillRect(cx - 4, top - h + 4, 8, h - 3);
+    ctx.fillStyle = 'rgba(255, 245, 210, 0.9)';
+    ctx.fillRect(cx - 1, top - h + 6, 3, 3);
+  }
+
+  /** The king's treasure in Sableye's vault: a heap of gold with gems that catch the light. */
+  function treasure(rect: Rect, timeMs: number): Drawable {
+    return {
+      y: rect.y + rect.height,
+      draw: () => {
+        const { x, y, width: w, height: h } = rect;
+        ctx.fillStyle = '#5a4416';
+        ctx.fillRect(x, y + h * 0.35, w, h * 0.65);
+        ctx.fillStyle = '#a07a22';
+        ctx.fillRect(x + 4, y + h * 0.15, w - 8, h * 0.6);
+        ctx.fillStyle = '#d9a93a';
+        ctx.fillRect(x + 10, y, w - 20, h * 0.4);
+        const gems = ['#7fd4ff', '#ff6b9a', '#8cf08c'];
+        gems.forEach((colour, i) => {
+          const twinkle = Math.sin(timeMs / 300 + i * 2 + x) > 0.6;
+          ctx.fillStyle = twinkle ? '#ffffff' : colour;
+          ctx.fillRect(Math.round(x + 8 + i * ((w - 18) / 2)), Math.round(y + h * 0.3 + (i % 2) * 6), 4, 4);
+        });
       },
     };
   }
@@ -598,7 +712,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view, timeMs);
+    floor(current, view, timeMs, frame.decor ?? null);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
@@ -611,7 +725,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
-    for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect));
+    for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect, frame.decor ?? null, timeMs));
     for (const enemy of current.enemies) {
       const defeated = frame.defeatedAt.get(enemy.id);
       const sinceDefeatMs = defeated === undefined ? Number.POSITIVE_INFINITY : timeMs - defeated;
