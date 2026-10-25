@@ -200,7 +200,8 @@ export const SWAMP: DungeonDef = {
     { kind: 'gas', chance: [0, 0.25, 0.3, 0.35, 0, 0.35, 0.4, 0.45, 0.45] },
     { kind: 'collapse', chance: [0, 0, 0.08, 0.1, 0, 0.1, 0.1, 0.12, 0.12] },
   ],
-  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest', gas: 'collapse' }, midboss: 'guardian', guardian: 'forest-guardian' },
+  // Salazzle on the 16-bit battle theme like the other mid-bosses; Nihilego on the symphonic-metal theme (reused, see licensed-music).
+  music: { floor: 'swamp', urgent: { collapse: 'collapse', fog: 'swamp', gas: 'collapse' }, midboss: 'guardian', guardian: 'forest-guardian' },
   // Murky moss and black-green water; the sludge and the spores glow.
   palette: {
     tileFloorA: '#273024',

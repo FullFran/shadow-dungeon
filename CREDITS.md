@@ -52,7 +52,8 @@ CC0 works need no credit and are credited anyway.
 - Victory: "Victory" by Umplix, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/victory-4)).
 - Defeat: "Game Over Theme II" by Cleyton Kauffman (CleytonKauffman), [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/game-over-theme-ii)).
 - Misty Forest floors (muffled on fog floors): "Cathedral in the forest" by congusbongus, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop)).
-- Guardian of the Misty Forest (Decidueye): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
+- Toxic Swamp floors: "Swamp Theme Loop" by beardalaxy, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/node/165341)).
+- Guardians of the Misty Forest (Decidueye) and the Toxic Swamp (Nihilego): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
 
 ## Audio
 

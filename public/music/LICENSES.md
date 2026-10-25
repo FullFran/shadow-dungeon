@@ -3,7 +3,7 @@
 Every file here was downloaded from the page listed, after reading the license
 on that page (Lonely Village and Boss Battle #2 on 2026-10-25 for T1; the rest
 on 2026-10-25 for the T4 swap; Cathedral in the forest on 2026-10-25 for the
-Misty Forest). Each track ships as Ogg Opus (`.ogg`) and MP3
+Misty Forest; Swamp Theme Loop on 2026-10-25 for the Toxic Swamp). Each track ships as Ogg Opus (`.ogg`) and MP3
 (`.mp3`) with the same content. Loop points and full change notes live in
 `src/data/music.ts`.
 
@@ -15,8 +15,9 @@ Misty Forest). Each track ships as Ogg Opus (`.ogg`) and MP3
 | `battle-theme-i.ogg`, `battle-theme-i.mp3` | Guardian (Aegislash) | 16-bit - Battle Theme I | HydroGene | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/16-bit-battle-theme-i |
 | `victory-umplix.ogg`, `victory-umplix.mp3` | Victory stinger | Victory | Umplix | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/victory-4 |
 | `game-over-ii.ogg`, `game-over-ii.mp3` | Defeat stinger | Game Over Theme II (v3) | CleytonKauffman (Cleyton Kauffman) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/game-over-theme-ii |
-| `boss-battle-2.ogg`, `boss-battle-2.mp3` | Guardian of the Misty Forest (Decidueye) | Boss Battle #2 [Symphonic Metal] | nene | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/boss-battle-2-symphonic-metal |
+| `boss-battle-2.ogg`, `boss-battle-2.mp3` | Guardians of the Misty Forest (Decidueye) and the Toxic Swamp (Nihilego) | Boss Battle #2 [Symphonic Metal] | nene | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/boss-battle-2-symphonic-metal |
 | `cathedral-forest.ogg`, `cathedral-forest.mp3` | Misty Forest floors (muffled on fog floors) | Cathedral in the forest (ambient loop) | congusbongus | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/content/cathedral-in-the-forest-ambient-loop |
+| `swamp-theme.ogg`, `swamp-theme.mp3` | Toxic Swamp floors | Swamp Theme Loop | beardalaxy | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | https://opengameart.org/node/165341 |
 
 ## Attribution and changes (CC BY works)
 

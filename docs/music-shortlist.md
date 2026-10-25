@@ -116,6 +116,8 @@ introduction theme").
 | Ritual | Kevin MacLeod | CC BY 4.0 | https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100466 | No | 4:24 | MP3 | Dark, Mysterious, Mystical, Somber; alto/bass flute, synths | Medium | "Ritual" Kevin MacLeod (incompetech.com) — Licensed under Creative Commons: By Attribution 4.0 License — http://creativecommons.org/licenses/by/4.0/ |
 | Swamp Environment Audio (SFX bed, layer under music) | LokiF | CC0 | https://opengameart.org/content/swamp-environment-audio | Tagged loop, no loop points | Unknown | OGG, WAV, ZIP | Bugs, bubbling, gurgling; "evil" tag | Low | Optional: "Swamp Environment Audio" by LokiF — CC0 |
 
+Shipped 2026-10-25 (Toxic Swamp writer): *Swamp Theme Loop* re-checked on its page (License(s): CC0, author beardalaxy), 15.256 s, already -17.9 LUFS, whole-file loop (seam ratio 0.26/0.41 at the wrap), shipped as `swamp-theme` at -18 LUFS. The *Swamp Environment Audio* layer is not shipped yet (the audio adapter has no ambience bus). Nihilego reuses *Boss Battle #2* (nene, CC0) rather than a new download.
+
 ## 8. Stingers (victory, defeat)
 
 | Title | Artist | License | URL | Loop | Length | Format | Mood | Content ID risk | Attribution line |
