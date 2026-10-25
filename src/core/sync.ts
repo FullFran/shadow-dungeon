@@ -1,4 +1,5 @@
 import { UNKILLABLE } from '../data/sima';
+import { cardHpFloor } from './cards';
 import { applySimaSync, simaSync, type SimaSync } from './sima-events';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
@@ -308,7 +309,7 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
       const striker = state.remotes.find((r) => r.id === claim.playerId)?.player.pos ?? state.player.pos;
       struck = answerGuardedHit({ ...enemy, armor: undefined, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
     } else {
-      const hp = Math.max(0, enemy.hp - claim.damage);
+      const hp = Math.max(Math.min(cardHpFloor(enemy), enemy.hp), enemy.hp - claim.damage);
       struck = {
         ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, claim.damage) : enemy, claim.playerId, claim.damage),
         hp,

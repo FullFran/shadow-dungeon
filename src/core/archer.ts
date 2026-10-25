@@ -1,5 +1,6 @@
 import type { ArcherCard, ArcherDef } from '../data/enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, rotate, spawnShot, spreadDirections, towardTarget } from './brain';
+import { updateCardFight } from './cards';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { diveTouches } from './victim';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -166,6 +167,8 @@ function rest(enemy: EnemyState, def: ArcherDef): EnemyState {
 const restMsOf = (def: ArcherDef, enemy: EnemyState): number => (enemy.boss?.phase === 2 ? def.phase2.restMs : def.restMs);
 
 export function updateArcher(state: WorldState, start: EnemyState, def: ArcherDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
+  // Normal and harder: the spell-card fight (core/cards.ts); a Sima echo keeps the lighter cards above.
+  if (def.spellCards && !state.enemyScale?.echo) return updateCardFight(state, start, def.spellCards, target, ms, events);
   let enemy = start.boss ? withBoss(start, { stanceMs: start.boss.stanceMs + ms }) : start;
   if (!enemy.boss) return state;
   const ai = enemy.ai;

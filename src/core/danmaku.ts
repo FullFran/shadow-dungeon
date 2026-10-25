@@ -1,4 +1,4 @@
-import type { DanmakuCard, DanmakuCardDef, DanmakuDef, DanmakuShot, EnemyAttackDef } from '../data/enemies';
+import type { DanmakuCard, DanmakuCardDef, DanmakuDef, DanmakuPattern, DanmakuShot, EnemyAttackDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, rotate, spawnShot, towardTarget } from './brain';
 import { confineCircle } from './geometry';
@@ -37,7 +37,7 @@ export const danmakuCardAt = (def: DanmakuDef, boss: Pick<BossState, 'phase' | '
 export const cardDef = (def: DanmakuDef, card: string): DanmakuCardDef | undefined => def.patterns[card as DanmakuCard];
 
 /** Multiples k * `every` (k >= 1, k < count) passed between `before` (exclusive) and `now` (inclusive). */
-function crossed(before: number, now: number, every: number, count: number): number[] {
+export function crossed(before: number, now: number, every: number, count: number): number[] {
   const out: number[] = [];
   for (let k = Math.max(1, Math.floor(before / every)); k < count; k++) {
     const at = k * every;
@@ -49,10 +49,10 @@ function crossed(before: number, now: number, every: number, count: number): num
 
 const enemyShots = (state: WorldState): number => state.projectiles.reduce((n, p) => n + (p.owner === 'enemy' ? 1 : 0), 0);
 
-/** Fires one shot unless the room already holds `maxShots` enemy shots (the cap only ever widens the gaps). */
-function shoot(state: WorldState, enemy: EnemyState, def: DanmakuDef, shot: DanmakuShot, dir: Vec2, at?: Vec2): WorldState {
-  if (enemyShots(state) >= def.maxShots) return state;
-  return spawnShot(state, enemy, shot, dir, at);
+/** Fires one shot unless the room already holds `maxShots` enemy shots (the cap only ever widens the gaps); `power` scales its damage (a guardian card's tier, data/cards.ts). */
+export function shoot(state: WorldState, enemy: EnemyState, maxShots: number, shot: DanmakuShot, dir: Vec2, at?: Vec2, power = 1): WorldState {
+  if (enemyShots(state) >= maxShots) return state;
+  return spawnShot(state, enemy, power === 1 ? shot : { ...shot, power: Math.round(shot.power * power) }, dir, at);
 }
 
 /**
@@ -100,8 +100,12 @@ const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 export function danmakuMelee(enemy: EnemyState, def: DanmakuDef, player: Vec2): { attack: EnemyAttackDef; touches: boolean } | null {
   if (enemy.ai.mode !== 'attack' || !enemy.boss) return null;
   const card = cardDef(def, enemy.boss.stance);
-  if (!card) return null;
-  const p = card.pattern;
+  return card ? patternMelee(enemy, card.pattern, player) : null;
+}
+
+/** The melee part of pattern `p` in its attack window against `player` (sweep or zone), and whether it touches; null for bullet patterns. */
+export function patternMelee(enemy: EnemyState, p: DanmakuPattern, player: Vec2): { attack: EnemyAttackDef; touches: boolean } | null {
+  if (enemy.ai.mode !== 'attack') return null;
   if (p.kind === 'sweep') {
     const offset = sub(player, enemy.pos);
     const dist = length(offset);
@@ -141,23 +145,33 @@ function startCard(state: WorldState, enemy: EnemyState, def: DanmakuDef, target
 
 /** Fires part `index` of a bullet card (ring, spiral shot or wall wave). */
 function firePart(state: WorldState, enemy: EnemyState, def: DanmakuDef, cd: DanmakuCardDef, index: number): WorldState {
-  const p = cd.pattern;
+  return firePattern(state, enemy, def.maxShots, cd.pattern, index);
+}
+
+/**
+ * Fires part `index` of bullet pattern `p` (ring, spiral shot or wall wave),
+ * keeping the room under `maxShots` enemy shots, each `power` times as
+ * strong. Shared with the guardians' spell cards (core/cards.ts).
+ */
+export function firePattern(state: WorldState, enemy: EnemyState, maxShots: number, p: DanmakuPattern, index: number, power = 1, _target?: Vec2): WorldState {
   let next = state;
   const aim = enemy.ai.attackDir;
-  if (p.kind === 'rings') for (const dir of ringDirections(aim, p.perRing, p.gap, p.gapTurnDeg, index)) next = shoot(next, enemy, def, p.shot, dir);
-  if (p.kind === 'spiral') for (const dir of spiralDirections(aim, p.arms, p.turnDegPerShot, index)) next = shoot(next, enemy, def, p.shot, dir);
+  if (p.kind === 'rings') for (const dir of ringDirections(aim, p.perRing, p.gap, p.gapTurnDeg, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
+  if (p.kind === 'spiral') for (const dir of spiralDirections(aim, p.arms, p.turnDegPerShot, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
   if (p.kind === 'lanes') {
     const mark = enemy.ai.aimPoint ?? vec(state.arena.width / 2, 0);
     const gapX = laneGap(state.arena.width, mark.x, p.gapWidth, p.shiftPx, index);
     const y = aim.y > 0 ? p.shot.radius + 2 : state.arena.height - p.shot.radius - 2;
-    for (const x of laneShots(state.arena.width, gapX, p.gapWidth, p.spacing)) next = shoot(next, enemy, def, p.shot, aim, vec(x, y));
+    for (const x of laneShots(state.arena.width, gapX, p.gapWidth, p.spacing)) next = shoot(next, enemy, maxShots, p.shot, aim, vec(x, y), power);
   }
   return next;
 }
 
 /** Parts of a bullet card and the time between them. */
-function partsOf(cd: DanmakuCardDef): { count: number; every: number } | null {
-  const p = cd.pattern;
+const partsOf = (cd: DanmakuCardDef): { count: number; every: number } | null => patternParts(cd.pattern);
+
+/** Parts of bullet pattern `p` and the time between them; null for the melee ones (sweep, zone). */
+export function patternParts(p: DanmakuPattern): { count: number; every: number } | null {
   if (p.kind === 'rings') return { count: p.rings, every: p.gapMs };
   if (p.kind === 'spiral') return { count: Math.max(1, Math.floor(p.durationMs / p.everyMs)), every: p.everyMs };
   if (p.kind === 'lanes') return { count: p.waves, every: p.gapMs };
@@ -165,11 +179,13 @@ function partsOf(cd: DanmakuCardDef): { count: number; every: number } | null {
 }
 
 /** Length of a card's attack window. */
-function attackMsOf(cd: DanmakuCardDef): number {
-  const p = cd.pattern;
+const attackMsOf = (cd: DanmakuCardDef): number => patternAttackMs(cd.pattern);
+
+/** Length of pattern `p`'s attack window. */
+export function patternAttackMs(p: DanmakuPattern): number {
   if (p.kind === 'sweep') return p.sweepMs;
   if (p.kind === 'zone') return p.impactMs;
-  const parts = partsOf(cd)!;
+  const parts = patternParts(p)!;
   return parts.count * parts.every;
 }
 
@@ -256,7 +272,7 @@ export function updateDanmaku(state: WorldState, start: EnemyState, def: Danmaku
         const p = cd.pattern;
         if (p.kind === 'zone' && p.ring) {
           const from = enemy.ai.aimPoint ?? enemy.pos;
-          for (const dir of ringDirections(toPlayer, p.ring.count, p.ring.gap, 0, 0)) state = shoot(state, enemy, def, p.ring.shot, dir, add(from, scale(dir, enemy.radius + p.ring.shot.radius)));
+          for (const dir of ringDirections(toPlayer, p.ring.count, p.ring.gap, 0, 0)) state = shoot(state, enemy, def.maxShots, p.ring.shot, dir, add(from, scale(dir, enemy.radius + p.ring.shot.radius)));
         }
         enemy = rest(enemy, cd);
       }

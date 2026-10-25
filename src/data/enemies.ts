@@ -1,4 +1,5 @@
 import type { Difficulty } from './difficulty';
+import { cardInfo, type CardFightDef } from './cards';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
@@ -233,6 +234,8 @@ export interface AegislashDef {
   /** i18n keys of the phase-2 spell cards and of the unsheathing, shown when they start. */
   cardNames: Readonly<Record<AegislashCard | 'unsheathe', string>>;
   phase2: AegislashPhase2Def;
+  /** Normal and harder: the fight as spell cards (data/cards.ts, patched in per tier by data/guardian-tricks.ts); absent = the stance duel. */
+  spellCards?: CardFightDef;
   poise: PoiseDef;
   aggroRange: number;
   /** Telegraphed stance change; it neither blocks nor attacks meanwhile (an opening). */
@@ -461,6 +464,8 @@ export interface ArcherDef {
   cardNames: Readonly<Partial<Record<ArcherCard, string>>>;
   /** The phase at half HP (never in a Sima echo). */
   phase2: ArcherPhase2Def;
+  /** Normal and harder: the fight as spell cards (data/cards.ts, patched in per tier by data/guardian-tricks.ts); absent = the cards above. */
+  spellCards?: CardFightDef;
   volley: { telegraphMs: number; shots: number; gapMs: number; arrow: ArrowDef; recoverMs: number };
   fan: { vanishMs: number; telegraphMs: number; fans: number; leaves: number; spreadDegrees: number; gapMs: number; leaf: ArrowDef; recoverMs: number; edgeInset: number };
   dive: { telegraphMs: number; diveMs: number; distance: number; reach: number; attack: EnemyAttackDef; recoverMs: number };
@@ -1653,6 +1658,9 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
 /** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */
 export function spellCardKey(species: SpeciesId, stance: string | null | undefined): string | null {
   const def = ENEMY_BEHAVIOUR[species];
+  // A guardian's spell card (data/cards.ts) names itself.
+  const card = cardInfo(stance);
+  if (card) return card.nameKey;
   if (!def || !stance || !('cardNames' in def)) return null;
   return (def.cardNames as Readonly<Record<string, string>>)[stance] ?? null;
 }

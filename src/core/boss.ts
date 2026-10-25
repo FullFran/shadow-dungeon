@@ -1,6 +1,9 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef, type ComboHitDef } from '../data/enemies';
 import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
+import { cardFloors, cardGuard, cardTimeLeftMs, fightOf, updateCardFight } from './cards';
+import { cardInfo } from '../data/cards';
+import { behaviourFor } from './tricks';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, spawnShot, spreadDirections, towardTarget } from './brain';
@@ -61,6 +64,13 @@ export function rotateToward(facing: Vec2, target: Vec2, maxRadians: number): Ve
 
 /** Whether a hit coming from `from` is stopped by the Shield stance's frontal guard. */
 export function blocksHit(enemy: EnemyState, from: Vec2): boolean {
+  // A spell card's guard (core/cards.ts): all round while declaring or in a survival card, the front in a Shield card.
+  const guard = cardGuard(enemy);
+  if (guard === 'all') return true;
+  if (guard === 'front') {
+    const incoming = sub(from, enemy.pos);
+    return length(incoming) > 0 && angleBetween(enemy.facing, incoming) <= (AEGISLASH.shield.blockArcDegrees * DEG) / 2;
+  }
   // Oaths: the planted shield guards every side while it fires; it lowers to recover.
   if (enemy.boss?.stance === 'oaths') return enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack';
   if (enemy.boss?.stance !== 'shield' || enemy.ai.mode === 'transform') return false;
@@ -82,6 +92,9 @@ export interface BossBar {
   maxHp: number;
   /** Null for a mid-boss without stances (Trevenant). */
   stance: BossStance | null;
+  /** Spell-card fights: where each card's segment ends, in HP (the bar's notches), and the time left on the card in play (host only). */
+  segments?: readonly number[];
+  cardLeftMs?: number;
 }
 
 const showsBar = (enemy: EnemyState): boolean => {
@@ -93,7 +106,11 @@ const showsBar = (enemy: EnemyState): boolean => {
 export function bossBar(state: WorldState): BossBar | null {
   const enemy = state.enemies.find((e) => e.alive && showsBar(e));
   if (!enemy) return null;
-  return { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss?.stance ?? null };
+  const bar: BossBar = { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss?.stance ?? null };
+  const fight = cardInfo(enemy.boss?.stance) ? fightOf(behaviourFor(enemy.species, worldDifficulty(state))) : undefined;
+  if (!fight) return bar;
+  const left = cardTimeLeftMs(fight, enemy);
+  return { ...bar, segments: cardFloors(fight).slice(0, -1).map((share) => share * enemy.maxHp), ...(left !== null ? { cardLeftMs: left } : {}) };
 }
 
 const withAi = (enemy: EnemyState, ai: AiState): EnemyState => ({ ...enemy, ai });
@@ -364,6 +381,8 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ta
 
 /** One step of Aegislash: stance timers, the stance change, then the current stance's state machine. */
 export function updateBoss(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
+  // Normal and harder: the spell-card fight (core/cards.ts); a Sima echo keeps the lighter stance duel.
+  if (def.spellCards && !state.enemyScale?.echo) return updateCardFight(state, start, def.spellCards, target, ms, events);
   let enemy = start;
   const ai = enemy.ai;
   if (ai.mode === 'idle') {

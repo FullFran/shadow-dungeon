@@ -1,5 +1,6 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
+import type { CardOutcome, SpellCardId } from '../data/cards';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { QueenCard, UltraCard } from '../data/swamp-enemies';
 import type { ItemId } from '../data/items';
@@ -212,7 +213,7 @@ export interface EnemyState {
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam';
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam' | SpellCardId;
 
 export interface BossState {
   stance: BossStance;
@@ -228,6 +229,12 @@ export interface BossState {
   phase?: 2;
   /** Aegislash: phase-2 spell cards played so far (host only). */
   cardsPlayed?: number;
+  /** Spell-card fight (core/cards.ts): index of the card in play or being declared (host only). */
+  card?: number;
+  /** Spell-card fight: time spent in the current card, declaration excluded (host only). */
+  cardMs?: number;
+  /** Spell-card fight: the HP the current card's segment ends at; hits never take the boss below it while the card plays (host only). */
+  hpFloor?: number;
 }
 
 /**
@@ -321,6 +328,10 @@ export type GameEvent =
   | { type: 'hitDodged' }
   | { type: 'perfectDodge' }
   | { type: 'playerHurt'; damage: number }
+  /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
+  | { type: 'spellCardEnd'; enemyId: string; card: SpellCardId; outcome: Exclude<CardOutcome, 'start'> }
+  /** The local player went through a spell card without being hit (every peer for itself): coins and a heal. */
+  | { type: 'cardCaptured'; enemyId: string; card: SpellCardId; heal: number }
   | { type: 'disguiseBroken' }
   /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
   /** `kindled`: Flash Fire was stoked by the player's own Fire hits rather than an absorbed attack. */
@@ -462,6 +473,8 @@ export interface WorldState {
   simaPact?: SimaPactState;
   /** Co-op: the local player's revive on this floor (core/revive.ts); absent solo. */
   revive?: ReviveState;
+  /** The spell card the local player is trying to capture (core/cards.ts `updateCapture`, every peer for itself): whether they were hit during it. */
+  capture?: { enemyId: string; card: SpellCardId; hit: boolean };
   events: GameEvent[];
 }
 

@@ -27,7 +27,9 @@ import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
 import { floodLevel } from '../core/flood';
-import { danmakuSinking, drawDanmaku } from './danmaku-vfx';
+import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
+import { cardGuard, fightOf } from '../core/cards';
+import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { hudSpace } from '../ui/hud-layout';
@@ -755,7 +757,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const striking = ai.mode === 'attack';
     const zone = pierceZone(enemy, currentTier, currentArena ?? undefined);
     if (zone) pierceMark(enemy, pos, zone, timeMs);
-    if (enemy.boss && enemy.boss.stance === 'shield' && ai.mode !== 'transform') {
+    if (enemy.boss && ((enemy.boss.stance === 'shield' && ai.mode !== 'transform') || cardGuard(enemy) === 'front')) {
       ctx.strokeStyle = COLORS.guard;
       ctx.lineWidth = 3;
       const angle = Math.atan2(enemy.facing.y, enemy.facing.x);
@@ -766,6 +768,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     // The behaviour at the world's tier, so the wind-ups show the tier's extra arms, waves and rings.
     const def = behaviourFor(enemy.species, currentTier);
+    // A guardian's spell card (core/cards.ts): its declaration and its moves' telegraphs.
+    const fight = cardInfo(enemy.boss?.stance) ? fightOf(def) : undefined;
+    if (fight) {
+      if (currentArena) drawCardFight(ctx, enemy, fight, pos, currentArena, currentTimeMs);
+      return;
+    }
     if (def?.kind === 'danmaku') {
       if (currentArena) drawDanmaku(ctx, enemy, def, pos, currentArena, currentTimeMs);
       return;

@@ -1,4 +1,5 @@
 import { UNKILLABLE } from '../data/sima';
+import { cardHpFloor } from './cards';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
 import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
@@ -185,7 +186,8 @@ function strikeEnemy(
     // A Sima pact's blessing may sharpen the player's hits.
     multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * (state.simaPact?.playerDamage ?? 1),
   });
-  const hp = Math.max(0, enemy.hp - damage);
+  // A spell card's segment ends at its floor: the overflow of a hit is lost (core/cards.ts).
+  const hp = Math.max(Math.min(cardHpFloor(enemy), enemy.hp), enemy.hp - damage);
   // A boss takes less stagger in a bigger party (core/party.ts): four players cannot stunlock it.
   const party = partyStaggerOf(state, enemy);
   const base = poiseOf(enemy.species);

@@ -5,6 +5,7 @@ import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { bossBar } from '../core/boss';
+import { cardInfo } from '../data/cards';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { PlayerState, Rect, WorldState } from '../core/state';
@@ -166,7 +167,17 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const name = t(`species.${boss.species}`);
     ctx.font = canvasFont();
     pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
-    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
+    const guarded = boss.stance === 'shield' || cardInfo(boss.stance)?.guard === 'front';
+    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), guarded ? '#8fb3ff' : PALETTE.eclipse);
+    // Spell cards: a notch where each card's segment ends, and the card's clock (host) on the right.
+    if (boss.segments) {
+      ctx.fillStyle = PALETTE.text;
+      for (const at of boss.segments) ctx.fillRect(Math.round(x + (w * at) / boss.maxHp), y - 2, 1, 10);
+    }
+    if (boss.cardLeftMs !== undefined) {
+      const seconds = Math.ceil(boss.cardLeftMs / 1000);
+      pixelText(ctx, `${seconds}`, x + w, y - 5, seconds <= 5 ? '#ff7a6a' : PALETTE.textDim, 'right');
+    }
   }
 
   if (juice.flash) {

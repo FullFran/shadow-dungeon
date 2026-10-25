@@ -1,6 +1,7 @@
 import { wakeEnemies } from './activation';
 import { updateCollapse } from './collapse';
 import { updateCombat } from './combat';
+import { updateCapture } from './cards';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
 import { updateFog } from './fog';
@@ -53,11 +54,13 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFlood(updateFog(updateCollapse(pulled, dtMs, events), dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   // Co-op: a fainted local player may be got up by an ally standing by (core/revive.ts; nothing solo).
   const revived = updateRevive(fought, dtMs, events);
+  // A guardian's spell card captured by the local player (core/cards.ts; every peer for itself).
+  const captured = updateCapture(revived, events);
   return {
-    ...revived,
+    ...captured,
     tick: state.tick + 1,
     timeMs: state.timeMs + dtMs,
-    slowMoMs: Math.max(0, revived.slowMoMs - dtMs),
+    slowMoMs: Math.max(0, captured.slowMoMs - dtMs),
     events,
   };
 }

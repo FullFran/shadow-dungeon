@@ -14,6 +14,8 @@ import { isSwampDef, swampAttack } from './swamp-brains';
 import { floodPockets, hazePockets } from './swamp-bosses';
 import type { Arena, EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
+import { cardMelee, cardStep, fightOf } from './cards';
+import { cardInfo } from '../data/cards';
 
 /**
  * Enemy melee hitboxes against one player position, shared by the host's
@@ -86,6 +88,14 @@ export function pierceZone(enemy: EnemyState, d: Difficulty, arena: Pick<Arena, 
   const live = enemy.alive && (enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack');
   if (!def || !live) return null;
   const stance = enemy.boss?.stance;
+  // A guardian's spell card: a sweep is a circle of its reach, a zone its mark; a positional wall or lane shows on its own telegraph.
+  const fight = cardInfo(stance) ? fightOf(behaviourFor(enemy.species, d)) : undefined;
+  if (fight) {
+    const p = cardStep(fight, enemy)?.pattern;
+    if (p?.kind === 'sweep') return p.attack.pierceRoll ? { kind: 'circle', radius: p.radius } : null;
+    if (p?.kind === 'zone') return p.attack.pierceRoll ? (p.at === 'self' ? { kind: 'circle', radius: p.radius } : { kind: 'mark', center: enemy.ai.aimPoint ?? enemy.pos, radius: p.radius }) : null;
+    return p && 'shot' in p && p.shot.pierceRoll ? { kind: 'wall' } : null;
+  }
   if (def.kind === 'boss') {
     if (stance === 'shadow' || stance === 'judgement') return def.phase2.shadow.sword.pierceRoll ? { kind: 'wall' } : null;
     if (stance === 'midnight') return midnightAttack(def, d).pierceRoll ? { kind: 'circle', radius: def.phase2.midnight.radius } : null;
@@ -141,7 +151,13 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     // Impidimp's sidestep and Shroomish in the air never touch.
     if (def.kind === 'lunger' && enemy.ai.attack === 'sidestep') continue;
     if (def.kind === 'slammer' && def.leap && enemy.ai.modeMs < def.leap.airMs) continue;
-    if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
+    // A guardian's spell card (core/cards.ts): only its sweeps and zones touch; its bullets are projectiles.
+    const fight = cardInfo(enemy.boss?.stance) ? fightOf(behaviourFor(enemy.species, worldDifficulty(current))) : undefined;
+    if (fight) {
+      const active = cardMelee(enemy, fight, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
     else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slammerTouches(enemy, current.player.pos, def), events);
     else if (def.kind === 'thief') {
       // The Glint slash touches (and steals), and the gem burst as the first ring leaves; the rings are projectiles.

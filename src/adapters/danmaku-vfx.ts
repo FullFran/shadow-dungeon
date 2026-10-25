@@ -1,7 +1,9 @@
 import { laneGap, sweepAngle } from '../core/danmaku';
 import type { EnemyState } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import type { DanmakuCard, DanmakuDef } from '../data/enemies';
+import type { DanmakuCard, DanmakuDef, DanmakuPattern } from '../data/enemies';
+import { cardInfo, type CardFightDef } from '../data/cards';
+import { cardStep } from '../core/cards';
 
 /**
  * Telegraphs of the caves' bullet-hell bosses (core/danmaku.ts), drawn on
@@ -36,8 +38,38 @@ export function drawDanmaku(ctx: CanvasRenderingContext2D, enemy: EnemyState, de
   }
   if (!winding && !striking) return;
   const card = def.patterns[stance as DanmakuCard];
-  if (!card) return;
-  const p = card.pattern;
+  if (card) drawPattern(ctx, enemy, card.pattern, pos, arena, timeMs);
+}
+
+/**
+ * A guardian's spell card (core/cards.ts), from the snapshot fields: the
+ * declaration (a double ring closing in, gold for a survival card) and then
+ * the telegraph of the move in play, like the caves' bosses.
+ */
+export function drawCardFight(ctx: CanvasRenderingContext2D, enemy: EnemyState, fight: CardFightDef, pos: Vec2, arena: { width: number; height: number }, timeMs: number): void {
+  const { ai } = enemy;
+  const progress = ai.modeDurationMs > 0 ? Math.min(1, ai.modeMs / ai.modeDurationMs) : 1;
+  if (ai.mode === 'transform') {
+    ctx.strokeStyle = cardInfo(enemy.boss?.stance)?.survival ? 'rgba(255, 215, 110, 0.9)' : 'rgba(200, 160, 255, 0.85)';
+    ctx.lineWidth = 3;
+    for (const phase of [0, 0.5]) {
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, enemy.radius + 8 + 110 * (1 - ((progress + phase) % 1)), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    return;
+  }
+  if (ai.mode !== 'telegraph' && ai.mode !== 'attack') return;
+  const step = cardStep(fight, enemy);
+  if (step) drawPattern(ctx, enemy, step.pattern, pos, arena, timeMs);
+}
+
+/** The telegraph of one danmaku pattern while it winds up (and, for sweeps and zones, while it strikes). */
+function drawPattern(ctx: CanvasRenderingContext2D, enemy: EnemyState, p: DanmakuPattern, pos: Vec2, arena: { width: number; height: number }, timeMs: number): void {
+  const { ai } = enemy;
+  const progress = ai.modeDurationMs > 0 ? Math.min(1, ai.modeMs / ai.modeDurationMs) : 1;
+  const winding = ai.mode === 'telegraph';
+  const striking = ai.mode === 'attack';
   const aim = Math.atan2(ai.attackDir.y, ai.attackDir.x);
   if (p.kind === 'rings' || p.kind === 'spiral') {
     if (!winding) return;
