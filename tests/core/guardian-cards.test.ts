@@ -26,7 +26,10 @@ import { IDLE } from './helpers';
  * path through every card, found by simulation.
  */
 
-const GUARDIANS: readonly { species: SpeciesId; room: RoomId }[] = [{ species: 'aegislash', room: 'boss' }];
+const GUARDIANS: readonly { species: SpeciesId; room: RoomId }[] = [
+  { species: 'aegislash', room: 'boss' },
+  { species: 'decidueye', room: 'roost' },
+];
 const CARD_TIERS: readonly Difficulty[] = ['normal', 'hard', 'nightmare'];
 
 const fight = (species: SpeciesId, d: Difficulty): CardFightDef | undefined => fightOf(behaviourFor(species, d));
@@ -332,6 +335,15 @@ describe('guardian spell cards: in a run', () => {
     expect(bar.segments).toHaveLength(3);
     expect(bar.segments![0]).toBeCloseTo(boss.maxHp * 0.75);
     expect(bar.cardLeftMs).toBeGreaterThan(0);
+  });
+
+  it('Decidueye on hard declares its first card in the roost; easy keeps its shipped cards', () => {
+    const roost = (d: Difficulty | undefined) => {
+      const state = loadRoom(createWorld({ seed: 3, arena: { width: 1, height: 1 }, playerPos: vec(0, 0), ...(d ? { difficulty: d } : {}) }), 'roost');
+      return { ...state, player: { ...state.player, hp: 1e9, maxHp: 1e9, disguiseBroken: true } };
+    };
+    expect(runFor(roost('hard'), 1500).enemies[0]!.boss!.stance).toBe('sc-dec-volley');
+    expect(['volley', 'fan', 'dive']).toContain(runFor(roost(undefined), 1500).enemies[0]!.boss!.stance);
   });
 
   it('Aegislash on easy keeps the stance duel (no cards, no segments)', () => {

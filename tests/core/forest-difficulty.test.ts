@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DECIDUEYE_CARDS_NORMAL } from '../../src/data/decidueye-cards';
 import type { Difficulty } from '../../src/data/difficulty';
 import { DECIDUEYE, ENEMY_BEHAVIOUR, TREVENANT } from '../../src/data/enemies';
 import { FOREST_SPECIES, FOREST_TRICKS } from '../../src/data/forest-tricks';
@@ -38,7 +39,9 @@ describe('forest difficulty hooks', () => {
   it('easy and normal play no trick (the same behaviour objects), and easy is the same fight, step for step', () => {
     for (const species of FOREST_SPECIES) {
       expect(behaviourFor(species, 'easy')).toBe(ENEMY_BEHAVIOUR[species]);
-      expect(behaviourFor(species, 'normal')).toBe(ENEMY_BEHAVIOUR[species]);
+      // The guardian fights with spell cards from normal on (data/guardian-tricks.ts); nothing else changes on normal.
+      if (species === 'decidueye') expect(behaviourFor(species, 'normal')).toEqual({ ...ENEMY_BEHAVIOUR[species], spellCards: DECIDUEYE_CARDS_NORMAL });
+      else expect(behaviourFor(species, 'normal')).toBe(ENEMY_BEHAVIOUR[species]);
       const tricks = FOREST_TRICKS[species] ?? [];
       expect(tricks.length, species).toBeGreaterThan(0);
       for (const t of tricks) expect(['hard', 'nightmare']).toContain(t.minDifficulty);
@@ -108,7 +111,9 @@ describe('forest difficulty hooks', () => {
     expect(night.phase2.rain.waves).toBeGreaterThan(DECIDUEYE.phase2.rain.waves);
     expect(night.phase2.stitch.stitches).toBeGreaterThan(DECIDUEYE.phase2.stitch.stitches);
     const roost = { width: 640, height: 400 };
-    const played = watch(arena('decidueye', vec(320, 120), 'hard', vec(320, 330), roost), 60000, (s) => (first(s).boss?.combosDone ?? 0) >= 4);
+    // Hard's Decidueye fights with spell cards; its card rotation still plays in a Sima echo.
+    const echo = { ...arena('decidueye', vec(320, 120), 'hard', vec(320, 330), roost), enemyScale: { hp: 1, damage: 1, echo: true as const } };
+    const played = watch(echo, 60000, (s) => (first(s).boss?.combosDone ?? 0) >= 4);
     expect(stances(played.events).slice(0, 4)).toEqual(hard.cards);
   });
 });
