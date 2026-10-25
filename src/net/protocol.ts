@@ -77,13 +77,16 @@ function encodePlayer(p: PlayerSnapshot): unknown[] {
   const a = p.action;
   const action = a ? [a.moveId, a.phase, ri(a.phaseMs), ri(a.chargeMs), a.chargeLevel, r3(a.aimDir.x), r3(a.aimDir.y)] : 0;
   const out: unknown[] = [p.id, p.species, r1(p.pos.x), r1(p.pos.y), r3(p.facing.x), r3(p.facing.y), r1(p.hp), r1(p.maxHp), roll, action];
-  if (p.projectiles.length > 0 || p.hidden) out.push(p.projectiles.map(encodeProjectile));
-  if (p.hidden) out.push(1);
+  const reviving = p.revive !== undefined && p.revive > 0;
+  if (p.projectiles.length > 0 || p.hidden || reviving) out.push(p.projectiles.map(encodeProjectile));
+  if (p.hidden || reviving) out.push(p.hidden ? 1 : 0);
+  // Optional revive progress (ms), last: an older peer ignores it.
+  if (reviving) out.push(ri(p.revive!));
   return out;
 }
 
 function decodePlayer(w: unknown[]): PlayerSnapshot {
-  const [id, species, x, y, fx, fy, hp, maxHp, roll, action, shots, hidden] = w as [string, SpeciesId, number, number, number, number, number, number, unknown, unknown, unknown, unknown];
+  const [id, species, x, y, fx, fy, hp, maxHp, roll, action, shots, hidden, revive] = w as [string, SpeciesId, number, number, number, number, number, number, unknown, unknown, unknown, unknown, unknown];
   const r = Array.isArray(roll) ? (roll as number[]) : null;
   const a = Array.isArray(action) ? (action as [MoveId, ActionPhase, number, number, number, number, number]) : null;
   return {
@@ -97,6 +100,7 @@ function decodePlayer(w: unknown[]): PlayerSnapshot {
     action: a ? { moveId: a[0], phase: a[1], phaseMs: a[2], chargeMs: a[3], chargeLevel: a[4], aimDir: { x: a[5], y: a[6] } } : null,
     projectiles: Array.isArray(shots) ? (shots as unknown[][]).map(decodeProjectile) : [],
     ...(hidden === 1 ? { hidden: true } : {}),
+    ...(finite(revive) && revive > 0 ? { revive } : {}),
   };
 }
 
@@ -216,6 +220,8 @@ export function encodeMessage(message: NetMessage): string {
         e: message.s.enemies.map(encodeEnemy),
         p: message.s.projectiles.map(encodeProjectile),
         ...(message.s.sima ? { v: message.s.sima } : {}),
+        // Co-op party size of the floor (optional: an older guest ignores it).
+        ...(message.s.party !== undefined ? { n: message.s.party } : {}),
       };
       break;
     case 'town':
@@ -261,6 +267,7 @@ export function decodeMessage(text: string): NetMessage | null {
         enemies: (wire.e as unknown[][]).map(decodeEnemy),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
         ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
+        ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),
       },
     };
   }

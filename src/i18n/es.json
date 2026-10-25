@@ -833,5 +833,8 @@
   "sima.band.swamp.lore.1": "El agua no refleja este cielo. Refleja el otro.",
   "sima.band.swamp.lore.2": "La niebla huele dulce. No respires hondo.",
   "sima.band.swamp.lore.3": "Los árboles muertos crecen hacia abajo, hacia el eclipse.",
-  "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella."
+  "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella.",
+  "coop.revived": "¡{name} vuelve a levantarse!",
+  "coop.reviveInterrupted": "La ayuda se ha cortado: vuelve a empezar.",
+  "coop.reviveHint": "quédate a su lado"
 }

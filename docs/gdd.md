@@ -491,7 +491,7 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 
 | Situación | Regla |
 |---|---|
-| Cae alguien en cooperativo | Queda en el suelo y un compañero vivo puede levantarlo (momento de directo) |
+| Cae alguien en cooperativo | Queda en el suelo y un compañero en pie puede levantarlo (momento de directo): quedarse a su lado 3 s sin recibir daño; se levanta con el 30 % de la vida, una vez por jugador y planta. Si el que ayuda recibe un golpe o se aleja, la cuenta vuelve a empezar. En Pesadilla no hay levantar (`TierDef.coopRevive`) *(provisional)* |
 | Caes jugando sola | Se acaba la partida; antes puedes «Reintentar planta» desde el menú, sin límite en Fácil y Normal, una vez por planta en Difícil y ninguna en Pesadilla (sección 9) |
 | Cae todo el grupo | Se acaba la partida, en todos los niveles |
 
@@ -503,16 +503,25 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 - Apodo: se elige en Ajustes o en la pantalla de jugar en línea; sin apodo se usa «Jugador-XYZ». Como mucho 16 caracteres, sin caracteres de control ni invisibles. Sale sobre cada jugador en el pueblo y en la mazmorra y en la pantalla final.
 - La dificultad la elige el anfitrión para todo el grupo.
 - Botín y reclutas: un premio por jugador, para que nadie del chat sienta que ha ido de relleno.
+- Quien levanta a quién lo decide el propio jugador caído (igual que el daño, en el lado de la víctima): su pestaña ve a los compañeros, cuenta los 3 s y manda el progreso para que los demás vean el anillo verde.
 
 ## 8. Escalado según el número de jugadores (n de 1 a 4)
 
-| Qué | Escalado *(provisional)* | Por qué |
-|---|---|---|
-| Vida del jefe | × (1 + 0,6 (n − 1)) | Sublineal, para que no se haga eterno |
-| Comportamiento del jefe | Cambia de objetivo más a menudo y gana ataques de área a partir de n = 2 | Evita que lo flanqueen sin riesgo (con 4 jugadores, el jefe solo puede mirar a uno) |
-| Aguante del jefe | Sube con n | Si no, entre cuatro lo tenéis aturdido todo el combate |
-| Enemigos por sala | 3 + n | Más gente, más caos |
-| Premios | Uno por jugador | |
+Tabla en `src/data/party-scaling.ts` (`partyScaling(n)`), sacada de la corrección multijugador de Elden Ring y de la forma sublineal de RoR2 (docs/souls-difficulty-research.md, P6 y apéndice A). *(provisional; el arnés de balance la mide)*
+
+| Qué | 1 | 2 | 3 | 4 | Por qué |
+|---|---|---|---|---|---|
+| Vida de jefe, jefe intermedio y eco | ×1 | ×1,6 | ×2,1 | ×2,6 | Sublineal, para que no se haga eterno |
+| Vida de los demás enemigos | ×1 | ×1,25 | ×1,4 | ×1,55 | Más gente, algo más de aguante |
+| Daño del combate de jefe | ×1 | ×1 | ×1,1 | ×1,15 | Entre muchos se reparte el castigo |
+| Aturdimiento y empuje que recibe el jefe | ×1 | ×0,6 | ×0,4 | ×0,3 | Si no, entre cuatro lo tenéis aturdido todo el combate |
+| Enemigos por sala | igual | igual | igual | igual | Diseño antes que números: más enemigos no es más divertido |
+| Premios | Uno por jugador | | | | |
+
+- **Tamaño del grupo**: los jugadores presentes al entrar en la planta (los caídos cuentan; en la primera planta, los de la sala al empezar). Queda fijo toda la planta: si alguien se va o entra a mitad, no cambia nada hasta la siguiente. Cada pestaña lo calcula igual y el anfitrión lo manda en su instantánea; si un invitado contó otro número, se queda con el del anfitrión.
+- **Comportamiento del jefe** (desde n = 2): mira a un jugador y, cuando ya le ha atacado, cambia al siguiente cada 6 s; si otro jugador le quita el 8 % de la vida por la espalda, se gira hacia él en el acto. Nunca cambia de objetivo a mitad de un aviso o de un ataque: el aviso es para quien lo recibe, y un jefe solo prepara un ataque a la vez (regla de equidad P5).
+- **Cartas de área** (desde n = 3): Trevenant, Decidueye, Sableye, Dhelmise y Salazzle meten en su rotación una carta de área más que ya conocen (raíces, abanico, anillo de gemas, algas, bruma; `src/data/party-tricks.ts`). Aegislash, Lanturn, Nihilego y los ecos no ganan ninguna.
+- Jugando sola nada cambia.
 
 Escalar solo la vida (lo que hace PokéSurvivor) en un souls se queda corto: el combate dura más pero es más fácil.
 

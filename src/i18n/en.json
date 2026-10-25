@@ -833,5 +833,8 @@
   "sima.band.swamp.lore.1": "The water does not reflect this sky. It reflects the other one.",
   "sima.band.swamp.lore.2": "The mist smells sweet. Do not breathe deep.",
   "sima.band.swamp.lore.3": "Dead trees grow downwards, towards the eclipse.",
-  "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it."
+  "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it.",
+  "coop.revived": "{name} gets back up!",
+  "coop.reviveInterrupted": "The help was cut short: it starts again.",
+  "coop.reviveHint": "stay by them"
 }

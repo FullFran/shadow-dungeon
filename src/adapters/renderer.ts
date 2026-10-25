@@ -3,6 +3,7 @@ import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from '../core/difficulty';
 import { pierceZone, type PierceZone } from '../core/victim';
 import { behaviourFor } from '../core/tricks';
+import { COOP_REVIVE } from '../data/party-scaling';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
 import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
@@ -1163,6 +1164,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.setLineDash([]);
   }
 
+  /** Within reach to help a fainted ally up (a little wider than the revive radius, so the hint shows as one walks in). */
+  const near = (a: Vec2, b: Vec2): boolean => Math.hypot(a.x - b.x, a.y - b.y) <= COOP_REVIVE.radius * 1.5;
+
+  /** Co-op revive progress around a fainted player. */
+  function reviveRing(pos: Vec2, ms: number): void {
+    const progress = Math.min(1, ms / COOP_REVIVE.holdMs);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#5ad16a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+  }
+
   function chargeRing(state: WorldState, pos: Vec2): void {
     const action = state.player.action;
     if (!action || action.phase !== 'charging') return;
@@ -1177,13 +1196,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   }
 
   /** Over a remote player: its nickname (else its id, "P2"), a small HP bar, and "fainted" once down; outlined so it reads on any floor. */
-  function nameTag(id: string, hp: number, maxHp: number, pos: Vec2, names?: ReadonlyMap<string, string>): void {
+  function nameTag(id: string, hp: number, maxHp: number, pos: Vec2, names?: ReadonlyMap<string, string>, hint = false): void {
     const x = Math.round(pos.x);
     const y = Math.round(pos.y - 30);
     ctx.textAlign = 'center';
     ctx.font = canvasFont(FONT.hudPx, true);
     const name = names?.get(id) ?? id.toUpperCase();
-    const text = hp > 0 ? name : `${name} ${t('net.fainted')}`;
+    // A fainted ally next to the local player: how to get it up (core/revive.ts).
+    const text = hp > 0 ? name : `${name} ${t('net.fainted')}${hint ? ` · ${t('coop.reviveHint')}` : ''}`;
     ctx.fillStyle = '#000000';
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]] as const) ctx.fillText(text, x + dx, y + dy);
     ctx.fillStyle = hp > 0 ? '#9fd8ff' : '#9aa0a6';
@@ -1301,6 +1321,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       draw: () => {
         shadow(playerPos, TUNING.player.radius);
         chargeRing(current, playerPos);
+        if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
         // Under Illusion (Zorua) the player shimmers, half see-through.
         const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
         drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled);
@@ -1316,7 +1337,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           shadow(pos, TUNING.player.radius);
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
           drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, remote.player.hp > 0 ? 1 : 0.7);
-          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names);
+          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
+          // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
+          if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);
         },
       });
     }

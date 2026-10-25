@@ -6,7 +6,8 @@ import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged, rotateToward } from './boss';
 import { computeDamage, typeEffectiveness } from './damage';
 import { confineCircle, insideRect } from './geometry';
-import { presentPlayers } from './party';
+import { partyStaggerOf, presentPlayers } from './party';
+import { noteAggroDamage } from './aggro';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import { answerGuardedHit, guardChip } from './roster';
@@ -185,10 +186,14 @@ function strikeEnemy(
     multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * (state.simaPact?.playerDamage ?? 1),
   });
   const hp = Math.max(0, enemy.hp - damage);
-  const poise = poiseOf(enemy.species);
+  // A boss takes less stagger in a bigger party (core/party.ts): four players cannot stunlock it.
+  const party = partyStaggerOf(state, enemy);
+  const base = poiseOf(enemy.species);
+  const poise = party === 1 ? base : { hitstunScale: base.hitstunScale * party, knockbackScale: base.knockbackScale * party };
   const pushDir = normalize(sub(enemy.pos, hit.from));
   const struck: EnemyState = {
-    ...(enemy.boss ? onBossDamaged(enemy, damage) : enemy),
+    // A party boss notes who hurt it (core/aggro.ts; no aggro solo).
+    ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, damage) : enemy, state.localId, damage),
     hp,
     alive: hp > 0,
     hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),

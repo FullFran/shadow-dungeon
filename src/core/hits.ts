@@ -2,6 +2,7 @@ import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { tierOf } from './difficulty';
 import { onLethalHit } from './items';
+import { partyDamageScale } from './party';
 import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
@@ -26,7 +27,8 @@ export function landHitOnPlayer(
 ): { state: WorldState; outcome: LandedOutcome } {
   const { player } = state;
   // The endless dungeon's deeper floors hit harder (state.enemyScale), and so do harder tiers (victim side: every peer applies its own).
-  const harder = (state.enemyScale?.damage ?? 1) * tierOf(state).damage;
+  // A bigger party's boss hits a little harder too (core/party.ts; 1 solo and without a boss).
+  const harder = (state.enemyScale?.damage ?? 1) * tierOf(state).damage * partyDamageScale(state);
   if (harder !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * harder)) };
   // A Sima pact's curse may make them hit harder.
   if (state.simaPact && state.simaPact.enemyDamage !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * state.simaPact.enemyDamage)) };

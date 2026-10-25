@@ -13,6 +13,7 @@ import type { GasState } from './gas';
 import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { SimaEventState, SimaPactState } from './sima-events';
+import type { ReviveState } from './revive';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -202,6 +203,12 @@ export interface EnemyState {
   armor?: true;
   /** Deep Sima elite: its attacks ignore roll i-frames (positional, docs/gdd.md §9). */
   pierceRoll?: true;
+  /**
+   * Co-op boss aggro (core/aggro.ts; host only, absent solo): who it is
+   * looking at, for how long (enemy time), whether it has attacked them yet,
+   * and the damage `by` another player dealt it meanwhile.
+   */
+  aggro?: { targetId: string; heldMs: number; pressure: number; by?: string; swung?: true };
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
@@ -345,6 +352,12 @@ export type GameEvent =
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
+  /** Co-op: a boss turned to another player (core/aggro.ts). */
+  | { type: 'bossAggro'; enemyId: string; targetId: string }
+  /** Co-op: the local player got up, helped by `by` (core/revive.ts). */
+  | { type: 'revived'; by: string }
+  /** Co-op: the helper was hurt or stepped away; the revive count starts again. */
+  | { type: 'reviveInterrupted' }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
@@ -365,6 +378,8 @@ export interface RemotePlayer {
   player: PlayerState;
   /** That player's own projectiles in flight, drawn only (they never hit anything on this peer). */
   projectiles: readonly RemoteProjectile[];
+  /** Co-op: fainted and being revived, ms an ally has stood by (as that player's peer reported it). */
+  revive?: number;
 }
 
 /** Enough of another player's projectile to draw it. */
@@ -399,6 +414,8 @@ export interface WorldState {
   tick: number;
   /** Difficulty tier chosen by the host (data/difficulty.ts); absent means `easy`. */
   difficulty?: Difficulty;
+  /** Co-op: players present when this floor was entered (core/party.ts `partySizeOf`); absent = solo. */
+  party?: number;
   /** Id of this peer's player (`player`); "p1" solo. */
   localId: string;
   role: PeerRole;
@@ -444,6 +461,8 @@ export interface WorldState {
   simaEvent?: SimaEventState;
   /** Sima del Eclipse: the shrine's pact in force (it outlasts the floor). */
   simaPact?: SimaPactState;
+  /** Co-op: the local player's revive on this floor (core/revive.ts); absent solo. */
+  revive?: ReviveState;
   events: GameEvent[];
 }
 

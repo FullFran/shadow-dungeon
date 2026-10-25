@@ -11,6 +11,7 @@ import { updateToxic } from './toxic';
 import { wormholePull } from './swamp-bosses';
 import { NIHILEGO } from '../data/swamp-enemies';
 import { landHitOnPlayer } from './hits';
+import { updateRevive } from './revive';
 import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
 import { updateLock } from './lockon';
@@ -50,11 +51,13 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
     state.role === 'guest' ? guestEnemyContacts(combat, events) : simaEventStep(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs);
   const pulled = wormholePull(enemies, dtMs, NIHILEGO);
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFlood(updateFog(updateCollapse(pulled, dtMs, events), dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
+  // Co-op: a fainted local player may be got up by an ally standing by (core/revive.ts; nothing solo).
+  const revived = updateRevive(fought, dtMs, events);
   return {
-    ...fought,
+    ...revived,
     tick: state.tick + 1,
     timeMs: state.timeMs + dtMs,
-    slowMoMs: Math.max(0, fought.slowMoMs - dtMs),
+    slowMoMs: Math.max(0, revived.slowMoMs - dtMs),
     events,
   };
 }
