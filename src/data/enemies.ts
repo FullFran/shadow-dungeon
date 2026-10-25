@@ -69,6 +69,8 @@ export interface PoochyenaDef {
    * `count` feints before the real one (default 1).
    */
   feint?: { telegraphMs: number; sidestepMs: number; sidestepDistance: number; count?: number };
+  /** A lingering flame left where each lunge ends (Pumpkaboo Small on hard). */
+  ember?: HazardDef;
 }
 
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
@@ -343,6 +345,8 @@ export interface SporeDef {
   cloud: EnemyAttackDef & { radius: number; lifetimeMs: number };
   recoverMs: number;
   cooldownMs: number;
+  /** A ring of slow spores thrown with the puff (Foongus on hard). */
+  burst?: { count: number; shot: ShotDef };
 }
 
 /**

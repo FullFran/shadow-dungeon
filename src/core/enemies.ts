@@ -4,6 +4,8 @@ import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
 import { updateTreant } from './treant';
+import { behaviourFor } from './tricks';
+import { worldDifficulty } from './difficulty';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -105,6 +107,8 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
         break;
       }
       const done = (recoverMs: number): EnemyState => {
+        // Pumpkaboo Small on hard: a ghost flame where the lunge ends.
+        if (def.ember) state = spawnShot(state, enemy, { ...def.ember, speed: 0 }, ai.attackDir, enemy.pos);
         const { chain: _cut, ...rest } = enemy.ai;
         return { ...enemy, ai: { ...enterMode(rest, 'recover', recoverMs), cooldownMs: def.cooldownMs } };
       };
@@ -297,6 +301,7 @@ function updateSpore(state: WorldState, start: EnemyState, def: SporeDef, target
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'spores' });
         state = spawnShot(state, enemy, { ...def.cloud, speed: 0 }, toPlayer, enemy.pos);
+        if (def.burst) for (const dir of spreadDirections(toPlayer, def.burst.count, 360 - 360 / def.burst.count)) state = spawnShot(state, enemy, def.burst.shot, dir);
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
       }
       break;
@@ -330,7 +335,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
   let current = state;
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
-    const def = enemy && ENEMY_BEHAVIOUR[enemy.species];
+    // The behaviour at the run's difficulty (the shipped one on easy and normal).
+    const def = enemy && behaviourFor(enemy.species, worldDifficulty(current));
     if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
     // Koffing's fuse cannot be staggered out of (killing it is the answer).
     if (enemy.hitstunMs > 0 && !unstoppable(enemy)) {

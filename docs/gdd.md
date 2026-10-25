@@ -197,8 +197,25 @@ Las primeras plantas son más suaves que el final de la Cripta (de 1 a 2 enemigo
 | Foongus | No se mueve; si te acercas suelta una nube de esporas que se queda un rato en el sitio |
 | Spinarak | Anda a distancia y lanza tres hilos en abanico |
 | Hoothoot | Vuela por encima de los árboles, da vueltas y se lanza en picado (a partir de la planta 2) |
+| Impidimp | El bromista: amaga una embestida (la misma línea, pero parpadea), se aparta de lado sin hacer daño y embiste de verdad desde el costado. Sale desde la planta 3 con dos Pumpkaboo pequeños |
+| Shroomish | Marca en el suelo dónde va a caer (le sigue hasta un cuarto de segundo antes de saltar), salta y golpea al aterrizar. Sale en parejas con un Foongus |
+| Drifloon | Flota hacia ti y suelta un anillo de ocho fuegos fatuos lentos; cada vez gira el anillo medio hueco, así que el hueco de antes ya no vale. Desde la planta 2 |
 
-**Trevenant** (jefe intermedio): se acerca despacio, carga el golpe más de un segundo y golpea el suelo a su alrededor lanzando un anillo de hojas; después se queda abierto.
+Los grupos mixtos (Impidimp con sus calabazas, Shroomish con un Foongus) ocupan las casillas siguientes de la sala como un grupo normal, sin tirada extra.
+
+**Ambiente** (dibujado en código): raíces que cuelgan de las paredes iluminadas, setas que brillan junto a las paredes, troncos caídos, a veces un pequeño santuario de piedra con su farol, luciérnagas en cada sala y dos capas de bruma que pasan despacio. Las salas fijas tienen raíces cruzando el claro, setas en los bordes y árboles viejos en sus obstáculos. Cada planta tiene su frase en la tarjeta (estilo Touhou), de "La niebla aún es joven; los árboles todavía recuerdan nombres." a "El claro más hondo. Una cuerda tensa espera en la oscuridad."
+
+**La luz errante** (evento del bosque): en algo más de un tercio de las plantas normales desde la 2, una luz pálida aparece y flota unas casillas por delante de ti camino de un escondite con tres Bayas Aranja, en la sala lateral más alejada de la entrada (nunca la de la entrada ni la de las escaleras si hay otra). Se anuncia en el registro ("Una luz errante parpadea entre los árboles...") y desaparece cuando el escondite está vacío. Sale de la semilla de la planta, así que en partida compartida todos ven el mismo.
+
+**Trevenant** (jefe intermedio): se acerca despacio, carga el golpe un segundo y golpea el suelo a su alrededor lanzando un anillo de hojas (si tarda más de 3,5 segundos en llegar, golpea igual); después juega su siguiente carta y vuelve a golpear. Cartas en orden, con su nombre en pantalla; todas dejan un camino libre y avisan al menos medio segundo:
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Raíz «Senderos de la Raíz Hambrienta» | Parte la hondonada en carriles de 100 px; marca uno de cada dos (siempre el tuyo) durante 1,1 s y brotan raíces medio segundo; cuando se hunden marca los otros (0,7 s) | Cambiar de carril. **Rodar no protege** (`pierceRoll`): hay que estar en otro sitio |
+| Signo Hoja «Espiral del Bosque que Llora» | Cuatro brazos de hojas que giran saliendo de él, 14 ráfagas | Entre dos hojas de un brazo cabe el cuerpo de sobra lejos del árbol |
+| Maldición «Anillo de los Viajeros Perdidos» | Marca un anillo a tu alrededor con un hueco hacia el lado contrario al árbol (se fija 0,3 s antes) y el anillo se cierra hacia el centro; dos veces | Salir por el hueco iluminado |
+
+Lo que el invitado necesita para dibujarlo viaja en los campos de siempre (la carta y la oleada, el carril y el hueco en la dirección del ataque, el centro del anillo en su punto de mira).
 
 **Decidueye, el Arquero de la Niebla** (guardián). Tres cartas de hechizo en orden fijo; el nombre de cada una sale en pantalla al empezar:
 
@@ -207,6 +224,16 @@ Las primeras plantas son más suaves que el final de la Cripta (de 1 a 2 enemigo
 | Signo Sombra «Matorral que Cose Sombras» | Apunta casi un segundo y suelta cinco flechas, una cada medio segundo, cada una a donde estás en ese momento | No pararse |
 | Signo Niebla «Réquiem de Hojas Afiladas» | Se desvanece, reaparece en el borde del claro más lejano a ti y lanza tres abanicos de hojas; cada abanico deja los huecos en otro sitio | Buscar el hueco nuevo o rodar a través |
 | Signo Búho «Picado de la Luna Hueca» | Te sigue con la mirada, fija la puntería en el último tercio del aviso y cruza el claro en picado | Apartarse de lado cuando la línea se fija; después se queda mucho tiempo abierto |
+
+**Fase 2** (a la mitad de la vida, una vez, nunca a mitad de un golpe y nunca en un eco de la Sima): "El Arquero se desvanece en la niebla", se desvanece 1,6 s sin atacar (la apertura) y vuelve arriba del claro con un orden más denso: Lluvia, Abanico, Plumas, Picado, Costura.
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Lluvia «Aguacero de Flechas del Ocaso» | Parte el claro en 8 carriles y llueven flechas en todos menos uno; el carril libre es el de al lado del tuyo y se mueve un carril en cada oleada (tres) | Pasar al carril libre, o ponerse bajo un árbol. **Rodar no protege** (`pierceRoll`). Aviso de 1,2 s y luego 0,8 s, cuando ya han caído las flechas anteriores |
+| Signo Pluma «Espiral de Plumas Sombrías» | Se desvanece, reaparece en el centro y suelta cinco brazos de plumas en espiral | Moverse entre las plumas de un brazo |
+| Signo Sombra «Costura de Sombras Gemelas» | Dos clones de sombra en las esquinas del lado contrario y él mismo apuntan al mismo punto (se fija 0,3 s antes) y lanzan una línea de flechas cada uno; tres veces | Salir del punto cuando las líneas se fijan |
+
+**El claro** tiene cuatro árboles viejos cuyos troncos paran flechas, hojas y plumas, como los pilares de la Cripta. Para que el juego vaya fluido nunca hay más de 160 proyectiles enemigos a la vez (si se llega, el patrón sale más ligero, nunca más difícil).
 
 Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los caminos. Velo esta puerta desde que el sol se apagó. Nadie la cruza mientras me quede una flecha." Al caer: "Mi juramento era una cuerda tensa. Al fin descansa. Bajo las raíces algo sigue bebiendo la luz. Lo oigo respirar en la niebla."
 
@@ -418,6 +445,8 @@ La elige el anfitrión. En un souls, la dificultad de verdad es el tiempo que ti
 | Revividas en solitario por planta | 2 | 1 | 1 | 0 |
 | Si cae todo el grupo | Hoguera cada 3 plantas | Hoguera cada 5 plantas | Vuelta a la planta 1 | Vuelta a la planta 1 y pierdes lo que llevas |
 | Pokémonedas | ×0,5 | ×1 | ×2,5 | ×5 |
+
+**El Bosque según la dificultad** (ya en el juego): en Fácil y Normal todo es como arriba. En Difícil cada enemigo del bosque tiene un truco más: Phantump agarra dos veces, Pumpkaboo pequeño deja una llama donde acaba su embestida, Pumpkaboo enorme lanza un anillo de llamas al golpear, Foongus suelta además un anillo de esporas, Spinarak lanza cinco hilos, Hoothoot se lanza dos veces, Impidimp amaga dos veces, Shroomish suelta esporas al aterrizar y Drifloon suelta un segundo anillo girado. Trevenant añade la carta Signo Arboleda «Danza de las Mil Ramas» (dos espirales que giran en sentidos contrarios) y Decidueye juega la Costura ya en la primera fase y una Andanada más en la segunda. En Pesadilla, además, combos más largos: Trevenant tres oleadas de raíces, más ráfagas de espiral y tres anillos; Decidueye siete flechas, cuatro abanicos, cuatro oleadas de lluvia, más plumas y cuatro costuras.
 
 *(Todo provisional.)* Una regla que no es provisional: lo que pagas tiene que subir por minuto jugado, no solo por partida. Si no, la dificultad más fácil acaba siendo la mejor forma de farmear.
 
