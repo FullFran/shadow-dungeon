@@ -1,7 +1,8 @@
 import { AEGISLASH, type AegislashDef } from '../data/enemies';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
-import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, towardPlayer } from './brain';
+import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, towardTarget } from './brain';
+import { bashTouches, bladeTouches } from './victim';
 import type { AiState, BossStance, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { angleOf, distance, dot, fromAngle, length, normalize, scale, sub, type Vec2 } from './vec';
 
@@ -78,23 +79,23 @@ function wantsStanceChange(boss: BossState, def: AegislashDef): boolean {
 }
 
 /**
- * Advances along the attack direction without stepping into the player:
+ * Advances along the attack direction without stepping into its target:
  * a lunge stops at body contact instead of passing through.
  */
-function lunge(state: WorldState, enemy: EnemyState, distancePx: number): EnemyState {
+function lunge(state: WorldState, enemy: EnemyState, target: Vec2, distancePx: number): EnemyState {
   const stop = enemy.radius + PLAYER_RADIUS;
-  const ahead = dot(sub(state.player.pos, enemy.pos), enemy.ai.attackDir);
-  const near = distance(state.player.pos, enemy.pos) <= stop + 2;
+  const ahead = dot(sub(target, enemy.pos), enemy.ai.attackDir);
+  const near = distance(target, enemy.pos) <= stop + 2;
   const step = near && ahead > 0 ? 0 : distancePx;
   return moveEnemy(state, enemy, scale(enemy.ai.attackDir, step));
 }
 
-function updateShield(state: WorldState, start: EnemyState, def: AegislashDef, ms: number, events: GameEvent[]) {
+function updateShield(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]) {
   const shield = def.shield;
   let enemy = start;
   const ai = enemy.ai;
-  const toPlayer = towardPlayer(state, enemy);
-  const dist = distance(enemy.pos, state.player.pos);
+  const toPlayer = towardTarget(target, enemy);
+  const dist = distance(enemy.pos, target);
   const turn = shield.turnRateDegPerSec * DEG * (ms / 1000);
 
   switch (ai.mode) {
@@ -118,9 +119,8 @@ function updateShield(state: WorldState, start: EnemyState, def: AegislashDef, m
       }
       break;
     case 'attack': {
-      enemy = lunge(state, enemy, (shield.bashDistance / shield.bashMs) * ms);
-      const touches = distance(enemy.pos, state.player.pos) <= enemy.radius + PLAYER_RADIUS + 4;
-      const hit = contactPlayer(state, enemy, shield.bash, touches, events);
+      enemy = lunge(state, enemy, target, (shield.bashDistance / shield.bashMs) * ms);
+      const hit = contactPlayer(state, enemy, shield.bash, bashTouches(enemy, state.player.pos), events);
       state = hit.state;
       enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
       if (hit.contact === 'hit' || modeOver(ai)) {
@@ -137,13 +137,13 @@ function updateShield(state: WorldState, start: EnemyState, def: AegislashDef, m
   return { state, enemy };
 }
 
-function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ms: number, events: GameEvent[]) {
+function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]) {
   const blade = def.blade;
   let enemy = start;
   const ai = enemy.ai;
   const boss = enemy.boss!;
-  const toPlayer = towardPlayer(state, enemy);
-  const dist = distance(enemy.pos, state.player.pos);
+  const toPlayer = towardTarget(target, enemy);
+  const dist = distance(enemy.pos, target);
   const turn = blade.turnRateDegPerSec * DEG * (ms / 1000);
   const blow = blade.combo[boss.comboIndex]!;
 
@@ -165,11 +165,8 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ms
       }
       break;
     case 'attack': {
-      enemy = lunge(state, enemy, (blow.lungeDistance / blow.strikeMs) * ms);
-      const offset = sub(state.player.pos, enemy.pos);
-      const reach = length(offset) <= blow.range + PLAYER_RADIUS;
-      const inArc = length(offset) <= enemy.radius || angleBetween(enemy.ai.attackDir, offset) <= (blow.arcDegrees * DEG) / 2;
-      const hit = contactPlayer(state, enemy, blow.attack, reach && inArc, events);
+      enemy = lunge(state, enemy, target, (blow.lungeDistance / blow.strikeMs) * ms);
+      const hit = contactPlayer(state, enemy, blow.attack, bladeTouches(enemy, state.player.pos), events);
       state = hit.state;
       enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
       if (modeOver(ai)) {
@@ -193,11 +190,11 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ms
 }
 
 /** One step of Aegislash: stance timers, the stance change, then the current stance's state machine. */
-export function updateBoss(state: WorldState, start: EnemyState, def: AegislashDef, ms: number, events: GameEvent[]): WorldState {
+export function updateBoss(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
   const ai = enemy.ai;
   if (ai.mode === 'idle') {
-    if (distance(enemy.pos, state.player.pos) <= def.aggroRange) enemy = withAi(enemy, enterMode(ai, 'approach'));
+    if (distance(enemy.pos, target) <= def.aggroRange) enemy = withAi(enemy, enterMode(ai, 'approach'));
     return replaceEnemy(state, enemy);
   }
   enemy = withBoss(enemy, { stanceMs: enemy.boss!.stanceMs + ms });
@@ -217,6 +214,6 @@ export function updateBoss(state: WorldState, start: EnemyState, def: AegislashD
   }
 
   const result =
-    enemy.boss!.stance === 'shield' ? updateShield(state, enemy, def, ms, events) : updateBlade(state, enemy, def, ms, events);
+    enemy.boss!.stance === 'shield' ? updateShield(state, enemy, def, target, ms, events) : updateBlade(state, enemy, def, target, ms, events);
   return replaceEnemy(result.state, result.enemy);
 }

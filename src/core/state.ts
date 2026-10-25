@@ -93,6 +93,8 @@ export interface ActionState {
   mouseAim: boolean;
   /** Entities already hit by this use of the move (one hit per target per swing). */
   hitIds: readonly string[];
+  /** World tick the move started on: names the swing in hit claims (one claim per enemy per swing). */
+  startTick?: number;
 }
 
 export interface PlayerState {
@@ -232,10 +234,53 @@ export type GameEvent =
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
-  | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' };
+  | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
+  /** A guest's own player hit an enemy: the host applies the claim (sync.ts). */
+  | { type: 'hitClaim'; claim: HitClaim };
+
+/**
+ * Who runs what in a shared run (docs/gdd.md §12): the `host` runs enemy AI,
+ * the boss, spawns and floor changes and applies hit claims; a `guest` gets
+ * enemies from host snapshots and runs only its own player. Solo is a host
+ * with no peers.
+ */
+export type PeerRole = 'host' | 'guest';
+
+/** Another peer's player, as its own peer reported it (never simulated here). */
+export interface RemotePlayer {
+  id: string;
+  player: PlayerState;
+}
+
+/**
+ * A guest's hit on an enemy, resolved on the guest (damage, type
+ * effectiveness, stagger and knockback already computed) and applied by the
+ * host, trusted in the spike. `id` names the swing or projectile and the
+ * enemy, so a resent or duplicated claim lands once.
+ */
+export interface HitClaim {
+  id: string;
+  playerId: string;
+  enemyId: string;
+  damage: number;
+  effectiveness: number;
+  /** Stagger (hitstun) already scaled by the enemy's poise. */
+  hitstunMs: number;
+  /** Knockback displacement, already scaled by the enemy's poise. */
+  knockback: Vec2;
+  /** Stopped by a guard: chip damage only, no stagger. */
+  blocked: boolean;
+}
 
 export interface WorldState {
   tick: number;
+  /** Id of this peer's player (`player`); "p1" solo. */
+  localId: string;
+  role: PeerRole;
+  /** The other peers' players (empty solo). */
+  remotes: readonly RemotePlayer[];
+  /** Host: ids of the hit claims already applied (bounded), so a claim never lands twice. */
+  appliedClaims: readonly string[];
   /** Real (unscaled) simulation time. */
   timeMs: number;
   rng: number;
@@ -248,7 +293,7 @@ export interface WorldState {
   lock: LockState;
   /** Remaining perfect-dodge slow-mo, in real time. */
   slowMoMs: number;
-  /** Generated floors: walking distances to the player's tile, for walkers out of sight (flow.ts). */
+  /** Generated floors: walking distances to the nearest present player's tile, for walkers out of sight (flow.ts). */
   flow?: FlowField;
   /** Collapse urgent floors: the advancing front (collapse.ts). */
   collapse?: CollapseState;

@@ -1,8 +1,9 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef } from '../data/enemies';
-import { TUNING } from '../data/tuning';
 import { updateBoss } from './boss';
 import { flowStep } from './flow';
-import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardPlayer } from './brain';
+import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
+import { targetOf } from './party';
+import { lungeTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
 import { lineOfSight, tileCenter, tileOf } from './tiles';
 import { enemyTimeScale } from './time';
@@ -13,8 +14,6 @@ import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './
  * reads the world and returns it with its enemy updated; enemies act only
  * while not staggered and run at the enemy time scale (perfect-dodge slow-mo).
  */
-const PLAYER_RADIUS = TUNING.player.radius;
-
 export function initialAi(dormant = false): AiState {
   return {
     mode: dormant ? 'dormant' : 'idle',
@@ -33,13 +32,13 @@ function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: V
 }
 
 /**
- * Where a walker heads to reach the player: straight at it with a clear line
+ * Where a walker heads to reach its target: straight at it with a clear line
  * of sight (or on arenas without tiles), otherwise towards the next tile
- * downhill on the shared flow field. Null when it sees the player.
+ * downhill on the shared flow field (towards the nearest player). Null when it sees the target.
  */
-function pathDirection(state: WorldState, enemy: EnemyState): Vec2 | null {
+function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2): Vec2 | null {
   const grid = state.arena.tiles;
-  if (!grid || !state.flow || lineOfSight(grid, enemy.pos, state.player.pos)) return null;
+  if (!grid || !state.flow || lineOfSight(grid, enemy.pos, target)) return null;
   const next = flowStep(grid, state.flow, tileOf(enemy.pos));
   if (!next) return null;
   const dir = normalize(sub(tileCenter(next), enemy.pos));
@@ -47,10 +46,10 @@ function pathDirection(state: WorldState, enemy: EnemyState): Vec2 | null {
 }
 
 /** Poochyena: stalks, telegraphs with Charge, lunges in a straight line; a dodged lunge leaves it exposed. */
-function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, ms: number, events: GameEvent[]): WorldState {
+function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
-  const toPlayer = towardPlayer(state, enemy);
-  const dist = distance(enemy.pos, state.player.pos);
+  const toPlayer = towardTarget(target, enemy);
+  const dist = distance(enemy.pos, target);
   const ai = enemy.ai;
 
   switch (ai.mode) {
@@ -58,7 +57,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, m
       if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
       break;
     case 'approach': {
-      const path = pathDirection(state, enemy);
+      const path = pathDirection(state, enemy, target);
       if (path) {
         // Out of sight: follow the flow field around the walls, no stalking or lunging.
         enemy = { ...moveEnemy(state, enemy, scale(path, (def.walkSpeed * ms) / 1000)), facing: path };
@@ -87,8 +86,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, m
     case 'attack': {
       const speed = def.lungeDistance / def.lungeMs;
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, speed * ms));
-      const touches = distance(enemy.pos, state.player.pos) <= enemy.radius + PLAYER_RADIUS;
-      const hit = contactPlayer(state, enemy, def.attack, touches, events);
+      const hit = contactPlayer(state, enemy, def.attack, lungeTouches(enemy, state.player.pos), events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
       if (hit.contact === 'hit') {
@@ -130,10 +128,10 @@ function spawnEnemyProjectile(state: WorldState, enemy: EnemyState, def: GastlyD
 }
 
 /** Gastly: floats, keeps its distance band, telegraphs and casts a slow ball. */
-function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, ms: number, events: GameEvent[]): WorldState {
+function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
-  const toPlayer = towardPlayer(state, enemy);
-  const dist = distance(enemy.pos, state.player.pos);
+  const toPlayer = towardTarget(target, enemy);
+  const dist = distance(enemy.pos, target);
   const ai = enemy.ai;
 
   switch (ai.mode) {
@@ -188,7 +186,7 @@ const tickAi = (ai: AiState, ms: number): AiState => ({
   cooldownMs: Math.max(0, ai.cooldownMs - ms),
 });
 
-/** Runs every enemy's behaviour for one step at the enemy time scale. */
+/** Runs every enemy's behaviour for one step at the enemy time scale, each going for its nearest present player. */
 export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   const ms = dtMs * enemyTimeScale(state);
   let current = state;
@@ -201,9 +199,10 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       continue;
     }
     const ticked = { ...enemy, ai: tickAi(enemy.ai, ms) };
-    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, ms, events);
-    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, ms, events);
-    else current = updateBoss(current, ticked, def, ms, events);
+    const target = targetOf(current, enemy).pos;
+    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
+    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);
+    else current = updateBoss(current, ticked, def, target, ms, events);
   }
   return current;
 }

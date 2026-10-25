@@ -1,22 +1,56 @@
-import { tileDistances } from './dungeon';
+import { presentPlayers } from './party';
 import type { WorldState } from './state';
 import { isWall, tileOf, type TileGrid, type TilePoint } from './tiles';
 
 /**
- * A tile flow field towards the player: the walking distance (in tiles) from
- * the player's tile to every floor tile, -1 where unreachable. One field is
- * shared by every enemy and rebuilt only when the player changes tile, so
- * walkers that lose sight of the player can follow it downhill around walls.
+ * A tile flow field towards the players: the walking distance (in tiles) from
+ * the nearest present player's tile to every floor tile, -1 where unreachable.
+ * One field is shared by every enemy (one multi-source search, whatever the
+ * number of players) and rebuilt only when a player changes tile, so walkers
+ * that lose sight of their target follow it downhill around walls to the
+ * nearest player.
  */
 export interface FlowField {
   /** The grid the field was built on: a new floor always rebuilds it. */
   grid: TileGrid;
-  /** The tile the distances are measured from (the player's). */
+  /** The first origin tile (the local player's, solo the only one). */
   origin: TilePoint;
+  /** Every tile the distances are measured from (one per present player). */
+  origins: readonly TilePoint[];
   dist: readonly number[];
 }
 
-export const flowField = (grid: TileGrid, origin: TilePoint): FlowField => ({ grid, origin, dist: tileDistances(grid, origin) });
+/** Breadth-first walking distances (4-neighbour) from the nearest of `origins`. */
+function distancesFrom(grid: TileGrid, origins: readonly TilePoint[]): number[] {
+  const dist = new Array<number>(grid.cols * grid.rows).fill(-1);
+  const queue: TilePoint[] = [];
+  for (const o of origins) {
+    if (dist[o.y * grid.cols + o.x] === 0) continue;
+    dist[o.y * grid.cols + o.x] = 0;
+    queue.push(o);
+  }
+  for (let head = 0; head < queue.length; head++) {
+    const { x, y } = queue[head]!;
+    const d = dist[y * grid.cols + x]!;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (isWall(grid, nx, ny) || dist[ny * grid.cols + nx] !== -1) continue;
+      dist[ny * grid.cols + nx] = d + 1;
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return dist;
+}
+
+export const flowFieldFrom = (grid: TileGrid, origins: readonly TilePoint[]): FlowField => ({
+  grid,
+  origin: origins[0]!,
+  origins,
+  dist: distancesFrom(grid, origins),
+});
+
+export const flowField = (grid: TileGrid, origin: TilePoint): FlowField => flowFieldFrom(grid, [origin]);
 
 const NEIGHBOURS = [
   [1, 0],
@@ -53,11 +87,14 @@ export function flowStep(grid: TileGrid, field: FlowField, from: TilePoint): Til
   return best;
 }
 
-/** Keeps the world's flow field on the player's current tile (generated floors only). */
+const sameTiles = (a: readonly TilePoint[], b: readonly TilePoint[]) => a.length === b.length && a.every((t, i) => t.x === b[i]!.x && t.y === b[i]!.y);
+
+/** Keeps the world's flow field on the present players' current tiles (generated floors only). */
 export function updateFlow(state: WorldState): WorldState {
   const grid = state.arena.tiles;
   if (!grid) return state.flow ? { ...state, flow: undefined } : state;
-  const origin = tileOf(state.player.pos);
-  if (state.flow && state.flow.grid === grid && state.flow.origin.x === origin.x && state.flow.origin.y === origin.y) return state;
-  return { ...state, flow: flowField(grid, origin) };
+  const present = presentPlayers(state);
+  const origins = (present.length > 0 ? present.map((p) => p.pos) : [state.player.pos]).map(tileOf);
+  if (state.flow && state.flow.grid === grid && sameTiles(state.flow.origins, origins)) return state;
+  return { ...state, flow: flowFieldFrom(grid, origins) };
 }

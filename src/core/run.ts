@@ -1,6 +1,7 @@
 import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
 import { generateFloor } from './dungeon';
 import { loadFloor, onStairs } from './floor';
+import { partyDefeated } from './party';
 import { deriveSeed, nextRandom } from './rng';
 import { atExit, loadRoom, roomCleared } from './rooms';
 import type { WorldState } from './state';
@@ -74,16 +75,32 @@ function heal(world: WorldState): WorldState {
   return { ...world, player: { ...world.player, hp: Math.min(maxHp, hp + RUN.floorHeal * maxHp) } };
 }
 
-/** After a step: defeat, victory (last floor cleared), stairs (or a fixed room's exit) to the next floor, or nothing. */
+/** Moves the run to `floor` (the next one): records a collapse escape, heals, and loads it. */
+function goDown(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
+  const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
+  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape };
+  return { run: next, world: enterFloor(heal(world), next) };
+}
+
+/**
+ * After a step: defeat (every player down), victory (last floor cleared),
+ * stairs (or a fixed room's exit) to the next floor, or nothing. In a shared
+ * run only the host takes the stairs, when any player stands on them; guests
+ * follow its floor change (`followToFloor`).
+ */
 export function progressRun(run: RunState, world: WorldState): RunProgress {
-  if (world.player.hp <= 0) return { run, world, entered: false, outcome: 'defeat' };
+  if (partyDefeated(world)) return { run, world, entered: false, outcome: 'defeat' };
   const last = run.floor >= RUN_PLAN.length;
   if (last && floorPlanOf(run).kind === 'room' && roomCleared(world)) return { run, world, entered: false, outcome: 'victory' };
+  if (world.role === 'guest') return { run, world, entered: false, outcome: null };
   const plan = floorPlanOf(run);
   const leaving = plan.kind === 'generated' ? onStairs(world) : atExit(world, plan.room);
   if (last || !leaving) return { run, world, entered: false, outcome: null };
-  const floor = run.floor + 1;
-  const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
-  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape };
-  return { run: next, world: enterFloor(heal(world), next), entered: true, outcome: null };
+  return { ...goDown(run, world, run.floor + 1), entered: true, outcome: null };
+}
+
+/** Guest: the host went down to `floor`; every peer generates it from the shared run seed. */
+export function followToFloor(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
+  if (floor <= run.floor || floor > RUN_PLAN.length) return { run, world };
+  return goDown(run, world, floor);
 }

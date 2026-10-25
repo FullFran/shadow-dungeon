@@ -7,7 +7,7 @@ import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { initialBoss } from './boss';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
-import type { Arena, EnemyState, LockType, PlayerState, Rect, WorldState } from './state';
+import type { Arena, EnemyState, LockType, PeerRole, PlayerState, Rect, WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 
 export interface WorldOptions {
@@ -21,6 +21,10 @@ export interface WorldOptions {
   clickToLock?: boolean;
   /** How the lock input works (default `toggle`). */
   lockType?: LockType;
+  /** This peer's player id (default "p1"). */
+  localId?: string;
+  /** Default `host` (solo). */
+  role?: PeerRole;
 }
 
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[]): PlayerState {
@@ -46,9 +50,23 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
   };
 }
 
-export function createWorld({ seed, arena, playerPos, species, loadout, clickToLock = true, lockType = 'toggle' }: WorldOptions): WorldState {
+export function createWorld({
+  seed,
+  arena,
+  playerPos,
+  species,
+  loadout,
+  clickToLock = true,
+  lockType = 'toggle',
+  localId = 'p1',
+  role = 'host',
+}: WorldOptions): WorldState {
   return {
     tick: 0,
+    localId,
+    role,
+    remotes: [],
+    appliedClaims: [],
     timeMs: 0,
     rng: seedRng(seed),
     nextId: 1,

@@ -6,7 +6,7 @@ import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
-import type { ActionPhase, ActionState, EnemyState, GameEvent, PlayerInput, ProjectileState, WorldState } from './state';
+import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
 import { add, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -78,6 +78,7 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     aimDir: aimDirection(state, input, mouseAim),
     mouseAim,
     hitIds: [],
+    startTick: state.tick,
   };
   const paid =
     move.staminaCost > 0
@@ -86,7 +87,29 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   return { ...state, player: { ...player, ...paid, action } };
 }
 
-type StrikeHit = { power: number; type: MoveDef['type']; multiplier: number; hitstunMs: number; knockback: number; from: Vec2 };
+type StrikeHit = {
+  power: number;
+  type: MoveDef['type'];
+  multiplier: number;
+  hitstunMs: number;
+  knockback: number;
+  from: Vec2;
+  /** Names the swing or projectile in hit claims. */
+  source: string;
+};
+
+/**
+ * On a guest, the local player's hit is shown at once (feedback) and sent to
+ * the host as a claim; host snapshots then carry the result. Hosts (and solo)
+ * are authoritative and claim nothing.
+ */
+function claim(state: WorldState, enemy: EnemyState, hit: StrikeHit, struck: Omit<HitClaim, 'id' | 'playerId' | 'enemyId'>, events: GameEvent[]): void {
+  if (state.role !== 'guest') return;
+  events.push({
+    type: 'hitClaim',
+    claim: { id: `${state.localId}:${hit.source}:${enemy.id}`, playerId: state.localId, enemyId: enemy.id, ...struck },
+  });
+}
 
 /** A hit stopped by a guard: chip damage at most, no stagger, and the next-hit buff is kept. */
 function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, events: GameEvent[]): WorldState {
@@ -99,6 +122,7 @@ function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, eve
   });
   const chip = Math.round(damage * AEGISLASH.shield.chipFactor);
   events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
+  claim(state, enemy, hit, { damage: Math.max(0, chip), effectiveness: 1, hitstunMs: 0, knockback: vec(0, 0), blocked: true }, events);
   if (chip <= 0) return state;
   const hp = Math.max(1, enemy.hp - chip);
   return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? { ...e, hp } : e)) };
@@ -132,6 +156,7 @@ function strikeEnemy(
   };
   events.push({ type: 'enemyHit', enemyId: enemy.id, damage, effectiveness, pos: enemy.pos });
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
+  claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
     player: { ...state.player, nextHitBuff: null },
@@ -163,7 +188,15 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
     current = strikeEnemy(
       current,
       enemy,
-      { power: move.power, type: move.type, multiplier: charge.damageMultiplier, hitstunMs: move.hitstunMs, knockback: move.knockback, from: origin },
+      {
+        power: move.power,
+        type: move.type,
+        multiplier: charge.damageMultiplier,
+        hitstunMs: move.hitstunMs,
+        knockback: move.knockback,
+        from: origin,
+        source: `m${action.startTick ?? state.tick}`,
+      },
       events,
     );
   }
@@ -291,7 +324,15 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
         current = strikeEnemy(
           current,
           target,
-          { power: moved.power, type: moved.type, multiplier: moved.damageMultiplier, hitstunMs: moved.hitstunMs, knockback: moved.knockback, from: moved.pos },
+          {
+            power: moved.power,
+            type: moved.type,
+            multiplier: moved.damageMultiplier,
+            hitstunMs: moved.hitstunMs,
+            knockback: moved.knockback,
+            from: moved.pos,
+            source: moved.id,
+          },
           events,
         );
         moved = null;
@@ -333,9 +374,12 @@ function updateEnemyReactions(state: WorldState, dtMs: number): WorldState {
   return { ...state, enemies };
 }
 
-/** Player move state machine, hit detection, projectiles and enemy hit reactions for one step. */
+/**
+ * Player move state machine, hit detection, projectiles and enemy hit reactions for one step.
+ * A guest leaves enemy reactions (stagger, knockback) to the host's snapshots.
+ */
 export function updateCombat(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   let current = updatePlayerAction(state, input, dtMs, events);
   current = updateProjectiles(current, dtMs, events);
-  return updateEnemyReactions(current, dtMs);
+  return current.role === 'guest' ? current : updateEnemyReactions(current, dtMs);
 }

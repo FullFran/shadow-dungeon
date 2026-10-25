@@ -20,9 +20,9 @@ export function replaceEnemy(state: WorldState, enemy: EnemyState): WorldState {
   return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? enemy : e)) };
 }
 
-/** Unit vector from the enemy to the player (its facing if they overlap). */
-export function towardPlayer(state: WorldState, enemy: EnemyState): Vec2 {
-  const dir = normalize(sub(state.player.pos, enemy.pos));
+/** Unit vector from the enemy to its target player's position (its facing if they overlap). */
+export function towardTarget(target: Vec2, enemy: EnemyState): Vec2 {
+  const dir = normalize(sub(target, enemy.pos));
   return length(dir) > 0 ? dir : enemy.facing;
 }
 
@@ -43,7 +43,8 @@ export function moveEnemy(state: WorldState, enemy: EnemyState, delta: Vec2): En
 }
 
 /**
- * Contact of an enemy attack with the player (`touches` = hitbox overlap), once per attack. Returns
+ * Contact of an enemy attack with the local player (`touches` = hitbox overlap), once per attack.
+ * Victim-side: only `state.player` is ever checked; remote players check their own. Returns
  * the world after the hit and the contact result ('dodged' when i-frames
  * absorbed it: the attack passes through and keeps going).
  */

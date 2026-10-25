@@ -36,8 +36,9 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
   return next;
 }
 
-/** True when the player stands on the stairs (no clear requirement, Mystery Dungeon style). */
+/** True when a player (the local one, or a remote one still standing) is on the stairs (no clear requirement, Mystery Dungeon style). */
 export function onStairs(state: WorldState): boolean {
   const stairs = state.arena.stairs;
-  return stairs !== undefined && insideRect(state.player.pos, stairs);
+  if (stairs === undefined) return false;
+  return insideRect(state.player.pos, stairs) || state.remotes.some((r) => r.player.hp > 0 && insideRect(r.player.pos, stairs));
 }

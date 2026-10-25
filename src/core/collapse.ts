@@ -114,7 +114,10 @@ function pushPlayer(state: WorldState, grid: TileGrid, c: CollapseState, dtMs: n
   return { ...state, player: { ...state.player, pos } };
 }
 
-/** One step of the collapse: advance the front, hurt and push a player on rubble, drop walkers on it. */
+/**
+ * One step of the collapse: advance the front, hurt and push the local player on rubble (each peer its own),
+ * drop walkers on it (the host only: guests get enemies from its snapshots).
+ */
 export function updateCollapse(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   const grid = state.arena.tiles;
   if (!state.collapse || !grid) return state;
@@ -127,7 +130,7 @@ export function updateCollapse(state: WorldState, dtMs: number, events: GameEven
   } else if (c.damageMs !== 0) {
     c = { ...c, damageMs: 0 };
   }
-  const falling = next.enemies.some((e) => e.alive && !floatsOf(e.species) && isCollapsed(c, grid.cols, tileOf(e.pos)));
+  const falling = next.role !== 'guest' && next.enemies.some((e) => e.alive && !floatsOf(e.species) && isCollapsed(c, grid.cols, tileOf(e.pos)));
   if (falling) {
     const enemies = next.enemies.map((enemy) => {
       if (!enemy.alive || floatsOf(enemy.species) || !isCollapsed(c, grid.cols, tileOf(enemy.pos))) return enemy;

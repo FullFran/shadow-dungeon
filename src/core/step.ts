@@ -7,6 +7,7 @@ import { landHitOnPlayer } from './hits';
 import { updateLock } from './lockon';
 import { updatePlayer } from './player';
 import type { GameEvent, IncomingHit, PlayerInput, WorldState } from './state';
+import { guestEnemyContacts } from './victim';
 
 export { enemyTimeScale } from './time';
 
@@ -14,17 +15,19 @@ export { enemyTimeScale } from './time';
  * Advances the world by one fixed step. Pure: returns a new state and never
  * mutates `state`, so identical (state, input) pairs always give identical
  * results. `dtMs` is real time; enemy-side systems use `enemyTimeScale`.
+ * A host (and solo) runs the enemies against every present player; a guest
+ * runs only its own player and lands the enemy attacks of the last host
+ * snapshot on it (victim side, victim.ts).
  */
 export function step(state: WorldState, input: PlayerInput, dtMs: number): WorldState {
   const events: GameEvent[] = [];
   const player = updatePlayer(state.player, input, dtMs, state.arena, events);
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
-  const fought = updateCollapse(
-    updateEnemies(updateFlow(wakeEnemies(updateCombat({ ...state, player, lock }, input, dtMs, events))), dtMs, events),
-    dtMs,
-    events,
-  );
+  const combat = updateCombat({ ...state, player, lock }, input, dtMs, events);
+  const enemies =
+    state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
+  const fought = updateCollapse(enemies, dtMs, events);
   return {
     ...fought,
     tick: state.tick + 1,
