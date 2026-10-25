@@ -44,6 +44,8 @@ export interface TownFrame {
   view: Rect;
   timeMs: number;
   characters: readonly TownCharacter[];
+  /** Tiles that glow on the ground (dungeon mouths), in tiles. */
+  glows?: readonly { x: number; y: number; width: number; height: number }[];
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: TownCharacter, timeMs: number): void {
@@ -114,12 +116,14 @@ function drawSpecial(ctx: CanvasRenderingContext2D, map: MapShape, kind: 'water'
     return;
   }
   if (kind === 'chasm') {
-    ctx.fillStyle = '#030105';
+    // Depth: near black, lit from far below by the eclipse's red, breathing slowly.
+    ctx.fillStyle = '#0a0207';
     ctx.fillRect(x, y, TILE, TILE);
     const pulse = 0.6 + 0.4 * Math.sin(timeMs / 1100 + tx * 0.7 + ty);
-    ctx.fillStyle = `rgba(200, 30, 50, ${0.07 * pulse})`;
+    ctx.fillStyle = `rgba(200, 30, 50, ${0.1 + 0.1 * pulse})`;
     ctx.fillRect(x, y, TILE, TILE);
-    if (at(0, -1) !== 'chasm') {
+    const open = (dx: number, dy: number) => at(dx, dy) === 'chasm' || at(dx, dy) === 'bridge';
+    if (!open(0, -1)) {
       // The near cliff face: rock strata falling into the dark.
       ctx.fillStyle = '#3a2a36';
       ctx.fillRect(x, y, TILE, 10);
@@ -128,13 +132,13 @@ function drawSpecial(ctx: CanvasRenderingContext2D, map: MapShape, kind: 'water'
       ctx.fillStyle = '#5a4552';
       ctx.fillRect(x, y, TILE, 2);
     }
-    if (at(-1, 0) !== 'chasm' && at(-1, 0) !== 'bridge') {
-      ctx.fillStyle = '#1a1018';
-      ctx.fillRect(x, y, 3, TILE);
-    }
-    if (at(1, 0) !== 'chasm' && at(1, 0) !== 'bridge') {
-      ctx.fillStyle = '#1a1018';
-      ctx.fillRect(x + TILE - 3, y, 3, TILE);
+    // A broken rim on every side that meets the ground: teeth of rock of uneven depth.
+    ctx.fillStyle = '#4d3b47';
+    for (let i = 0; i < TILE; i += 4) {
+      const tooth = 2 + Math.floor(hash01(tx * 97 + ty * 61 + i) * 6);
+      if (!open(0, 1)) ctx.fillRect(x + i, y + TILE - tooth, 4, tooth);
+      if (!open(-1, 0)) ctx.fillRect(x, y + i, tooth, 4);
+      if (!open(1, 0)) ctx.fillRect(x + TILE - tooth, y + i, tooth, 4);
     }
     return;
   }
@@ -161,12 +165,11 @@ function drawSpecial(ctx: CanvasRenderingContext2D, map: MapShape, kind: 'water'
   ctx.fillStyle = '#05030a';
   ctx.fillRect(x, y, TILE, TILE);
   ctx.fillStyle = '#7a4a30';
-  if (along) ctx.fillRect(x, y + 2, TILE, TILE - 4);
-  else ctx.fillRect(x + 2, y, TILE - 4, TILE);
+  ctx.fillRect(x, y, TILE, TILE);
   ctx.fillStyle = '#4a2a1c';
   for (let i = 0; i < TILE; i += 8) {
-    if (along) ctx.fillRect(x + i, y + 2, 1, TILE - 4);
-    else ctx.fillRect(x + 2, y + i, TILE - 4, 1);
+    if (along) ctx.fillRect(x + i, y, 1, TILE);
+    else ctx.fillRect(x, y + i, TILE, 1);
   }
   ctx.fillStyle = '#9a6a48';
   if (along) ctx.fillRect(x, y + 3, TILE, 1);
@@ -240,6 +243,20 @@ function propSprite(ctx: CanvasRenderingContext2D, images: TownImages, kind: Tow
       if (image) ctx.drawImage(image, x * TILE, y * TILE, image.width * 2, image.height * 2);
     },
   };
+}
+
+/** A dungeon's mouth: a dark threshold breathing red light. */
+function glow(ctx: CanvasRenderingContext2D, g: { x: number; y: number; width: number; height: number }, timeMs: number): void {
+  const pulse = 0.5 + 0.5 * Math.sin(timeMs / 700);
+  const cx = (g.x + g.width / 2) * TILE;
+  const cy = (g.y + g.height / 2) * TILE;
+  const r = Math.max(g.width, g.height) * TILE;
+  const light = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+  light.addColorStop(0, `rgba(10, 0, 6, ${0.55 + 0.1 * pulse})`);
+  light.addColorStop(0.45, `rgba(232, 40, 58, ${0.22 + 0.18 * pulse})`);
+  light.addColorStop(1, 'rgba(232, 40, 58, 0)');
+  ctx.fillStyle = light;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
 }
 
 /** A prop's rectangle (px) meets the view, with a margin. */
@@ -348,6 +365,7 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
   ground(ctx, images, map, view, look, timeMs);
   const props = map.props.filter((p) => propVisible(p.kind, p.x, p.y, view));
   for (const p of props) if (TOWN_PROPS[p.kind].decal) propSprite(ctx, images, p.kind, p.x, p.y).draw();
+  for (const g of frame.glows ?? []) glow(ctx, g, timeMs);
   const sprites: Sprite[] = [
     ...forestTrees(map, view).map((t) => propSprite(ctx, images, 'tree-small', t.x, t.y)),
     ...props.filter((p) => !TOWN_PROPS[p.kind].decal).map((p) => propSprite(ctx, images, p.kind, p.x, p.y)),

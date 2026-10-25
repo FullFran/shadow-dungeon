@@ -1,4 +1,4 @@
-import type { MapLink, TileRect, WorldMap } from '../data/world';
+import type { DungeonEntrance, MapLink, TileRect, WorldMap } from '../data/world';
 import { TILE, tileOf } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 
@@ -35,6 +35,20 @@ export function inRect(pos: Vec2, rect: TileRect): boolean {
 }
 
 export const linkAt = (pos: Vec2, links: readonly MapLink[]): MapLink | null => links.find((link) => inRect(pos, link)) ?? null;
+
+export const entranceAt = (pos: Vec2, entrances: readonly DungeonEntrance[]): DungeonEntrance | null => entrances.find((e) => inRect(pos, e)) ?? null;
+
+/**
+ * What a dungeon's mouth does: opens when the dungeon exists and is
+ * unlocked on this device, stays sealed while locked, and stays shut (a
+ * "not yet") while the registry does not have it at all.
+ */
+export type EntranceState = 'open' | 'locked' | 'missing';
+
+export function entranceState(dungeon: string, unlocked: readonly string[], registry: readonly string[]): EntranceState {
+  if (!registry.includes(dungeon)) return 'missing';
+  return unlocked.includes(dungeon) ? 'open' : 'locked';
+}
 
 /** Offset of `pos` along the edge of `link`, in px from the link's start (0 .. span). */
 export function offsetAlong(pos: Vec2, link: TileRect, edge: Edge): number {

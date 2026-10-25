@@ -11,7 +11,14 @@ import { TOWN, type GroundSheet, type TownNpc, type TownProp } from './town';
  * `to`/`toLink` arrives one tile inside link `toLink` of map `to`, whose own
  * `to`/`toLink` point back at `M`/`A` (tests/town/world.test.ts).
  */
-export type WorldMapId = 'refugio' | 'ruinas';
+export type WorldMapId = 'refugio' | 'ruinas' | 'mirador' | 'crater' | 'lago';
+
+/**
+ * The endless dungeon under the crater (being added by another branch). Its
+ * entrance stays sealed until a dungeon with this id is in the registry
+ * (src/data/dungeons.ts).
+ */
+export const SIMA_DUNGEON_ID = 'sima-del-eclipse';
 
 export interface TileRect {
   x: number;
@@ -25,6 +32,18 @@ export interface MapLink extends TileRect {
   id: string;
   to: WorldMapId;
   toLink: string;
+}
+
+/**
+ * A dungeon's mouth: stepping on these tiles asks "¿Entrar en …?" (or says
+ * it is sealed); leaving the window puts the walker back on `back`.
+ */
+export interface DungeonEntrance extends TileRect {
+  /** A dungeon id; it may not exist yet (checked against the registry at runtime). */
+  dungeon: string;
+  /** Name shown while the dungeon is not in the registry. */
+  nameKey: string;
+  back: { x: number; y: number };
 }
 
 /** Look of a map: ground sheet, eclipse light and ambience. */
@@ -44,6 +63,7 @@ export interface WorldMap {
   props: readonly TownProp[];
   npcs: readonly TownNpc[];
   links: readonly MapLink[];
+  entrances: readonly DungeonEntrance[];
   look: MapLook;
   /** Where a new visit starts (the hub only). */
   spawn?: { x: number; y: number };
@@ -73,6 +93,7 @@ export const REFUGIO: WorldMap = {
   props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }],
   npcs: TOWN.npcs,
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
+  entrances: [],
   look: TOWN_LOOK,
   spawn: TOWN.spawn,
   board: TOWN.board,
@@ -90,7 +111,7 @@ export const RUINAS: WorldMap = {
     ['F', 38, 0, 2, 20],
     ['F', 30, 15, 8, 3],
     ['F', 2, 2, 4, 3],
-    [',', 0, 10, 38, 2],
+    [',', 0, 10, 40, 2],
     [',', 19, 7, 2, 3],
   ]),
   props: [
@@ -111,10 +132,135 @@ export const RUINAS: WorldMap = {
   npcs: [],
   links: [
     { id: 'west', x: 0, y: 10, width: 1, height: 2, to: 'refugio', toLink: 'east' },
+    { id: 'east', x: 39, y: 10, width: 1, height: 2, to: 'mirador', toLink: 'west' },
   ],
+  entrances: [{ dungeon: 'crypt-of-the-sword-king', nameKey: 'world.map.ruinas', x: 19, y: 7, width: 2, height: 1, back: { x: 19, y: 9 } }],
   look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], eclipse: 1.3 },
 };
 
-export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS };
+/**
+ * Paso del Mirador: a chasm splits the pass, one bridge crosses it. The
+ * watchtower and a statue look at the eclipse, bigger here than anywhere;
+ * north climbs to the crater, the southern treeline hides the Misty Forest.
+ */
+export const MIRADOR: WorldMap = {
+  id: 'mirador',
+  nameKey: 'world.map.mirador',
+  rows: paintRows(44, 24, '.', [
+    ['F', 0, 0, 44, 2],
+    ['F', 0, 22, 44, 2],
+    ['F', 0, 0, 2, 24],
+    ['F', 42, 0, 2, 24],
+    ['F', 2, 19, 18, 3],
+    ['F', 24, 20, 18, 2],
+    ['#', 14, 2, 6, 2],
+    ['C', 20, 0, 4, 24],
+    [',', 0, 11, 44, 2],
+    ['=', 20, 11, 4, 2],
+    [',', 32, 0, 2, 11],
+    [',', 8, 13, 2, 6],
+  ]),
+  props: [
+    { kind: 'statue', x: 16, y: 5 },
+    { kind: 'tower', x: 37, y: 3 },
+    { kind: 'trunk', x: 10, y: 16 },
+    { kind: 'tree-big', x: 3, y: 15 },
+    { kind: 'big-bush', x: 5, y: 5 },
+    { kind: 'tree-small', x: 28, y: 3 },
+    { kind: 'tree-small', x: 3, y: 2 },
+    { kind: 'stump', x: 12, y: 8 },
+    { kind: 'pillar-broken', x: 26, y: 6 },
+    { kind: 'rubble', x: 35, y: 15 },
+    { kind: 'bush', x: 27, y: 16 },
+    { kind: 'tree-small', x: 30, y: 17 },
+    { kind: 'flat-rocks', x: 12, y: 14 },
+  ],
+  npcs: [],
+  links: [
+    { id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'ruinas', toLink: 'east' },
+    { id: 'east', x: 43, y: 11, width: 1, height: 2, to: 'lago', toLink: 'west' },
+    { id: 'north', x: 32, y: 0, width: 2, height: 1, to: 'crater', toLink: 'south' },
+  ],
+  entrances: [{ dungeon: 'misty-forest', nameKey: 'world.map.mirador', x: 8, y: 18, width: 2, height: 1, back: { x: 8, y: 16 } }],
+  look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], eclipse: 2.4 },
+};
+
+/** Cráter del Eclipse: ash and rock around a pit right under the eclipse; the Sima opens at its rim. */
+export const CRATER: WorldMap = {
+  id: 'crater',
+  nameKey: 'world.map.crater',
+  rows: paintRows(32, 26, '.', [
+    ['#', 0, 0, 32, 2],
+    ['#', 0, 24, 32, 2],
+    ['#', 0, 0, 2, 26],
+    ['#', 30, 0, 2, 26],
+    ['#', 4, 8, 3, 3],
+    ['#', 25, 6, 2, 2],
+    ['#', 24, 18, 3, 2],
+    ['#', 5, 19, 2, 2],
+    ['#', 2, 2, 28, 2],
+    ['C', 11, 8, 10, 6],
+    ['C', 13, 7, 6, 1],
+    ['C', 12, 14, 8, 1],
+    ['C', 10, 9, 1, 4],
+    ['C', 21, 9, 1, 4],
+    [',', 15, 15, 2, 11],
+  ]),
+  props: [
+    { kind: 'statue', x: 23, y: 11 },
+    { kind: 'pillar-broken', x: 8, y: 13 },
+    { kind: 'pillar', x: 21, y: 16 },
+    { kind: 'rubble', x: 9, y: 21 },
+    { kind: 'flat-rocks', x: 18, y: 20 },
+  ],
+  npcs: [],
+  links: [{ id: 'south', x: 15, y: 25, width: 2, height: 1, to: 'mirador', toLink: 'north' }],
+  entrances: [{ dungeon: SIMA_DUNGEON_ID, nameKey: 'world.sima.name', x: 15, y: 15, width: 2, height: 1, back: { x: 15, y: 17 } }],
+  look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], eclipse: 3.4 },
+};
+
+/**
+ * Aldea del Lago Negro: the second settlement, fishers' houses by a lake
+ * that no longer reflects the sky; a pier runs into the black water.
+ */
+export const LAGO: WorldMap = {
+  id: 'lago',
+  nameKey: 'world.map.lago',
+  rows: paintRows(36, 22, '.', [
+    ['F', 0, 0, 36, 2],
+    ['F', 0, 20, 36, 2],
+    ['F', 0, 0, 2, 22],
+    ['F', 34, 0, 2, 22],
+    ['~', 22, 2, 12, 11],
+    ['~', 26, 13, 8, 5],
+    [',', 0, 11, 22, 2],
+    [',', 10, 7, 8, 9],
+    [',', 21, 13, 4, 1],
+    ['=', 23, 5, 2, 8],
+  ]),
+  props: [
+    { kind: 'house-big', x: 3, y: 2 },
+    { kind: 'house-moss', x: 12, y: 2 },
+    { kind: 'house-wood', x: 4, y: 14 },
+    { kind: 'house-wood', x: 13, y: 16 },
+    { kind: 'fence', x: 18, y: 3 },
+    { kind: 'frog-idol', x: 19, y: 15 },
+    { kind: 'big-bush', x: 8, y: 17 },
+    { kind: 'stump', x: 28, y: 19 },
+    { kind: 'bush', x: 25, y: 18 },
+    { kind: 'tree-small', x: 30, y: 18 },
+    { kind: 'stall', x: 6, y: 8 },
+  ],
+  npcs: [
+    { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'] },
+    { id: 'keeper', role: 'keeper', species: 'litwick', x: 16, y: 9, lines: ['world.npc.keeper.1', 'world.npc.keeper.2', 'world.npc.keeper.3', 'world.npc.keeper.4'], rotate: true },
+    { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.1', 'town.soon', 'world.npc.oracle.2'] },
+  ],
+  links: [{ id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' }],
+  entrances: [],
+  look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1 },
+};
+
+export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO };
 
 export const HUB: WorldMapId = 'refugio';

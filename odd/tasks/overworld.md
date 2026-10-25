@@ -27,7 +27,7 @@ User (2026-10-25): "¿podemos poner varios pueblos y hacerlo más duro de cojone
 
 ## Tasks
 - [x] T1 World model + transitions: map types, links paired both ways, generalised grid/ground (water, bridge, chasm, rock), per-map ground sheet, fade transition, map banner, hub waystone quick travel, first route map, all new crops + LICENSE (route: inline, single writer of src/town)
-- [ ] T2 Second town + routes + entrances: Mirador, Cráter, Lago Negro, entrance windows (registry-guarded) (route: inline)
+- [x] T2 Second town + routes + entrances: Mirador, Cráter, Lago Negro, entrance windows (registry-guarded) (route: inline)
 - [ ] T3 Ambience + lore points + wanderers: fog, leaves, birds, water shimmer, lore lines by progression, wandering Pokémon (route: inline)
 - [ ] T4 Docs: README, docs/gdd.md, CREDITS.md (route: inline)
 - [ ] T5 Online lobby in town + nicknames (route: inline)
@@ -52,3 +52,9 @@ Created 2026-10-25 on branch `feat/overworld` from main 4c90a5d. Forecast ~1800 
 - Scene: map switch at the darkest point of a 2x220 ms fade, arenas cached per map, waystone opens the old destination window (quick travel). `TownOptions.at`/`tile` optional; dev `?screen=town&map=…&tile=x,y`.
 - Crops: 16 new files (2 ground sheets, 14 props) from the same two sheets; rectangles and sha256 in LICENSE.txt.
 - Checks: `npx vitest run` 803 passed (21 new in tests/town/world.test.ts); `npm run build` ok; screenshots `/tmp/overworld/t1-*.png` (hub, ruins, transition mid-fade and after).
+
+### T2 Second town + routes + entrances
+- Maps: `MIRADOR` (44x24: chasm with a 4-wide bridge, rock ledge, statue viewpoint, watchtower, eclipse x2.4, north path to the crater, Misty Forest mouth at the southern treeline by a hollow trunk), `CRATER` (32x26 ash and rock, rounded pit with jagged rim, eclipse x3.4, Sima mouth at the rim), `LAGO` (36x22: black lake, pier, two big houses, fisher Cubone on the pier, keeper Litwick (rotating lines), seer Phantump by a stall hinting the gacha). Ruins gain the east link and the Crypt mouth.
+- Entrances: `DungeonEntrance` (trigger tiles + way back); `entranceState` = open / locked / missing against `options.dungeons` and the `DUNGEONS` registry. Open: MD window "¿Entrar en …?" (Entrar / Todavía no); locked: sealed line naming the dungeon whose guardian unlocks it; missing (Sima until the endless dungeon lands with id `sima-del-eclipse`): "not yet" line. Mouths glow red on the ground.
+- Checks: `npx vitest run` 829 passed (+8 entrance tests); typecheck ok; screenshots `/tmp/overworld/t2-*.png` (three maps, bridge, entrance window, sealed forest, missing Sima).
+- Fixed from screenshots: bridge planks left dark gaps between rows; crater pit hid under the sky band (moved 4 rows down) and read as a flat rectangle (jagged lit rim).

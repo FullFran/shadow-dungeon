@@ -1,6 +1,7 @@
 import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
-import { HUB, WORLD, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
+import { HUB, WORLD, type DungeonEntrance, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
+import { DUNGEONS } from '../data/dungeons';
 import { TILE } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -17,7 +18,7 @@ import { h, mdWindow } from '../ui/window';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
-import { arrival, bannerAlpha, FADE_MS, fadeAlpha, linkAt, linkEdge, offsetAlong, type Fade } from './overworld';
+import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, offsetAlong, type Fade } from './overworld';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, readRecords } from './records';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
@@ -275,27 +276,55 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     last = performance.now();
   }
 
-  function openExitWindow(): void {
+  const depart = (id: string) => {
+    handle.stop();
+    options.onDepart(id);
+  };
+
+  /** An MD-style window over the scene: a line of text and a cursor list; the scene waits while it is open. */
+  function openChoiceWindow(title: string, text: string, items: { label: string; onConfirm: () => void }[], onBack: () => void): void {
     held.clear();
     touch.setSuspended(true);
-    const depart = (id: string) => {
-      handle.stop();
-      options.onDepart(id);
-    };
-    // One row per open dungeon, then stay.
-    const list = cursorList({
-      label: t('town.exit.title'),
-      items: [
-        ...options.dungeons.map((d) => ({ label: d.label, onConfirm: () => depart(d.id) })),
-        { label: t('town.exit.stay'), onConfirm: closeExitWindow },
-      ],
-      onBack: closeExitWindow,
-    });
-    exitWindow = h('div', { className: 'town-exit' }, [
-      mdWindow({ title: t('town.exit.title'), className: 'narrow' }, [h('p', { textContent: t('town.exit.text') }), list.element]),
-    ]);
+    const list = cursorList({ label: title, items, onBack });
+    exitWindow = h('div', { className: 'town-exit' }, [mdWindow({ title, className: 'narrow' }, [h('p', { textContent: text }), list.element])]);
     Object.assign(exitWindow.style, { position: 'fixed', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '5' });
     canvas.parentElement?.append(exitWindow);
+  }
+
+  /** The waystone's quick travel: one row per open dungeon, then stay. */
+  function openExitWindow(): void {
+    openChoiceWindow(
+      t('town.exit.title'),
+      t('town.exit.text'),
+      [...options.dungeons.map((d) => ({ label: d.label, onConfirm: () => depart(d.id) })), { label: t('town.exit.stay'), onConfirm: closeExitWindow }],
+      closeExitWindow,
+    );
+  }
+
+  /** Stepped on a dungeon's mouth: ask to enter, or say why it stays shut; either way the walker ends up on its way back. */
+  function reachEntrance(entrance: DungeonEntrance): void {
+    const def = DUNGEONS.find((d) => d.id === entrance.dungeon);
+    const name = def ? t(def.lore.nameKey) : t(entrance.nameKey);
+    const state = entranceState(entrance.dungeon, options.dungeons.map((d) => d.id), DUNGEONS.map((d) => d.id));
+    const stepBack = () => {
+      walker = { pos: tileCentre(entrance.back.x, entrance.back.y), facing: { x: -walker.facing.x, y: -walker.facing.y } };
+    };
+    if (state === 'open') {
+      const stay = () => {
+        closeExitWindow();
+        stepBack();
+      };
+      openChoiceWindow(name, t('world.enter.text').replace('{name}', name), [
+        { label: t('world.enter.yes'), onConfirm: () => depart(entrance.dungeon) },
+        { label: t('world.enter.no'), onConfirm: stay },
+      ], stay);
+      return;
+    }
+    held.clear();
+    stepBack();
+    const before = def?.unlockedBy ? DUNGEONS.find((d) => d.id === def.unlockedBy) : undefined;
+    const line = state === 'locked' && before ? t('world.sealed.locked').replace('{dungeon}', t(before.lore.nameKey)) : t('world.sealed.missing');
+    dialog = { speaker: name, state: openDialog([line]) };
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -351,13 +380,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!fade && !exitWindow) {
       const link = linkAt(walker.pos, map.links);
       if (link) fade = { phase: 'out', ms: 0, link };
+      const entrance = dialog ? null : entranceAt(walker.pos, map.entrances);
+      if (entrance) reachEntrance(entrance);
     }
     camera = followCamera(camera, walker.pos, dt);
     resize();
     const view = townCamera(camera, map);
     const timeMs = now - start;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving) });
+    drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade ? null : nearestInteractable(walker.pos, targets);
     touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
     if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));

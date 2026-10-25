@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { TOWN_PROPS } from '../../src/data/town';
-import { HUB, paintRows, WORLD, type WorldMap, type WorldMapId } from '../../src/data/world';
+import { HUB, paintRows, SIMA_DUNGEON_ID, WORLD, type WorldMap, type WorldMapId } from '../../src/data/world';
+import { DUNGEONS } from '../../src/data/dungeons';
 import { isWall, TILE, tileOf } from '../../src/core/tiles';
 import { buildTownGrid, GROUND_CHARS, groundAt, propSolidTiles, reachableFrom } from '../../src/town/map';
 import { INTERACT_RANGE } from '../../src/town/interact';
-import { arrival, BANNER_MS, bannerAlpha, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
+import { arrival, BANNER_MS, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
 
 const MAPS = Object.values(WORLD);
 const ids = Object.keys(WORLD) as WorldMapId[];
@@ -88,6 +89,17 @@ describe('world maps', () => {
         if (map.waystone) expect(reachableNear(map, map.waystone)).toBe(true);
       });
 
+      it('puts each dungeon entrance on reachable floor with a reachable way back outside any trigger', () => {
+        for (const e of map.entrances) {
+          for (let y = e.y; y < e.y + e.height; y++) for (let x = e.x; x < e.x + e.width; x++) expect(reach.has(y * cols + x), `${e.dungeon} ${x},${y}`).toBe(true);
+          expect(reach.has(e.back.y * cols + e.back.x)).toBe(true);
+          const back = { x: (e.back.x + 0.5) * TILE, y: (e.back.y + 0.5) * TILE };
+          expect(entranceAt(back, map.entrances)).toBeNull();
+          expect(linkAt(back, map.links)).toBeNull();
+          for (const link of map.links) expect(entranceAt(arrival(map, link, 0).pos, map.entrances)).toBeNull();
+        }
+      });
+
       it('spawns on floor', () => {
         if (map.spawn) expect(isWall(grid, map.spawn.x, map.spawn.y)).toBe(false);
       });
@@ -113,6 +125,33 @@ describe('world maps', () => {
     const queue: WorldMapId[] = [HUB];
     while (queue.length > 0) for (const link of WORLD[queue.shift()!].links) if (!seen.has(link.to)) seen.add(link.to) && queue.push(link.to);
     expect([...seen].sort()).toEqual([...ids].sort());
+  });
+});
+
+describe('dungeon entrances', () => {
+  const entrances = MAPS.flatMap((m) => m.entrances.map((e) => ({ map: m.id, dungeon: e.dungeon })));
+
+  it('places every dungeon of the registry in the world, once', () => {
+    for (const d of DUNGEONS) expect(entrances.filter((e) => e.dungeon === d.id)).toHaveLength(1);
+  });
+
+  it('puts the Crypt in the ruins, the Misty Forest at the pass and the Sima in the crater', () => {
+    expect(entrances).toEqual(
+      expect.arrayContaining([
+        { map: 'ruinas', dungeon: 'crypt-of-the-sword-king' },
+        { map: 'mirador', dungeon: 'misty-forest' },
+        { map: 'crater', dungeon: SIMA_DUNGEON_ID },
+      ]),
+    );
+  });
+
+  it('opens an unlocked dungeon, seals a locked one and one missing from the registry', () => {
+    const registry = ['crypt-of-the-sword-king', 'misty-forest'];
+    expect(entranceState('crypt-of-the-sword-king', ['crypt-of-the-sword-king'], registry)).toBe('open');
+    expect(entranceState('misty-forest', ['crypt-of-the-sword-king'], registry)).toBe('locked');
+    expect(entranceState(SIMA_DUNGEON_ID, ['crypt-of-the-sword-king', 'misty-forest'], registry)).toBe('missing');
+    // Unlocked but unknown (a stale list) is still missing: never depart to a dungeon that does not exist.
+    expect(entranceState(SIMA_DUNGEON_ID, [SIMA_DUNGEON_ID], registry)).toBe('missing');
   });
 });
 
