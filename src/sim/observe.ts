@@ -2,6 +2,7 @@ import { TUNING } from '../data/tuning';
 import { bossBar } from '../core/boss';
 import { effectiveTelegraphMs, eliteTimeScale, worldDifficulty } from '../core/difficulty';
 import { insideRect } from '../core/geometry';
+import { bandTimeScale } from '../core/leaders';
 import type { AiMode, Arena, Rect, WorldState } from '../core/state';
 import { enemyTimeScale } from '../core/time';
 import { pierceZone, type PierceZone } from '../core/victim';
@@ -92,7 +93,8 @@ function windupOf(state: WorldState, e: WorldState['enemies'][number]): SeenWind
   const ai = e.ai;
   if (ai.mode !== 'telegraph' || ai.modeDurationMs <= 0) return null;
   const d = worldDifficulty(state);
-  const pace = enemyTimeScale(state) * eliteTimeScale(e);
+  // The game's own pace (core/enemies.ts): tier clock × elite × a leader's band (inspired or broken followers).
+  const pace = enemyTimeScale(state) * eliteTimeScale(e) * bandTimeScale(e);
   const totalMs = effectiveTelegraphMs(ai.modeDurationMs, d, pace, pierceZone(e, d, state.arena) !== null);
   const remainingMs = Math.max(0, ((ai.modeDurationMs - ai.modeMs) / ai.modeDurationMs) * totalMs);
   return { remainingMs, totalMs };

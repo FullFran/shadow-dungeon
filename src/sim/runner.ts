@@ -7,7 +7,7 @@ import { chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock,
 import type { Rect, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { FIXED_DT_MS } from '../core/timestep';
-import { createBot, type BotKind } from './bots';
+import { createBot, type BotContext, type BotKind } from './bots';
 import { FloorRecorder, type FloorMetrics } from './metrics';
 import { observe } from './observe';
 import { applyParty } from './party';
@@ -57,6 +57,18 @@ const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 const botSeed = (s: Scenario): number => (s.seed * 31 + s.party * 7 + s.bot.length * 131) | 0;
 
 /** Where the bot's way on is: the stairs, or a fixed room's exit (null for a guardian's last room). */
+/**
+ * A floor gate still shut (core/gates.ts), as the game shows it: the marked
+ * enemy is always on the minimap, a dropped key lies on the floor with its
+ * HUD line. Absent once the gate is open (or on floors without one).
+ */
+function gateOf(world: WorldState): Pick<BotContext, 'gate'> {
+  const gate = world.gate;
+  if (!gate || gate.done || gate.kind === 'waves') return {};
+  const marked = world.enemies.find((e) => e.id === gate.target && e.alive);
+  return { gate: { marked: marked ? marked.pos : null, key: gate.key ?? null } };
+}
+
 function exitOf(run: RunState, world: WorldState): Rect | null {
   const plan = floorPlanOf(run);
   if (plan.kind === 'generated') return world.arena.stairs ?? null;
@@ -100,7 +112,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const close = (outcome: FloorOutcome) => floors.push({ ...meta, ...recorder.finish(), outcome });
   for (;;) {
     const before = options.inject ? options.inject(world) : world;
-    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal' });
+    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before) });
     const after = step(before, input, FIXED_DT_MS);
     recorder.record(before, after);
     const progress = progressRun(tickRunClock(run, FIXED_DT_MS), after);

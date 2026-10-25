@@ -59,6 +59,8 @@ export interface BotContext {
   exit: Rect | null;
   /** An urgent floor (collapse, fog, flood, gas: the game shows it): head for the way on, fight only what stands in the way. */
   urgent?: boolean;
+  /** A floor gate still shut (core/gates.ts): where the marked enemy stands (minimap) and the dropped key, if any. */
+  gate?: { marked: Vec2 | null; key: Vec2 | null };
 }
 
 export interface Bot {
@@ -210,6 +212,8 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
     const arena = obs.arena;
     const me = obs.self.pos;
     if (arena.tiles && context.urgent && context.exit) return nav.direction(arena, me, vec(context.exit.x + context.exit.width / 2, context.exit.y + context.exit.height / 2));
+    // A shut gate: a dropped key is picked up at once; the marked enemy is hunted once the rooms are explored (below).
+    if (arena.tiles && context.gate?.key) return nav.direction(arena, me, context.gate.key);
     if (arena.tiles && arena.rooms) {
       arena.rooms.forEach((room, i) => {
         if (insideRect(me, { x: room.x * TILE, y: room.y * TILE, width: room.width * TILE, height: room.height * TILE })) visited.add(i);
@@ -226,7 +230,7 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
         }
       });
       const exit = context.exit;
-      const target = goal ?? (exit ? vec(exit.x + exit.width / 2, exit.y + exit.height / 2) : null);
+      const target = goal ?? context.gate?.marked ?? (exit ? vec(exit.x + exit.width / 2, exit.y + exit.height / 2) : null);
       return target ? nav.direction(arena, me, target) : vec(0, 0);
     }
     // A fixed room: look for the enemies in the middle, then take the exit once it opens.
