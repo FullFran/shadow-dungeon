@@ -101,10 +101,8 @@ export const KNOWN_VIOLATIONS: readonly KnownViolation[] = [
   { band: 'unseen-threats', dungeon: 'flooded-caves', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'flooded-caves', reason: 'hits with under 280 ms of on-screen warning on generated floors (to inspect: shots entering the screen late)' },
   { band: 'simultaneous-telegraphs', dungeon: 'toxic-swamp', reason: `${SIMULTANEOUS}; worst on gas floors` },
-  { band: 'unseen-threats', dungeon: 'toxic-swamp', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'toxic-swamp', reason: 'one hit with under 280 ms of warning in the Nihilego arena on normal' },
   { band: 'simultaneous-telegraphs', dungeon: 'eclipse-chasm', reason: `${SIMULTANEOUS}; mixed squads` },
-  { band: 'unseen-threats', dungeon: 'eclipse-chasm', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'eclipse-chasm', reason: 'hits with under 280 ms of warning on deep generated floors (F9)' },
 ];
 
