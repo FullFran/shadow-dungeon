@@ -1,5 +1,6 @@
 import { updateCombat } from './combat';
 import { landHitOnPlayer } from './hits';
+import { updateLock } from './lockon';
 import { updatePlayer } from './player';
 import type { GameEvent, IncomingHit, PlayerInput, WorldState } from './state';
 
@@ -13,7 +14,9 @@ export { enemyTimeScale } from './time';
 export function step(state: WorldState, input: PlayerInput, dtMs: number): WorldState {
   const events: GameEvent[] = [];
   const player = updatePlayer(state.player, input, dtMs, state.arena, events);
-  const fought = updateCombat({ ...state, player }, input, dtMs, events);
+  const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
+  const lock = updateLock(state.lock, { held: input.lock, wheel: input.wheel }, lockContext, events);
+  const fought = updateCombat({ ...state, player, lock }, input, dtMs, events);
   return {
     ...fought,
     tick: state.tick + 1,

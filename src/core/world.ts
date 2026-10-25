@@ -4,7 +4,7 @@ import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { validateLoadout } from './loadout';
 import { seedRng } from './rng';
-import type { Arena, EnemyState, PlayerState, WorldState } from './state';
+import type { Arena, EnemyState, LockMode, PlayerState, WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 
 export interface WorldOptions {
@@ -14,6 +14,8 @@ export interface WorldOptions {
   species?: SpeciesId;
   /** Defaults to the species' default loadout. Must be valid for the M0 slot layout. */
   loadout?: readonly (MoveId | null)[];
+  /** Lock-on key behaviour from settings: hold Shift (default) or press to toggle. */
+  lockMode?: LockMode;
 }
 
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[]): PlayerState {
@@ -39,7 +41,7 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
   };
 }
 
-export function createWorld({ seed, arena, playerPos, species, loadout }: WorldOptions): WorldState {
+export function createWorld({ seed, arena, playerPos, species, loadout, lockMode = 'hold' }: WorldOptions): WorldState {
   return {
     tick: 0,
     timeMs: 0,
@@ -49,6 +51,7 @@ export function createWorld({ seed, arena, playerPos, species, loadout }: WorldO
     player: createPlayer(playerPos, species, loadout),
     enemies: [],
     projectiles: [],
+    lock: { mode: lockMode, targetId: null, wheelAccum: 0, keyHeld: false },
     slowMoMs: 0,
     events: [],
   };
@@ -79,6 +82,7 @@ export function enterRoom(state: WorldState): WorldState {
     ...state,
     enemies: [],
     projectiles: [],
+    lock: { ...state.lock, targetId: null, wheelAccum: 0 },
     player: { ...state.player, disguiseBroken: false, action: null },
   };
 }

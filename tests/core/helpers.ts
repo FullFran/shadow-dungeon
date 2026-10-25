@@ -4,7 +4,15 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { createWorld } from '../../src/core/world';
 import { vec, type Vec2 } from '../../src/core/vec';
 
-export const IDLE: PlayerInput = { move: vec(0, 0), aim: vec(0, 0), roll: false, slots: [false, false] };
+export const IDLE: PlayerInput = {
+  move: vec(0, 0),
+  aim: vec(0, 0),
+  roll: false,
+  slots: [false, false],
+  lock: false,
+  wheel: 0,
+  view: { x: 0, y: 0, width: 800, height: 600 },
+};
 
 export const input = (overrides: Partial<PlayerInput> = {}): PlayerInput => ({ ...IDLE, ...overrides });
 

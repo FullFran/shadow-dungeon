@@ -10,10 +10,14 @@ import { add, clamp, distance, dot, length, normalize, scale, sub, vec, type Vec
 const { combat: COMBAT, player: PLAYER } = TUNING;
 export const PLAYER_ID = 'player';
 
-/** Direction the player's moves go: towards the cursor, or the facing if the cursor is on the player. */
+/**
+ * Direction the player's moves go: at the locked target if any, else towards
+ * the cursor; the facing when the point is on top of the player.
+ */
 export function aimDirection(state: WorldState, input: PlayerInput): Vec2 {
-  const toCursor = normalize(sub(input.aim, state.player.pos));
-  return length(toCursor) > 0 ? toCursor : state.player.facing;
+  const target = state.lock.targetId ? state.enemies.find((e) => e.id === state.lock.targetId) : undefined;
+  const dir = normalize(sub(target?.pos ?? input.aim, state.player.pos));
+  return length(dir) > 0 ? dir : state.player.facing;
 }
 
 function chargeLevelFor(move: MoveDef, chargeMs: number): number {

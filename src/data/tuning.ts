@@ -55,4 +55,11 @@ export const TUNING = {
     /** Fraction of the remaining knockback applied per 60 Hz tick (ease-out). */
     knockbackPerTick: 0.25,
   },
+
+  lockOn: {
+    /** Max player-to-target distance to acquire or keep a lock. */
+    range: 340,
+    /** Accumulated |wheel deltaY| needed to switch target once (one mouse notch is ~100). */
+    wheelThreshold: 90,
+  },
 } as const;

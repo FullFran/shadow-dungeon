@@ -13,6 +13,30 @@ export interface PlayerInput {
   roll: boolean;
   /** Level: whether each move slot's button is held, aligned with the loadout. Edges are derived in the core. */
   slots: readonly boolean[];
+  /** Level: lock-on key (Shift) held. In toggle mode only its press edge matters. */
+  lock: boolean;
+  /** Wheel deltaY accumulated since the last tick, DOM convention: negative = wheel up. */
+  wheel: number;
+  /** Visible world rectangle (camera view); lock-on only considers enemies inside it. */
+  view: Rect;
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type LockMode = 'hold' | 'toggle';
+
+export interface LockState {
+  mode: LockMode;
+  targetId: string | null;
+  /** Wheel delta accumulated towards the switch threshold (touchpad-friendly). */
+  wheelAccum: number;
+  /** Lock key state on the previous tick, to detect press edges. */
+  keyHeld: boolean;
 }
 
 export interface RollState {
@@ -119,7 +143,10 @@ export type GameEvent =
   | { type: 'moveDenied'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
-  | { type: 'enemyDefeated'; enemyId: string };
+  | { type: 'enemyDefeated'; enemyId: string }
+  | { type: 'lockAcquired'; targetId: string }
+  | { type: 'lockSwitched'; targetId: string }
+  | { type: 'lockReleased'; reason: 'key' | 'range' | 'offscreen' | 'noTarget' };
 
 export interface WorldState {
   tick: number;
@@ -132,6 +159,7 @@ export interface WorldState {
   player: PlayerState;
   enemies: readonly EnemyState[];
   projectiles: readonly ProjectileState[];
+  lock: LockState;
   /** Remaining perfect-dodge slow-mo, in real time. */
   slowMoMs: number;
   events: GameEvent[];
