@@ -24,7 +24,7 @@ Out of scope (added later on request: T5 sound and music): procedural dungeons (
 - [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
 - [x] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
 - [x] T5 Procedural sound effects and an original chiptune music loop with Web Audio (no audio files), volume and mute settings (route: delegated writer; trigger: new audio adapter, app wiring, settings, i18n, tests). Commits `e937c76` and the `feat(audio): wire sound ...` commit that contains this entry.
-- [ ] T6 Esc in-game menu (resume, quick settings, restart room, quit; pauses in solo, never in future co-op) and lock-type selector toggle/hold/click-only/off (route: delegated writer; trigger: app menu, settings, core lock-on, input, i18n, tests)
+- [x] T6 Esc in-game menu (resume, quick settings, restart room, quit; pauses in solo, never in future co-op) and lock-type selector toggle/hold/click-only/off (route: delegated writer; trigger: app menu, settings, core lock-on, input, i18n, tests). Commits `25b089c` and the `feat(app): add the Esc menu ...` commit that contains this entry.
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
@@ -87,5 +87,24 @@ Created. Delivery strategy: ask-on-risk; forecast ~300 authored lines.
   - Game wiring: `GameOptions.audio` (handleEvents, setMusic) and `onToggleMute`; `startGame` plays room music, switches to boss music on entering the boss room, fades out when the run ends; M is a window keydown listener in `game.ts` removed on `stop()`. End screens play a victory or defeat stinger; every button press on the pages plays a click.
   - Settings: `masterVolume` 0.7, `musicVolume` 0.5, `sfxVolume` 0.8, `muted` false; stored volumes clamped to 0..1, non-numbers fall back; older stored settings get the sound defaults. `input.ts` needed no change.
 
+### T6 evidence (`25b089c` core lock types + settings; `feat(app): add the Esc menu ...` commit, which contains this entry)
+- RED: tests written first; `npx vitest run` showed 6 failing files and 20 failing tests (lock types in core and the simulation, settings defaults/round-trip/legacy/validation, `frameTime` pause tests, input suspension, i18n keys, and `tests/app/menu.test.ts` with the missing `src/app/menu.ts`). A later music-duck test was RED (1 failing) before `busGains` took the `ducked` flag.
+- GREEN: `npm test` 201/201 passed; `npm run build` passed. The first commit alone also passes `npm test` (192) and typecheck.
+- Mutation checks: dropping the suspended guard in `onMouseDown` failed the input-device test; making `simulationPaused` ignore the policy failed the menu policy test.
+- Not checked: a real browser playtest (Esc overlay layout and focus, pausing feel, music duck, select/checkbox behaviour, hold mode comfort).
+- Decisions:
+  - `LockType = 'toggle' | 'hold' | 'clickOnly' | 'off'` in `core/state.ts`, stored in `LockState.lockType` next to `clickToLock`; `createWorld({ lockType })` defaults to toggle.
+  - `hold`: a press acquires (nearest to cursor), letting go releases (`reason: 'key'`); a target dying while held hands over as before. Click-to-lock in hold only acts while the lock input is held, because the lock lasts only that long.
+  - `clickOnly`: the lock input is ignored; a click on an enemy locks or switches, a click on the current target does nothing, a click on the ground releases with the new `lockReleased` reason `'click'` (the attack still happens).
+  - `off`: `updateLock` clears any target and never emits events; attacks use the no-lock aim rule. No hover marker.
+  - `clickLockActive(lock)` is the single rule for click-to-lock and the hover marker (setting with toggle/hold, always with clickOnly, never with off). The menu greys out the checkbox for clickOnly/off.
+  - `configureLock(lock, settings)` applies settings mid-run; changing the lock type drops the target without an event.
+  - Settings: `lockType` default `toggle`; unknown values fall back; a missing `lockType` with an old `lockMode` maps `hold` to `hold`, anything else to `toggle`; a stored `lockType` wins over `lockMode`.
+  - Pause: `PAUSE_ON_MENU = true` and `simulationPaused(menuOpen, policy)` in `src/app/menu.ts`, commented that co-op flips it (menu opens, game keeps running). `frameTime(last, now, paused)` in `core/timestep.ts` (with `MAX_FRAME_MS` moved there) gives 0 ms while paused but still advances `lastFrameMs`, so resume never replays the pause; animation time and juice also stand still.
+  - Input: `InputDevice.setSuspended` clears held keys, buttons, roll and wheel and ignores presses while the menu is open (mouse position still tracked). M is ignored while the menu is open; Esc toggles it; Esc does nothing after the run ended.
+  - Restart room restores a snapshot of the world taken when the room was entered (HP, Disguise and enemies as at entry) with the current lock settings; Quit goes to the main menu.
+  - Music ducks to `MENU_DUCK` = 0.3 of its level while the menu is open (`AudioEngine.setDucked`).
+  - UI reuse: `src/app/settings-panel.ts` (`el`, `languageRow`, `lockRow`, `soundRow`, `CONTROL_KEYS`) builds the controls for both the main menu and the Esc overlay (`openPauseMenu` in `src/app/menu.ts`).
+
 ## Next step
-Human playtest of T4 and T5 (listen: mix balance, boss switch, mute) on a local or deployed build; push/PR remain the user's decision.
+Human playtest of T4, T5 and T6 (Esc menu, the four lock types) (listen: mix balance, boss switch, mute) on a local or deployed build; push/PR remain the user's decision.

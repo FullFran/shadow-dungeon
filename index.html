@@ -20,6 +20,10 @@
       .panel .goal { font-size: 0.9rem; opacity: 0.85; }
       .panel.defeat h1 { color: #ff7a7a; }
       .panel.victory h1 { color: #ffd36b; }
+      .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10, 8, 16, 0.78); z-index: 10; }
+      .overlay .panel { background: #1d1a26; border: 1px solid #4a4360; border-radius: 6px; padding: 1.5rem 2rem; }
+      .overlay .panel .row + .row { margin-top: 0.75rem; }
+      label:has(input:disabled) { opacity: 0.5; }
       .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
       button, select { font: inherit; color: inherit; background: #2b2638; border: 1px solid #4a4360; border-radius: 4px; padding: 0.4rem 0.8rem; }
       button { cursor: pointer; }

@@ -19,3 +19,16 @@ export function advanceClock(accumulatorMs: number, frameMs: number): Clock {
   if (steps > TUNING.maxStepsPerFrame) return { steps: TUNING.maxStepsPerFrame, accumulatorMs: 0 };
   return { steps, accumulatorMs: total - steps * FIXED_DT_MS };
 }
+
+/** Longest frame fed to the simulation clock (a tab coming back from the background). */
+export const MAX_FRAME_MS = 250;
+
+/**
+ * Game time one animation frame contributes: none while paused. The real clock
+ * is tracked every frame, paused or not, so resuming never feeds the paused span
+ * to the accumulator (no catch-up burst).
+ */
+export function frameTime(lastFrameMs: number, nowMs: number, paused: boolean): { frameMs: number; lastFrameMs: number } {
+  const frameMs = paused ? 0 : Math.min(MAX_FRAME_MS, Math.max(0, nowMs - lastFrameMs));
+  return { frameMs, lastFrameMs: nowMs };
+}

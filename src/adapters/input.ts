@@ -5,7 +5,7 @@ import { screenToWorld } from './view';
 /**
  * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
  * WASD move, Space roll, LMB or Q fast slot, RMB or E heavy slot (hold to
- * charge), Shift or middle mouse toggle lock-on, LMB on an enemy locks it
+ * charge), Shift or middle mouse lock on (per lock type), LMB on an enemy locks it
  * (click-to-lock, Q never does), wheel switches target. Without a lock, a
  * move started with the mouse aims at the cursor and one started with Q/E
  * along the facing (last WASD direction); `slotMouse` carries that source
@@ -55,6 +55,12 @@ const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Spac
 export interface InputDevice {
   /** Raw state for the next simulation step; edges (roll, wheel) are consumed. */
   take(): RawInput;
+  /**
+   * While suspended (the Esc menu is open) every held key and button is
+   * released and new presses are ignored, so menu clicks never attack and keys
+   * held when the menu opened do not stay stuck. Resuming starts from nothing held.
+   */
+  setSuspended(suspended: boolean): void;
   /** Removes every listener. */
   dispose(): void;
 }
@@ -66,9 +72,16 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   let mouse: Vec2 = { x: 0, y: 0 };
   let rollPressed = false;
   let wheel = 0;
+  let suspended = false;
 
+  const releaseAll = () => {
+    keys.clear();
+    buttons.clear();
+    rollPressed = false;
+    wheel = 0;
+  };
   const onKeyDown = (e: KeyboardEvent) => {
-    if (!GAME_KEYS.has(e.code)) return;
+    if (suspended || !GAME_KEYS.has(e.code)) return;
     e.preventDefault();
     if (e.code === 'Space' && !e.repeat) rollPressed = true;
     keys.add(e.code);
@@ -81,6 +94,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   };
   const onMouseDown = (e: MouseEvent) => {
     onMouseMove(e);
+    if (suspended) return;
     buttons.add(e.button);
     // Also stops middle-button autoscroll.
     e.preventDefault();
@@ -88,6 +102,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   const onMouseUp = (e: MouseEvent) => buttons.delete(e.button);
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
+    if (suspended) return;
     wheel += wheelPixels(e.deltaY, e.deltaMode, window.innerHeight);
   };
   const onContextMenu = (e: Event) => e.preventDefault();
@@ -114,6 +129,10 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
       rollPressed = false;
       wheel = 0;
       return raw;
+    },
+    setSuspended(next) {
+      suspended = next;
+      releaseAll();
     },
     dispose() {
       window.removeEventListener('keydown', onKeyDown);

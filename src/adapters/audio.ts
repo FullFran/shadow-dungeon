@@ -109,9 +109,12 @@ export function createSfxGate(options: { minGapMs: number; maxVoices: number }):
   };
 }
 
+/** Music level factor while the Esc menu is open. */
+export const MENU_DUCK = 0.3;
+
 /** Gain of each bus; music and sfx sit under the master gain, so they are not multiplied here. */
-export function busGains(levels: AudioLevels): { master: number; music: number; sfx: number } {
-  return { master: levels.muted ? 0 : levels.masterVolume, music: levels.musicVolume, sfx: levels.sfxVolume };
+export function busGains(levels: AudioLevels, ducked = false): { master: number; music: number; sfx: number } {
+  return { master: levels.muted ? 0 : levels.masterVolume, music: levels.musicVolume * (ducked ? MENU_DUCK : 1), sfx: levels.sfxVolume };
 }
 
 /** Seconds per step for a 4/4 bar split into `stepsPerBar` steps. */
@@ -129,6 +132,8 @@ export interface AudioEngine {
   /** Switches the loop (no-op if it is already playing); null fades the music out. */
   setMusic(id: MusicId | null): void;
   setVolumes(levels: AudioLevels): void;
+  /** Lowers the music while the Esc menu is open. */
+  setDucked(ducked: boolean): void;
 }
 
 const GATE = { minGapMs: 40, maxVoices: 12 };
@@ -322,6 +327,7 @@ function audioContextCtor(): AudioContextCtor | null {
 
 export function createAudio(initial: AudioLevels): AudioEngine {
   let levels = initial;
+  let ducked = false;
   let ctx: AudioContext | null = null;
   let buses: { master: GainNode; music: GainNode; sfx: GainNode } | null = null;
   let noiseBuffer: AudioBuffer | null = null;
@@ -333,7 +339,7 @@ export function createAudio(initial: AudioLevels): AudioEngine {
 
   function applyLevels(): void {
     if (!ctx || !buses) return;
-    const gains = busGains(levels);
+    const gains = busGains(levels, ducked);
     const t = ctx.currentTime;
     buses.master.gain.setTargetAtTime(gains.master, t, 0.02);
     buses.music.gain.setTargetAtTime(gains.music, t, 0.02);
@@ -431,6 +437,10 @@ export function createAudio(initial: AudioLevels): AudioEngine {
     },
     setVolumes(next) {
       levels = next;
+      applyLevels();
+    },
+    setDucked(next) {
+      ducked = next;
       applyLevels();
     },
   };

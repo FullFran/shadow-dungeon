@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameEvent } from '../../src/core/state';
-import { busGains, createAudio, createSfxGate, soundFor, SOUND_IDS, stepSeconds } from '../../src/adapters/audio';
+import { busGains, MENU_DUCK, createAudio, createSfxGate, soundFor, SOUND_IDS, stepSeconds } from '../../src/adapters/audio';
 
 describe('event -> sound mapping', () => {
   const cases: [GameEvent, string | null][] = [
@@ -70,6 +70,14 @@ describe('bus gains', () => {
     const settings = { masterVolume: 0.5, musicVolume: 0.4, sfxVolume: 1, muted: false };
     expect(busGains(settings)).toEqual({ master: 0.5, music: 0.4, sfx: 1 });
     expect(busGains({ ...settings, muted: true }).master).toBe(0);
+  });
+
+  it('ducks only the music while the Esc menu is open', () => {
+    const settings = { masterVolume: 0.5, musicVolume: 0.4, sfxVolume: 1, muted: false };
+    const ducked = busGains(settings, true);
+    expect(ducked.music).toBeCloseTo(0.4 * MENU_DUCK);
+    expect(ducked.music).toBeLessThan(0.4);
+    expect({ master: ducked.master, sfx: ducked.sfx }).toEqual({ master: 0.5, sfx: 1 });
   });
 });
 

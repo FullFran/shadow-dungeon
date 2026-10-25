@@ -3,15 +3,18 @@ import type { MoveId } from '../data/moves';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
-import { detectLanguage, LANGUAGES, setLanguage, t, type Language } from '../i18n';
+import { detectLanguage, setLanguage, t, type Language } from '../i18n';
 import { startGame, type GameResult, type RunningGame } from './game';
+import { openPauseMenu } from './menu';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
+import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-panel';
 
 /**
- * Page flow: pre-run menu (loadout, language, click-to-lock, sound) -> sandbox
- * room -> boss room -> defeat or victory screen. Settings persist through the
- * storage port; the fan-project notice is always on screen. Audio starts on the
- * first user gesture (browsers block autoplay).
+ * Page flow: pre-run menu (loadout, language, lock type, sound) -> sandbox
+ * room -> boss room -> defeat or victory screen; Esc during a run opens the
+ * pause menu (quick settings, restart room, quit). Settings persist through the
+ * storage port and apply at once, also mid-run; the fan-project notice is always
+ * on screen. Audio starts on the first user gesture (browsers block autoplay).
  */
 const store = browserStore();
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
@@ -21,14 +24,6 @@ window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;
-
-/** Creates an element with plain properties (textContent, className, value, type...) and children. */
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<string, string> = {}, children: (Node | string)[] = []): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  Object.assign(node, props);
-  node.append(...children);
-  return node;
-}
 
 function applyLanguage(language: Language): void {
   setLanguage(language);
@@ -40,6 +35,7 @@ function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
   audio.setVolumes(settings);
+  running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
 function notice(): HTMLElement {
@@ -55,19 +51,10 @@ function show(root: HTMLElement, ...children: Node[]): void {
 function menu(root: HTMLElement): void {
   applyLanguage(settings.language);
 
-  const languages = el(
-    'div',
-    { className: 'row', ariaLabel: t('language.label') },
-    LANGUAGES.map((language) => {
-      const button = el('button', { type: 'button', textContent: t(`language.${language}`) });
-      button.setAttribute('aria-pressed', String(language === settings.language));
-      button.addEventListener('click', () => {
-        update({ language });
-        menu(root);
-      });
-      return button;
-    }),
-  );
+  const languages = languageRow(settings, (language) => {
+    update({ language });
+    menu(root);
+  });
 
   const slots = M0_SLOT_LAYOUT.map((kind, index) => {
     const select = el(
@@ -84,25 +71,10 @@ function menu(root: HTMLElement): void {
     return el('label', {}, [`${t(`slot.${kind}`)} `, select]);
   });
 
-  const clickToLock = el('input', { type: 'checkbox' });
-  clickToLock.checked = settings.clickToLock;
-  clickToLock.addEventListener('change', () => update({ clickToLock: clickToLock.checked }));
-  const lock = el('label', {}, [clickToLock, ` ${t('menu.clickToLock')}`]);
-
-  const volumes = (['masterVolume', 'musicVolume', 'sfxVolume'] as const).map((key) => {
-    const slider = el('input', { type: 'range', min: '0', max: '1', step: '0.05' });
-    slider.value = String(settings[key]);
-    slider.addEventListener('input', () => update({ [key]: Number(slider.value) }));
-    return el('label', {}, [`${t(`menu.${key}`)} `, slider]);
-  });
-  const mute = el('input', { type: 'checkbox' });
-  mute.checked = settings.muted;
-  mute.addEventListener('change', () => update({ muted: mute.checked }));
-
   const start = el('button', { type: 'button', className: 'primary', textContent: t('menu.start') });
   start.addEventListener('click', () => play(root));
 
-  const controls = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock', 'mute'].map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
+  const controls = CONTROL_KEYS.map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
 
   show(
     root,
@@ -113,9 +85,9 @@ function menu(root: HTMLElement): void {
       el('h2', { textContent: t('menu.loadout') }),
       el('div', { className: 'row' }, slots),
       el('h2', { textContent: t('menu.lockOn') }),
-      el('div', { className: 'row' }, [lock]),
+      lockRow(settings, update),
       el('h2', { textContent: t('menu.sound') }),
-      el('div', { className: 'row' }, [...volumes, el('label', {}, [mute, ` ${t('menu.mute')}`])]),
+      soundRow(settings, update),
       el('h2', { textContent: t('menu.controls') }),
       el('ul', {}, controls),
       el('p', { className: 'goal', textContent: t('menu.goal') }),
@@ -153,10 +125,13 @@ async function play(root: HTMLElement): Promise<void> {
   root.querySelector('.notice')?.classList.add('in-game');
   running = startGame(canvas, sheets, {
     loadout: settings.loadout,
+    lockType: settings.lockType,
     clickToLock: settings.clickToLock,
     seed: Date.now() | 0,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
+    openMenu: (actions) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions),
+    onQuit: () => menu(root),
     onEnd: (result) => resultScreen(root, result),
   });
 }

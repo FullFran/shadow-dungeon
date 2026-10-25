@@ -26,6 +26,27 @@ describe('sound strings', () => {
   }
 });
 
+describe('lock type and Esc menu strings', () => {
+  const keys = [
+    'menu.lockType',
+    'lockType.toggle',
+    'lockType.hold',
+    'lockType.clickOnly',
+    'lockType.off',
+    'menu.controls.menu',
+    'pause.title',
+    'pause.resume',
+    'pause.settings',
+    'pause.restart',
+    'pause.quit',
+  ];
+  for (const language of LANGUAGES) {
+    it(`"${language}" names the lock types and the Esc menu`, () => {
+      expect(keys.filter((key) => !(key in catalog(language)))).toEqual([]);
+    });
+  }
+});
+
 describe('detectLanguage', () => {
   it('picks English only for English browser languages', () => {
     expect(detectLanguage('en-GB')).toBe('en');

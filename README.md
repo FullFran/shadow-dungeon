@@ -32,10 +32,11 @@ Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy mov
 | Left click / Q | Fast move (Shadow Claw or Shadow Sneak) |
 | Right click / E | Heavy move (Play Rough or Shadow Ball), hold to charge |
 | Aim | With no lock, a click attacks towards the cursor and Q/E along your facing (last WASD direction; steer an E charge with WASD). With a lock, every attack aims at the target. If the button and its key are both held, the mouse wins |
-| Shift / middle mouse button | Toggle lock-on: lock the enemy nearest the cursor, press again to release |
-| Left click on an enemy | Click-to-lock (on by default, toggle in the menu): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock |
+| Shift / middle mouse button | Lock-on on the enemy nearest the cursor. Lock type (menu): *press to lock or release* (default), *hold to lock*, *click only* (Shift and middle mouse do nothing) or *off* |
+| Left click on an enemy | Click-to-lock (on by default, toggle in the menu; with *click only* it is always on, with *off* never): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock (with *click only* it releases it) |
 | Mouse wheel | Switch locked target clockwise / counter-clockwise |
 | M | Mute or unmute sound |
+| Esc | Menu: resume, quick settings (lock type, click-to-lock, volume, mute, language), restart room, quit to the main menu. The solo demo pauses while it is open |
 
 Moving the mouse never changes the locked target; only the gestures above do.
 
