@@ -6,8 +6,11 @@ import { screenToWorld } from './view';
  * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
  * WASD move, Space roll, LMB or Q fast slot, RMB or E heavy slot (hold to
  * charge), Shift or middle mouse toggle lock-on, LMB on an enemy locks it
- * (click-to-lock, Q never does), wheel switches target. The DOM part only
- * records raw state; `toPlayerInput` is the pure mapping.
+ * (click-to-lock, Q never does), wheel switches target. Without a lock, a
+ * move started with the mouse aims at the cursor and one started with Q/E
+ * along the facing (last WASD direction); `slotMouse` carries that source
+ * and the mouse wins when both are held. The DOM part only records raw
+ * state; `toPlayerInput` is the pure mapping.
  */
 export interface RawInput {
   /** `KeyboardEvent.code`s currently held. */
@@ -32,6 +35,7 @@ export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number): Pl
     aim: screenToWorld(raw.mouse, view, pixelScale),
     roll: raw.rollPressed,
     slots: [buttons.has(0) || keys.has('KeyQ'), buttons.has(2) || keys.has('KeyE')],
+    slotMouse: [buttons.has(0), buttons.has(2)],
     lock: keys.has('ShiftLeft') || keys.has('ShiftRight') || buttons.has(1),
     click: buttons.has(0),
     wheel: raw.wheel,

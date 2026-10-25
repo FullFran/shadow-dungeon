@@ -31,6 +31,7 @@ Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy mov
 | Space | Roll (i-frames, costs stamina); roll through a hit at the last moment for a perfect dodge |
 | Left click / Q | Fast move (Shadow Claw or Shadow Sneak) |
 | Right click / E | Heavy move (Play Rough or Shadow Ball), hold to charge |
+| Aim | With no lock, a click attacks towards the cursor and Q/E along your facing (last WASD direction; steer an E charge with WASD). With a lock, every attack aims at the target. If the button and its key are both held, the mouse wins |
 | Shift / middle mouse button | Toggle lock-on: lock the enemy nearest the cursor, press again to release |
 | Left click on an enemy | Click-to-lock (on by default, toggle in the menu): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock |
 | Mouse wheel | Switch locked target clockwise / counter-clockwise |

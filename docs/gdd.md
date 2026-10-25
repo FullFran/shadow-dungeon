@@ -85,7 +85,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 | Espacio | Rueda con invulnerabilidad; gasta estamina |
 | Clic izquierdo (o Q) | Ataque ligero: rápido, se recupera enseguida y castiga huecos pequeños (Placaje, Arañazo) |
 | Clic derecho (o E) | Movimiento fuerte de su tipo: arranque lento, gasta estamina y si lo mantienes carga (Ascuas, Pistola Agua) |
-| Ratón | Apuntar (por defecto) |
+| Ratón | Apuntar. Sin objetivo fijado, el clic ataca hacia el cursor y Q o E hacia donde miras (la última dirección de WASD; mientras cargas con E giras con WASD). Con objetivo fijado, todo va al objetivo. Si pulsas a la vez el clic y su tecla, manda el clic |
 | Shift o clic central | Fijar objetivo: una pulsación fija y otra lo suelta (mantener Shift resultó incómodo en la primera prueba) |
 | Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |

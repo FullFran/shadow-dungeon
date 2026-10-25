@@ -14,12 +14,16 @@ const { combat: COMBAT, player: PLAYER } = TUNING;
 export const PLAYER_ID = 'player';
 
 /**
- * Direction the player's moves go: at the locked target if any, else towards
- * the cursor; the facing when the point is on top of the player.
+ * Direction the player's moves go: at the locked target if any; else towards
+ * the cursor for a mouse-triggered move, along the facing (last WASD
+ * direction) for a key-triggered one. The facing also covers a point on top
+ * of the player.
  */
-export function aimDirection(state: WorldState, input: PlayerInput): Vec2 {
+export function aimDirection(state: WorldState, input: PlayerInput, mouseAim: boolean): Vec2 {
   const target = state.lock.targetId ? state.enemies.find((e) => e.id === state.lock.targetId) : undefined;
-  const dir = normalize(sub(target?.pos ?? input.aim, state.player.pos));
+  const point = target?.pos ?? (mouseAim ? input.aim : null);
+  if (!point) return state.player.facing;
+  const dir = normalize(sub(point, state.player.pos));
   return length(dir) > 0 ? dir : state.player.facing;
 }
 
@@ -62,6 +66,7 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     return state;
   }
   events.push({ type: 'moveStarted', moveId: move.id, slotIndex });
+  const mouseAim = Boolean(input.slotMouse[slotIndex]);
   const action: ActionState = {
     slotIndex,
     moveId: move.id,
@@ -69,7 +74,8 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     phaseMs: 0,
     chargeMs: 0,
     chargeLevel: 0,
-    aimDir: aimDirection(state, input),
+    aimDir: aimDirection(state, input, mouseAim),
+    mouseAim,
     hitIds: [],
   };
   const paid =
@@ -214,7 +220,7 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
   if (action.phase === 'charging') {
     const maxHold = move.charge?.at(-1)?.holdMs ?? 0;
     const chargeMs = Math.min(maxHold, action.chargeMs + dtMs);
-    const aimDir = aimDirection(state, input);
+    const aimDir = aimDirection(state, input, action.mouseAim);
     if (input.slots[action.slotIndex]) {
       return withAction(current, { ...action, chargeMs, chargeLevel: chargeLevelFor(move, chargeMs), aimDir });
     }

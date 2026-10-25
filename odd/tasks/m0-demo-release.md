@@ -22,7 +22,7 @@ Out of scope: sound and music, procedural dungeons (M2), accounts and saves.
 - [x] T1 Lock-on rework (route: delegated writer; trigger: 4+ non-trivial files across core, adapters, app, i18n, tests). Commit `6462946`.
 - [x] T2 GitHub Pages workflow and README (route: same writer). Commit `511eee3`.
 - [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
-- [ ] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
+- [x] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
@@ -60,5 +60,15 @@ Created. Delivery strategy: ask-on-risk; forecast ~300 authored lines.
 - The push did not trigger a run (Pages was enabled after the push); `workflow_dispatch` run 40192170885: build success, deploy success.
 - `curl` live page 200 and `sprites/0681/0001/Idle-Anim.png` 200.
 
+### T4 evidence (commit `feat(combat): aim keyboard attacks along the facing`, which contains this entry)
+- RED: tests written first; `npx vitest run` showed 9 failing (5 in `combat.test.ts` "aim source without a lock", 4 adapter assertions on `slotMouse`).
+- GREEN: `npm test` 142/142 passed; `npm run build` passed.
+- Decisions:
+  - `PlayerInput.slotMouse` is a level flag aligned with `slots` (LMB -> 0, RMB -> 1), set from the mouse buttons only, so the mouse wins when the button and its key are both held.
+  - `ActionState.mouseAim` freezes the source at the press that starts the move; a charge keeps re-aiming with that same source (key -> current facing, so WASD steers an E charge since walking while charging updates `facing`; mouse -> cursor). Clicking mid-charge does not switch a key-started charge to the cursor.
+  - `aimDirection(state, input, mouseAim)`: locked target first (any source), else cursor for mouse, else `player.facing`.
+  - Existing tests that aimed with `slots` alone now pass `slotMouse` explicitly (the combat `held` helper defaults to mouse-triggered; `IDLE` defaults to keyboard).
+  - In-game control strings extended in place (`menu.controls.fast`/`heavy`) because the menu's key list lives in `src/app/main.ts`, outside this task's surface.
+
 ## Next step
-T4 (playtest request): keyboard attacks use the facing when nothing is locked.
+Human playtest of T4 on the deployed build; push/PR remain the user's decision.

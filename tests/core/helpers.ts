@@ -9,6 +9,7 @@ export const IDLE: PlayerInput = {
   aim: vec(0, 0),
   roll: false,
   slots: [false, false],
+  slotMouse: [false, false],
   lock: false,
   click: false,
   wheel: 0,

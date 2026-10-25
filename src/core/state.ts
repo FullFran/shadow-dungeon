@@ -13,6 +13,12 @@ export interface PlayerInput {
   roll: boolean;
   /** Level: whether each move slot's button is held, aligned with the loadout. Edges are derived in the core. */
   slots: readonly boolean[];
+  /**
+   * Level, aligned with `slots`: the slot's mouse button (LMB fast, RMB heavy) is held.
+   * Without a lock, a mouse-triggered move aims at the cursor and a key-triggered one (Q/E)
+   * along the facing; with both held the mouse wins.
+   */
+  slotMouse: readonly boolean[];
   /** Level: lock-on input (Shift or middle mouse) held. Only its press edge matters: each press toggles the lock. */
   lock: boolean;
   /** Level: fast-slot mouse button (left click) held. Its press edge drives click-to-lock; Q does not set it. */
@@ -67,6 +73,8 @@ export interface ActionState {
   chargeLevel: number;
   /** Unit aim direction, committed when the wind-up starts. */
   aimDir: Vec2;
+  /** Fixed by the press that started the move: without a lock, aim at the cursor (mouse) or along the facing (key). */
+  mouseAim: boolean;
   /** Entities already hit by this use of the move (one hit per target per swing). */
   hitIds: readonly string[];
 }

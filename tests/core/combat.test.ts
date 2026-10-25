@@ -25,6 +25,8 @@ const held = (slots: boolean[], aim = RIGHT, extra: Partial<PlayerInput> = {}): 
   aim,
   roll: false,
   slots,
+  // Mouse-triggered by default: these tests aim with the cursor.
+  slotMouse: slots,
   lock: false,
   click: false,
   wheel: 0,
@@ -54,6 +56,58 @@ function use(state: WorldState, slot: number, holdMs: number, afterMs: number, a
 
 const totalMs = (id: MoveId) => MOVES[id].windupMs + MOVES[id].activeMs + MOVES[id].recoveryMs;
 const enemyHits = (events: WorldState['events']) => events.filter((e) => e.type === 'enemyHit');
+
+describe('aim source without a lock', () => {
+  const LEFT = vec(200, 300);
+  const keyboard = (slots: boolean[], aim: Vec2, extra: Partial<PlayerInput> = {}) =>
+    held(slots, aim, { slotMouse: [false, false], ...extra });
+  const aimOf = (state: WorldState) => state.player.action?.aimDir;
+  const lockedOnto = (state: WorldState): WorldState => ({ ...state, lock: { ...state.lock, targetId: state.enemies[0]!.id } });
+
+  it('Q attacks along the facing even when the cursor is elsewhere', () => {
+    const base = arena(['shadow-claw', 'play-rough']);
+    const { state } = advance(base, keyboard([true, false], RIGHT), FIXED_DT_MS);
+    expect(aimOf(state)).toEqual(base.player.facing);
+  });
+
+  it('Q follows the last WASD direction', () => {
+    const { state } = advance(arena(['shadow-claw', 'play-rough']), keyboard([true, false], RIGHT, { move: vec(-1, 0) }), FIXED_DT_MS);
+    expect(aimOf(state)).toEqual(vec(-1, 0));
+  });
+
+  it('left click attacks towards the cursor', () => {
+    const { state } = advance(arena(['shadow-claw', 'play-rough']), held([true, false], LEFT), FIXED_DT_MS);
+    expect(aimOf(state)).toEqual(vec(-1, 0));
+  });
+
+  it('with a lock both the key and the mouse aim at the target', () => {
+    const base = lockedOnto(arena(['shadow-claw', 'play-rough'], [['gastly', vec(400, 200)]]));
+    expect(aimOf(advance(base, keyboard([true, false], RIGHT), FIXED_DT_MS).state)).toEqual(vec(0, -1));
+    expect(aimOf(advance(base, held([true, false], RIGHT), FIXED_DT_MS).state)).toEqual(vec(0, -1));
+  });
+
+  it('E charge steers with the facing, ignoring the cursor', () => {
+    const pressed = advance(arena(['shadow-claw', 'play-rough']), keyboard([false, true], LEFT), FIXED_DT_MS);
+    expect(pressed.state.player.action?.phase).toBe('charging');
+    const steered = advance(pressed.state, keyboard([false, true], LEFT, { move: vec(1, 0) }), 100);
+    expect(aimOf(steered.state)).toEqual(vec(1, 0));
+    const released = advance(steered.state, keyboard([false, false], LEFT), FIXED_DT_MS);
+    expect(released.events.some((e) => e.type === 'moveReleased')).toBe(true);
+    expect(aimOf(released.state)).toEqual(vec(1, 0));
+  });
+
+  it('a right-click charge keeps aiming at the cursor while walking', () => {
+    const pressed = advance(arena(['shadow-claw', 'play-rough']), held([false, true], LEFT), FIXED_DT_MS);
+    const walked = advance(pressed.state, held([false, true], LEFT, { move: vec(0, 1) }), 100);
+    expect(aimOf(walked.state)!.x).toBeLessThan(-0.9);
+  });
+
+  it('the source is fixed by the press that starts the charge', () => {
+    const pressed = advance(arena(['shadow-claw', 'play-rough']), keyboard([false, true], LEFT), FIXED_DT_MS);
+    const clicked = advance(pressed.state, held([false, true], LEFT, { slotMouse: [false, true], move: vec(1, 0) }), 100);
+    expect(aimOf(clicked.state)).toEqual(vec(1, 0));
+  });
+});
 
 describe('fast move phases (Shadow Claw)', () => {
   const claw = MOVES['shadow-claw'];

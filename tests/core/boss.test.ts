@@ -38,7 +38,7 @@ function advance(state: WorldState, ms: number, playerInput: PlayerInput = IDLE)
 
 /** Taps Shadow Claw at the boss and lets the swing finish. */
 function claw(state: WorldState) {
-  const first = step(state, input({ aim: boss(state).pos, slots: [true, false] }), FIXED_DT_MS);
+  const first = step(state, input({ aim: boss(state).pos, slots: [true, false], slotMouse: [true, false] }), FIXED_DT_MS);
   const rest = advance(first, 400, input({ aim: boss(state).pos }));
   return { state: rest.state, events: [...first.events, ...rest.events] };
 }
@@ -69,7 +69,7 @@ describe('Shield stance', () => {
   });
 
   it('takes full, super-effective damage when flanked, without being staggered', () => {
-    let state = step(arena(vec(400, 165), { dormant: true }), input({ aim: BOSS, slots: [true, false] }), FIXED_DT_MS);
+    let state = step(arena(vec(400, 165), { dormant: true }), input({ aim: BOSS, slots: [true, false], slotMouse: [true, false] }), FIXED_DT_MS);
     let hit: GameEvent | undefined;
     for (let i = 0; i < 30 && !hit; i++) {
       state = step(state, input({ aim: BOSS }), FIXED_DT_MS);

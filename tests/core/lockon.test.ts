@@ -239,7 +239,7 @@ describe('lock-on in the simulation', () => {
   it('a left click on an enemy locks it and still attacks; Q never click-locks', () => {
     let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER });
     state = spawnEnemy(state, 'gastly', vec(400, 275), { dormant: true });
-    const clicked = step(state, { ...IDLE, aim: vec(400, 275), slots: [true, false], click: true }, FIXED_DT_MS);
+    const clicked = step(state, { ...IDLE, aim: vec(400, 275), slots: [true, false], slotMouse: [true, false], click: true }, FIXED_DT_MS);
     expect(clicked.lock.targetId).toBe(clicked.enemies[0]!.id);
     expect(clicked.player.action?.moveId).toBe('shadow-claw');
 
@@ -247,7 +247,7 @@ describe('lock-on in the simulation', () => {
     expect(withQ.lock.targetId).toBeNull();
 
     const optedOut = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER, clickToLock: false });
-    const ignored = step(spawnEnemy(optedOut, 'gastly', vec(400, 275), { dormant: true }), { ...IDLE, aim: vec(400, 275), slots: [true, false], click: true }, FIXED_DT_MS);
+    const ignored = step(spawnEnemy(optedOut, 'gastly', vec(400, 275), { dormant: true }), { ...IDLE, aim: vec(400, 275), slots: [true, false], slotMouse: [true, false], click: true }, FIXED_DT_MS);
     expect(ignored.lock.targetId).toBeNull();
   });
 });

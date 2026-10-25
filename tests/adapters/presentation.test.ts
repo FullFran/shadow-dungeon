@@ -74,7 +74,7 @@ describe('animation choice', () => {
     const state = world();
     expect(playerAnim(state.player, { timeMs: 0, sinceHurtMs: Infinity, moving: true }).anim).toBe('Walk');
     expect(playerAnim(state.player, { timeMs: 0, sinceHurtMs: Infinity, moving: false }).anim).toBe('Idle');
-    const swinging = step(state, { ...IDLE, aim: vec(500, 300), slots: [true, false] }, FIXED_DT_MS);
+    const swinging = step(state, { ...IDLE, aim: vec(500, 300), slots: [true, false], slotMouse: [true, false] }, FIXED_DT_MS);
     const choice = playerAnim(swinging.player, { timeMs: 0, sinceHurtMs: Infinity, moving: false });
     expect(choice.anim).toBe('Attack');
     expect(SPRITES.directions[choice.row]).toBe('right');
@@ -132,6 +132,7 @@ describe('input mapping', () => {
     expect(input.move).toEqual(vec(1, -1));
     expect(input.roll).toBe(true);
     expect(input.slots).toEqual([true, true]);
+    expect(input.slotMouse).toEqual([true, false]);
     expect(input.lock).toBe(true);
     expect(input.click).toBe(true);
     expect(input.wheel).toBe(-100);
@@ -143,6 +144,7 @@ describe('input mapping', () => {
     const input = toPlayerInput(raw({ keys: new Set(['KeyA', 'KeyD']), buttons: new Set([2]) }), view, 1);
     expect(input.move).toEqual(vec(0, 0));
     expect(input.slots).toEqual([false, true]);
+    expect(input.slotMouse).toEqual([false, true]);
     expect(input.lock).toBe(false);
     expect(input.click).toBe(false);
   });
@@ -153,8 +155,15 @@ describe('input mapping', () => {
     expect(middle.slots).toEqual([false, false]);
     const q = toPlayerInput(raw({ keys: new Set(['KeyQ', 'ShiftRight']) }), view, 1);
     expect(q.slots).toEqual([true, false]);
+    expect(q.slotMouse).toEqual([false, false]);
     expect(q.click).toBe(false);
     expect(q.lock).toBe(true);
+  });
+
+  it('marks a slot as mouse-triggered when its button is held, even with the key too', () => {
+    const both = toPlayerInput(raw({ keys: new Set(['KeyQ', 'KeyE']), buttons: new Set([0, 2]) }), view, 1);
+    expect(both.slots).toEqual([true, true]);
+    expect(both.slotMouse).toEqual([true, true]);
   });
 
   it('normalises wheel deltas to pixels', () => {
