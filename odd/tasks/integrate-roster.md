@@ -20,7 +20,7 @@ Bring `feat/enemy-roster` (14 experimental species, behaviours in `src/core/rost
 
 - [x] T1 Merge `feat/enemy-roster` (route: inline; mechanical conflict resolution)
 - [x] T2 Roster in the Sima pool (route: inline; one data file + one test file)
-- [ ] T3 Koffing self-destruct gives no XP/coins (route: inline)
+- [x] T3 Koffing self-destruct gives no XP/coins (route: inline)
 - [ ] T4 End-screen buttons above the footer (route: inline; `index.html` CSS)
 - [ ] T5 Silent screenshots in `/tmp/integrate-roster/`
 

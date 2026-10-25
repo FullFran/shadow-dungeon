@@ -56,6 +56,8 @@ export interface EnemySnapshot {
   /** Behaviour, for animation, telegraphs and the guest's victim-side melee check. */
   ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2; attack?: string; aimPoint?: Vec2 };
   boss?: { stance: BossStance; comboIndex: number };
+  /** Fell by its own hand: the guest credits it nothing either. */
+  spent?: boolean;
 }
 
 /** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
@@ -155,6 +157,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
         ...(e.ai.aimPoint ? { aimPoint: e.ai.aimPoint } : {}),
       },
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
+      ...(e.spent ? { spent: true } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
   };
@@ -219,6 +222,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       knockback: vec(0, 0),
       ai: { ...withoutNamedAttack(base.ai), ...s.ai, contact },
       ...(s.boss ? { boss: { ...(base.boss ?? initialBoss()), ...s.boss } } : {}),
+      ...(s.spent ? { spent: true } : {}),
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');

@@ -96,15 +96,17 @@ function encodeEnemy(e: EnemySnapshot): unknown[] {
     r3(e.ai.attackDir.x),
     r3(e.ai.attackDir.y),
   ];
-  const named = e.ai.attack !== undefined || e.ai.aimPoint !== undefined;
+  const named = e.ai.attack !== undefined || e.ai.aimPoint !== undefined || e.spent === true;
   if (e.boss || named) out.push(e.boss?.stance ?? null, e.boss?.comboIndex ?? null);
   // Optional named attack and landing point (experimental roster), after the boss slots.
   if (named) out.push(e.ai.attack ?? null, e.ai.aimPoint ? [r1(e.ai.aimPoint.x), r1(e.ai.aimPoint.y)] : null);
+  // Optional spent flag (fell by its own blast), last.
+  if (e.spent) out.push(1);
   return out;
 }
 
 function decodeEnemy(w: unknown[]): EnemySnapshot {
-  const [id, species, x, y, fx, fy, hp, alive, hitstunMs, mode, modeMs, modeDurationMs, ax, ay, stance, comboIndex, attack, aim] = w as [
+  const [id, species, x, y, fx, fy, hp, alive, hitstunMs, mode, modeMs, modeDurationMs, ax, ay, stance, comboIndex, attack, aim, spent] = w as [
     string,
     SpeciesId,
     number,
@@ -123,6 +125,7 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
     number | null | undefined,
     string | null | undefined,
     [number, number] | null | undefined,
+    number | undefined,
   ];
   return {
     id,
@@ -141,6 +144,7 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
       ...(Array.isArray(aim) ? { aimPoint: { x: aim[0], y: aim[1] } } : {}),
     },
     ...(stance ? { boss: { stance, comboIndex: comboIndex ?? 0 } } : {}),
+    ...(spent === 1 ? { spent: true } : {}),
   };
 }
 

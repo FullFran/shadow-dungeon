@@ -26,6 +26,7 @@ import { distance, vec, type Vec2 } from '../../src/core/vec';
 import { guestEnemyContacts } from '../../src/core/victim';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
+import { emptyTally, tallyStep } from '../../src/core/coins';
 import { IDLE, input, ticksFor } from './helpers';
 
 const PLAYER = vec(400, 300);
@@ -207,6 +208,32 @@ describe('special rules', () => {
     expect(first(killed.state).alive).toBe(false);
     const after = advance(killed.state, KOFFING.explode.telegraphMs + 200);
     expect(hurtBy(after.events)).toEqual([]);
+  });
+
+  it('Koffing: its own blast pays nothing (no XP, no Pokémonedas), on the host and on a guest; a kill before it does', () => {
+    const start = arena('koffing', vec(460, 300));
+    const low = { ...start, enemies: [{ ...first(start), hp: Math.floor(first(start).maxHp * KOFFING.explode.belowHp) }] };
+    const lit = stepUntil(low, telegraphing('explode'), 30).state;
+    const before = { credited: lit.credited };
+    const boom = advance(lit, KOFFING.explode.telegraphMs + KOFFING.explode.blastMs + 50).state;
+    expect(first(boom).alive).toBe(false);
+    expect(first(boom).spent).toBe(true);
+    expect(boom.player.hp).toBeGreaterThan(0);
+    expect(boom.player.xp).toBe(lit.player.xp);
+    expect(boom.credited).toEqual([]);
+    expect(tallyStep(emptyTally(), before, boom, 0).enemies).toEqual([]);
+    // A guest sees the spent Koffing through the wire and credits nothing either.
+    const wire = decodeMessage(encodeMessage({ t: 'snap', at: 1, floor: 1, s: hostSnapshot(boom) }));
+    if (wire?.t !== 'snap') throw new Error('expected a snapshot');
+    const guest = step(applyHostSnapshot(lit, wire.s), IDLE, FIXED_DT_MS);
+    expect(guest.enemies[0]!.spent).toBe(true);
+    expect(guest.player.xp).toBe(lit.player.xp);
+    expect(guest.credited).toEqual([]);
+    // Killed during the fuse, it pays as usual.
+    const killed = swing({ ...lit, player: { ...lit.player, pos: vec(440, 300) } }, first(lit).pos).state;
+    expect(first(killed).spent).toBeUndefined();
+    expect(killed.credited).toEqual([first(lit).id]);
+    expect(killed.player.xp).toBeGreaterThan(lit.player.xp);
   });
 
   it('Corphish: its shell blocks hits from the front, not from behind, and opens while it recovers', () => {

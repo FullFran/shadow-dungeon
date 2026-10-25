@@ -362,7 +362,7 @@ function updateBomber(state: WorldState, start: EnemyState, def: BomberDef, targ
       if (modeOver(ai)) {
         // The blast spends Koffing.
         events.push({ type: 'enemyDefeated', enemyId: enemy.id });
-        enemy = { ...enemy, hp: 0, alive: false };
+        enemy = { ...enemy, hp: 0, alive: false, spent: true };
       }
       break;
     case 'recover':

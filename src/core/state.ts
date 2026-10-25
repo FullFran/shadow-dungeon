@@ -169,6 +169,8 @@ export interface EnemyState {
   boss?: BossState;
   /** Room of a sleeping floor enemy: the player entering it wakes the enemy. */
   wakeRoom?: Rect;
+  /** Fell by its own hand (Koffing's blast): no experience, no Pokémonedas. */
+  spent?: boolean;
 }
 
 /** Aegislash's two stances, or the spell card Decidueye is playing. */

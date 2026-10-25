@@ -205,7 +205,7 @@ Catorce enemigos nuevos para probar en la Sima del Eclipse antes de darles mazmo
 | Corphish (Agua) | Cangrejo con caparazón: los golpes de frente rebotan (solo arañan); dispara un chorro de agua por un carril que fija antes de disparar | Rodearlo (gira despacio) o pegarle cuando se recupera, que abre el caparazón | 3 |
 | Chinchou (Agua/Eléctrico) | Su farol brilla y suelta un anillo eléctrico que se abre hasta un radio marcado | Salir del círculo durante el brillo o rodar a través del anillo | 3 |
 | Houndour (Siniestro/Fuego) | Lanzallamas en un cono que te sigue hasta que empieza a soplar | Salir del alcance o del cono durante el aviso | 3 |
-| Koffing (Veneno) | Flota cerca y suelta nubes de gas; con poca vida se hincha (anillo grande, 1,5 s) y explota; el golpe no lo para | Alejarse del anillo o rematarlo antes; si explota, se acaba | 3 |
+| Koffing (Veneno) | Flota cerca y suelta nubes de gas; con poca vida se hincha (anillo grande, 1,5 s) y explota; el golpe no lo para | Alejarse del anillo o rematarlo antes; si explota, se acaba y no da experiencia ni Pokémonedas | 3 |
 | Grimer (Veneno) | Tanque lento que deja un rastro de lodo y golpea el suelo | No seguir su rastro; salir del círculo | 4 |
 | Wooper (Agua/Tierra) | Tanque lento; golpe de suelo grande que deja barro | Salir del círculo | 4 |
 | Slugma (Fuego) | Lanza lava a donde estás: el círculo te sigue durante el aviso y se queda quieto mientras la lava vuela; deja un charco de lava | Salir del círculo marcado mientras vuela | 4 |

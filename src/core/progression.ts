@@ -53,10 +53,11 @@ export function gainXp(player: PlayerState, amount: number, events: GameEvent[])
 /**
  * Credits the local player with every enemy of the floor seen down for the
  * first time. A fainted player is credited nothing (a level-up must not
- * revive it), but the enemy still counts as paid.
+ * revive it), but the enemy still counts as paid. An enemy `spent` by its
+ * own blast is never credited: no experience, and so no Pokémonedas.
  */
 export function creditDefeats(state: WorldState, events: GameEvent[]): WorldState {
-  const fresh = state.enemies.filter((e) => !e.alive && !state.credited.includes(e.id));
+  const fresh = state.enemies.filter((e) => !e.alive && !e.spent && !state.credited.includes(e.id));
   if (fresh.length === 0) return state;
   const credited = [...state.credited, ...fresh.map((e) => e.id)];
   if (state.player.hp <= 0) return { ...state, credited };
