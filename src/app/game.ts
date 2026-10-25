@@ -1,6 +1,7 @@
 import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
+import type { UpgradeLevels } from '../data/upgrades';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
@@ -48,6 +49,8 @@ export interface GameOptions {
   /** The local player's species (default Mimikyu); `loadout` must be its own moves. */
   species?: SpeciesId;
   loadout: readonly (MoveId | null)[];
+  /** Permanent upgrade levels of the local player (the shop's), applied at run start. */
+  upgrades?: UpgradeLevels;
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
@@ -100,6 +103,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       loadout: options.loadout,
       lockType: options.lockType,
       clickToLock: options.clickToLock,
+      ...(options.upgrades ? { upgrades: options.upgrades } : {}),
       ...(net ? { localId: net.localId, role: net.role } : {}),
     },
     options.startFloor,

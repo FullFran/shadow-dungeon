@@ -1,3 +1,4 @@
+import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
 import type { PassiveId, SpeciesId } from '../data/species';
@@ -139,6 +140,8 @@ export interface PlayerState {
   items: readonly ItemId[];
   /** Per-floor item triggers used so far (Sitrus Berry, Focus Sash); reset on every floor. */
   itemUses: Readonly<Partial<Record<ItemId, number>>>;
+  /** Permanent upgrade levels bought at the shop (upgrades.ts), fixed for the run; absent = none. */
+  upgrades?: UpgradeLevels;
 }
 
 export interface EnemyState {

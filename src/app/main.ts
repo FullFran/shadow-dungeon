@@ -31,6 +31,7 @@ import { openTown } from '../town/scene';
 import { saveRun } from '../town/records';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { earnCoins, loadSave } from './save';
+import { shopWindow } from './shop';
 import { coinLines } from './coin-lines';
 
 /**
@@ -199,6 +200,8 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
       { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
       { label: t('town.menu'), onConfirm: () => townScreen(root) },
+      // Appended last so the indices above stay put.
+      { label: t('title.shop'), onConfirm: () => shopScreen(root) },
     ],
   });
   show(root, [
@@ -300,7 +303,24 @@ function townScreen(root: HTMLElement): void {
     show(root, nodes, false);
     audio.setMusic('title');
   };
-  void openTown({ sheets: sheetsReady(), species: settings.species, show: showTown, onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5) });
+  void openTown({ sheets: sheetsReady(), species: settings.species, show: showTown, onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5), openShop: townShop });
+}
+
+/** Poochyena's shop over the town (centred, the town waits behind it). */
+function townShop(parent: HTMLElement, onClose: () => void): () => void {
+  const shop = shopWindow({ store, play: (sound) => audio.play(sound), onBack: onClose });
+  const overlay = h('div', { className: 'town-shop' }, [shop.element]);
+  parent.append(overlay);
+  return () => {
+    shop.dispose();
+    overlay.remove();
+  };
+}
+
+/** The upgrade shop from the title menu (its last entry). */
+function shopScreen(root: HTMLElement): void {
+  const shop = shopWindow({ store, play: (sound) => audio.play(sound), onBack: () => titleScreen(root, 6) });
+  show(root, [shop.element]);
 }
 
 function creditsScreen(root: HTMLElement): void {
@@ -451,13 +471,20 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
     mdWindow({ className: `result ${result}` }, [
       h('h1', { textContent: t(`screen.${result}.title`) }),
       h('p', { textContent: t(`screen.${result}.text`) }),
-      h('h3', { className: 'dim', textContent: t('screen.summary') }),
-      statLine(t('screen.floorReached'), String(summary.floor)),
-      statLine(t('screen.level'), String(summary.level)),
-      statLine(t('screen.seed'), String(summary.seed)),
-      statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
-      h('h3', { className: 'dim', textContent: t('screen.coins') }),
-      h('div', { className: 'coin-lines' }, coinLines(summary.coins, balance, (key) => t(key)).map((line) => statLine(line.label, line.value))),
+      // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
+      h('div', { className: 'result-columns' }, [
+        h('div', {}, [
+          h('h3', { className: 'dim', textContent: t('screen.summary') }),
+          statLine(t('screen.floorReached'), String(summary.floor)),
+          statLine(t('screen.level'), String(summary.level)),
+          statLine(t('screen.seed'), String(summary.seed)),
+          statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
+        ]),
+        h('div', { className: 'coin-lines' }, [
+          h('h3', { className: 'dim', textContent: t('screen.coins') }),
+          ...coinLines(summary.coins, balance, (key) => t(key)).map((line) => statLine(line.label, line.value)),
+        ]),
+      ]),
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
   ], true, result);
@@ -490,6 +517,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     loadout: settings.loadout,
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
+    upgrades: loadSave(store).upgrades,
     ...shared,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
@@ -521,11 +549,12 @@ function devScreen(root: HTMLElement): boolean {
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
     town: () => townScreen(root),
+    shop: () => shopScreen(root),
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
     defeat: () =>
-      resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 60, share: 0.75, total: 45 } }, false, loadSave(store).coins),
+      resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 83, share: 0.75, total: 62 } }, false, loadSave(store).coins),
     // Waits for the sprites so a screenshot shows the silhouettes.
     prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };

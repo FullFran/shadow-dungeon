@@ -2,6 +2,8 @@ import { SPECIES, type SpeciesId } from '../data/species';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
+import type { UpgradeLevels } from '../data/upgrades';
+import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { initialBoss } from './boss';
@@ -25,10 +27,13 @@ export interface WorldOptions {
   localId?: string;
   /** Default `host` (solo). */
   role?: PeerRole;
+  /** Permanent upgrade levels of the local player (default none). */
+  upgrades?: UpgradeLevels;
 }
 
-export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[]): PlayerState {
+export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels): PlayerState {
   const species = SPECIES[speciesId];
+  const maxHp = species.maxHp + upgradeBonuses(upgrades).maxHp;
   const equipped = loadout ?? species.defaultLoadout;
   const errors = validateLoadout(species, M0_SLOT_LAYOUT, equipped);
   if (errors.length > 0) throw new Error(`invalid loadout: ${JSON.stringify(errors)}`);
@@ -37,8 +42,8 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     types: species.types,
     pos,
     facing: vec(0, 1),
-    hp: species.maxHp,
-    maxHp: species.maxHp,
+    hp: maxHp,
+    maxHp,
     stamina: TUNING.stamina.max,
     staminaRegenDelayMs: 0,
     roll: null,
@@ -54,6 +59,7 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     xp: 0,
     items: [],
     itemUses: {},
+    ...(upgrades ? { upgrades } : {}),
   };
 }
 
@@ -67,6 +73,7 @@ export function createWorld({
   lockType = 'toggle',
   localId = 'p1',
   role = 'host',
+  upgrades,
 }: WorldOptions): WorldState {
   return {
     tick: 0,
@@ -80,7 +87,7 @@ export function createWorld({
     rng: seedRng(seed),
     nextId: 1,
     arena,
-    player: createPlayer(playerPos, species, loadout),
+    player: createPlayer(playerPos, species, loadout, upgrades),
     enemies: [],
     projectiles: [],
     berries: [],

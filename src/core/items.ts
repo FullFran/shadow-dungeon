@@ -1,13 +1,14 @@
 import { ITEM_EFFECTS, ITEM_IDS, ITEM_OFFER, ITEMS, type ItemId, type StatModifiers } from '../data/items';
 import { TUNING } from '../data/tuning';
 import { levelDamage } from './progression';
+import { upgradeBonuses } from './upgrades';
 import { deriveSeed, nextRandom } from './rng';
 import type { EnemyState, GameEvent, PlayerState, WorldState } from './state';
 import { vec } from './vec';
 
 /**
  * Held items (docs/gdd.md §3 "Progresión dentro de la partida"), in one
- * pipeline: `playerStats` folds the level and every stack's stat modifiers
+ * pipeline: `playerStats` folds the level, the permanent upgrades (upgrades.ts) and every stack's stat modifiers
  * (data/items.ts) into the numbers combat reads; the remaining items are
  * hooks called from the places they act on: `onHitDealt` (Shell Bell, after
  * the player's hit), `onLethalHit` (Focus Sash, when an attack would faint the
@@ -34,12 +35,19 @@ export interface PlayerStats {
   critChance: number;
   perfectWindowMs: number;
   reach: number;
+  /** Stamina regen multiplier (upgrades). */
+  staminaRegen: number;
+  /** Extra fraction of max HP healed on a new floor (upgrades). */
+  floorHeal: number;
+  /** Experience multiplier (upgrades). */
+  xpGain: number;
 }
 
 const MULTIPLIERS = ['damage', 'heavyDamage', 'superEffective', 'staminaCost', 'actionTime', 'reach'] as const;
 
-/** The player's numbers after level and held items. */
-export function playerStats(player: Pick<PlayerState, 'items' | 'level'>): PlayerStats {
+/** The player's numbers after level, permanent upgrades and held items. */
+export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgrades'>): PlayerStats {
+  const bonus = upgradeBonuses(player.upgrades);
   const stats: PlayerStats = {
     damage: levelDamage(player.level),
     heavyDamage: 1,
@@ -47,8 +55,11 @@ export function playerStats(player: Pick<PlayerState, 'items' | 'level'>): Playe
     staminaCost: 1,
     actionTime: 1,
     critChance: 0,
-    perfectWindowMs: TUNING.perfectDodge.windowMs,
+    perfectWindowMs: TUNING.perfectDodge.windowMs + bonus.perfectWindowMs,
     reach: 1,
+    staminaRegen: bonus.staminaRegen,
+    floorHeal: bonus.floorHeal,
+    xpGain: bonus.xpGain,
   };
   for (const id of player.items) {
     const mods: StatModifiers = ITEMS[id].stats ?? {};

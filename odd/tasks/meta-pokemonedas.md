@@ -20,7 +20,7 @@ Out of scope: gacha (stays "Próximamente"), difficulty selection (the multiplie
 
 ## Tasks
 - [x] T1 Save facade + Pokémonedas earning, HUD and end screen (route: delegated writer, this worker; trigger: 2+ non-trivial files)
-- [ ] T2 Upgrades + shop window (town and title) (route: same writer)
+- [x] T2 Upgrades + shop window (town and title) (route: same writer)
 - [ ] T3 Docs: GDD §11 and README (route: same writer)
 
 ## Acceptance criteria
@@ -47,3 +47,13 @@ Created 2026-10-25 on `feat/meta-pokemonedas` from `main` d3d4f9a.
 - Game: tally per peer in `game.ts`; "Restart floor" restores the tally of the floor start (no double pay). Quitting from the Esc menu forfeits the run's coins (no end screen). HUD: "N P" right-aligned on the passive row of the status window. End screens: lines that paid, share kept on defeat, total and new balance (`src/app/coin-lines.ts`). Every peer (guests too) adds its own total to its own save; no network change.
 - i18n: one contiguous block appended at the end of es/en (`hud.coins`, `screen.coins.*`).
 - Checks: RED observed (coins/save/coin-lines modules missing), GREEN 9 + 7 + 2 tests; typecheck clean; `npm test` 68 files / 639 tests passed.
+
+### T2 Upgrades + shop (done)
+- Upgrades (data `src/data/upgrades.ts`, provisional): Vitalidad +4 PS máx./nivel (60, 120, 220, 360, 550); Aliento +5 % regen de estamina/nivel (80, 160, 300, 500); Respiro +3 % de PS máx. al bajar de planta/nivel, sobre el 25 % base (100, 220, 400); Reflejos +8 ms de esquiva perfecta/nivel, base 120 (120, 260, 480); Estudio +5 % experiencia/nivel (90, 180, 320, 520). Full set ~5000 P, about 30 won runs at ~165 P each.
+- Decision: XP gain instead of a starting held-item reroll (no new UI in the run, fits the existing pipeline). Max stamina was not raised (the HUD and roll costs read the fixed `TUNING.stamina.max`), regen was.
+- Core `src/core/upgrades.ts` (pure `upgradeCost`, `buyUpgrade`, `upgradeBonuses`). `PlayerState.upgrades` (optional, so remotes and old fixtures need nothing); `createPlayer` adds the max HP (full HP) for every species; `playerStats` folds perfect-dodge window, stamina regen, floor heal and XP gain; read by `player.ts` regen, `run.ts` floor heal, `progression.ts` `creditDefeats`. `WorldOptions.upgrades` / `GameOptions.upgrades` from the save at run start (each peer its own).
+- Shop `src/app/shop.ts`: MD window with balance, one row per upgrade ("Vitalidad Nv. 2/5", next cost or MÁX.), effect text of the cursor row ("PS máximos +4 por nivel. Ahora: +8."), Volver. Enter buys (new `coin` sound); unaffordable or maxed rows show disabled and play `denied`, but the cursor still stops on them so their effect can be read (decision). Title menu: "Tienda" appended last (index 6), existing indices unchanged. Town: Poochyena says its line plus "Mira lo que tengo en la fragua..." and the window opens when the dialog ends (`TownNpc.opens`, `TownOptions.openShop`); the gacha stays "Próximamente".
+- Fix found while wiring: the town's key handler ignored keys a cursor list already handled (`e.defaultPrevented`), so Esc closing a window over the town no longer also leaves the town.
+- End screen: summary and Pokémonedas in two columns from 900 px wide (the victory window no longer runs into the footer at 720p).
+- Checks: RED observed (`src/core/upgrades`, `src/app/shop` missing), GREEN 9 + 3 tests; `tests/town/lines.test.ts` updated (shop opens the window, gacha keeps "coming soon"); `npm test` 70 files / 652 tests passed; `npm run build` ok.
+- Screenshots `/tmp/meta/` (headless Firefox over WebDriver BiDi, dev server 4431): `01-town-shop.png`, `02-town-shop-bought.png` (Aliento bought, 300 -> 220 P, row levels updated), `03-town-after-shop.png` (Esc closes the shop and stays in the town), `04-title-shop-entry.png`, `05-title-shop.png` (40 P: every row disabled), `06-victory-coins.png`, `07-defeat-coins.png` (dev screens with mocked breakdowns), `08-hud-start.png`, `09-hud-later.png` (a real run after 63 s idle: "2 P" and PS 108/108 from Vitalidad 2).

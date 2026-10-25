@@ -36,6 +36,8 @@ export interface TownOptions {
   onDepart: () => void;
   /** Esc: back to the title. */
   onQuit: () => void;
+  /** Opens the upgrade shop window inside `parent` (Poochyena's stall); returns a function that closes it. `onClose` runs when the player leaves it. */
+  openShop?: (parent: HTMLElement, onClose: () => void) => () => void;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -123,7 +125,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pixelScale = 1;
   let stopped = false;
   let raf = 0;
-  let dialog: { speaker: string; state: DialogState } | null = null;
+  let dialog: { speaker: string; state: DialogState; opens?: 'shop' } | null = null;
+  /** The shop window is open: the scene waits and its cursor list has the keys. */
+  let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
   let exitWindow: HTMLElement | null = null;
   const held = new Set<string>();
@@ -166,7 +170,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function interact(): void {
     if (dialog) {
       const next = advanceDialog(dialog.state);
+      const opens = dialog.opens;
       dialog = next ? { ...dialog, state: next } : null;
+      if (!next && opens === 'shop') openShopWindow();
       return;
     }
     const target = nearestInteractable(walker.pos, targets);
@@ -175,7 +181,19 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     dialog =
       target.kind === 'board'
         ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
-        : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))) };
+        : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
+  }
+
+  function openShopWindow(): void {
+    const parent = canvas.parentElement;
+    if (!options.openShop || !parent) return;
+    held.clear();
+    closeShop = options.openShop(parent, () => {
+      closeShop?.();
+      closeShop = null;
+      held.clear();
+      last = performance.now();
+    });
   }
 
   function closeExitWindow(): void {
@@ -209,7 +227,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if (exitWindow) return;
+    // A window's cursor list already handled this key (its Esc must not also leave the town).
+    if (exitWindow || closeShop || e.defaultPrevented) return;
     if (MOVE_KEYS[e.code]) {
       e.preventDefault();
       if (!dialog) held.add(e.code);
@@ -246,7 +265,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     const dt = Math.min(50, now - last);
     last = now;
-    const move = dialog || exitWindow ? { x: 0, y: 0 } : moveInput();
+    const move = dialog || exitWindow || closeShop ? { x: 0, y: 0 } : moveInput();
     const moving = move.x !== 0 || move.y !== 0;
     walker = stepWalker(walker, move, dt, arena);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
@@ -257,7 +276,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const timeMs = now - start;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, view, timeMs, characters: characters(moving) });
-    const target = exitWindow ? null : nearestInteractable(walker.pos, targets);
+    const target = exitWindow || closeShop ? null : nearestInteractable(walker.pos, targets);
     drawTownOverlay(
       ctx,
       view,
@@ -276,6 +295,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       stopped = true;
       cancelAnimationFrame(raf);
       exitWindow?.remove();
+      closeShop?.();
+      closeShop = null;
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

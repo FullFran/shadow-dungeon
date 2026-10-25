@@ -22,7 +22,7 @@ function regenStamina(player: PlayerState, dtMs: number): PlayerState {
   if (player.staminaRegenDelayMs > 0) {
     return { ...player, staminaRegenDelayMs: Math.max(0, player.staminaRegenDelayMs - dtMs) };
   }
-  const stamina = Math.min(STAMINA.max, player.stamina + (STAMINA.regenPerSecond * dtMs) / 1000);
+  const stamina = Math.min(STAMINA.max, player.stamina + (STAMINA.regenPerSecond * playerStats(player).staminaRegen * dtMs) / 1000);
   return stamina === player.stamina ? player : { ...player, stamina };
 }
 

@@ -2,7 +2,7 @@ import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { generateFloor } from './dungeon';
-import { addItem, offerItems } from './items';
+import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { partyDefeated } from './party';
 import { deriveSeed, nextRandom } from './rng';
@@ -96,7 +96,8 @@ export function chooseItem(run: RunState, world: WorldState, index: number): { r
 
 function heal(world: WorldState): WorldState {
   const { hp, maxHp } = world.player;
-  return { ...world, player: { ...world.player, hp: Math.min(maxHp, hp + RUN.floorHeal * maxHp) } };
+  const share = RUN.floorHeal + playerStats(world.player).floorHeal;
+  return { ...world, player: { ...world.player, hp: Math.min(maxHp, hp + share * maxHp) } };
 }
 
 /** Moves the run to `floor` (the next one): records a collapse escape, heals, and loads it. */

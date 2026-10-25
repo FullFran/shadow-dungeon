@@ -17,11 +17,16 @@ describe('town NPC lines', () => {
     expect(told.at(-1)).toEqual([story.lines[0]]);
   });
 
-  it('the gacha stall and the shop give their flavour, then "coming soon", every time', () => {
-    for (const role of ['gacha', 'shop']) {
-      expect(npcLines(npc(role), 0)).toEqual(npcLines(npc(role), 5));
-      expect(npcLines(npc(role), 0).at(-1)).toBe('town.soon');
-    }
+  it('the gacha stall gives its flavour, then "coming soon", every time', () => {
+    expect(npcLines(npc('gacha'), 0)).toEqual(npcLines(npc('gacha'), 5));
+    expect(npcLines(npc('gacha'), 0).at(-1)).toBe('town.soon');
+    expect(npc('gacha').opens).toBeUndefined();
+  });
+
+  it('the shop gives its flavour and then opens the upgrade shop, never "coming soon"', () => {
+    expect(npcLines(npc('shop'), 0)).toEqual(npcLines(npc('shop'), 5));
+    expect(npcLines(npc('shop'), 0)).not.toContain('town.soon');
+    expect(npc('shop').opens).toBe('shop');
   });
 
   it('keeps the lore: never names the final threat nor puts it under the crypt', () => {

@@ -2,6 +2,7 @@ import { PROGRESSION } from '../data/progression';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import type { GameEvent, PlayerState, WorldState } from './state';
+import { upgradeBonuses } from './upgrades';
 
 /**
  * In-run levels (docs/gdd.md §3 "Progresión dentro de la partida"): every
@@ -59,6 +60,7 @@ export function creditDefeats(state: WorldState, events: GameEvent[]): WorldStat
   if (fresh.length === 0) return state;
   const credited = [...state.credited, ...fresh.map((e) => e.id)];
   if (state.player.hp <= 0) return { ...state, credited };
-  const amount = fresh.reduce((sum, e) => sum + xpFor(e.species, state.depth), 0);
+  // The Insight upgrade scales every defeat's experience.
+  const amount = fresh.reduce((sum, e) => sum + xpFor(e.species, state.depth), 0) * upgradeBonuses(state.player.upgrades).xpGain;
   return { ...state, credited, player: gainXp(state.player, amount, events) };
 }

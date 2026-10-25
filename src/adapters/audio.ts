@@ -46,6 +46,7 @@ export const SOUND_IDS = [
   'levelUp',
   'item',
   'berry',
+  'coin',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -461,6 +462,14 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     ms: 260,
     // A short two-note sparkle: an item acted, or one was picked.
     play: (s, t) => arpeggio(s, t, 'triangle', [988, 1319], 0.07, 0.18, 0.07),
+  },
+  coin: {
+    ms: 320,
+    // A bright double clink: a purchase at the shop.
+    play: (s, t) => {
+      arpeggio(s, t, 'square', [1319, 1976], 0.06, 0.2, 0.06);
+      tone(s, t + 0.12, { type: 'triangle', from: 2637, dur: 0.12, gain: 0.04 });
+    },
   },
   berry: {
     ms: 240,

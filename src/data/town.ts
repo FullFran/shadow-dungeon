@@ -76,6 +76,8 @@ export interface TownNpc {
   lines: readonly string[];
   /** One line per talk, in turn, instead of all of them. */
   rotate?: boolean;
+  /** A window opens when the dialog ends (Poochyena's upgrade shop). */
+  opens?: 'shop';
 }
 
 export interface TownMap {
@@ -129,7 +131,7 @@ export const TOWN: TownMap = {
   ],
   npcs: [
     { id: 'gacha', role: 'gacha', species: 'mimikyu', x: 8, y: 6, lines: ['town.gacha.1', 'town.soon'] },
-    { id: 'shop', role: 'shop', species: 'poochyena', x: 16, y: 6, lines: ['town.shop.1', 'town.soon'] },
+    { id: 'shop', role: 'shop', species: 'poochyena', x: 16, y: 6, lines: ['town.shop.1', 'town.shop.open'], opens: 'shop' },
     { id: 'storyteller', role: 'storyteller', species: 'gastly', x: 24, y: 6, lines: ['town.story.1', 'town.story.2', 'town.story.3', 'town.story.4'], rotate: true },
   ],
   board: { x: 11, y: 7.5 },

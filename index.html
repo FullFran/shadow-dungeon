@@ -138,6 +138,12 @@
       .result h3 { margin: 14px 0 4px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
       .result .md-stat-value { text-align: right; max-width: 16rem; }
       .result-actions { margin-top: 16px; }
+      .result-columns { display: grid; gap: 0 2.5rem; }
+      @media (min-width: 900px) { .result-columns { grid-template-columns: 1fr 1fr; } .result { min-width: 46rem; } }
+      .shop { min-width: 30rem; max-width: 36rem; }
+      .shop .shop-effect { min-height: 2.6em; margin: 10px 0 0; }
+      .shop .shop-balance { margin-bottom: 8px; }
+      .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; }
 
       .item-pick.shared { position: fixed; left: 0; right: 0; bottom: 3rem; display: flex; justify-content: center; pointer-events: none; z-index: 8; }
       .item-pick .pick-panel { max-width: 52rem; pointer-events: auto; }
