@@ -381,7 +381,9 @@ Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún 
 | Espacio | Rueda con invulnerabilidad; gasta estamina |
 | Clic izquierdo (o Q) | Ataque ligero: rápido, se recupera enseguida y castiga huecos pequeños (Placaje, Arañazo) |
 | Clic derecho (o E) | Movimiento fuerte de su tipo: arranque lento, gasta estamina y si lo mantienes carga (Ascuas, Pistola Agua) |
-| Ratón | Apuntar. Sin objetivo fijado, el clic ataca hacia el cursor y Q o E hacia donde miras (la última dirección de WASD; mientras cargas con E giras con WASD). Con objetivo fijado, todo va al objetivo. Si pulsas a la vez el clic y su tecla, manda el clic |
+| R (o 1) | Potenciación: una mejora propia con enfriamiento largo y sin estamina (Danza Espada, Maquinación, Fuego Fatuo, Corpulencia) |
+| F (o 2) | Movimiento de área: cono, anillo u onda en línea; arranque lento, estamina y enfriamiento (Brillo Mágico, Terremoto) |
+| Ratón | Apuntar. Sin objetivo fijado, el clic ataca hacia el cursor y Q, E, R o F hacia donde miras (la última dirección de WASD; mientras cargas con E giras con WASD). Con objetivo fijado, todo va al objetivo. Si pulsas a la vez el clic y su tecla, manda el clic |
 | Shift o clic central | Fijar objetivo: una pulsación fija y otra lo suelta (mantener Shift resultó incómodo en la primera prueba). El tipo de fijado se elige en ajustes |
 | Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |
@@ -390,7 +392,18 @@ Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún 
 
 Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al derecho, esquiva al Espacio), así que le resulta natural a cualquiera que haya jugado algo parecido. Todas las teclas se pueden cambiar.
 
-La profundidad sale de cargar y de elegir el momento con esas pocas teclas, no de añadir más botones (es lo que hace Furi).
+La profundidad sale de cargar y de elegir el momento con esas pocas teclas, no de añadir más botones (es lo que hace Furi). Las dos ranuras nuevas (R y F) no rompen eso: van con enfriamiento, así que no se pueden repetir y se guardan para el momento (el jefe, un grupo que te rodea).
+
+Las cuatro ranuras (decidido el 2026-10-25):
+
+| Ranura | Tecla | Botón táctil | Coste | Para qué |
+|---|---|---|---|---|
+| Rápida | Clic izquierdo / Q | Rápido | Nada | Castigar huecos pequeños |
+| Fuerte | Clic derecho / E (mantener carga) | Fuerte | Estamina | El golpe gordo de su tipo |
+| Potenciación | R / 1 | Potenc. | Enfriamiento 14–16 s, sin estamina | Prepararte antes de un jefe o un grupo |
+| Área | F / 2 | Área | Estamina 30–40 y enfriamiento 6–10 s | Despejar a varios a la vez |
+
+R y F están al lado de Q y E bajo la mano izquierda; 1 y 2 son la alternativa. No chocan con Shift, Espacio, E, Q, M, Tab, Esc ni F3 (1, 2 y 3 también eligen objeto, pero la elección de objeto pausa la entrada del juego). El ratón no cambia: el clic central sigue siendo fijar. Una partida guardada con dos movimientos se carga con los de potenciación y área por defecto de su Pokémon. El HUD muestra cuatro ventanas compactas (en una fila en el escritorio, en dos filas en el móvil) con los segundos de enfriamiento que quedan; mientras dura una potenciación su ventana brilla en el color del tipo y el Pokémon lleva un aura que parpadea al acabarse.
 
 ### Controles táctiles (móvil y tableta)
 
@@ -401,6 +414,7 @@ Se activan solos al primer toque (ajuste «Controles táctiles»: Automático, S
 | Joystick (mitad izquierda, aparece donde pones el pulgar) | Moverte, analógico y con zona muerta |
 | Rodar | Rueda (como Espacio) |
 | Rápido / Fuerte | Los dos movimientos; Fuerte se mantiene para cargar y se suelta para lanzar |
+| Potenc. / Área | La potenciación y el movimiento de área (botones de 52 px a la izquierda de Fuerte; se ocultan si la ranura está vacía) |
 | Fijar | Un toque fija al enemigo que tienes delante o lo suelta; deslizar a izquierda o derecha sobre él cambia de objetivo (como la rueda) |
 | Tocar un enemigo | Lo fija si el fijado por clic está activado (no ataca) |
 | Pausa / Mapa | El menú de Esc y el minimapa |
@@ -409,7 +423,7 @@ Sin objetivo fijado los movimientos van hacia donde miras, como Q y E; con «Apu
 
 ### Estamina
 
-- Una sola barra para la rueda y para E.
+- Una sola barra para la rueda, para E y para el movimiento de área (la potenciación no gasta: la frena su enfriamiento).
 - Sirve para que rodar no acabe siendo la forma más rápida de moverse (un problema conocido de los souls vistos desde arriba).
 - Se recupera rápido cuando no la gastas.
 
@@ -443,10 +457,10 @@ El sonido del M0 es procedural (Web Audio, sin ficheros de audio): cada evento d
 ### El kit de cada Pokémon
 
 - Cada Pokémon tiene su propio Q y su propio E. Conseguir uno nuevo en el gacha cambia cómo juegas.
-- Cada Pokémon tiene un repertorio de movimientos y lleva equipados dos: uno en la ranura rápida (clic izquierdo) y otro en la fuerte (clic derecho). Cada movimiento pertenece a una de las dos ranuras, para que la rápida siempre se sienta rápida y la fuerte siempre tenga su arranque.
+- Cada Pokémon tiene un repertorio de movimientos y lleva equipados cuatro: rápida (clic izquierdo), fuerte (clic derecho), potenciación (R) y área (F). Cada movimiento pertenece a una sola ranura, para que la rápida siempre se sienta rápida, la fuerte siempre tenga su arranque y las dos nuevas no se puedan repetir.
 - Los movimientos se cambian desde el menú, entre partidas, nunca en mitad del combate.
 - Desbloquear movimientos del repertorio puede ser una de las mejoras que se compran con Pokémonedas (por decidir).
-- Más adelante: una tercera ranura de potenciación (por ejemplo Danza Espada) con su propia tecla, y quizá llegar a cuatro ranuras como en Pokémon competitivo. El número de ranuras va en los datos, no metido a mano en el código, para poder añadirlas sin rehacer nada.
+- El número de ranuras va en los datos (`PLAYER_SLOT_LAYOUT`), no metido a mano en el código. Las ranuras de potenciación y área pueden quedar vacías si un Pokémon no tiene movimientos para ellas.
 
 Repertorio de Mimikyu en el M0:
 
@@ -463,6 +477,17 @@ Iniciales (aprobados el 2026-10-25; se eligen en la pantalla de equipo antes de 
 | Zorua (Siniestro) | Cuerpo a cuerpo rápido, poca vida | Golpes Furia (cinco arañazos, Normal), Finta (atraviesa al enemigo y se gira) | Pulso Noche (onda alrededor), Juego Sucio (embestida; más daño si el enemigo está atacando) | Ilusión: los enemigos dormidos solo te notan si los tocas; el primer golpe es crítico; vuelve en cada piso |
 | Litwick (Fantasma/Fuego) | A distancia, frágil | Ascuas (llama rápida), Impresionar (susto a bocajarro que aturde) | Infortunio (daño doble a un enemigo aturdido), Infierno (bola lenta y fuerte) | Absorbe Fuego: los golpes de Fuego curan un poco y potencian el siguiente movimiento fuerte; además, cada 4 golpes de Fuego propios avivan la llama y potencian el siguiente movimiento fuerte |
 | Cubone (Tierra) | Aguante, lento, mucha vida | Hueso Palo (golpe que aturde), Ataque Óseo (tres golpes avanzando) | Huesomerang (va y vuelve hacia Cubone, que lo atrapa; golpea dos veces), Pataleta (pisotón; doble si el golpe anterior falló) | Armadura Batalla: mientras cargas o preparas un movimiento fuerte, los golpes de frente hacen la mitad |
+
+Potenciación y área de los iniciales (la primera de cada área es la que viene equipada):
+
+| Pokémon | Potenciación (sin estamina) | Área 1 | Área 2 |
+|---|---|---|---|
+| Mimikyu | Danza Espada: tus 3 próximos golpes hacen ×1,5 (9 s; enfriamiento 15 s) | Brillo Mágico (Hada, anillo; 80; 35 estamina; 8 s) | Golpe Umbrío (Fantasma, cono de 120°; 120 pero arranca en 520 ms; 40; 10 s) |
+| Zorua | Maquinación: andas ×1,3 y +35 % de críticos (5 s; 14 s) | Pulso Umbrío (Siniestro, anillo; 80; 35; 8 s) | Alarido (Siniestro, cono muy abierto; 55; 30; 6 s) |
+| Litwick | Fuego Fatuo: enciende Absorbe Fuego al instante; el siguiente fuerte sale potenciado (16 s) | Lanzallamas (Fuego, onda en línea que atraviesa a todos y no vuelve; 90; 35; 8 s) | Onda Ígnea (Fuego, cono de 130°; 95; 40; 9 s) |
+| Cubone | Corpulencia: recibes ×0,6 de daño (6 s; 16 s) | Terremoto (Tierra, anillo grande; 100; arranca en 460 ms; 40; 10 s) | Terratemblor (Tierra, anillo pequeño y rápido; 60; 30; 6 s) |
+
+Los de área no se cargan, tardan en salir y siempre dan la pausa y la sacudida fuertes al golpear. Pulso Noche se queda en la ranura fuerte de Zorua (pasarlo a área cambiaría su equipo por defecto; Pulso Umbrío cubre el anillo). Bomba Fango queda para más adelante (pide un proyectil que estalle al chocar).
 
 Sin estados alterados todavía: lo que en el juego original depende de la quemadura aquí depende del aturdimiento. Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego también se carga con los golpes de Fuego del propio Litwick (cuatro golpes potencian el siguiente movimiento fuerte).
 - La efectividad de tipos se aplica a E (y a las debilidades de los jefes). La pantalla de movimientos dice, para cada uno, su coste de estamina, su forma (arco corto, anillo 360°, proyectil lento...) y contra qué enemigos de la Cripta es eficaz o poco eficaz.
@@ -597,7 +622,7 @@ La dificultad se mide con bots que juegan solos (`src/sim`, `docs/souls-difficul
 - **Bandas.** Las reglas de equidad **fallan** la CI: golpe ≤ 35 % de la vida, aviso ≥ 280 ms, aviso de zona ≥ 400 ms, ≤ 2 avisos a la vez (3 en Pesadilla), ≤ 1 amenaza fuera de pantalla a la vez y ningún golpe sin aviso. Las que el contenido actual incumple están anotadas con su motivo en `KNOWN_VIOLATIONS` (`src/sim/bands.ts`): salen como aviso, y cualquier otra nueva falla. Las bandas de rendimiento solo **avisan**: el medio gana Fácil ≥ 80 %, un jefe dura 45–150 s para el medio en solitario, el medio pierde por planta ≤ 25/35/50/65 % de la vida (de Fácil a Pesadilla), Pesadilla es más dura que Fácil, y el perfecto gana Pesadilla ≥ 80 % y nunca muere.
 - **Prueba de que puede fallar.** Un test mete un patrón imposible (una ráfaga de zona sin aviso sobre el jugador cada 300 ms): el perfecto muere y la puerta falla.
 - **Uso.** `npm test` corre el subconjunto de CI (todas las mazmorras, Fácil y Pesadilla, tres bots, en solitario, dos semillas; unos 12 s). `npm run balance` corre el barrido completo (5 mazmorras × 4 niveles × 4 bots × grupos de 1 a 4 × 3 semillas, más cada arena aislada; unos 5 min) y escribe `reports/balance/latest.md` (se guarda en el repositorio para comparar) y `latest.json`. Para reequilibrar: informe antes, cambiar los números, informe después, comparar los dos informes y anotar el antes y el después en el documento de la tarea. Al arreglar contenido, borrar su entrada de `KNOWN_VIOLATIONS` para que no vuelva.
-- **Límites conocidos.** Las arenas aisladas empiezan con el inicial a nivel 1 y sin objetos (más duro que llegar jugando). Los bots solo usan el ataque rápido, conocen el plano de la planta (como el minimapa), no sufren la niebla y en las plantas urgentes van directos a la escalera. Un jefe que muere en segundos o un perfecto que muere pueden deberse al contenido o al bot: el informe lo señala, y hay que mirarlo antes de tocar números.
+- **Límites conocidos.** Las arenas aisladas empiezan con el inicial a nivel 1 y sin objetos (más duro que llegar jugando). Los bots solo usan el ataque rápido salvo con `npm run balance -- --slots`, donde el perfecto y el medio también usan la potenciación (ante un jefe o un grupo de 3) y el área (sobre 2 enemigos o un jefe a su alcance); el barrido solo juega con Mimikyu. Conocen el plano de la planta (como el minimapa), no sufren la niebla y en las plantas urgentes van directos a la escalera. Un jefe que muere en segundos o un perfecto que muere pueden deberse al contenido o al bot: el informe lo señala, y hay que mirarlo antes de tocar números.
 
 ### Récords
 

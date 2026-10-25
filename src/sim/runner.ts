@@ -7,7 +7,7 @@ import { chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock,
 import type { Rect, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { FIXED_DT_MS } from '../core/timestep';
-import { createBot, type BotKind } from './bots';
+import { BOT_PROFILES, createBot, type BotKind } from './bots';
 import { FloorRecorder, type FloorMetrics } from './metrics';
 import { observe } from './observe';
 import { applyParty } from './party';
@@ -49,6 +49,8 @@ export interface RunOptions {
    * pattern, tests/sim/bands.test.ts). Never used by the real sweep.
    */
   inject?: (world: WorldState) => WorldState;
+  /** The perfect and average bots also use the boost and area slots (four-slots; `BotOptions.slots`). Default off. */
+  slots?: boolean;
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -88,7 +90,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const maxFloors = options.maxFloors ?? 10;
   const endless = dungeonById(s.dungeon).endless !== undefined;
   const timeout = options.floorTimeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const bot = createBot(s.bot, botSeed(s));
+  const bot = createBot(s.bot, botSeed(s), BOT_PROFILES[s.bot], { slots: options.slots === true });
   // Floor 1 starts at the party size like a co-op room (`WorldOptions.party`); later floors go through `applyParty`.
   const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}) }, startFloor, s.dungeon);
   let run = started.run;

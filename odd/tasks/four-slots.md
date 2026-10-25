@@ -25,7 +25,7 @@ More attack choices per starter without trivialising the souls feel: boost and a
 - [x] T1 Model + input + touch + HUD layout (route: inline in this bounded writer; trigger evidence: one writer owns the whole feature).
 - [x] T2 Boost moves + buffs + cooldowns + HUD cooldown + sound/VFX.
 - [x] T3 Area moves + VFX + loadout UI (4 slots).
-- [ ] T4 Bots use boost/area, balance before/after, GDD §4, README, screenshots.
+- [x] T4 Bots use boost/area, balance before/after, GDD §4, README, screenshots.
 
 ## Acceptance
 - `npm test`, `npm run build` green; architecture test green.
@@ -45,6 +45,12 @@ npm test, npm run build, npm run balance -- --quick.
 - T2 checks: npm test 150 files / 1425 tests passed; typecheck clean; golden digest unchanged (projection).
 - T3: RED observed (tests/core/area-moves.test.ts: 10 of 10 failed), then GREEN. Eight area moves, two per starter, tap-only, juice heavy, stamina 30–40, cooldown 6–10 s: Mimikyu Brillo Mágico (Fairy ring, default) / Golpe Umbrío (Ghost 120-power cone, 520 ms wind-up); Zorua Pulso Umbrío (Dark ring, default) / Alarido (Dark wide cone); Litwick Lanzallamas (Fire line wave, pierces, never returns: new `wave` projectile flag, default) / Onda Ígnea (Fire cone); Cubone Terremoto (Ground big ring, default) / Terratemblor (Ground small quick ring). Night Daze stays heavy (moving it would change Zorua's default heavy slot; Pulso Umbrío fills the ring role). Bomba Fango not added (would need a burst-on-impact projectile). VFX reuse the type-coloured arc/ring/fire orb; sound `area` on press; loadout lists boost/area cards (persisted through settings), cards show cooldown and the new `cone` / `wave` shapes.
 - T3 checks: npm test 152 files / 1446 tests passed; typecheck clean; content.test.ts now lets area moves pay stamina (with a cooldown).
+- T4: RED observed (tests/sim/bot-slots.test.ts: 2 of 4 failed), then GREEN. `BotOptions.slots` (off by default) + `RunOptions.slots` + `npm run balance -- --slots`: perfect/average bots cast the boost before a boss (220 px) or a crowd of 3, and the area move on 2+ enemies (or a boss) in its reach, never into a wind-up; novice/masher never. Without the option the bot input stays the two-entry one. Observation `self` gains loadout, per-slot cooldowns and `buffed`.
+- Balance: default `npm run balance -- --quick` after the change is byte-identical to before (0 failures, 49 warnings, 64 passes). With `--slots`: 0 failures, 53 warnings, 60 passes; enemy TTK slightly down on Easy (perfect Crypt 7 → 5 s, Forest 4 → 3 s, Swamp 7 → 5 s), boss TTK about the same (median ratio 1.06 over 21 arenas). Table: reports/balance/four-slots-ttk.md. The sweep plays Mimikyu only.
+- Docs: GDD §4 (keys, the four-slot table, touch buttons, stamina, kit tables per starter, harness limits) and README (controls, loadout, touch, `--slots`).
+- Screenshots (silent: profile user.js volume_scale 0, localStorage muted): /tmp/four-slots/hud-4-slots.png, hud-4-slots-boost-cooldown.png (cooldown "15 s" + aura), area-mimikyu-*.png (Brillo Mágico ring), area-litwick-3.png (Lanzallamas), area-cubone-3.png (Terremoto ring), loadout-4-slots.png + loadout-4-slots-area.png, touch-844x390.png. Zorua's Pulso Umbrío ring was caught in a first batch that was later overwritten; the retakes land just before or just after its 260 ms window (screenshots ~300 ms apart), so the current zorua files do not show it.
+- Known, pre-existing: on touch the HUD slot windows sit under the Heavy/Fast buttons (they did with two slots too; now 2x2 so a little more is covered).
+- T4 checks: npm test 153 files / 1450 tests passed; npm run build ok.
 
 ## Next step
-T4.
+None in scope; push/PR are the user's decision.

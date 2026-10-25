@@ -1,3 +1,4 @@
+import { MOVES, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { insideRect } from '../core/geometry';
 import { nextRandom } from '../core/rng';
@@ -29,6 +30,30 @@ export type BotKind = 'perfect' | 'average' | 'novice' | 'masher';
 
 export const BOT_KINDS: readonly BotKind[] = ['perfect', 'average', 'novice', 'masher'];
 
+/**
+ * Bot options. `slots`: the perfect and average bots also use the boost and
+ * area slots (four-slots): the boost before a boss or a crowd, the area move
+ * on a cluster or a boss in reach. Off by default, so the balance sweep keeps
+ * measuring the fast slot alone unless asked (`npm run balance -- --slots`).
+ */
+export interface BotOptions {
+  slots?: boolean;
+}
+
+/** How far an area move reaches from the user (a wave: as far as it flies). */
+export function areaReach(move: MoveDef): number {
+  const box = move.hitbox;
+  if (box.kind === 'arc') return box.range;
+  if (box.kind === 'projectile') return (box.speed * box.lifetimeMs) / 1000;
+  if (box.kind === 'dash') return box.distance;
+  return 0;
+}
+
+/** Enemies this close (beyond their body) count for the crowd that calls for a boost. */
+const BOOST_CROWD_PX = 140;
+/** A boss this close calls for the boost. */
+const BOOST_BOSS_PX = 220;
+
 export interface BotProfile {
   /** Perception lag: the bot acts on the screen as it was this long ago. */
   reactionMs: number;
@@ -45,11 +70,13 @@ export interface BotProfile {
   dodges: boolean;
   /** Attacks whenever it can, wind-ups or not, and rolls on a whim. */
   mash: boolean;
+  /** Knows when to use the boost and area slots (with `BotOptions.slots`). */
+  usesSlots?: boolean;
 }
 
 export const BOT_PROFILES: Readonly<Record<BotKind, BotProfile>> = {
-  perfect: { reactionMs: 0, choiceMs: 0, timingNoiseMs: 0, aimNoiseRad: 0, mistakeRate: 0, overRollRate: 0, dodges: true, mash: false },
-  average: { reactionMs: 230, choiceMs: 100, timingNoiseMs: 40, aimNoiseRad: 0.08, mistakeRate: 0.15, overRollRate: 0, dodges: true, mash: false },
+  perfect: { reactionMs: 0, choiceMs: 0, timingNoiseMs: 0, aimNoiseRad: 0, mistakeRate: 0, overRollRate: 0, dodges: true, mash: false, usesSlots: true },
+  average: { reactionMs: 230, choiceMs: 100, timingNoiseMs: 40, aimNoiseRad: 0.08, mistakeRate: 0.15, overRollRate: 0, dodges: true, mash: false, usesSlots: true },
   novice: { reactionMs: 400, choiceMs: 150, timingNoiseMs: 90, aimNoiseRad: 0.2, mistakeRate: 0.4, overRollRate: 0.35, dodges: true, mash: false },
   masher: { reactionMs: 230, choiceMs: 0, timingNoiseMs: 0, aimNoiseRad: 0.1, mistakeRate: 0, overRollRate: 0, dodges: false, mash: true },
 };
@@ -90,7 +117,8 @@ interface Threat {
   positional: boolean;
 }
 
-export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT_PROFILES[kind]): Bot {
+export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT_PROFILES[kind], options: BotOptions = {}): Bot {
+  const useSlots = options.slots === true && profile.usesSlots === true;
   let rng = (seed ^ 0x5eed_b07) | 0;
   const random = (): number => {
     const r = nextRandom(rng);
@@ -247,7 +275,15 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
       let move: Vec2 = vec(0, 0);
       let roll = false;
       let attack = false;
+      /** Four-slots: the boost (2) or area (3) slot pressed instead of the fast one. */
+      let special: 2 | 3 | null = null;
       let aim = add(self.pos, vec(0, 1));
+      const ready = (slot: number): MoveDef | null => {
+        const id = self.loadout[slot];
+        if (!id || (self.cooldowns[slot] ?? 0) > 0) return null;
+        const move = MOVES[id];
+        return self.stamina >= move.staminaCost + TUNING.roll.staminaCost ? move : null;
+      };
       const canRoll = self.stamina >= TUNING.roll.staminaCost * 1.2 && !self.rolling && !self.acting;
       let busy = false;
 
@@ -329,6 +365,16 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
           if (gap > reach) move = nav.direction(obs.arena, self.pos, target.pos);
           else if (imminent && !careless) move = scale(dir, -0.5);
           if (gap <= reach + 6 && (!imminent || careless) && !self.acting && obs.tick - lastPressTick > 1) attack = true;
+          // Four-slots: the area move on a cluster (or a boss in reach), never into a wind-up.
+          const area = useSlots && !self.acting && !imminent && obs.tick - lastPressTick > 1 ? ready(3) : null;
+          if (area) {
+            const span = areaReach(area);
+            const caught = seen.enemies.filter((e) => distance(self.pos, e.pos) <= span + e.radius).length;
+            if (caught >= 2 || (target.boss && gap <= span + target.radius)) {
+              special = 3;
+              attack = false;
+            }
+          }
         }
       } else if (!busy && !roll) {
         move = navigate(obs, context);
@@ -351,13 +397,24 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
         if (obs.tick - lastRollTick < 4) roll = false;
         else lastRollTick = obs.tick;
       }
-      if (attack) lastPressTick = obs.tick;
+      // Four-slots: the boost before a boss or a crowd, when nothing threatens right now.
+      if (useSlots && special === null && !busy && !roll && !self.acting && !self.buffed && obs.tick - lastPressTick > 1 && ready(2)) {
+        const bossNear = seen.enemies.some((e) => e.boss && distance(self.pos, e.pos) <= BOOST_BOSS_PX);
+        const crowd = seen.enemies.filter((e) => distance(self.pos, e.pos) <= BOOST_CROWD_PX + e.radius).length;
+        if (bossNear || crowd >= 3) {
+          special = 2;
+          attack = false;
+        }
+      }
+      if (attack || special !== null) lastPressTick = obs.tick;
+      // Without the option the input is exactly the two-slot one it always was.
+      const slots = useSlots ? [attack, false, special === 2, special === 3] : [attack, false];
       return {
         move,
         aim,
         roll,
-        slots: [attack, false],
-        slotMouse: [attack, false],
+        slots,
+        slotMouse: useSlots ? [attack, false, false, special === 3] : [attack, false],
         lock: false,
         click: false,
         wheel: 0,
