@@ -28,8 +28,10 @@ import { nextAdventureScreen } from './adventure-route';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown } from '../town/scene';
-import { saveRun } from '../town/records';
-import { DUNGEON_LORE } from '../data/dungeon-lore';
+import { clearedDungeons, readRecords, saveRun } from '../town/records';
+import { dungeonById, type DungeonId } from '../data/dungeons';
+import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
+import { dungeonSelectScreen } from './dungeon-select';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -69,6 +71,12 @@ function devStartFloor(): number | undefined {
   return Number.isFinite(floor) ? floor : undefined;
 }
 
+/** Development server only: `?dungeon=<id>` runs that dungeon without the select (to look at it without unlocking it). */
+function devDungeon(): DungeonId {
+  const id = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('dungeon') : null;
+  return dungeonById(id).id;
+}
+
 /**
  * `?net=local`: a shared run between tabs of this browser (netcode spike,
  * docs/gdd.md §12). `?host=1` makes this tab the host; otherwise it looks for
@@ -82,6 +90,8 @@ interface NetJoin {
   localId: string;
   seed: number;
   floor: number;
+  /** The host's dungeon id as received (validated when the run starts). */
+  dungeon?: string;
   /** A room-code run (no "Try again": the room is gone after the run). */
   online: boolean;
 }
@@ -108,7 +118,7 @@ function leaveNet(): void {
   current = null;
 }
 
-async function connectLocal(root: HTMLElement, seed: number, floor: number): Promise<NetJoin> {
+async function connectLocal(root: HTMLElement, seed: number, floor: number, dungeon: DungeonId): Promise<NetJoin> {
   const params = new URLSearchParams(window.location.search);
   const session = sessionOver(root, new BroadcastChannelTransport());
   current = session;
@@ -118,6 +128,7 @@ async function connectLocal(root: HTMLElement, seed: number, floor: number): Pro
     searchMs: HOST_SEARCH_MS,
     seed,
     floor,
+    dungeon,
     species: settings.species,
     loadout: settings.loadout,
     forceHost: params.get('host') === '1',
@@ -211,11 +222,23 @@ function titleScreen(root: HTMLElement, initial = 0): void {
  * starter is chosen, then the loadout with the starter preselected (see
  * `nextAdventureScreen`; each step comes back here when it ends).
  */
-function newAdventure(root: HTMLElement): void {
+function newAdventure(root: HTMLElement, dungeon?: DungeonId): void {
   const next = nextAdventureScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
-  if (next === 'prologue') prologue(root, () => newAdventure(root));
-  else if (next === 'quiz') quiz(root, () => newAdventure(root), () => titleScreen(root, 0));
-  else loadout(root);
+  if (next === 'prologue') prologue(root, () => newAdventure(root, dungeon));
+  else if (next === 'quiz') quiz(root, () => newAdventure(root, dungeon), () => titleScreen(root, 0));
+  else loadout(root, 'species', dungeon);
+}
+
+/** Dungeons whose guardian fell on this device (they open the next ones). */
+const cleared = (): Set<string> => clearedDungeons(readRecords(store));
+
+/** After the loadout: the dungeon select when more than one dungeon is open, otherwise straight in. */
+function chooseDungeon(root: HTMLElement, back: () => void): void {
+  if (!needsDungeonSelect(cleared())) {
+    void play(root);
+    return;
+  }
+  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), onChoose: (dungeon) => void play(root, undefined, dungeon), onBack: back }));
 }
 
 /** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
@@ -244,7 +267,7 @@ function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
 }
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
-function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species'): void {
+function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dungeon?: DungeonId): void {
   show(root, [
     ...loadoutScreen({
       stage,
@@ -253,11 +276,11 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species'): voi
       sheets: sheetsReady(),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
-        loadout(root, 'moves');
+        loadout(root, 'moves', dungeon);
       },
       onChange: (next) => update({ loadout: next }),
-      onStart: () => void play(root),
-      onBack: () => (stage === 'moves' ? loadout(root, 'species') : titleScreen(root, 0)),
+      onStart: () => (dungeon ? void play(root, undefined, dungeon) : chooseDungeon(root, () => loadout(root, 'moves'))),
+      onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : titleScreen(root, 0)),
     }),
   ]);
 }
@@ -298,7 +321,8 @@ function townScreen(root: HTMLElement): void {
     show(root, nodes, false);
     audio.setMusic('title');
   };
-  void openTown({ sheets: sheetsReady(), species: settings.species, show: showTown, onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5) });
+  const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5) });
 }
 
 function creditsScreen(root: HTMLElement): void {
@@ -385,11 +409,14 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (current === session) messageScreen(root, t('lobby.full'));
   });
   session.onStart((start) => {
-    if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, online: true });
+    if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), online: true });
   });
 
   const seed = runSeed();
   const leave = () => titleScreen(root, 1);
+  // The host picks the dungeon among the open ones (the row only shows when there is a choice).
+  const open = unlockedDungeons(cleared());
+  let pick = 0;
   const items = (): ListItem[] => [
     ...(asHost
       ? [
@@ -397,10 +424,27 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
             label: t('lobby.start'),
             className: 'start-row',
             onConfirm: () => {
-              session.begin();
-              void play(root, { session, role: 'host', localId: 'p1', seed, floor: 1, online: true });
+              const dungeon = open[pick]!.id;
+              session.begin(dungeon);
+              void play(root, { session, role: 'host', localId: 'p1', seed, floor: 1, dungeon, online: true });
             },
           },
+          ...(open.length > 1
+            ? [
+                {
+                  label: t('select.title'),
+                  value: t(open[pick]!.lore.nameKey),
+                  onAdjust: (delta: -1 | 1) => {
+                    pick = (pick + delta + open.length) % open.length;
+                    list.setItems(items());
+                  },
+                  onConfirm: () => {
+                    pick = (pick + 1) % open.length;
+                    list.setItems(items());
+                  },
+                },
+              ]
+            : []),
         ]
       : []),
     {
@@ -443,7 +487,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean): void {
   const back = () => titleScreen(root);
   const items: ListItem[] = [{ label: t('screen.menu'), onConfirm: back }];
-  if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root) });
+  if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root, undefined, summary.dungeon) });
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
     mdWindow({ className: `result ${result}` }, [
@@ -460,22 +504,23 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon()): Promise<void> {
   if (!sheets) {
     waitScreen(root, t('app.loading'));
     await sheetsReady();
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor'> = { seed: runSeed(), startFloor: devStartFloor() };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon'> = { seed: runSeed(), startFloor: devStartFloor(), dungeon };
   if (!join && netMode()) {
     waitScreen(root, t('net.connecting'));
-    join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1);
+    join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
   }
   if (join) {
     if (join.online && current !== join.session) return;
     current = join.session;
-    shared = { seed: join.seed, startFloor: join.floor, net: { session: join.session, role: join.role, localId: join.localId } };
+    // A guest plays the host's dungeon (an unknown id plays the first one).
+    shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, net: { session: join.session, role: join.role, localId: join.localId } };
   }
   const online = join?.online ?? false;
   const canvas = h('canvas', { className: 'game' });
@@ -493,7 +538,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     onQuit: () => titleScreen(root),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
-      if (shared.net?.role !== 'guest') saveRun(store, { dungeon: DUNGEON_LORE[0]!.id, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
+      if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
       resultScreen(root, result, summary, online);
     },
   });
@@ -507,9 +552,10 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
 function devScreen(root: HTMLElement): boolean {
   if (!import.meta.env.DEV) return false;
   const screen = new URLSearchParams(window.location.search).get('screen');
-  const summary: RunSummary = { floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'] };
+  const summary: RunSummary = { dungeon: devDungeon(), floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'] };
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
+    dungeons: () => chooseDungeon(root, () => titleScreen(root)),
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),

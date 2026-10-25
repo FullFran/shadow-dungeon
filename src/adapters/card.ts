@@ -11,6 +11,8 @@ import { floorLabel } from './hud';
  * while it shows; it only fades over the view.
  */
 export interface FloorCard {
+  /** Name of the dungeon (already translated); the game title when absent. */
+  dungeon?: string;
   floor: number;
   kind: FloorKind;
   /** The collapse floor just escaped, if the previous floor was one. */
@@ -47,7 +49,7 @@ export function formatClock(ms: number): string {
 /** The card's text lines, top to bottom. */
 export function cardLines(card: FloorCard): { dungeon: string; floor: string; warning: string | null; bonus: string | null } {
   return {
-    dungeon: t('app.title'),
+    dungeon: card.dungeon ?? t('app.title'),
     floor: floorLabel(card.floor),
     warning: card.kind === 'collapse' ? t('card.collapse') : null,
     bonus: card.escape ? t('card.escaped').replace('{time}', formatClock(card.escape.ms)) : null,

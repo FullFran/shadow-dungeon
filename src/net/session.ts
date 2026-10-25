@@ -36,6 +36,8 @@ export interface SessionOptions {
 export interface StartInfo {
   seed: number;
   floor: number;
+  /** The host's dungeon id as sent (validated by the run: an unknown id plays the first dungeon). */
+  dungeon?: string;
   localId: string;
 }
 
@@ -54,11 +56,11 @@ export interface NetSession {
   peerId(): string;
   roster(): readonly RosterEntry[];
   /** This tab runs the run: player p1. */
-  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean }): void;
+  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string }): void;
   /** Host: true while waiting in the lobby for `begin`. */
   inLobby(): boolean;
-  /** Host: leaves the lobby and starts every admitted player with this seed. */
-  begin(): void;
+  /** Host: leaves the lobby and starts every admitted player with this seed (and `dungeon`, if given). */
+  begin(dungeon?: string): void;
   /** Asks the session's host to let this player in; `onStart` fires when it answers. */
   join(species: SpeciesId, loadout: readonly (MoveId | null)[]): void;
   onStart(handler: (start: StartInfo) => void): void;
@@ -134,6 +136,8 @@ export function createSession(options: SessionOptions): NetSession {
   let roster: RosterEntry[] = [];
   let seed = 0;
   let hostFloor = 1;
+  /** Host: the dungeon sent with every `start`. */
+  let dungeon: string | undefined;
   let started = false;
   let ticks = 0;
   let left = false;
@@ -213,6 +217,8 @@ export function createSession(options: SessionOptions): NetSession {
     if (role === 'host') send({ t: 'leave', id: entry.id }, true);
   }
 
+  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), players: roster });
+
   transport.onMessage((from, wire) => {
     tracker.received(wire.length, scheduler.now());
     const message = decodeMessage(wire);
@@ -225,7 +231,7 @@ export function createSession(options: SessionOptions): NetSession {
         }
         if (!admit(from, message.species)) send({ t: 'full', peer: from }, true);
         else if (lobby) send({ t: 'lobby', players: roster }, true);
-        else send({ t: 'start', seed, floor: hostFloor, players: roster }, true);
+        else send(startMessage(), true);
         return;
       case 'lobby':
         if (role === 'host') return;
@@ -256,7 +262,7 @@ export function createSession(options: SessionOptions): NetSession {
         role = 'guest';
         localId = me.id;
         seed = message.seed;
-        for (const handler of startHandlers) handler({ seed, floor: message.floor, localId: me.id });
+        for (const handler of startHandlers) handler({ seed, floor: message.floor, ...(typeof message.dungeon === 'string' ? { dungeon: message.dungeon } : {}), localId: me.id });
         return;
       }
       case 'state': {
@@ -309,6 +315,7 @@ export function createSession(options: SessionOptions): NetSession {
       localId = 'p1';
       seed = runSeed;
       hostFloor = floor;
+      dungeon = hostOptions?.dungeon;
       lobby = hostOptions?.lobby ?? false;
       setRoster([{ peer: transport.selfId, id: 'p1', species }]);
       // Tabs that knocked while this one was still searching are let in now (local election).
@@ -316,13 +323,14 @@ export function createSession(options: SessionOptions): NetSession {
       pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
       if (lobby) send({ t: 'lobby', players: roster }, true);
-      else if (roster.length > 1) send({ t: 'start', seed, floor: hostFloor, players: roster }, true);
+      else if (roster.length > 1) send(startMessage(), true);
     },
     inLobby: () => role === 'host' && lobby,
-    begin() {
+    begin(chosen) {
       if (role !== 'host' || !lobby) return;
       lobby = false;
-      send({ t: 'start', seed, floor: hostFloor, players: roster }, true);
+      if (chosen !== undefined) dungeon = chosen;
+      send(startMessage(), true);
     },
     join(species, loadout) {
       joining = { species, loadout };

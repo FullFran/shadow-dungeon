@@ -32,8 +32,10 @@ export interface TownOptions {
   species: string;
   /** Replaces the page with the town's nodes (no menu backdrop). */
   show: (nodes: Node[]) => void;
-  /** The route exit was taken: start the run flow. */
-  onDepart: () => void;
+  /** The dungeons open on this device, in select order (the exit window lists them). */
+  dungeons: readonly { id: string; label: string }[];
+  /** The route exit was taken towards dungeon `id`: start the run flow. */
+  onDepart: (id: string) => void;
   /** Esc: back to the title. */
   onQuit: () => void;
 }
@@ -189,14 +191,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   function openExitWindow(): void {
     held.clear();
-    const depart = () => {
+    const depart = (id: string) => {
       handle.stop();
-      options.onDepart();
+      options.onDepart(id);
     };
+    // One row per open dungeon, then stay.
     const list = cursorList({
       label: t('town.exit.title'),
       items: [
-        { label: t('town.exit.crypt'), onConfirm: depart },
+        ...options.dungeons.map((d) => ({ label: d.label, onConfirm: () => depart(d.id) })),
         { label: t('town.exit.stay'), onConfirm: closeExitWindow },
       ],
       onBack: closeExitWindow,

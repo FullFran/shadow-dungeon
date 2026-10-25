@@ -332,5 +332,9 @@
   "town.exit.title": "Destino",
   "town.exit.text": "El camino sale del pueblo hacia las mazmorras.",
   "town.exit.crypt": "Cripta del Rey de las Espadas",
-  "town.exit.stay": "Quedarse en el pueblo"
+  "town.exit.stay": "Quedarse en el pueblo",
+  "select.title": "Mazmorra",
+  "select.about": "Expedición",
+  "select.best": "Mejor planta: {floor}",
+  "select.locked": "Vence al guardián de {dungeon} para abrirla."
 }

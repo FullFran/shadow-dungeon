@@ -4,7 +4,10 @@ import type { SpeciesId } from '../data/species';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { chooseItem, floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { chooseItem, dungeonOf, floorPlanOf, followToFloor, progressRun, startRun, type RunState } from '../core/run';
+import { musicFor, type DungeonId } from '../data/dungeons';
+import type { MusicContext } from '../data/music';
+import { trackNote, type DungeonIntro, type NowPlaying } from '../adapters/intro-card';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -12,7 +15,7 @@ import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
-import { floorEntrySounds, floorMusic, type AudioEngine } from '../adapters/audio';
+import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
 import { heldItems, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
@@ -35,6 +38,8 @@ export type GameResult = 'defeat' | 'victory';
 
 /** Shown on the end screens. */
 export interface RunSummary {
+  /** The dungeon of the run (records are kept per dungeon). */
+  dungeon: DungeonId;
   floor: number;
   seed: number;
   level: number;
@@ -48,6 +53,8 @@ export interface GameOptions {
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
+  /** The dungeon to run (the Crypt by default); a shared run uses the host's. */
+  dungeon?: DungeonId;
   /** Development only: start on this floor of the run (`?floor=` on the dev server). */
   startFloor?: number;
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
@@ -100,6 +107,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       ...(net ? { localId: net.localId, role: net.role } : {}),
     },
     options.startFloor,
+    options.dungeon,
   );
   let run: RunState = started.run;
   let world: WorldState = started.world;
@@ -126,8 +134,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let closePick: (() => void) | null = null;
   const overlayParent = canvas.parentElement ?? document.body;
   const audio = options.audio;
+  /** Floor 1 entry title and the "♪ title" note of the last music change (presentation only). */
+  let intro: DungeonIntro | null = null;
+  let nowPlaying: NowPlaying | null = null;
+  let playing: MusicContext | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
-  const music = () => audio?.setMusic(floorMusic(isBossFloor(run), run.kind));
+  const music = () => {
+    const context = musicFor(dungeonOf(run), floorPlanOf(run), run.kind);
+    audio?.setMusic(context);
+    if (context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
+    playing = context;
+  };
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
   /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */
@@ -137,7 +154,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
   function announceFloor(descended: boolean): void {
-    card = { floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    const lore = dungeonOf(run).lore;
+    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
+    if (run.floor === 1) {
+      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs };
+      card = null;
+    }
     if (run.kind === 'collapse') say(t('card.collapse'), 'warn');
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
@@ -252,7 +275,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     hidePick();
     audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
-    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items }), 700);
+    window.setTimeout(() => options.onEnd(result, { dungeon: run.dungeon, floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items }), 700);
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
@@ -354,6 +377,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
+      palette: dungeonOf(run).palette,
+      intro,
+      nowPlaying,
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);

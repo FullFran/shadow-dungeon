@@ -9,6 +9,8 @@ import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
+import { drawDungeonIntro, drawNowPlaying, type DungeonIntro, type NowPlaying } from './intro-card';
+import { CRYPT, type TilePalette } from '../data/dungeons';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { drawMessageLog, type MessageLog } from './message-log';
@@ -47,6 +49,12 @@ export interface RenderFrame {
   minimap: MinimapMemory | null;
   /** Message log at the bottom left (lines fade with `timeMs`). */
   log?: MessageLog;
+  /** Tile and arena colours of the dungeon (the Crypt's by default). */
+  palette?: TilePalette;
+  /** Floor 1: the dungeon's name and subtitle, while they show. */
+  intro?: DungeonIntro | null;
+  /** The track that started last ("♪ title"), while it shows. */
+  nowPlaying?: NowPlaying | null;
 }
 
 const COLORS = {
@@ -492,6 +500,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
+    // The dungeon's tile and arena colours replace the defaults for this frame.
+    Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = COLORS.wall;
@@ -578,6 +588,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
+    if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, view.width, view.height);
+    if (frame.nowPlaying) drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height);
   }
 
   return { draw };

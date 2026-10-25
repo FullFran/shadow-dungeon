@@ -17,6 +17,8 @@ export interface AutoJoinOptions {
   searchMs: number;
   seed: number;
   floor: number;
+  /** The dungeon this tab would run if it hosts. */
+  dungeon?: string;
   species: SpeciesId;
   loadout: readonly (MoveId | null)[];
   /** `?host=1`: host without searching. */
@@ -28,6 +30,8 @@ export interface AutoJoinResult {
   localId: string;
   seed: number;
   floor: number;
+  /** The host's dungeon (a guest's comes from its `start`). */
+  dungeon?: string;
 }
 
 /** Deterministic tie-break: the lowest id among this tab and the other searching tabs hosts. */
@@ -43,10 +47,12 @@ export function autoJoin(options: AutoJoinOptions): Promise<AutoJoinResult> {
       resolve(result);
     };
     const asHost = () => {
-      session.host(seed, floor, species);
-      finish({ role: 'host', localId: 'p1', seed, floor });
+      session.host(seed, floor, species, options.dungeon ? { dungeon: options.dungeon } : undefined);
+      finish({ role: 'host', localId: 'p1', seed, floor, ...(options.dungeon ? { dungeon: options.dungeon } : {}) });
     };
-    session.onStart((start) => finish({ role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor }));
+    session.onStart((start) =>
+      finish({ role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}) }),
+    );
     if (options.forceHost) return asHost();
     session.join(species, loadout);
     const decide = () => {

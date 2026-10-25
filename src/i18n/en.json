@@ -332,5 +332,9 @@
   "town.exit.title": "Destination",
   "town.exit.text": "The road leaves town towards the dungeons.",
   "town.exit.crypt": "Crypt of the Sword King",
-  "town.exit.stay": "Stay in town"
+  "town.exit.stay": "Stay in town",
+  "select.title": "Dungeon",
+  "select.about": "Expedition",
+  "select.best": "Best floor: {floor}",
+  "select.locked": "Defeat the guardian of the {dungeon} to open it."
 }

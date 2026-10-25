@@ -40,10 +40,41 @@ export const DUNGEON = {
   wakeRadius: 160,
 } as const;
 
-/** One floor of a run: generated (seeded) or a fixed room such as the boss arena. */
-export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId };
+/**
+ * One floor of a run: generated (seeded) or a fixed room. A fixed room is the
+ * guardian's arena unless it says `midboss` (a fight that leads on through
+ * the room's exit).
+ */
+export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId; role?: 'midboss' };
 
-/** The MVP run (docs/gdd.md §3): three generated floors, then the Aegislash arena. */
+/** One species of a dungeon's enemy pool: its weight by floor (index 0 is floor 1, deeper floors use the last entry). */
+export interface SpawnEntry {
+  species: SpeciesId;
+  weights: readonly number[];
+  /** Swarmers: one pick places up to this many in the room (default 1). */
+  pack?: number;
+}
+
+/** Enemies of a dungeon's generated floors. */
+export interface SpawnTuning {
+  /** Enemies per room on floor 1, plus `perDepth` (rounded down) per deeper floor, plus up to `jitter` more. */
+  base: number;
+  perDepth: number;
+  jitter: number;
+  maxPerRoom: number;
+  pool: readonly SpawnEntry[];
+}
+
+/** The Crypt's enemies (the M2 table). */
+export const CRYPT_SPAWNS: SpawnTuning = {
+  base: DUNGEON.spawns.base,
+  perDepth: DUNGEON.spawns.perDepth,
+  jitter: DUNGEON.spawns.jitter,
+  maxPerRoom: DUNGEON.spawns.maxPerRoom,
+  pool: DUNGEON.spawns.species.map((entry) => ({ species: entry.species, weights: [entry.weight] })),
+};
+
+/** The Crypt run (docs/gdd.md §3): three generated floors, then the Aegislash arena. */
 export const RUN_PLAN: readonly FloorPlan[] = [{ kind: 'generated' }, { kind: 'generated' }, { kind: 'generated' }, { kind: 'room', room: 'boss' }];
 
 export const RUN = {
