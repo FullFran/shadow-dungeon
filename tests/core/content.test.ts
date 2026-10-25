@@ -16,7 +16,11 @@ describe('move data', () => {
         expect(holds).toEqual([...holds].sort((a, b) => a - b));
       } else {
         expect(move.charge).toBeUndefined();
-        expect(move.staminaCost).toBe(0);
+        // Area moves (four-slots) pay stamina and wait a cooldown; fast and boost moves are free.
+        if (move.slot === 'area') {
+          expect(move.staminaCost).toBeGreaterThan(0);
+          expect(move.cooldownMs).toBeGreaterThan(0);
+        } else expect(move.staminaCost).toBe(0);
       }
     });
   }

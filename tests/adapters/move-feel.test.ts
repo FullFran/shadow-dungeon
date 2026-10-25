@@ -49,8 +49,8 @@ describe('juice tier', () => {
     expect(soundFor(hit({ moveId: 'bone-rush' }))).toBe('hit');
   });
 
-  it("leaves Mimikyu's moves on the plain damage rule", () => {
-    for (const id of SPECIES.mimikyu.movepool) {
+  it("leaves Mimikyu's fast and heavy moves on the plain damage rule (area moves always feel heavy)", () => {
+    for (const id of SPECIES.mimikyu.movepool.filter((m) => MOVES[m].slot === 'fast' || MOVES[m].slot === 'heavy')) {
       expect(MOVES[id].juice).toBeUndefined();
       expect(isHeavyHit(hit({ moveId: id }))).toBe(false);
     }

@@ -284,6 +284,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     hitIds: [],
     ...(move.bonus ? { bonus: move.bonus } : {}),
     ...(move.hitbox.boomerang ? { returnAtMs: move.hitbox.lifetimeMs / 2, pierce: true } : {}),
+    ...(move.hitbox.wave ? { pierce: true, wave: true } : {}),
     moveId: move.id,
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
@@ -415,7 +416,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       const { returnAtMs: _turned, ...rest } = moved;
       moved = { ...rest, vel: scale(moved.vel, -1), hitIds: [] };
     }
-    const returning = Boolean(moved.pierce) && moved.returnAtMs === undefined;
+    // A boomerang past its turn (a wave pierces too, but never turns).
+    const returning = Boolean(moved.pierce) && !moved.wave && moved.returnAtMs === undefined;
     if (returning && moved.owner === 'player') {
       // On the way home a boomerang steers to where the player is now, and is caught on reaching them.
       const home = sub(current.player.pos, moved.pos);

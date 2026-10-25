@@ -302,6 +302,8 @@ export interface ProjectileState {
   returnAtMs?: number;
   /** Goes through enemies instead of being spent on the first hit (boomerangs). */
   pierce?: boolean;
+  /** A line wave (Flamethrower): goes through what it hits, once each, and never turns back like a boomerang. */
+  wave?: boolean;
   /** Player projectiles: the move that fired it (its hits and its look). */
   moveId?: MoveId;
   /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */

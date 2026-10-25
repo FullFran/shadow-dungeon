@@ -24,7 +24,7 @@ More attack choices per starter without trivialising the souls feel: boost and a
 ## Tasks
 - [x] T1 Model + input + touch + HUD layout (route: inline in this bounded writer; trigger evidence: one writer owns the whole feature).
 - [x] T2 Boost moves + buffs + cooldowns + HUD cooldown + sound/VFX.
-- [ ] T3 Area moves + VFX + loadout UI (4 slots).
+- [x] T3 Area moves + VFX + loadout UI (4 slots).
 - [ ] T4 Bots use boost/area, balance before/after, GDD §4, README, screenshots.
 
 ## Acceptance
@@ -43,6 +43,8 @@ npm test, npm run build, npm run balance -- --quick.
 - T1 checks: npm test 148 files / 1403 tests passed; typecheck clean.
 - T2: RED observed (tests/core/boost-moves.test.ts: 12 of 13 failed), then GREEN. New `self` hitbox, `MoveDef.cooldownMs` + `buff` (power / haste / guard / kindle), core/boosts.ts (cooldowns and buff live on the player only while running; ticked on the player clock). Moves: Mimikyu Danza Espada (next 3 hits x1.5, 9 s, CD 15 s), Zorua Maquinación (walk x1.3 + 35% crit, 5 s, CD 14 s), Litwick Fuego Fatuo (Flash Fire lit at once, CD 16 s), Cubone Corpulencia (damage taken x0.6, 6 s, CD 16 s); no stamina; equipped by default in slot 3. VFX: type-coloured burst on cast + pulsing aura while the buff runs (blinks the last 1.2 s); sound `buff` on buffStarted; HUD slot shows seconds left + emptying bar, border in the type colour while the buff runs; loadout card shows the cooldown and no power for boosts.
 - T2 checks: npm test 150 files / 1425 tests passed; typecheck clean; golden digest unchanged (projection).
+- T3: RED observed (tests/core/area-moves.test.ts: 10 of 10 failed), then GREEN. Eight area moves, two per starter, tap-only, juice heavy, stamina 30–40, cooldown 6–10 s: Mimikyu Brillo Mágico (Fairy ring, default) / Golpe Umbrío (Ghost 120-power cone, 520 ms wind-up); Zorua Pulso Umbrío (Dark ring, default) / Alarido (Dark wide cone); Litwick Lanzallamas (Fire line wave, pierces, never returns: new `wave` projectile flag, default) / Onda Ígnea (Fire cone); Cubone Terremoto (Ground big ring, default) / Terratemblor (Ground small quick ring). Night Daze stays heavy (moving it would change Zorua's default heavy slot; Pulso Umbrío fills the ring role). Bomba Fango not added (would need a burst-on-impact projectile). VFX reuse the type-coloured arc/ring/fire orb; sound `area` on press; loadout lists boost/area cards (persisted through settings), cards show cooldown and the new `cone` / `wave` shapes.
+- T3 checks: npm test 152 files / 1446 tests passed; typecheck clean; content.test.ts now lets area moves pay stamina (with a cooldown).
 
 ## Next step
-T3.
+T4.
