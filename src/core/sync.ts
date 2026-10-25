@@ -1,3 +1,5 @@
+import { UNKILLABLE } from '../data/sima';
+import { applySimaSync, simaSync, type SimaSync } from './sima-events';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
@@ -82,6 +84,8 @@ export interface HostSnapshot {
   berries: readonly string[];
   enemies: readonly EnemySnapshot[];
   projectiles: readonly ProjectileSnapshot[];
+  /** Sima: the floor event's progress and the pact in force (absent elsewhere). */
+  sima?: SimaSync;
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
@@ -166,6 +170,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       ...(e.armor ? { armor: true as const } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
+    ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
   };
 }
 
@@ -247,7 +252,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
   });
   // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
   const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
-  return { ...state, enemies, projectiles: [...own, ...theirs], berries };
+  return applySimaSync({ ...state, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima);
 }
 
 /** How many applied claim ids the host remembers (claims older than this are long settled). */
@@ -266,7 +271,7 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
     if (applied.includes(claim.id)) continue;
     applied = [...applied, claim.id];
     const enemy = enemies.find((e) => e.id === claim.enemyId);
-    if (!enemy || !enemy.alive) continue;
+    if (!enemy || !enemy.alive || UNKILLABLE.includes(enemy.species)) continue;
     let struck: EnemyState;
     if (claim.blocked) {
       events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });

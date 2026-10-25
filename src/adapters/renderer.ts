@@ -1,3 +1,4 @@
+import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
 import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
@@ -139,6 +140,9 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   hurt: '#ff5a5a',
   heal: '#6ee07a',
 };
+
+/** The Sima's hunter: Houndour's sheets in the eclipse's shadow. */
+const HUNTER_FILTER = 'brightness(0.35) sepia(1) hue-rotate(-50deg) saturate(4) drop-shadow(0 0 2px #ff2a3a)';
 
 const TILE = 32;
 const DEG = Math.PI / 180;
@@ -845,6 +849,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
+    // The Sima's floor event: its object (chest, altar, crystal, merchant), sealed doors, an ambush's tell.
+    if (current.simaEvent) drawSimaEvent(ctx, current.simaEvent, timeMs, current.arena.tiles?.cols ?? 0);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
     const posOf = (id: string, fallback: Vec2) => positions.get(id) ?? fallback;
@@ -870,8 +876,15 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // (Sableye blinking out works the same way.)
           const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
-          // A Sima elite glows in its trait's colour.
+          // A Sima nest is drawn in code; it glows harder as its next hatching nears.
+          if (enemy.species === 'eclipse-nest') {
+            const nest = current.simaEvent?.kind === 'nest' && current.simaEvent.woke ? (current.simaEvent.remainingMs ?? null) : null;
+            drawNest(ctx, pos, enemy.hp / enemy.maxHp, nest, fade, timeMs);
+            return;
+          }
+          // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
           if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(SIMA_ELITES.tints[enemy.elite]);
+          if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
           ctx.filter = 'none';
         },
@@ -937,6 +950,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, view.width);
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, view.width);
+    if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, view.width, timeMs);
   }
 
   return { draw };

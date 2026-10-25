@@ -3,6 +3,8 @@ import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type D
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
 import { rollElites, simaSquads } from './sima';
+import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent } from './sima-events';
+import { worldDifficulty } from './difficulty';
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
@@ -43,6 +45,8 @@ export interface RunState {
   clockMs?: number;
   /** Endless dungeon only: this floor's echo already paid its time bonus. */
   echoPaid?: boolean;
+  /** Sima: this floor's event already paid its time (the crystal, a cleared wave room). */
+  eventPaid?: boolean;
 }
 
 /** `eclipse`: the endless dungeon's clock ran out (a score end, not a defeat). */
@@ -108,14 +112,18 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
   const enemyScale = endless ? depthScale(endless.scaling, run.floor, plan.kind === 'room' && plan.role === 'echo') : undefined;
-  const deeper: WorldState = { ...world, depth: run.floor, enemyScale };
+  // A Sima event belongs to its floor (the pact outlasts it).
+  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, simaEvent: undefined };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
   const drawn = generateFloor(seed, run.floor, endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns);
   // The Sima: some rooms hold mixed squads, and some enemies are elites (tougher, not more).
   const floor = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
   const loaded: WorldState = { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
-  return endless?.elites ? rollElites(loaded, seed, run.floor, endless.elites) : loaded;
+  const tough = endless?.elites ? rollElites(loaded, seed, run.floor, endless.elites) : loaded;
+  // The Sima's floor event, if this floor has one (sima-events.ts).
+  const event = endless?.events ? chooseSimaEvent(seed, run.floor, floor, run.kind, endless.events) : null;
+  return event && endless?.events ? placeSimaEvent(tough, event, floor, seed, run.floor, endless.events, endlessSpawns(endless, run.floor).pool, worldDifficulty(tough)) : tough;
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */
@@ -165,9 +173,9 @@ function goDown(run: RunState, world: WorldState, floor: number): { run: RunStat
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
   const endless = dungeonOf(run).endless;
   const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;
-  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false } : {};
+  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items), ...clock };
-  return { run: next, world: enterFloor(heal(world), next), bonusMs };
+  return { run: next, world: enterFloor(descendPact(heal(world)), next), bonusMs };
 }
 
 /** The run clock after `dtMs` more of play (the endless dungeon only; other runs have none). */
@@ -185,6 +193,15 @@ function payEcho(run: RunState, world: WorldState): { run: RunState; bonusMs: nu
   return { run: { ...run, clockMs, echoPaid: true }, bonusMs: clockMs - run.clockMs };
 }
 
+/** Sima: a floor event that pays time (the crystal touched, a wave room cleared) pays it once (the host's clock). */
+function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: number } {
+  const events = dungeonOf(run).endless?.events;
+  const due = events ? eventBonusMs(world.simaEvent, events) : 0;
+  if (due <= 0 || run.eventPaid || run.clockMs === undefined) return { run, bonusMs: 0 };
+  const clockMs = addTime(run.clockMs, due);
+  return { run: { ...run, clockMs, eventPaid: true }, bonusMs: clockMs - run.clockMs };
+}
+
 /**
  * After a step: defeat (every player down), victory (last floor cleared),
  * stairs (or a fixed room's exit) to the next floor, or nothing. In a shared
@@ -195,7 +212,9 @@ export function progressRun(current: RunState, world: WorldState): RunProgress {
   if (partyDefeated(world)) return { run: current, world, entered: false, outcome: 'defeat' };
   // Endless: the eclipse swallows the floor when the host's clock runs out (a guest ends on the host's word).
   if (current.clockMs !== undefined && current.clockMs <= 0 && world.role !== 'guest') return { run: current, world, entered: false, outcome: 'eclipse' };
-  const paid = payEcho(current, world);
+  const echoPaid = payEcho(current, world);
+  const eventPaid = payEvent(echoPaid.run, world);
+  const paid = { run: eventPaid.run, bonusMs: echoPaid.bonusMs + eventPaid.bonusMs };
   const run = paid.run;
   const last = run.floor >= floorCount(run);
   if (last && floorPlanOf(run).kind === 'room' && roomCleared(world)) return { run, world, entered: false, outcome: 'victory' };

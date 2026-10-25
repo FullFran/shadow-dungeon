@@ -10,5 +10,7 @@ import type { WorldState } from './state';
  */
 export function enemyTimeScale(state: WorldState): number {
   const shared = state.role === 'guest' || state.remotes.length > 0;
-  return state.slowMoMs > 0 && !shared ? TUNING.perfectDodge.slowMoScale : 1;
+  // A Sima pact's curse may quicken the enemies (sima-events.ts).
+  const curse = state.simaPact?.enemySpeed ?? 1;
+  return (state.slowMoMs > 0 && !shared ? TUNING.perfectDodge.slowMoScale : 1) * curse;
 }

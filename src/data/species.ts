@@ -35,7 +35,10 @@ export type SpeciesId =
   | 'duskull'
   | 'golett'
   | 'pawniard'
-  | 'sableye';
+  | 'sableye'
+  // The Sima del Eclipse's own (data/sima.ts): a monster nest and the hunter floor's pursuer.
+  | 'eclipse-nest'
+  | 'eclipse-hunter';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -163,6 +166,9 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   golett: { id: 'golett', types: ['ground', 'ghost'], maxHp: 160, radius: 14, sprite: 'golett', movepool: [], defaultLoadout: [] },
   pawniard: { id: 'pawniard', types: ['dark', 'steel'], maxHp: 34, radius: 9, sprite: 'pawniard', movepool: [], defaultLoadout: [] },
   sableye: { id: 'sableye', types: ['dark', 'ghost'], maxHp: 460, radius: 13, sprite: 'sableye', movepool: [], defaultLoadout: [] },
+  // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
+  'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
+  'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

@@ -1,3 +1,4 @@
+import { UNKILLABLE } from '../data/sima';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
 import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
@@ -158,6 +159,8 @@ function strikeEnemy(
   events: GameEvent[],
 ): WorldState {
   const buff = state.player.nextHitBuff;
+  // The Sima's hunter cannot be felled: every hit is shrugged off.
+  if (UNKILLABLE.includes(enemy.species)) return blockedStrike(state, enemy, hit, events, 0);
   // An armored Sima elite shrugs off the first hit, and the armor is gone.
   if (enemy.armor) {
     const blocked = blockedStrike(state, enemy, hit, events, 0);
@@ -178,7 +181,8 @@ function strikeEnemy(
     moveType: hit.type,
     attackerTypes: state.player.types,
     defenderTypes: enemy.types,
-    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus,
+    // A Sima pact's blessing may sharpen the player's hits.
+    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * (state.simaPact?.playerDamage ?? 1),
   });
   const hp = Math.max(0, enemy.hp - damage);
   const poise = poiseOf(enemy.species);

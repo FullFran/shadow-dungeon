@@ -9,6 +9,7 @@ import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
 import type { EnemyScale } from './endless';
+import type { SimaEventState, SimaPactState } from './sima-events';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -414,6 +415,10 @@ export interface WorldState {
   fog?: FogState;
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
+  /** Sima del Eclipse: this floor's event (sima-events.ts); the host runs it, guests follow its snapshot. */
+  simaEvent?: SimaEventState;
+  /** Sima del Eclipse: the shrine's pact in force (it outlasts the floor). */
+  simaPact?: SimaPactState;
   events: GameEvent[];
 }
 

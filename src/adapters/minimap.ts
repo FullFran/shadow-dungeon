@@ -1,3 +1,4 @@
+import { EVENT_COLORS } from './sima-events-view';
 import { fogRadiusTiles } from '../core/fog';
 import type { TileRect } from '../core/dungeon';
 import { collapseFront } from '../core/collapse';
@@ -67,6 +68,15 @@ export interface MinimapMarks {
   enemies: Vec2[];
   /** Berries still on the floor whose tile has been seen. */
   berries: TilePoint[];
+  /** The Sima's floor event, once its tile has been seen (not the hunter: it has no place). */
+  event?: { tile: TilePoint; color: string; done: boolean } | null;
+}
+
+function eventMark(state: WorldState, memory: MinimapMemory): MinimapMarks['event'] {
+  const event = state.simaEvent;
+  if (!event || event.kind === 'hunter') return null;
+  const tile = tileOf(event.pos);
+  return isSeen(memory, tile.x, tile.y) ? { tile, color: EVENT_COLORS[event.kind], done: event.done } : null;
 }
 
 export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rect): MinimapMarks {
@@ -80,6 +90,7 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
       .filter((e) => e.alive && insideRect(e.pos, view) && (!state.fog || distance(e.pos, state.player.pos) <= fogRadiusTiles(state.fog) * TILE))
       .map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
     berries: state.berries.map((b) => tileOf(b.pos)).filter((t) => isSeen(memory, t.x, t.y)),
+    event: eventMark(state, memory),
   };
 }
 
@@ -119,6 +130,22 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, me
   }
   ctx.fillStyle = COLORS.berry;
   for (const b of marks.berries) ctx.fillRect(x0 + b.x * px, y0 + b.y * px, px, px);
+  if (marks.event) {
+    // A small diamond in the event's colour, dim once it is over.
+    const { tile, color, done } = marks.event;
+    const cx = x0 + tile.x * px + px / 2;
+    const cy = y0 + tile.y * px + px / 2;
+    ctx.globalAlpha = done ? 0.4 : 1;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 3);
+    ctx.lineTo(cx + 3, cy);
+    ctx.lineTo(cx, cy + 3);
+    ctx.lineTo(cx - 3, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.fillStyle = COLORS.enemy;
   for (const e of marks.enemies) ctx.fillRect(Math.round(x0 + e.x * px - 1), Math.round(y0 + e.y * px - 1), 2, 2);
   // The player blinks slowly so it is easy to find.

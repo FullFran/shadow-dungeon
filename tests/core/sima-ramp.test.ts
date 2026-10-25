@@ -24,12 +24,16 @@ const SEEDS = [4242, 7, 99, 2024, 31337];
 const generated = (to: number) => Array.from({ length: to }, (_, i) => i + 1).filter((f) => !isEchoFloor(ENDLESS, f));
 
 describe('Sima ramp: tougher, not more', () => {
-  it('never more than 3 enemies in a room, at any depth', () => {
+  it('never more than 3 enemies in a room, at any depth (event rooms aside)', () => {
     for (const seed of SEEDS) {
       for (const floor of generated(45)) {
         const world = startRun(seed, {}, floor, ECL).world;
         const rooms = world.arena.rooms ?? [];
-        const counts = rooms.map((r) => world.enemies.filter((e) => e.wakeRoom && e.wakeRoom.x === r.x * 32 && e.wakeRoom.y === r.y * 32).length);
+        // An event's room (a vault's guards, a monster house) is a set piece, not the ramp.
+        const event = world.simaEvent?.rect;
+        const counts = rooms
+          .filter((r) => !event || event.x !== r.x * 32 || event.y !== r.y * 32)
+          .map((r) => world.enemies.filter((e) => e.wakeRoom && e.wakeRoom.x === r.x * 32 && e.wakeRoom.y === r.y * 32).length);
         expect(Math.max(0, ...counts), `seed ${seed} floor ${floor}`).toBeLessThanOrEqual(ENDLESS.spawns.maxPerRoom);
       }
     }

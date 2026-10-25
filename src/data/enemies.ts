@@ -988,6 +988,27 @@ export const SABLEYE: ThiefDef = {
   stealMs: 9000,
 };
 
+/**
+ * The Sima's hunter (data/sima.ts, hunter floors): it cannot be felled and it
+ * keeps coming, but it walks slower than the player and far slower than a
+ * roll, and its lunge winds up long and plainly. The stairs are the answer.
+ */
+export const ECLIPSE_HUNTER: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 0, knockbackScale: 0.2 },
+  aggroRange: 5000,
+  walkSpeed: 100,
+  stalkRange: 120,
+  lungeRange: 120,
+  telegraphMs: 800,
+  lungeMs: 260,
+  lungeDistance: 140,
+  attack: { power: 34, type: 'dark' },
+  hitRecoverMs: 700,
+  missRecoverMs: 1200,
+  cooldownMs: 1200,
+};
+
 export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
@@ -1021,6 +1042,7 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   golett: GOLETT,
   pawniard: PAWNIARD,
   sableye: SABLEYE,
+  'eclipse-hunter': ECLIPSE_HUNTER,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */

@@ -1,3 +1,10 @@
+import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
+import { addTime } from '../core/endless';
+import { addItem } from '../core/items';
+import { worldDifficulty } from '../core/difficulty';
+import type { PactEffect, SimaEvents } from '../data/sima';
+import { announcedOnEntry, simaNews } from '../adapters/sima-events-view';
+import { openSimaChoice, type SimaChoiceOption } from './sima-choice';
 import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
@@ -70,6 +77,8 @@ export interface RunSummary {
   coins: CoinBreakdown;
   /** Endless dungeon: the clock left when the run ended (the score's tie-break). */
   clockMs?: number;
+  /** Sima: the floor events taken this run (end screen). */
+  simaEvents?: readonly SimaRecord[];
 }
 
 export interface GameOptions {
@@ -190,6 +199,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
   const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
   if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };
+  // Development server only: `?nearEvent=1` starts a Sima floor beside its event (screenshots of the shrine, the nest...).
+  const devNearEvent = import.meta.env.DEV && new URLSearchParams(window.location.search).get('nearEvent') === '1';
+  if (devNearEvent && world.simaEvent) world = { ...world, player: { ...world.player, pos: { x: world.simaEvent.pos.x, y: world.simaEvent.pos.y + 34 } } };
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;
@@ -244,6 +256,22 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
+  /** Sima floor events (sima-events.ts): the shrine's or merchant's choice on screen and its pick handler. */
+  let closeChoice: (() => void) | null = null;
+  let choicePick: ((index: number) => void) | null = null;
+  /** The player walked away from (or used) the shrine or merchant: it opens again only after leaving its reach. */
+  let choiceDismissed = false;
+  /** Pokémonedas spent at the merchant (taken off the run's pay), and as the floor was entered ("Restart floor"). */
+  let simaSpent = 0;
+  let floorStartSpent = 0;
+  /** This floor's merchant purchases, and whether the shrine's time and the event's item pick were already given (no double pay on "Restart floor"). */
+  let merchantBerries = 0;
+  let merchantSold = false;
+  let shrineTimePaid = false;
+  let eventRewarded = false;
+  /** The event as last seen (each peer reads its changes from its own world), and the events taken this run. */
+  let lastEvent: SimaEventState | undefined;
+  const simaLog: SimaRecord[] = [];
   /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */
   let minimap: MinimapMemory | null = null;
   let showMinimap = true;
@@ -275,6 +303,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (playing) nowPlaying = { title: trackNote(playing), shownAtMs: realMs };
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
+    // A Sima floor event makes itself known (not the monster house or the ambush: those are surprises).
+    if (world.simaEvent && announcedOnEntry(world.simaEvent.kind)) say(t(`sima.log.${world.simaEvent.kind}.here`), 'warn');
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
@@ -294,6 +324,132 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A solo pick still open keeps game input cut off.
     input.setSuspended(closePick !== null && !net);
     audio?.setDucked(false);
+  }
+
+  function hideChoice(): void {
+    if (!closeChoice) return;
+    closeChoice();
+    closeChoice = null;
+    choicePick = null;
+    choiceDismissed = true;
+    if (!net && !closeMenu && !closePick) input.setSuspended(false);
+  }
+
+  function showChoice(title: string, hint: string, options: readonly SimaChoiceOption[], onPick: (index: number) => void): void {
+    hideChoice();
+    choiceDismissed = false;
+    if (!net) input.setSuspended(true);
+    choicePick = (index) => {
+      if (options[index] && !options[index]!.disabled) onPick(index);
+    };
+    closeChoice = openSimaChoice(overlayParent, title, hint, options, Boolean(net), (i) => choicePick?.(i), hideChoice);
+  }
+
+  /** Run Pokémonedas still in hand (the merchant takes them off the pay). */
+  const coinsInHand = (): number => scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total - simaSpent;
+
+  /** "+30 % daño", "enemigos +20 % rápidos"...: a pact's effects as text. */
+  function effectText(effect: PactEffect): string {
+    const pct = (v: number) => String(Math.round((v - 1) * 100));
+    const parts: string[] = [];
+    if (effect.playerDamage && effect.playerDamage !== 1) parts.push(t('sima.effect.playerDamage').replace('{n}', pct(effect.playerDamage)));
+    if (effect.healShare) parts.push(t('sima.effect.heal'));
+    if (effect.timeMs) parts.push(t('sima.effect.time').replace('{s}', String(Math.round(effect.timeMs / 1000))));
+    if (effect.enemySpeed && effect.enemySpeed !== 1) parts.push(t('sima.effect.enemySpeed').replace('{n}', pct(effect.enemySpeed)));
+    if (effect.enemyDamage && effect.enemyDamage !== 1) parts.push(t('sima.effect.enemyDamage').replace('{n}', pct(effect.enemyDamage)));
+    return parts.join(', ');
+  }
+
+  function openShrine(events: SimaEvents): void {
+    const pact = events.shrine.pacts.find((p) => p.id === world.simaEvent?.pact);
+    if (!pact) return;
+    // The curse as it will bite at this difficulty (nightmare: harder).
+    const curse = pactEffects(pact, worldDifficulty(world), events);
+    showChoice(t('sima.shrine.title'), t('sima.shrine.hint').replace('{floors}', String(events.shrine.floors)), [
+      { name: t(`sima.pact.${pact.id}.name`), description: `${t('sima.shrine.blessing')}: ${effectText(pact.blessing)}. ${t('sima.shrine.curse')}: ${effectText({ enemySpeed: curse.enemySpeed, enemyDamage: curse.enemyDamage })}.`, look: 'rare' },
+      { name: t('sima.shrine.decline'), description: t('sima.shrine.declineText'), look: 'common' },
+    ], (index) => {
+      if (index === 0) {
+        const taken = acceptPact(world, events, worldDifficulty(world));
+        world = taken.world;
+        if (taken.bonusMs > 0 && run.clockMs !== undefined && !shrineTimePaid) {
+          const before = run.clockMs;
+          const after = addTime(before, taken.bonusMs);
+          run = { ...run, clockMs: after };
+          watchClock(undefined, after - before);
+          shrineTimePaid = true;
+        }
+        audio?.play('levelUp');
+      } else world = declinePact(world);
+      hideChoice();
+    });
+  }
+
+  function openMerchant(events: SimaEvents): void {
+    const { merchant } = events;
+    const item = merchantSold ? null : merchantItem(run.seed, run.floor, world.localId, world.player.items);
+    const coins = coinsInHand();
+    const price = (n: number) => t('sima.merchant.price').replace('{n}', String(n));
+    showChoice(t('sima.merchant.title'), t('sima.merchant.hint').replace('{coins}', String(Math.max(0, coins))), [
+      {
+        name: t('sima.merchant.berry'),
+        description: `${t('sima.merchant.berryText').replace('{n}', String(Math.round(merchant.berryHeal * 100)))} ${price(merchant.berryPrice)}`,
+        look: 'uncommon',
+        disabled: coins < merchant.berryPrice || merchantBerries >= merchant.berries,
+      },
+      {
+        name: item ? t(`item.${item}`) : t('sima.merchant.soldOut'),
+        description: item ? `${t(`item.${item}.description`)} ${price(merchant.itemPrice)}` : '',
+        look: 'rare',
+        disabled: !item || coins < merchant.itemPrice,
+      },
+      { name: t('sima.merchant.leave'), description: t('sima.merchant.leaveText'), look: 'common' },
+    ], (index) => {
+      if (index === 0) {
+        simaSpent += merchant.berryPrice;
+        merchantBerries++;
+        world = { ...world, player: eatBought(world.player, merchant.berryHeal) };
+        audio?.play('berry');
+        say(t('sima.log.merchant.berry'), 'item');
+      } else if (index === 1 && item) {
+        simaSpent += merchant.itemPrice;
+        merchantSold = true;
+        world = { ...world, player: addItem(world.player, item) };
+        audio?.play('item');
+        say(itemPickedText(world.player.species, item), 'item');
+      }
+      hideChoice();
+    });
+  }
+
+  /** Each step: tells the log what the floor's event did, records it, hands out its item pick, and opens the shrine or merchant on reaching them. */
+  function watchSimaEvent(): void {
+    const events = dungeonOf(run).endless?.events;
+    if (!events) return;
+    const now = world.simaEvent;
+    for (const key of simaNews(lastEvent, now)) say(t(key), 'warn');
+    if (now?.done && now.outcome && lastEvent && !lastEvent.done && lastEvent.kind === now.kind) {
+      simaLog.push({ floor: run.floor, kind: now.kind, outcome: now.outcome });
+      if (rewardsItems(now) && !eventRewarded) {
+        eventRewarded = true;
+        run = { ...run, offer: rewardOffer(run.seed, run.floor, world.localId, world.player.items) };
+        offerPick();
+      }
+    }
+    lastEvent = now;
+    if (closeChoice || closePick || closeMenu || closeCinematic || ended) return;
+    const atShrine = nearSimaEvent(world, events, 'shrine');
+    const atMerchant = nearSimaEvent(world, events, 'merchant');
+    if (!atShrine && !atMerchant) {
+      choiceDismissed = false;
+      return;
+    }
+    if (choiceDismissed) return;
+    choiceDismissed = true;
+    // The shrine's pact binds the whole group: the host decides.
+    if (atShrine && net?.role === 'guest') say(t('sima.shrine.hostDecides'), 'warn');
+    else if (atShrine) openShrine(events);
+    else openMerchant(events);
   }
 
   function hidePick(): void {
@@ -332,6 +488,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (net) return;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     tally = floorStartTally;
+    simaSpent = floorStartSpent;
+    merchantBerries = 0;
+    merchantSold = false;
+    lastEvent = world.simaEvent;
+    hideChoice();
     prev = world;
     accumulator = 0;
     juice = initialJuice();
@@ -363,6 +524,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
+    // The shrine's or merchant's choice: 1/2/3 pick, Esc walks away.
+    if (closeChoice && !closeMenu && (e.code === 'Escape' || pickIndexForKey(e.code, 3) !== null)) {
+      e.preventDefault();
+      if (e.code === 'Escape') hideChoice();
+      else choicePick?.(pickIndexForKey(e.code, 3)!);
+      return;
+    }
     if (e.code === 'Escape') {
       e.preventDefault();
       if (closeMenu) hideMenu();
@@ -426,7 +594,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ended = true;
     hidePick();
     audio?.setMusic(null);
-    const coins = scaleCoins(coinBreakdown(tally, result), dungeonOf(run).endless?.coinScale ?? 1);
+    // What the merchant took comes off the pay.
+    const coins = spendCoins(scaleCoins(coinBreakdown(tally, result), dungeonOf(run).endless?.coinScale ?? 1), simaSpent);
     const finish = () =>
       options.onEnd(result, {
         dungeon: run.dungeon,
@@ -436,6 +605,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         items: world.player.items,
         coins,
         ...(run.clockMs !== undefined ? { clockMs: run.clockMs } : {}),
+        ...(simaLog.length > 0 ? { simaEvents: [...simaLog] } : {}),
       });
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
     window.setTimeout(() => {
@@ -451,6 +621,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     run = next.run;
     world = next.world;
     floorStart = world;
+    hideChoice();
+    floorStartSpent = simaSpent;
+    merchantBerries = 0;
+    merchantSold = false;
+    shrineTimePaid = false;
+    eventRewarded = false;
+    lastEvent = world.simaEvent;
     prev = world;
     camera = world.player.pos;
     defeatedAt.clear();
@@ -531,6 +708,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         if (net) net.session.sendFloor(run.floor);
         if (net && run.clockMs !== undefined) net.session.sendClock(run.clockMs, run.floor);
       } else if (hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
+      else watchSimaEvent();
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
         accumulator = 0;
@@ -542,7 +720,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function frame(now: number): void {
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
-    const paused = simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null;
+    const paused =
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net));
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -593,7 +772,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
-      coins: scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total,
+      coins: Math.max(0, coinsInHand()),
       // The Sima's look follows its depth band (palette, decoration, backdrop, abyss).
       palette: band ? simaPalette(band) : dungeonOf(run).palette,
       decor: band ? (band.decor ?? null) : (dungeonOf(run).decor ?? null),
@@ -611,6 +790,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   resize();
   music();
+  lastEvent = world.simaEvent;
   announceFloor(false);
   // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
   guardianMoment('pre', offerPick);
@@ -626,6 +806,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       closeMenu = null;
       closePick?.();
       closePick = null;
+      closeChoice?.();
+      closeChoice = null;
       closeCinematic?.();
       closeCinematic = null;
       audio?.setDucked(false);

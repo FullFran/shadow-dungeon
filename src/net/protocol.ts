@@ -1,3 +1,4 @@
+import type { SimaSync } from '../core/sima-events';
 import type { EliteTrait } from '../data/sima';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
@@ -208,6 +209,7 @@ export function encodeMessage(message: NetMessage): string {
         b: message.s.berries,
         e: message.s.enemies.map(encodeEnemy),
         p: message.s.projectiles.map(encodeProjectile),
+        ...(message.s.sima ? { v: message.s.sima } : {}),
       };
       break;
     case 'town':
@@ -252,6 +254,7 @@ export function decodeMessage(text: string): NetMessage | null {
         berries: Array.isArray(wire.b) ? (wire.b as string[]) : [],
         enemies: (wire.e as unknown[][]).map(decodeEnemy),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
+        ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
       },
     };
   }

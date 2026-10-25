@@ -1,7 +1,7 @@
 import type { MusicContext } from './music';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
-import { SIMA_BANDS, SIMA_ELITES, SIMA_SQUADS, type SimaBand, type SimaElites, type SimaSquad } from './sima';
+import { SIMA_BANDS, SIMA_ELITES, SIMA_EVENTS, SIMA_SQUADS, type SimaBand, type SimaElites, type SimaEvents, type SimaSquad } from './sima';
 
 /**
  * The endless dungeon (Sima del Eclipse, docs/gdd.md §3 "La Sima del
@@ -106,6 +106,8 @@ export interface EndlessDef {
   elites?: SimaElites;
   /** Sima mixed squads (data/sima.ts). */
   squads?: readonly SimaSquad[];
+  /** Sima floor events (data/sima.ts). */
+  events?: SimaEvents;
 }
 
 export const ENDLESS: EndlessDef = {
@@ -131,6 +133,7 @@ export const ENDLESS: EndlessDef = {
   bands: SIMA_BANDS,
   elites: SIMA_ELITES,
   squads: SIMA_SQUADS,
+  events: SIMA_EVENTS,
 };
 
 /** True on the floors that hold a guardian echo (5, 10, 15...). */

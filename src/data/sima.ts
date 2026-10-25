@@ -117,3 +117,103 @@ export const SIMA_SQUADS: readonly SimaSquad[] = [
 
 /** Chance that a room with two or more enemies holds a squad instead: from floor 4, rising, capped. */
 export const SQUAD_CHANCE = { fromFloor: 4, start: 0.15, perFloor: 0.015, max: 0.5 } as const;
+
+/**
+ * Floor events (data-driven, seeded): at most one per floor, from floor 2,
+ * never on an echo or an urgent floor, never in the start room. Each kind
+ * shows up from `minDepth` with its `weight`. Set pieces, not padding: the
+ * rooms around them keep their low counts.
+ */
+/** Enemies no hit can fell (the hunter): hits on them are shrugged off. */
+export const UNKILLABLE: readonly SpeciesId[] = ['eclipse-hunter'];
+
+export type SimaEventKind = 'vault' | 'shrine' | 'monsterHouse' | 'crystal' | 'merchant' | 'nest' | 'waves' | 'ambush' | 'hunter';
+
+export interface SimaEventWeight {
+  kind: SimaEventKind;
+  minDepth: number;
+  weight: number;
+}
+
+/** What a pact gives or takes while it lasts (`healShare` and `timeMs` once, on accepting). */
+export interface PactEffect {
+  playerDamage?: number;
+  enemySpeed?: number;
+  enemyDamage?: number;
+  healShare?: number;
+  timeMs?: number;
+}
+
+export type PactId = 'edge' | 'blood' | 'sand';
+
+/** A shrine of the eclipse's trade (Hades style): a blessing for a curse. */
+export interface SimaPact {
+  id: PactId;
+  blessing: PactEffect;
+  curse: PactEffect;
+}
+
+export interface SimaEvents {
+  /** Chance of an event on a floor: `start` from `fromFloor`, + `perFloor`, at most `max`. */
+  fromFloor: number;
+  start: number;
+  perFloor: number;
+  max: number;
+  kinds: readonly SimaEventWeight[];
+  /** A player this close to an event's object touches it (px). */
+  touchRadius: number;
+  /** Treasure vault: guards in the room (tougher), the chest opens once they are down. */
+  vault: { guards: number; guardHp: number };
+  /** Monster house: this many more sleepers in one room; they all wake as a player walks in. */
+  monsterHouse: { extra: number };
+  /** Time crystal: +`bonusMs` if touched before it fades (`fadeMs` from the floor's start). */
+  crystal: { bonusMs: number; fadeMs: number };
+  /** Merchant echo: run Pokémonedas for an Oran Berry (heals `berryHeal` of max HP, `berries` per visit) or one held item. */
+  merchant: { berryPrice: number; berryHeal: number; berries: number; itemPrice: number };
+  /** Eclipse shrine: the pact lasts this floor and the next `floors - 1`; on nightmare the curse bites `nightmareCurse` times harder. */
+  shrine: { floors: number; pacts: readonly SimaPact[]; nightmareCurse: number };
+  /** Monster nest: a hittable nest that hatches a weak enemy every `spawnEveryMs` (glowing `telegraphMs` before) while a player is near, at most `maxAlive` of its brood at once. Its brood pays nothing. */
+  nest: { species: SpeciesId; brood: readonly SpeciesId[]; spawnEveryMs: number; telegraphMs: number; maxAlive: number };
+  /** Wave room: walking in locks its doors; waves of this many enemies, `pauseMs` between them; clearing it pays time and an item pick. */
+  waves: { waves: readonly number[]; pauseMs: number; bonusMs: number };
+  /** Ambush: crossing into the room makes the ground crack under `count` hidden enemies for `tellMs`, then they burst out. */
+  ambush: { count: number; tellMs: number };
+  /** Hunter floor: an unkillable pursuer comes out of the start room `delayMs` after the floor begins; the stairs are the way out. */
+  hunter: { species: SpeciesId; delayMs: number };
+}
+
+export const SIMA_EVENTS: SimaEvents = {
+  fromFloor: 2,
+  start: 0.35,
+  perFloor: 0.01,
+  max: 0.6,
+  kinds: [
+    { kind: 'crystal', minDepth: 2, weight: 3 },
+    { kind: 'vault', minDepth: 3, weight: 2 },
+    { kind: 'merchant', minDepth: 3, weight: 2 },
+    { kind: 'shrine', minDepth: 4, weight: 2 },
+    { kind: 'ambush', minDepth: 4, weight: 2 },
+    { kind: 'nest', minDepth: 5, weight: 2 },
+    { kind: 'monsterHouse', minDepth: 6, weight: 2 },
+    { kind: 'waves', minDepth: 7, weight: 2 },
+    { kind: 'hunter', minDepth: 9, weight: 1 },
+  ],
+  touchRadius: 26,
+  vault: { guards: 2, guardHp: 1.5 },
+  monsterHouse: { extra: 5 },
+  crystal: { bonusMs: 20_000, fadeMs: 40_000 },
+  merchant: { berryPrice: 8, berryHeal: 0.4, berries: 2, itemPrice: 20 },
+  shrine: {
+    floors: 3,
+    nightmareCurse: 1.5,
+    pacts: [
+      { id: 'edge', blessing: { playerDamage: 1.3 }, curse: { enemySpeed: 1.2 } },
+      { id: 'blood', blessing: { healShare: 1, playerDamage: 1.1 }, curse: { enemyDamage: 1.3 } },
+      { id: 'sand', blessing: { timeMs: 30_000 }, curse: { enemySpeed: 1.1, enemyDamage: 1.15 } },
+    ],
+  },
+  nest: { species: 'eclipse-nest', brood: ['zubat', 'pumpkaboo-small', 'poochyena'], spawnEveryMs: 5000, telegraphMs: 1200, maxAlive: 3 },
+  waves: { waves: [2, 3, 3], pauseMs: 1500, bonusMs: 15_000 },
+  ambush: { count: 3, tellMs: 900 },
+  hunter: { species: 'eclipse-hunter', delayMs: 7000 },
+};

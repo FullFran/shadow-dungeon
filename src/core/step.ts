@@ -13,6 +13,10 @@ import { creditDefeats } from './progression';
 import type { GameEvent, IncomingHit, PlayerInput, WorldState } from './state';
 import { settleStolen } from './stolen';
 import { guestEnemyContacts } from './victim';
+import { updateSimaEvent } from './sima-events';
+import { endlessSpawns } from './endless';
+import { ENDLESS } from '../data/endless';
+import { SIMA_EVENTS } from '../data/sima';
 
 export { enemyTimeScale } from './time';
 
@@ -35,7 +39,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
   const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
-    state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
+    state.role === 'guest' ? guestEnemyContacts(combat, events) : simaEventStep(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs);
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   return {
     ...fought,
@@ -45,6 +49,10 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
     events,
   };
 }
+
+/** Host: the Sima's floor event (sima-events.ts), with the depth's pool for the enemies it brings. */
+const simaEventStep = (state: WorldState, dtMs: number): WorldState =>
+  state.simaEvent && !state.simaEvent.done ? updateSimaEvent(state, dtMs, SIMA_EVENTS, endlessSpawns(ENDLESS, state.depth).pool) : state;
 
 /** Lands a hit on the player outside a step (enemy systems, tests). Appends to the state's events. */
 export function hitPlayer(state: WorldState, hit: IncomingHit): WorldState {
