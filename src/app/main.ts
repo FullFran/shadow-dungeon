@@ -1,5 +1,4 @@
-import { M0_SLOT_LAYOUT } from '../data/slots';
-import type { MoveId } from '../data/moves';
+import type { ItemId } from '../data/items';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
@@ -10,18 +9,24 @@ import { LagTransport, parseLagParams } from '../net/lag';
 import { generateRoomCode, normalizeRoomCode, roomCodeFromSearch } from '../net/room-code';
 import { createSession, type NetSession } from '../net/session';
 import { realScheduler, type Transport } from '../net/transport';
+import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
+import { eclipseBackdrop } from '../ui/eclipse';
+import { applyTokens, FONT } from '../ui/tokens';
+import { h, mdWindow, statLine } from '../ui/window';
+import { creditsWindow } from './credits';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
+import { heldItems } from './item-pick';
+import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
-import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
-import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-panel';
-import { setUiSound } from '../ui/cursor-list';
-import { applyTokens } from '../ui/tokens';
+import { defaultSettings, loadSettings, saveSettings, type Settings } from './settings';
+import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 
 /**
- * Page flow: pre-run menu (loadout, language, lock type, sound) -> generated
- * floors 1-3 -> boss floor -> defeat or victory screen (floor reached and run
- * seed); Esc during a run opens the pause menu (quick settings, restart floor,
- * quit). Each run gets a random seed unless the page URL fixes one (`?seed=123`). Settings persist through the
+ * Page flow: title screen (Play, Play online, Settings, Credits) over the
+ * eclipse backdrop -> loadout picker -> generated floors 1-3 -> boss floor ->
+ * defeat or victory screen (floor reached, seed, level, items); Esc during a
+ * run opens the pause menu (quick settings, restart floor, quit). Every
+ * screen is built from the UI kit (src/ui: windows and ▶ cursor lists). Each run gets a random seed unless the page URL fixes one (`?seed=123`). Settings persist through the
  * storage port and apply at once, also mid-run; the fan-project notice is always
  * on screen. Audio starts on the first user gesture (browsers block autoplay).
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
@@ -127,100 +132,171 @@ function update(changes: Partial<Settings>): void {
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
-function notice(): HTMLElement {
-  return el('footer', { className: 'notice' }, [el('p', { textContent: t('notice.fanProject') }), el('p', { textContent: t('notice.sprites') })]);
+/** Sprite sheets, loaded once (the loadout portrait and the run share them). */
+let sheetsLoading: Promise<SheetStore> | null = null;
+function sheetsReady(): Promise<SheetStore> {
+  sheetsLoading ??= loadSheets().then((loaded) => (sheets = loaded));
+  return sheetsLoading;
 }
 
-function show(root: HTMLElement, ...children: Node[]): void {
+function notice(): HTMLElement {
+  return h('footer', { className: 'notice' }, [h('p', { textContent: t('notice.fanProject') }), h('p', { textContent: t('notice.sprites') })]);
+}
+
+/** Replaces the page; menu screens sit over the eclipse backdrop, the run does not. */
+function show(root: HTMLElement, children: Node[], backdrop = true): void {
   if (running) {
     // Stopping the game leaves its session.
     running.stop();
     running = null;
     current = null;
   }
-  root.replaceChildren(...children, notice());
+  root.replaceChildren(...(backdrop ? [eclipseBackdrop()] : []), ...children, notice());
+}
+
+/** A one-row menu (Back to menu, Back...). */
+function single(label: string, action: () => void): HTMLElement {
+  return cursorList({ items: [{ label, onConfirm: action }], onBack: action }).element;
 }
 
 /** A short message (room full, host left, no connection) and the way back to the menu. */
 function messageScreen(root: HTMLElement, text: string): void {
   leaveNet();
-  const back = el('button', { type: 'button', className: 'primary', textContent: t('screen.menu') });
-  back.addEventListener('click', () => menu(root));
-  show(root, el('div', { className: 'panel' }, [el('p', { textContent: text }), back]));
-  back.focus();
+  show(root, [mdWindow({ className: 'narrow' }, [h('p', { textContent: text }), single(t('screen.menu'), () => titleScreen(root))])]);
+}
+
+/** Loading or connecting: a window with the text only. */
+function waitScreen(root: HTMLElement, text: string): void {
+  show(root, [mdWindow({ className: 'narrow wait' }, [h('p', { textContent: text })])]);
+}
+
+function titleScreen(root: HTMLElement, initial = 0): void {
+  leaveNet();
+  applyLanguage(settings.language);
+  const list = cursorList({
+    initial,
+    label: t('app.title'),
+    items: [
+      { label: t('title.play'), onConfirm: () => loadout(root) },
+      { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
+      { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
+      { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
+    ],
+  });
+  show(root, [
+    h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
+    mdWindow({ className: 'title-menu' }, [list.element]),
+    h('p', { className: 'hint', textContent: t('title.hint') }),
+  ]);
+}
+
+function loadout(root: HTMLElement): void {
+  show(root, [
+    ...loadoutScreen({
+      loadout: settings.loadout,
+      sheets: sheetsReady(),
+      onChange: (next) => update({ loadout: next }),
+      onStart: () => void play(root),
+      onBack: () => titleScreen(root, 0),
+    }),
+  ]);
+}
+
+function settingsScreen(root: HTMLElement): void {
+  const back = () => titleScreen(root, 2);
+  const access: SettingsAccess = {
+    get: () => settings,
+    update,
+    setLanguage: (language) => {
+      applyLanguage(language);
+      settingsScreen(root);
+    },
+  };
+  const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
+  const refresh = () => list.setItems([...settingItems(access, refresh), { label: t('menu.back'), onConfirm: back }]);
+  refresh();
+  show(root, [
+    h('h1', { className: 'screen-title', textContent: t('title.settings') }),
+    h('div', { className: 'screen-row' }, [
+      mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]),
+      mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
+    ]),
+  ]);
+}
+
+function creditsScreen(root: HTMLElement): void {
+  show(root, [creditsWindow(single(t('menu.back'), () => titleScreen(root, 3)))]);
 }
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
-function onlineRow(root: HTMLElement): HTMLElement[] {
-  const create = el('button', { type: 'button', textContent: t('lobby.create') });
-  create.addEventListener('click', () => void openLobby(root, generateRoomCode(), true));
-  const code = el('input', { type: 'text', className: 'code-input', placeholder: t('lobby.codePlaceholder'), value: roomCodeFromSearch(window.location.search) ?? '' });
+function onlineScreen(root: HTMLElement): void {
+  const back = () => titleScreen(root, 1);
+  const prefill = roomCodeFromSearch(window.location.search) ?? '';
+  const code = h('input', { type: 'text', className: 'code-input', placeholder: t('lobby.codePlaceholder'), value: prefill });
   code.maxLength = 7;
   code.autocomplete = 'off';
   code.spellcheck = false;
   code.setAttribute('aria-label', t('lobby.codePlaceholder'));
-  const join = el('button', { type: 'button', textContent: t('lobby.join') });
-  const error = el('p', { className: 'lobby-error' });
+  const error = h('p', { className: 'lobby-error' });
   const tryJoin = () => {
     const normalized = normalizeRoomCode(code.value);
     if (normalized) void openLobby(root, normalized, false);
-    else error.textContent = t('lobby.invalidCode');
+    else {
+      error.textContent = t('lobby.invalidCode');
+      code.focus();
+    }
   };
-  join.addEventListener('click', tryJoin);
   code.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') tryJoin();
   });
-  return [el('div', { className: 'row' }, [create, code, join]), error];
+  const join = () => (normalizeRoomCode(code.value) ? tryJoin() : code.focus());
+  const list = cursorList({
+    initial: prefill ? 1 : 0,
+    onBack: back,
+    label: t('lobby.online'),
+    items: [
+      { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true) },
+      { label: t('lobby.joinCode'), value: code, className: 'join-row', onConfirm: join },
+      { label: t('menu.back'), onConfirm: back },
+    ],
+  });
+  show(root, [mdWindow({ title: t('lobby.online'), className: 'online' }, [list.element, error])]);
 }
 
 /**
- * The room-code lobby over Trystero: the host shows the code (copy, or hide
- * it for streamers) and the players in the room, and presses Start; guests
- * wait for it and start with the host's seed.
+ * The room-code lobby: the host shows the code (copy, or hide it for
+ * streamers) and the players in the room, and presses Start; guests wait for
+ * it and start with the host's seed. The transport is Trystero, loaded only
+ * now; the development preview passes a tab-local one.
  */
-async function openLobby(root: HTMLElement, code: string, asHost: boolean): Promise<void> {
+async function openLobby(root: HTMLElement, code: string, asHost: boolean, transport?: () => Transport<string>): Promise<void> {
   leaveNet();
-  show(root, el('p', { textContent: t('lobby.connecting') }));
+  waitScreen(root, t('lobby.connecting'));
   let session: NetSession;
   try {
-    const { joinTrysteroRoom } = await import('../adapters/trystero');
-    session = sessionOver(root, joinTrysteroRoom(code));
+    const base = transport ? transport() : (await import('../adapters/trystero')).joinTrysteroRoom(code);
+    session = sessionOver(root, base);
   } catch {
     messageScreen(root, t('lobby.error'));
     return;
   }
   current = session;
   // Load the sprites while waiting, so Start does not wait for them.
-  if (!sheets) void loadSheets().then((loaded) => (sheets ??= loaded));
+  void sheetsReady();
 
-  const codeText = el('div', { className: 'room-code' });
-  const hide = el('button', { type: 'button' });
-  const renderCode = () => {
-    codeText.textContent = hideCode ? '•'.repeat(code.length) : code;
-    hide.textContent = t(hideCode ? 'lobby.show' : 'lobby.hide');
-    hide.setAttribute('aria-pressed', String(hideCode));
-  };
-  hide.addEventListener('click', () => {
-    hideCode = !hideCode;
-    renderCode();
-  });
+  const codeText = h('div', { className: 'room-code' });
+  const renderCode = () => (codeText.textContent = hideCode ? '•'.repeat(code.length) : code);
   renderCode();
-  const copy = el('button', { type: 'button', textContent: t('lobby.copy') });
-  copy.addEventListener('click', () => {
-    navigator.clipboard
-      ?.writeText(code)
-      .then(() => (copy.textContent = t('lobby.copied')))
-      .catch(() => {});
-  });
+  let copied = false;
 
-  const list = el('ul', { className: 'roster' });
-  const status = el('p', { className: 'subtitle', textContent: asHost ? t('lobby.hint') : t('lobby.connecting') });
+  const players = h('ul', { className: 'roster' });
+  const status = h('p', { className: 'dim', textContent: asHost ? t('lobby.hint') : t('lobby.connecting') });
   const self = session.peerId();
   const renderRoster = (roster: ReturnType<NetSession['roster']>) => {
-    list.replaceChildren(
+    players.replaceChildren(
       ...roster.map((r) => {
         const tags = [r.id === 'p1' ? t('lobby.host') : null, r.peer === self ? t('lobby.you') : null].filter(Boolean);
-        return el('li', { textContent: `${r.id.toUpperCase()}${tags.length > 0 ? ` (${tags.join(', ')})` : ''}` });
+        return h('li', {}, [h('span', { className: 'roster-id', textContent: r.id.toUpperCase() }), tags.length > 0 ? h('span', { className: 'dim', textContent: tags.join(' · ') }) : null]);
       }),
     );
     if (!asHost && roster.some((r) => r.peer === self)) status.textContent = t('lobby.waitingHost');
@@ -236,118 +312,89 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean): Prom
   });
 
   const seed = runSeed();
-  const leave = el('button', { type: 'button', textContent: t('lobby.leave') });
-  leave.addEventListener('click', () => menu(root));
-  const actions: HTMLElement[] = [leave];
-  if (asHost) {
-    const start = el('button', { type: 'button', className: 'primary', textContent: t('lobby.start') });
-    start.addEventListener('click', () => {
-      session.begin();
-      void play(root, { session, role: 'host', localId: 'p1', seed, floor: 1, online: true });
-    });
-    actions.unshift(start);
-  }
+  const leave = () => titleScreen(root, 1);
+  const items = (): ListItem[] => [
+    ...(asHost
+      ? [
+          {
+            label: t('lobby.start'),
+            className: 'start-row',
+            onConfirm: () => {
+              session.begin();
+              void play(root, { session, role: 'host', localId: 'p1', seed, floor: 1, online: true });
+            },
+          },
+        ]
+      : []),
+    {
+      label: t(copied ? 'lobby.copied' : 'lobby.copy'),
+      onConfirm: () => {
+        navigator.clipboard
+          ?.writeText(code)
+          .then(() => {
+            copied = true;
+            list.setItems(items());
+          })
+          .catch(() => {});
+      },
+    },
+    {
+      label: t(hideCode ? 'lobby.show' : 'lobby.hide'),
+      onConfirm: () => {
+        hideCode = !hideCode;
+        renderCode();
+        list.setItems(items());
+      },
+    },
+    { label: t('lobby.leave'), onConfirm: leave },
+  ];
+  const list = cursorList({ items: items(), onBack: leave, label: t('lobby.room') });
 
-  show(
-    root,
-    el('div', { className: 'panel lobby' }, [
-      el('h1', { textContent: t('lobby.online') }),
-      el('h2', { textContent: t('lobby.room') }),
-      codeText,
-      el('div', { className: 'row' }, [copy, hide]),
-      status,
-      el('h2', { textContent: t('lobby.players') }),
-      list,
-      el('div', { className: 'row' }, actions),
+  show(root, [
+    h('h1', { className: 'screen-title', textContent: t('lobby.online') }),
+    h('div', { className: 'screen-row' }, [
+      mdWindow({ title: t('lobby.room'), className: 'lobby' }, [codeText, status, list.element]),
+      mdWindow({ title: t('lobby.players'), className: 'players' }, [players]),
     ]),
-  );
+  ]);
   if (asHost) session.host(seed, 1, SPECIES, { lobby: true });
   else session.join(SPECIES, settings.loadout);
   renderRoster(session.roster());
-  actions[0]?.focus();
 }
 
-function menu(root: HTMLElement): void {
-  leaveNet();
-  applyLanguage(settings.language);
-
-  const languages = languageRow(settings, (language) => {
-    update({ language });
-    menu(root);
-  });
-
-  const slots = M0_SLOT_LAYOUT.map((kind, index) => {
-    const select = el(
-      'select',
-      {},
-      slotOptions(kind).map((moveId) => el('option', { value: moveId, textContent: t(`move.${moveId}`) })),
-    );
-    select.value = settings.loadout[index] ?? '';
-    select.addEventListener('change', () => {
-      const loadout = [...settings.loadout];
-      loadout[index] = select.value as MoveId;
-      update({ loadout });
-    });
-    return el('label', {}, [`${t(`slot.${kind}`)} `, select]);
-  });
-
-  const start = el('button', { type: 'button', className: 'primary', textContent: t('menu.start') });
-  start.addEventListener('click', () => play(root));
-
-  const controls = CONTROL_KEYS.map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
-
-  show(
-    root,
-    el('div', { className: 'panel' }, [
-      el('h1', { textContent: t('app.title') }),
-      el('p', { className: 'subtitle', textContent: t('menu.subtitle') }),
-      languages,
-      el('h2', { textContent: t('menu.loadout') }),
-      el('div', { className: 'row' }, slots),
-      el('h2', { textContent: t('menu.lockOn') }),
-      lockRow(settings, update),
-      el('h2', { textContent: t('menu.sound') }),
-      soundRow(settings, update),
-      el('h2', { textContent: t('menu.controls') }),
-      el('ul', {}, controls),
-      el('p', { className: 'goal', textContent: t('menu.goal') }),
-      start,
-      el('h2', { textContent: t('lobby.online') }),
-      ...onlineRow(root),
-    ]),
-  );
-  start.focus();
-}
-
+/** The end screen: result, floor reached, seed, level and items, then retry or back. */
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean): void {
   audio.setMusic(null);
   audio.play(result);
-  const retry = el('button', { type: 'button', className: 'primary', textContent: t('screen.retry') });
-  retry.addEventListener('click', () => play(root));
-  retry.hidden = online;
-  const back = el('button', { type: 'button', className: online ? 'primary' : '', textContent: t('screen.menu') });
-  back.addEventListener('click', () => menu(root));
-  show(
-    root,
-    el('div', { className: `panel ${result}` }, [
-      el('h1', { textContent: t(`screen.${result}.title`) }),
-      el('p', { textContent: t(`screen.${result}.text`) }),
-      el('p', { className: 'run-summary', textContent: `${t('screen.floorReached')}: ${summary.floor} · ${t('screen.seed')}: ${summary.seed}` }),
-      el('div', { className: 'row' }, [retry, back]),
+  const back = () => titleScreen(root);
+  const items: ListItem[] = [{ label: t('screen.menu'), onConfirm: back }];
+  if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root) });
+  const held = heldItems(summary.items as ItemId[]);
+  show(root, [
+    mdWindow({ className: `result ${result}` }, [
+      h('h1', { textContent: t(`screen.${result}.title`) }),
+      h('p', { textContent: t(`screen.${result}.text`) }),
+      h('h3', { className: 'dim', textContent: t('screen.summary') }),
+      statLine(t('screen.floorReached'), String(summary.floor)),
+      statLine(t('screen.level'), String(summary.level)),
+      statLine(t('screen.seed'), String(summary.seed)),
+      statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
+      cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
-  );
-  (online ? back : retry).focus();
+  ]);
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
 async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
   if (!sheets) {
-    show(root, el('p', { textContent: t('app.loading') }));
-    sheets = await loadSheets();
+    waitScreen(root, t('app.loading'));
+    await sheetsReady();
   }
+  // The HUD draws text in the pixel font on the canvas: it must be ready first.
+  await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
   let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor'> = { seed: runSeed(), startFloor: devStartFloor() };
   if (!join && netMode()) {
-    show(root, el('p', { textContent: t('net.connecting') }));
+    waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1);
   }
   if (join) {
@@ -356,10 +403,10 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     shared = { seed: join.seed, startFloor: join.floor, net: { session: join.session, role: join.role, localId: join.localId } };
   }
   const online = join?.online ?? false;
-  const canvas = el('canvas', { className: 'game' });
-  show(root, canvas);
+  const canvas = h('canvas', { className: 'game' });
+  show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
-  running = startGame(canvas, sheets, {
+  running = startGame(canvas, sheets!, {
     loadout: settings.loadout,
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
@@ -367,9 +414,33 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
-    onQuit: () => menu(root),
+    onQuit: () => titleScreen(root),
     onEnd: (result, summary) => resultScreen(root, result, summary, online),
   });
+}
+
+/**
+ * Development server only: `?screen=` opens one screen straight away, for
+ * screenshots (loadout, settings, credits, online, lobby, victory, defeat).
+ */
+function devScreen(root: HTMLElement): boolean {
+  if (!import.meta.env.DEV) return false;
+  const screen = new URLSearchParams(window.location.search).get('screen');
+  const summary: RunSummary = { floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'] };
+  const screens: Record<string, () => void> = {
+    loadout: () => loadout(root),
+    settings: () => settingsScreen(root),
+    credits: () => creditsScreen(root),
+    online: () => onlineScreen(root),
+    lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
+    victory: () => resultScreen(root, 'victory', summary, false),
+    defeat: () => resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [] }, false),
+  };
+  const open = screen ? screens[screen] : undefined;
+  if (!open) return false;
+  applyLanguage(settings.language);
+  open();
+  return true;
 }
 
 const root = document.getElementById('app');
@@ -378,5 +449,5 @@ if (root) {
   root.addEventListener('click', (e) => {
     if (e.target instanceof Element && e.target.closest('button')) audio.play('click');
   });
-  menu(root);
+  if (!devScreen(root)) titleScreen(root);
 }

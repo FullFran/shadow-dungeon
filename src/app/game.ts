@@ -1,3 +1,4 @@
+import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
@@ -33,6 +34,8 @@ export type GameResult = 'defeat' | 'victory';
 export interface RunSummary {
   floor: number;
   seed: number;
+  level: number;
+  items: readonly ItemId[];
 }
 
 export interface GameOptions {
@@ -236,7 +239,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     hidePick();
     audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
-    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed }), 700);
+    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items }), 700);
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {

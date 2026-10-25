@@ -89,3 +89,44 @@ describe('t', () => {
     expect(t('does.not.exist')).toBe('does.not.exist');
   });
 });
+
+describe('Mystery Dungeon UI strings', () => {
+  const keys = [
+    'title.alt',
+    'title.play',
+    'title.settings',
+    'title.credits',
+    'title.hint',
+    'menu.back',
+    'menu.on',
+    'menu.off',
+    'loadout.title',
+    'loadout.equipped',
+    'loadout.power',
+    'loadout.ability',
+    'loadout.moves',
+    'move.shadow-claw.description',
+    'move.shadow-sneak.description',
+    'move.play-rough.description',
+    'move.shadow-ball.description',
+    'credits.title',
+    'credits.sprites',
+    'credits.font',
+    'credits.audio',
+    'lobby.joinCode',
+    'screen.level',
+    'screen.items',
+    'screen.summary',
+    'screen.noItems',
+  ];
+  for (const language of LANGUAGES) {
+    it(`"${language}" names the title menu, loadout cards, credits and end-screen summary`, () => {
+      expect(keys.filter((key) => !(key in catalog(language)))).toEqual([]);
+    });
+  }
+
+  it('the title shows the other language name of the game under it', () => {
+    expect(catalog('es')['title.alt']).toBe(catalog('en')['app.title']);
+    expect(catalog('en')['title.alt']).toBe(catalog('es')['app.title']);
+  });
+});

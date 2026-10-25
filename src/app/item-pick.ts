@@ -1,6 +1,7 @@
 import { ITEMS, type ItemId, type Rarity } from '../data/items';
 import { t } from '../i18n';
-import { el } from './settings-panel';
+import { cursorList } from '../ui/cursor-list';
+import { h, mdWindow } from '../ui/window';
 
 /**
  * The pick-1-of-3 held item overlay shown on entering each floor after the
@@ -53,34 +54,41 @@ export function pickCards(offer: readonly ItemId[], owned: readonly ItemId[]): P
 
 export { heldItems, type HeldItem } from '../adapters/hud';
 
-/** Shows the overlay inside `parent`; `onPick` gets the card index. Returns a function that removes it. */
+/**
+ * Shows the overlay inside `parent`; `onPick` gets the card index. Solo, the
+ * cards are a cursor list (left/right or A/D, Enter/Space) next to the 1/2/3
+ * keys the game handles; shared, the strip is mouse-only and nothing in it can
+ * take the keyboard focus. Returns a function that removes it.
+ */
 export function openItemPick(parent: HTMLElement, cards: readonly PickCard[], shared: boolean, onPick: (index: number) => void): () => void {
-  const overlay = el('div', { className: shared ? 'item-pick shared' : 'item-pick overlay' });
+  const overlay = h('div', { className: shared ? 'item-pick shared' : 'item-pick overlay' });
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', t('pick.title'));
-  const buttons = cards.map((card, index) => {
-    const children: (Node | string)[] = [
-      el('span', { className: 'pick-key', textContent: String(index + 1) }),
-      el('strong', { textContent: card.name }),
-      el('span', { className: 'pick-rarity', textContent: card.rarityLabel }),
-      el('span', { className: 'pick-description', textContent: card.description }),
-    ];
-    if (card.held) children.push(el('span', { className: 'pick-held', textContent: card.held }));
-    const button = el('button', { type: 'button', className: `pick-card rarity-${card.rarity}` }, children);
-    if (shared) button.tabIndex = -1;
-    // Mouse down too: the canvas below must not see the press.
-    button.addEventListener('mousedown', (e) => e.preventDefault());
-    button.addEventListener('click', () => onPick(index));
-    return button;
+  const list = cursorList({
+    layout: 'horizontal',
+    keyboard: !shared,
+    label: t('pick.title'),
+    className: 'pick-row',
+    items: cards.map((card, index) => ({
+      className: `pick-card rarity-${card.rarity}`,
+      label: h('span', { className: 'pick-body' }, [
+        h('span', { className: 'pick-key', textContent: String(index + 1) }),
+        h('strong', { className: 'pick-name', textContent: card.name }),
+        h('span', { className: 'pick-rarity', textContent: card.rarityLabel }),
+        h('span', { className: 'pick-description', textContent: card.description }),
+        card.held ? h('span', { className: 'pick-held', textContent: card.held }) : null,
+      ]),
+      onConfirm: () => onPick(index),
+    })),
   });
+  // Mouse down too: the canvas below must not see the press (and nothing takes focus).
+  list.element.addEventListener('mousedown', (e) => e.preventDefault());
   overlay.append(
-    el('div', { className: 'pick-panel' }, [
-      el('h2', { textContent: t('pick.title') }),
-      el('div', { className: 'pick-row' }, buttons),
-      el('p', { className: 'pick-hint', textContent: t('pick.hint') }),
-    ]),
+    mdWindow({ title: t('pick.title'), className: 'pick-panel' }, [list.element, h('p', { className: 'pick-hint dim', textContent: t('pick.hint') })]),
   );
   parent.append(overlay);
-  if (!shared) buttons[0]?.focus();
-  return () => overlay.remove();
+  return () => {
+    list.dispose();
+    overlay.remove();
+  };
 }
