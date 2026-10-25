@@ -234,6 +234,13 @@ function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, car
   return replaceEnemy(state, enemy);
 }
 
+/** The boss already on card `index` (its segment full, the declaration starting): the dev `?card=N` and tests. */
+export function atCard(enemy: EnemyState, fight: CardFightDef, index: number, events: GameEvent[] = []): EnemyState {
+  const i = Math.max(0, Math.min(fight.cards.length - 1, Math.floor(index)));
+  const hp = Math.max(1, enemy.maxHp * (i === 0 ? 1 : cardFloorShare(fight, i - 1)));
+  return declare({ ...enemy, hp }, fight, i, 'start', events);
+}
+
 /** One step of a spell-card fight (host): the declaration, the card's clock and its end, then the card's moves. */
 export function updateCardFight(state: WorldState, start: EnemyState, fight: CardFightDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss || fight.cards.length === 0) return state;

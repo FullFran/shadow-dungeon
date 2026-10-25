@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CAPTURE, cardInfo, registerCards, type CardFightDef } from '../../src/data/cards';
 import { spellCardKey } from '../../src/data/enemies';
 import { blocksHit } from '../../src/core/boss';
-import { cardFloors, cardFloorShare, cardGuard, cardHpFloor, cardStep, FIRST_MOVE_MS, updateCapture, updateCardFight } from '../../src/core/cards';
+import { atCard, cardFloors, cardFloorShare, cardGuard, cardHpFloor, cardStep, FIRST_MOVE_MS, updateCapture, updateCardFight } from '../../src/core/cards';
 import { coinBreakdown, emptyTally, tallyStep } from '../../src/core/coins';
 import { loadRoom } from '../../src/core/rooms';
 import type { EnemyState, GameEvent, WorldState } from '../../src/core/state';
@@ -132,6 +132,14 @@ describe('spell cards: sequencing', () => {
     const { state: end, events } = play(state, Math.ceil((FIGHT.phase2BreakMs + 6000) / FIXED_DT_MS) + 10);
     expect(bossOf(end).alive).toBe(false);
     expect(events.some((e) => e.type === 'enemyDefeated')).toBe(true);
+  });
+
+  it('starts a boss on any card with its segment full (dev ?card=N)', () => {
+    const boss = atCard(bossOf(throne()), FIGHT, 2);
+    expect(boss.boss).toMatchObject({ stance: 'sc-test-last', card: 2, hpFloor: 0 });
+    expect(boss.hp).toBeCloseTo(boss.maxHp * 0.4);
+    expect(boss.ai.mode).toBe('transform');
+    expect(atCard(bossOf(throne()), FIGHT, 99).boss!.stance).toBe('sc-test-last');
   });
 
   it('a hit never takes the boss below the floor of the card in play (host claims too)', () => {

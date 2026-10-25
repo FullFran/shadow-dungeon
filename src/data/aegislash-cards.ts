@@ -187,7 +187,7 @@ export const AEGISLASH_CARDS_NORMAL: CardFightDef = registerCards({
 export const AEGISLASH_CARDS_HARD: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 150,
-  power: 1,
+  power: 1.12,
   cards: [
     walls(wallsSteps(138, true, false), 0.27),
     fans(fansSteps(11, true, false), 0.27),
@@ -201,7 +201,7 @@ export const AEGISLASH_CARDS_HARD: CardFightDef = registerCards({
 export const AEGISLASH_CARDS_NIGHTMARE: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 170,
-  power: 1,
+  power: 1.22,
   cards: [
     walls(wallsSteps(138, true, true), 0.18),
     fans(fansSteps(11, true, true), 0.18),

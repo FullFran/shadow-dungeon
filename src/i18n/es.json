@@ -854,5 +854,19 @@
   "gate.seal.hud": "Escalera sellada: derrota al enemigo marcado",
   "gate.key.hud": "Puerta cerrada: el enemigo marcado lleva la llave",
   "gate.key.dropped": "La llave ha caído: recógela",
-  "gate.waves.hud": "Escalera sellada: supera la sala de oleadas"
+  "gate.waves.hud": "Escalera sellada: supera la sala de oleadas",
+  "spell.decidueye.cardVolley": "Signo Sombra «Andanada del Arquero»",
+  "spell.decidueye.cardLeaves": "Signo Hoja «Abanico del Claro»",
+  "spell.decidueye.cardFeathers": "Signo Pluma «Plumas en Espiral»",
+  "spell.decidueye.cardRain": "Signo Niebla «Lluvia del Arquero»",
+  "spell.decidueye.cardForest": "Signo Bosque «Bosque de Flechas»",
+  "spell.decidueye.cardStitch": "Signo Sombra «Costura de Sombras»",
+  "spell.decidueye.cardMoonless": "Última Flecha «Noche sin Luna»",
+  "boss.stance.sc-dec-volley": "Andanada",
+  "boss.stance.sc-dec-leaves": "Abanico del Claro",
+  "boss.stance.sc-dec-feathers": "Plumas en Espiral",
+  "boss.stance.sc-dec-rain": "Lluvia del Arquero",
+  "boss.stance.sc-dec-forest": "Bosque de Flechas",
+  "boss.stance.sc-dec-stitch": "Costura de Sombras",
+  "boss.stance.sc-dec-moonless": "Noche sin Luna"
 }

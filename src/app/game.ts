@@ -13,6 +13,8 @@ import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
+import { atCard, fightOf } from '../core/cards';
+import { behaviourFor } from '../core/tricks';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 import { bandLoreKey, bandStartsAt, simaBandAt, simaPalette } from '../core/sima';
 import { tickDue, type RunClock } from '../adapters/clock-hud';
@@ -208,6 +210,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
   const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
   if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };
+  // Development server only: `?card=N` starts a spell-card guardian on its card N (0-based; screenshots of each card).
+  const devCard = import.meta.env.DEV ? Number.parseInt(new URLSearchParams(window.location.search).get('card') ?? '', 10) : Number.NaN;
+  if (Number.isFinite(devCard)) {
+    const tier = worldDifficulty(world);
+    world = { ...world, enemies: world.enemies.map((e) => { const fight = e.boss ? fightOf(behaviourFor(e.species, tier)) : undefined; return fight ? atCard(e, fight, devCard) : e; }) };
+  }
   // Development server only: `?nearEvent=1` starts a Sima floor beside its event (screenshots of the shrine, the nest...).
   const devNearEvent = import.meta.env.DEV && new URLSearchParams(window.location.search).get('nearEvent') === '1';
   if (devNearEvent && world.simaEvent) world = { ...world, player: { ...world.player, pos: { x: world.simaEvent.pos.x, y: world.simaEvent.pos.y + 34 } } };

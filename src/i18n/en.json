@@ -854,5 +854,19 @@
   "gate.seal.hud": "Stairs sealed: defeat the marked enemy",
   "gate.key.hud": "Door locked: the marked enemy carries the key",
   "gate.key.dropped": "The key fell: pick it up",
-  "gate.waves.hud": "Stairs sealed: clear the wave room"
+  "gate.waves.hud": "Stairs sealed: clear the wave room",
+  "spell.decidueye.cardVolley": "Shadow Sign \"Archer's Volley\"",
+  "spell.decidueye.cardLeaves": "Leaf Sign \"Fan of the Clearing\"",
+  "spell.decidueye.cardFeathers": "Feather Sign \"Spiral of Feathers\"",
+  "spell.decidueye.cardRain": "Mist Sign \"The Archer's Rain\"",
+  "spell.decidueye.cardForest": "Forest Sign \"Forest of Arrows\"",
+  "spell.decidueye.cardStitch": "Shadow Sign \"Stitch of Shadows\"",
+  "spell.decidueye.cardMoonless": "Last Arrow \"Moonless Night\"",
+  "boss.stance.sc-dec-volley": "Volley",
+  "boss.stance.sc-dec-leaves": "Fan of the Clearing",
+  "boss.stance.sc-dec-feathers": "Spiral of Feathers",
+  "boss.stance.sc-dec-rain": "The Archer's Rain",
+  "boss.stance.sc-dec-forest": "Forest of Arrows",
+  "boss.stance.sc-dec-stitch": "Stitch of Shadows",
+  "boss.stance.sc-dec-moonless": "Moonless Night"
 }
