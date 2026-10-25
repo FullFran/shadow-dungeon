@@ -5,8 +5,8 @@ import type { ActionPhase, AiMode, BossStance, HitClaim } from '../core/state';
 import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } from '../core/sync';
 
 /**
- * Netcode spike protocol (docs/gdd.md §12). Reliable: hello, start, claim,
- * floor, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
+ * Netcode spike protocol (docs/gdd.md §12). Reliable: hello, start, lobby,
+ * full, ping, pong, claim, floor, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
  * snap (host: enemies and enemy projectiles). `at` is the sender's clock
  * (ms), for the receiver's interpolation timeline; `floor` is the epoch that
  * separates floors. Compact JSON: the two frequent messages travel as
@@ -25,6 +25,13 @@ export type NetMessage =
   | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[] }
   /** Host: the run seed, the current floor and who is who (sent again whenever someone joins). */
   | { t: 'start'; seed: number; floor: number; players: readonly RosterEntry[] }
+  /** Host, before the run starts: who is in the room so far (sent again on every change). */
+  | { t: 'lobby'; players: readonly RosterEntry[] }
+  /** Host: the room already has four players; `peer` is the one turned away. */
+  | { t: 'full'; peer: string }
+  /** Round-trip probe (reliable, ~1 Hz); every peer answers with `pong` to the sender. */
+  | { t: 'ping'; at: number }
+  | { t: 'pong'; to: string; at: number }
   | { t: 'state'; at: number; floor: number; p: PlayerSnapshot }
   | { t: 'claim'; claims: readonly HitClaim[] }
   | { t: 'snap'; at: number; floor: number; s: HostSnapshot }
@@ -156,7 +163,7 @@ export function encodeMessage(message: NetMessage): string {
   return JSON.stringify(wire);
 }
 
-const KNOWN = new Set(['hello', 'start', 'state', 'claim', 'snap', 'floor', 'leave']);
+const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'snap', 'floor', 'leave']);
 
 /** Parses a wire message; null for anything that is not one (the spike trusts the content otherwise). */
 export function decodeMessage(text: string): NetMessage | null {

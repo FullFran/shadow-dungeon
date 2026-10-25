@@ -20,5 +20,8 @@
     "vite": "^6.4.5",
     "vitest": "^3.2.7"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "trystero": "^0.26.0"
+  }
 }

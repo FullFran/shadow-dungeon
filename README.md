@@ -43,6 +43,10 @@ Moving the mouse never changes the locked target; only the gestures above do.
 
 Aegislash blocks hits from the front in Shield Forme (the blue arc): flank it. In Blade Forme it attacks in combos and stays open afterwards.
 
+### Online rooms (netcode spike)
+
+"Play online" in the main menu: **Create room** makes a 5-character code (no 0/O or 1/I/L) and shows it big with a copy button; **Hide code** masks it for streamers. Friends type it under **Join** (or open the page with `?room=CODE` to prefill it). Up to 4 players; a fifth is told the room is full. The host sees who is in the room and presses **Start**; everyone plays the host's seed. Peers find each other through public Nostr relays ([Trystero](https://github.com/dmotz/trystero) 0.26, default strategy) and then talk browser to browser over WebRTC. No TURN server is configured, so two players behind strict NATs may not connect. Trystero loads only when you open a room, never in solo play. `?lag=`, `?jitter=`, `?loss=` and `?delay=` work here too. In a shared run, **F3** shows the net stats overlay: role, players connected, round trip per player, snapshots per second and their age (guest), and bytes per second out and in.
+
 ### Two tabs together (netcode spike)
 
 Open the game with `?net=local` in two or more windows of the same browser (up to 4 players) and press Start in each: the first one (or the one with `?host=1`) hosts and the others join it; everyone plays the host's seed. Each tab simulates its own player with no wait, the host runs the enemies, and an enemy attack only hurts you if it touches you on your own screen. Remote players show as "P2", "P3"... with an HP bar; a fainted one stays down (no revive yet). The host's stairs take everyone down. `?lag=150&jitter=30&loss=0.05` simulates a bad network on what that tab sends, and `?delay=100` tunes how far in the past remote players and enemies are drawn. Use separate windows side by side: a browser stops animating a hidden tab, and a hidden host stops the run.

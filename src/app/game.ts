@@ -19,6 +19,7 @@ import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
 import type { NetSession } from '../net/session';
 import { simulationPaused, type MenuActions } from './menu';
+import { createNetOverlay } from './net-overlay';
 
 /** World pixels shown on screen; the canvas is this times an integer scale. */
 export const VIEW_WIDTH = 512;
@@ -74,6 +75,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const input = attachInput(canvas);
   const renderer = createRenderer(canvas, sheets);
   const net = options.net;
+  /** F3 in a shared run: the net stats overlay. */
+  const overlay = net ? createNetOverlay(canvas.parentElement ?? document.body, net.session, net.role, net.localId) : null;
   const started = startRun(
     options.seed ?? 1,
     {
@@ -163,6 +166,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       e.preventDefault();
       if (closeMenu) hideMenu();
       else showMenu();
+    } else if (e.code === 'F3' && overlay) {
+      // F3 would open the browser's find bar.
+      e.preventDefault();
+      overlay.toggle();
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
     else if (e.code === 'Tab' && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
@@ -284,6 +291,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
     });
+    overlay?.update(realMs);
     raf = requestAnimationFrame(frame);
   }
 
@@ -305,6 +313,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       cancelAnimationFrame(raf);
       input.dispose();
       net?.session.leave();
+      overlay?.dispose();
       window.removeEventListener('keydown', onKeyDown);
     },
   };

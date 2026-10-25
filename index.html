@@ -30,7 +30,12 @@
       input[type="range"] { accent-color: #b9a4ff; vertical-align: middle; width: 7rem; }
       button[aria-pressed="true"] { background: #4a3a78; border-color: #b9a4ff; }
       button.primary { margin-top: 1.25rem; background: #6a4fc0; border-color: #b9a4ff; font-weight: bold; padding: 0.6rem 1.6rem; }
-      button:focus-visible, select:focus-visible { outline: 2px solid #ffd36b; outline-offset: 2px; }
+      .panel .room-code { font-family: ui-monospace, monospace; font-size: 3.5rem; font-weight: bold; letter-spacing: 0.35em; color: #ffd36b; margin: 0.25rem 0 0.75rem; user-select: all; }
+      .panel .roster { list-style: none; padding: 0; font-size: 1.1rem; }
+      .panel .lobby-error { color: #ff7a7a; min-height: 1.2em; font-size: 0.9rem; }
+      input.code-input { font: inherit; color: inherit; background: #2b2638; border: 1px solid #4a4360; border-radius: 4px; padding: 0.4rem 0.6rem; width: 6.5rem; text-transform: uppercase; letter-spacing: 0.15em; }
+      pre.net-stats { position: fixed; top: 0.5rem; left: 0.5rem; margin: 0; padding: 0.5rem 0.75rem; background: rgba(10, 8, 16, 0.75); border: 1px solid #4a4360; border-radius: 4px; font: 12px/1.4 ui-monospace, monospace; color: #cfe8c0; pointer-events: none; z-index: 5; }
+      button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #ffd36b; outline-offset: 2px; }
     </style>
   </head>
   <body>

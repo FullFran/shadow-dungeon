@@ -46,4 +46,13 @@ describe('architecture', () => {
     );
     expect(violations).toEqual([]);
   });
+
+  it('only the Trystero adapter imports the trystero package, and the app loads it lazily', () => {
+    const files = ['src/core', 'src/data', 'src/net', 'src/adapters', 'src/app'].flatMap((dir) => sourceFiles(join(ROOT, dir)));
+    const importers = files.filter((file) => importsOf(readFileSync(file, 'utf8')).some((spec) => spec === 'trystero' || spec.startsWith('trystero/')));
+    expect(importers.map((file) => relative(ROOT, file))).toEqual(['src/adapters/trystero.ts']);
+    const staticImport = /(?:import|export)[^'"(]*?from\s*['"][^'"]*adapters\/trystero['"]|^import\s+['"][^'"]*adapters\/trystero['"]/m;
+    const eager = files.filter((file) => staticImport.test(readFileSync(file, 'utf8'))).map((file) => relative(ROOT, file));
+    expect(eager).toEqual([]);
+  });
 });

@@ -72,4 +72,4 @@ export function soundRow(settings: Settings, update: UpdateSettings): HTMLElemen
 }
 
 /** The in-game key list, shared by the main menu. */
-export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock', 'minimap', 'mute', 'menu'] as const;
+export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock', 'minimap', 'mute', 'menu', 'netStats'] as const;
