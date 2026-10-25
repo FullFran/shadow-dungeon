@@ -7,9 +7,9 @@ import { generateBoss, originsOf } from '../../src/core/herald/generate';
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
 /**
- * Seeds per shard: 80 by default (480 over the six shards, about 3000
+ * Seeds per shard: 80 by default (240 over the three shards, about 1500
  * cards, within the suite's time); a deep audit sets HERALD_AUDIT_SEEDS
- * (e.g. 400 for 2400 seeds). Anything unset, empty or not a positive
+ * (e.g. 800 for 2400 seeds). Anything unset, empty or not a positive
  * number is the default.
  */
 export function auditSeedCount(): number {

@@ -1,3 +1,4 @@
+import { echoTitle } from '../core/eclipse-escalation';
 import { heraldCardName, heraldHere, heraldIntro, newCaptureJudge, watchCapture } from './herald-run';
 import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
 import { addTime } from '../core/endless';
@@ -341,7 +342,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // The echo's name card replaces the floor card (they would overlap).
       // The Sima's own boss has its own line under its name.
       const subtitle = echo.species === 'eclipse-echo' ? 'sima.echo.subtitle' : 'endless.echo';
-      intro = { name: t(`species.${echo.species}`), subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
+      // The Eclipse Echo's title counts its encounters («Eco del Eclipse · III»).
+      const name = echo.species === 'eclipse-echo' ? echoTitle(t(`species.${echo.species}`), run.floor) : t(`species.${echo.species}`);
+      intro = { name, subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
       card = null;
     }
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);

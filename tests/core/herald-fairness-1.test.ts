@@ -3,7 +3,7 @@ import { auditSeeds, auditSeedCount } from './herald-audit';
 
 const SEEDS = auditSeedCount();
 
-/** Shard 1 of the herald fairness audit (80 seeds each, 480 in all, about 3000 cards; HERALD_AUDIT_SEEDS raises it): no unfair card survives generation. */
+/** Shard 1 of the herald fairness audit (80 seeds each, 240 in all, about 1500 cards; HERALD_AUDIT_SEEDS raises it): no unfair card survives generation. */
 describe('herald fairness audit, shard 1', () => {
   it('every generated card passes the proof again', () => {
     const { cards, rejected } = auditSeeds(1 + 1 * SEEDS, SEEDS);
