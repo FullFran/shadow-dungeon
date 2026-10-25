@@ -18,6 +18,8 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { heldItems } from './item-pick';
 import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
+import { prologueScreen } from './prologue';
+import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 
@@ -177,10 +179,11 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     initial,
     label: t('app.title'),
     items: [
-      { label: t('title.play'), onConfirm: () => loadout(root) },
+      { label: t('title.play'), onConfirm: () => newAdventure(root) },
       { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
       { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
+      { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
     ],
   });
   show(root, [
@@ -188,6 +191,27 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
   ]);
+}
+
+/** Play: the first time in this browser the prologue comes first, then the loadout. */
+function newAdventure(root: HTMLElement): void {
+  if (hasSeenPrologue(store)) loadout(root);
+  else prologue(root, () => loadout(root));
+}
+
+/** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
+function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void {
+  void sheetsReady();
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    startMs,
+    onDone: () => {
+      markPrologueSeen(store);
+      onDone();
+    },
+  });
+  show(root, [screen], false);
+  root.querySelector('.notice')?.classList.add('in-game');
 }
 
 function loadout(root: HTMLElement): void {
@@ -421,7 +445,8 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
 
 /**
  * Development server only: `?screen=` opens one screen straight away, for
- * screenshots (loadout, settings, credits, online, lobby, victory, defeat).
+ * screenshots (loadout, settings, credits, online, lobby, victory, defeat,
+ * prologue with `&at=ms` to start part way in).
  */
 function devScreen(root: HTMLElement): boolean {
   if (!import.meta.env.DEV) return false;
@@ -435,6 +460,8 @@ function devScreen(root: HTMLElement): boolean {
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false),
     defeat: () => resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [] }, false),
+    // Waits for the sprites so a screenshot shows the silhouettes.
+    prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };
   const open = screen ? screens[screen] : undefined;
   if (!open) return false;

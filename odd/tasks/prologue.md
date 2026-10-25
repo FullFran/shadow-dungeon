@@ -28,7 +28,7 @@ Out of scope: the personality quiz, new sprites, voice acting, the licensed trac
 
 ## Tasks
 - [x] T1 Script: narration in i18n (es, en), 8 panels; provisional lore section in `docs/gdd.md` (route: inline, single writer worktree).
-- [ ] T2 Cinematic player: pure timeline (panel at t, alpha curves, text reveal, camera, skip), scenes renderer, player screen, title entry, first-play hook, seen flag (route: inline in this writer).
+- [x] T2 Cinematic player: pure timeline (panel at t, alpha curves, text reveal, camera, skip), scenes renderer, player screen, title entry, first-play hook, seen flag (route: inline in this writer).
 - [ ] T3 Music: procedural prologue score in the audio adapter, manifest hook for a licensed file (route: inline in this writer).
 
 ## Acceptance criteria
@@ -47,3 +47,12 @@ Created 2026-10-25 on branch `feat/prologue`. Forecast ~900 authored lines (T1 ~
 
 ### T1 Script
 Narration in `src/i18n/{es,en}.json` (`prologue.*` block, 8 panels, 15 lines); lore section "Prólogo y trasfondo" in `docs/gdd.md` §3, flagged provisional. Checks: `npm test` green.
+
+### T2 Cinematic player
+Route: inline (single writer; delegation trigger not applicable inside a delegated writer).
+- Pure timeline `src/ui/cinematic.ts` (panelAt, panelAlpha eased fades, revealedChars, cameraAt, skip rules); panel data `src/data/prologue.ts` (8 panels, 74 s, eclipse reveal at 27.9 s).
+- Scenes `src/adapters/prologue-scenes.ts` on a 320×180 stage: light, hunger (light sinking, crystal glint), dimming (moon slides over the sun), eclipse (black, flash, ring via the shared `drawEclipse` now exported from `src/ui/eclipse.ts`), dungeons, shadows, king (Aegislash shield form, shaded silhouette), voice (black).
+- Player `src/app/prologue.ts` (`prologueScreen`, `PROLOGUE_ROUTE`, `onDone`); styles injected by the module; first frame drawn in a microtask so it never flashes black.
+- Seen flag `src/app/prologue-seen.ts` (own storage key). `main.ts`: Play goes through `newAdventure` (prologue first time), title entry "Prólogo" (index 4), dev `?screen=prologue&at=ms`.
+- RED observed (modules missing), GREEN: 19 new tests. `npm test`: 52 files, 447 tests passed. `npm run build`: passed.
+- Screenshots (headless Firefox 1280×720) in `/tmp/prologue/`: light, hunger, eclipse, shadows, king. Fixes made from them: figures and the crystal moved above the text band; Aegislash switched from a flat silhouette (unreadable blob) to a shaded one; text raised off the fan notice.
