@@ -9,7 +9,7 @@ import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { FONT } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
-import { advanceDialog, lineDone, openDialog, shownText, tickDialog, type DialogState } from './dialog';
+import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { inExit, nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid } from './map';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
@@ -155,6 +155,14 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     return { x: Math.sign(x), y: Math.sign(y) };
   }
 
+  // Conversations per NPC in this visit (the storyteller tells a new line each time).
+  const talks = new Map<string, number>();
+  const talk = (id: string): number => {
+    const n = talks.get(id) ?? 0;
+    talks.set(id, n + 1);
+    return n;
+  };
+
   function interact(): void {
     if (dialog) {
       const next = advanceDialog(dialog.state);
@@ -167,7 +175,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     dialog =
       target.kind === 'board'
         ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
-        : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(target.npc.lines.map((key) => t(key))) };
+        : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))) };
   }
 
   function closeExitWindow(): void {

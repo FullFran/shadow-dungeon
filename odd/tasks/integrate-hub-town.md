@@ -20,7 +20,7 @@ Out of scope: gacha and shop logic, online walking together.
 ## Tasks
 - [x] M1 Merge and resolve (route: inline; conflict resolution in 4 files, mechanical)
 - [x] R1 Run records (route: inline; one module + one hook)
-- [ ] L1 Lore lines (route: inline; i18n strings only)
+- [x] L1 Lore lines (route: inline; i18n strings plus a small rotation helper)
 - [ ] A1 Town music (route: inline; one call)
 
 ## Acceptance criteria
@@ -45,3 +45,9 @@ Created 2026-10-25. Forecast ~250 authored lines beyond the merge. Delivery: one
 - Hook: `play()` `onEnd` calls `saveRun` unless this peer is a guest (solo, `?net=local` host and online host record; a guest's run is the host's), then shows the result screen.
 - Board: "Récords de este dispositivo: Mejor planta en la cripta: N · Expediciones: N · Victorias: N · Mejor nivel: N" (new keys `town.board.victories`, `town.board.level`, contiguous in the `town.*` block).
 - Checks: RED observed (8 failing, exports missing), GREEN 8 records tests; `npm test` 64 files / 618 tests passed; typecheck clean.
+
+### L1 Lore lines
+- Storyteller (Gastly) now rotates: `TownNpc.rotate` + pure `npcLines(npc, talks)` in `src/town/dialog.ts`; one line per talk, in turn, counted per visit. Four lines (Crimson Eclipse; Shadow Dungeons and the shadows; guardians bound to a forgotten oath, the Sword King only the first; something deeper devouring the light). The old line that put "whoever took the sun" asleep under the Crypt is gone; Necrozma is never named.
+- Gacha (Mimikyu) and shop (Poochyena): one flavour line each, then "Próximamente." (unchanged flow).
+- `town.exit.crypt` aligned with `dungeon.crypt.name` ("Cripta del Rey de las Espadas"; en already matched).
+- Checks: RED observed (`tests/town/lines.test.ts` 3 failing: no `npcLines`, no `rotate`, "duerme" in the old line), GREEN 3; `npm test` 65 files / 621 tests passed.

@@ -33,3 +33,12 @@ export function advanceDialog(dialog: DialogState): DialogState | null {
   if (dialog.index + 1 < dialog.lines.length) return { ...dialog, index: dialog.index + 1, elapsedMs: 0 };
   return null;
 }
+
+/**
+ * What an NPC says on its `talks`-th conversation (0 first): every line in
+ * order, or, for a `rotate` NPC (the storyteller), one line per talk in turn.
+ */
+export function npcLines(npc: { lines: readonly string[]; rotate?: boolean }, talks: number): readonly string[] {
+  if (!npc.rotate || npc.lines.length === 0) return npc.lines;
+  return [npc.lines[talks % npc.lines.length]!];
+}
