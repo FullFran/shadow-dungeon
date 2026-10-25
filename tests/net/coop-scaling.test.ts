@@ -5,7 +5,7 @@ import { COOP_REVIVE } from '../../src/data/party-scaling';
 import { isBossClass, partySizeOf } from '../../src/core/party';
 import { startRun } from '../../src/core/run';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
-import { hostSnapshot } from '../../src/core/sync';
+import { hostSnapshot, playerSnapshot } from '../../src/core/sync';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { input } from '../core/helpers';
@@ -23,6 +23,21 @@ describe('co-op scaling over the wire', () => {
     delete old.n;
     const decoded = decodeMessage(JSON.stringify(old));
     expect(decoded?.t === 'snap' && 'party' in decoded.s).toBe(false);
+  });
+
+  it('a player snapshot carries revive progress only while it runs, and an older one still decodes', () => {
+    const w = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(10, 10) });
+    const fainted = { ...w, player: { ...w.player, hp: 0 }, revive: { ms: 1234.4, by: 'p1', byHp: 90, used: 0 } };
+    const wire = encodeMessage({ t: 'state', at: 1, floor: 1, p: playerSnapshot(fainted) });
+    const back = decodeMessage(wire);
+    expect(back?.t === 'state' && back.p.revive).toBe(1234);
+    expect(back?.t === 'state' && back.p.hidden).toBeUndefined();
+    const plain = decodeMessage(encodeMessage({ t: 'state', at: 1, floor: 1, p: playerSnapshot(w) }));
+    expect(plain?.t === 'state' && 'revive' in plain.p).toBe(false);
+    // An older peer's ten-slot player array.
+    const old = JSON.parse(wire) as { p: unknown[] };
+    const legacy = decodeMessage(JSON.stringify({ ...old, p: old.p.slice(0, 10) }));
+    expect(legacy?.t === 'state' && 'revive' in legacy.p).toBe(false);
   });
 
   it('host and guest agree on the party size and the boss HP, even when the guest counted alone', () => {

@@ -10,6 +10,8 @@ import type { GameEvent, RemotePlayer, WorldState } from '../../src/core/state';
 import { applyHostSnapshot, hostSnapshot } from '../../src/core/sync';
 import { distance, vec } from '../../src/core/vec';
 import { createPlayer, createWorld, spawnEnemy } from '../../src/core/world';
+import { step } from '../../src/core/step';
+import { FIXED_DT_MS } from '../../src/core/timestep';
 import { input, run } from './helpers';
 
 const remote = (id: string, hp?: number): RemotePlayer => {
@@ -45,6 +47,18 @@ describe('party size (core/party.ts)', () => {
     expect(partySizeOf(w)).toBe(1);
     expect('party' in w).toBe(false);
     expect('party' in startRun(1, {}).world).toBe(false);
+  });
+
+  it('a solo run played on every regular dungeon carries no co-op field (party, revive, aggro)', () => {
+    for (const dungeon of [CRYPT, FOREST]) {
+      for (const floor of [1, floorsOf(dungeon)]) {
+        let w = startRun(9, {}, floor, dungeon.id).world;
+        for (let i = 0; i < 400; i++) w = step(w, input({ move: vec(Math.cos(i / 30), Math.sin(i / 45)), slots: [i % 50 < 3, false] }), FIXED_DT_MS);
+        expect('party' in w).toBe(false);
+        expect('revive' in w).toBe(false);
+        expect(w.enemies.some((e) => 'aggro' in e)).toBe(false);
+      }
+    }
   });
 
   it('counts the local player and every remote, fainted ones too', () => {

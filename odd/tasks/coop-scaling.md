@@ -43,7 +43,7 @@ Enemy count unchanged (design over numbers).
 - [x] T1 Scaling table + party size + HP/damage/stagger + snapshot field (route: inline in this writer; RED observed: 13 of 18 new tests failing before code)
 - [x] T2 Boss aggro switching + party area cards (route: inline; tests written alongside, mutation-checked: removing the wind-up guard or the pressure switch fails a test)
 - [x] T3 Co-op revive (route: inline; RED observed: 5 of 9 core revive tests failing before code; victim side on the fainted peer, progress sent in its player snapshot)
-- [ ] T4 Solo digest, protocol back-compat, docs
+- [x] T4 Solo digest, protocol back-compat, docs (route: inline; golden digest test unchanged and green; solo play on Crypt and Forest carries no co-op field; older wire arrays decode; GDD §6–8 and README updated)
 
 ## Acceptance criteria
 - `partyScaling(1)` is all ones; solo digest unchanged.
@@ -53,7 +53,10 @@ Enemy count unchanged (design over numbers).
 `npm test`, `npm run build`.
 
 ## Progress
-(updated per task)
+- T1 7693b10, T2 b3e6fa4, T3 cfb2897, T4 (this commit).
+- Verification at T4: `npm test` 141 files / 1368 tests passed; `npm run build` built.
+- Pending: Engram mirror `odd/coop-scaling/tasks` (the writer had no Engram session; the parent owns it). Revive ring and hint drawn in the renderer but not looked at in a browser (no screenshots taken).
+- Known gap: boss hitstun is already 0 for every boss today, so the stagger factor shows only in knockback until the P6b poise bar exists.
 
 ## Next step
-T1.
+Balance harness run over `partyScaling(n)`; a two-tab look at the revive ring.
