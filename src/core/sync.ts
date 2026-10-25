@@ -8,6 +8,7 @@ import type { EliteTrait } from '../data/difficulty';
 import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import { answerGuardedHit } from './roster';
+import { noteAggroDamage } from './aggro';
 import type {
   ActionPhase,
   AiMode,
@@ -306,7 +307,7 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
     } else {
       const hp = Math.max(0, enemy.hp - claim.damage);
       struck = {
-        ...(enemy.boss ? onBossDamaged(enemy, claim.damage) : enemy),
+        ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, claim.damage) : enemy, claim.playerId, claim.damage),
         hp,
         alive: hp > 0,
         hitstunMs: Math.max(enemy.hitstunMs, claim.hitstunMs),

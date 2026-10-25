@@ -37,11 +37,11 @@ Enemy count unchanged (design over numbers).
 - Host-authoritative: every peer derives it identically, and the host's snapshot carries it (`n`); a guest that disagrees adopts the host's value and rescales its enemies' max HP.
 - Boss class = enemies with boss state (`hasBossState`): guardians, mid-bosses and echoes.
 - Boss damage applies victim side to every enemy hit while a boss-class enemy is alive on the floor (projectiles carry no owner).
-- Aggro switches are deferred while the boss is winding up or attacking, so a telegraph never changes victim mid-way.
+- Aggro switches are deferred while the boss is winding up or attacking, so a telegraph never changes victim mid-way; a timed switch also waits until the boss has attacked its current target once (found in the loopback: Aegislash otherwise rotated away from a player before ever reaching them). Pressure (8 % of max HP from one other player) switches at once.
 
 ## Tasks
 - [x] T1 Scaling table + party size + HP/damage/stagger + snapshot field (route: inline in this writer; RED observed: 13 of 18 new tests failing before code)
-- [ ] T2 Boss aggro switching + party area cards
+- [x] T2 Boss aggro switching + party area cards (route: inline; tests written alongside, mutation-checked: removing the wind-up guard or the pressure switch fails a test)
 - [ ] T3 Co-op revive
 - [ ] T4 Solo digest, protocol back-compat, docs
 

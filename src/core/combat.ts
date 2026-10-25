@@ -7,6 +7,7 @@ import { blocksHit, onBossDamaged, rotateToward } from './boss';
 import { computeDamage, typeEffectiveness } from './damage';
 import { confineCircle, insideRect } from './geometry';
 import { partyStaggerOf, presentPlayers } from './party';
+import { noteAggroDamage } from './aggro';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import { answerGuardedHit, guardChip } from './roster';
@@ -191,7 +192,8 @@ function strikeEnemy(
   const poise = party === 1 ? base : { hitstunScale: base.hitstunScale * party, knockbackScale: base.knockbackScale * party };
   const pushDir = normalize(sub(enemy.pos, hit.from));
   const struck: EnemyState = {
-    ...(enemy.boss ? onBossDamaged(enemy, damage) : enemy),
+    // A party boss notes who hurt it (core/aggro.ts; no aggro solo).
+    ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, damage) : enemy, state.localId, damage),
     hp,
     alive: hp > 0,
     hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),

@@ -5,6 +5,8 @@ import { isBossClass, partySizeOf } from '../../src/core/party';
 import { startRun } from '../../src/core/run';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
 import { hostSnapshot } from '../../src/core/sync';
+import { vec } from '../../src/core/vec';
+import { createWorld, spawnEnemy } from '../../src/core/world';
 import { input } from '../core/helpers';
 import { coopLoop, ticksOf } from './coop-loop';
 
@@ -55,5 +57,29 @@ describe('co-op scaling over the wire', () => {
       const base = solo.enemies.find((s) => s.id === e.id)!;
       expect(e.maxHp).toBeCloseTo(base.maxHp * 1.25, 6);
     }
+  });
+});
+
+describe('boss aggro over the wire', () => {
+  it('the host boss turns to the guest, and the guest sees its wind-up aimed at itself', () => {
+    const loop = coopLoop((guestId) => {
+      const host = createWorld({ seed: 3, arena: { width: 800, height: 600 }, playerPos: vec(150, 300), localId: 'p1', party: 2 });
+      const guest = createWorld({ seed: 3, arena: { width: 800, height: 600 }, playerPos: vec(560, 300), localId: guestId, role: 'guest', party: 2 });
+      const sturdy = (w: typeof host) => ({ ...w, player: { ...w.player, maxHp: 99999, hp: 99999, disguiseBroken: true } });
+      return { host: spawnEnemy(sturdy(host), 'aegislash', vec(400, 300)), guest: sturdy(guest) };
+    });
+    let aimedAtGuest = false;
+    for (let i = 0; i < ticksOf(20000); i++) {
+      loop.tick(input(), input());
+      const seen = loop.guestWorld.enemies[0];
+      const looking = loop.hostWorld.enemies[0]!.aggro?.targetId === 'p2';
+      if (looking && seen && seen.ai.mode === 'telegraph' && seen.ai.attackDir.x > 0.5) aimedAtGuest = true;
+    }
+    const turns = loop.hostEvents.flatMap((e) => (e.type === 'bossAggro' ? [e.targetId] : []));
+    expect(turns).toContain('p1');
+    expect(turns).toContain('p2');
+    expect(aimedAtGuest).toBe(true);
+    // The guest never simulates aggro: its copy of the boss has none.
+    expect(loop.guestWorld.enemies[0]!.aggro).toBeUndefined();
   });
 });

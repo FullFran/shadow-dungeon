@@ -6,12 +6,13 @@ import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
 import { updateTreant } from './treant';
-import { behaviourFor } from './tricks';
+import { behaviourAt } from './tricks';
+import { aggroTarget } from './aggro';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
 import { updateEclipse } from './eclipse-echo';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
-import { targetOf } from './party';
+import { partySizeOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { enemyTimeScale } from './time';
@@ -380,7 +381,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
     // The behaviour at the run's difficulty (the shipped one on easy and normal).
-    const def = enemy && behaviourFor(enemy.species, tier);
+    // A bigger party's boss may add an area card (data/party-tricks.ts).
+    const def = enemy && behaviourAt(enemy.species, tier, partySizeOf(current));
     if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
     // Koffing's fuse cannot be staggered out of (killing it is the answer).
     if (enemy.hitstunMs > 0 && !unstoppable(enemy)) {
@@ -389,8 +391,10 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     }
     // Elites: swift ones always act faster, enraged ones once hurt (on top of the tier's clocks).
     const ems = ms * eliteTimeScale(enemy);
-    const ticked = { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite) };
-    const target = targetOf(current, enemy).pos;
+    // In a party a boss keeps one target and turns to another now and then (core/aggro.ts); otherwise the nearest player.
+    const aimed = aggroTarget(current, { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite) }, ems, events);
+    const ticked = aimed.enemy;
+    const target = aimed.target.pos;
     if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);
     else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ems, events);
     else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ems, events);

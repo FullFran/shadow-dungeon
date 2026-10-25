@@ -202,6 +202,12 @@ export interface EnemyState {
   armor?: true;
   /** Deep Sima elite: its attacks ignore roll i-frames (positional, docs/gdd.md §9). */
   pierceRoll?: true;
+  /**
+   * Co-op boss aggro (core/aggro.ts; host only, absent solo): who it is
+   * looking at, for how long (enemy time), whether it has attacked them yet,
+   * and the damage `by` another player dealt it meanwhile.
+   */
+  aggro?: { targetId: string; heldMs: number; pressure: number; by?: string; swung?: true };
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
@@ -344,6 +350,8 @@ export type GameEvent =
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
+  /** Co-op: a boss turned to another player (core/aggro.ts). */
+  | { type: 'bossAggro'; enemyId: string; targetId: string }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
