@@ -20,7 +20,10 @@ import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type Lo
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
-import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
+import { cameraView, followCamera, lerpVec } from '../adapters/view';
+import { fitCanvasToWindow } from '../adapters/fit';
+import { isTouchUi } from '../adapters/touch-mode';
+import { holdWakeLock } from '../adapters/wake-lock';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
@@ -86,6 +89,8 @@ export interface RunningGame {
  */
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
+  // Touch devices: keep the screen awake while the run lasts.
+  const releaseWakeLock = isTouchUi() ? holdWakeLock() : () => {};
   const renderer = createRenderer(canvas, sheets);
   const net = options.net;
   /** F3 in a shared run: the net stats overlay. */
@@ -237,13 +242,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
 
   function resize(): void {
-    pixelScale = pixelScaleFor(window.innerWidth, window.innerHeight, VIEW_WIDTH, VIEW_HEIGHT);
-    const width = VIEW_WIDTH * pixelScale;
-    const height = VIEW_HEIGHT * pixelScale;
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
+    // Desktop: integer scale as before; touch: fills the screen (src/adapters/fit.ts).
+    pixelScale = fitCanvasToWindow(canvas, VIEW_WIDTH, VIEW_HEIGHT, isTouchUi());
   }
 
   function end(result: GameResult): void {
@@ -380,6 +380,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       audio?.setRumble(0);
       cancelAnimationFrame(raf);
       input.dispose();
+      releaseWakeLock();
       net?.session.leave();
       overlay?.dispose();
       window.removeEventListener('keydown', onKeyDown);

@@ -332,5 +332,22 @@
   "town.exit.title": "Destino",
   "town.exit.text": "El camino sale del pueblo hacia las mazmorras.",
   "town.exit.crypt": "Cripta del Rey de las Espadas",
-  "town.exit.stay": "Quedarse en el pueblo"
+  "town.exit.stay": "Quedarse en el pueblo",
+  "touch.section": "Táctil",
+  "touch.mode": "Controles táctiles",
+  "touch.mode.auto": "Automático",
+  "touch.mode.on": "Sí",
+  "touch.mode.off": "No",
+  "touch.autoAim": "Apuntado automático",
+  "touch.haptics": "Vibración",
+  "touch.back": "Atrás",
+  "touch.rotate": "Gira el dispositivo para jugar en horizontal",
+  "touch.roll": "Rodar",
+  "touch.fast": "Rápido",
+  "touch.heavy": "Fuerte",
+  "touch.lock": "Fijar",
+  "touch.pause": "Pausa",
+  "touch.map": "Mapa",
+  "touch.talk": "Hablar",
+  "touch.read": "Leer"
 }

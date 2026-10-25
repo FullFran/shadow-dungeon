@@ -30,6 +30,8 @@ import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-pane
 import { openTown } from '../town/scene';
 import { saveRun } from '../town/records';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
+import { setTouchMode } from '../adapters/touch-mode';
+import { installTouchChrome } from '../ui/touch-chrome';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -45,6 +47,9 @@ applyTokens(document.documentElement);
 const store = browserStore();
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
 const audio = createAudio(settings);
+// Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
+setTouchMode(settings.touchMode);
+const touchChrome = installTouchChrome();
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
@@ -132,12 +137,14 @@ function applyLanguage(language: Language): void {
   setLanguage(language);
   document.documentElement.lang = language;
   document.title = t('app.title');
+  touchChrome.refresh();
 }
 
 function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
   audio.setVolumes(settings);
+  if (changes.touchMode) setTouchMode(settings.touchMode);
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
@@ -313,6 +320,10 @@ function onlineScreen(root: HTMLElement): void {
   code.maxLength = 7;
   code.autocomplete = 'off';
   code.spellcheck = false;
+  // Soft keyboard: capitals, no autocorrect, a Go key that submits like Enter.
+  code.setAttribute('autocapitalize', 'characters');
+  code.setAttribute('autocorrect', 'off');
+  code.enterKeyHint = 'go';
   code.setAttribute('aria-label', t('lobby.codePlaceholder'));
   const error = h('p', { className: 'lobby-error' });
   const tryJoin = () => {

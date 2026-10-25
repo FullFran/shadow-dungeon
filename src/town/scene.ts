@@ -4,7 +4,9 @@ import { TILE, tileOf } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
-import { cameraView, followCamera, pixelScaleFor } from '../adapters/view';
+import { cameraView, followCamera } from '../adapters/view';
+import { fitCanvasToWindow } from '../adapters/fit';
+import { isTouchUi } from '../adapters/touch-mode';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { FONT } from '../ui/tokens';
@@ -137,9 +139,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   ];
 
   function resize(): void {
-    pixelScale = pixelScaleFor(window.innerWidth, window.innerHeight, TOWN_VIEW.width, TOWN_VIEW.height);
-    if (canvas.width !== TOWN_VIEW.width * pixelScale) canvas.width = TOWN_VIEW.width * pixelScale;
-    if (canvas.height !== TOWN_VIEW.height * pixelScale) canvas.height = TOWN_VIEW.height * pixelScale;
+    pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
   }
 
   function moveInput(): Vec2 {

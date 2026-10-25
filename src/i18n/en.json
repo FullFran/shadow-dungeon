@@ -332,5 +332,22 @@
   "town.exit.title": "Destination",
   "town.exit.text": "The road leaves town towards the dungeons.",
   "town.exit.crypt": "Crypt of the Sword King",
-  "town.exit.stay": "Stay in town"
+  "town.exit.stay": "Stay in town",
+  "touch.section": "Touch",
+  "touch.mode": "Touch controls",
+  "touch.mode.auto": "Automatic",
+  "touch.mode.on": "On",
+  "touch.mode.off": "Off",
+  "touch.autoAim": "Auto-aim",
+  "touch.haptics": "Vibration",
+  "touch.back": "Back",
+  "touch.rotate": "Turn your device sideways to play",
+  "touch.roll": "Roll",
+  "touch.fast": "Fast",
+  "touch.heavy": "Heavy",
+  "touch.lock": "Lock",
+  "touch.pause": "Pause",
+  "touch.map": "Map",
+  "touch.talk": "Talk",
+  "touch.read": "Read"
 }

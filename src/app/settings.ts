@@ -5,6 +5,7 @@ import { validateLoadout } from '../core/loadout';
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
 import type { KeyValueStore } from '../adapters/storage';
+import { TOUCH_MODES, type TouchMode } from '../adapters/touch-mode';
 
 /** Player settings remembered between sessions (guest-only, local). */
 export interface Settings {
@@ -24,12 +25,18 @@ export interface Settings {
   musicVolume: number;
   sfxVolume: number;
   muted: boolean;
+  /** Touch UI: Auto (on after the first touch), On or Off. */
+  touchMode: TouchMode;
+  /** Touch only: with nothing locked, moves aim at the nearest enemy in a cone in front. */
+  autoAim: boolean;
+  /** Touch only: short vibrations on a hit taken and on a perfect dodge. */
+  haptics: boolean;
 }
 
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -88,6 +95,9 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
     musicVolume: volume(stored.musicVolume, fallback.musicVolume),
     sfxVolume: volume(stored.sfxVolume, fallback.sfxVolume),
     muted: typeof stored.muted === 'boolean' ? stored.muted : fallback.muted,
+    touchMode: TOUCH_MODES.find((m) => m === stored.touchMode) ?? fallback.touchMode,
+    autoAim: typeof stored.autoAim === 'boolean' ? stored.autoAim : fallback.autoAim,
+    haptics: typeof stored.haptics === 'boolean' ? stored.haptics : fallback.haptics,
   };
 }
 

@@ -20,7 +20,7 @@ function harness(initial: Partial<Settings> = {}) {
 describe('settings rows', () => {
   it('lists language, lock type, click-to-lock, three volumes and mute', () => {
     setLanguage('es');
-    expect(harness().rows().map((r) => r.id)).toEqual(['language', 'lockType', 'clickToLock', 'masterVolume', 'musicVolume', 'sfxVolume', 'muted']);
+    expect(harness().rows().map((r) => r.id)).toEqual(['language', 'lockType', 'clickToLock', 'masterVolume', 'musicVolume', 'sfxVolume', 'muted', 'touchMode', 'autoAim', 'haptics']);
   });
 
   it('cycles the language both ways and applies it to the page', () => {

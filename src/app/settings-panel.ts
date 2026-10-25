@@ -1,4 +1,5 @@
 import { LOCK_TYPES, type LockType } from '../core/state';
+import { TOUCH_MODES } from '../adapters/touch-mode';
 import { LANGUAGES, t, type Language } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
 import { h } from '../ui/window';
@@ -22,7 +23,7 @@ export interface SettingsAccess {
 }
 
 export interface SettingRow {
-  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted';
+  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'touchMode' | 'autoAim' | 'haptics';
   label: string;
   value: string;
   /** Volumes: the level 0..1 for the meter. */
@@ -59,7 +60,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     access.update({ language });
     access.setLanguage(language);
   };
-  const toggle = (key: 'clickToLock' | 'muted') => () => access.update({ [key]: !access.get()[key] });
+  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics') => () => access.update({ [key]: !access.get()[key] });
   const volume = (key: VolumeKey, section?: string): SettingRow => ({
     id: key,
     label: t(`menu.${key}`),
@@ -71,6 +72,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     ...(section ? { section } : {}),
   });
   const lockType = (delta: -1 | 1) => access.update({ lockType: cycle(LOCK_TYPES, access.get().lockType, delta) });
+  const touchMode = (delta: -1 | 1) => access.update({ touchMode: cycle(TOUCH_MODES, access.get().touchMode, delta) });
   return [
     { id: 'language', label: t('language.label'), value: t(`language.${s.language}`), disabled: false, adjust: pickLanguage, confirm: () => pickLanguage(1) },
     { id: 'lockType', section: t('menu.lockOn'), label: t('menu.lockType'), value: t(`lockType.${s.lockType}`), disabled: false, adjust: lockType, confirm: () => lockType(1) },
@@ -86,6 +88,9 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     volume('musicVolume'),
     volume('sfxVolume'),
     { id: 'muted', label: t('menu.mute'), value: onOff(s.muted), disabled: false, adjust: toggle('muted'), confirm: toggle('muted') },
+    { id: 'touchMode', section: t('touch.section'), label: t('touch.mode'), value: t(`touch.mode.${s.touchMode}`), disabled: false, adjust: touchMode, confirm: () => touchMode(1) },
+    { id: 'autoAim', label: t('touch.autoAim'), value: onOff(s.autoAim), disabled: false, adjust: toggle('autoAim'), confirm: toggle('autoAim') },
+    { id: 'haptics', label: t('touch.haptics'), value: onOff(s.haptics), disabled: false, adjust: toggle('haptics'), confirm: toggle('haptics') },
   ];
 }
 

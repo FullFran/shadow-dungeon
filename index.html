@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mazmorra Sombría</title>
     <style>
       /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
@@ -193,6 +193,41 @@
 
       pre.net-stats { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); margin: 0; padding: 8px 12px; background: rgba(15, 26, 69, 0.88); border: 2px solid var(--md-border-shade); border-radius: 8px; font: 16px/1.3 var(--md-font); color: var(--md-text); pointer-events: none; z-index: 5; }
       @media (max-height: 760px) { #app { gap: 14px; padding-top: 20px; } .title-logo { margin-top: 8vh; } }
+
+      /* ---- Touch (html.touch, src/adapters/touch-mode.ts): no zoom, scroll bounce, long-press or selection; big tap targets ---- */
+      html.touch, html.touch body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+      html.touch body { touch-action: manipulation; }
+      html.touch input { -webkit-user-select: text; user-select: text; }
+      html.touch #app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-top: max(20px, env(safe-area-inset-top)); }
+      html.touch #app:has(canvas.game) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; touch-action: none; padding: 0; }
+      html.touch canvas.game { cursor: default; touch-action: none; }
+      html.touch .md-item { min-height: 44px; }
+      html.touch .md-list { gap: 4px; }
+      html.touch .md-arrow { border-top-width: 11px; border-bottom-width: 11px; padding: 0 12px; margin: -10px 0; background-clip: content-box; }
+      html.touch .md-arrow:first-child { border-right-width: 13px; }
+      html.touch .md-arrow:last-child { border-left-width: 13px; }
+      html.touch .prologue-skip { min-height: 44px; min-width: 88px; right: max(20px, env(safe-area-inset-right)); }
+      .touch-back, .rotate-hint { display: none; }
+      html.touch .touch-back { display: block; position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 20; min-width: 72px; min-height: 44px; padding: 4px 14px;
+        font: inherit; font-size: 18px; color: var(--md-text); background: var(--md-window-bottom); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 2px var(--md-ink); }
+      html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
+      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back { display: none; }
+      @media (orientation: portrait) {
+        html.touch .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
+          color: var(--md-cursor); background: rgba(5, 6, 13, 0.85); border: 2px solid var(--md-border-shade); border-radius: 8px; pointer-events: none; }
+      }
+      html.touch #app { justify-content: safe center; }
+      html.touch .hint { display: none; }
+      html.touch .notice:not(.in-game) { position: static; width: 100%; padding: 0; }
+      html.touch #app { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      @media (max-height: 480px) {
+        html.touch #app { gap: 10px; }
+        html.touch #app:has(.title-logo) { flex-flow: row wrap; gap: 8px 32px; }
+        html.touch .title-logo { margin-top: 0; }
+        html.touch .title-logo h1 { font-size: 40px; }
+        html.touch .title-menu .md-item { min-height: 40px; }
+        html.touch .notice { font-size: 11px; }
+      }
     </style>
   </head>
   <body>
