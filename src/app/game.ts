@@ -164,6 +164,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       { id: 'map', label: t('touch.map'), className: 'top', onPress: () => (showMinimap = !showMinimap) },
       { id: 'lock', label: t('touch.lock'), swipe: true },
       { id: 'roll', label: t('touch.roll') },
+      { id: 'boost', label: t('touch.boost'), className: 'small' },
+      { id: 'area', label: t('touch.area'), className: 'small' },
       { id: 'heavy', label: t('touch.heavy'), className: 'big' },
       { id: 'fast', label: t('touch.fast'), className: 'big' },
     ],
@@ -205,6 +207,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   );
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
+  // Four-slots: the Boost and Area buttons only show when their slot holds a move.
+  touch.setHidden('boost', !world.player.loadout[2]);
+  touch.setHidden('area', !world.player.loadout[3]);
   // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
   const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
   if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };

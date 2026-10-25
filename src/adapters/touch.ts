@@ -9,7 +9,7 @@ import { screenToWorld } from './view';
  * PlayerInput the keyboard and mouse produce, so the core never knows about
  * touch. Rules:
  * - the floating joystick is the analogue move vector (the core normalizes it);
- * - Fast / Heavy are the slot buttons (held = charge, release = fire);
+ * - Fast / Heavy / Boost / Area are the slot buttons (held = charge, release = fire);
  * - without a lock the moves go along the facing, as with Q/E; with auto-aim
  *   on (default for touch) a move aims at the nearest enemy in a cone in front;
  * - the Lock button acquires the enemy in front (aim = that enemy, else a point
@@ -24,9 +24,11 @@ export interface TouchFrame {
   move: Vec2;
   /** Edge: Roll pressed since the last step. */
   roll: boolean;
-  /** Level: Fast / Heavy buttons held. */
+  /** Level: Fast / Heavy / Boost / Area buttons held. */
   fast: boolean;
   heavy: boolean;
+  boost: boolean;
+  area: boolean;
   /** Level: Lock button held. */
   lockHeld: boolean;
   /** Edge: Lock button released without a swipe. */
@@ -37,7 +39,7 @@ export interface TouchFrame {
   tap: Vec2 | null;
 }
 
-export const IDLE_TOUCH: TouchFrame = { move: { x: 0, y: 0 }, roll: false, fast: false, heavy: false, lockHeld: false, lockTap: false, swipe: 0, tap: null };
+export const IDLE_TOUCH: TouchFrame = { move: { x: 0, y: 0 }, roll: false, fast: false, heavy: false, boost: false, area: false, lockHeld: false, lockTap: false, swipe: 0, tap: null };
 
 /** Auto-aim cone in front of the player (world pixels, radians). */
 export const AUTO_AIM = { range: 220, halfAngle: (50 * Math.PI) / 180 } as const;
@@ -99,8 +101,8 @@ export function touchToPlayerInput(frame: TouchFrame, ctx: TouchAimContext): Pla
     move: frame.move,
     aim,
     roll: frame.roll,
-    slots: [frame.fast, frame.heavy],
-    slotMouse: [autoAimed && frame.fast, autoAimed && frame.heavy],
+    slots: [frame.fast, frame.heavy, frame.boost, frame.area],
+    slotMouse: [autoAimed && frame.fast, autoAimed && frame.heavy, autoAimed && frame.boost, autoAimed && frame.area],
     lock: ctx.lockType === 'hold' ? frame.lockHeld : frame.lockTap,
     click: frame.tap !== null,
     wheel: frame.swipe === 0 ? 0 : -frame.swipe * TUNING.lockOn.wheelThreshold,
@@ -113,14 +115,17 @@ export function touchToPlayerInput(frame: TouchFrame, ctx: TouchAimContext): Pla
  * keys when pushed, buttons combine, and the touch aim is used while touch
  * drives a move, the lock or a tap. An idle touch frame leaves `keyboard` as is.
  */
+const slotRange = (a: PlayerInput, b: PlayerInput): number[] => Array.from({ length: Math.max(a.slots.length, b.slots.length) }, (_, i) => i);
+
 export function mergeInputs(keyboard: PlayerInput, touch: PlayerInput): PlayerInput {
   const touchAims = touch.click || touch.lock || touch.slots.some(Boolean);
   return {
     move: length(touch.move) > 0 ? touch.move : keyboard.move,
     aim: touchAims ? touch.aim : keyboard.aim,
     roll: keyboard.roll || touch.roll,
-    slots: keyboard.slots.map((held, i) => held || Boolean(touch.slots[i])),
-    slotMouse: keyboard.slotMouse.map((mouse, i) => (touch.slots[i] ? Boolean(touch.slotMouse[i]) : mouse)),
+    // As long as the longer of the two (an older input with fewer slots counts as not held there).
+    slots: slotRange(keyboard, touch).map((i) => Boolean(keyboard.slots[i]) || Boolean(touch.slots[i])),
+    slotMouse: slotRange(keyboard, touch).map((i) => (touch.slots[i] ? Boolean(touch.slotMouse[i]) : Boolean(keyboard.slotMouse[i]))),
     lock: keyboard.lock || touch.lock,
     click: keyboard.click || touch.click,
     wheel: keyboard.wheel + touch.wheel,

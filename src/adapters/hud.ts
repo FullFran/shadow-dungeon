@@ -1,5 +1,5 @@
 import type { ItemId, Rarity } from '../data/items';
-import { M0_SLOT_LAYOUT } from '../data/slots';
+import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
@@ -61,7 +61,7 @@ function flashText(flash: NonNullable<JuiceState['flash']>, species: string): st
 export const coinsLabel = (coins: number): string => t('hud.coins').replace('{coins}', String(Math.max(0, Math.floor(coins))));
 
 /** Key hint per slot index, from i18n. */
-const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
+const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy', 'hud.key.boost', 'hud.key.area'];
 
 const PAD = 7;
 
@@ -122,14 +122,18 @@ function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: nu
   if (chip) pixelText(ctx, chip, x + PAD, y + 63, PALETTE.textDim);
 }
 
+/** How many slot windows the HUD lays out: two while the boost and area slots are empty (the M0 look), else four. */
+export const slotCount = (loadout: readonly (string | null)[]): number => (loadout.slice(2).some((m) => m !== null) ? PLAYER_SLOT_LAYOUT.length : 2);
+
 /** Move slots at the bottom right: key hint, move name (red when unaffordable) and the charge bar. */
 function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: HudSize): void {
   const { player } = state;
-  M0_SLOT_LAYOUT.forEach((_, index) => {
+  const count = slotCount(player.loadout);
+  PLAYER_SLOT_LAYOUT.forEach((_, index) => {
     const moveId = player.loadout[index];
     if (!moveId) return;
     const move = MOVES[moveId];
-    const { x, y, width: w } = slotRect(screen, index, M0_SLOT_LAYOUT.length);
+    const { x, y, width: w } = slotRect(screen, index, count);
     const busy = player.action?.slotIndex === index;
     const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
     drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : PALETTE.border });

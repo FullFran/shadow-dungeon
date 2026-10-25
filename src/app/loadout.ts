@@ -1,5 +1,5 @@
 import { MOVES, type MoveId } from '../data/moves';
-import { M0_SLOT_LAYOUT } from '../data/slots';
+import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
 import { SPRITE_KEYS, SPRITES } from '../data/sprites';
 import type { PokemonType } from '../data/types';
@@ -158,9 +158,12 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 
   const items = (): ListItem[] => {
     const out: ListItem[] = [];
-    M0_SLOT_LAYOUT.forEach((kind, slot) => {
+    PLAYER_SLOT_LAYOUT.forEach((kind, slot) => {
+      // A slot the species has no move for (boost or area) is left out and stays empty.
+      const choices = slotOptions(kind, species.id);
+      if (choices.length === 0) return;
       out.push({ header: true, label: t(`slot.${kind}`) });
-      for (const id of slotOptions(kind, species.id)) {
+      for (const id of choices) {
         const equipped = loadout[slot] === id;
         out.push({
           label: moveCard(id, equipped),

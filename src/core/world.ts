@@ -1,12 +1,12 @@
 import { SPECIES, type SpeciesId } from '../data/species';
-import { M0_SLOT_LAYOUT } from '../data/slots';
+import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import type { UpgradeLevels } from '../data/upgrades';
 import { ELITE_TRAIT_DEFS, type Difficulty, type EliteTrait } from '../data/difficulty';
 import { eliteHp, rollTierOf, tierOf } from './difficulty';
 import { upgradeBonuses } from './upgrades';
-import { validateLoadout } from './loadout';
+import { padLoadout, validateLoadout } from './loadout';
 import { hasBossState, initialBoss } from './boss';
 import { returnStolen } from './stolen';
 import { initialAi } from './enemies';
@@ -41,8 +41,9 @@ export interface WorldOptions {
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels): PlayerState {
   const species = SPECIES[speciesId];
   const maxHp = species.maxHp + upgradeBonuses(upgrades).maxHp;
-  const equipped = loadout ?? species.defaultLoadout;
-  const errors = validateLoadout(species, M0_SLOT_LAYOUT, equipped);
+  // An older two-slot loadout (save or peer) gets the species defaults in the new slots.
+  const equipped = padLoadout(species, loadout ?? species.defaultLoadout);
+  const errors = validateLoadout(species, PLAYER_SLOT_LAYOUT, equipped);
   if (errors.length > 0) throw new Error(`invalid loadout: ${JSON.stringify(errors)}`);
   return {
     species: speciesId,

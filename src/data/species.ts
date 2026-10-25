@@ -69,7 +69,7 @@ export interface SpeciesDef {
   speedScale?: number;
   /** Moves the species can equip; empty for enemy-only species in M0. */
   movepool: readonly MoveId[];
-  /** Default loadout, aligned with the slot layout. */
+  /** Default loadout, aligned with the slot layout (fast, heavy, boost, area; null = empty slot). */
   defaultLoadout: readonly (MoveId | null)[];
   passive?: PassiveId;
 }
@@ -89,7 +89,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     sprite: 'mimikyu',
     spentSprite: 'mimikyuBusted',
     movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball'],
-    defaultLoadout: ['shadow-claw', 'play-rough'],
+    defaultLoadout: ['shadow-claw', 'play-rough', null, null],
     passive: 'disguise',
   },
   zorua: {
@@ -100,7 +100,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     sprite: 'zorua',
     speedScale: 1.12,
     movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play'],
-    defaultLoadout: ['feint-attack', 'night-daze'],
+    defaultLoadout: ['feint-attack', 'night-daze', null, null],
     passive: 'illusion',
   },
   litwick: {
@@ -111,7 +111,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     sprite: 'litwick',
     speedScale: 0.95,
     movepool: ['ember', 'astonish', 'hex', 'inferno'],
-    defaultLoadout: ['ember', 'hex'],
+    defaultLoadout: ['ember', 'hex', null, null],
     passive: 'flash-fire',
   },
   cubone: {
@@ -122,7 +122,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     sprite: 'cubone',
     speedScale: 0.92,
     movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum'],
-    defaultLoadout: ['bone-club', 'bonemerang'],
+    defaultLoadout: ['bone-club', 'bonemerang', null, null],
     passive: 'battle-armor',
   },
   poochyena: {
