@@ -106,14 +106,16 @@ export interface SpawnOptions {
 /** Adds an enemy with a deterministic id ("e<n>"). */
 export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, options: SpawnOptions = {}): WorldState {
   const species = SPECIES[speciesId];
+  // The endless dungeon's deeper floors spawn tougher enemies.
+  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1);
   const enemy: EnemyState = {
     id: `e${state.nextId}`,
     species: speciesId,
     types: species.types,
     pos,
     facing: vec(0, 1),
-    hp: species.maxHp,
-    maxHp: species.maxHp,
+    hp: maxHp,
+    maxHp,
     radius: species.radius,
     alive: true,
     hitstunMs: 0,

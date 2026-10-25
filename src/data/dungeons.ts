@@ -3,6 +3,7 @@ import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
 import type { MusicContext } from './music';
 import { ROOMS } from './rooms';
 import type { SpeciesId } from './species';
+import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
 
 /**
  * Every dungeon as data (docs/gdd.md §3): its name and lore, its floors
@@ -11,7 +12,7 @@ import type { SpeciesId } from './species';
  * music of each kind of floor, the colours of its tiles and what unlocks it.
  * The run (core/run.ts) reads everything from here.
  */
-export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest';
+export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -58,6 +59,8 @@ export interface DungeonDef {
   palette: TilePalette;
   /** Unlocked from the start (null), or once this dungeon's guardian has fallen. */
   unlockedBy: DungeonId | null;
+  /** The endless dungeon only: no last floor, guardian echoes and the run clock (data/endless.ts); its `plan` is empty. */
+  endless?: EndlessDef;
 }
 
 const loreOf = (id: string): DungeonLore => DUNGEON_LORE.find((l) => l.id === id)!;
@@ -146,8 +149,59 @@ export const FOREST: DungeonDef = {
   unlockedBy: 'crypt-of-the-sword-king',
 };
 
+/** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */
+const endlessUrgent = (endless: EndlessDef, floors = 40): UrgentChance[] =>
+  endless.urgent.map((u) => ({
+    kind: u.kind,
+    chance: Array.from({ length: floors }, (_, i) => (i + 1 < u.fromFloor ? 0 : Math.min(u.max, u.start + u.perFloor * (i + 1 - u.fromFloor)))),
+  }));
+
+/**
+ * The Sima del Eclipse (Eclipse Chasm), open from the start: endless floors,
+ * a guardian echo every fifth floor, the run clock and modo puro
+ * (data/endless.ts). Its floors are planned by `planAt`, not by `plan`.
+ */
+export const ECLIPSE: DungeonDef = {
+  id: 'eclipse-chasm',
+  lore: loreOf('eclipse-chasm'),
+  plan: [],
+  spawns: { ...ENDLESS.spawns, pool: [] },
+  urgent: endlessUrgent(ENDLESS),
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'forest-fog' }, midboss: 'guardian', guardian: 'guardian' },
+  palette: {
+    tileFloorA: '#2a2030',
+    tileFloorB: '#30233a',
+    tileWallTop: '#120b16',
+    tileWallBlock: '#1b111f',
+    tileWallFace: '#4a2a3c',
+    tileWallLip: '#7a3a3a',
+    mapRim: '#6a3448',
+    floorA: '#1c1420',
+    floorB: '#221826',
+    wall: '#08050a',
+    wallEdge: '#5a2a3a',
+    pillarTop: '#5a3446',
+    pillarSide: '#331c2a',
+  },
+  unlockedBy: null,
+  endless: ENDLESS,
+};
+
 /** Every dungeon, in the order the dungeon select lists them. */
-export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST];
+export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST, ECLIPSE];
+
+const GENERATED: FloorPlan = { kind: 'generated' };
+
+/** The plan of a floor (1-based): the dungeon's table, or for the endless dungeon an echo every few floors and generated ones between. */
+export function planAt(dungeon: DungeonDef, floor: number): FloorPlan | undefined {
+  const endless = dungeon.endless;
+  if (!endless) return dungeon.plan[floor - 1];
+  if (floor < 1) return undefined;
+  return isEchoFloor(endless, floor) ? { kind: 'room', room: echoAt(endless, floor).room, role: 'echo' } : GENERATED;
+}
+
+/** Floors of a dungeon; the endless one never runs out. */
+export const floorsOf = (dungeon: DungeonDef): number => (dungeon.endless ? Number.POSITIVE_INFINITY : dungeon.plan.length);
 
 const isDungeonId = (id: unknown): id is DungeonId => DUNGEONS.some((d) => d.id === id);
 
@@ -157,14 +211,24 @@ export const dungeonById = (id: unknown): DungeonDef => (isDungeonId(id) ? DUNGE
 /** Chance of a table at a floor: index 0 is floor 1, deeper floors use the last entry. */
 export const chanceAt = (table: readonly number[], floor: number): number => table[Math.min(floor, table.length) - 1] ?? 0;
 
-/** Music of a floor of a dungeon: its guardian or mid-boss arena, its urgent track, or its floor loop. */
-export function musicFor(dungeon: DungeonDef, plan: FloorPlan, kind: FloorKind): MusicContext {
-  if (plan.kind === 'room') return plan.role === 'midboss' ? dungeon.music.midboss : dungeon.music.guardian;
-  return kind === 'normal' ? dungeon.music.floor : dungeon.music.urgent[kind];
+/**
+ * Music of a floor of a dungeon: its guardian or mid-boss arena, its urgent
+ * track, or its floor loop. The endless dungeon rotates its floor tracks by
+ * depth band and plays each echo's own track (`floor` is needed there).
+ */
+export function musicFor(dungeon: DungeonDef, plan: FloorPlan, kind: FloorKind, floor = 1): MusicContext {
+  const endless = dungeon.endless;
+  if (plan.kind === 'room') {
+    if (plan.role === 'echo' && endless) return echoAt(endless, floor).music;
+    return plan.role === 'midboss' ? dungeon.music.midboss : dungeon.music.guardian;
+  }
+  if (kind !== 'normal') return dungeon.music.urgent[kind];
+  if (!endless || endless.musicBands.length === 0) return dungeon.music.floor;
+  return endless.musicBands[Math.floor((Math.max(1, floor) - 1) / endless.bandFloors) % endless.musicBands.length]!;
 }
 
 /** The guardian of a dungeon: the first spawn of its last fixed arena that is not a mid-boss (end screen text). */
 export function guardianOf(dungeon: DungeonDef): SpeciesId | null {
-  const arena = [...dungeon.plan].reverse().find((plan) => plan.kind === 'room' && plan.role !== 'midboss');
+  const arena = [...dungeon.plan].reverse().find((plan) => plan.kind === 'room' && plan.role === undefined);
   return arena?.kind === 'room' ? (ROOMS[arena.room].spawns[0]?.species ?? null) : null;
 }

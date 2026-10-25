@@ -592,7 +592,7 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       ]),
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
-  ], true, result);
+  ], true, result === 'eclipse' ? 'victory' : result);
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */

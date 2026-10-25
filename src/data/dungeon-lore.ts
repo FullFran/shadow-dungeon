@@ -23,4 +23,10 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     subtitleKey: 'dungeon.forest.subtitle',
     loreKeys: ['dungeon.forest.lore.1', 'dungeon.forest.lore.2'],
   },
+  {
+    id: 'eclipse-chasm',
+    nameKey: 'dungeon.eclipse.name',
+    subtitleKey: 'dungeon.eclipse.subtitle',
+    loreKeys: ['dungeon.eclipse.lore.1', 'dungeon.eclipse.lore.2'],
+  },
 ];

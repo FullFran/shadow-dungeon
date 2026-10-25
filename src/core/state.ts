@@ -6,6 +6,7 @@ import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
+import type { EnemyScale } from './endless';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -371,6 +372,8 @@ export interface WorldState {
   collapse?: CollapseState;
   /** Fog urgent floors (Niebla): the closing vision (fog.ts). */
   fog?: FogState;
+  /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
+  enemyScale?: EnemyScale;
   events: GameEvent[];
 }
 

@@ -43,9 +43,10 @@ export const DUNGEON = {
 /**
  * One floor of a run: generated (seeded) or a fixed room. A fixed room is the
  * guardian's arena unless it says `midboss` (a fight that leads on through
- * the room's exit).
+ * the room's exit) or `echo` (the endless dungeon's scaled guardian echo,
+ * whose way on opens at the top of the arena once it falls).
  */
-export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId; role?: 'midboss' };
+export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId; role?: 'midboss' | 'echo' };
 
 /** One species of a dungeon's enemy pool: its weight by floor (index 0 is floor 1, deeper floors use the last entry). */
 export interface SpawnEntry {

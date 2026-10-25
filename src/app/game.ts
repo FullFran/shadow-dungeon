@@ -2,13 +2,13 @@ import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
-import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, startRun, tickRunClock, type RunState } from '../core/run';
+import { runUpgrades, scaleCoins } from '../core/endless';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
-import { musicFor, type DungeonId } from '../data/dungeons';
+import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
@@ -47,7 +47,8 @@ import { createNetOverlay } from './net-overlay';
 export const VIEW_WIDTH = 512;
 export const VIEW_HEIGHT = 320;
 
-export type GameResult = 'defeat' | 'victory';
+/** `eclipse`: the endless dungeon's clock ran out (a score end). */
+export type GameResult = 'defeat' | 'victory' | 'eclipse';
 
 /** Shown on the end screens. */
 export interface RunSummary {
@@ -59,6 +60,8 @@ export interface RunSummary {
   items: readonly ItemId[];
   /** Pokémonedas this peer earned (each peer of a shared run earns for itself). */
   coins: CoinBreakdown;
+  /** Endless dungeon: the clock left when the run ended (the score's tie-break). */
+  clockMs?: number;
 }
 
 export interface GameOptions {
@@ -158,7 +161,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       loadout: options.loadout,
       lockType: options.lockType,
       clickToLock: options.clickToLock,
-      ...(options.upgrades ? { upgrades: options.upgrades } : {}),
+      // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
+      ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
       ...(net ? { localId: net.localId, role: net.role } : {}),
     },
     options.startFloor,
@@ -203,7 +207,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let lastCard: string | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
   const music = () => {
-    const context = musicFor(dungeonOf(run), floorPlanOf(run), run.kind);
+    const context = musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
     audio?.setMusic(context);
     if (context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
     playing = context;
@@ -225,6 +229,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       card = null;
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
+    // A guardian echo of the endless dungeon: only a short name card, no cinematic.
+    const plan = floorPlanOf(run);
+    const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
+    if (echo) intro = { name: t(`species.${echo.species}`), subtitle: t('endless.echo'), shownAtMs: realMs };
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
   }
@@ -368,8 +376,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ended = true;
     hidePick();
     audio?.setMusic(null);
+    const coins = scaleCoins(coinBreakdown(tally, result), dungeonOf(run).endless?.coinScale ?? 1);
     const finish = () =>
-      options.onEnd(result, { dungeon: run.dungeon, floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items, coins: coinBreakdown(tally, result) });
+      options.onEnd(result, {
+        dungeon: run.dungeon,
+        floor: run.floor,
+        seed: run.seed,
+        level: world.player.level,
+        items: world.player.items,
+        coins,
+        ...(run.clockMs !== undefined ? { clockMs: run.clockMs } : {}),
+      });
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
     window.setTimeout(() => {
       if (result !== 'victory' || !guardianHere()) return finish();
@@ -421,6 +438,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       const before = world;
       world = step(world, playerInput, FIXED_DT_MS);
+      // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
+      if (net?.role !== 'guest') run = tickRunClock(run, FIXED_DT_MS);
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
       net?.session.afterStep(world, run.floor);
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
@@ -436,6 +455,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
       }
       const progress = progressRun(run, world);
+      // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
+      if (!progress.entered) run = progress.run;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {
@@ -477,7 +498,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
     audio?.setRumble(rumble);
     const plan = floorPlanOf(run);
-    const exit = plan.kind === 'room' ? ROOMS[plan.room].exit : null;
+    const exit = roomExit(plan, dungeonOf(run));
     // Click-to-lock hover: the enemy a click would lock (same rule as the core).
     const hovered =
       clickLockActive(world.lock) && !closeMenu && lastInput
@@ -502,7 +523,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
-      coins: coinBreakdown(tally, null).total,
+      coins: scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total,
       palette: dungeonOf(run).palette,
       intro,
       nowPlaying,
