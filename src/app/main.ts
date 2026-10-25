@@ -4,15 +4,16 @@ import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, setLanguage, t, type Language } from '../i18n';
-import { startGame, type GameResult, type RunningGame } from './game';
+import { startGame, type GameResult, type RunningGame, type RunSummary } from './game';
 import { openPauseMenu } from './menu';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
 import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-panel';
 
 /**
- * Page flow: pre-run menu (loadout, language, lock type, sound) -> sandbox
- * room -> boss room -> defeat or victory screen; Esc during a run opens the
- * pause menu (quick settings, restart room, quit). Settings persist through the
+ * Page flow: pre-run menu (loadout, language, lock type, sound) -> generated
+ * floors 1-3 -> boss floor -> defeat or victory screen (floor reached and run
+ * seed); Esc during a run opens the pause menu (quick settings, restart floor,
+ * quit). Each run gets a random seed unless the page URL fixes one (`?seed=123`). Settings persist through the
  * storage port and apply at once, also mid-run; the fan-project notice is always
  * on screen. Audio starts on the first user gesture (browsers block autoplay).
  */
@@ -24,6 +25,12 @@ window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;
+
+/** Run seed from `?seed=` (any integer), else a fresh random one per run. */
+function runSeed(): number {
+  const fixed = Number.parseInt(new URLSearchParams(window.location.search).get('seed') ?? '', 10);
+  return Number.isFinite(fixed) ? fixed | 0 : (Math.random() * 2 ** 31) | 0;
+}
 
 function applyLanguage(language: Language): void {
   setLanguage(language);
@@ -97,7 +104,7 @@ function menu(root: HTMLElement): void {
   start.focus();
 }
 
-function resultScreen(root: HTMLElement, result: GameResult): void {
+function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary): void {
   audio.setMusic(null);
   audio.play(result);
   const retry = el('button', { type: 'button', className: 'primary', textContent: t('screen.retry') });
@@ -109,6 +116,7 @@ function resultScreen(root: HTMLElement, result: GameResult): void {
     el('div', { className: `panel ${result}` }, [
       el('h1', { textContent: t(`screen.${result}.title`) }),
       el('p', { textContent: t(`screen.${result}.text`) }),
+      el('p', { className: 'run-summary', textContent: `${t('screen.floorReached')}: ${summary.floor} · ${t('screen.seed')}: ${summary.seed}` }),
       el('div', { className: 'row' }, [retry, back]),
     ]),
   );
@@ -127,12 +135,12 @@ async function play(root: HTMLElement): Promise<void> {
     loadout: settings.loadout,
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
-    seed: Date.now() | 0,
+    seed: runSeed(),
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions),
     onQuit: () => menu(root),
-    onEnd: (result) => resultScreen(root, result),
+    onEnd: (result, summary) => resultScreen(root, result, summary),
   });
 }
 

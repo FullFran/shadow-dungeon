@@ -21,6 +21,8 @@ export interface RenderFrame {
   juice: JuiceState;
   view: Rect;
   pixelScale: number;
+  /** Current floor of the run (1-based), for the HUD. */
+  floor: number;
   exit: Rect | null;
   exitOpen: boolean;
   /** Real time, for looping animations. */
@@ -428,7 +430,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    drawHud(ctx, current, juice, view);
+    drawHud(ctx, current, juice, view, frame.floor);
   }
 
   return { draw };

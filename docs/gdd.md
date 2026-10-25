@@ -53,7 +53,11 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 ### Plantas normales
 
 - Salas y pasillos generados al azar, al estilo Mundo Misterioso, con escaleras a la siguiente planta.
-- 3 + n enemigos por sala, siendo n el número de jugadores *(provisional)*.
+- 3 + n enemigos por sala, siendo n el número de jugadores *(provisional; en el MVP la cuenta sube con la profundidad, de 1 a 2 por sala en la planta 1 y uno más por planta)*.
+- Los enemigos duermen hasta que entras en su sala o te ven de cerca; una vez despiertos ya no paran.
+- Las escaleras se pueden usar en cuanto las encuentras, sin limpiar la planta (como en Mundo Misterioso).
+- La vida se arrastra de una planta a otra y cada planta nueva cura un 25 % de la vida máxima *(provisional)*. El Disfraz se recupera en cada planta.
+- Cada partida tiene una semilla (al azar, o fija con `?seed=` en la dirección) y se enseña al final, así que una partida buena se puede repetir.
 - Sin reloj. Solo un aviso suave si el grupo se queda muchísimo tiempo (la idea del viento de Mundo Misterioso), para cortar el quedarse farmeando, nunca para castigar a quien juega normal.
 
 ### Plantas con prisa
@@ -89,7 +93,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 | Shift o clic central | Fijar objetivo: una pulsación fija y otra lo suelta (mantener Shift resultó incómodo en la primera prueba). El tipo de fijado se elige en ajustes |
 | Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |
-| Esc | Menú: continuar, ajustes rápidos, reiniciar la sala y salir al menú principal |
+| Esc | Menú: continuar, ajustes rápidos, reiniciar la planta (vuelve a como entraste) y salir al menú principal |
 
 Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al derecho, esquiva al Espacio), así que le resulta natural a cualquiera que haya jugado algo parecido. Todas las teclas se pueden cambiar.
 
@@ -151,7 +155,7 @@ Repertorio de Mimikyu en el M0:
 
 | Rol | Pokémon | Kit / comportamiento |
 |---|---|---|
-| Jugable | Mimikyu (Fantasma/Hada) | Por defecto, clic izquierdo: Garra Umbría (rápido); clic derecho: Carantoña (lento, se carga). Repertorio completo más arriba. Pasiva Disfraz: el primer golpe que recibes en cada sala no te hace daño y el disfraz se rompe (se ve) |
+| Jugable | Mimikyu (Fantasma/Hada) | Por defecto, clic izquierdo: Garra Umbría (rápido); clic derecho: Carantoña (lento, se carga). Repertorio completo más arriba. Pasiva Disfraz: el primer golpe que recibes en cada planta no te hace daño y el disfraz se rompe (se ve) |
 | Enemigo cuerpo a cuerpo | Poochyena (Siniestro) | Te acecha, avisa con Charge y se lanza en línea recta; si esquivas, se queda vendido un momento |
 | Enemigo a distancia | Gastly (Veneno/Fantasma) | Flota sobre obstáculos, mantiene la distancia y lanza una bola lenta que se lee bien |
 | Jefe | Aegislash (Acero/Fantasma) | Dos fases como en su cambio de forma: Escudo (bloquea de frente, hay que rodearlo) y Filo (combos agresivos con huecos claros) |

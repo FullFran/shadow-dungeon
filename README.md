@@ -23,7 +23,7 @@ Deploy: `.github/workflows/deploy.yml` runs the tests, builds `dist/` and publis
 
 ## How to play (M0)
 
-Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy moves, the language and whether click-to-lock is on in the menu (remembered in `localStorage`), then press Start. Clear the room (3 Poochyena, 2 Gastly) and walk through the east exit to fight Aegislash. Losing all HP shows the defeat screen; beating Aegislash shows the victory screen.
+Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy moves, the language and whether click-to-lock is on in the menu (remembered in `localStorage`), then press Start. A run is three procedurally generated floors (rooms and corridors, sleeping Poochyena and Gastly that wake when you come into their room or into sight) and a fourth floor against Aegislash; step on the stairs to go down, no need to clear the floor. HP carries over (each new floor heals 25%), Disguise comes back on every floor. Losing all HP shows the defeat screen; beating Aegislash shows the victory screen; both show the floor reached and the run seed. Add `?seed=123` to the URL to replay a seed.
 
 | Input | Action |
 |---|---|
@@ -36,7 +36,7 @@ Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy mov
 | Left click on an enemy | Click-to-lock (on by default, toggle in the menu; with *click only* it is always on, with *off* never): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock (with *click only* it releases it) |
 | Mouse wheel | Switch locked target clockwise / counter-clockwise |
 | M | Mute or unmute sound |
-| Esc | Menu: resume, quick settings (lock type, click-to-lock, volume, mute, language), restart room, quit to the main menu. The solo demo pauses while it is open |
+| Esc | Menu: resume, quick settings (lock type, click-to-lock, volume, mute, language), restart floor, quit to the main menu. The solo demo pauses while it is open |
 
 Moving the mouse never changes the locked target; only the gestures above do.
 

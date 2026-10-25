@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { floorLabel } from '../src/adapters/hud';
 import { catalog, detectLanguage, LANGUAGES, setLanguage, t } from '../src/i18n';
 
 describe('i18n catalogs', () => {
@@ -45,6 +46,18 @@ describe('lock type and Esc menu strings', () => {
       expect(keys.filter((key) => !(key in catalog(language)))).toEqual([]);
     });
   }
+});
+
+describe('run strings', () => {
+  it('names the floor counter, the end-screen summary and the floor restart', () => {
+    setLanguage('es');
+    expect([t('hud.floor'), t('screen.floorReached'), t('screen.seed'), t('pause.restart')]).toEqual(['Planta', 'Planta alcanzada', 'Semilla', 'Reiniciar planta']);
+    setLanguage('en');
+    expect([t('hud.floor'), t('screen.floorReached'), t('screen.seed'), t('pause.restart')]).toEqual(['Floor', 'Floor reached', 'Seed', 'Restart floor']);
+    expect(floorLabel(2)).toBe('Floor 2');
+    setLanguage('es');
+    expect(floorLabel(3)).toBe('Planta 3');
+  });
 });
 
 describe('detectLanguage', () => {

@@ -9,6 +9,9 @@ import { JUICE, type JuiceState } from './juice';
 /** Fraction of a bar to fill, clamped to [0, 1]. */
 export const barFill = (value: number, max: number): number => (max <= 0 ? 0 : Math.min(1, Math.max(0, value / max)));
 
+/** "Planta 2" / "Floor 2". */
+export const floorLabel = (floor: number): string => `${t('hud.floor')} ${floor}`;
+
 /** Key hint per slot index, from i18n. */
 const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
 
@@ -31,11 +34,13 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 
 /**
  * HUD in view units (the caller has applied the pixel scale): HP, stamina,
- * Disguise state, move slots with the charge level, boss bar and flashes.
+ * Disguise state, floor counter, move slots with the charge level, boss bar and flashes.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect): void {
+export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
   const { player } = state;
   ctx.font = 'bold 8px monospace';
+
+  label(ctx, floorLabel(floor), view.width - 8, 14, '#e8e4f0', 'right');
 
   label(ctx, t('hud.hp'), 8, 14);
   bar(ctx, 34, 8, 90, 7, barFill(player.hp, player.maxHp), player.hp / player.maxHp > 0.3 ? '#5ad16a' : '#e0524a');

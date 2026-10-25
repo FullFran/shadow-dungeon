@@ -1,14 +1,12 @@
 import type { MoveId } from '../data/moves';
-import { ROOMS, type RoomId } from '../data/rooms';
-import { generateFloor } from '../core/dungeon';
-import { loadFloor, onStairs } from '../core/floor';
-import { atExit, loadRoom, roomCleared } from '../core/rooms';
+import { ROOMS } from '../data/rooms';
+import { roomCleared } from '../core/rooms';
+import { floorPlanOf, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
-import { length, vec } from '../core/vec';
-import { createWorld } from '../core/world';
+import { length } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import type { AudioEngine } from '../adapters/audio';
 import { attachInput, toPlayerInput } from '../adapters/input';
@@ -23,6 +21,12 @@ export const VIEW_HEIGHT = 320;
 
 export type GameResult = 'defeat' | 'victory';
 
+/** Shown on the end screens. */
+export interface RunSummary {
+  floor: number;
+  seed: number;
+}
+
 export interface GameOptions {
   loadout: readonly (MoveId | null)[];
   lockType: LockType;
@@ -36,7 +40,7 @@ export interface GameOptions {
   openMenu?(actions: MenuActions): () => void;
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
-  onEnd(result: GameResult): void;
+  onEnd(result: GameResult, summary: RunSummary): void;
 }
 
 export interface RunningGame {
@@ -47,7 +51,7 @@ export interface RunningGame {
 
 /**
  * The play session: fixed-step simulation, interpolated rendering, juice and
- * the floor flow (generated floor -> stairs -> boss room; death or the boss falling ends it),
+ * the run (generated floors 1-3 -> stairs -> boss floor; death or the boss falling ends it),
  * with sound driven by the same events and the music following the room.
  * Esc opens the menu: game input is cut off and, per the pause policy in
  * `menu.ts`, the simulation stands still until it closes.
@@ -55,21 +59,16 @@ export interface RunningGame {
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
   const renderer = createRenderer(canvas, sheets);
-  /** Null while on a generated floor; a fixed room id otherwise. */
-  let roomId: RoomId | null = null;
-  const seed = options.seed ?? 1;
-  const base = createWorld({
-    seed,
-    arena: { width: 1, height: 1 },
-    playerPos: vec(0, 0),
+  const started = startRun(options.seed ?? 1, {
     loadout: options.loadout,
     lockType: options.lockType,
     clickToLock: options.clickToLock,
   });
+  let run: RunState = started.run;
+  let world: WorldState = started.world;
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
-  let world: WorldState = loadFloor(base, generateFloor(seed, 1));
-  /** World as the current room was entered, for "Restart room". */
-  let roomStart = world;
+  /** World as the current floor was entered, for "Restart floor". */
+  let floorStart = world;
   let prev = world;
   let accumulator = 0;
   let juice = initialJuice();
@@ -87,7 +86,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
   let closeMenu: (() => void) | null = null;
   const audio = options.audio;
-  const music = (id: RoomId | null) => audio?.setMusic(id === 'boss' ? 'boss' : 'room');
+  const music = () => audio?.setMusic(isBossFloor(run) ? 'boss' : 'room');
 
   function hideMenu(): void {
     if (!closeMenu) return;
@@ -97,9 +96,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     audio?.setDucked(false);
   }
 
-  function restartRoom(): void {
+  function restartFloor(): void {
     hideMenu();
-    world = { ...roomStart, lock: configureLock(roomStart.lock, lockSettings) };
+    world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     prev = world;
     accumulator = 0;
     juice = initialJuice();
@@ -116,7 +115,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     audio?.setDucked(true);
     closeMenu = options.openMenu({
       resume: hideMenu,
-      restart: restartRoom,
+      restart: restartFloor,
       quit: () => {
         hideMenu();
         options.onQuit?.();
@@ -148,7 +147,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ended = true;
     audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
-    window.setTimeout(() => options.onEnd(result), 700);
+    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed }), 700);
   }
 
   function simulate(frameMs: number): void {
@@ -166,16 +165,16 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
       }
-      if (world.player.hp <= 0) end('defeat');
-      else if (roomId === 'boss' && roomCleared(world)) end('victory');
-      else if (roomId === null ? onStairs(world) : atExit(world, roomId) && ROOMS[roomId].next) {
-        roomId = roomId === null ? 'boss' : ROOMS[roomId].next!;
-        world = loadRoom(world, roomId);
-        roomStart = world;
+      const progress = progressRun(run, world);
+      if (progress.outcome) end(progress.outcome);
+      else if (progress.entered) {
+        run = progress.run;
+        world = progress.world;
+        floorStart = world;
         prev = world;
         camera = world.player.pos;
         defeatedAt.clear();
-        music(roomId);
+        music();
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -199,7 +198,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
-    const exit = roomId === null ? null : ROOMS[roomId].exit;
+    const plan = floorPlanOf(run);
+    const exit = plan.kind === 'room' ? ROOMS[plan.room].exit : null;
     // Click-to-lock hover: the enemy a click would lock (same rule as the core).
     const hovered =
       clickLockActive(world.lock) && !closeMenu && lastInput
@@ -212,6 +212,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       juice,
       view,
       pixelScale,
+      floor: run.floor,
       exit,
       exitOpen: exit !== null && roomCleared(world),
       timeMs: realMs,
@@ -224,7 +225,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   resize();
-  music(roomId);
+  music();
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
