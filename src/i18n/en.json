@@ -349,5 +349,14 @@
   "touch.pause": "Pause",
   "touch.map": "Map",
   "touch.talk": "Talk",
-  "touch.read": "Read"
+  "touch.read": "Read",
+  "pwa.install": "Install game",
+  "pwa.banner": "Install the game to play full screen and offline.",
+  "pwa.installNow": "Install",
+  "pwa.later": "Not now",
+  "pwa.never": "Don't show again",
+  "pwa.ios": "To install it on iPhone or iPad: Share → Add to Home Screen.",
+  "pwa.ok": "Got it",
+  "pwa.update": "New version available",
+  "pwa.reload": "Update"
 }

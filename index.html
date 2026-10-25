@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mazmorra Sombría</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#05060d" />
+    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mazmorra" />
     <style>
       /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
       @font-face { font-family: 'Pixelify Sans'; src: url('./fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
@@ -256,6 +264,13 @@
       .touch-lock::before { content: '◀'; left: -14px; }
       .touch-lock::after { content: '▶'; right: -14px; }
       .touch-talk { right: 0; bottom: 0; }
+      /* ---- PWA (src/ui/pwa.ts): install banner and update toast ---- */
+      .pwa-banner { position: fixed; left: 0; right: 0; top: max(10px, env(safe-area-inset-top)); display: flex; justify-content: center; padding: 0 16px; z-index: 15; pointer-events: none; }
+      .pwa-banner .md-window { max-width: 34rem; padding: 12px 16px 10px; pointer-events: auto; font-size: 18px; }
+      .pwa-banner .md-list.horizontal { justify-content: flex-start; gap: 6px 14px; }
+      .pwa-toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; z-index: 25; font-size: 18px; white-space: nowrap; }
+      .pwa-toast-action { font: inherit; min-height: 44px; padding: 2px 14px; color: var(--md-ink); background: var(--md-cursor); border: 0; border-radius: 6px; cursor: pointer; }
+      #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
     </style>
   </head>
   <body>

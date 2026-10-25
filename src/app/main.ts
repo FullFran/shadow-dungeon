@@ -32,6 +32,7 @@ import { saveRun } from '../town/records';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
+import { setupPwa } from '../ui/pwa';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -50,6 +51,14 @@ const audio = createAudio(settings);
 // Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
 setTouchMode(settings.touchMode);
 const touchChrome = installTouchChrome();
+// PWA: service worker (builds only), "Instalar juego" on the title and a one-time banner.
+const pwa = setupPwa({
+  store,
+  onOfferChange: () => {
+    const app = document.getElementById('app');
+    if (app?.querySelector('.title-logo')) titleScreen(app);
+  },
+});
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
@@ -204,6 +213,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
       { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
       { label: t('town.menu'), onConfirm: () => townScreen(root) },
+      ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
     ],
   });
   show(root, [
@@ -211,6 +221,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
   ]);
+  pwa.banner(root);
 }
 
 /**

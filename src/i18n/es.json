@@ -349,5 +349,14 @@
   "touch.pause": "Pausa",
   "touch.map": "Mapa",
   "touch.talk": "Hablar",
-  "touch.read": "Leer"
+  "touch.read": "Leer",
+  "pwa.install": "Instalar juego",
+  "pwa.banner": "Instala el juego para jugar a pantalla completa y sin conexión.",
+  "pwa.installNow": "Instalar",
+  "pwa.later": "Ahora no",
+  "pwa.never": "No volver a mostrar",
+  "pwa.ios": "Para instalarlo en iPhone o iPad: Compartir → Añadir a pantalla de inicio.",
+  "pwa.ok": "Entendido",
+  "pwa.update": "Nueva versión disponible",
+  "pwa.reload": "Actualizar"
 }
