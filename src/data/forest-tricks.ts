@@ -1,5 +1,6 @@
 import type { Difficulty } from './difficulty';
 import { DECIDUEYE, DRIFLOON, IMPIDIMP, TREVENANT, type EnemyDef } from './enemies';
+import { DRIFBLIM } from './evolved-enemies';
 import type { SpeciesId } from './species';
 
 /**
@@ -51,6 +52,9 @@ export const FOREST_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   shroomish: [{ minDifficulty: 'hard', patch: { ring: { count: 6, projectile: { power: 14, type: 'grass', speed: 70, radius: 6, lifetimeMs: 3000 } } } }],
   // A second ring, turned half a step, right behind the first.
   drifloon: [{ minDifficulty: 'hard', patch: { ring: { ...DRIFLOON.ring!, waves: 2, waveGapMs: 350 } } }],
+  // Evolved forms (data/evolved-enemies.ts): a third ring; a third dive.
+  drifblim: [{ minDifficulty: 'hard', patch: { ring: { ...DRIFBLIM.ring!, waves: 3 } } }],
+  noctowl: [{ minDifficulty: 'hard', patch: { thirdCut: { minDifficulty: 'hard', telegraphMs: 420, lungeMs: 300, lungeDistance: 180 } } }],
   trevenant: [
     { minDifficulty: 'hard', patch: { cards: [...TREVENANT.cards, 'grove'] } },
     {

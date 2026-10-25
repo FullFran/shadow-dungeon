@@ -2,6 +2,7 @@ import type { Difficulty } from './difficulty';
 import { cardInfo, type CardFightDef } from './cards';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
+import { EVOLVED_BEHAVIOUR } from './evolved-enemies';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
 
 /**
@@ -1676,6 +1677,8 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   nihilego: NIHILEGO,
   'eclipse-hunter': ECLIPSE_HUNTER,
   'eclipse-echo': ECLIPSE_ECHO,
+  // Evolved forms (data/evolved-enemies.ts).
+  ...EVOLVED_BEHAVIOUR,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */

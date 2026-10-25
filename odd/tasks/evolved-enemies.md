@@ -43,8 +43,12 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 
 ## Tasks
 
-- [ ] T1 Sprites + species + XP + names (route: inline, this writer; mechanical data, no RED: sprite pipeline test covers it)
-- [ ] T2 Behaviours + tricks, tests first (route: inline, this writer)
+- [x] T1 Sprites + species + XP + names (route: inline, this writer; mechanical data) — commit 86bd0e9; `node tools/fetch-sprites.mjs`
+  exit 0, `git diff -- public/sprites` empty for existing sheets (only 20 new folders); new `tests/core/evolved.test.ts`
+  (21 green: native six sheets, HP and XP above the base form, es/en names); suite 155 files / 1542 tests
+- [x] T2 Behaviours + tricks, tests first (route: inline, this writer) — RED: `tests/core/evolved-behaviour.test.ts` failed to
+  load (no `src/data/evolved-enemies.ts`); GREEN 75/75 after the data (test fix on the way: a bomber's puff emits no
+  `enemyAttack`, so the strike check counts hits too); suite 156 files / 1617 tests; typecheck clean
 - [ ] T3 Placement: pools, Sima strata, threat, escorts (route: inline, this writer)
 - [ ] T4 GDD, README, balance before/after, screenshots (route: inline, this writer)
 
@@ -67,8 +71,19 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 
 ## Decisions
 
-- (filled per task)
+- Behaviours are data only on the base form's kind (`src/data/evolved-enemies.ts`, merged into `ENEMY_BEHAVIOUR`), no new
+  state machine code: the escalation uses fields the core already reads (follow-ups, third cuts, rings with waves, a
+  second ball, bursts, repeats, landing hazards, sweeps, puddles, a leap with a ring) and tier gates set to easy.
+  Literals on purpose: enemies.ts imports the file, so it only imports types back (no load-order cycle).
+- Escalation rule tested generically: same kind, poise not lower than the base, and a new field, a tier-gated field
+  played earlier or a bigger count/radius/reach; 17 of 20 add a move, Drifblim, Morgrem and Weezing escalate by count and size.
+- Hard+ tricks (7): Drifblim third ring, Noctowl third dive (forest); Crawdaunt third jet, Kingler third pincer (caves);
+  Toxicroak third jab, Muk sludge ring (swamp); Houndoom faster sweep (Sima). Crypt evolutions keep their tier content in
+  data (`howl`, `hardSpread`), as the Crypt has no trick table; Octillery's hard fan is a data tier gate too.
+- Fairness: every damaging attack on every tier (with its tricks) under `TUNING.roster.maxHitShare` against every
+  starter; openers >= `TUNING.roster.minTelegraphMs`, chained wind-ups >= `TELEGRAPH_FLOOR.minMs`; a nightmare run of each
+  evolution shows every `enemyTelegraph` >= the floor (the game's own `effectiveTelegraphMs` path).
 
 ## Next step
 
-T1.
+T3.
