@@ -27,6 +27,7 @@ import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen } from './adventure-route';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
+import { openTown } from '../town/scene';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -193,6 +194,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
       { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
+      { label: t('town.menu'), onConfirm: () => townScreen(root) },
     ],
   });
   show(root, [
@@ -279,6 +281,12 @@ function settingsScreen(root: HTMLElement): void {
       mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
     ]),
   ]);
+}
+
+/** The hub town (src/town): walk around; its route exit goes on exactly like "Play" (`newAdventure`), Esc goes back to the title. */
+function townScreen(root: HTMLElement): void {
+  waitScreen(root, t('app.loading'));
+  void openTown({ sheets: sheetsReady(), species: settings.species, show: (nodes) => show(root, nodes, false), onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5) });
 }
 
 function creditsScreen(root: HTMLElement): void {
@@ -489,6 +497,7 @@ function devScreen(root: HTMLElement): boolean {
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
+    town: () => townScreen(root),
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false),

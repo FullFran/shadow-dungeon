@@ -1,0 +1,32 @@
+Town tiles: Ninja Adventure Asset Pack, made by Pixel-Boy and AAA
+https://pixel-boy.itch.io/ninja-adventure-asset-pack
+
+License: Creative Commons Zero v1.0 Universal (CC0 1.0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Checked on the itch.io page on 2026-10-25. Its "More information" row reads
+"Creative Commons Zero v1.0 Universal", and the description says the assets are
+released under CC0 ("Attribution is not required but appreciated").
+
+Provenance: the PNGs here are crops of two sheets from the author's Godot 4
+project (https://github.com/pixel-boy/NinjaAdventure, content/map/), which the
+itch.io page links and also offers as "Godot Project V4.zip":
+  tileset_floor.png             sha256 e111065065edf806e7e893330086e68efc8755175d92f14d087b42d40a331e16
+  tileset_village_abandoned.png sha256 6787c6e22a4d44ceee4f158309b2519707bdb70c59aca00b3d49006cadcca06e
+The 89 MB "Asset Pack.zip" could not be downloaded from this machine (its
+storage host was unreachable), so these sheets were used instead.
+
+Files and source rectangles (x, y, width, height in source pixels):
+  ground.png        tileset_floor.png              0, 112, 80, 96
+  house-stone.png   tileset_village_abandoned.png  0, 0, 64, 48
+  notice-board.png  tileset_village_abandoned.png  144, 176, 32, 16
+  tree-big.png      tileset_village_abandoned.png  0, 96, 64, 48
+  tree-small.png    tileset_village_abandoned.png  64, 96, 32, 32
+  bush.png          tileset_village_abandoned.png  64, 80, 16, 16
+  stump.png         tileset_village_abandoned.png  96, 128, 16, 16
+  house-wood.png    tileset_village_abandoned.png  176, 0, 48, 48
+  house-shop.png    tileset_village_abandoned.png  176, 48, 48, 48
+  stall.png         tileset_village_abandoned.png  272, 0, 48, 48
+
+The game draws them at 2x and tints them red (the eclipse) at runtime; the
+files themselves are unmodified crops.
