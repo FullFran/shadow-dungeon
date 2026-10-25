@@ -24,6 +24,7 @@ Out of scope (added later on request: T5 sound and music): procedural dungeons (
 - [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
 - [x] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
 - [x] T5 Procedural sound effects and an original chiptune music loop with Web Audio (no audio files), volume and mute settings (route: delegated writer; trigger: new audio adapter, app wiring, settings, i18n, tests). Commits `e937c76` and the `feat(audio): wire sound ...` commit that contains this entry.
+- [ ] T6 Esc in-game menu (resume, quick settings, restart room, quit; pauses in solo, never in future co-op) and lock-type selector toggle/hold/click-only/off (route: delegated writer; trigger: app menu, settings, core lock-on, input, i18n, tests)
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
