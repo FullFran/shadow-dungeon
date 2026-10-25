@@ -98,12 +98,21 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     exit: { x: 360, y: 0, width: 80, height: 50 },
     next: null,
   },
-  /** Misty Forest guardian: Decidueye's roost, an open clearing about one screen big, so the archer stays in sight. */
+  /**
+   * Misty Forest guardian: Decidueye's roost, a clearing about one screen big
+   * (so the archer stays in sight) with four old trees whose trunks stop
+   * arrows and leaves (cover, like the throne room's pillars).
+   */
   roost: {
     id: 'roost',
     width: 640,
     height: 400,
-    obstacles: [],
+    obstacles: [
+      { x: 130, y: 100, width: 36, height: 36, cover: true },
+      { x: 474, y: 100, width: 36, height: 36, cover: true },
+      { x: 130, y: 260, width: 36, height: 36, cover: true },
+      { x: 474, y: 260, width: 36, height: 36, cover: true },
+    ],
     playerStart: { x: 320, y: 330 },
     spawns: [{ species: 'decidueye', x: 320, y: 120 }],
     exit: null,

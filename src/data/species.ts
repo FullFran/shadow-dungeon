@@ -35,7 +35,10 @@ export type SpeciesId =
   | 'duskull'
   | 'golett'
   | 'pawniard'
-  | 'sableye';
+  | 'sableye'
+  | 'impidimp'
+  | 'shroomish'
+  | 'drifloon';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -163,6 +166,10 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   golett: { id: 'golett', types: ['ground', 'ghost'], maxHp: 160, radius: 14, sprite: 'golett', movepool: [], defaultLoadout: [] },
   pawniard: { id: 'pawniard', types: ['dark', 'steel'], maxHp: 34, radius: 9, sprite: 'pawniard', movepool: [], defaultLoadout: [] },
   sableye: { id: 'sableye', types: ['dark', 'ghost'], maxHp: 460, radius: 13, sprite: 'sableye', movepool: [], defaultLoadout: [] },
+  // Misty Forest remaster; HP provisional.
+  impidimp: { id: 'impidimp', types: ['dark', 'fairy'], maxHp: 50, radius: 10, sprite: 'impidimp', movepool: [], defaultLoadout: [] },
+  shroomish: { id: 'shroomish', types: ['grass'], maxHp: 60, radius: 10, sprite: 'shroomish', movepool: [], defaultLoadout: [] },
+  drifloon: { id: 'drifloon', types: ['ghost', 'flying'], maxHp: 55, radius: 11, sprite: 'drifloon', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

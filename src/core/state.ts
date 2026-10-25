@@ -1,5 +1,5 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
-import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
@@ -194,7 +194,7 @@ export interface EnemyState {
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard;
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | 'slam';
 
 export interface BossState {
   stance: BossStance;
@@ -416,6 +416,8 @@ export interface WorldState {
   fog?: FogState;
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
+  /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */
+  wisp?: { cache: Vec2 };
   events: GameEvent[];
 }
 

@@ -56,13 +56,14 @@ export function bladeTouches(enemy: EnemyState, player: Vec2): boolean {
   return reach && inArc;
 }
 
-/** Where a positional (`pierceRoll`) wind-up will land, for its own telegraph: a circle around the enemy, a sweeping wall, or the attack's own shape. */
-export type PierceZone = { kind: 'circle'; radius: number } | { kind: 'wall' } | { kind: 'shape' };
+/** Where a positional (`pierceRoll`) wind-up will land, for its own telegraph: a circle around the enemy, a sweeping wall, the attack's own shape, or the arena lanes the forest bosses mark (Trevenant's roots, Decidueye's rain). */
+export type PierceZone = { kind: 'circle'; radius: number } | { kind: 'wall' } | { kind: 'shape' } | { kind: 'lanes' };
 
 /**
  * The positional attack this enemy is winding up (or throwing) at tier `d`,
  * if any: Aegislash's Shadow and Judgement walls and (hard+) Midnight,
- * Sableye's gem burst, and any other enemy whose attack data says `pierceRoll`.
+ * Sableye's gem burst, Trevenant's roots and Decidueye's arrow rain, and any
+ * other enemy whose attack data says `pierceRoll`.
  */
 export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null {
   const def = ENEMY_BEHAVIOUR[enemy.species];
@@ -75,6 +76,8 @@ export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null 
     return null;
   }
   if (def.kind === 'thief') return stance === 'gems' && (enemy.ai.mode === 'telegraph' || burstActive(enemy, def)) && def.gems.burst.attack.pierceRoll ? { kind: 'circle', radius: def.gems.burst.radius } : null;
+  if (def.kind === 'treant') return stance === 'roots' && def.roots.spike.pierceRoll ? { kind: 'lanes' } : null;
+  if (def.kind === 'archer') return stance === 'rain' && def.phase2.rain.arrow.pierceRoll ? { kind: 'lanes' } : null;
   if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
   if (def.kind === 'slammer') return def.attack.pierceRoll ? { kind: 'circle', radius: def.radius } : null;
   if (def.kind === 'lunger') return def.attack.pierceRoll ? { kind: 'shape' } : null;
@@ -93,6 +96,9 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     const def = ENEMY_BEHAVIOUR[enemy.species];
     if (!def || def.kind === 'caster' || def.kind === 'spore') continue;
     let hit;
+    // Impidimp's sidestep and Shroomish in the air never touch.
+    if (def.kind === 'lunger' && enemy.ai.attack === 'sidestep') continue;
+    if (def.kind === 'slammer' && def.leap && enemy.ai.modeMs < def.leap.airMs) continue;
     if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
     else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slammerTouches(enemy, current.player.pos, def), events);
     else if (def.kind === 'thief') {
@@ -106,7 +112,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       hit = contactPlayer(current, enemy, def.blink.attack, thiefTouches(enemy, current.player.pos, def), events);
       if (hit.contact === 'hit') hit = { ...hit, state: { ...hit.state, player: stealItem(hit.state.player, enemy.id, def.stealMs, events) } };
     }
-    else if (def.kind === 'archer') {
+    else if (def.kind === 'treant') {
+      // Only the slam touches; roots, leaves and curses are projectiles.
+      if (enemy.boss?.stance !== 'slam') continue;
+      hit = contactPlayer(current, enemy, def.slam.attack, slamTouches(enemy, current.player.pos, def.slam.radius), events);
+    } else if (def.kind === 'archer') {
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);

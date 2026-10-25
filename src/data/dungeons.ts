@@ -61,8 +61,16 @@ export interface DungeonDef {
   unlockedBy: DungeonId | null;
   /** The endless dungeon only: no last floor, guardian echoes and the run clock (data/endless.ts); its `plan` is empty. */
   endless?: EndlessDef;
-  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers. */
-  decor?: 'crypt';
+  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers, the Forest's roots, mushrooms and mist. */
+  decor?: 'crypt' | 'forest';
+  /** The Forest's event: on some generated floors a spirit light leads to a hidden berry cache (core/wisp.ts). */
+  wisp?: WispDef;
+}
+
+/** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
+export interface WispDef {
+  chance: readonly number[];
+  berries: number;
 }
 
 const loreOf = (id: string): DungeonLore => DUNGEON_LORE.find((l) => l.id === id)!;
@@ -121,6 +129,8 @@ export const FOREST: DungeonDef = {
     jitter: 1,
     maxPerRoom: 4,
     // Weights by floor 1..7 (floors 4 and 8 are arenas; their entries keep the tables aligned).
+    // Remaster: Shroomish pairs (with a Foongus among them) from floor 1, Drifloon from 2, Impidimp leading
+    // two Pumpkaboo Small from 3 (mixed packs only add tiles to a pick).
     pool: [
       { species: 'pumpkaboo-small', weights: [3, 3, 2, 2, 2, 2, 2], pack: 3 },
       { species: 'phantump', weights: [2, 2, 2, 2, 2, 2, 2] },
@@ -128,6 +138,9 @@ export const FOREST: DungeonDef = {
       { species: 'foongus', weights: [1, 1, 1, 1, 2, 2, 2] },
       { species: 'hoothoot', weights: [0, 1, 2, 2, 2, 2, 3] },
       { species: 'pumpkaboo-super', weights: [0, 0, 1, 1, 1, 2, 2] },
+      { species: 'shroomish', weights: [1, 1, 1, 1, 2, 2, 2], pack: 2, escort: { species: 'foongus', count: 1 } },
+      { species: 'drifloon', weights: [0, 1, 1, 1, 2, 2, 2] },
+      { species: 'impidimp', weights: [0, 0, 1, 1, 2, 2, 2], escort: { species: 'pumpkaboo-small', count: 2 } },
     ],
   },
   urgent: [
@@ -151,6 +164,9 @@ export const FOREST: DungeonDef = {
     pillarSide: '#2e241a',
   },
   unlockedBy: 'crypt-of-the-sword-king',
+  decor: 'forest',
+  // A spirit light on about a third of the generated floors from floor 2 (more often deeper), three berries.
+  wisp: { chance: [0, 0.35, 0.35, 0, 0.35, 0.4, 0.4], berries: 3 },
 };
 
 /** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */

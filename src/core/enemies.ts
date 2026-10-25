@@ -5,12 +5,14 @@ import { atLeast } from '../data/difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
+import { updateTreant } from './treant';
+import { behaviourFor } from './tricks';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { enemyTimeScale } from './time';
-import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
+import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 /**
  * Enemy behaviour as explicit state machines (docs/gdd.md §4). Each brain
@@ -45,7 +47,8 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
   // Harder tiers: Zubat's second swoop, Pawniard's third cut (data `followUpFrom`, `thirdCut`).
   const chains = def.followUp !== undefined && (!def.followUpFrom || atLeast(tier, def.followUpFrom));
   const third = def.thirdCut && chains && atLeast(tier, def.thirdCut.minDifficulty) ? def.thirdCut : null;
-  const cut = ai.chain ?? 0;
+  // Only a chaining lunger counts cuts; Impidimp's `chain` counts its feints instead.
+  const cut = chains ? (ai.chain ?? 0) : 0;
   const cutDef = cut === 2 && third ? third : cut === 1 && chains ? def.followUp! : { lungeMs: def.lungeMs, lungeDistance: def.lungeDistance };
   const cutName = cut === 2 ? 'lunge3' : cut === 1 ? 'lunge2' : 'lunge';
 
@@ -67,7 +70,8 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
         break;
       }
       if (ai.cooldownMs <= 0 && dist <= def.lungeRange) {
-        enemy = telegraph(enemy, 'lunge', def.telegraphMs, toPlayer, events);
+        // Impidimp's first wind-up is the feint: it looks just like the real one.
+        enemy = telegraph(enemy, def.feint ? 'feint' : 'lunge', def.telegraphMs, toPlayer, events);
         break;
       }
       // Only while recharging: with the lunge ready it closes in to lunge range (it used to hover at the stalk ring).
@@ -88,12 +92,25 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
         // The howl only rallies: packmates near have their lunge ready; it goes back to stalking.
         for (const mate of packmates(state, enemy, def.howl?.range ?? 0)) state = replaceEnemy(state, { ...mate, ai: { ...mate.ai, cooldownMs: 0 } });
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'approach'), cooldownMs: def.cooldownMs } };
+      } else if (modeOver(ai) && def.feint && ai.attack === 'feint') {
+        // The feint ends in a sidestep across the line to the player (harmless).
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'feint' });
+        const side = perpendicular(toPlayer, ai.strafeSign);
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.feint.sidestepMs), attackDir: side, attack: 'sidestep', contact: 'none', chain: (ai.chain ?? 0) + 1 } };
       } else if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: cutName });
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', cutDef.lungeMs), contact: 'none' } };
       }
       break;
     case 'attack': {
+      if (def.feint && ai.attack === 'sidestep') {
+        enemy = moveEnemy(state, enemy, scale(ai.attackDir, (def.feint.sidestepDistance / def.feint.sidestepMs) * ms));
+        if (modeOver(ai)) {
+          const again = (ai.chain ?? 1) < (def.feint.count ?? 1);
+          enemy = telegraph(enemy, again ? 'feint' : 'lunge', def.feint.telegraphMs, toPlayer, events);
+        }
+        break;
+      }
       const speed = cutDef.lungeDistance / cutDef.lungeMs;
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, speed * ms));
       const hit = contactPlayer(state, enemy, def.attack, lungeTouches(enemy, state.player.pos), events);
@@ -111,6 +128,8 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       const done = (recoverMs: number): EnemyState => {
         // Harder tiers (Ekans): the lunge leaves a hazard where it ends.
         if (def.landingHazard && atLeast(tier, def.landingHazard.minDifficulty)) state = spawnShot(state, enemy, { ...def.landingHazard.hazard, speed: 0 }, ai.attackDir, enemy.pos);
+        // Pumpkaboo Small on hard (forest trick): a ghost flame where the lunge ends.
+        if (def.ember) state = spawnShot(state, enemy, { ...def.ember, speed: 0 }, ai.attackDir, enemy.pos);
         const { chain: _cut, ...rest } = enemy.ai;
         return { ...enemy, ai: { ...enterMode(rest, 'recover', recoverMs), cooldownMs: def.cooldownMs } };
       };
@@ -165,6 +184,13 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'ball' });
+        // Drifloon: a ring of shots (more waves on harder tiers, forest trick).
+        if (def.ring) {
+          state = castRing(state, enemy, def, def.ring, enemy.ai.attackDir, 0);
+          const waves = def.ring.waves ?? 1;
+          enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', waves > 1 ? (def.ring.waveGapMs ?? def.castMs) : def.castMs), chain: 1 } };
+          break;
+        }
         // Harder tiers (Duskull): the cast becomes a fan.
         const fan = def.hardSpread && atLeast(worldDifficulty(state), def.hardSpread.minDifficulty) ? def.hardSpread : def.spread;
         for (const dir of spreadDirections(enemy.ai.attackDir, fan?.count ?? 1, fan?.degrees ?? 0)) state = spawnShot(state, enemy, def.projectile, dir);
@@ -175,7 +201,16 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       // Harder tiers (Gastly): a second ball part way into the cast, aimed anew.
       const second = def.secondBall && atLeast(worldDifficulty(state), def.secondBall.minDifficulty) ? def.secondBall : null;
       if (second && ai.modeMs - ms < second.delayMs && ai.modeMs >= second.delayMs) state = spawnShot(state, enemy, def.projectile, toPlayer);
-      if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
+      if (!modeOver(ai)) break;
+      // Drifloon: the next ring of the cast, turned half a step from the last.
+      if (def.ring && (ai.chain ?? 1) < (def.ring.waves ?? 1)) {
+        state = castRing(state, enemy, def, def.ring, ai.attackDir, ai.chain ?? 1);
+        const wave = (ai.chain ?? 1) + 1;
+        enemy = { ...enemy, ai: { ...enterMode(ai, 'attack', wave < (def.ring.waves ?? 1) ? (def.ring.waveGapMs ?? def.castMs) : def.castMs), chain: wave } };
+        break;
+      }
+      const { chain: _wave, ...rest } = ai;
+      enemy = { ...enemy, ai: { ...enterMode(rest, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
       break;
     }
     case 'recover':
@@ -188,6 +223,19 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       break;
   }
   return replaceEnemy(state, enemy);
+}
+
+/**
+ * Drifloon's ring: `count` shots evenly around it starting at the aim, turned
+ * by half a step on every other cast (the strafe side flips after each
+ * recovery) and by another half step per wave of the same cast.
+ */
+function castRing(state: WorldState, enemy: EnemyState, def: GastlyDef, ring: NonNullable<GastlyDef['ring']>, aim: Vec2, wave: number): WorldState {
+  const half = 180 / ring.count;
+  const turn = (enemy.ai.strafeSign === -1 ? half : 0) + wave * half;
+  let next = state;
+  for (const dir of spreadDirections(aim, ring.count, 360 - 360 / ring.count, turn)) next = spawnShot(next, enemy, def.projectile, dir);
+  return next;
 }
 
 /** Tanks (Pumpkaboo Super, Trevenant, Golett): walk in slowly, a long wind-up, then a ground slam around them (Golett: in front, aim fixed; Trevenant: and a ring of leaves). */
@@ -222,6 +270,15 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
     case 'telegraph':
       // A frontal slam (Golett) keeps the aim it started with: step around it.
       if (def.arcDegrees === undefined) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      // Shroomish: the landing spot follows the player until the aim locks.
+      if (def.leap && (ai.aimPoint === undefined || ai.modeDurationMs - ai.modeMs > def.leap.lockMs)) {
+        enemy = { ...enemy, ai: { ...enemy.ai, aimPoint: add(enemy.pos, scale(toPlayer, Math.min(dist, def.leap.distance))) } };
+      }
+      if (modeOver(ai) && def.leap) {
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'leap' });
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.leap.airMs + def.slamMs), contact: 'none' } };
+        break;
+      }
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
         if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
@@ -233,10 +290,25 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
       }
       break;
     case 'attack': {
+      if (def.leap && ai.aimPoint) {
+        // In the air: straight to the marked spot, harmless until it lands.
+        const left = sub(ai.aimPoint, enemy.pos);
+        const stepPx = Math.min(length(left), (def.leap.distance / def.leap.airMs) * ms);
+        if (stepPx > 0) enemy = moveEnemy(state, enemy, scale(normalize(left), stepPx));
+        const landing = ai.modeMs - ms < def.leap.airMs && ai.modeMs >= def.leap.airMs;
+        if (landing) {
+          events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
+          if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
+        }
+        if (ai.modeMs < def.leap.airMs) break;
+      }
       const hit = contactPlayer(state, enemy, def.attack, slammerTouches(enemy, state.player.pos, def), events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
-      if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
+      if (modeOver(ai)) {
+        const { aimPoint: _landed, ...rest } = enemy.ai;
+        enemy = { ...enemy, ai: { ...enterMode(rest, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
+      }
       break;
     }
     case 'recover':
@@ -263,6 +335,7 @@ function updateSpore(state: WorldState, start: EnemyState, def: SporeDef, target
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'spores' });
         state = spawnShot(state, enemy, { ...def.cloud, speed: 0 }, toPlayer, enemy.pos);
+        if (def.burst) for (const dir of spreadDirections(toPlayer, def.burst.count, 360 - 360 / def.burst.count)) state = spawnShot(state, enemy, def.burst.shot, dir);
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
       }
       break;
@@ -293,7 +366,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
   let current = state;
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
-    const def = enemy && ENEMY_BEHAVIOUR[enemy.species];
+    // The behaviour at the run's difficulty (the shipped one on easy and normal).
+    const def = enemy && behaviourFor(enemy.species, tier);
     if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
     // Koffing's fuse cannot be staggered out of (killing it is the answer).
     if (enemy.hitstunMs > 0 && !unstoppable(enemy)) {
@@ -308,6 +382,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
     else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
     else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
+    else if (def.kind === 'treant') current = updateTreant(current, ticked, def, target, ms, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
     else current = updateRoster(current, ticked, def, target, ms, events);
   }

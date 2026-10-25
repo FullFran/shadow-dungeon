@@ -74,6 +74,10 @@ const TARGETS = [
   { dex: '0622', form: '0000', species: 'golett', formName: 'base' },
   { dex: '0624', form: '0000', species: 'pawniard', formName: 'base' },
   { dex: '0302', form: '0000', species: 'sableye', formName: 'base' },
+  // Misty Forest remaster (tracker.json 2026-10-25: all three have Idle, Walk, Attack, Shoot, Charge and Hurt, phase 1).
+  { dex: '0859', form: '0000', species: 'impidimp', formName: 'base' },
+  { dex: '0285', form: '0000', species: 'shroomish', formName: 'base' },
+  { dex: '0425', form: '0000', species: 'drifloon', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

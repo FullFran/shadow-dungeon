@@ -24,7 +24,6 @@ describe('Crypt atmosphere', () => {
     }
     expect(t(CRYPT.lore.subtitleKey)).toBe('Donde el acero aún espera órdenes');
     expect(trackNote(CRYPT.music.floor).startsWith('♪ ')).toBe(true);
-    expect(FOREST.lore.floorKeys).toBeUndefined();
   });
 
   it('puts the floor lore line on the floor card', () => {

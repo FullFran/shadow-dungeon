@@ -232,6 +232,9 @@ const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   golett: 'Attack',
   pawniard: 'Attack',
   sableye: 'Attack',
+  impidimp: 'Attack',
+  shroomish: 'Attack',
+  drifloon: 'Shoot',
 };
 
 export interface EnemyAnimContext {

@@ -19,6 +19,7 @@ export interface EnemyAttackDef {
    * as a perfect dodge, so you walk or roll OUT of its area, not through it.
    * Drawn with its own telegraph (white and violet double border, a "!") and
    * warning sound; give it enough wind-up to reposition (core/hits.ts).
+   * The forest uses it for Trevenant's roots and Decidueye's arrow rain.
    */
   pierceRoll?: boolean;
 }
@@ -85,6 +86,15 @@ export interface PoochyenaDef {
   howl?: TierGate & { telegraphMs: number; range: number };
   /** Harder tiers (Ekans): a hazard left where the lunge ends. */
   landingHazard?: TierGate & { hazard: HazardDef };
+  /**
+   * A fake-out (Impidimp): the first wind-up (`telegraphMs`, lane and all) is
+   * a feint; it then sidesteps across the line to the player, harmless, and
+   * winds up the real lunge (`telegraphMs` here, re-aimed) from the side.
+   * `count` feints before the real one (default 1).
+   */
+  feint?: { telegraphMs: number; sidestepMs: number; sidestepDistance: number; count?: number };
+  /** A lingering flame left where each lunge ends (Pumpkaboo Small on hard). */
+  ember?: HazardDef;
 }
 
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
@@ -116,6 +126,13 @@ export interface GastlyDef {
   hardSpread?: TierGate & { count: number; degrees: number };
   /** Harder tiers (Gastly): a second ball `delayMs` into the cast, aimed anew. */
   secondBall?: TierGate & { delayMs: number };
+  /**
+   * Throws a whole ring instead of a ball or a fan (Drifloon): `count` shots
+   * evenly around it, one aimed at the player; every other cast turns the
+   * ring by half a step, so the gaps move. `waves` rings per cast,
+   * `waveGapMs` apart, each turned half a step from the last (default 1).
+   */
+  ring?: { count: number; waves?: number; waveGapMs?: number };
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -359,6 +376,13 @@ export interface SlammerDef {
   arcDegrees?: number;
   /** Harder tiers: a ring of slow shots thrown with the slam (Golett's aftershock of rubble). */
   hardRing?: TierGate & { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  /**
+   * A leap instead of a stomp (Shroomish): the wind-up marks the landing spot
+   * (towards the player, at most `distance` away), which stops following
+   * `lockMs` before take-off; it flies there for `airMs` (harmless) and the
+   * slam hits around the landing spot.
+   */
+  leap?: { distance: number; airMs: number; lockMs: number };
 }
 
 /** A lingering ground hazard: a still projectile that hits whoever walks in, once, and fades after `lifetimeMs`. */
@@ -374,10 +398,39 @@ export interface SporeDef {
   cloud: EnemyAttackDef & { radius: number; lifetimeMs: number };
   recoverMs: number;
   cooldownMs: number;
+  /** A ring of slow spores thrown with the puff (Foongus on hard). */
+  burst?: { count: number; shot: ShotDef };
 }
 
-/** A Decidueye spell card (docs/gdd.md, Bosque Brumoso): its i18n name key. */
-export type ArcherCard = 'volley' | 'fan' | 'dive';
+/**
+ * A Decidueye spell card (docs/gdd.md, Bosque Brumoso); `mist` is its fade
+ * into phase 2, `rain`, `feathers` and `stitch` are phase-2 cards.
+ */
+export type ArcherCard = 'volley' | 'fan' | 'dive' | 'mist' | 'rain' | 'feathers' | 'stitch';
+
+/**
+ * Decidueye's second phase, "El Arquero se desvanece en la niebla": at half
+ * HP it fades into the mist (a long, harmless opening), then plays denser
+ * cards. Rain: the clearing is cut into lanes and arrows pour down every lane
+ * but one; the safe lane moves one lane over each wave (positional: a roll
+ * does not save you, `pierceRoll`; the trees stop arrows, so their shadow is
+ * shelter too). Feathers: from the middle of the clearing, arms of feathers
+ * wind out. Stitch: two shadow clones in the far corners and the archer
+ * itself aim at one spot and each fire a line of arrows into it, three times,
+ * re-aimed. Fan and Dive come back between them.
+ */
+export interface ArcherPhase2Def {
+  threshold: number;
+  mistMs: number;
+  restMs: number;
+  cards: readonly ArcherCard[];
+  rain: { telegraphMs: number; waveTelegraphMs: number; waves: number; lanes: number; columnsPerLane: number; spawnMs: number; everyMs: number; arrow: ArrowDef; recoverMs: number };
+  feathers: { vanishMs: number; telegraphMs: number; arms: number; turnDegrees: number; everyMs: number; bursts: number; feather: ArrowDef; recoverMs: number };
+  stitch: { telegraphMs: number; gapMs: number; lockMs: number; stitches: number; arrowsPerLine: number; inset: number; arrow: ArrowDef; recoverMs: number };
+}
+
+/** Most enemy projectiles in the air at once; beyond it new ones are not thrown (performance; patterns only get sparser). */
+export const ENEMY_SHOT_CAP = 160;
 
 export type ArrowDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
 
@@ -400,7 +453,9 @@ export interface ArcherDef {
   restMs: number;
   cards: readonly ArcherCard[];
   /** i18n key of each card's name, shown when it starts. */
-  cardNames: Readonly<Record<ArcherCard, string>>;
+  cardNames: Readonly<Partial<Record<ArcherCard, string>>>;
+  /** The phase at half HP (never in a Sima echo). */
+  phase2: ArcherPhase2Def;
   volley: { telegraphMs: number; shots: number; gapMs: number; arrow: ArrowDef; recoverMs: number };
   fan: { vanishMs: number; telegraphMs: number; fans: number; leaves: number; spreadDegrees: number; gapMs: number; leaf: ArrowDef; recoverMs: number; edgeInset: number };
   dive: { telegraphMs: number; diveMs: number; distance: number; reach: number; attack: EnemyAttackDef; recoverMs: number };
@@ -496,20 +551,77 @@ export const FOONGUS: SporeDef = {
   cooldownMs: 2600,
 };
 
-export const TREVENANT: SlammerDef = {
-  kind: 'slammer',
+/** Trevenant's spell cards (Misty Forest mid-boss); `grove` is only dealt on hard and up (T4). */
+export type TreantCard = 'roots' | 'spiral' | 'curse' | 'grove';
+
+/**
+ * Trevenant, the hollow's mid-boss: it walks in and slams (a ring around it
+ * and a ring of leaves), then plays its next spell card, then slams again.
+ * Roots: the hollow is split into lanes; every other lane is marked, then
+ * roots burst from it (positional: a roll does not save you, `pierceRoll`),
+ * then the other lanes. Spiral: arms of leaves wind out of it, every shot of
+ * an arm far enough from the next to slip between. Curse: a ring of curses
+ * is marked around the player, a gap left open on the side away from the
+ * tree; the ring closes in to its centre, twice. Grove (hard and up): two
+ * spirals winding opposite ways.
+ */
+export interface TreantDef {
+  kind: 'treant';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  cards: readonly TreantCard[];
+  cardNames: Readonly<Record<TreantCard, string>>;
+  slam: {
+    range: number;
+    /** It slams anyway once it has walked this long. */
+    approachMs: number;
+    telegraphMs: number;
+    slamMs: number;
+    radius: number;
+    attack: EnemyAttackDef;
+    recoverMs: number;
+    ring: { count: number; projectile: ShotDef };
+  };
+  /** `waveGapMs`: the wind-up of each later wave, marked once the last roots are gone. */
+  roots: { telegraphMs: number; waveGapMs: number; waves: number; laneWidth: number; spacing: number; spike: HazardDef; recoverMs: number };
+  spiral: { telegraphMs: number; arms: number; turnDegrees: number; everyMs: number; bursts: number; leaf: ShotDef; recoverMs: number };
+  curse: { telegraphMs: number; lockMs: number; radius: number; count: number; gap: number; rings: number; ringGapMs: number; shot: ShotDef; recoverMs: number };
+  /** The double spiral: as `spiral`, with this many arms each way. */
+  grove: { arms: number; turnDegrees: number };
+}
+
+export const TREVENANT: TreantDef = {
+  kind: 'treant',
   poise: { hitstunScale: 0, knockbackScale: 0.1 },
   bar: true,
   aggroRange: 900,
   walkSpeed: 44,
-  slamRange: 95,
-  telegraphMs: 1000,
-  slamMs: 200,
-  radius: 85,
-  attack: { power: 38, type: 'ghost' },
-  recoverMs: 1400,
-  cooldownMs: 1100,
-  ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+  cards: ['roots', 'spiral', 'curse'],
+  cardNames: { roots: 'spell.trevenant.roots', spiral: 'spell.trevenant.spiral', curse: 'spell.trevenant.curse', grove: 'spell.trevenant.grove' },
+  slam: {
+    range: 95,
+    approachMs: 3500,
+    telegraphMs: 1000,
+    slamMs: 200,
+    radius: 85,
+    attack: { power: 38, type: 'ghost' },
+    recoverMs: 1400,
+    ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+  },
+  roots: {
+    telegraphMs: 1100,
+    waveGapMs: 700,
+    waves: 2,
+    laneWidth: 100,
+    spacing: 36,
+    spike: { power: 30, type: 'grass', radius: 24, lifetimeMs: 500, pierceRoll: true },
+    recoverMs: 1300,
+  },
+  spiral: { telegraphMs: 900, arms: 4, turnDegrees: 18, everyMs: 200, bursts: 14, leaf: { power: 18, type: 'grass', speed: 95, radius: 6, lifetimeMs: 5000 }, recoverMs: 1300 },
+  curse: { telegraphMs: 1000, lockMs: 300, radius: 160, count: 20, gap: 4, rings: 2, ringGapMs: 800, shot: { power: 22, type: 'ghost', speed: 80, radius: 7, lifetimeMs: 2000 }, recoverMs: 1400 },
+  grove: { arms: 3, turnDegrees: 22 },
 };
 
 export const DECIDUEYE: ArcherDef = {
@@ -520,7 +632,43 @@ export const DECIDUEYE: ArcherDef = {
   keepDistance: 150,
   restMs: 1400,
   cards: ['volley', 'fan', 'dive'],
-  cardNames: { volley: 'spell.decidueye.volley', fan: 'spell.decidueye.fan', dive: 'spell.decidueye.dive' },
+  cardNames: {
+    volley: 'spell.decidueye.volley',
+    fan: 'spell.decidueye.fan',
+    dive: 'spell.decidueye.dive',
+    mist: 'spell.decidueye.mist',
+    rain: 'spell.decidueye.rain',
+    feathers: 'spell.decidueye.feathers',
+    stitch: 'spell.decidueye.stitch',
+  },
+  phase2: {
+    threshold: 0.5,
+    mistMs: 1600,
+    restMs: 1200,
+    cards: ['rain', 'fan', 'feathers', 'dive', 'stitch'],
+    rain: {
+      telegraphMs: 1200,
+      waveTelegraphMs: 800,
+      waves: 3,
+      lanes: 8,
+      columnsPerLane: 2,
+      spawnMs: 400,
+      everyMs: 100,
+      arrow: { power: 22, type: 'ghost', speed: 520, radius: 5, lifetimeMs: 900, pierceRoll: true },
+      recoverMs: 1300,
+    },
+    feathers: {
+      vanishMs: 600,
+      telegraphMs: 900,
+      arms: 5,
+      turnDegrees: 14,
+      everyMs: 160,
+      bursts: 16,
+      feather: { power: 18, type: 'grass', speed: 115, radius: 5, lifetimeMs: 4500 },
+      recoverMs: 1300,
+    },
+    stitch: { telegraphMs: 1000, gapMs: 700, lockMs: 300, stitches: 3, arrowsPerLine: 3, inset: 60, arrow: { power: 22, type: 'ghost', speed: 300, radius: 5, lifetimeMs: 2600 }, recoverMs: 1500 },
+  },
   volley: { telegraphMs: 900, shots: 5, gapMs: 480, arrow: { power: 24, type: 'ghost', speed: 230, radius: 5, lifetimeMs: 2400 }, recoverMs: 900 },
   fan: {
     vanishMs: 700,
@@ -1101,7 +1249,61 @@ export const SABLEYE: ThiefDef = {
   stealMs: 9000,
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+/*
+ * Misty Forest remaster (docs/gdd.md, Bosque Brumoso): three more species,
+ * each with its own trick. Impidimp feints a lunge and strikes from the side;
+ * Shroomish leaps onto a marked spot; Drifloon lets go of rings of
+ * will-o-wisps whose gaps turn between casts. Values are provisional.
+ */
+export const IMPIDIMP: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.1, knockbackScale: 1.2 },
+  aggroRange: 600,
+  walkSpeed: 88,
+  stalkRange: 120,
+  lungeRange: 120,
+  telegraphMs: 560,
+  lungeMs: 200,
+  lungeDistance: 130,
+  attack: { power: 26, type: 'dark' },
+  hitRecoverMs: 500,
+  missRecoverMs: 1000,
+  cooldownMs: 1600,
+  feint: { telegraphMs: 420, sidestepMs: 260, sidestepDistance: 70 },
+};
+
+export const SHROOMISH: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.9, knockbackScale: 0.8 },
+  aggroRange: 520,
+  walkSpeed: 48,
+  slamRange: 170,
+  telegraphMs: 700,
+  slamMs: 140,
+  radius: 34,
+  attack: { power: 30, type: 'grass' },
+  recoverMs: 1000,
+  cooldownMs: 1600,
+  leap: { distance: 160, airMs: 420, lockMs: 250 },
+};
+
+export const DRIFLOON: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.3 },
+  floats: true,
+  aggroRange: 600,
+  speed: 40,
+  minDistance: 90,
+  maxDistance: 180,
+  telegraphMs: 800,
+  castMs: 300,
+  recoverMs: 700,
+  cooldownMs: 2400,
+  projectile: { power: 22, type: 'fire', speed: 60, radius: 7, lifetimeMs: 5000 },
+  ring: { count: 8 },
+};
+
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1134,9 +1336,12 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   golett: GOLETT,
   pawniard: PAWNIARD,
   sableye: SABLEYE,
+  impidimp: IMPIDIMP,
+  shroomish: SHROOMISH,
+  drifloon: DRIFLOON,
 };
 
-/** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
+/** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */
 export function spellCardKey(species: SpeciesId, stance: string | null | undefined): string | null {
   const def = ENEMY_BEHAVIOUR[species];
   if (!def || !stance || !('cardNames' in def)) return null;

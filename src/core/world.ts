@@ -156,5 +156,6 @@ export function enterRoom(state: WorldState): WorldState {
     player: { ...returnStolen(state.player), disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
     collapse: undefined,
     fog: undefined,
+    wisp: undefined,
   };
 }

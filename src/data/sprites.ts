@@ -74,4 +74,8 @@ export const SPRITE_KEYS = {
   golett: '0622/0000',
   pawniard: '0624/0000',
   sableye: '0302/0000',
+  // Misty Forest remaster.
+  impidimp: '0859/0000',
+  shroomish: '0285/0000',
+  drifloon: '0425/0000',
 } as const;

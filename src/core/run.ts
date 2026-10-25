@@ -9,6 +9,7 @@ import { generateFloor } from './dungeon';
 import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
+import { wispCache } from './wisp';
 import { partyDefeated } from './party';
 import { deriveSeed, nextRandom } from './rng';
 import { atExit, loadRoom, roomCleared } from './rooms';
@@ -113,7 +114,11 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
   const floor = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, worldDifficulty(world)));
-  return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
+  const berries = placeBerries(floor, seed, run.floor);
+  // The Forest's spirit light and its berry cache (none elsewhere).
+  const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
+  const loaded = loadFloor(deeper, floor, run.kind);
+  return wisp ? { ...loaded, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, berries };
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

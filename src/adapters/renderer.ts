@@ -1,10 +1,12 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
 import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from '../core/difficulty';
 import { pierceZone, type PierceZone } from '../core/victim';
+import { rootLanes } from '../core/treant';
+import { TYPE_COLORS } from '../ui/tokens';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
-import { DIVE_LOCK_MS } from '../core/archer';
+import { DIVE_LOCK_MS, rainSafeLane, stitchSources } from '../core/archer';
 import { shadowGapX } from '../core/boss';
 import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
@@ -26,11 +28,15 @@ import { drawMessageLog, visibleMessages, type MessageLog } from './message-log'
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
-import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
+import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
+import { forestDecor, wispGuide, type Firefly, type ForestDecor } from './forest-decor';
+import { arenaFireflies, drawForestAir, drawForestArena, drawForestFloorDecor, drawForestTree, drawWisp } from './forest-draw';
+import { tileDistances } from '../core/dungeon';
+import { cacheLeft } from '../core/wisp';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -67,8 +73,8 @@ export interface RenderFrame {
   coins?: number;
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
-  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure), if any. */
-  decor?: 'crypt' | null;
+  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure; the Forest's roots, mushrooms, trees and mist), if any. */
+  decor?: Decor;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
@@ -144,6 +150,8 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
 
 const TILE = 32;
 const DEG = Math.PI / 180;
+
+type Decor = 'crypt' | 'forest' | null;
 
 interface Drawable {
   y: number;
@@ -370,13 +378,57 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
+  /** Forest dressing of a generated floor, worked out once per floor (and the spirit light's walk). */
+  const forestOf = new WeakMap<TileGrid, ForestDecor>();
+  const wispWalkOf = new WeakMap<TileGrid, number[]>();
+  function forestFloor(state: WorldState): ForestDecor {
+    const grid = state.arena.tiles!;
+    let decor = forestOf.get(grid);
+    if (!decor) {
+      const stairs = state.arena.stairs ? tileOf({ x: state.arena.stairs.x + 1, y: state.arena.stairs.y + 1 }) : undefined;
+      decor = forestDecor({ ...grid, rooms: state.arena.rooms ?? [], ...(stairs ? { stairs } : {}) });
+      forestOf.set(grid, decor);
+    }
+    return decor;
+  }
+  function fallenAt(state: WorldState): (x: number, y: number) => boolean {
+    const front = state.collapse ? collapseFront(state.collapse) : 0;
+    const cols = state.arena.tiles?.cols ?? 0;
+    return (x, y) => {
+      const d = state.collapse ? (state.collapse.dist[y * cols + x] ?? -1) : -1;
+      return front > 0 && d >= 0 && d < front;
+    };
+  }
+  /** The forest's fireflies and mist over everything (generated floors and arenas), then the spirit light. */
+  const arenaFlies = new Map<string, Firefly[]>();
+  function forestAir(state: WorldState, view: Rect, timeMs: number, playerPos: Vec2): void {
+    const grid = state.arena.tiles;
+    let flies: Firefly[];
+    if (grid) flies = forestFloor(state).fireflies;
+    else {
+      const key = `${state.arena.width}x${state.arena.height}`;
+      flies = arenaFlies.get(key) ?? arenaFireflies(state.arena.width, state.arena.height);
+      arenaFlies.set(key, flies);
+    }
+    drawForestAir(ctx, flies, view, timeMs);
+    if (!grid || !state.wisp || cacheLeft(state.berries) === 0) return;
+    let walk = wispWalkOf.get(grid);
+    if (!walk) {
+      walk = tileDistances(grid, tileOf(state.wisp.cache));
+      wispWalkOf.set(grid, walk);
+    }
+    const at = wispGuide(grid, state.wisp.cache, playerPos, walk);
+    drawWisp(ctx, at, timeMs, at === state.wisp.cache);
+  }
+
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       ctx.fillStyle = COLORS.mapVoid;
       ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       tiles(grid, view, state.collapse, timeMs);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
+      if (decor === 'forest') drawForestFloorDecor(ctx, forestFloor(state), view, timeMs, fallenAt(state));
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -396,6 +448,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
     if (decor === 'crypt') cryptArena(width, height, timeMs);
+    if (decor === 'forest') drawForestArena(ctx, width, height, timeMs);
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -442,9 +495,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function pillar(rect: Obstacle, decor: 'crypt' | null, timeMs: number): Drawable {
+  function pillar(rect: Obstacle, decor: Decor, timeMs: number): Drawable {
     const lift = 18;
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
+    // The forest's arenas: old trees (the roost's thick ones stop arrows).
+    if (decor === 'forest') return { y: rect.y + rect.height, draw: () => drawForestTree(ctx, rect, lift, rect.cover === true) };
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -573,6 +628,19 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.restore();
   }
 
+  /** A positional lane (pierceRoll: step out of it, a roll will not help): the pierce mark's pulsing white and violet double edge along both sides. */
+  function pierceLane(x: number, w: number, height: number, timeMs: number): void {
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
+    ctx.save();
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.45 + 0.4 * pulse})`;
+    ctx.fillRect(x + 3, 0, 1, height);
+    ctx.fillRect(x + w - 4, 0, 1, height);
+    ctx.fillStyle = `rgba(176, 96, 255, ${0.55 + 0.4 * (1 - pulse)})`;
+    ctx.fillRect(x + 5, 0, 2, height);
+    ctx.fillRect(x + w - 7, 0, 2, height);
+    ctx.restore();
+  }
+
   /** Readable wind-ups: lanes, arcs and rings on the ground (docs/gdd.md §10: readable on a stream). */
   function telegraphs(enemy: EnemyState, pos: Vec2, timeMs = 0): void {
     const { ai } = enemy;
@@ -644,14 +712,23 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       }
       if (stance === 'unsheathe' || stance === 'midnight' || stance === 'oaths') return;
     }
+    if (def?.kind === 'treant' && enemy.boss) {
+      treantTelegraph(enemy, def, pos, progress, winding, striking, zone !== null, timeMs);
+      return;
+    }
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
     const fill = telegraphFill(enemyAttackType(enemy), winding);
     const lockedFor = (lockMs: number | undefined) => winding && lockMs !== undefined && ai.modeDurationMs - ai.modeMs <= lockMs;
     if (def?.kind === 'lunger') {
+      // Impidimp: no lane for the sidestep; its feint's lane shimmers (the tell), the real one is steady.
+      if (ai.attack === 'sidestep') return;
+      const feint = winding && ai.attack === 'feint';
+      if (feint) ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(ai.modeMs / 60));
       // Ekans' coil: the lane turns solid once the aim is locked.
       const locked = lockedFor(def.lockMs) || (striking && def.lockMs !== undefined);
       groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+      ctx.globalAlpha = 1;
     } else if (def?.kind === 'beam') {
       const locked = lockedFor(def.lockMs) || striking;
       groundLane(pos, ai.attackDir, def.length, def.width, locked ? COLORS.strike : fill, winding ? progress : 1);
@@ -691,6 +768,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 4 + 16 * (1 - progress), 0, Math.PI * 2);
       ctx.stroke();
       groundLane(pos, ai.attackDir, 50, def.projectile.radius * 2, fill, progress);
+    } else if (def?.kind === 'slammer' && def.leap && ai.aimPoint) {
+      // Shroomish: the landing spot, solid once the aim locks and while it is in the air.
+      const locked = lockedFor(def.leap.lockMs) || striking;
+      groundCircle(ai.aimPoint, def.radius, locked ? COLORS.strike : fill, winding ? progress : 1);
     } else if (def?.kind === 'slammer' && def.arcDegrees !== undefined) {
       // Golett: a frontal sector along the aim fixed at the start of the wind-up.
       groundArc(pos, ai.attackDir, def.radius * (winding ? 0.35 + 0.65 * progress : 1), def.arcDegrees, fill, COLORS.telegraphEdge);
@@ -708,6 +789,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       }
     } else if (def?.kind === 'archer') {
       const card = enemy.boss?.stance;
+      if (card === 'rain' || card === 'stitch' || card === 'feathers') {
+        archerPhase2Telegraph(enemy, def, pos, progress, winding, zone !== null, timeMs);
+        return;
+      }
       if (card === 'dive') {
         // Locked aim (the last moments): the lane turns solid and stops following.
         const locked = winding && ai.modeDurationMs - ai.modeMs <= DIVE_LOCK_MS;
@@ -720,6 +805,122 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     } else if (enemy.boss?.stance === 'blade') {
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
       groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
+    }
+  }
+
+  /** Trevenant: its slam ring, the lanes about to burst with roots, the spiral's arms, the curse ring and its gap. */
+  function treantTelegraph(enemy: EnemyState, def: TreantDef, pos: Vec2, progress: number, winding: boolean, striking: boolean, pierce = false, timeMs = 0): void {
+    const card = enemy.boss!.stance;
+    const fill = telegraphFill(enemyAttackType(enemy), winding);
+    if (card === 'slam') {
+      if (winding || striking) groundCircle(pos, def.slam.radius, fill, winding ? progress : 1);
+      return;
+    }
+    if (!winding || !currentArena) return;
+    const { width, height } = currentArena;
+    if (card === 'roots') {
+      // The lanes about to burst: filling as the wind-up runs, red edges along both sides.
+      for (const lane of rootLanes(enemy, width, def)) {
+        const x = lane * def.roots.laneWidth;
+        ctx.fillStyle = telegraphFill(def.roots.spike.type, true);
+        ctx.fillRect(x, height * (1 - progress), def.roots.laneWidth, height * progress);
+        ctx.fillStyle = 'rgba(90, 60, 30, 0.18)';
+        ctx.fillRect(x, 0, def.roots.laneWidth, height);
+        ctx.fillStyle = COLORS.telegraphEdge;
+        ctx.fillRect(x, 0, 2, height);
+        ctx.fillRect(x + def.roots.laneWidth - 2, 0, 2, height);
+        if (pierce) pierceLane(x, def.roots.laneWidth, height, timeMs);
+      }
+      return;
+    }
+    if (card === 'curse' && enemy.ai.aimPoint) {
+      const c = enemy.ai.aimPoint;
+      const gap = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+      const half = (def.curse.gap * Math.PI) / def.curse.count;
+      ctx.strokeStyle = COLORS.telegraphEdge;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, gap + half, gap + Math.PI * 2 - half);
+      ctx.stroke();
+      ctx.fillStyle = withAlpha(TYPE_COLORS.ghost.glow, 0.12 + 0.12 * progress);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, 0, Math.PI * 2);
+      ctx.fill();
+      // The way out, bright.
+      ctx.strokeStyle = 'rgba(255, 230, 160, 0.9)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, gap - half, gap + half);
+      ctx.stroke();
+      return;
+    }
+    // Spiral (and grove): a ring closing on the tree and the arms' first lanes.
+    ctx.strokeStyle = COLORS.telegraphEdge;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, enemy.radius + 8 + 40 * (1 - progress), 0, Math.PI * 2);
+    ctx.stroke();
+    const arms = card === 'grove' ? def.grove.arms : def.spiral.arms;
+    const base = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+    for (let i = 0; i < arms; i++) {
+      const a = base + (i * 2 * Math.PI) / arms;
+      groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 90, 4, fill, progress);
+    }
+  }
+
+  /** Decidueye's phase-2 cards: the lanes the rain will pour into (the safe one bright), the stitch lines, the feather arms. */
+  function archerPhase2Telegraph(enemy: EnemyState, def: ArcherDef, pos: Vec2, progress: number, winding: boolean, pierce = false, timeMs = 0): void {
+    if (!currentArena) return;
+    const { width, height } = currentArena;
+    const card = enemy.boss!.stance;
+    const fill = telegraphFill(enemyAttackType(enemy), true);
+    if (card === 'rain') {
+      if (!winding) return;
+      const lanes = def.phase2.rain.lanes;
+      const laneW = width / lanes;
+      const safe = rainSafeLane(enemy, width, lanes);
+      for (let lane = 0; lane < lanes; lane++) {
+        if (lane === safe) {
+          ctx.fillStyle = 'rgba(255, 230, 160, 0.14)';
+          ctx.fillRect(lane * laneW, 0, laneW, height);
+          continue;
+        }
+        // Marked from the first moment (a roll will not save you here), filling from the top as the arrows draw near.
+        ctx.fillStyle = 'rgba(70, 30, 110, 0.24)';
+        ctx.fillRect(lane * laneW + 2, 0, laneW - 4, height);
+        ctx.fillStyle = fill;
+        ctx.fillRect(lane * laneW + 2, 0, laneW - 4, height * progress);
+        if (pierce) pierceLane(lane * laneW + 2, laneW - 4, height, timeMs);
+      }
+      ctx.fillStyle = COLORS.telegraphEdge;
+      ctx.fillRect(safe * laneW, 0, 2, height);
+      ctx.fillRect((safe + 1) * laneW - 2, 0, 2, height);
+      return;
+    }
+    if (card === 'stitch') {
+      const aim = enemy.ai.aimPoint;
+      if (!aim || !winding) return;
+      const locked = enemy.ai.modeDurationMs - enemy.ai.modeMs <= def.phase2.stitch.lockMs;
+      for (const from of stitchSources(enemy, currentArena, def.phase2.stitch.inset)) {
+        const dx = aim.x - from.x;
+        const dy = aim.y - from.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) groundLane(from, { x: dx / len, y: dy / len }, len, 4, locked ? COLORS.strike : fill, progress);
+      }
+      return;
+    }
+    if (winding) {
+      ctx.strokeStyle = COLORS.telegraphEdge;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, enemy.radius + 8 + 40 * (1 - progress), 0, Math.PI * 2);
+      ctx.stroke();
+      const arms = def.phase2.feathers.arms;
+      const base = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+      for (let i = 0; i < arms; i++) {
+        const a = base + (i * 2 * Math.PI) / arms;
+        groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 80, 4, fill, progress);
+      }
     }
   }
 
@@ -938,6 +1139,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },
       });
+      // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
+      if (enemy.alive && enemy.boss?.stance === 'stitch' && (enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack')) {
+        for (const clone of stitchSources(enemy, current.arena).slice(1)) {
+          drawables.push({ y: clone.y, draw: () => drawSprite(enemyAnim({ ...enemy, pos: clone }, { timeMs, sinceDefeatMs: Number.POSITIVE_INFINITY }), clone, 0.4 + 0.1 * Math.sin(timeMs / 120)) });
+        }
+      }
     }
     const playerPos = posOf('player', current.player.pos);
     drawables.push({
@@ -976,6 +1183,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
+    if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
 

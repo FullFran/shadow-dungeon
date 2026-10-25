@@ -1,4 +1,4 @@
-import { floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
+import { ENEMY_SHOT_CAP, floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
@@ -43,6 +43,8 @@ export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifeti
  * cloud that hits whoever walks in, once.
  */
 export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot, dir: Vec2, at?: Vec2): WorldState {
+  // Performance cap: past it new enemy shots are not thrown (a pattern only gets sparser).
+  if (state.projectiles.length >= ENEMY_SHOT_CAP && state.projectiles.filter((p) => p.owner === 'enemy').length >= ENEMY_SHOT_CAP) return state;
   const projectile: ProjectileState = {
     id: `p${state.nextId}`,
     owner: 'enemy',

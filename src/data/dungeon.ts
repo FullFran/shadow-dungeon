@@ -44,6 +44,8 @@ export interface SpawnEntry {
   weights: readonly number[];
   /** Swarmers: one pick places up to this many in the room (default 1). */
   pack?: number;
+  /** A mixed pack: after the pick (and its pack), up to `count` of another species on the next tiles. */
+  escort?: { species: SpeciesId; count: number };
 }
 
 /** Enemies of a dungeon's generated floors. */
