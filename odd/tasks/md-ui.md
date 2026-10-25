@@ -24,7 +24,7 @@ Out of scope: hub town, new art beyond code-drawn UI, story text.
 - [x] T1 UI foundation: tokens, font, window and cursor-list components, keyboard navigation (route: delegated writer; trigger: new UI modules, index.html, app)
 - [x] T2 Menus: title with eclipse backdrop, loadout, settings, credits, lobby, Esc menu, item pick, end screens (route: same writer)
 - [x] T3 HUD line and message log, floor card restyle (route: same writer)
-- [ ] T4 Deploy (route: parent; standing OK for intermediate releases)
+- [x] T4 Deploy (route: parent; standing OK for intermediate releases).
 
 ## Acceptance criteria
 - Every menu is usable with keyboard only and with mouse only.
