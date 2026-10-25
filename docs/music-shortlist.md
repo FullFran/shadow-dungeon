@@ -129,6 +129,9 @@ introduction theme").
 
 ## Recommended pick per slot
 
+Superseded on 2026-10-25 for slots 3, 4, 5 and 8 by section 9 (PMD-feel
+swap); *Boss Battle #2* is kept for a future boss.
+
 Bias: CC0 or low-risk CC BY first, Kevin MacLeod second, Scott Buckley only
 where nothing else fits.
 
@@ -155,6 +158,49 @@ where nothing else fits.
    (MacLeod) for a "YOU DIED" hit; victory, *Fanfares / VICTORY* (Spring
    Spring, take CC BY 4.0).
 
+## 9. PMD-feel swap (2026-10-25)
+
+User feedback: keep *Lonely Village* (title); make the rest feel closer to the
+Pokémon Mystery Dungeon soundtrack style (melodic dungeon themes, clear lead
+over a steady groove, GBA/DS or SNES JRPG instrumentation, loopable, not pure
+ambience), and later also replace the Aegislash track with a more PMD-like
+boss theme while keeping *Boss Battle #2* for a future boss. No remixes,
+covers or "inspired by <track>" uploads of Nintendo/Chunsoft music (none of
+the pages below mention Pokémon or a remix; style tags such as "snes", "final
+fantasy" or "Chrono Trigger" describe instrumentation, not a source melody).
+Scott Buckley, Pixabay and anything with extra EULA terms excluded.
+
+Licenses read on each OpenGameArt file page before download. Nothing was
+listened to: mood comes from descriptions and tags, backed by the objective
+numbers below (method in `odd/tasks/licensed-music.md`, T4). Columns: tempo
+(onset autocorrelation), pulse (autocorrelation peak at the beat lag; the
+old *Dungeon Ambience* scored 0.03), flatness (median spectral flatness;
+lower is more tonal), pc-prom (dominant pitch-class prominence in 200-2000 Hz;
+higher is a clearer pitched line), pc-motion (dominant pitch-class changes per
+second).
+
+| Slot | Track | Author | License | Length | Tempo | Pulse | Flatness | pc-prom | pc-motion | Notes | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Crypt | [RPG - Underworld Theme - Loop](https://opengameart.org/content/rpg-underworld-theme-loop) | jocolloman | CC BY 4.0 | 124.4 s | 107.7 (author: 108) | 0.83 | 0.065 | 6.64 | 2.00 | "exploration music for an Underworld / Dungeon in an RPG", A minor with a C major bridge, brass quartet + percussion; tags soft, creepy, jrpg; WAV loops as is | **Shipped** |
+| Crypt | [JRPG End Dungeon](https://opengameart.org/content/jrpg-end-dungeon) | HydroGene | CC0 | 165.6 s | 117.5 | 0.43 | 0.356 | 3.93 | 2.29 | Dungeon theme "with the style of" Motoi Sakuraba, loopable (internal repeat 157.24 s, corr 0.91); a final-dungeon mood | Alternate |
+| Crypt | Exploration3 - Tha'el Mines ([JRPG Pack 1](https://opengameart.org/content/jrpg-pack-1-exploration)) | Juhani Junkala | CC0 | 60.0 s | 95.7 | 0.52 | 0.121 | 3.17 | 2.75 | Mines exploration; no stated loop, wrap seam 2.5/8.6 and no strong internal repeat | Not picked (short, no clean loop) |
+| Collapse | [Determined Pursuit (epic orchestra loop)](https://opengameart.org/content/determined-pursuit-epic-orchestra-loop) | Emma_MA | CC0 | 108.0 s | 161.5 | 0.73 | 0.380 | 2.81 | 2.03 | "Frantic strings, determined horns and busy drums", "a hectic race against the clock", loopable (wrap seam 0.26/0.07) | **Shipped** |
+| Collapse | Action1 - Encounter With The Witches ([JRPG Pack 5](https://opengameart.org/content/jrpg-pack-5-action)) | Juhani Junkala | CC0 | 113.6 s | 136.0 | 0.43 | 0.280 | 4.83 | 2.18 | JRPG action; no loop note | Alternate |
+| Collapse | [Running From Something](https://opengameart.org/content/running-from-something) | Augmentality (Brandon Morris) | CC0 / OGA-BY 3.0 | 123.3 s | 103.4 | 0.01 | 0.046 | 4.01 | 2.32 | "adrenaline feel", orchestra; no measurable beat | Rejected (no groove) |
+| Guardian | [16-bit - Battle Theme I](https://opengameart.org/content/16-bit-battle-theme-i) | HydroGene | CC0 | 1.6 s intro + 59.2 s loop | 143.6 | 0.64 | 0.287 | 4.00 | 2.46 | "High quality 16-bit SNES RPG music", intro + seamless loop files | **Shipped** |
+| Guardian | [Fairy Boss Battles](https://opengameart.org/content/fairy-boss-battles) | MintoDog | CC0 | 103.8 s | 92.3 (author: 185, half-time) | 0.70 | 0.329 | 4.46 | 2.39 | Synth fantasy boss battle, loopable | Alternate |
+| Guardian | Action1 - Encounter With The Witches | Juhani Junkala | CC0 | 113.6 s | 136.0 | 0.43 | 0.280 | 4.83 | 2.18 | See collapse | Alternate |
+| Victory | [Victory](https://opengameart.org/content/victory-4) | Umplix | CC0 | 12.6 s (content about 5 s, below -30 dB from 6.7 s) | - | 0.02 | 0.102 | 8.31 | 0.83 | "A victory fanfare", tags light; no Apple Loops; fits 3-8 s without musical cuts | **Shipped** (cut to 8.0 s) |
+| Victory | [Just a random fanfare](https://opengameart.org/content/just-a-random-fanfare) | Spring Spring | CC0 | 12.0 s (last chord rings to about 10 s) | 136.0 | 0.55 | 0.364 | 6.59 | 2.04 | Brass, horn, cymbals, "triumphant"; over 8 s unless the last chord is faded | Alternate |
+| Victory | [Victory Fanfare (short)](https://opengameart.org/content/victory-fanfare-short) | cynicmusic | CC0 | 11.8 s | - | 0.04 | 0.102 | 5.55 | 1.80 | "A several bar victory fanfare for RPG, boss win"; sustained to 9 s | Not picked (too long) |
+| Defeat | [Game Over Theme II](https://opengameart.org/content/game-over-theme-ii) (v3 of 3) | CleytonKauffman | CC0 | 8.57 s | - | 0.18 | 0.183 | 5.13 | 2.55 | Tags jrpg, sad, minor, retro, hybrid, 16bit; natural decay to -40 dB at 7.5 s | **Shipped** |
+| Defeat | [Game Over Theme](https://opengameart.org/content/game-over-theme) ("No Hope", contemporary) | CleytonKauffman | CC0 | 13.1 s | - | 0.32 | 0.005 | 6.93 | 1.33 | Piano game over, jrpg; over 10 s | Alternate (would need a cut) |
+| Defeat | [Icy Game Over](https://opengameart.org/content/icy-game-over) | Sudocolon | CC0 | 8.3 s | - | 0.20 | 0.291 | 4.46 | 2.83 | "Game over music in cold environment"; ends at full level (no decay) | Not picked |
+
+Content ID risk for every shipped pick: Low (hobbyist OpenGameArt uploads; no
+ISRC or streaming-service distribution on the pages; HydroGene sells the album
+on itch.io only). Not proof of absence.
+
 ## Rejected and why
 
 - **Pixabay Music** (all tracks): Pixabay Content License, not CC. Its own
@@ -170,8 +216,11 @@ where nothing else fits.
   unrelated blog; his current site (creatorchords.com) says "Attribution
   required!" but I did not reach the full license text, and the CC BY 4.0
   claim rests on third-party pages. Rejected until the license text is read.
-- **Determined Pursuit (epic orchestra loop)**: listed in a CC0 collection but
-  the page shows a resultant license of GPL 3.0 (per search; not opened).
+- ~~**Determined Pursuit (epic orchestra loop)**: listed in a CC0 collection but
+  the page shows a resultant license of GPL 3.0 (per search; not opened).~~
+  Corrected 2026-10-25 (section 9): the file page itself shows only "CC0" and
+  the notice "This track is in the public domain as of January 2017"; it now
+  plays on the collapse floor.
 - **Town Theme** (CC-BY-SA 3.0 and GPL) and **Lose Music** (GPL 2.0/3.0,
   CC-BY-SA 3.0): share-alike/GPL, excluded by the brief.
 - **Yet more game over fanfares**: CC-BY-SA 4.0 and chiptune.

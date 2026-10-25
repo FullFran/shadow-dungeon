@@ -1,8 +1,8 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MUSIC } from '../../src/data/audio';
-import { MUSIC_CONTEXTS, MUSIC_TRACKS, PLANNED_MUSIC } from '../../src/data/music';
+import { MUSIC_CONTEXTS, MUSIC_TRACKS, PLANNED_MUSIC, RESERVED_MUSIC } from '../../src/data/music';
 
 const ROOT = join(__dirname, '..', '..');
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
@@ -13,8 +13,10 @@ describe('licensed music manifest', () => {
     for (const context of MUSIC_CONTEXTS) expect(MUSIC_TRACKS[context].context).toBe(context);
   });
 
-  for (const track of Object.values(MUSIC_TRACKS)) {
-    describe(track.context, () => {
+  const shipped = [...Object.values(MUSIC_TRACKS), ...RESERVED_MUSIC];
+
+  for (const track of shipped) {
+    describe(track.file, () => {
       it('ships both formats, non-empty and under 3 MB each', () => {
         for (const ext of ['ogg', 'mp3']) {
           const size = statSync(join(ROOT, 'public', 'music', `${track.file}.${ext}`)).size;
@@ -37,6 +39,7 @@ describe('licensed music manifest', () => {
         expect(track.attribution).toContain(track.artist);
         expect(track.changes.length).toBeGreaterThan(20);
         if (track.fallback) expect(MUSIC[track.fallback]).toBeDefined();
+        expect(`${track.title} ${track.changes}`).not.toMatch(/pok[eé]mon|mystery dungeon|remix|cover/i);
       });
 
       it('is credited in CREDITS.md and listed in public/music/LICENSES.md', () => {
@@ -54,6 +57,31 @@ describe('licensed music manifest', () => {
     expect(MUSIC_TRACKS.victory.loop).toBe(false);
     expect(MUSIC_TRACKS.defeat.loop).toBe(false);
     for (const context of ['title', 'crypt', 'collapse', 'guardian'] as const) expect(MUSIC_TRACKS[context].loop).toBe(true);
+  });
+
+  it('keeps stingers short and floor loops long enough not to wear out', () => {
+    for (const context of ['victory', 'defeat'] as const) {
+      expect(MUSIC_TRACKS[context].duration, context).toBeGreaterThanOrEqual(3);
+      expect(MUSIC_TRACKS[context].duration, context).toBeLessThanOrEqual(10);
+    }
+    for (const context of ['crypt', 'collapse'] as const) {
+      const length = MUSIC_TRACKS[context].loopEnd - MUSIC_TRACKS[context].loopStart;
+      expect(length, context).toBeGreaterThanOrEqual(60);
+      expect(length, context).toBeLessThanOrEqual(180);
+    }
+  });
+
+  it('keeps Boss Battle #2 shipped and credited but reserved for a future guardian, not the Aegislash slot', () => {
+    expect(RESERVED_MUSIC.map((t) => [t.reservedFor, t.file])).toEqual([['future-guardian', 'boss-battle-2']]);
+    expect(MUSIC_TRACKS.guardian.file).not.toBe('boss-battle-2');
+    const files = new Set(shipped.map((t) => t.file));
+    expect(files.size, 'one file per track').toBe(shipped.length);
+  });
+
+  it('ships no file that the manifest does not list', () => {
+    const listed = new Set(shipped.flatMap((t) => [`${t.file}.ogg`, `${t.file}.mp3`]));
+    const present = readdirSync(join(ROOT, 'public', 'music')).filter((f) => /\.(ogg|mp3)$/.test(f));
+    expect(present.sort()).toEqual([...listed].sort());
   });
 
   it('records a planned pick for every later context', () => {

@@ -281,7 +281,7 @@ describe('music: pure parts', () => {
     expect(musicFormats(() => 'maybe')).toEqual(['ogg', 'mp3']);
     expect(musicFormats(() => '')).toEqual(['mp3', 'ogg']);
     expect(musicUrl('./', 'lonely-village', 'ogg')).toBe('./music/lonely-village.ogg');
-    expect(musicUrl('/game/', 'the-fallen', 'mp3')).toBe('/game/music/the-fallen.mp3');
+    expect(musicUrl('/game/', 'game-over-ii', 'mp3')).toBe('/game/music/game-over-ii.mp3');
   });
 
   it('keeps the loop points when the decoder trimmed the codec padding', () => {
@@ -364,7 +364,7 @@ describe('music: licensed tracks on a fake AudioContext', () => {
     audio.setMusic('crypt');
     await flush();
     const [title, crypt] = fileSources(fake);
-    expect(urlOf(crypt!)).toBe('./music/dungeon-ambience.ogg');
+    expect(urlOf(crypt!)).toBe(`./music/${MUSIC_TRACKS.crypt.file}.ogg`);
     expect(title!.stoppedAt).toBeGreaterThanOrEqual(10 + CROSSFADE_S);
     expect(CROSSFADE_S).toBeGreaterThanOrEqual(1);
     expect(CROSSFADE_S).toBeLessThanOrEqual(1.5);
@@ -376,7 +376,7 @@ describe('music: licensed tracks on a fake AudioContext', () => {
     // Back to the title: decoded already, no new request.
     audio.setMusic('title');
     await flush();
-    expect(fetched).toEqual(['./music/lonely-village.ogg', './music/dungeon-ambience.ogg']);
+    expect(fetched).toEqual(['./music/lonely-village.ogg', `./music/${MUSIC_TRACKS.crypt.file}.ogg`]);
     expect(fileSources(fake)).toHaveLength(3);
   });
 
@@ -394,22 +394,23 @@ describe('music: licensed tracks on a fake AudioContext', () => {
     audio.setMusic('crypt');
     audio.setMusic('guardian');
     await flush();
-    expect(fileSources(fake).map(urlOf)).toEqual(['./music/boss-battle-2.ogg']);
+    expect(fileSources(fake).map(urlOf)).toEqual([`./music/${MUSIC_TRACKS.guardian.file}.ogg`]);
     expect(fileSources(fake)[0]).toMatchObject({ loopStart: MUSIC_TRACKS.guardian.loopStart, loopEnd: MUSIC_TRACKS.guardian.loopEnd });
   });
 
   it('falls back to the MP3 when Ogg does not decode, and asks for MP3 first where Ogg is unsupported', async () => {
     const first = setup();
-    first.fake.undecodable.add('out-of-time.ogg');
+    const collapse = MUSIC_TRACKS.collapse.file;
+    first.fake.undecodable.add(`${collapse}.ogg`);
     first.audio.setMusic('collapse');
     await flush();
-    expect(first.fetched).toEqual(['./music/out-of-time.ogg', './music/out-of-time.mp3']);
-    expect(fileSources(first.fake).map(urlOf)).toEqual(['./music/out-of-time.mp3']);
+    expect(first.fetched).toEqual([`./music/${collapse}.ogg`, `./music/${collapse}.mp3`]);
+    expect(fileSources(first.fake).map(urlOf)).toEqual([`./music/${collapse}.mp3`]);
     vi.unstubAllGlobals();
     const safari = setup({ canPlay: '' });
     safari.audio.setMusic('collapse');
     await flush();
-    expect(safari.fetched).toEqual(['./music/out-of-time.mp3']);
+    expect(safari.fetched).toEqual([`./music/${collapse}.mp3`]);
   });
 
   it('plays stingers once, stopping the loop quickly', async () => {
@@ -426,7 +427,8 @@ describe('music: licensed tracks on a fake AudioContext', () => {
 
   it('falls back to the procedural loop, or the synthesised stinger, when a file is missing', async () => {
     vi.useFakeTimers();
-    const { audio, fake } = setup({ missing: ['dungeon-ambience.ogg', 'dungeon-ambience.mp3', 'the-fallen.ogg', 'the-fallen.mp3'] });
+    const [crypt, defeat] = [MUSIC_TRACKS.crypt.file, MUSIC_TRACKS.defeat.file];
+    const { audio, fake } = setup({ missing: [`${crypt}.ogg`, `${crypt}.mp3`, `${defeat}.ogg`, `${defeat}.mp3`] });
     audio.setMusic('crypt');
     await flush();
     expect(fileSources(fake)).toHaveLength(0);

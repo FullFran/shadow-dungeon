@@ -33,11 +33,12 @@ Licensed tracks, one per game context (files, license links and sources in
 CC0 works need no credit and are credited anyway.
 
 - Title and menus: "Sad RPG Theme - Lonely Village" by Eldritch Grim, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/sad-rpg-theme-lonely-village)).
-- Crypt floors: "Dungeon Ambience" by yd, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/dungeon-ambience)).
-- Collapse floor: "Out Of Time" Composed by Jonathan Shaw (www.jshaw.co.uk), [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) ([source](https://opengameart.org/content/out-of-time-rpg-orchestral-essentials-danger-music)). Modified: cut to one loop pass (0-77.2 s), loudness-normalised, re-encoded to Ogg Opus and MP3.
-- Guardian (Aegislash): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
-- Victory: "Fanfares" (VICTORY) by Spring Spring (Spring/Spring Enterprises), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([source](https://opengameart.org/content/fanfares)). Modified: resampled, loudness-normalised, re-encoded to Ogg Opus and MP3.
-- Defeat: "The Fallen" Composed by Jonathan Shaw (www.jshaw.co.uk), [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) ([source](https://opengameart.org/content/the-fallen-rpg-orchestral-essentials-defeated-music)). Modified: loudness-normalised, re-encoded to Ogg Opus and MP3.
+- Crypt floors: "RPG - Underworld Theme - Loop" by jocolloman (Joseph Collard), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([source](https://opengameart.org/content/rpg-underworld-theme-loop)). Modified: loop moved to bars 9-56 with a 50 ms seam cross-fade, loudness-normalised, re-encoded to Ogg Opus and MP3.
+- Collapse floor: "Determined Pursuit" by Emma_MA, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/determined-pursuit-epic-orchestra-loop)).
+- Guardian (Aegislash): "16-bit - Battle Theme I" by HydroGene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/16-bit-battle-theme-i)).
+- Victory: "Victory" by Umplix, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/victory-4)).
+- Defeat: "Game Over Theme II" by Cleyton Kauffman (CleytonKauffman), [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/game-over-theme-ii)).
+- Reserved for a future guardian (shipped, not played yet): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
 
 ## Audio
 
