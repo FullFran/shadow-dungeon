@@ -8,6 +8,7 @@ import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
+import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
 
 /**
@@ -15,7 +16,8 @@ import { slotOptions } from './settings';
  * the playable species; the info window shows the one under the cursor (its
  * idle animation from the sprite sheets, its types and its passive), and
  * confirming picks it. `moves`: one move card per option of each slot of the
- * picked species (type, power, short description); the cursor picks a move
+ * picked species (type, power, stamina cost, hit shape, short description and
+ * matchup against the Crypt, app/move-info.ts); the cursor picks a move
  * for its slot and Start begins the run. Back goes from moves to species.
  */
 export interface LoadoutOptions {
@@ -78,13 +80,16 @@ function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId): HTMLElement[] 
 
 function moveCard(id: MoveId, equipped: boolean): HTMLElement {
   const move = MOVES[id];
+  const [stats, matchup] = moveInfoLines(id);
   return h('div', { className: 'move-card' }, [
     h('div', { className: 'move-head' }, [
       h('strong', { textContent: t(`move.${id}`) }),
       typeBadge(move.type),
       equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
     ]),
-    h('div', { className: 'move-desc' }, [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${t(`move.${id}.description`)}`]),
+    h('div', { className: 'move-desc' }, [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`]),
+    h('div', { className: 'move-desc' }, [t(`move.${id}.description`)]),
+    h('div', { className: 'move-desc move-matchup' }, [matchup]),
   ]);
 }
 
