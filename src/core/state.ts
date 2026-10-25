@@ -1,3 +1,4 @@
+import type { Difficulty } from '../data/difficulty';
 import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
@@ -373,6 +374,8 @@ export interface HitClaim {
 
 export interface WorldState {
   tick: number;
+  /** Difficulty tier chosen by the host (data/difficulty.ts); absent means `easy`. */
+  difficulty?: Difficulty;
   /** Id of this peer's player (`player`); "p1" solo. */
   localId: string;
   role: PeerRole;
