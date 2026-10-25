@@ -1,3 +1,4 @@
+import { simaEventLines } from './sima-summary';
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
 import type { StarterId } from '../data/quiz';
@@ -680,6 +681,10 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
           statLine(t('screen.seed'), String(summary.seed)),
           statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
           ...(party ? [statLine(t('screen.party'), party.join(', '))] : []),
+          // The Sima: the floor events taken this run.
+          ...(summary.simaEvents?.length
+            ? [h('h3', { className: 'dim', textContent: t('sima.summary.title') }), ...simaEventLines(summary.simaEvents, t).map((line) => simaLine(line))]
+            : []),
         ]),
         h('div', { className: 'coin-lines' }, [
           h('h3', { className: 'dim', textContent: t('screen.coins') }),
@@ -691,6 +696,13 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
   ], true, result === 'eclipse' ? 'victory' : result);
+}
+
+/** One line of the Sima's events on the end screen: small and tight, so the actions stay in view. */
+function simaLine(text: string): HTMLElement {
+  const line = h('p', { className: 'dim', textContent: text });
+  Object.assign(line.style, { margin: '0.1rem 0', fontSize: '0.85em', lineHeight: '1.25' });
+  return line;
 }
 
 /** Records an endless run's score (floor, time left, mode from its seed, the UTC day) and returns its rank. */
@@ -794,7 +806,13 @@ function devScreen(root: HTMLElement): boolean {
     endless: () => enterDungeon(root, 'eclipse-chasm', () => titleScreen(root)),
     // The Sima's end screen with a sample score (recorded on this device's board, like a real one).
     eclipse: () => {
-      const run = { ...summary, dungeon: 'eclipse-chasm' as const, floor: 12, level: 9, clockMs: 0, seed: endlessSeed('daily', today(), 0), coins: { ...coins, multiplier: 0.5, total: 78 } };
+      const simaEvents = [
+        { floor: 3, kind: 'crystal', outcome: 'taken' },
+        { floor: 4, kind: 'shrine', outcome: 'accepted' },
+        { floor: 7, kind: 'waves', outcome: 'cleared' },
+        { floor: 9, kind: 'nest', outcome: 'destroyed' },
+      ] as const;
+      const run = { ...summary, dungeon: 'eclipse-chasm' as const, floor: 12, level: 9, clockMs: 0, seed: endlessSeed('daily', today(), 0), coins: { ...coins, multiplier: 0.5, total: 78 }, simaEvents };
       resultScreen(root, 'eclipse', run, false, loadSave(store).coins, endlessScore(run));
     },
     defeat: () =>

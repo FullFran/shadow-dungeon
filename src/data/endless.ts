@@ -95,6 +95,8 @@ export interface EndlessDef {
     echoMs: number;
     /** Under this the HUD clock turns red, pulses and ticks. */
     lowMs: number;
+    /** Breathing room: the clock waits this long on every new floor (the floor card, a first look around). */
+    graceMs?: number;
   };
   /** Floor tracks rotated by depth band (`bandFloors` floors each). */
   musicBands: readonly MusicContext[];
@@ -131,7 +133,7 @@ export const ENDLESS: EndlessDef = {
     { kind: 'collapse', fromFloor: 2, start: 0.08, perFloor: 0.01, max: 0.22 },
     { kind: 'fog', fromFloor: 3, start: 0.08, perFloor: 0.01, max: 0.22 },
   ],
-  clock: { startMs: 480_000, descendMs: 40_000, descendShrinkMs: 2_000, descendMinMs: 15_000, echoMs: 60_000, lowMs: 30_000 },
+  clock: { startMs: 480_000, descendMs: 40_000, descendShrinkMs: 2_000, descendMinMs: 15_000, echoMs: 60_000, lowMs: 30_000, graceMs: 3000 },
   musicBands: ['crypt', 'forest'],
   bandFloors: 5,
   coinScale: 0.5,

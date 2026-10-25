@@ -47,6 +47,8 @@ export interface RunState {
   echoPaid?: boolean;
   /** Sima: this floor's event already paid its time (the crystal, a cleared wave room). */
   eventPaid?: boolean;
+  /** Endless: breathing room left on this floor before the clock runs again (ms). */
+  graceMs?: number;
 }
 
 /** `eclipse`: the endless dungeon's clock ran out (a score end, not a defeat). */
@@ -150,7 +152,7 @@ export function startRun(
     kind: floorKind(seed, start, def),
     escape: null,
     offer: offerFor({ seed, floor: start }, base),
-    ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false } : {}),
+    ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false, ...(def.endless.clock.graceMs ? { graceMs: def.endless.clock.graceMs } : {}) } : {}),
   };
   return { run, world: enterFloor(base, run) };
 }
@@ -173,13 +175,20 @@ function goDown(run: RunState, world: WorldState, floor: number): { run: RunStat
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
   const endless = dungeonOf(run).endless;
   const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;
-  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false } : {};
+  const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
+  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items), ...clock };
   return { run: next, world: enterFloor(descendPact(heal(world)), next), bonusMs };
 }
 
 /** The run clock after `dtMs` more of play (the endless dungeon only; other runs have none). */
-export const tickRunClock = (run: RunState, dtMs: number): RunState => (run.clockMs === undefined ? run : { ...run, clockMs: tickClock(run.clockMs, dtMs) });
+export function tickRunClock(run: RunState, dtMs: number): RunState {
+  if (run.clockMs === undefined) return run;
+  // A new floor's breathing room goes first.
+  const grace = run.graceMs ?? 0;
+  if (grace <= 0) return { ...run, clockMs: tickClock(run.clockMs, dtMs) };
+  return { ...run, graceMs: Math.max(0, grace - dtMs), clockMs: tickClock(run.clockMs, Math.max(0, dtMs - grace)) };
+}
 
 /** Guest: the host's clock as received (never below 0). */
 export const setClock = (run: RunState, ms: number): RunState => ({ ...run, clockMs: Math.max(0, ms) });

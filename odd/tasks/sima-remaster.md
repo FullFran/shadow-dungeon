@@ -47,7 +47,14 @@ Out of scope: leaderboards per difficulty, records, coin multipliers (difficulty
   - T7: `EnemyAttackDef.pierceRoll?: true` added to the data type (the core rule and its telegraph come from the difficulty writer's branch: today rolls still dodge these until that merges); marked on the corona and the noose. Deep elites (from floor 21, 30 % of elites) carry `EnemyState.pierceRoll` (snapshot and wire: "!" in the elite slot).
   - Presentation `src/adapters/eclipse-echo-view.ts`: halo, corona overlay with lit pockets, noose ring and lit gap, lanes' first gap at the top edge, a closing ring for the other wind-ups; boss bar stance names; name card "Eco del Eclipse / Planta N · La sombra que bajó contigo" (no cinematic).
   - Evidence: `tests/core/eclipse-echo.test.ts` (10) RED first (module missing), then GREEN; mutation checks: removing the ring's gap and removing the projectile cap each fail a test (the cap test was added after the first cap mutation survived: the open fight never reached 110 shots). `tests/core/sima-ramp.test.ts` +1 (deep elites' `pierceRoll`, wire round trip). Screenshots `/tmp/sima-remaster/t3-echo-card.png` (name card, floor 10), `t3-echo-a..d.png` and `t3-echo-fight.png` (floor 60: ring, spiral, corona with pockets). `npm test` 111 files / 1059 tests passed; typecheck ok.
-- [ ] T4 Pacing, clarity, difficulty hooks, docs (route: same)
+- [x] T4 Pacing, clarity, difficulty hooks, docs (route: inline writer, this agent; core run clock, clock HUD, end screen, docs)
+  - Breathing room: `ENDLESS.clock.graceMs` 3000; `RunState.graceMs` set on the first floor and on every new floor; `tickRunClock` spends the grace before the clock (shared runs too: the host's clock is the one sent).
+  - Time popup (`bonusPopup`): "+N s" at 16 px bold in green on a dark pill under the clock, popping in, with its reason under it ("por bajar", "eco vencido", "cristal del tiempo", "sala superada", "pacto del altar").
+  - End screen: "Sucesos de la sima" in the run summary column (`src/app/sima-summary.ts`, the last four events and a count of the rest, small lines so the actions stay in view at 1024x640: actions at y 526-561). The leaderboard is untouched. Dev `?screen=eclipse` shows sample events.
+  - Difficulty hooks (all through `atLeast(worldDifficulty(state), ...)`; easy unchanged): the Eclipse Echo plays one more card from hard; the hunter comes out 30 % sooner from hard; the shrine's curse is 1.5 times harsher on nightmare.
+  - Docs: GDD §3 Sima (tougher-not-more rule, elites, squads, strata, events, Eclipse Echo, pacing, co-op of events; Spanish, no em dashes); README (Eclipse Echo, strata, elites, events, grace, `?nearEvent=1`).
+  - Existing tests changed on purpose: three run-clock tests in `tests/core/endless.test.ts` strip the grace (`noGrace`) to keep checking the clock arithmetic.
+  - Evidence: `tests/core/sima-pacing.test.ts` (3) RED first (module missing), then GREEN. Screenshots `/tmp/sima-remaster/t4-time-popup.png` ("+20 s / cristal del tiempo", clock held at 8:00 then 8:20), `t4-end-screen.png`. `npm test` 112 files / 1062 tests passed; `npm run build` ok.
 - [x] T5 Tougher, not more (user feedback 2026-10-25 via the coordinator: "es mejor poner enemigos más duros"; done right after T1, before T2) (route: inline writer, this agent; data, core, net, renderer)
   - Decision: depth no longer means more bodies. Sima rooms hold at most 3 enemies (`spawns` base 1, +0.15 per floor, jitter 1, `maxPerRoom` 3; a pack counts inside the 3); HP scaling +5 %/floor capped x3 (was +8 %, x4), damage +3.5 %/floor capped x2.5 (was +5 %, x3). Depth brings instead: tough species earlier (Golett 3, Pumpkaboo XL 4, Hoothoot 3, Grimer/Slugma/Houndour 3, Clauncher/Croagunk 4) and growing with depth while the weak swarmers fade to a quarter (`EndlessPoolEntry.perDepth`, `depthWeight`); Sima elites (`SIMA_ELITES`, from floor 6 at 6 % per enemy, +1.5 %/floor, max 40 %; x1.35 HP; traits swift x1.3 pace, volley two extra shots at +-16 deg for casters only, armored shrugs off the first hit, enrage x1.5 pace under 40 % HP; a glow in the trait's colour); mixed squads (`SIMA_SQUADS`, from floor 4 at 15 %, max 50 %, per room with 2+ enemies: Golett+Duskull, Pawniard+Gastly+Pawniard, Croagunk+Spinarak, Pumpkaboo XL+Hoothoot+Litleo, Grimer+Houndour+Chinchou, Clauncher+Pawniard+Koffing; never more enemies than the room had). All Sima-scoped data (`ENDLESS.elites`, `ENDLESS.squads`) so the difficulty writer's elites can be unified at integration.
   - Co-op: `EnemyState.elite`/`armor` ride the host snapshot and the wire (optional trailing slot "trait" or "trait*" while armored); a guest's blocked claim spends the armor on the host.
@@ -70,6 +77,12 @@ Out of scope: leaderboards per difficulty, records, coin multipliers (difficulty
 
 ## Forecast
 About 1800 authored lines over 4 tasks (T1 ~400, T2 ~700, T3 ~450, T4 ~250). Above the ~400 slice budget; the delivery decision stays with the parent.
+
+## Delivery
+Five work-unit commits on `feat/sima-remaster` (T1, T5, T2+T6, T3+T7, T4, in that order); the branch is far above the ~400-line slice budget, so the slicing (chain or single PR) is the parent's decision. Push, PR and merge are the user's.
+
+## Next step
+Human review and a played run (a wave room and the Eclipse Echo with a mouse, by feel); integration with the difficulty writer (the `pierceRoll` rule, elites unification) and the dungeons 3/4 writers (append their enemies to `ENDLESS_POOL` and guardians to `ENDLESS.echoes`).
 
 ## Progress
 Created 2026-10-25 on `feat/sima-remaster` from `main` 043cb02. Engram mirror: pending (writer has no Engram session; parent owns it).

@@ -250,8 +250,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let clockBonus: RunClock['bonus'] = null;
   const lowMs = dungeonOf(run).endless?.clock.lowMs ?? 0;
   /** Endless: a tick every second once the clock is low, and "+N s" when time is added. */
-  const watchClock = (beforeMs: number | undefined, bonusMs = 0) => {
-    if (bonusMs > 0) clockBonus = { ms: bonusMs, shownAtMs: realMs };
+  const watchClock = (beforeMs: number | undefined, bonusMs = 0, reason?: string) => {
+    if (bonusMs > 0) clockBonus = { ms: bonusMs, shownAtMs: realMs, ...(reason ? { reason } : {}) };
     if (beforeMs !== undefined && run.clockMs !== undefined && tickDue(beforeMs, run.clockMs, lowMs)) audio?.play('click');
   };
   /** Title card of the current floor; game input keeps working while it shows. */
@@ -378,7 +378,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           const before = run.clockMs;
           const after = addTime(before, taken.bonusMs);
           run = { ...run, clockMs: after };
-          watchClock(undefined, after - before);
+          watchClock(undefined, after - before, 'shrine');
           shrineTimePaid = true;
         }
         audio?.play('levelUp');
@@ -702,7 +702,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const progress = progressRun(run, world);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
-      watchClock(undefined, progress.bonusMs);
+      // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
+      const plan = floorPlanOf(run);
+      const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? 'echo' : world.simaEvent?.kind;
+      watchClock(undefined, progress.bonusMs, reason);
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {

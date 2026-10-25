@@ -234,11 +234,14 @@ describe('endless run', () => {
   });
 });
 
+/** The run without its floor's breathing room (sima-pacing.test.ts covers the grace itself). */
+const noGrace = <T extends { graceMs?: number }>(run: T): T => ({ ...run, graceMs: 0 });
+
 describe('the run clock', () => {
   it('starts at 8:00 and counts down, never below 0', () => {
     const { run } = startRun(SEED, {}, 1, ECL);
     expect(run.clockMs).toBe(480_000);
-    expect(tickRunClock(run, 1000).clockMs).toBe(479_000);
+    expect(tickRunClock(noGrace(run), 1000).clockMs).toBe(479_000);
     expect(tickClock(500, 2000)).toBe(0);
     expect(tickClock(500, -100)).toBe(500);
     expect(startRun(SEED, {}).run.clockMs).toBeUndefined();
@@ -253,7 +256,7 @@ describe('the run clock', () => {
     expect(addTime(0, 5000)).toBe(0);
     expect(addTime(1000, -5000)).toBe(1000);
     const start = startRun(SEED, {}, 1, ECL);
-    const p = progressRun(tickRunClock(start.run, 10_000), toStairs(start.world));
+    const p = progressRun(tickRunClock(noGrace(start.run), 10_000), toStairs(start.world));
     expect(p.run.clockMs).toBe(480_000 - 10_000 + 40_000);
     expect(p.bonusMs).toBe(40_000);
   });
@@ -272,7 +275,7 @@ describe('the run clock', () => {
 
   it('at 0 the eclipse swallows the floor: an eclipse end, not a defeat; a guest waits for the host', () => {
     const { run, world } = startRun(SEED, {}, 1, ECL);
-    const out = tickRunClock(run, 480_000);
+    const out = tickRunClock(noGrace(run), 480_000);
     expect(progressRun(out, world).outcome).toBe('eclipse');
     expect(progressRun(out, { ...world, role: 'guest' }).outcome).toBeNull();
     expect(setClock(run, 0).clockMs).toBe(0);
