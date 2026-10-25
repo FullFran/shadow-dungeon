@@ -37,10 +37,13 @@ export interface TownPresence {
 export type NetMessage =
   /** A tab joining the session announces its player; the host answers with `start`. */
   | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }
-  /** Host: the run seed, the current floor, the dungeon id (absent = the first dungeon) and who is who (sent again whenever someone joins). */
-  | { t: 'start'; seed: number; floor: number; dungeon?: string; players: readonly RosterEntry[] }
-  /** Host, before the run starts: who is in the room so far (sent again on every change). */
-  | { t: 'lobby'; players: readonly RosterEntry[] }
+  /**
+   * Host: the run seed, the current floor, the dungeon id (absent = the first dungeon), the difficulty tier
+   * (absent or unknown = easy: an older host) and who is who (sent again whenever someone joins).
+   */
+  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[] }
+  /** Host, before the run starts: who is in the room so far and the tier it picked, for the guests to see (sent again on every change). */
+  | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string }
   /** Host: the room already has four players; `peer` is the one turned away. */
   | { t: 'full'; peer: string }
   /** Round-trip probe (reliable, ~1 Hz); every peer answers with `pong` to the sender. */
@@ -165,11 +168,14 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
 }
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
-  return [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
+  const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
+  // Optional positional flag, last (an older peer ignores it).
+  if (p.pierceRoll) out.push(1);
+  return out;
 }
 
 function decodeProjectile(w: unknown[]): ProjectileSnapshot {
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -180,8 +186,9 @@ function decodeProjectile(w: unknown[]): ProjectileSnapshot {
     number,
     number,
     number,
+    number | undefined,
   ];
-  return { id, type, attackerTypes, power, pos: { x, y }, vel: { x: vx, y: vy }, radius, remainingMs };
+  return { id, type, attackerTypes, power, pos: { x, y }, vel: { x: vx, y: vy }, radius, remainingMs, ...(pierce === 1 ? { pierceRoll: true } : {}) };
 }
 
 export function encodeMessage(message: NetMessage): string {

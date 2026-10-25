@@ -2,6 +2,7 @@ import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
+import type { Difficulty } from '../data/difficulty';
 import { TILE } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -20,7 +21,10 @@ import { nearestInteractable, stepWalker, townArena, type Interactable, type Wal
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
-import { canTravel, entranceAction, enterRows, presenceDue, type TownLobby } from './lobby';
+import { canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
+
+/** A row of a town choice window. */
+type ChoiceRow = { label: string; onConfirm: () => void } | TierRow;
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
@@ -62,6 +66,8 @@ export interface TownOptions {
    * the host may lead the group into a dungeon (`onDepart`).
    */
   lobby?: TownLobby;
+  /** The tier picked now (solo: the player's last; a room: the host's), for the notice board's records. */
+  difficulty?: () => Difficulty;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -120,16 +126,20 @@ function townCamera(focus: Vec2, map: MapShape) {
   return { ...view, y: view.y - SKY_BAND };
 }
 
-/** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores. */
-const readBoard = (): string[] => [
-  ...boardLines(
-    readRecords(browserStore()),
-    DUNGEON_LORE[0]!.id,
-    (key) => t(key),
-    DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
-  ),
-  ...leaderboardLines(readScores(browserStore()), (key) => t(key)),
-];
+/** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores; both for the tier picked now. */
+const readBoard = (difficulty: Difficulty): string[] => {
+  const tier = { difficulty, name: t(`difficulty.${difficulty}`) };
+  return [
+    ...boardLines(
+      readRecords(browserStore()),
+      DUNGEON_LORE[0]!.id,
+      (key) => t(key),
+      DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
+      tier,
+    ),
+    ...leaderboardLines(readScores(browserStore()), (key) => t(key), 5, tier),
+  ];
+};
 
 export interface TownHandle {
   stop(): void;
@@ -209,7 +219,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   // The code in the corner stays small: the big lobby style would cover the sky.
   const roomCode = h('div', { className: 'town-room-code' });
   Object.assign(roomCode.style, { fontSize: '1.5em', letterSpacing: '0.2em', color: PALETTE.cursor });
-  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomList, h('p', { className: 'dim', textContent: t('lobby.townHint') })])]) : null;
+  /** The room's tier, for everyone (the host changes it in the entrance and waystone windows). */
+  const roomTier = h('p', { className: 'town-room-tier' });
+  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t('lobby.townHint') })])]) : null;
   if (roomWindow) {
     Object.assign(roomWindow.style, { position: 'fixed', top: '8px', right: '8px', zIndex: '4', maxWidth: '40vw', fontSize: '0.8em', pointerEvents: 'none' });
     canvas.parentElement?.append(roomWindow);
@@ -218,10 +230,12 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function renderRoom(): void {
     if (!lobby) return;
     const players = lobby.players();
-    const key = lobby.code() + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
+    const tier = lobby.difficulty?.() ?? null;
+    const key = `${lobby.code()}|${tier}|` + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
     if (key === roomShown) return;
     roomShown = key;
     roomCode.textContent = lobby.code();
+    roomTier.textContent = tier ? `${t('difficulty.label')}: ${t(`difficulty.${tier}`)}` : '';
     roomList.replaceChildren(
       ...players.map((p) => {
         const tags = [p.host ? t('lobby.host') : null, p.self ? t('lobby.you') : null].filter(Boolean);
@@ -297,7 +311,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
+        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')) }
         : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
   }
 
@@ -317,6 +331,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   function closeExitWindow(): void {
+    redrawChoice = () => undefined;
     exitWindow?.remove();
     exitWindow = null;
     held.clear();
@@ -324,16 +339,26 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     last = performance.now();
   }
 
+  /** Rebuilds the open choice window's rows (after the host's tier changed). */
+  let redrawChoice: () => void = () => undefined;
+  /** Host in a room: the tier row on top of the entrance and waystone windows. */
+  const tierRows = (): ChoiceRow[] => {
+    const row = tierRow(lobby, t('difficulty.label'), (d) => t(`difficulty.${d}`), () => redrawChoice());
+    return row ? [row] : [];
+  };
+
   const depart = (id: string, variant?: string) => {
     handle.stop();
     options.onDepart(id, variant);
   };
 
   /** An MD-style window over the scene: a line of text and a cursor list; the scene waits while it is open. */
-  function openChoiceWindow(title: string, text: string, items: { label: string; onConfirm: () => void }[], onBack: () => void): void {
+  function openChoiceWindow(title: string, text: string, rows: ChoiceRow[] | (() => ChoiceRow[]), onBack: () => void): void {
     held.clear();
     touch.setSuspended(true);
-    const list = cursorList({ label: title, items, onBack });
+    const build = typeof rows === 'function' ? rows : () => rows;
+    const list = cursorList({ label: title, items: build(), onBack });
+    redrawChoice = () => list.setItems(build());
     exitWindow = h('div', { className: 'town-exit' }, [mdWindow({ title, className: 'narrow' }, [h('p', { textContent: text }), list.element])]);
     Object.assign(exitWindow.style, { position: 'fixed', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '5' });
     canvas.parentElement?.append(exitWindow);
@@ -344,7 +369,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     openChoiceWindow(
       t('town.exit.title'),
       t('town.exit.text'),
-      [...options.dungeons.flatMap((d) => enterRows(d.id, d.label, lobby, depart)), { label: t('town.exit.stay'), onConfirm: closeExitWindow }],
+      () => [...tierRows(), ...options.dungeons.flatMap((d) => enterRows(d.id, d.label, lobby, depart)), { label: t('town.exit.stay'), onConfirm: closeExitWindow }],
       closeExitWindow,
     );
   }
@@ -363,7 +388,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         closeExitWindow();
         stepBack();
       };
-      openChoiceWindow(name, t(lobby ? 'world.enter.party' : 'world.enter.text').replace('{name}', name), [
+      openChoiceWindow(name, t(lobby ? 'world.enter.party' : 'world.enter.text').replace('{name}', name), () => [
+        ...tierRows(),
         ...enterRows(entrance.dungeon, t('world.enter.yes'), lobby, depart),
         { label: t('world.enter.no'), onConfirm: stay },
       ], stay);

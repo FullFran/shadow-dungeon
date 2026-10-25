@@ -1,6 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { MOVES, type MoveId } from '../data/moves';
 import type { PokemonType } from '../data/types';
+import { bladeBlow } from '../core/boss';
 import { playerStats } from '../core/items';
 import type { EnemyState, PlayerState, ProjectileState } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -79,9 +80,9 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
       const stance = enemy.boss?.stance;
       if (stance === 'midnight') return AEGISLASH.phase2.midnight.attack.type;
       if (stance === 'oaths') return AEGISLASH.phase2.oaths.blade.type;
-      if (stance === 'shadow') return AEGISLASH.phase2.shadow.sword.type;
+      if (stance === 'shadow' || stance === 'judgement') return AEGISLASH.phase2.shadow.sword.type;
       if (stance !== 'blade') return AEGISLASH.shield.bash.type;
-      const blow = AEGISLASH.blade.combo[enemy.boss?.comboIndex ?? 0] ?? AEGISLASH.blade.combo[0]!;
+      const blow = bladeBlow(enemy.boss?.comboIndex ?? 0);
       return blow.attack.type;
     }
     case 'archer': {

@@ -4,6 +4,9 @@ import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { stealItem } from './stolen';
 import { thiefTouches } from './victim';
+import { atLeast, type Difficulty } from '../data/difficulty';
+import { worldDifficulty } from './difficulty';
+import { TUNING } from '../data/tuning';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 /**
@@ -27,6 +30,21 @@ const withBoss = (enemy: EnemyState, boss: Partial<BossState>): EnemyState => ({
 
 export const thiefCardAt = (def: ThiefDef, done: number): ThiefCard => def.cards[done % def.cards.length]!;
 
+/** Gem rings per Gems card at tier `d` (hard adds one). */
+export const gemRings = (def: ThiefDef, d: Difficulty): number => def.gems.rings + (atLeast(d, def.gems.extraRings.minDifficulty) ? def.gems.extraRings.rings : 0);
+
+/** Glint blinks per card at tier `d` (nightmare adds one). */
+export const glintBlinks = (def: ThiefDef, d: Difficulty): number => def.blink.blinks + (atLeast(d, def.extraBlinks.minDifficulty) ? def.extraBlinks.blinks : 0);
+
+/**
+ * The gem burst (every tier, positional): the ground around Sableye erupts as
+ * the first ring leaves, for `burst.activeMs`; marked through the whole wind-up.
+ */
+export const burstActive = (enemy: EnemyState, def: ThiefDef): boolean =>
+  enemy.boss?.stance === 'gems' && enemy.ai.mode === 'attack' && enemy.boss.comboIndex === 1 && enemy.ai.modeMs <= def.gems.burst.activeMs;
+
+export const burstTouches = (enemy: EnemyState, player: Vec2, def: ThiefDef): boolean => distance(enemy.pos, player) <= def.gems.burst.radius + TUNING.player.radius;
+
 /** Where a blink reappears: `distance` from the player, a third of a turn around from the thief's side (alternating). */
 export function blinkSpot(state: WorldState, enemy: EnemyState, target: Vec2, def: ThiefDef, index: number): Vec2 {
   const from = normalize(sub(enemy.pos, target));
@@ -42,8 +60,8 @@ function vanish(enemy: EnemyState, ms: number, events: GameEvent[]): EnemyState 
   return withAi(enemy, { ...enterMode(enemy.ai, 'transform', ms), contact: 'none' });
 }
 
-function windUp(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[]): EnemyState {
-  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs });
+function windUp(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[], pierceRoll = false): EnemyState {
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs, ...(pierceRoll ? { pierceRoll: true as const } : {}) });
   return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir, contact: 'none' } };
 }
 
@@ -100,7 +118,7 @@ export function updateThief(state: WorldState, start: EnemyState, def: ThiefDef,
           enemy = windUp({ ...enemy, pos }, 'glint', def.blink.telegraphMs, towardTarget(target, { ...enemy, pos }), events);
         } else {
           const pos = confineCircle(state.arena, vec(state.arena.width / 2, state.arena.height / 2), enemy.radius);
-          enemy = windUp({ ...enemy, pos }, 'gems', def.gems.telegraphMs, towardTarget(target, { ...enemy, pos }), events);
+          enemy = windUp({ ...enemy, pos }, 'gems', def.gems.telegraphMs, towardTarget(target, { ...enemy, pos }), events, def.gems.burst.attack.pierceRoll === true);
         }
       }
       break;
@@ -112,7 +130,7 @@ export function updateThief(state: WorldState, start: EnemyState, def: ThiefDef,
           enemy = withAi(enemy, { ...enterMode(enemy.ai, 'attack', def.blink.slashMs), contact: 'none' });
         } else {
           state = throwRing(state, enemy, def, enemy.ai.attackDir, 0);
-          enemy = withAi(withBoss(enemy, { comboIndex: 1 }), enterMode(enemy.ai, 'attack', def.gems.gapMs));
+          enemy = withAi(withBoss(enemy, { comboIndex: 1 }), { ...enterMode(enemy.ai, 'attack', def.gems.gapMs), contact: 'none' });
         }
       }
       break;
@@ -126,12 +144,18 @@ export function updateThief(state: WorldState, start: EnemyState, def: ThiefDef,
         enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
         if (modeOver(ai)) {
           const next = boss.comboIndex + 1;
-          enemy = next < def.blink.blinks ? vanish(withBoss(enemy, { comboIndex: next }), def.blink.vanishMs, events) : rest(enemy, def);
+          enemy = next < glintBlinks(def, worldDifficulty(state)) ? vanish(withBoss(enemy, { comboIndex: next }), def.blink.vanishMs, events) : rest(enemy, def);
         }
         break;
       }
+      // The gem burst around it as the first ring leaves (positional: walk out of the marked circle).
+      if (burstActive(enemy, def)) {
+        const hit = contactPlayer(state, enemy, def.gems.burst.attack, burstTouches(enemy, state.player.pos, def), events);
+        state = hit.state;
+        enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
+      }
       if (!modeOver(ai)) break;
-      if (boss.comboIndex >= def.gems.rings) {
+      if (boss.comboIndex >= gemRings(def, worldDifficulty(state))) {
         enemy = rest(enemy, def);
         break;
       }

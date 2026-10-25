@@ -557,5 +557,21 @@
   "lobby.townHint": "Esc: menú de la sala",
   "lobby.resume": "Seguir en el pueblo",
   "world.enter.party": "¿Entrar en {name}? (todo el grupo)",
-  "screen.party": "Grupo"
+  "screen.party": "Grupo",
+  "difficulty.label": "Dificultad",
+  "difficulty.easy": "Fácil",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Difícil",
+  "difficulty.nightmare": "Pesadilla",
+  "difficulty.easy.hint": "El juego de siempre. Reintentar planta sin límite.",
+  "difficulty.normal.hint": "Enemigos algo más duros y atentos, algún élite. Paga ×1,3.",
+  "difficulty.hard.hint": "Ataques nuevos y combos más largos, más élites, 1 reintento por planta. Paga ×1,7.",
+  "difficulty.nightmare.hint": "Cartas de hechizo extra y élites a menudo, sin reintentos. Paga ×2,2.",
+  "pause.restartNone": "Reintentar planta (no quedan)",
+  "elite.tough": "Élite robusto",
+  "elite.frenzied": "Élite frenético",
+  "spell.aegislash.judgement": "Juicio del Rey «Las Cien Espadas vuelven»",
+  "boss.stance.judgement": "Juicio",
+  "town.board.tier": "Dificultad {tier}",
+  "town.board.clears": "Victorias en la cripta: {clears}"
 }

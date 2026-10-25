@@ -1,4 +1,4 @@
-import type { Difficulty } from '../data/difficulty';
+import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
@@ -153,6 +153,8 @@ export interface PlayerState {
   itemUses: Readonly<Partial<Record<ItemId, number>>>;
   /** Permanent upgrade levels bought at the shop (upgrades.ts), fixed for the run; absent = none. */
   upgrades?: UpgradeLevels;
+  /** Harder tiers' roll (data/difficulty.ts `TierDef.roll`): when the i-frames end and the stamina cost share; absent = the tuning's. */
+  rollTier?: { iframesEndMs: number; staminaCost: number };
   /** A held item Sableye took (stolen.ts): out of `items` until it comes back. */
   stolen?: StolenItem;
 }
@@ -187,6 +189,8 @@ export interface EnemyState {
   wakeRoom?: Rect;
   /** Fell by its own hand (Koffing's blast): no experience, no Pokémonedas. */
   spent?: boolean;
+  /** Harder tiers: an elite (drawn tinted) and its one extra trait (data/difficulty.ts); derived from the floor seed on every peer. */
+  elite?: EliteTrait;
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
@@ -273,6 +277,8 @@ export interface ProjectileState {
   moveId?: MoveId;
   /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */
   steer?: SteerDef;
+  /** A positional enemy shot (a sweeping wall, data `pierceRoll`): rolling through it does not help. */
+  pierceRoll?: boolean;
 }
 
 export interface Arena {
@@ -318,7 +324,8 @@ export type GameEvent =
   | { type: 'levelUp'; level: number }
   /** The floor hurt the player: collapsed ground, or the closed fog's chill (not an attack: no dodge, no Disguise). */
   | { type: 'collapseHurt'; damage: number }
-  | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
+  /** `pierceRoll`: a positional attack is winding up (its own warning sound: walk out of it). */
+  | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number; pierceRoll?: true }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
@@ -419,4 +426,6 @@ export interface IncomingHit {
   type?: PokemonType;
   /** Where the attack comes from (Battle Armor only covers the front). */
   from?: Vec2;
+  /** A positional attack (data `pierceRoll`): the roll's i-frames do not stop it, and it is never a perfect dodge. */
+  pierceRoll?: boolean;
 }

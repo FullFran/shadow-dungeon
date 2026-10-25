@@ -557,5 +557,21 @@
   "lobby.townHint": "Esc: room menu",
   "lobby.resume": "Stay in town",
   "world.enter.party": "Enter {name}? (the whole group)",
-  "screen.party": "Party"
+  "screen.party": "Party",
+  "difficulty.label": "Difficulty",
+  "difficulty.easy": "Easy",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Hard",
+  "difficulty.nightmare": "Nightmare",
+  "difficulty.easy.hint": "The game as it always was. Unlimited floor restarts.",
+  "difficulty.normal.hint": "Somewhat tougher, keener enemies, the odd elite. Pays ×1.3.",
+  "difficulty.hard.hint": "New attacks and longer combos, more elites, 1 restart per floor. Pays ×1.7.",
+  "difficulty.nightmare.hint": "Extra spell cards and frequent elites, no restarts. Pays ×2.2.",
+  "pause.restartNone": "Restart floor (none left)",
+  "elite.tough": "Tough elite",
+  "elite.frenzied": "Frenzied elite",
+  "spell.aegislash.judgement": "King's Judgement «The Hundred Swords Return»",
+  "boss.stance.judgement": "Judgement",
+  "town.board.tier": "{tier} difficulty",
+  "town.board.clears": "Crypt clears: {clears}"
 }

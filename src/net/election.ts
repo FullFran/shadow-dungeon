@@ -1,3 +1,4 @@
+import type { Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { NetSession } from './session';
@@ -19,6 +20,8 @@ export interface AutoJoinOptions {
   floor: number;
   /** The dungeon this tab would run if it hosts. */
   dungeon?: string;
+  /** The tier this tab would run if it hosts (absent = easy). */
+  difficulty?: Difficulty;
   species: SpeciesId;
   loadout: readonly (MoveId | null)[];
   /** `?host=1`: host without searching. */
@@ -32,6 +35,8 @@ export interface AutoJoinResult {
   floor: number;
   /** The host's dungeon (a guest's comes from its `start`). */
   dungeon?: string;
+  /** The host's tier (a guest's comes from its `start`); absent = easy. */
+  difficulty?: Difficulty;
 }
 
 /** Deterministic tie-break: the lowest id among this tab and the other searching tabs hosts. */
@@ -47,11 +52,12 @@ export function autoJoin(options: AutoJoinOptions): Promise<AutoJoinResult> {
       resolve(result);
     };
     const asHost = () => {
-      session.host(seed, floor, species, options.dungeon ? { dungeon: options.dungeon } : undefined);
-      finish({ role: 'host', localId: 'p1', seed, floor, ...(options.dungeon ? { dungeon: options.dungeon } : {}) });
+      const picked = { ...(options.dungeon ? { dungeon: options.dungeon } : {}), ...(options.difficulty ? { difficulty: options.difficulty } : {}) };
+      session.host(seed, floor, species, Object.keys(picked).length > 0 ? picked : undefined);
+      finish({ role: 'host', localId: 'p1', seed, floor, ...picked });
     };
     session.onStart((start) =>
-      finish({ role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}) }),
+      finish({ role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), ...(start.difficulty ? { difficulty: start.difficulty } : {}) }),
     );
     if (options.forceHost) return asHost();
     session.join(species, loadout);

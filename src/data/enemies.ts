@@ -1,3 +1,4 @@
+import type { Difficulty } from './difficulty';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 
@@ -12,6 +13,23 @@ import type { PokemonType } from './types';
 export interface EnemyAttackDef {
   power: number;
   type: PokemonType;
+  /**
+   * A positional attack (a ground zone, a closing wall, a sweeping lane, a
+   * pull): the roll's i-frames do not protect against it and it never counts
+   * as a perfect dodge, so you walk or roll OUT of its area, not through it.
+   * Drawn with its own telegraph (white and violet double border, a "!") and
+   * warning sound; give it enough wind-up to reposition (core/hits.ts).
+   */
+  pierceRoll?: boolean;
+}
+
+/**
+ * A pattern only harder tiers play (docs/gdd.md §9): the core checks it with
+ * `atLeast(worldDifficulty(state), minDifficulty)`. Every gated attack keeps a
+ * telegraph of at least 280 ms and ends in a recovery (the punish window).
+ */
+export interface TierGate {
+  minDifficulty: Difficulty;
 }
 
 /** How an enemy reacts to the player's hits. */
@@ -55,6 +73,18 @@ export interface PoochyenaDef {
    * wind-up and lunge, so rolling into it on the first one gets punished.
    */
   followUp?: { telegraphMs: number; lungeMs: number; lungeDistance: number };
+  /** The follow-up only from this tier on (Zubat's second swoop); absent = every tier. */
+  followUpFrom?: Difficulty;
+  /** Harder tiers: a third cut after the follow-up (Pawniard), re-aimed after its own wind-up. */
+  thirdCut?: TierGate & { telegraphMs: number; lungeMs: number; lungeDistance: number };
+  /**
+   * Harder tiers (Poochyena): on first spotting the player with a packmate
+   * near, it howls (a harmless wind-up: an opening); packmates within `range`
+   * have their lunge ready at once.
+   */
+  howl?: TierGate & { telegraphMs: number; range: number };
+  /** Harder tiers (Ekans): a hazard left where the lunge ends. */
+  landingHazard?: TierGate & { hazard: HazardDef };
 }
 
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
@@ -82,6 +112,10 @@ export interface GastlyDef {
   recoverMs: number;
   cooldownMs: number;
   projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+  /** Harder tiers: the cast becomes a fan (Duskull's twin wisps). */
+  hardSpread?: TierGate & { count: number; degrees: number };
+  /** Harder tiers (Gastly): a second ball `delayMs` into the cast, aimed anew. */
+  secondBall?: TierGate & { delayMs: number };
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -98,6 +132,7 @@ export const POOCHYENA: PoochyenaDef = {
   hitRecoverMs: 450,
   missRecoverMs: 1100,
   cooldownMs: 900,
+  howl: { minDifficulty: 'hard', telegraphMs: 500, range: 220 },
 };
 
 export const GASTLY: GastlyDef = {
@@ -113,6 +148,7 @@ export const GASTLY: GastlyDef = {
   recoverMs: 500,
   cooldownMs: 1800,
   projectile: { power: 40, type: 'poison', speed: 95, radius: 7, lifetimeMs: 4500 },
+  secondBall: { minDifficulty: 'hard', delayMs: 200 },
 };
 
 /** One blow of the Blade-stance combo. */
@@ -127,8 +163,11 @@ export interface ComboHitDef {
   attack: EnemyAttackDef;
 }
 
-/** Aegislash's phase-2 spell cards (docs/gdd.md, Cripta). */
-export type AegislashCard = 'midnight' | 'oaths' | 'shadow';
+/** A blow of the Blade combo only harder tiers add; `feint`: a held, longer wind-up that breaks the combo's rhythm. */
+export type ExtraBlowDef = ComboHitDef & TierGate & { feint?: true };
+
+/** Aegislash's phase-2 spell cards (docs/gdd.md, Cripta); `judgement` only on nightmare. */
+export type AegislashCard = 'midnight' | 'oaths' | 'shadow' | 'judgement';
 
 /** An enemy shot (shape, speed, life). */
 export type ShotDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
@@ -153,9 +192,18 @@ export interface AegislashPhase2Def {
   bladeMaxMs: number;
   bladeCombosPerStance: number;
   cards: readonly AegislashCard[];
-  midnight: { telegraphMs: number; radius: number; strikeMs: number; attack: EnemyAttackDef; blades: { count: number; shot: ShotDef }; recoverMs: number };
+  /** Cards added to the rotation from a tier on (nightmare's Judgement). */
+  extraCards: readonly (TierGate & { card: AegislashCard })[];
+  /** Midnight's spin is positional from `pierceRollFrom` on (walk out of its ring). */
+  midnight: { telegraphMs: number; radius: number; strikeMs: number; attack: EnemyAttackDef; pierceRollFrom: Difficulty; blades: { count: number; shot: ShotDef }; recoverMs: number };
   oaths: { telegraphMs: number; volleys: number; perVolley: number; spreadDegrees: number; gapMs: number; blade: ShotDef; recoverMs: number };
   shadow: { telegraphMs: number; lanes: number; spacing: number; gapWidth: number; sword: ShotDef; sweepMs: number; recoverMs: number };
+  /**
+   * Judgement (nightmare): two shadow walls, the second from the other end of
+   * the throne room with its gap moved away from the player, after a second
+   * wind-up of `secondTelegraphMs`. Positional, like Shadow.
+   */
+  judgement: { telegraphMs: number; secondTelegraphMs: number; sweepMs: number; recoverMs: number };
 }
 
 export interface AegislashDef {
@@ -193,6 +241,8 @@ export interface AegislashDef {
     /** Starts a combo when the player is this close. */
     engageRange: number;
     combo: readonly ComboHitDef[];
+    /** Blows harder tiers add after `combo` (hard: a fourth blow with a delayed feint). */
+    extraBlows: readonly ExtraBlowDef[];
     /** Recovery after the last blow of a combo: the clear opening. */
     recoverMs: number;
     comboCooldownMs: number;
@@ -209,6 +259,7 @@ export const AEGISLASH: AegislashDef = {
     midnight: 'spell.aegislash.midnight',
     oaths: 'spell.aegislash.oaths',
     shadow: 'spell.aegislash.shadow',
+    judgement: 'spell.aegislash.judgement',
   },
   phase2: {
     threshold: 0.5,
@@ -219,16 +270,20 @@ export const AEGISLASH: AegislashDef = {
     bladeMaxMs: 6000,
     bladeCombosPerStance: 1,
     cards: ['midnight', 'oaths', 'shadow'],
+    extraCards: [{ minDifficulty: 'nightmare', card: 'judgement' }],
     midnight: {
       telegraphMs: 1100,
       radius: 110,
       strikeMs: 220,
       attack: { power: 34, type: 'ghost' },
+      pierceRollFrom: 'hard',
       blades: { count: 12, shot: { power: 18, type: 'steel', speed: 120, radius: 7, lifetimeMs: 4000 } },
       recoverMs: 1500,
     },
     oaths: { telegraphMs: 800, volleys: 3, perVolley: 5, spreadDegrees: 60, gapMs: 750, blade: { power: 15, type: 'steel', speed: 150, radius: 6, lifetimeMs: 4000 }, recoverMs: 1600 },
-    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', speed: 160, radius: 9, lifetimeMs: 5000 }, sweepMs: 900, recoverMs: 1400 },
+    // The shadow wall is positional on every tier (user feedback 2026-10-25): the gap lane is the way through, not a roll.
+    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', speed: 160, radius: 9, lifetimeMs: 5000, pierceRoll: true }, sweepMs: 900, recoverMs: 1400 },
+    judgement: { telegraphMs: 1300, secondTelegraphMs: 900, sweepMs: 900, recoverMs: 1800 },
   },
   poise: { hitstunScale: 0, knockbackScale: 0.15 },
   aggroRange: 900,
@@ -257,6 +312,8 @@ export const AEGISLASH: AegislashDef = {
       { telegraphMs: 260, strikeMs: 140, lungeDistance: 40, range: 52, arcDegrees: 130, attack: { power: 22, type: 'ghost' } },
       { telegraphMs: 420, strikeMs: 180, lungeDistance: 70, range: 60, arcDegrees: 160, attack: { power: 30, type: 'ghost' } },
     ],
+    // Hard: the King holds the blade up (the feint) well past the combo's rhythm, then a wide cut; a roll timed on the rhythm comes too early.
+    extraBlows: [{ minDifficulty: 'hard', feint: true, telegraphMs: 760, strikeMs: 200, lungeDistance: 60, range: 64, arcDegrees: 200, attack: { power: 30, type: 'ghost' } }],
     recoverMs: 1400,
     comboCooldownMs: 700,
     combosPerStance: 2,
@@ -300,6 +357,8 @@ export interface SlammerDef {
    * and the aim is fixed when the wind-up starts (step around it).
    */
   arcDegrees?: number;
+  /** Harder tiers: a ring of slow shots thrown with the slam (Golett's aftershock of rubble). */
+  hardRing?: TierGate & { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
 }
 
 /** A lingering ground hazard: a still projectile that hits whoever walks in, once, and fades after `lifetimeMs`. */
@@ -508,7 +567,12 @@ export interface BeamDef {
   cooldownMs: number;
   /** Frontal sector that blocks hits (chip damage only) outside the recovery. */
   guard?: { arcDegrees: number; chipFactor: number };
+  /** Harder tiers: the attack again right after, after its own wind-up (a longer combo); then the recovery. */
+  repeat?: RepeatDef;
 }
+
+/** Harder tiers: an attack chained `times` more after a short re-aimed wind-up, before the usual recovery. */
+export type RepeatDef = TierGate & { telegraphMs: number; times: number };
 
 /** Chinchou: its lure glows, then an electric ring sweeps out from its body to `radius`; roll through it or stay outside. */
 export interface PulseDef {
@@ -527,6 +591,7 @@ export interface PulseDef {
   attack: EnemyAttackDef;
   recoverMs: number;
   cooldownMs: number;
+  repeat?: RepeatDef;
 }
 
 /** Breath attacks in a frontal cone: Houndour's flamethrower, Stunky's spray (turned away, leaving a cloud). */
@@ -548,6 +613,8 @@ export interface ConeDef {
   turnsAway?: true;
   /** A cloud left in the cone when the breath ends. */
   linger?: HazardDef;
+  /** Harder tiers (Houndour): the breath turns towards the player while it lasts, at this rate. */
+  sweep?: TierGate & { degPerSec: number };
 }
 
 /** Slugma: lobs a lava blob at where the player stands; the landing circle is marked until impact and leaves a lava pool. */
@@ -571,6 +638,7 @@ export interface MortarDef {
   pool: HazardDef;
   recoverMs: number;
   cooldownMs: number;
+  repeat?: RepeatDef;
 }
 
 /** Koffing: floats close and puffs gas clouds; when its HP drops low it swells and explodes (a big marked ring), unless killed first. */
@@ -614,6 +682,8 @@ export interface CounterDef {
   jab: { telegraphMs: number; lungeMs: number; lungeDistance: number; attack: EnemyAttackDef };
   recoverMs: number;
   cooldownMs: number;
+  /** Harder tiers: the Poison Jab chained again. */
+  repeat?: RepeatDef;
 }
 
 export const ZUBAT: PoochyenaDef = {
@@ -632,6 +702,9 @@ export const ZUBAT: PoochyenaDef = {
   hitRecoverMs: 450,
   missRecoverMs: 900,
   cooldownMs: 1100,
+  // Hard: a second, re-aimed swoop.
+  followUp: { telegraphMs: 320, lungeMs: 220, lungeDistance: 140 },
+  followUpFrom: 'hard',
 };
 
 export const EKANS: PoochyenaDef = {
@@ -649,6 +722,7 @@ export const EKANS: PoochyenaDef = {
   hitRecoverMs: 500,
   missRecoverMs: 1300,
   cooldownMs: 1500,
+  landingHazard: { minDifficulty: 'hard', hazard: { power: 14, type: 'poison', radius: 22, lifetimeMs: 3000 } },
 };
 
 export const TENTACOOL: SlammerDef = {
@@ -714,6 +788,7 @@ export const CORPHISH: BeamDef = {
   recoverMs: 1000,
   cooldownMs: 1700,
   guard: { arcDegrees: 120, chipFactor: 0.2 },
+  repeat: { minDifficulty: 'hard', telegraphMs: 450, times: 1 },
 };
 
 export const CLAUNCHER: BeamDef = {
@@ -749,6 +824,7 @@ export const CHINCHOU: PulseDef = {
   attack: { power: 28, type: 'electric' },
   recoverMs: 900,
   cooldownMs: 2000,
+  repeat: { minDifficulty: 'hard', telegraphMs: 500, times: 1 },
 };
 
 export const HOUNDOUR: ConeDef = {
@@ -764,6 +840,7 @@ export const HOUNDOUR: ConeDef = {
   attack: { power: 30, type: 'fire' },
   recoverMs: 900,
   cooldownMs: 1500,
+  sweep: { minDifficulty: 'hard', degPerSec: 70 },
 };
 
 export const STUNKY: ConeDef = {
@@ -799,6 +876,7 @@ export const SLUGMA: MortarDef = {
   pool: { power: 16, type: 'fire', radius: 30, lifetimeMs: 3500 },
   recoverMs: 900,
   cooldownMs: 2200,
+  repeat: { minDifficulty: 'hard', telegraphMs: 450, times: 1 },
 };
 
 export const LITLEO: GastlyDef = {
@@ -841,6 +919,7 @@ export const CROAGUNK: CounterDef = {
   jab: { telegraphMs: 450, lungeMs: 200, lungeDistance: 80, attack: { power: 30, type: 'poison' } },
   recoverMs: 1100,
   cooldownMs: 1500,
+  repeat: { minDifficulty: 'hard', telegraphMs: 380, times: 1 },
 };
 
 /** Where an experimental species is meant to live once its dungeon exists. */
@@ -911,7 +990,25 @@ export interface ThiefDef {
     blinks: number;
     recoverMs: number;
   };
-  gems: { vanishMs: number; telegraphMs: number; rings: number; perRing: number; gapMs: number; gem: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number }; recoverMs: number };
+  gems: {
+    vanishMs: number;
+    telegraphMs: number;
+    rings: number;
+    perRing: number;
+    gapMs: number;
+    gem: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+    recoverMs: number;
+    /**
+     * Every tier: the gems burst out of the ground around it as the first ring
+     * leaves (a positional zone, marked through the whole wind-up: walk out of
+     * it), active for `activeMs`.
+     */
+    burst: { radius: number; activeMs: number; attack: EnemyAttackDef };
+    /** Harder tiers: more rings. */
+    extraRings: TierGate & { rings: number };
+  };
+  /** Harder tiers: more Glint blinks. */
+  extraBlinks: TierGate & { blinks: number };
   /** A stolen item comes back after this long at the latest. */
   stealMs: number;
 }
@@ -929,6 +1026,8 @@ export const DUSKULL: GastlyDef = {
   recoverMs: 700,
   cooldownMs: 2600,
   projectile: { power: 28, type: 'fire', speed: 70, radius: 8, lifetimeMs: 5200, steer: { degPerSec: 65, ms: 2200 } },
+  // Hard: twin wisps that part and close in from both sides.
+  hardSpread: { minDifficulty: 'hard', count: 2, degrees: 50 },
 };
 
 export const GOLETT: SlammerDef = {
@@ -944,6 +1043,7 @@ export const GOLETT: SlammerDef = {
   attack: { power: 46, type: 'ground' },
   recoverMs: 1400,
   cooldownMs: 1600,
+  hardRing: { minDifficulty: 'hard', count: 8, projectile: { power: 18, type: 'ground', speed: 70, radius: 7, lifetimeMs: 3200 } },
 };
 
 export const PAWNIARD: PoochyenaDef = {
@@ -961,6 +1061,8 @@ export const PAWNIARD: PoochyenaDef = {
   missRecoverMs: 900,
   cooldownMs: 1300,
   followUp: { telegraphMs: 260, lungeMs: 150, lungeDistance: 90 },
+  // Hard: a third cut after a longer, readable wind-up (the rhythm breaks, then a wide opening).
+  thirdCut: { minDifficulty: 'hard', telegraphMs: 380, lungeMs: 170, lungeDistance: 100 },
 };
 
 export const SABLEYE: ThiefDef = {
@@ -984,7 +1086,18 @@ export const SABLEYE: ThiefDef = {
     blinks: 3,
     recoverMs: 1400,
   },
-  gems: { vanishMs: 450, telegraphMs: 900, rings: 3, perRing: 12, gapMs: 800, gem: { power: 20, type: 'dark', speed: 105, radius: 6, lifetimeMs: 5000 }, recoverMs: 1500 },
+  gems: {
+    vanishMs: 450,
+    telegraphMs: 900,
+    rings: 3,
+    perRing: 12,
+    gapMs: 800,
+    gem: { power: 20, type: 'dark', speed: 105, radius: 6, lifetimeMs: 5000 },
+    recoverMs: 1500,
+    burst: { radius: 64, activeMs: 160, attack: { power: 22, type: 'dark', pierceRoll: true } },
+    extraRings: { minDifficulty: 'hard', rings: 1 },
+  },
+  extraBlinks: { minDifficulty: 'nightmare', blinks: 1 },
   stealMs: 9000,
 };
 

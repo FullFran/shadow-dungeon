@@ -61,7 +61,7 @@ export interface CoinBreakdown {
 const escapeCoins = (ms: number): number => COINS.escapeTiers.find((tier) => ms <= tier.withinMs)?.coins ?? COINS.escapeSlow;
 
 /** The coins of a tally: `outcome` null while the run is still going (the HUD's running count). */
-export function coinBreakdown(tally: CoinTally, outcome: 'victory' | 'defeat' | 'eclipse' | null, difficulty: Difficulty = 'normal'): CoinBreakdown {
+export function coinBreakdown(tally: CoinTally, outcome: 'victory' | 'defeat' | 'eclipse' | null, difficulty: Difficulty = 'easy'): CoinBreakdown {
   const floors = COINS.perFloor * tally.floors.reduce((sum, depth) => sum + depth, 0);
   const enemies = Math.floor(tally.enemies.reduce((sum, depth) => sum + COINS.perEnemy * (1 + COINS.perEnemyDepth * Math.max(0, depth - 1)), 0));
   const escapes = tally.escapes.reduce((sum, ms) => sum + escapeCoins(ms), 0);

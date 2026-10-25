@@ -1,5 +1,7 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
+import { tickAiAt, worldDifficulty } from './difficulty';
+import { atLeast } from '../data/difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
@@ -39,9 +41,23 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
   const dist = distance(enemy.pos, target);
   const ai = enemy.ai;
 
+  const tier = worldDifficulty(state);
+  // Harder tiers: Zubat's second swoop, Pawniard's third cut (data `followUpFrom`, `thirdCut`).
+  const chains = def.followUp !== undefined && (!def.followUpFrom || atLeast(tier, def.followUpFrom));
+  const third = def.thirdCut && chains && atLeast(tier, def.thirdCut.minDifficulty) ? def.thirdCut : null;
+  const cut = ai.chain ?? 0;
+  const cutDef = cut === 2 && third ? third : cut === 1 && chains ? def.followUp! : { lungeMs: def.lungeMs, lungeDistance: def.lungeDistance };
+  const cutName = cut === 2 ? 'lunge3' : cut === 1 ? 'lunge2' : 'lunge';
+
   switch (ai.mode) {
     case 'idle':
-      if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
+      if (dist <= def.aggroRange) {
+        enemy = { ...enemy, ai: enterMode(ai, 'approach') };
+        // Harder tiers (Poochyena): with a packmate near it howls first (harmless: an opening), and the pack lunges at once.
+        if (def.howl && atLeast(tier, def.howl.minDifficulty) && packmates(state, enemy, def.howl.range).length > 0) {
+          enemy = telegraph(enemy, 'howl', def.howl.telegraphMs, toPlayer, events);
+        }
+      }
       break;
     case 'approach': {
       const path = pathDirection(state, enemy, target, def.floats === true);
@@ -68,26 +84,33 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
     case 'telegraph':
       // Tracks the player during the wind-up; the direction is committed when it fires (or `lockMs` before: Ekans' coil).
       if (!def.lockMs || ai.modeDurationMs - ai.modeMs > def.lockMs) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
-      if (modeOver(ai)) {
-        const second = def.followUp !== undefined && ai.chain === 1;
-        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: second ? 'lunge2' : 'lunge' });
-        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', second ? def.followUp!.lungeMs : def.lungeMs), contact: 'none' } };
+      if (modeOver(ai) && ai.attack === 'howl') {
+        // The howl only rallies: packmates near have their lunge ready; it goes back to stalking.
+        for (const mate of packmates(state, enemy, def.howl?.range ?? 0)) state = replaceEnemy(state, { ...mate, ai: { ...mate.ai, cooldownMs: 0 } });
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'approach'), cooldownMs: def.cooldownMs } };
+      } else if (modeOver(ai)) {
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: cutName });
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', cutDef.lungeMs), contact: 'none' } };
       }
       break;
     case 'attack': {
-      const second = def.followUp !== undefined && ai.chain === 1;
-      const speed = second ? def.followUp!.lungeDistance / def.followUp!.lungeMs : def.lungeDistance / def.lungeMs;
+      const speed = cutDef.lungeDistance / cutDef.lungeMs;
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, speed * ms));
       const hit = contactPlayer(state, enemy, def.attack, lungeTouches(enemy, state.player.pos), events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
-      // Pawniard: the first cut always chains into the second (hit, dodged or missed); its end follows the rules below.
-      if (def.followUp && !second && (hit.contact === 'hit' || modeOver(ai))) {
-        const { chain: _first, ...rest } = enemy.ai;
-        enemy = telegraph({ ...enemy, ai: { ...rest, chain: 1 } }, 'lunge2', def.followUp.telegraphMs, toPlayer, events);
+      // Pawniard: the first cut always chains into the second (hit, dodged or missed), and on harder tiers the second into a third.
+      if (chains && cut === 0 && (hit.contact === 'hit' || modeOver(ai))) {
+        enemy = telegraph({ ...enemy, ai: { ...enemy.ai, chain: 1 } }, 'lunge2', def.followUp!.telegraphMs, toPlayer, events);
+        break;
+      }
+      if (third && cut === 1 && (hit.contact === 'hit' || modeOver(ai))) {
+        enemy = telegraph({ ...enemy, ai: { ...enemy.ai, chain: 2 } }, 'lunge3', third.telegraphMs, toPlayer, events);
         break;
       }
       const done = (recoverMs: number): EnemyState => {
+        // Harder tiers (Ekans): the lunge leaves a hazard where it ends.
+        if (def.landingHazard && atLeast(tier, def.landingHazard.minDifficulty)) state = spawnShot(state, enemy, { ...def.landingHazard.hazard, speed: 0 }, ai.attackDir, enemy.pos);
         const { chain: _cut, ...rest } = enemy.ai;
         return { ...enemy, ai: { ...enterMode(rest, 'recover', recoverMs), cooldownMs: def.cooldownMs } };
       };
@@ -109,6 +132,11 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       break;
   }
   return replaceEnemy(state, enemy);
+}
+
+/** Living enemies of the same species within `range` of `enemy` (a pack). */
+function packmates(state: WorldState, enemy: EnemyState, range: number): EnemyState[] {
+  return state.enemies.filter((e) => e.id !== enemy.id && e.alive && e.species === enemy.species && distance(e.pos, enemy.pos) <= range);
 }
 
 /** Casters: keep a distance band, telegraph and cast a slow ball (Gastly floats; Duskull floats and its wisp bends towards you) or a fan of threads (Spinarak walks). */
@@ -137,13 +165,19 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'ball' });
-        for (const dir of spreadDirections(enemy.ai.attackDir, def.spread?.count ?? 1, def.spread?.degrees ?? 0)) state = spawnShot(state, enemy, def.projectile, dir);
+        // Harder tiers (Duskull): the cast becomes a fan.
+        const fan = def.hardSpread && atLeast(worldDifficulty(state), def.hardSpread.minDifficulty) ? def.hardSpread : def.spread;
+        for (const dir of spreadDirections(enemy.ai.attackDir, fan?.count ?? 1, fan?.degrees ?? 0)) state = spawnShot(state, enemy, def.projectile, dir);
         enemy = { ...enemy, ai: enterMode(enemy.ai, 'attack', def.castMs) };
       }
       break;
-    case 'attack':
+    case 'attack': {
+      // Harder tiers (Gastly): a second ball part way into the cast, aimed anew.
+      const second = def.secondBall && atLeast(worldDifficulty(state), def.secondBall.minDifficulty) ? def.secondBall : null;
+      if (second && ai.modeMs - ms < second.delayMs && ai.modeMs >= second.delayMs) state = spawnShot(state, enemy, def.projectile, toPlayer);
       if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
       break;
+    }
     case 'recover':
       if (modeOver(ai)) {
         const strafeSign = ai.strafeSign === 1 ? -1 : 1;
@@ -191,6 +225,9 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
         if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
+        // Harder tiers (Golett): rubble thrown all around with the slam.
+        const rubble = def.hardRing && atLeast(worldDifficulty(state), def.hardRing.minDifficulty) ? def.hardRing : null;
+        if (rubble) for (const dir of spreadDirections(enemy.ai.attackDir, rubble.count, 360 - 360 / rubble.count, 180 / rubble.count)) state = spawnShot(state, enemy, rubble.projectile, dir);
         if (def.puddle) state = spawnShot(state, enemy, { ...def.puddle, speed: 0 }, toPlayer, enemy.pos);
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.slamMs), contact: 'none' } };
       }
@@ -247,15 +284,12 @@ function interrupted(enemy: EnemyState): EnemyState {
   return { ...enemy, ai: enterMode(ai, mode) };
 }
 
-const tickAi = (ai: AiState, ms: number): AiState => ({
-  ...ai,
-  modeMs: ai.modeMs + ms,
-  cooldownMs: Math.max(0, ai.cooldownMs - ms),
-});
 
 /** Runs every enemy's behaviour for one step at the enemy time scale, each going for its nearest present player. */
 export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   const ms = dtMs * enemyTimeScale(state);
+  // Harder tiers: shorter telegraphs (never below the readable floor) and shorter cooldowns (core/difficulty.ts).
+  const tier = worldDifficulty(state);
   let current = state;
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
@@ -266,7 +300,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       current = replaceEnemy(current, interrupted(enemy));
       continue;
     }
-    const ticked = { ...enemy, ai: tickAi(enemy.ai, ms) };
+    const ticked = { ...enemy, ai: tickAiAt(enemy.ai, ms, tier, enemy.elite) };
     const target = targetOf(current, enemy).pos;
     if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
     else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);

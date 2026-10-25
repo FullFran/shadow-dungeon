@@ -1,4 +1,6 @@
-import { ENEMY_BEHAVIOUR, type BeamDef, type BomberDef, type ConeDef, type CounterDef, type EnemyAttackDef, type EnemyDef, type MortarDef, type PulseDef } from '../data/enemies';
+import { ENEMY_BEHAVIOUR, type BeamDef, type BomberDef, type ConeDef, type CounterDef, type EnemyAttackDef, type EnemyDef, type MortarDef, type PulseDef, type RepeatDef } from '../data/enemies';
+import { atLeast } from '../data/difficulty';
+import { worldDifficulty } from './difficulty';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, telegraph, towardTarget } from './brain';
 import type { EnemyState, GameEvent, WorldState } from './state';
@@ -38,10 +40,21 @@ function fire(enemy: EnemyState, attack: string, durationMs: number, events: Gam
   return { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', durationMs), contact: 'none', attack } };
 }
 
-const rest = (enemy: EnemyState, recoverMs: number, cooldownMs: number): EnemyState => ({
-  ...enemy,
-  ai: { ...enterMode(enemy.ai, 'recover', recoverMs), cooldownMs },
-});
+const rest = (enemy: EnemyState, recoverMs: number, cooldownMs: number): EnemyState => {
+  const { chain: _again, ...ai } = enemy.ai;
+  return { ...enemy, ai: { ...enterMode(ai, 'recover', recoverMs), cooldownMs } };
+};
+
+/**
+ * Harder tiers (data `repeat`): the attack again after its own short,
+ * re-aimed wind-up, up to `times` more, before the recovery. Null when it
+ * is over (or the tier does not repeat): the caller rests.
+ */
+function again(state: WorldState, enemy: EnemyState, repeat: RepeatDef | undefined, attack: string, dir: Vec2, events: GameEvent[]): EnemyState | null {
+  const done = enemy.ai.chain ?? 0;
+  if (!repeat || !atLeast(worldDifficulty(state), repeat.minDifficulty) || done >= repeat.times) return null;
+  return telegraph({ ...enemy, ai: { ...enemy.ai, chain: done + 1 } }, attack, repeat.telegraphMs, dir, events);
+}
 
 /** After the recovery: back to hunting, circling the other way. */
 function rested(enemy: EnemyState): EnemyState {
@@ -196,7 +209,8 @@ function updateBeam(state: WorldState, start: EnemyState, def: BeamDef, target: 
       break;
     case 'attack': {
       ({ state, enemy } = strikePhase(state, enemy, def, events));
-      if (modeOver(ai)) enemy = rest(enemy, def.recoverMs, def.cooldownMs);
+      // Harder tiers (Corphish): a second jet down a lane re-aimed at the crab's turn rate.
+      if (modeOver(ai)) enemy = again(state, enemy, def.repeat, 'jet', enemy.facing, events) ?? rest(enemy, def.recoverMs, def.cooldownMs);
       break;
     }
     case 'recover':
@@ -230,7 +244,8 @@ function updatePulse(state: WorldState, start: EnemyState, def: PulseDef, target
       break;
     case 'attack':
       ({ state, enemy } = strikePhase(state, enemy, def, events));
-      if (modeOver(ai)) enemy = rest(enemy, def.recoverMs, def.cooldownMs);
+      // Harder tiers (Chinchou): a second ring right after.
+      if (modeOver(ai)) enemy = again(state, enemy, def.repeat, 'pulse', toPlayer, events) ?? rest(enemy, def.recoverMs, def.cooldownMs);
       break;
     case 'recover':
       enemy = rested(enemy);
@@ -266,6 +281,11 @@ function updateCone(state: WorldState, start: EnemyState, def: ConeDef, target: 
       if (modeOver(ai)) enemy = fire(enemy, 'breath', def.breathMs, events);
       break;
     case 'attack':
+      // Harder tiers (Houndour): the flame turns after the player while it lasts (outrun it sideways).
+      if (def.sweep && atLeast(worldDifficulty(state), def.sweep.minDifficulty)) {
+        const attackDir = turnToward(ai.attackDir, toPlayer, def.sweep.degPerSec * DEG * (ms / 1000));
+        enemy = { ...enemy, facing: def.turnsAway ? scale(attackDir, -1) : attackDir, ai: { ...enemy.ai, attackDir } };
+      }
       ({ state, enemy } = strikePhase(state, enemy, def, events));
       if (modeOver(ai)) {
         if (def.linger) state = spawnShot(state, enemy, { ...def.linger, speed: 0 }, ai.attackDir, add(enemy.pos, scale(ai.attackDir, def.reach * 0.55)));
@@ -314,7 +334,9 @@ function updateMortar(state: WorldState, start: EnemyState, def: MortarDef, targ
       ({ state, enemy } = strikePhase(state, enemy, def, events));
       if (modeOver(ai)) {
         if (ai.aimPoint) state = spawnShot(state, enemy, { ...def.pool, speed: 0 }, ai.attackDir, ai.aimPoint);
-        enemy = rest(enemy, def.recoverMs, def.cooldownMs);
+        // Harder tiers (Slugma): a second blob at where the player stands now (marked again from its wind-up).
+        const next = again(state, enemy, def.repeat, 'lob', toPlayer, events);
+        enemy = next ? { ...next, ai: { ...next.ai, aimPoint: landingPoint(enemy.pos, target, def) } } : rest(enemy, def.recoverMs, def.cooldownMs);
       }
       break;
     case 'recover':
@@ -401,7 +423,8 @@ function updateCounter(state: WorldState, start: EnemyState, def: CounterDef, ta
       const blow = counterBlow(enemy, def);
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, (blow.lungeDistance / blow.lungeMs) * ms));
       ({ state, enemy } = strikePhase(state, enemy, def, events));
-      if (enemy.ai.contact === 'hit' || modeOver(ai)) enemy = rest(enemy, def.recoverMs, def.cooldownMs);
+      // Harder tiers (Croagunk): the Poison Jab chained once more (never after the counter-punch).
+      if (enemy.ai.contact === 'hit' || modeOver(ai)) enemy = (ai.attack === 'jab' ? again(state, enemy, def.repeat, 'jab', toPlayer, events) : null) ?? rest(enemy, def.recoverMs, def.cooldownMs);
       break;
     }
     case 'recover':

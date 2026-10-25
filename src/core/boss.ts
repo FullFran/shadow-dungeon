@@ -1,4 +1,6 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef, type ComboHitDef } from '../data/enemies';
+import { atLeast, type Difficulty } from '../data/difficulty';
+import { worldDifficulty } from './difficulty';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, spawnShot, spreadDirections, towardTarget } from './brain';
@@ -101,7 +103,24 @@ function wantsStanceChange(boss: BossState, def: AegislashDef): boolean {
   return boss.stanceMs >= (p2?.bladeMaxMs ?? def.blade.maxMs) || boss.combosDone >= (p2?.bladeCombosPerStance ?? def.blade.combosPerStance);
 }
 
-const isCard = (stance: BossStance): stance is AegislashCard => stance === 'midnight' || stance === 'oaths' || stance === 'shadow';
+const isCard = (stance: BossStance): stance is AegislashCard => stance === 'midnight' || stance === 'oaths' || stance === 'shadow' || stance === 'judgement';
+
+/** The Blade combo at tier `d`: its blows plus the ones harder tiers add (hard: the feint). */
+export const bladeCombo = (def: AegislashDef, d: Difficulty): readonly ComboHitDef[] => [...def.blade.combo, ...def.blade.extraBlows.filter((b) => atLeast(d, b.minDifficulty))];
+
+/** Blow `index` of the Blade combo (the extra blows after the base ones), for hitboxes and looks on any peer. */
+export const bladeBlow = (index: number, def: AegislashDef = AEGISLASH): ComboHitDef =>
+  def.blade.combo[index] ?? def.blade.extraBlows[index - def.blade.combo.length] ?? def.blade.combo[0]!;
+
+/** Phase 2's spell card rotation at tier `d` (nightmare adds Judgement). */
+export const phase2Cards = (def: AegislashDef, d: Difficulty): readonly AegislashCard[] => [...def.phase2.cards, ...def.phase2.extraCards.filter((c) => atLeast(d, c.minDifficulty)).map((c) => c.card)];
+
+/** Midnight's spin as it lands at tier `d`: positional from `pierceRollFrom` on. */
+export const midnightAttack = (def: AegislashDef, d: Difficulty) => (atLeast(d, def.phase2.midnight.pierceRollFrom) ? { ...def.phase2.midnight.attack, pierceRoll: true } : def.phase2.midnight.attack);
+
+/** Whether a card's wind-up is a positional attack (its own telegraph and sound). */
+const cardPierces = (def: AegislashDef, card: AegislashCard, d: Difficulty): boolean =>
+  card === 'shadow' || card === 'judgement' ? def.phase2.shadow.sword.pierceRoll === true : card === 'midnight' && atLeast(d, def.phase2.midnight.pierceRollFrom);
 
 /** Centre of the gap in the shadow-sword wall for `lane` (the room split into `lanes` equal lanes). */
 export const shadowGapX = (width: number, lane: number, lanes = AEGISLASH.phase2.shadow.lanes): number => (width * (lane + 0.5)) / lanes;
@@ -113,8 +132,8 @@ function farLane(width: number, playerX: number, lanes: number): number {
   return best;
 }
 
-function cardWindUp(enemy: EnemyState, card: AegislashCard, durationMs: number, dir: Vec2, comboIndex: number, events: GameEvent[]): EnemyState {
-  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: card, durationMs });
+function cardWindUp(enemy: EnemyState, card: AegislashCard, durationMs: number, dir: Vec2, comboIndex: number, events: GameEvent[], pierceRoll = false): EnemyState {
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: card, durationMs, ...(pierceRoll ? { pierceRoll: true as const } : {}) });
   const next = withBoss(enemy, { stance: card, stanceMs: 0, comboIndex });
   return { ...next, facing: length(dir) > 0 && dir.x !== 0 ? dir : next.facing, ai: { ...enterMode(next.ai, 'telegraph', durationMs), attackDir: dir, contact: 'none' } };
 }
@@ -122,16 +141,20 @@ function cardWindUp(enemy: EnemyState, card: AegislashCard, durationMs: number, 
 /** After Blade in phase 2: the next spell card, announced (`bossStance`) and telegraphed. */
 function startCard(state: WorldState, enemy: EnemyState, def: AegislashDef, target: Vec2, events: GameEvent[]): EnemyState {
   const p2 = def.phase2;
+  const tier = worldDifficulty(state);
+  const cards = phase2Cards(def, tier);
   const played = enemy.boss!.cardsPlayed ?? 0;
-  const card = p2.cards[played % p2.cards.length]!;
+  const card = cards[played % cards.length]!;
   events.push({ type: 'bossStance', enemyId: enemy.id, stance: card });
   const counted = withBoss(enemy, { cardsPlayed: played + 1, combosDone: 0, stanceDamage: 0 });
   const toPlayer = towardTarget(target, enemy);
-  if (card === 'midnight') return cardWindUp(counted, card, p2.midnight.telegraphMs, toPlayer, 0, events);
+  const pierces = cardPierces(def, card, tier);
+  if (card === 'midnight') return cardWindUp(counted, card, p2.midnight.telegraphMs, toPlayer, 0, events, pierces);
   if (card === 'oaths') return cardWindUp(counted, card, p2.oaths.telegraphMs, toPlayer, 0, events);
-  // Shadow: the swords come from the end of the room away from the player; the gap is the lane farthest from it.
+  // Shadow (and Judgement's first wall): the swords come from the end of the room away from the player; the gap is the lane farthest from it.
   const down = target.y > state.arena.height / 2;
-  return cardWindUp(counted, card, p2.shadow.telegraphMs, vec(0, down ? 1 : -1), farLane(state.arena.width, target.x, p2.shadow.lanes), events);
+  const windUpMs = card === 'judgement' ? p2.judgement.telegraphMs : p2.shadow.telegraphMs;
+  return cardWindUp(counted, card, windUpMs, vec(0, down ? 1 : -1), farLane(state.arena.width, target.x, p2.shadow.lanes), events, pierces);
 }
 
 /** The shadow-sword wall: one sword every `spacing` px across the room, none in the gap, from the far end. */
@@ -158,8 +181,8 @@ function updateCard(state: WorldState, start: EnemyState, def: AegislashDef, tar
   const toPlayer = towardTarget(target, enemy);
   switch (ai.mode) {
     case 'telegraph':
-      // Midnight and Oaths keep facing the player while winding up; Shadow's direction and gap are fixed.
-      if (card !== 'shadow') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      // Midnight and Oaths keep facing the player while winding up; Shadow's (and Judgement's) direction and gap are fixed.
+      if (card !== 'shadow' && card !== 'judgement') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (!modeOver(ai)) break;
       events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: card });
       if (card === 'midnight') {
@@ -170,12 +193,26 @@ function updateCard(state: WorldState, start: EnemyState, def: AegislashDef, tar
         enemy = withAi(withBoss(enemy, { comboIndex: 1 }), enterMode(enemy.ai, 'attack', p2.oaths.gapMs));
       } else {
         state = sweep(state, enemy, def);
-        enemy = withAi(enemy, enterMode(enemy.ai, 'attack', p2.shadow.sweepMs));
+        enemy = withAi(enemy, enterMode(enemy.ai, 'attack', card === 'judgement' ? p2.judgement.sweepMs : p2.shadow.sweepMs));
       }
       break;
     case 'attack':
+      if (card === 'judgement') {
+        if (!modeOver(ai)) break;
+        if (ai.chain === 1) {
+          const { chain: _second, ...rest } = enemy.ai;
+          enemy = withAi(enemy, enterMode(rest, 'recover', p2.judgement.recoverMs));
+          break;
+        }
+        // The second wall: from the other end, its gap the lane farthest from the player now, after its own wind-up.
+        const back = vec(0, -enemy.ai.attackDir.y || 1);
+        const lane = farLane(state.arena.width, target.x, p2.shadow.lanes);
+        events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'judgement2', durationMs: p2.judgement.secondTelegraphMs, pierceRoll: true });
+        enemy = withAi(withBoss(enemy, { comboIndex: lane }), { ...enterMode(enemy.ai, 'telegraph', p2.judgement.secondTelegraphMs), attackDir: back, chain: 1, contact: 'none' });
+        break;
+      }
       if (card === 'midnight') {
-        const hit = contactPlayer(state, enemy, p2.midnight.attack, slamTouches(enemy, state.player.pos, p2.midnight.radius), events);
+        const hit = contactPlayer(state, enemy, midnightAttack(def, worldDifficulty(state)), slamTouches(enemy, state.player.pos, p2.midnight.radius), events);
         state = hit.state;
         enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
         if (modeOver(ai)) enemy = withAi(enemy, { ...enterMode(enemy.ai, 'recover', p2.midnight.recoverMs), contact: 'none' });
@@ -272,7 +309,9 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ta
   const toPlayer = towardTarget(target, enemy);
   const dist = distance(enemy.pos, target);
   const turn = blade.turnRateDegPerSec * DEG * (ms / 1000);
-  const blow = blade.combo[boss.comboIndex]!;
+  // Harder tiers lengthen the combo (hard: a fourth blow behind a delayed feint).
+  const combo = bladeCombo(def, worldDifficulty(state));
+  const blow = combo[boss.comboIndex] ?? combo[0]!;
 
   switch (ai.mode) {
     case 'approach':
@@ -298,8 +337,8 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ta
       enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
       if (modeOver(ai)) {
         const next = boss.comboIndex + 1;
-        if (next < blade.combo.length) {
-          enemy = telegraph(withBoss(enemy, { comboIndex: next }), `combo${next + 1}`, blade.combo[next]!.telegraphMs, events);
+        if (next < combo.length) {
+          enemy = telegraph(withBoss(enemy, { comboIndex: next }), `combo${next + 1}`, combo[next]!.telegraphMs, events);
         } else {
           enemy = withBoss(enemy, { comboIndex: 0, combosDone: boss.combosDone + 1 });
           enemy = withAi(enemy, { ...enterMode(enemy.ai, 'recover', blade.recoverMs), cooldownMs: blade.comboCooldownMs });

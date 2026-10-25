@@ -1,4 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
+import { worldDifficulty } from '../core/difficulty';
+import { pierceZone, type PierceZone } from '../core/victim';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS } from '../core/archer';
@@ -154,6 +157,8 @@ export interface Renderer {
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
   /** The arena of the frame being drawn (the shadow-sword wall spans it). */
   let currentArena: { width: number; height: number } | null = null;
+  /** The world being drawn's tier (positional telegraphs depend on it). */
+  let currentTier: Difficulty = 'easy';
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -180,6 +185,25 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       meta.frameHeight,
     );
     ctx.globalAlpha = 1;
+  }
+
+  /** Harder tiers: an elite glows in its trait's colour (a pulsing ring and a wash over its body), readable at a glance. */
+  function eliteAura(enemy: EnemyState, pos: Vec2, timeMs: number): void {
+    const tint = ELITE_TRAIT_DEFS[enemy.elite!].tint;
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 220);
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.35 * pulse;
+    ctx.strokeStyle = tint;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(Math.round(pos.x), Math.round(pos.y), enemy.radius + 4, (enemy.radius + 4) * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.18 + 0.12 * pulse;
+    ctx.fillStyle = tint;
+    ctx.beginPath();
+    ctx.arc(Math.round(pos.x), Math.round(pos.y - enemy.radius * 0.6), enemy.radius + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function shadow(pos: Vec2, radius: number): void {
@@ -509,12 +533,54 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
+  /**
+   * A positional attack's own warning (pierceRoll: walk or roll OUT of it,
+   * not through it): a pulsing white and violet double border on its area
+   * and a "!" over the enemy.
+   */
+  function pierceMark(enemy: EnemyState, pos: Vec2, zone: PierceZone, timeMs: number): void {
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
+    ctx.save();
+    if (zone.kind === 'circle' || zone.kind === 'shape') {
+      const radius = zone.kind === 'circle' ? zone.radius : enemy.radius + 12;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.4 * pulse})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius + 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // The "!" badge: a violet diamond with a white mark, over the enemy.
+    const x = Math.round(pos.x);
+    const y = Math.round(pos.y - enemy.radius - 18 - 2 * pulse);
+    ctx.fillStyle = '#b060ff';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 7);
+    ctx.lineTo(x + 6, y);
+    ctx.lineTo(x, y + 7);
+    ctx.lineTo(x - 6, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 1, y - 4, 2, 5);
+    ctx.fillRect(x - 1, y + 2, 2, 2);
+    ctx.restore();
+  }
+
   /** Readable wind-ups: lanes, arcs and rings on the ground (docs/gdd.md §10: readable on a stream). */
-  function telegraphs(enemy: EnemyState, pos: Vec2): void {
+  function telegraphs(enemy: EnemyState, pos: Vec2, timeMs = 0): void {
     const { ai } = enemy;
     const progress = ai.modeDurationMs > 0 ? ai.modeMs / ai.modeDurationMs : 1;
     const winding = ai.mode === 'telegraph';
     const striking = ai.mode === 'attack';
+    const zone = pierceZone(enemy, currentTier);
+    if (zone) pierceMark(enemy, pos, zone, timeMs);
     if (enemy.boss && enemy.boss.stance === 'shield' && ai.mode !== 'transform') {
       ctx.strokeStyle = COLORS.guard;
       ctx.lineWidth = 3;
@@ -572,8 +638,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         }
         return;
       }
-      if (stance === 'shadow') {
-        if (winding) shadowWall(enemy, progress);
+      if (stance === 'shadow' || stance === 'judgement') {
+        if (winding) shadowWall(enemy, progress, timeMs);
         return;
       }
       if (stance === 'unsheathe' || stance === 'midnight' || stance === 'oaths') return;
@@ -669,7 +735,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   }
 
   /** The shadow-sword wall about to sweep: a dark band along its starting end, the gap left bright, filling as the wind-up runs. */
-  function shadowWall(enemy: EnemyState, progress: number): void {
+  function shadowWall(enemy: EnemyState, progress: number, timeMs = 0): void {
     if (!currentArena) return;
     const { width, height } = currentArena;
     const shadow = AEGISLASH.phase2.shadow;
@@ -686,6 +752,15 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const edge = down ? y + band - 2 : y;
     ctx.fillRect(0, edge, Math.max(0, left) * progress, 2);
     ctx.fillRect(width - Math.max(0, width - right) * progress, edge, Math.max(0, width - right) * progress, 2);
+    // Positional (pierceRoll): the band's inner edge pulses white and violet, a wall you cannot roll through.
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
+    const inner = down ? y + band + 1 : y - 3;
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + 0.4 * pulse})`;
+    ctx.fillRect(0, inner, Math.max(0, left), 1);
+    ctx.fillRect(right, inner, Math.max(0, width - right), 1);
+    ctx.fillStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
+    ctx.fillRect(0, inner + (down ? 2 : -2), Math.max(0, left), 1);
+    ctx.fillRect(right, inner + (down ? 2 : -2), Math.max(0, width - right), 1);
     // The safe lane, shown down the whole room.
     ctx.fillStyle = 'rgba(255, 230, 160, 0.08)';
     ctx.fillRect(left, 0, shadow.gapWidth, height);
@@ -815,6 +890,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
     currentArena = current.arena;
+    currentTier = worldDifficulty(current);
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -838,7 +914,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const posOf = (id: string, fallback: Vec2) => positions.get(id) ?? fallback;
 
     // Ground layer: telegraphs and shadows under everything.
-    for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos));
+    for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs);
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
@@ -852,6 +928,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         y: pos.y,
         draw: () => {
           shadow(pos, enemy.radius);
+          if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
