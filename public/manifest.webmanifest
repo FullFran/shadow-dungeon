@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "Mazmorra Sombría",
+  "short_name": "Mazmorra",
+  "description": "Mazmorra de acción en pixel art: baja plantas, esquiva y derrota al guardián. Proyecto fan gratuito y sin ánimo de lucro.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#05060d",
+  "theme_color": "#05060d",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

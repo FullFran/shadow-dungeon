@@ -2,8 +2,16 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mazmorra Sombría</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#05060d" />
+    <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Mazmorra" />
     <style>
       /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
       @font-face { font-family: 'Pixelify Sans'; src: url('./fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
@@ -199,6 +207,76 @@
 
       pre.net-stats { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); margin: 0; padding: 8px 12px; background: rgba(15, 26, 69, 0.88); border: 2px solid var(--md-border-shade); border-radius: 8px; font: 16px/1.3 var(--md-font); color: var(--md-text); pointer-events: none; z-index: 5; }
       @media (max-height: 760px) { #app { gap: 14px; padding-top: 20px; } .title-logo { margin-top: 8vh; } }
+
+      /* ---- Touch (html.touch, src/adapters/touch-mode.ts): no zoom, scroll bounce, long-press or selection; big tap targets ---- */
+      html.touch, html.touch body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+      html.touch body { touch-action: manipulation; }
+      html.touch input { -webkit-user-select: text; user-select: text; }
+      html.touch #app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-top: max(20px, env(safe-area-inset-top)); }
+      html.touch #app:has(canvas.game) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; touch-action: none; padding: 0; }
+      html.touch canvas.game { cursor: default; touch-action: none; }
+      html.touch .md-item { min-height: 44px; }
+      html.touch .md-list { gap: 4px; }
+      html.touch .md-arrow { border-top-width: 11px; border-bottom-width: 11px; padding: 0 12px; margin: -10px 0; background-clip: content-box; }
+      html.touch .md-arrow:first-child { border-right-width: 13px; }
+      html.touch .md-arrow:last-child { border-left-width: 13px; }
+      html.touch .prologue-hint { display: none; }
+      html.touch .prologue-skip { min-height: 44px; min-width: 88px; right: max(20px, env(safe-area-inset-right)); }
+      .touch-back, .rotate-hint { display: none; }
+      html.touch .touch-back { display: block; position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 20; min-width: 72px; min-height: 44px; padding: 4px 14px;
+        font: inherit; font-size: 18px; color: var(--md-text); background: var(--md-window-bottom); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 2px var(--md-ink); }
+      html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
+      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back { display: none; }
+      @media (orientation: portrait) {
+        html.touch .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
+          color: var(--md-cursor); background: rgba(5, 6, 13, 0.85); border: 2px solid var(--md-border-shade); border-radius: 8px; pointer-events: none; }
+        /* In a run the canvas sits in the middle: the hint goes in the empty band above it, clear of the buttons. */
+        html.touch #app:has(canvas.game) ~ .rotate-hint { bottom: auto; top: 22%; }
+      }
+      html.touch #app { justify-content: safe center; }
+      html.touch .hint { display: none; }
+      html.touch .notice:not(.in-game) { position: static; width: 100%; padding: 0; }
+      html.touch #app { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      @media (max-height: 480px) {
+        html.touch #app { gap: 10px; }
+        html.touch #app:has(.title-logo) { flex-flow: row wrap; gap: 8px 32px; }
+        html.touch .title-logo { margin-top: 0; }
+        html.touch .title-logo h1 { font-size: 40px; }
+        html.touch .title-menu .md-item { min-height: 40px; }
+        html.touch .notice { font-size: 11px; }
+      }
+      /* ---- Touch controls (src/ui/touch-controls.ts): floating joystick left, actions right ---- */
+      .touch-layer { display: none; }
+      html.touch .touch-layer { display: block; position: fixed; inset: 0; z-index: 4; pointer-events: none; touch-action: none; }
+      .touch-zone { position: absolute; top: 0; bottom: 0; width: 50%; pointer-events: auto; touch-action: none; }
+      .touch-zone-left { left: 0; }
+      .touch-zone-right { right: 0; }
+      .touch-stick { position: absolute; width: 112px; height: 112px; margin: -59px 0 0 -59px; border-radius: 50%; border: 3px solid rgba(245, 247, 255, 0.35); background: rgba(5, 6, 13, 0.3); display: none; pointer-events: none; }
+      .touch-stick.is-visible { display: block; }
+      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 212, 71, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
+      .touch-cluster { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: 190px; height: 170px; pointer-events: none; }
+      .touch-corner { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+      .touch-button { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box; width: 60px; height: 60px; padding: 0; border-radius: 50%; font: inherit; font-size: 14px; line-height: 1; color: var(--md-text);
+        background: rgba(15, 26, 69, 0.38); border: 3px solid rgba(245, 247, 255, 0.7); box-shadow: 0 0 0 2px rgba(5, 6, 13, 0.8); -webkit-user-select: none; user-select: none; }
+      .touch-button[hidden] { display: none; }
+      .touch-button.big { width: 76px; height: 76px; font-size: 16px; }
+      .touch-button.is-pressed { background: rgba(255, 212, 71, 0.85); color: var(--md-ink); transform: scale(0.94); }
+      .touch-button.top { position: static; width: 72px; height: 44px; padding: 0 6px; border-radius: 9px; background: rgba(15, 26, 69, 0.7); }
+      .touch-fast { right: 0; bottom: 0; }
+      .touch-heavy { right: 92px; bottom: 0; }
+      .touch-roll { right: 8px; bottom: 92px; }
+      .touch-lock { right: 100px; bottom: 96px; }
+      .touch-lock::before, .touch-lock::after { position: absolute; top: 50%; margin-top: -0.5em; font-size: 10px; opacity: 0.7; }
+      .touch-lock::before { content: '◀'; left: -14px; }
+      .touch-lock::after { content: '▶'; right: -14px; }
+      .touch-talk { right: 0; bottom: 0; }
+      /* ---- PWA (src/ui/pwa.ts): install banner and update toast ---- */
+      .pwa-banner { position: fixed; left: 0; right: 0; top: max(10px, env(safe-area-inset-top)); display: flex; justify-content: center; padding: 0 16px; z-index: 15; pointer-events: none; }
+      .pwa-banner .md-window { max-width: 34rem; padding: 12px 16px 10px; pointer-events: auto; font-size: 18px; }
+      .pwa-banner .md-list.horizontal { justify-content: flex-start; gap: 6px 14px; }
+      .pwa-toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; z-index: 25; font-size: 18px; white-space: nowrap; }
+      .pwa-toast-action { font: inherit; min-height: 44px; padding: 2px 14px; color: var(--md-ink); background: var(--md-cursor); border: 0; border-radius: 6px; cursor: pointer; }
+      #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
     </style>
   </head>
   <body>

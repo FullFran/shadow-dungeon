@@ -4,7 +4,10 @@ import { TILE, tileOf } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
-import { cameraView, followCamera, pixelScaleFor } from '../adapters/view';
+import { cameraView, followCamera } from '../adapters/view';
+import { fitCanvasToWindow } from '../adapters/fit';
+import { isTouchUi } from '../adapters/touch-mode';
+import { createTouchControls } from '../ui/touch-controls';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { FONT } from '../ui/tokens';
@@ -119,6 +122,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   // The fan-project notice shrinks as during a run.
   canvas.parentElement?.querySelector('.notice')?.classList.add('in-game');
   const ctx = canvas.getContext('2d')!;
+  // Touch (shown only with html.touch): the joystick walks, "Hablar" talks or reads, a tap advances a dialog; "Atrás" is Esc.
+  const touch = createTouchControls({
+    tapTarget: canvas,
+    onTap: () => {
+      if (dialog && !exitWindow) interact();
+    },
+    buttons: [{ id: 'talk', label: t('touch.talk'), className: 'big', onPress: () => !exitWindow && interact() }],
+  });
+  canvas.parentElement?.append(touch.element);
 
   let walker: Walker = { pos: tileCentre(map.spawn.x, map.spawn.y), facing: { x: 0, y: 1 } };
   let camera = walker.pos;
@@ -141,9 +153,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   ];
 
   function resize(): void {
-    pixelScale = pixelScaleFor(window.innerWidth, window.innerHeight, TOWN_VIEW.width, TOWN_VIEW.height);
-    if (canvas.width !== TOWN_VIEW.width * pixelScale) canvas.width = TOWN_VIEW.width * pixelScale;
-    if (canvas.height !== TOWN_VIEW.height * pixelScale) canvas.height = TOWN_VIEW.height * pixelScale;
+    pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
   }
 
   function moveInput(): Vec2 {
@@ -156,6 +166,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         y += dir.y;
       }
     }
+    if (x === 0 && y === 0) return touch.move();
     return { x: Math.sign(x), y: Math.sign(y) };
   }
 
@@ -200,6 +211,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     exitWindow?.remove();
     exitWindow = null;
     held.clear();
+    touch.setSuspended(false);
     // Step back off the exit tiles, facing the town.
     walker = { pos: tileCentre(map.exit.x - 1, tileOf(walker.pos).y), facing: { x: -1, y: 0 } };
     last = performance.now();
@@ -207,6 +219,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   function openExitWindow(): void {
     held.clear();
+    touch.setSuspended(true);
     const depart = () => {
       handle.stop();
       options.onDepart();
@@ -277,6 +290,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, view, timeMs, characters: characters(moving) });
     const target = exitWindow || closeShop ? null : nearestInteractable(walker.pos, targets);
+    touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
+    if (target && !dialog) touch.setLabel('talk', t(target.kind === 'board' ? 'touch.read' : 'touch.talk'));
     drawTownOverlay(
       ctx,
       view,
@@ -297,6 +312,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       exitWindow?.remove();
       closeShop?.();
       closeShop = null;
+      touch.dispose();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

@@ -48,7 +48,7 @@ describe('settings', () => {
     expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
   });
 
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
@@ -67,6 +67,9 @@ describe('settings', () => {
       musicVolume: 0,
       sfxVolume: 1,
       muted: true,
+      touchMode: 'on' as const,
+      autoAim: false,
+      haptics: false,
     };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);

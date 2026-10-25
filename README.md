@@ -56,6 +56,10 @@ Aegislash blocks hits from the front in Shield Forme (the blue arc): flank it. I
 
 Open the game with `?net=local` in two or more windows of the same browser (up to 4 players) and press Start in each: the first one (or the one with `?host=1`) hosts and the others join it; everyone plays the host's seed. Each tab simulates its own player with no wait, the host runs the enemies, and an enemy attack only hurts you if it touches you on your own screen. Remote players show as "P2", "P3"... with an HP bar; a fainted one stays down (no revive yet). The host's stairs take everyone down. `?lag=150&jitter=30&loss=0.05` simulates a bad network on what that tab sends, and `?delay=100` tunes how far in the past remote players and enemies are drawn. Tabs opened at the same instant agree on one host (the lowest random id). Remote players' projectiles are drawn on every screen. If the host closes, guests get "The host left" and a button back to the menu. A perfect dodge in a shared run gives the dodger the flash and sound but never slows the enemies for anyone. Every standing player gains the experience of every enemy defeated, each picks their own held items, and Oran Berries are host-authoritative (the first player to claim one gets it). Use separate windows side by side: a browser stops animating a hidden tab, and a hidden host stops the run.
 
+### Phones, tablets and installing
+
+Touch controls turn on at the first touch (Settings → Touch controls: Automatic, On, Off): a floating joystick in the left half, Roll / Fast / Heavy (hold to charge) / Lock (tap to lock the enemy in front, swipe sideways to switch target) on the right, Pause and Map at the top right, an on-screen "Atrás" for Esc in menus, and a joystick plus "Hablar" in the town. Auto-aim (nearest enemy in a cone in front when nothing is locked) and vibration are settings. Landscape is recommended. The game is a PWA: `public/manifest.webmanifest` (icons drawn by `node tools/make-icons.mjs`) and `public/sw.js`, a versioned service worker registered only in builds, which precaches the app shell, caches sprites, tiles and music as they load, never touches cross-origin traffic (online rooms), and shows "Nueva versión disponible — Actualizar" when a new deploy is waiting. Chrome/Edge/Android get an "Instalar juego" title entry and a one-time banner; iOS Safari gets Share → Add to Home Screen instructions.
+
 ## Sound
 
 Sound effects are procedural Web Audio (`src/adapters/audio.ts`), with no sound files: short retro effects synthesised from oscillators, noise and filters, mapped from the core's `GameEvent`s (a pure `soundFor(event)`), throttled per sound and capped in simultaneous voices. Sound starts on the first click or key press, since browsers block autoplay. The menu has master, music and effects volume sliders and a mute checkbox (remembered with the other settings); `M` toggles mute in game; the Esc menu lowers the music.
@@ -75,6 +79,7 @@ Licenses: six CC0 1.0 tracks (Eldritch Grim, Emma_MA, HydroGene, Umplix, Cleyton
 | `src/adapters` | Rendering, input, assets, audio, storage |
 | `src/net` | Netcode spike: protocol, interpolation buffer, transports (BroadcastChannel, lag simulator), peer session |
 | `src/app` | Bootstrap and wiring, the save facade (`save.ts`) and the shop window |
+| `src/pwa` | Install invitation rules and service worker registration (the worker itself is `public/sw.js`) |
 | `src/i18n` | `es.json` (default) and `en.json` |
 
 ## Legal

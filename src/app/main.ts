@@ -33,6 +33,9 @@ import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
 import { coinLines } from './coin-lines';
+import { setTouchMode } from '../adapters/touch-mode';
+import { installTouchChrome } from '../ui/touch-chrome';
+import { setupPwa } from '../ui/pwa';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -48,6 +51,17 @@ applyTokens(document.documentElement);
 const store = browserStore();
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
 const audio = createAudio(settings);
+// Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
+setTouchMode(settings.touchMode);
+const touchChrome = installTouchChrome();
+// PWA: service worker (builds only), "Instalar juego" on the title and a one-time banner.
+const pwa = setupPwa({
+  store,
+  onOfferChange: () => {
+    const app = document.getElementById('app');
+    if (app?.querySelector('.title-logo')) titleScreen(app);
+  },
+});
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
@@ -135,12 +149,14 @@ function applyLanguage(language: Language): void {
   setLanguage(language);
   document.documentElement.lang = language;
   document.title = t('app.title');
+  touchChrome.refresh();
 }
 
 function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
   audio.setVolumes(settings);
+  if (changes.touchMode) setTouchMode(settings.touchMode);
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
@@ -202,6 +218,8 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('town.menu'), onConfirm: () => townScreen(root) },
       // Appended last so the indices above stay put.
       { label: t('title.shop'), onConfirm: () => shopScreen(root) },
+      // Only when installable, and after every fixed entry so indices stay stable.
+      ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
     ],
   });
   show(root, [
@@ -209,6 +227,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
   ]);
+  pwa.banner(root);
 }
 
 /**
@@ -335,6 +354,10 @@ function onlineScreen(root: HTMLElement): void {
   code.maxLength = 7;
   code.autocomplete = 'off';
   code.spellcheck = false;
+  // Soft keyboard: capitals, no autocorrect, a Go key that submits like Enter.
+  code.setAttribute('autocapitalize', 'characters');
+  code.setAttribute('autocorrect', 'off');
+  code.enterKeyHint = 'go';
   code.setAttribute('aria-label', t('lobby.codePlaceholder'));
   const error = h('p', { className: 'lobby-error' });
   const tryJoin = () => {
@@ -521,6 +544,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     ...shared,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
+    touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     onQuit: () => titleScreen(root),
     onEnd: (result, summary) => {

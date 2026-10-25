@@ -157,6 +157,21 @@ Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al der
 
 La profundidad sale de cargar y de elegir el momento con esas pocas teclas, no de añadir más botones (es lo que hace Furi).
 
+### Controles táctiles (móvil y tableta)
+
+Se activan solos al primer toque (ajuste «Controles táctiles»: Automático, Sí, No). Todo se traduce a la misma entrada que el teclado, así que el combate no cambia:
+
+| Control | Qué hace |
+|---|---|
+| Joystick (mitad izquierda, aparece donde pones el pulgar) | Moverte, analógico y con zona muerta |
+| Rodar | Rueda (como Espacio) |
+| Rápido / Fuerte | Los dos movimientos; Fuerte se mantiene para cargar y se suelta para lanzar |
+| Fijar | Un toque fija al enemigo que tienes delante o lo suelta; deslizar a izquierda o derecha sobre él cambia de objetivo (como la rueda) |
+| Tocar un enemigo | Lo fija si el fijado por clic está activado (no ataca) |
+| Pausa / Mapa | El menú de Esc y el minimapa |
+
+Sin objetivo fijado los movimientos van hacia donde miras, como Q y E; con «Apuntado automático» (activado por defecto) van al enemigo más cercano dentro de un cono delante de ti. «Vibración» da un pulso corto al recibir un golpe y en la esquiva perfecta. En los menús todo se toca y un botón «Atrás» hace de Esc; en el pueblo hay joystick y un botón «Hablar».
+
 ### Estamina
 
 - Una sola barra para la rueda y para E.
