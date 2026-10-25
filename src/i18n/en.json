@@ -24,5 +24,17 @@
   "slot.heavy": "Heavy",
   "slot.boost": "Boost",
   "passive.disguise": "Disguise",
-  "passive.disguise.description": "The first hit you take in each room deals no damage and breaks the disguise."
+  "passive.disguise.description": "The first hit you take in each room deals no damage and breaks the disguise.",
+  "hud.hp": "HP",
+  "hud.stamina": "Sta.",
+  "hud.disguise.intact": "intact",
+  "hud.disguise.broken": "broken",
+  "hud.blocked": "Blocked!",
+  "hud.perfectDodge": "Perfect dodge!",
+  "hud.disguiseBroken": "Disguise broken!",
+  "hud.exitOpen": "Exit",
+  "hud.key.fast": "LMB / Q",
+  "hud.key.heavy": "RMB / E",
+  "boss.stance.shield": "Shield Forme",
+  "boss.stance.blade": "Blade Forme"
 }

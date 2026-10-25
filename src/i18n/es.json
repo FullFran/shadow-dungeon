@@ -24,5 +24,17 @@
   "slot.heavy": "Fuerte",
   "slot.boost": "Potenciación",
   "passive.disguise": "Disfraz",
-  "passive.disguise.description": "El primer golpe que recibes en cada sala no te hace daño y el disfraz se rompe."
+  "passive.disguise.description": "El primer golpe que recibes en cada sala no te hace daño y el disfraz se rompe.",
+  "hud.hp": "PS",
+  "hud.stamina": "Est.",
+  "hud.disguise.intact": "intacto",
+  "hud.disguise.broken": "roto",
+  "hud.blocked": "¡Bloqueado!",
+  "hud.perfectDodge": "¡Esquiva perfecta!",
+  "hud.disguiseBroken": "¡El disfraz se ha roto!",
+  "hud.exitOpen": "Salida",
+  "hud.key.fast": "Clic izq. / Q",
+  "hud.key.heavy": "Clic der. / E",
+  "boss.stance.shield": "Forma Escudo",
+  "boss.stance.blade": "Forma Filo"
 }

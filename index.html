@@ -6,9 +6,10 @@
     <title>Mazmorra Sombría</title>
     <style>
       :root { color-scheme: dark; }
-      body { margin: 0; background: #14121a; color: #e8e4f0; font-family: system-ui, sans-serif; }
-      #app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 1rem; box-sizing: border-box; }
-      .notice { margin-top: auto; max-width: 60rem; font-size: 0.8rem; opacity: 0.75; text-align: center; }
+      body { margin: 0; overflow: hidden; background: #14121a; color: #e8e4f0; font-family: system-ui, sans-serif; }
+      #app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; box-sizing: border-box; }
+      canvas.game { image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
+      .notice { position: fixed; bottom: 0.25rem; left: 0; right: 0; margin: 0 auto; max-width: 60rem; font-size: 0.7rem; opacity: 0.6; text-align: center; pointer-events: none; }
       .notice p { margin: 0.25rem 0; }
     </style>
   </head>
