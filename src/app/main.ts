@@ -528,6 +528,8 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   // The host picks the dungeon among the open ones (the row only shows when there is a choice).
   const open = unlockedDungeons(cleared());
   let pick = 0;
+  /** The Sima del Eclipse: daily challenge or free run, the host's call (its seed goes in `start`). */
+  let mode: EndlessMode = 'daily';
   const items = (): ListItem[] => [
     ...(asHost
       ? [
@@ -536,8 +538,9 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
             className: 'start-row',
             onConfirm: () => {
               const dungeon = open[pick]!.id;
-              session.begin(dungeon);
-              void play(root, { session, role: 'host', localId: 'p1', seed, floor: 1, dungeon, online: true });
+              const runSeed = open[pick]!.endless ? endlessSeed(mode, today(), seed) : seed;
+              session.begin(dungeon, runSeed);
+              void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon, online: true });
             },
           },
           ...(open.length > 1
@@ -551,6 +554,23 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
                   },
                   onConfirm: () => {
                     pick = (pick + 1) % open.length;
+                    list.setItems(items());
+                  },
+                },
+              ]
+            : []),
+          // The Sima del Eclipse: the host picks the daily challenge or a free run for everyone.
+          ...(open[pick]?.endless
+            ? [
+                {
+                  label: t('endless.entry.mode'),
+                  value: t(`endless.mode.${mode}`),
+                  onAdjust: () => {
+                    mode = mode === 'daily' ? 'free' : 'daily';
+                    list.setItems(items());
+                  },
+                  onConfirm: () => {
+                    mode = mode === 'daily' ? 'free' : 'daily';
                     list.setItems(items());
                   },
                 },

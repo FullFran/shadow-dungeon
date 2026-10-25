@@ -59,8 +59,8 @@ export interface NetSession {
   host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string }): void;
   /** Host: true while waiting in the lobby for `begin`. */
   inLobby(): boolean;
-  /** Host: leaves the lobby and starts every admitted player with this seed (and `dungeon`, if given). */
-  begin(dungeon?: string): void;
+  /** Host: leaves the lobby and starts every admitted player with its seed (or `runSeed`: the endless dungeon's mode picks it at Start) and `dungeon`, if given. */
+  begin(dungeon?: string, runSeed?: number): void;
   /** Asks the session's host to let this player in; `onStart` fires when it answers. */
   join(species: SpeciesId, loadout: readonly (MoveId | null)[]): void;
   onStart(handler: (start: StartInfo) => void): void;
@@ -82,6 +82,10 @@ export interface NetSession {
   sendFloor(floor: number): void;
   /** Guest: the floor the host moved to since the last call, if any. */
   takeFloorChange(): number | null;
+  /** Host, endless dungeon: sends its run clock (reliable). */
+  sendClock(ms: number, floor: number): void;
+  /** Guest: the host's latest clock since the last call, if any. */
+  takeClock(): { ms: number; floor: number } | null;
   stats(): NetStats;
   leave(): void;
 }
@@ -162,6 +166,7 @@ export function createSession(options: SessionOptions): NetSession {
   let berryInbox: BerryClaim[] = [];
   let berryGrants: string[] = [];
   let floorChange: number | null = null;
+  let clock: { ms: number; floor: number } | null = null;
   const stats: NetStats = { snapshotBytes: 0, stateBytes: 0, snapshotsReceived: 0 };
 
   const send = (message: NetMessage, reliable: boolean): number => {
@@ -294,6 +299,12 @@ export function createSession(options: SessionOptions): NetSession {
       case 'floor':
         if (role === 'guest') floorChange = Math.max(floorChange ?? 0, message.floor);
         return;
+      case 'clock':
+        // Only the host's clock counts, and only a sane one.
+        if (role !== 'guest' || roster.find((r) => r.id === 'p1')?.peer !== from) return;
+        if (typeof message.ms !== 'number' || !Number.isFinite(message.ms) || message.ms < 0 || typeof message.floor !== 'number') return;
+        clock = { ms: message.ms, floor: message.floor };
+        return;
       case 'leave':
         if (message.id === 'p1') hostLeft();
         players.delete(message.id);
@@ -326,10 +337,11 @@ export function createSession(options: SessionOptions): NetSession {
       else if (roster.length > 1) send(startMessage(), true);
     },
     inLobby: () => role === 'host' && lobby,
-    begin(chosen) {
+    begin(chosen, runSeed) {
       if (role !== 'host' || !lobby) return;
       lobby = false;
       if (chosen !== undefined) dungeon = chosen;
+      if (runSeed !== undefined) seed = runSeed;
       send(startMessage(), true);
     },
     join(species, loadout) {
@@ -404,6 +416,14 @@ export function createSession(options: SessionOptions): NetSession {
       const floor = floorChange;
       floorChange = null;
       return floor;
+    },
+    sendClock(ms, floor) {
+      if (role === 'host') send({ t: 'clock', ms: Math.round(ms), floor }, true);
+    },
+    takeClock() {
+      const latest = clock;
+      clock = null;
+      return latest;
     },
     stats: () => ({ ...stats }),
     leave() {

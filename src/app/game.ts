@@ -44,6 +44,9 @@ import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from '
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
 
+/** Endless, shared run: the host sends its clock about this often (and on every floor change). */
+const CLOCK_SEND_MS = 1000;
+
 /** World pixels shown on screen; the canvas is this times an integer scale. */
 export const VIEW_WIDTH = 512;
 export const VIEW_HEIGHT = 320;
@@ -215,6 +218,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
     playing = context;
   };
+  /** Endless, shared run: simulated time since the host last sent its clock. */
+  let clockSentMs = 0;
   /** Endless: the last time added to the run clock, shown under it for a moment. */
   let clockBonus: RunClock['bonus'] = null;
   const lowMs = dungeonOf(run).endless?.clock.lowMs ?? 0;
@@ -455,7 +460,21 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       world = step(world, playerInput, FIXED_DT_MS);
       // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
       const clockBefore = run.clockMs;
-      if (net?.role !== 'guest') run = tickRunClock(run, FIXED_DT_MS);
+      // Guests run their copy too, for a smooth display; the host's clock (`takeClock`) corrects it and decides the end.
+      run = tickRunClock(run, FIXED_DT_MS);
+      if (net && run.clockMs !== undefined) {
+        if (net.role === 'host') {
+          clockSentMs += FIXED_DT_MS;
+          if (clockSentMs >= CLOCK_SEND_MS || run.clockMs <= 0) {
+            clockSentMs = 0;
+            net.session.sendClock(run.clockMs, run.floor);
+          }
+        } else {
+          const hostClock = net.session.takeClock();
+          if (hostClock) run = setClock(run, hostClock.ms);
+          if (hostClock && hostClock.ms <= 0) end('eclipse');
+        }
+      }
       watchClock(clockBefore);
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
       net?.session.afterStep(world, run.floor);
@@ -480,6 +499,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       else if (progress.entered) {
         enterFloor(progress);
         if (net) net.session.sendFloor(run.floor);
+        if (net && run.clockMs !== undefined) net.session.sendClock(run.clockMs, run.floor);
       } else if (hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.

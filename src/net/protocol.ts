@@ -6,7 +6,7 @@ import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } 
 
 /**
  * Netcode spike protocol (docs/gdd.md §12). Reliable: hello, start, lobby,
- * full, ping, pong, claim, pick, berry, floor, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
+ * full, ping, pong, claim, pick, berry, floor, clock, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
  * snap (host: enemies and enemy projectiles). `at` is the sender's clock
  * (ms), for the receiver's interpolation timeline; `floor` is the epoch that
  * separates floors. Compact JSON: the two frequent messages travel as
@@ -41,6 +41,8 @@ export type NetMessage =
   | { t: 'snap'; at: number; floor: number; s: HostSnapshot }
   /** Host: everyone goes down to this floor. */
   | { t: 'floor'; floor: number }
+  /** Host, endless dungeon: its run clock (ms left) on `floor`, about once a second and on every floor change. */
+  | { t: 'clock'; ms: number; floor: number }
   | { t: 'leave'; id: string };
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
@@ -173,7 +175,7 @@ export function encodeMessage(message: NetMessage): string {
   return JSON.stringify(wire);
 }
 
-const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'leave']);
+const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'clock', 'leave']);
 
 /** Parses a wire message; null for anything that is not one (the spike trusts the content otherwise). */
 export function decodeMessage(text: string): NetMessage | null {

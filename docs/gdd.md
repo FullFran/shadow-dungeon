@@ -178,6 +178,19 @@ Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los cam
 
 **Música del bosque**: "Cathedral in the forest" (congusbongus, CC0) en las plantas; en Niebla, el mismo tema apagado con un filtro paso bajo; Trevenant usa el tema de batalla de Aegislash y Decidueye "Boss Battle #2 [Symphonic Metal]" (nene, CC0), que ya estaba en el juego y gustaba.
 
+**Sima del Eclipse** (mazmorra sin fondo y contrarreloj, al estilo de la Isla Cero de Mystery Dungeon; subtítulo "Donde la luz cae y nunca toca fondo"). Abierta desde el principio: es la que más se va a jugar en directo. Datos en `src/data/endless.ts`, reglas en `src/core/endless.ts`; todos los valores son *provisionales*.
+
+- **Plantas sin fin**: todas generadas, salvo una de cada cinco (5, 10, 15...), que es un **eco del guardián**: Aegislash, Trevenant y Decidueye por turnos, en su sala, más fuertes según la profundidad. Solo sale su nombre ("Eco del guardián · Planta 5"), sin cinemática; al caer se abre el camino arriba de la sala.
+- **Enemigos**: una sola lista (especie, planta mínima, peso) con los de la Cripta y el Bosque; los enemigos nuevos entran en la Sima con añadir una línea. Desde la planta 1 la vida sube un 8 % y el daño un 5 % por planta (como mucho ×4 y ×3); los ecos tienen el 60 % de esa vida. Plantas con prisa de todas las mazmorras: derrumbe desde la 2 y Niebla desde la 3, un 8 % cada una y un punto más por planta, como mucho un 22 %.
+- **Reloj**: empieza en 8:00 y baja con el tiempo de juego (solo se para con la partida en pausa jugando solo: menú o elección de objeto; en compartida nunca se para). Bajar de planta suma 40 s, 2 s menos por planta y nunca menos de 15 s; vencer un eco suma 60 s más. A las 0:00 el eclipse se traga la planta y la partida acaba como marca, no como derrota (sin el recorte de las Pokémonedas). En pantalla, grande arriba en el centro; por debajo de 30 s se pone rojo, late y suena un tic cada segundo; cuando suma tiempo sale "+40 s".
+- **Modo puro**: se empieza a nivel 1, sin objetos y sin las mejoras permanentes de la tienda, para que las marcas se puedan comparar (lo dice la tarjeta de entrada). Lo que se encuentra dentro (niveles, objetos, bayas) funciona como siempre.
+- **Marca**: la planta más honda y, a igualdad, el tiempo que quedaba. Las diez mejores del dispositivo se guardan aparte de los récords y salen en el tablón del pueblo y en la pantalla final, con el modo, la fecha y la semilla.
+- **Modos**: "Reto diario" usa una semilla sacada de la fecha UTC, así todo el chat juega el mismo mapa ese día; "Libre" usa una semilla al azar. La tarjeta de entrada enseña la semilla del día.
+- **Pokémonedas**: las reglas de siempre por la mitad (la línea "Tarifa de la sima ×0.5"), para que no sea la mejor forma de farmear.
+- **Música**: rota los temas de planta por tramos de cinco (Cripta, Bosque); cada eco lleva el tema de su guardián.
+- **Cooperativo**: el anfitrión elige el modo en la sala (su semilla viaja en `start`); el reloj es suyo y lo manda cada segundo y en cada cambio de planta, los invitados lo enseñan y acaban cuando el suyo llega a 0. Cada jugador guarda su marca.
+- **Al acabar**: como todas las partidas, la pantalla final lleva de vuelta al pueblo.
+
 ## 4. Combate
 
 ### Controles (teclado y ratón)
@@ -340,6 +353,7 @@ La elige el anfitrión. En un souls, la dificultad de verdad es el tiempo que ti
 
 - El cooperativo con el chat es la función principal. Los indies cooperativos están entre los más vistos en directo porque dejan que los streamers jueguen con otros y junten audiencias ([Stream Hatchet](https://streamhatchet.com/blog/indie-game-popularity-on-live-streaming/)).
 - Momentos que se vean: la cámara lenta de la esquiva perfecta, los rescates, las plantas con prisa, los cambios de fase de los jefes.
+- La Sima del Eclipse (sección 3) es la mazmorra pensada para el directo: contrarreloj, sin fondo y con un reto diario que el chat puede jugar con la misma semilla.
 - Interfaz clara y con contraste, que se lea en un stream comprimido.
 
 ## 11. Progresión entre partidas
