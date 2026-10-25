@@ -6,6 +6,7 @@ import { isWall, TILE, tileOf, type TileGrid, type TilePoint } from '../core/til
 import { distance, type Vec2 } from '../core/vec';
 import { insideRect } from '../core/geometry';
 import { drawPanel } from '../ui/canvas';
+import { HUD_BOX, minimapRect } from '../ui/hud-layout';
 
 /**
  * Mystery Dungeon-style minimap with fog of war. The memory of seen tiles is
@@ -17,11 +18,11 @@ import { drawPanel } from '../ui/canvas';
 export const MINIMAP = {
   /** Corridor reveal: tiles in every direction around the player. */
   revealRadius: 3,
-  /** Size of one map tile on the minimap, in view pixels. */
-  tilePx: 3,
-  /** Gap to the top-right corner of the view (the floor shows in the status window now). */
-  margin: 10,
-  top: 10,
+  /** Size of one map tile on the minimap, in HUD pixels (src/ui/hud-layout.ts owns the frame). */
+  tilePx: HUD_BOX.minimapTilePx,
+  /** Gap to the top-right corner of the HUD space (the floor shows in the status window now). */
+  margin: HUD_BOX.minimapMargin,
+  top: HUD_BOX.minimapMargin,
 } as const;
 
 export interface MinimapMemory {
@@ -92,15 +93,20 @@ const COLORS = {
   berry: '#5b8cff',
 };
 
-/** Draws the minimap at the top right of the view (view units; the caller has applied the pixel scale). */
-export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, memory: MinimapMemory, view: Rect, timeMs: number): void {
+/**
+ * Draws the minimap at the top right of the HUD space (HUD units; the caller
+ * has applied the HUD scale). `view` is the camera's world rectangle (which
+ * enemies show); `screen` the HUD space, the view itself when omitted.
+ */
+export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, memory: MinimapMemory, view: Rect, timeMs: number, screen: Pick<Rect, 'width'> = view): void {
   const grid = state.arena.tiles;
   if (!grid) return;
   const px = MINIMAP.tilePx;
-  const x0 = view.width - MINIMAP.margin - grid.cols * px;
-  const y0 = MINIMAP.top;
+  const frame = minimapRect(screen, grid.cols, grid.rows);
+  const x0 = frame.x + HUD_BOX.minimapFrame;
+  const y0 = frame.y + HUD_BOX.minimapFrame;
   // The same window frame as the HUD, mostly see-through so the floor shows behind the map.
-  drawPanel(ctx, x0 - 4, y0 - 4, grid.cols * px + 8, grid.rows * px + 8, { alpha: 0.9, fill: 0.7 });
+  drawPanel(ctx, frame.x, frame.y, frame.width, frame.height, { alpha: 0.9, fill: 0.7 });
   const collapse = state.collapse;
   const front = collapse ? collapseFront(collapse) : 0;
   for (let y = 0; y < grid.rows; y++) {

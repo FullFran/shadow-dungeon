@@ -1,4 +1,4 @@
-import { ITEMS, type ItemId, type Rarity } from '../data/items';
+import type { ItemId, Rarity } from '../data/items';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
 import { SPECIES } from '../data/species';
@@ -8,7 +8,8 @@ import { bossBar } from '../core/boss';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { PlayerState, Rect, WorldState } from '../core/state';
-import { drawBar, drawPanel, noLigatures, pixelText } from '../ui/canvas';
+import { drawBar, drawPanel, pixelText } from '../ui/canvas';
+import { bossRect, HUD_BOX, slotRect, statusRect } from '../ui/hud-layout';
 import { canvasFont, PALETTE, RARITY } from '../ui/tokens';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
@@ -24,7 +25,7 @@ export const levelUpText = (species: string, level: number): string =>
 
 const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#c9b8ff', disguiseBroken: PALETTE.cursor, levelUp: PALETTE.xp, item: PALETTE.good, passive: PALETTE.eclipseGlow };
 
-/** Rarity colours from the design tokens, shared by the HUD badges and the pick cards. */
+/** Rarity colours from the design tokens, shared by the pick cards and the menus. */
 export const RARITY_COLORS: Record<Rarity, string> = RARITY;
 
 /** The Mystery Dungeon-style top line: "Planta 2 · Nv. 5 · PS 52/100" (HP rounded up, as the bar shows it). */
@@ -62,47 +63,16 @@ export const coinsLabel = (coins: number): string => t('hud.coins').replace('{co
 /** Key hint per slot index, from i18n. */
 const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
 
-const PANEL_WIDTH = 196;
 const PAD = 7;
 
-interface Badge {
-  text: string;
-  color: string;
-  x: number;
-  y: number;
-  w: number;
-}
-
-/** Held item badges laid out in rows inside `width`: a pill per item ("Restos ×2"), positions relative to the first row. */
-function badgeLayout(ctx: CanvasRenderingContext2D, items: readonly ItemId[], width: number): Badge[] {
-  const out: Badge[] = [];
-  let x = 0;
-  let y = 0;
-  for (const item of heldItems(items)) {
-    const text = `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}`;
-    const w = Math.ceil(ctx.measureText(noLigatures(text)).width) + 8;
-    if (x > 0 && x + w > width) {
-      x = 0;
-      y += 15;
-    }
-    out.push({ text, color: RARITY_COLORS[ITEMS[item.id].rarity], x, y, w });
-    x += w + 3;
-  }
-  return out;
-}
-
-function drawBadge(ctx: CanvasRenderingContext2D, badge: Badge, ox: number, oy: number): void {
-  const x = ox + badge.x;
-  const y = oy + badge.y;
-  ctx.fillStyle = PALETTE.ink;
-  ctx.fillRect(x, y, badge.w, 13);
-  ctx.fillStyle = badge.color;
-  ctx.fillRect(x + 1, y + 1, badge.w - 2, 11);
-  ctx.fillStyle = PALETTE.windowBottom;
-  ctx.fillRect(x + 2, y + 2, badge.w - 4, 9);
-  ctx.fillStyle = badge.color;
-  ctx.textAlign = 'left';
-  ctx.fillText(noLigatures(badge.text), x + 4, y + 10);
+/**
+ * The held-items line of the status window: just the count ("Objetos
+ * equipados ×12 · Esc"); the items themselves are listed in the Esc menu.
+ * Touch has no Esc key (the menu button opens it). Null without items.
+ */
+export function itemsChip(count: number, touch: boolean): string | null {
+  if (count <= 0) return null;
+  return `${t('pause.items')} ×${count}${touch ? '' : ' · Esc'}`;
 }
 
 /**
@@ -123,17 +93,15 @@ export function passiveStatus(player: Pick<PlayerState, 'species' | 'disguiseBro
   return { text: `${t(`passive.${passive}`)}: ${t(key)}`, ready };
 }
 
-/** The top-left window: floor / level / HP line, HP, stamina and XP bars, passive, held items. */
-function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number, coins: number | undefined): void {
+/** The top-left window: floor / level / HP line, HP, stamina and XP bars, passive, held-items count. */
+function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number, coins: number | undefined, touch: boolean): void {
   const { player } = state;
-  const x = 6;
-  const y = 6;
-  const inner = PANEL_WIDTH - 2 * PAD;
+  const chip = itemsChip(player.items.length, touch);
+  const { x, y, width, height } = statusRect(chip !== null);
+  const inner = width - 2 * PAD;
   ctx.font = canvasFont();
   ctx.textAlign = 'left';
-  const items = badgeLayout(ctx, player.items, inner);
-  const height = 58 + (items.length > 0 ? (items.at(-1)?.y ?? 0) + 17 : 0);
-  drawPanel(ctx, x, y, PANEL_WIDTH, height, { alpha: 0.92 });
+  drawPanel(ctx, x, y, width, height, { alpha: 0.92 });
 
   const low = player.hp / player.maxHp <= 0.3;
   pixelText(ctx, hudLine(floor, player.level, player.hp, player.maxHp), x + PAD, y + 15, PALETTE.text);
@@ -150,21 +118,18 @@ function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: nu
   ctx.fillRect(x + PAD + 1, y + 47, 2, 1);
   ctx.fillRect(x + PAD + 4, y + 47, 2, 1);
   pixelText(ctx, passiveText, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
-  if (coins !== undefined) pixelText(ctx, coinsLabel(coins), x + PANEL_WIDTH - PAD, y + 52, PALETTE.cursor, 'right');
-  for (const badge of items) drawBadge(ctx, badge, x + PAD, y + 58);
+  if (coins !== undefined) pixelText(ctx, coinsLabel(coins), x + width - PAD, y + 52, PALETTE.cursor, 'right');
+  if (chip) pixelText(ctx, chip, x + PAD, y + 63, PALETTE.textDim);
 }
 
 /** Move slots at the bottom right: key hint, move name (red when unaffordable) and the charge bar. */
-function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, view: Rect): void {
+function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: HudSize): void {
   const { player } = state;
-  const w = 104;
-  const gap = 4;
   M0_SLOT_LAYOUT.forEach((_, index) => {
     const moveId = player.loadout[index];
     if (!moveId) return;
     const move = MOVES[moveId];
-    const x = view.width - 6 - (M0_SLOT_LAYOUT.length - index) * (w + gap) + gap;
-    const y = view.height - 6 - 30;
+    const { x, y, width: w } = slotRect(screen, index, M0_SLOT_LAYOUT.length);
     const busy = player.action?.slotIndex === index;
     const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
     drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : PALETTE.border });
@@ -179,25 +144,28 @@ function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, view: Rect)
   });
 }
 
+/** Width and height of the HUD space (src/ui/hud-layout.ts). */
+type HudSize = Pick<Rect, 'width' | 'height'>;
+
 /**
- * HUD in view units (the caller has applied the pixel scale): the status
- * window (floor, level, HP, stamina, XP, Disguise, coins this run, held items), move slots
+ * HUD in HUD-space units (the caller has applied the HUD scale): the status
+ * window (floor, level, HP, stamina, XP, Disguise, coins this run, held-items count), move slots
  * with the charge level, boss bar and flashes. The minimap and the message
  * log are drawn by their own modules.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number, coins?: number): void {
+export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, floor: number, coins?: number, touch = false): void {
   const { player } = state;
-  statusPanel(ctx, state, floor, coins);
-  moveSlots(ctx, state, view);
+  statusPanel(ctx, state, floor, coins, touch);
+  moveSlots(ctx, state, screen);
 
   const boss = bossBar(state);
   if (boss) {
-    const w = Math.min(260, view.width - 40);
-    const x = Math.round((view.width - w) / 2);
-    const y = view.height - 82;
+    const box = bossRect(screen);
+    const { x, width: w } = box;
+    const y = box.y + HUD_BOX.bossNameHeight;
     const name = t(`species.${boss.species}`);
     ctx.font = canvasFont();
-    pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, view.width / 2, y - 5, PALETTE.text, 'center');
+    pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
     drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
   }
 
@@ -205,7 +173,7 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const life = juice.flash.ageMs / JUICE.flashMs;
     ctx.globalAlpha = 1 - life;
     ctx.font = canvasFont(22, true);
-    pixelText(ctx, flashText(juice.flash, player.species), view.width / 2, 104 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
+    pixelText(ctx, flashText(juice.flash, player.species), screen.width / 2, 104 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
     ctx.globalAlpha = 1;
   }
 }

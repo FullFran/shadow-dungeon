@@ -18,6 +18,7 @@ import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type TilePalette } from '../data/dungeons';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
+import { hudSpace } from '../ui/hud-layout';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
@@ -37,6 +38,8 @@ export interface RenderFrame {
   juice: JuiceState;
   view: Rect;
   pixelScale: number;
+  /** Integer scale of the screen-space HUD (src/ui/hud-layout.ts); the pixel scale when absent. */
+  hudScale?: number;
   /** Current floor of the run (1-based), for the HUD. */
   floor: number;
   exit: Rect | null;
@@ -905,20 +908,23 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.slowMo;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    drawHud(ctx, current, juice, view, frame.floor, frame.coins);
-    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
-    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
-    if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
-    if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, view.width, view.height);
+    // The HUD has its own scale: on desktop a big window shows more HUD space, not bigger panels.
+    const hudScale = frame.hudScale ?? pixelScale;
+    const hud = hudSpace(canvas.width, canvas.height, hudScale);
+    ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
+    drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false);
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud);
+    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height);
+    if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
+    if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, hud.width, hud.height);
     if (frame.nowPlaying) {
       // Touch: above the message log, clear of the action buttons in the bottom-right corner.
       const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
-      const at = frame.touchUi ? { x: 8, y: view.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
-      drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height, at);
+      const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
+      drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
-    if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, view.width);
-    if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, view.width);
+    if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
+    if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
   }
 
   return { draw };

@@ -25,6 +25,9 @@ export interface MenuActions {
 
 export type MenuSettings = SettingsAccess;
 
+/** Past this many different items the list goes to two columns (and scrolls when it still does not fit). */
+export const ITEMS_TWO_COLUMNS = 6;
+
 /** The held items window: each item with its stacks and what it does, in its rarity colour. */
 function itemsWindow(held: readonly HeldItem[]): HTMLElement {
   const body =
@@ -42,7 +45,7 @@ function itemsWindow(held: readonly HeldItem[]): HTMLElement {
             ),
           ),
         ];
-  return mdWindow({ title: t('pause.items'), className: 'items' }, body);
+  return mdWindow({ title: t('pause.items'), className: held.length > ITEMS_TWO_COLUMNS ? 'items many' : 'items' }, body);
 }
 
 /**

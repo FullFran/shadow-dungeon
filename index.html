@@ -135,6 +135,11 @@
       .held-items { list-style: none; margin: 0; padding: 0; }
       .held-items li + li { margin-top: 8px; }
       .held-items .dim { font-size: 16px; }
+      /* Many held items: two columns, and the list scrolls inside the window when it is still too tall. */
+      .items.many { width: 46rem; }
+      .items .md-window-body { max-height: calc(100vh - 140px); overflow-y: auto; overscroll-behavior: contain; }
+      .items.many .held-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+      .items.many .held-items li + li { margin-top: 0; }
       .held-items .rarity-common strong { color: var(--md-rarity-common); }
       .held-items .rarity-uncommon strong { color: var(--md-rarity-uncommon); }
       .held-items .rarity-rare strong { color: var(--md-rarity-rare); }

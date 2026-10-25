@@ -46,6 +46,7 @@ import type { RosterEntry } from '../net/protocol';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
+import { hudScaleFor } from '../ui/hud-layout';
 
 /** Endless, shared run: the host sends its clock about this often (and on every floor change). */
 const CLOCK_SEND_MS = 1000;
@@ -205,6 +206,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let moving = false;
   let lastInput: PlayerInput | null = null;
   let pixelScale = 1;
+  let hudScale = 1;
   let ended = false;
   let raf = 0;
   /** The guardian cinematic on screen (solo), while it plays. */
@@ -370,6 +372,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function resize(): void {
     // Desktop: integer scale as before; touch: fills the screen (src/adapters/fit.ts).
     pixelScale = fitCanvasToWindow(canvas, VIEW_WIDTH, VIEW_HEIGHT, isTouchUi());
+    // The HUD scale follows the window on desktop (small panels on big screens), the canvas on touch.
+    hudScale = hudScaleFor(window.innerWidth, window.innerHeight, pixelScale, isTouchUi());
   }
 
   /** The guardian of this floor, if it has a cinematic. */
@@ -566,6 +570,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       juice,
       view,
       pixelScale,
+      hudScale,
       floor: run.floor,
       exit,
       exitOpen: exit !== null && roomCleared(world),
