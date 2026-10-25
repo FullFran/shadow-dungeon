@@ -121,6 +121,8 @@ Mover el ratón con un objetivo fijado no cambia de objetivo. En Elden Ring con 
 
 Microparón al golpear, vibración de pantalla en los golpes fuertes, números de daño grandes y un sonido distinto según la fuerza del golpe. Un combate simple que se siente genial gana a uno profundo que se siente blando.
 
+El sonido del M0 es procedural (Web Audio, sin ficheros de audio): cada evento del núcleo tiene un efecto corto de estilo retro sintetizado en código (un chasquido propio cuando se rompe el disfraz, un golpe metálico cuando Aegislash bloquea, una campanita en la esquiva perfecta) y la música es un bucle chiptune original en la menor que se acelera en la sala del jefe. Hay volumen general, de música y de efectos, y la tecla M silencia.
+
 ### El kit de cada Pokémon
 
 - Cada Pokémon tiene su propio Q y su propio E. Conseguir uno nuevo en el gacha cambia cómo juegas.

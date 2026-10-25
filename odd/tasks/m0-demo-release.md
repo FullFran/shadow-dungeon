@@ -23,7 +23,7 @@ Out of scope (added later on request: T5 sound and music): procedural dungeons (
 - [x] T2 GitHub Pages workflow and README (route: same writer). Commit `511eee3`.
 - [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
 - [x] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
-- [ ] T5 Procedural sound effects and an original chiptune music loop with Web Audio (no audio files), volume and mute settings (route: delegated writer; trigger: new audio adapter, app wiring, settings, i18n, tests)
+- [x] T5 Procedural sound effects and an original chiptune music loop with Web Audio (no audio files), volume and mute settings (route: delegated writer; trigger: new audio adapter, app wiring, settings, i18n, tests). Commits `e937c76` and the `feat(audio): wire sound ...` commit that contains this entry.
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
@@ -71,5 +71,20 @@ Created. Delivery strategy: ask-on-risk; forecast ~300 authored lines.
   - Existing tests that aimed with `slots` alone now pass `slotMouse` explicitly (the combat `held` helper defaults to mouse-triggered; `IDLE` defaults to keyboard).
   - In-game control strings extended in place (`menu.controls.fast`/`heavy`) because the menu's key list lives in `src/app/main.ts`, outside this task's surface.
 
+### T5 evidence (`e937c76` adapter + data + tests; wiring commit `feat(audio): wire sound into the menu, game and settings`, which contains this entry)
+- RED: tests written first; `npx vitest run` showed 4 failing files (2 of them missing modules `src/data/audio.ts`, `src/adapters/audio.ts`) and 7 failing tests (settings defaults, round-trip, clamping, legacy load; i18n sound keys).
+- GREEN: `npm test` 181/181 passed; `npm run build` passed.
+- A fake-AudioContext smoke test plays every sound and runs both loops through the scheduler; it throws where browsers do (exponential ramp to <= 0, negative buffer offset). Mutation check: setting one ramp target to 0 made it fail.
+- Not checked: real listening (no audio output available to the writer), browser autoplay unlock and the mix balance; needs a human playtest.
+- Size: about 970 authored lines, over the ~400 heuristic because the sfx recipe table and the music patterns are content; split into two work-unit commits (pure adapter + data + tests, then wiring + settings + i18n + docs).
+- Decisions:
+  - `soundFor(event)` is pure (event -> sound id or null); `moveStarted` varies by slot (`swingFast`/`swingHeavy`), `enemyHit` uses the juice heavy rule (damage >= `JUICE.heavyDamage` or super effective) for `hitHeavy`; each sound gets a random pitch factor of +-8%.
+  - `createSfxGate`: max one start per sound per 40 ms and 12 simultaneous voices, on an injected clock (`ctx.currentTime` in the engine); a refused sound does not reset its throttle.
+  - Buses: master -> destination, music and sfx under master; `busGains` sets master to 0 when muted. Music per loop has its own gain node so a switch fades the old loop out (0.6 s).
+  - Music in `src/data/audio.ts` (pure data, also compiled DOM-free): bars as strings (`A4 - . C5`, drums `k s h .`), 8 bars of eighths, Am | Am | F | E | Dm | Am | E | Am with a harmonic-minor G#. Original melody (not taken from any game). Room 96 bpm; boss 132 bpm with an octave eighth bass and busier drums. Lookahead 120 ms, scheduler every 25 ms; after a throttled background tab it skips ahead instead of bursting.
+  - AudioContext created on the first `pointerdown`/`keydown` anywhere (`unlock`, idempotent, resumes if suspended); a loop requested before that starts on unlock. No AudioContext -> silent no-op.
+  - Game wiring: `GameOptions.audio` (handleEvents, setMusic) and `onToggleMute`; `startGame` plays room music, switches to boss music on entering the boss room, fades out when the run ends; M is a window keydown listener in `game.ts` removed on `stop()`. End screens play a victory or defeat stinger; every button press on the pages plays a click.
+  - Settings: `masterVolume` 0.7, `musicVolume` 0.5, `sfxVolume` 0.8, `muted` false; stored volumes clamped to 0..1, non-numbers fall back; older stored settings get the sound defaults. `input.ts` needed no change.
+
 ## Next step
-Human playtest of T4 on the deployed build; push/PR remain the user's decision.
+Human playtest of T4 and T5 (listen: mix balance, boss switch, mute) on a local or deployed build; push/PR remain the user's decision.

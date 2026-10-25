@@ -35,10 +35,15 @@ Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy mov
 | Shift / middle mouse button | Toggle lock-on: lock the enemy nearest the cursor, press again to release |
 | Left click on an enemy | Click-to-lock (on by default, toggle in the menu): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock |
 | Mouse wheel | Switch locked target clockwise / counter-clockwise |
+| M | Mute or unmute sound |
 
 Moving the mouse never changes the locked target; only the gestures above do.
 
 Aegislash blocks hits from the front in Shield Forme (the blue arc): flank it. In Blade Forme it attacks in combos and stays open afterwards.
+
+## Sound
+
+All audio is procedural Web Audio (`src/adapters/audio.ts`), with no sound files: short retro effects synthesised from oscillators, noise and filters, mapped from the core's `GameEvent`s (a pure `soundFor(event)`), throttled per sound and capped in simultaneous voices. The music is an original looping chiptune in A minor (square lead, triangle bass, noise drums; patterns in `src/data/audio.ts`) played by a lookahead scheduler on the AudioContext clock; the boss room switches to a faster, busier variant and the music fades out on the end screens. Sound starts on the first click or key press, since browsers block autoplay. The menu has master, music and effects volume sliders and a mute checkbox (remembered with the other settings); `M` toggles mute in game.
 
 ## Layout
 

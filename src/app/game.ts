@@ -8,6 +8,7 @@ import { advanceClock, FIXED_DT_MS } from '../core/timestep';
 import { length, vec } from '../core/vec';
 import { createWorld } from '../core/world';
 import type { SheetStore } from '../adapters/assets';
+import type { AudioEngine } from '../adapters/audio';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
@@ -25,6 +26,10 @@ export interface GameOptions {
   loadout: readonly (MoveId | null)[];
   clickToLock: boolean;
   seed?: number;
+  /** Sound effects from core events and the room / boss music. */
+  audio?: Pick<AudioEngine, 'handleEvents' | 'setMusic'>;
+  /** The M key. */
+  onToggleMute?(): void;
   onEnd(result: GameResult): void;
 }
 
@@ -34,7 +39,8 @@ export interface RunningGame {
 
 /**
  * The play session: fixed-step simulation, interpolated rendering, juice and
- * the room flow (sandbox -> exit -> boss room; death or the boss falling ends it).
+ * the room flow (sandbox -> exit -> boss room; death or the boss falling ends it),
+ * with sound driven by the same events and the music following the room.
  */
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
@@ -60,6 +66,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let pixelScale = 1;
   let ended = false;
   let raf = 0;
+  const audio = options.audio;
+  const music = (id: RoomId) => audio?.setMusic(id === 'boss' ? 'boss' : 'room');
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.code === 'KeyM' && !e.repeat) options.onToggleMute?.();
+  };
 
   function resize(): void {
     pixelScale = pixelScaleFor(window.innerWidth, window.innerHeight, VIEW_WIDTH, VIEW_HEIGHT);
@@ -74,6 +85,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function end(result: GameResult): void {
     if (ended) return;
     ended = true;
+    audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
     window.setTimeout(() => options.onEnd(result), 700);
   }
@@ -89,6 +101,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       prev = world;
       world = step(world, playerInput, FIXED_DT_MS);
       juice = applyEvents(juice, world.events, world.player.pos);
+      audio?.handleEvents(world.events);
       for (const event of world.events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
@@ -100,6 +113,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         world = loadRoom(world, roomId);
         prev = world;
         defeatedAt.clear();
+        music(roomId);
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -145,11 +159,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   resize();
+  music(roomId);
+  window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
     stop() {
       cancelAnimationFrame(raf);
       input.dispose();
+      window.removeEventListener('keydown', onKeyDown);
     },
   };
 }

@@ -1,18 +1,24 @@
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { loadSheets, type SheetStore } from '../adapters/assets';
+import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, LANGUAGES, setLanguage, t, type Language } from '../i18n';
 import { startGame, type GameResult, type RunningGame } from './game';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
 
 /**
- * Page flow: pre-run menu (loadout, language, click-to-lock) -> sandbox room ->
- * boss room -> defeat or victory screen. Settings persist through the
- * storage port; the fan-project notice is always on screen.
+ * Page flow: pre-run menu (loadout, language, click-to-lock, sound) -> sandbox
+ * room -> boss room -> defeat or victory screen. Settings persist through the
+ * storage port; the fan-project notice is always on screen. Audio starts on the
+ * first user gesture (browsers block autoplay).
  */
 const store = browserStore();
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
+const audio = createAudio(settings);
+const unlockAudio = () => audio.unlock();
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;
 
@@ -33,6 +39,7 @@ function applyLanguage(language: Language): void {
 function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
+  audio.setVolumes(settings);
 }
 
 function notice(): HTMLElement {
@@ -82,10 +89,20 @@ function menu(root: HTMLElement): void {
   clickToLock.addEventListener('change', () => update({ clickToLock: clickToLock.checked }));
   const lock = el('label', {}, [clickToLock, ` ${t('menu.clickToLock')}`]);
 
+  const volumes = (['masterVolume', 'musicVolume', 'sfxVolume'] as const).map((key) => {
+    const slider = el('input', { type: 'range', min: '0', max: '1', step: '0.05' });
+    slider.value = String(settings[key]);
+    slider.addEventListener('input', () => update({ [key]: Number(slider.value) }));
+    return el('label', {}, [`${t(`menu.${key}`)} `, slider]);
+  });
+  const mute = el('input', { type: 'checkbox' });
+  mute.checked = settings.muted;
+  mute.addEventListener('change', () => update({ muted: mute.checked }));
+
   const start = el('button', { type: 'button', className: 'primary', textContent: t('menu.start') });
   start.addEventListener('click', () => play(root));
 
-  const controls = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock'].map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
+  const controls = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock', 'mute'].map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
 
   show(
     root,
@@ -97,6 +114,8 @@ function menu(root: HTMLElement): void {
       el('div', { className: 'row' }, slots),
       el('h2', { textContent: t('menu.lockOn') }),
       el('div', { className: 'row' }, [lock]),
+      el('h2', { textContent: t('menu.sound') }),
+      el('div', { className: 'row' }, [...volumes, el('label', {}, [mute, ` ${t('menu.mute')}`])]),
       el('h2', { textContent: t('menu.controls') }),
       el('ul', {}, controls),
       el('p', { className: 'goal', textContent: t('menu.goal') }),
@@ -107,6 +126,8 @@ function menu(root: HTMLElement): void {
 }
 
 function resultScreen(root: HTMLElement, result: GameResult): void {
+  audio.setMusic(null);
+  audio.play(result);
   const retry = el('button', { type: 'button', className: 'primary', textContent: t('screen.retry') });
   retry.addEventListener('click', () => play(root));
   const back = el('button', { type: 'button', textContent: t('screen.menu') });
@@ -134,9 +155,17 @@ async function play(root: HTMLElement): Promise<void> {
     loadout: settings.loadout,
     clickToLock: settings.clickToLock,
     seed: Date.now() | 0,
+    audio,
+    onToggleMute: () => update({ muted: !settings.muted }),
     onEnd: (result) => resultScreen(root, result),
   });
 }
 
 const root = document.getElementById('app');
-if (root) menu(root);
+if (root) {
+  // Menu click: any button press on the pages (the game canvas has none).
+  root.addEventListener('click', (e) => {
+    if (e.target instanceof Element && e.target.closest('button')) audio.play('click');
+  });
+  menu(root);
+}

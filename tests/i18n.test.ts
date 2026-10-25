@@ -17,6 +17,15 @@ describe('i18n catalogs', () => {
   }
 });
 
+describe('sound strings', () => {
+  const keys = ['menu.sound', 'menu.masterVolume', 'menu.musicVolume', 'menu.sfxVolume', 'menu.mute', 'menu.controls.mute'];
+  for (const language of LANGUAGES) {
+    it(`"${language}" names the sound settings and the mute key`, () => {
+      expect(keys.filter((key) => !(key in catalog(language)))).toEqual([]);
+    });
+  }
+});
+
 describe('detectLanguage', () => {
   it('picks English only for English browser languages', () => {
     expect(detectLanguage('en-GB')).toBe('en');

@@ -11,12 +11,22 @@ export interface Settings {
   /** A left click on an enemy locks onto it. */
   clickToLock: boolean;
   loadout: readonly (MoveId | null)[];
+  /** Volumes in 0..1; the music and sfx buses sit under the master gain. */
+  masterVolume: number;
+  musicVolume: number;
+  sfxVolume: number;
+  muted: boolean;
 }
 
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, clickToLock: true, loadout: SPECIES.mimikyu.defaultLoadout };
+  return { language, clickToLock: true, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+}
+
+/** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
+function volume(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
 }
 
 /** Moves of Mimikyu's movepool that fit a slot kind. */
@@ -24,7 +34,10 @@ export function slotOptions(kind: SlotKind): MoveId[] {
   return SPECIES.mimikyu.movepool.filter((id) => MOVES[id].slot === kind);
 }
 
-/** Reads settings, keeping each stored field only if it is valid. Unknown fields (the old `lockMode`) are dropped. */
+/**
+ * Reads settings, keeping each stored field only if it is valid. Unknown fields
+ * (the old `lockMode`) are dropped; fields added later (sound) take the fallback.
+ */
 export function loadSettings(store: KeyValueStore, fallback: Settings): Settings {
   let raw: unknown;
   try {
@@ -41,7 +54,15 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
     stored.loadout.every((m) => m === null || typeof m === 'string') &&
     validateLoadout(SPECIES.mimikyu, M0_SLOT_LAYOUT, stored.loadout as (string | null)[]).length === 0;
   const loadout = loadoutOk ? (stored.loadout as (MoveId | null)[]) : fallback.loadout;
-  return { language, clickToLock, loadout };
+  return {
+    language,
+    clickToLock,
+    loadout,
+    masterVolume: volume(stored.masterVolume, fallback.masterVolume),
+    musicVolume: volume(stored.musicVolume, fallback.musicVolume),
+    sfxVolume: volume(stored.sfxVolume, fallback.sfxVolume),
+    muted: typeof stored.muted === 'boolean' ? stored.muted : fallback.muted,
+  };
 }
 
 export function saveSettings(store: KeyValueStore, settings: Settings): void {

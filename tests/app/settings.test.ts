@@ -45,13 +45,23 @@ describe('settings', () => {
     expect(slotOptions('heavy')).toEqual(['play-rough', 'shadow-ball']);
   });
 
-  it('defaults to the species loadout, click-to-lock on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-claw', 'play-rough'] });
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+
+  it('defaults to the species loadout, click-to-lock on, sound on and the given language', () => {
+    expect(defaultSettings('en')).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
   });
 
   it('round-trips through the store', () => {
     const store = memoryStore();
-    const settings = { language: 'en' as const, clickToLock: false, loadout: ['shadow-sneak', 'shadow-ball'] as const };
+    const settings = {
+      language: 'en' as const,
+      clickToLock: false,
+      loadout: ['shadow-sneak', 'shadow-ball'] as const,
+      masterVolume: 0.3,
+      musicVolume: 0,
+      sfxVolume: 1,
+      muted: true,
+    };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
   });
@@ -74,8 +84,27 @@ describe('settings', () => {
     for (const lockMode of ['hold', 'toggle']) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-sneak', 'play-rough'] });
+      expect(loaded).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
+  });
+
+  it('clamps volumes to 0..1 and rejects non-numbers', () => {
+    const fallback = defaultSettings('es');
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ masterVolume: 3, musicVolume: -1, sfxVolume: 'loud', muted: 'yes' }));
+    const loaded = loadSettings(store, fallback);
+    expect(loaded.masterVolume).toBe(1);
+    expect(loaded.musicVolume).toBe(0);
+    expect(loaded.sfxVolume).toBe(fallback.sfxVolume);
+    expect(loaded.muted).toBe(false);
+    store.set('mazmorra-sombria.settings', JSON.stringify({ masterVolume: null }));
+    expect(loadSettings(store, fallback).masterVolume).toBe(fallback.masterVolume);
+  });
+
+  it('loads settings saved before sound existed with the sound defaults', () => {
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
   });
 });
