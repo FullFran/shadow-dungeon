@@ -11,7 +11,7 @@ Playtest feedback (2026-10-25): combat feels great ("va duro"), but holding Shif
 - GitHub Pages deploy workflow; README play link and controls.
 - Push and deploy, only after the user authorizes destination and credentials.
 
-Out of scope: sound and music, procedural dungeons (M2), accounts and saves.
+Out of scope (added later on request: T5 sound and music): procedural dungeons (M2), accounts and saves.
 
 ## Constraints
 - Core stays pure and deterministic; moving the mouse alone never switches target.
@@ -23,6 +23,7 @@ Out of scope: sound and music, procedural dungeons (M2), accounts and saves.
 - [x] T2 GitHub Pages workflow and README (route: same writer). Commit `511eee3`.
 - [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
 - [x] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
+- [ ] T5 Procedural sound effects and an original chiptune music loop with Web Audio (no audio files), volume and mute settings (route: delegated writer; trigger: new audio adapter, app wiring, settings, i18n, tests)
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
