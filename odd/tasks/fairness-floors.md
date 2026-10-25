@@ -32,3 +32,6 @@ Two global safety rules the balance harness found broken (hard fairness violatio
 - `tests/core/party-scaling.test.ts`: the boss-damage test used a raw 100 hit (now capped); it uses 20 so it still measures ×1.1/×1.15.
 - `npm run balance -- --quick`: 0 failures, 47 warnings, 66 passes.
 - Removed KNOWN_VIOLATIONS: max-hit (crypt, misty-forest, flooded-caves, eclipse-chasm), telegraph-floor (eclipse-chasm).
+- Full sweep `npm run balance`: 960 runs, 1920 arena fights in 400.5 s; 0 failures, 144 warnings, 176 passes.
+- `npm test`: 147 files, 1398 tests passed. `npm run build`: built.
+- Work-unit commit: f368734.
