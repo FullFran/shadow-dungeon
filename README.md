@@ -4,7 +4,7 @@ Non-commercial Pokémon fan game prototype: top-down, souls-like real-time comba
 
 Current milestone: **M0**, a playable combat demo: a sandbox room with three Poochyena and two Gastly, then a boss fight against Aegislash. It runs entirely in the browser (no accounts, no backend; only your menu settings are kept in `localStorage`).
 
-**Play:** https://fullfran.github.io/shadow-dungeon/
+**Play:** https://www.fullfran.com/shadow-dungeon/
 
 This is a free, non-commercial fan game. Sprites are by the artists of [PMDCollab SpriteCollab](https://github.com/PMDCollab/SpriteCollab); see [`CREDITS.md`](CREDITS.md) and [Legal](#legal).
 
