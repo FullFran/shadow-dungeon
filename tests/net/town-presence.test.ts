@@ -130,6 +130,20 @@ describe('town lobby session', () => {
     ]);
   });
 
+  it("a Sima round's clock and seed never leak into the next round from the town", () => {
+    const { host, guest } = room();
+    host.session.begin('eclipse-chasm', 9001);
+    host.session.sendClock(0, 12);
+    // The run ended before the guest's game read the last clock; back in town, a new round.
+    host.session.reopenLobby(77);
+    expect(guest.session.takeClock()).toBeNull();
+    host.session.begin('eclipse-chasm', 9002);
+    expect(guest.started.map((s) => [s.seed, s.dungeon])).toEqual([
+      [9001, 'eclipse-chasm'],
+      [9002, 'eclipse-chasm'],
+    ]);
+  });
+
   it('lets a late joiner in while the room is back in town', () => {
     const { scheduler, hub, host } = room();
     host.session.begin('crypt-of-the-sword-king');

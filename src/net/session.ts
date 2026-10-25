@@ -380,6 +380,8 @@ export function createSession(options: SessionOptions): NetSession {
     berryGrants = [];
     holds = [];
     floorChange = null;
+    // A Sima clock from the last round must not reach the next one.
+    clock = null;
   }
 
   transport.onPeerLeave(dropPeer);
