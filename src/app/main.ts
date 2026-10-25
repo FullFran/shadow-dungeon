@@ -14,6 +14,8 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { openPauseMenu } from './menu';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
 import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-panel';
+import { setUiSound } from '../ui/cursor-list';
+import { applyTokens } from '../ui/tokens';
 
 /**
  * Page flow: pre-run menu (loadout, language, lock type, sound) -> generated
@@ -24,12 +26,14 @@ import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-pan
  * on screen. Audio starts on the first user gesture (browsers block autoplay).
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
+applyTokens(document.documentElement);
 const store = browserStore();
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
 const audio = createAudio(settings);
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
+setUiSound(() => audio.play('click'));
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;
 /** The shared run or lobby on screen, if any: its notices (room full, host left) only count while it is. */

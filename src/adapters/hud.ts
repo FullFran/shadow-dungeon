@@ -7,6 +7,7 @@ import { bossBar } from '../core/boss';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { Rect, WorldState } from '../core/state';
+import { RARITY } from '../ui/tokens';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
 /** Fraction of a bar to fill, clamped to [0, 1]. */
@@ -21,8 +22,8 @@ export const levelUpText = (species: string, level: number): string =>
 
 const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#b9a4ff', disguiseBroken: '#ffd36b', levelUp: '#7fd8ff', item: '#8fe39a' };
 
-/** Rarity colours, shared by the HUD list and the pick cards' palette in index.html. */
-export const RARITY_COLORS: Record<Rarity, string> = { common: '#c9c2dd', uncommon: '#5aa9ff', rare: '#ffd36b' };
+/** Rarity colours from the design tokens, shared by the HUD badges and the pick cards. */
+export const RARITY_COLORS: Record<Rarity, string> = RARITY;
 
 export interface HeldItem {
   id: ItemId;

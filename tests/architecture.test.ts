@@ -6,12 +6,13 @@ import { describe, expect, it } from 'vitest';
  * The simulation core must stay pure: it may import only itself and the
  * typed game data (never the netcode). tsconfig.core.json additionally
  * compiles it without DOM typings, so browser globals fail typecheck.
- * The netcode (src/net) may use the core and the data, never adapters, app or i18n.
+ * The netcode (src/net) may use the core and the data, never adapters, app, ui or i18n.
+ * The UI kit (src/ui) sits with the adapters: neither the core nor the netcode may import it.
  */
 const ROOT = join(__dirname, '..');
 const PURE_LAYERS = ['src/core', 'src/data'];
-const FORBIDDEN = [/\/adapters\//, /\/app\//, /\/i18n\//, /\/net\//, /^node:/];
-const NET_FORBIDDEN = [/\/adapters\//, /\/app\//, /\/i18n\//, /^node:/];
+const FORBIDDEN = [/\/adapters\//, /\/app\//, /\/ui\//, /\/i18n\//, /\/net\//, /^node:/];
+const NET_FORBIDDEN = [/\/adapters\//, /\/app\//, /\/ui\//, /\/i18n\//, /^node:/];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -28,7 +29,7 @@ function importsOf(source: string): string[] {
 
 describe('architecture', () => {
   for (const layer of PURE_LAYERS) {
-    it(`${layer} does not import adapters, app, i18n or node built-ins`, () => {
+    it(`${layer} does not import adapters, app, ui, i18n or node built-ins`, () => {
       const violations = sourceFiles(join(ROOT, layer)).flatMap((file) =>
         importsOf(readFileSync(file, 'utf8'))
           .filter((spec) => FORBIDDEN.some((rule) => rule.test(spec)) || (!spec.startsWith('.') && !spec.startsWith('/')))
@@ -38,7 +39,7 @@ describe('architecture', () => {
     });
   }
 
-  it('src/net does not import adapters, app, i18n, node built-ins or packages', () => {
+  it('src/net does not import adapters, app, ui, i18n, node built-ins or packages', () => {
     const violations = sourceFiles(join(ROOT, 'src/net')).flatMap((file) =>
       importsOf(readFileSync(file, 'utf8'))
         .filter((spec) => NET_FORBIDDEN.some((rule) => rule.test(spec)) || (!spec.startsWith('.') && !spec.startsWith('/')))
@@ -48,7 +49,7 @@ describe('architecture', () => {
   });
 
   it('only the Trystero adapter imports the trystero package, and the app loads it lazily', () => {
-    const files = ['src/core', 'src/data', 'src/net', 'src/adapters', 'src/app'].flatMap((dir) => sourceFiles(join(ROOT, dir)));
+    const files = ['src/core', 'src/data', 'src/net', 'src/adapters', 'src/ui', 'src/app'].flatMap((dir) => sourceFiles(join(ROOT, dir)));
     const importers = files.filter((file) => importsOf(readFileSync(file, 'utf8')).some((spec) => spec === 'trystero' || spec.startsWith('trystero/')));
     expect(importers.map((file) => relative(ROOT, file))).toEqual(['src/adapters/trystero.ts']);
     const staticImport = /(?:import|export)[^'"(]*?from\s*['"][^'"]*adapters\/trystero['"]|^import\s+['"][^'"]*adapters\/trystero['"]/m;

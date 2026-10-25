@@ -5,8 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mazmorra Sombría</title>
     <style>
+      /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
+      @font-face { font-family: 'Pixelify Sans'; src: url('./fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
       :root { color-scheme: dark; }
-      body { margin: 0; background: #14121a; color: #e8e4f0; font-family: system-ui, sans-serif; }
+      body { margin: 0; background: var(--md-ink, #05060d); color: var(--md-text, #f5f7ff); font-family: var(--md-font, ui-monospace, monospace); font-size: var(--md-body, 22px); line-height: 1.25; -webkit-font-smoothing: none; }
+
+      /* ---- UI components (src/ui): window and cursor list; tokens come from src/ui/tokens.ts ---- */
+      .md-window { position: relative; box-sizing: border-box; padding: 22px 24px 18px; border: 3px solid var(--md-border); border-radius: 12px;
+        background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom));
+        box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade), 0 9px 0 3px rgba(0, 0, 0, 0.4);
+        animation: md-open var(--md-open-ms, 120ms) ease-out both; transform-origin: 50% 40%; text-align: left; }
+      .md-window.still { animation: none; }
+      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 14px; font-size: var(--md-body); font-weight: 700; color: var(--md-cursor);
+        background: var(--md-window-top); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 3px var(--md-ink); white-space: nowrap; }
+      .md-window-body > :first-child { margin-top: 0; }
+      .md-window-body > :last-child { margin-bottom: 0; }
+      .md-window p { margin: 0.4em 0; }
+      .md-window .dim { color: var(--md-text-dim); }
+      .md-stat { display: flex; justify-content: space-between; gap: 2em; padding: 2px 0; }
+      .md-stat-value { color: var(--md-cursor); }
+      .md-list { display: flex; flex-direction: column; gap: 2px; outline: none; }
+      .md-list.horizontal { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 18px; }
+      .md-item { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 1.6em; padding: 3px 12px 3px 6px; border-radius: 6px; cursor: pointer; color: var(--md-text); }
+      .md-item:focus-visible { outline: 3px solid var(--md-cursor); }
+      .md-item.is-active { background: rgba(255, 255, 255, 0.09); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12); }
+      .md-item.is-disabled { color: var(--md-disabled); cursor: default; }
+      .md-cursor { flex: none; width: 10px; height: 14px; background: var(--md-cursor); clip-path: polygon(0 0, 100% 50%, 0 100%); visibility: hidden; }
+      .md-item.is-active .md-cursor { visibility: visible; animation: md-bob var(--md-bob-ms, 600ms) steps(1) infinite; }
+      .md-label { flex: 1; }
+      .md-value { display: flex; align-items: center; gap: 10px; color: var(--md-cursor); white-space: nowrap; }
+      .md-item.is-disabled .md-value { color: var(--md-disabled); }
+      .md-arrow { width: 0; height: 0; font-size: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; padding: 0 2px; opacity: 0; }
+      .md-arrow:first-child { border-right: 9px solid var(--md-text-dim); }
+      .md-arrow:last-child { border-left: 9px solid var(--md-text-dim); }
+      .md-item.is-active .md-arrow { opacity: 1; }
+      .md-arrow:hover { filter: brightness(1.6); }
+      .md-list-header { margin: 12px 0 2px; padding-left: 6px; color: var(--md-text-dim); }
+      .md-list-header:first-child { margin-top: 0; }
+      @keyframes md-open { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+      @keyframes md-bob { 0% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+      @media (prefers-reduced-motion: reduce) { .md-window, .md-item.is-active .md-cursor { animation: none; } }
       #app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; box-sizing: border-box; }
       canvas.game { max-width: 100vw; max-height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
       .notice { position: fixed; bottom: 0.25rem; left: 0; right: 0; margin: 0 auto; max-width: 60rem; font-size: 0.7rem; opacity: 0.6; text-align: center; pointer-events: none; }

@@ -1,0 +1,76 @@
+import type { Rarity } from '../data/items';
+
+/**
+ * Design tokens of the Mystery Dungeon-inspired UI, the one place colours,
+ * the font and sizes are defined. The DOM gets them as CSS custom properties
+ * (`applyTokens`, read by the styles in index.html); the canvas HUD imports
+ * them directly. Original palette: deep blue windows with a pale border, a
+ * gold cursor and the red of the eclipse as the accent.
+ */
+export const PALETTE = {
+  /** Page background and the darkest outline. */
+  ink: '#05060d',
+  /** Window fill gradient, top to bottom. */
+  windowTop: '#2b4b93',
+  windowBottom: '#0f1a45',
+  /** Window border and its inner shade line. */
+  border: '#e9eefc',
+  borderShade: '#6f86c6',
+  text: '#f5f7ff',
+  textDim: '#aab6dc',
+  disabled: '#5e6890',
+  /** Cursor ▶ and highlighted values. */
+  cursor: '#ffd447',
+  /** Eclipse red: titles, warnings, the title backdrop. */
+  eclipse: '#e8283a',
+  eclipseGlow: '#ff6a3d',
+  danger: '#ff6b5e',
+  good: '#7fe08a',
+  hp: '#5fd36a',
+  hpLow: '#ff5a4f',
+  stamina: '#ffcf4a',
+  xp: '#7fd8ff',
+  /** Empty part of a bar. */
+  barBack: '#1a1f3c',
+} as const;
+
+export const RARITY: Record<Rarity, string> = { common: '#c9d2ee', uncommon: '#5ab0ff', rare: '#ffd447' };
+
+/**
+ * Pixelify Sans (SIL OFL 1.1, public/fonts). Its pixel is about 1/11 em, so
+ * sizes in multiples of 11 px keep the glyph pixels whole.
+ */
+export const FONT = {
+  family: 'Pixelify Sans',
+  stack: '"Pixelify Sans", ui-monospace, monospace',
+  /** Canvas HUD text, in view pixels (the canvas scale multiplies it). */
+  hudPx: 11,
+  /** DOM sizes, px. */
+  bodyPx: 22,
+  headingPx: 33,
+  titlePx: 66,
+} as const;
+
+/** Window open animation and cursor bob, ms. */
+export const MOTION = { openMs: 120, bobMs: 600 } as const;
+
+const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
+/** Every token as a CSS custom property (`--md-window-top`, `--md-rarity-rare`, ...). */
+export function cssVariables(): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [name, value] of Object.entries(PALETTE)) vars[`--md-${kebab(name)}`] = value;
+  for (const [name, value] of Object.entries(RARITY)) vars[`--md-rarity-${name}`] = value;
+  vars['--md-font'] = FONT.stack;
+  vars['--md-body'] = `${FONT.bodyPx}px`;
+  vars['--md-heading'] = `${FONT.headingPx}px`;
+  vars['--md-title'] = `${FONT.titlePx}px`;
+  vars['--md-open-ms'] = `${MOTION.openMs}ms`;
+  vars['--md-bob-ms'] = `${MOTION.bobMs}ms`;
+  return vars;
+}
+
+/** Writes the tokens onto an element (the document root) so the stylesheet can use them. */
+export function applyTokens(target: HTMLElement): void {
+  for (const [name, value] of Object.entries(cssVariables())) target.style.setProperty(name, value);
+}
