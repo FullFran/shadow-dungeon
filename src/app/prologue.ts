@@ -86,6 +86,16 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   skip.addEventListener('click', () => {
     if (skipAvailable(elapsed)) finish();
   });
+  // Touch: holding a finger anywhere on the picture is the held skip key (the same progress bar).
+  element.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || e.target === skip || pressedAt !== null || !skipAvailable(elapsed)) return;
+    pressedAt = performance.now();
+  });
+  const letGo = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') pressedAt = null;
+  };
+  element.addEventListener('pointerup', letGo);
+  element.addEventListener('pointercancel', letGo);
 
   const renderText = (index: number, localMs: number, alpha: number) => {
     const panel = PROLOGUE[index]!;
