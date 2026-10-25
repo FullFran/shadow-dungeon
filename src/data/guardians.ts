@@ -24,4 +24,5 @@ export const GUARDIANS: Partial<Record<SpeciesId, GuardianLore>> = {
   aegislash: lore('aegislash'),
   decidueye: lore('decidueye'),
   dhelmise: lore('dhelmise'),
+  nihilego: lore('nihilego'),
 };

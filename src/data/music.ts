@@ -9,10 +9,10 @@ import type { MusicId } from './audio';
  * The audio adapter loads a track the first time its context plays and falls
  * back to the procedural chiptune (`fallback`) when the file cannot be used.
  */
-export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat' | 'forest' | 'forest-fog' | 'forest-guardian' | 'caves' | 'caves-flood' | 'caves-guardian';
+export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat' | 'forest' | 'forest-fog' | 'forest-guardian' | 'caves' | 'caves-flood' | 'caves-guardian' | 'swamp';
 
 /** Contexts with a planned track but no file yet (later milestones). */
-export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma' | 'swamp';
+export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma';
 
 export type MusicLicense = 'CC0 1.0' | 'CC BY 3.0' | 'CC BY 4.0';
 
@@ -294,6 +294,25 @@ export const MUSIC_TRACKS: Record<MusicContext, LicensedTrack> = {
     attribution: '"Fairy Boss Battles" by MintoDog (CC0)',
     changes: `FLAC master; the whole file loops, its first 2.0 s appended once more and the loop set to 1.0-104.784 s (a rotation of the same loop) so the codecs do not smear the seam; loudness-normalised to -18 LUFS (-7.3 dB linear gain). ${COMMON}`,
   },
+  swamp: {
+    context: 'swamp',
+    file: 'swamp-theme',
+    duration: 17.25551,
+    loop: true,
+    // The master (672768 samples) loops whole; the file carries its first 2 s again so the seam sits inside the codec stream.
+    loopStart: 1,
+    loopEnd: 16.25551,
+    gain: 1,
+    lufs: -18,
+    fallback: 'room',
+    title: 'Swamp Theme Loop',
+    artist: 'beardalaxy',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/node/165341',
+    attribution: '"Swamp Theme Loop" by beardalaxy (CC0)',
+    changes: `The whole file loops (seam ratio 0.26/0.41 at the wrap); its first 2.0 s appended once more and the loop set to 1.0-16.256 s (a rotation of the same loop) so the codecs do not smear the seam; loudness-normalised to -18 LUFS (-0.1 dB linear gain). ${COMMON}`,
+  },
 };
 
 export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
@@ -330,13 +349,5 @@ export const PLANNED_MUSIC: readonly PlannedTrack[] = [
     license: 'CC0 1.0',
     sourceUrl: 'https://opengameart.org/content/boss-battle-music',
     notes: 'In-fight loop; "Final Battle of the Dark Wizards" (Kevin MacLeod, CC BY 4.0) for phase 1 or a cutscene.',
-  },
-  {
-    context: 'swamp',
-    title: 'Swamp Theme Loop',
-    artist: 'beardalaxy',
-    license: 'CC0 1.0',
-    sourceUrl: 'https://opengameart.org/node/165341',
-    notes: 'Layer over "Swamp Environment Audio" by LokiF (CC0, https://opengameart.org/content/swamp-environment-audio).',
   },
 ];

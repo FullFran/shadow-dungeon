@@ -12,7 +12,7 @@ import { TOWN, type GroundSheet, type NpcSpecies, type TownNpc, type TownProp } 
  * `to`/`toLink` arrives one tile inside link `toLink` of map `to`, whose own
  * `to`/`toLink` point back at `M`/`A` (tests/town/world.test.ts).
  */
-export type WorldMapId = 'refugio' | 'ruinas' | 'mirador' | 'crater' | 'lago';
+export type WorldMapId = 'refugio' | 'ruinas' | 'mirador' | 'crater' | 'lago' | 'cienaga';
 
 /**
  * The endless dungeon under the crater, the Sima del Eclipse: its id comes
@@ -290,6 +290,8 @@ export const LAGO: WorldMap = {
     [',', 10, 7, 8, 9],
     [',', 21, 13, 4, 1],
     ['=', 23, 5, 2, 8],
+    // The way east to the Ciénaga: a gap in the treeline by the shore.
+    ['.', 34, 18, 2, 2],
   ]),
   props: [
     { kind: 'house-big', x: 3, y: 2 },
@@ -312,7 +314,10 @@ export const LAGO: WorldMap = {
     { id: 'keeper', role: 'keeper', species: 'litwick', x: 16, y: 9, lines: ['world.npc.keeper.1', 'world.npc.keeper.2', 'world.npc.keeper.3', 'world.npc.keeper.4'], rotate: true },
     { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.1', 'town.soon', 'world.npc.oracle.2'] },
   ],
-  links: [{ id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' }],
+  links: [
+    { id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' },
+    { id: 'east', x: 35, y: 18, width: 1, height: 2, to: 'cienaga', toLink: 'west' },
+  ],
   // The Flooded Caves: a sunken stair going down into the black water at the far end of the pier.
   entrances: [{ dungeon: 'flooded-caves', nameKey: 'dungeon.caves.name', x: 23, y: 6, width: 2, height: 1, back: { x: 23, y: 8 } }],
   lore: [{ id: 'idol', nameKey: 'world.lore.idol.name', x: 20, y: 16.5, lines: [{ key: 'world.lore.idol.1' }, { key: 'world.lore.idol.2', after: CRYPT }, { key: 'world.lore.idol.3', after: FOREST }] }],
@@ -320,6 +325,67 @@ export const LAGO: WorldMap = {
   look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1, fog: 0.8, birds: 1 },
 };
 
-export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO };
+const SWAMP = 'toxic-swamp';
+const CAVES = 'flooded-caves';
+
+/**
+ * Ciénaga del Cielo Roto: the drowned land east of the Black Lake, where the
+ * eclipse's light first fell. Black pools, dead trees, a fallen crystal that
+ * hums, and the mouth of the Toxic Swamp between two broken pillars; a
+ * Croagunk hermit lives by the path.
+ */
+export const CIENAGA: WorldMap = {
+  id: 'cienaga',
+  nameKey: 'world.map.cienaga',
+  rows: paintRows(40, 24, '.', [
+    ['F', 0, 0, 40, 2],
+    ['F', 0, 22, 40, 2],
+    ['F', 0, 0, 2, 24],
+    ['F', 38, 0, 2, 24],
+    ['F', 2, 2, 3, 3],
+    ['F', 34, 19, 4, 3],
+    ['~', 5, 4, 7, 4],
+    ['~', 28, 4, 7, 4],
+    ['~', 8, 15, 7, 4],
+    ['~', 25, 13, 6, 4],
+    [',', 0, 11, 22, 2],
+    [',', 20, 5, 2, 6],
+    [',', 22, 11, 8, 2],
+  ]),
+  props: [
+    { kind: 'pillar-broken', x: 18, y: 2 },
+    { kind: 'pillar-broken', x: 23, y: 2 },
+    { kind: 'trunk', x: 14, y: 3 },
+    { kind: 'trunk', x: 26, y: 8 },
+    { kind: 'trunk', x: 4, y: 17 },
+    { kind: 'stump', x: 16, y: 9 },
+    { kind: 'stump', x: 33, y: 10 },
+    { kind: 'rubble', x: 13, y: 13 },
+    { kind: 'frog-idol', x: 6, y: 9 },
+    { kind: 'flat-rocks', x: 17, y: 16 },
+    { kind: 'statue', x: 34, y: 14 },
+    { kind: 'bush', x: 24, y: 18 },
+    { kind: 'big-bush', x: 30, y: 18 },
+  ],
+  npcs: [{ id: 'hermit', role: 'hermit', species: 'croagunk', x: 12, y: 10, lines: ['world.npc.hermit.1', 'world.npc.hermit.2', 'world.npc.hermit.3'], rotate: true }],
+  links: [{ id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'lago', toLink: 'east' }],
+  entrances: [{ dungeon: SWAMP, nameKey: 'world.map.cienaga', x: 20, y: 4, width: 2, height: 1, back: { x: 20, y: 7 } }],
+  lore: [
+    {
+      id: 'crystal',
+      nameKey: 'world.lore.crystal.name',
+      x: 35,
+      y: 17.5,
+      lines: [{ key: 'world.lore.crystal.1' }, { key: 'world.lore.crystal.2', after: CAVES }, { key: 'world.lore.crystal.3', after: SWAMP }],
+    },
+  ],
+  wanderers: [
+    { id: 'mire-skrelp', species: 'skrelp', x: 22, y: 19, radius: 2 },
+    { id: 'mire-venipede', species: 'venipede', x: 30, y: 10, radius: 3 },
+  ],
+  look: { ground: 'dark', tint: ['#9fb888', '#3e3a58'], eclipse: 1.6, fog: 0.9 },
+};
+
+export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO, cienaga: CIENAGA };
 
 export const HUB: WorldMapId = 'refugio';

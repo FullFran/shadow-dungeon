@@ -2,6 +2,7 @@ import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../d
 import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from '../core/difficulty';
 import { pierceZone, type PierceZone } from '../core/victim';
+import { behaviourFor } from '../core/tricks';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
 import { FOG } from '../data/dungeon';
@@ -33,6 +34,8 @@ import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState 
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
+import { rollReach } from '../core/swamp-brains';
+import { drawQueenTelegraph, drawUltraTelegraph } from './swamp-telegraphs';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
@@ -40,6 +43,7 @@ import { forestDecor, wispGuide, type Firefly, type ForestDecor } from './forest
 import { arenaFireflies, drawForestAir, drawForestArena, drawForestFloorDecor, drawForestTree, drawWisp } from './forest-draw';
 import { tileDistances } from '../core/dungeon';
 import { cacheLeft } from '../core/wisp';
+import { drawDeadTree, drawGas, drawPool, drawReeds, drawSpores, drawSwampArena, drawSwampBlock, drawToxicMist, swampDecor, type SwampDecor } from './swamp-decor';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -426,6 +430,21 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     drawWisp(ctx, at, timeMs, at === state.wisp.cache);
   }
 
+  /** Swamp decoration of a generated floor, worked out once per floor. */
+  const swampOf = new WeakMap<TileGrid, SwampDecor>();
+  function swampFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = swampOf.get(grid);
+    if (!decor) {
+      const stairs = state.arena.stairs ? tileOf({ x: state.arena.stairs.x + 1, y: state.arena.stairs.y + 1 }) : undefined;
+      decor = swampDecor({ ...grid, rooms: state.arena.rooms ?? [], ...(stairs ? { stairs } : {}) });
+      swampOf.set(grid, decor);
+    }
+    const visible = (x: number, y: number) => x * TILE + TILE >= view.x && x * TILE <= view.x + view.width && y * TILE + TILE >= view.y && y * TILE <= view.y + view.height + TILE;
+    for (const r of decor.reeds) if (visible(r.x, r.y)) drawReeds(ctx, r.x * TILE, r.y * TILE, decorHash(r.x, r.y, 24));
+    for (const t of decor.trees) if (visible(t.x, t.y)) drawDeadTree(ctx, t.x * TILE, t.y * TILE, decorHash(t.x, t.y, 22), timeMs);
+  }
+
   function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
@@ -435,6 +454,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       if (decor === 'forest') drawForestFloorDecor(ctx, forestFloor(state), view, timeMs, fallenAt(state));
       if (decor === 'caves') caveFloorDecor(state, view, timeMs);
+      if (decor === 'swamp') swampFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -456,6 +476,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (decor === 'crypt') cryptArena(width, height, timeMs);
     if (decor === 'forest') drawForestArena(ctx, width, height, timeMs);
     if (decor === 'caves') cavesArena(ctx, width, height, timeMs);
+    if (decor === 'swamp') drawSwampArena(ctx, width, height);
   }
 
   /** Caves decoration of a generated floor: pools (deep at the rock), crystals and drops; placement worked out once per floor. */
@@ -531,6 +552,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function pillar(rect: Obstacle, decor: Decor, timeMs: number): Drawable {
     const lift = 18;
+    if (decor === 'swamp') return { y: rect.y + rect.height, draw: () => drawSwampBlock(ctx, rect, timeMs) };
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     // The forest's arenas: old trees (the roost's thick ones stop arrows).
     if (decor === 'forest') return { y: rect.y + rect.height, draw: () => drawForestTree(ctx, rect, lift, rect.cover === true) };
@@ -631,6 +653,20 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function pierceMark(enemy: EnemyState, pos: Vec2, zone: PierceZone, timeMs: number): void {
     const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
     ctx.save();
+    if (zone.kind === 'pockets') {
+      // Everything but the pockets is struck: their edges get the double border (walk into one).
+      for (const at of zone.centers) {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.4 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(at.x, at.y, zone.radius - 1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
+        ctx.beginPath();
+        ctx.arc(at.x, at.y, zone.radius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
     if (zone.kind === 'circle' || zone.kind === 'shape' || zone.kind === 'mark') {
       const radius = zone.kind === 'shape' ? enemy.radius + 12 : zone.radius;
       // A mark sits away from the enemy (where the riptide surfaces); circles and shapes around it.
@@ -684,7 +720,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const progress = ai.modeDurationMs > 0 ? ai.modeMs / ai.modeDurationMs : 1;
     const winding = ai.mode === 'telegraph';
     const striking = ai.mode === 'attack';
-    const zone = pierceZone(enemy, currentTier);
+    const zone = pierceZone(enemy, currentTier, currentArena ?? undefined);
     if (zone) pierceMark(enemy, pos, zone, timeMs);
     if (enemy.boss && enemy.boss.stance === 'shield' && ai.mode !== 'transform') {
       ctx.strokeStyle = COLORS.guard;
@@ -695,9 +731,16 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 8, angle - half, angle + half);
       ctx.stroke();
     }
-    const def = ENEMY_BEHAVIOUR[enemy.species];
+    // The behaviour at the world's tier, so the wind-ups show the tier's extra arms, waves and rings.
+    const def = behaviourFor(enemy.species, currentTier);
     if (def?.kind === 'danmaku') {
       if (currentArena) drawDanmaku(ctx, enemy, def, pos, currentArena, currentTimeMs);
+      return;
+    }
+    if (def?.kind === 'queen' || def?.kind === 'ultra') {
+      const arena = currentArena ?? { width: 0, height: 0 };
+      if (def.kind === 'queen') drawQueenTelegraph(ctx, enemy, def, arena, pos, currentTimeMs);
+      else drawUltraTelegraph(ctx, enemy, def, arena, pos, currentTimeMs);
       return;
     }
     if (ai.mode === 'transform' && def?.kind === 'boss') {
@@ -770,6 +813,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const locked = lockedFor(def.lockMs) || (striking && def.lockMs !== undefined);
       groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
       ctx.globalAlpha = 1;
+    } else if (def?.kind === 'roller' || def?.kind === 'dasher') {
+      // Venipede's roll and Salandit's dash: the lane turns solid once the aim locks.
+      const locked = lockedFor(def.lockMs) || (striking && def.kind === 'dasher');
+      const reach = def.kind === 'roller' ? rollReach(def) : def.dashDistance;
+      if (winding || def.kind === 'dasher') groundLane(pos, ai.attackDir, reach, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'sniper') {
+      // Skrelp's ink line: thin and long, solid once locked.
+      if (winding) groundLane(pos, ai.attackDir, 340, lockedFor(def.lockMs) ? 4 : 2, lockedFor(def.lockMs) ? COLORS.strike : fill, progress);
     } else if (def?.kind === 'beam') {
       const locked = lockedFor(def.lockMs) || striking;
       groundLane(pos, ai.attackDir, def.length, def.width, locked ? COLORS.strike : fill, winding ? progress : 1);
@@ -1153,6 +1204,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     // Inundación: the rising water lies over the floor, under everyone.
     if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
+    for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
@@ -1180,7 +1232,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // (Sableye blinking out works the same way.)
           const danmaku = ENEMY_BEHAVIOUR[enemy.species];
           const sinking = danmaku?.kind === 'danmaku' && danmakuSinking(enemy, danmaku);
-          const vanishing = enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || sinking);
+          // Dhelmise sinks before the riptide; Nihilego vanishes into its wormhole while it is marked.
+          const wormhole = kind === 'ultra' && enemy.ai.mode === 'telegraph' && enemy.boss?.stance === 'wormhole';
+          const vanishing = enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || sinking || wormhole);
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },
@@ -1232,6 +1286,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
+    if (current.gas && current.arena.tiles) drawGas(ctx, current.arena.tiles, current.gas, view, timeMs);
+    if (frame.decor === 'swamp') {
+      drawToxicMist(ctx, view, timeMs);
+      drawSpores(ctx, view, timeMs);
+    }
 
     // Screen space: slow-mo tint and HUD.
     ctx.setTransform(1, 0, 0, 1, 0, 0);

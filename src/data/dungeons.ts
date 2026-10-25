@@ -12,7 +12,7 @@ import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
  * music of each kind of floor, the colours of its tiles and what unlocks it.
  * The run (core/run.ts) reads everything from here.
  */
-export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm' | 'flooded-caves';
+export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm' | 'toxic-swamp' | 'flooded-caves';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -61,12 +61,14 @@ export interface DungeonDef {
   unlockedBy: DungeonId | null;
   /** The endless dungeon only: no last floor, guardian echoes and the run clock (data/endless.ts); its `plan` is empty. */
   endless?: EndlessDef;
-  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers, the Forest's roots, mushrooms and mist, the caves' water and crystals. */
-  decor?: 'crypt' | 'forest' | 'caves';
+  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers, the Forest's roots, mushrooms and mist, the caves' water and crystals, the swamp's sludge, dead trees and spores. */
+  decor?: 'crypt' | 'forest' | 'caves' | 'swamp';
   /** The Forest's event: on some generated floors a spirit light leads to a hidden berry cache (core/wisp.ts). */
   wisp?: WispDef;
   /** Shallow water pools on its generated floors (core/water.ts): they slow non-Water walkers. */
   water?: WaterTuning;
+  /** Toxic pools on its generated floors (core/toxic.ts): the Toxic Swamp. */
+  toxicPools?: true;
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -83,7 +85,7 @@ export const CRYPT: DungeonDef = {
   plan: RUN_PLAN,
   spawns: CRYPT_SPAWNS,
   urgent: [{ kind: 'collapse', chance: URGENT.collapseChance }],
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt', flood: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt', flood: 'crypt', gas: 'collapse' }, midboss: 'guardian', guardian: 'guardian' },
   // Cold grey-violet stone; the candles and braziers bring the only warm light.
   palette: {
     tileFloorA: '#2a2731',
@@ -149,7 +151,7 @@ export const FOREST: DungeonDef = {
     { kind: 'fog', chance: [0, 0.3, 0.35, 0, 0.4, 0.45, 0.5] },
     { kind: 'collapse', chance: [0, 0, 0.1, 0, 0.1, 0.15, 0.15] },
   ],
-  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'forest' }, midboss: 'guardian', guardian: 'forest-guardian' },
+  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'forest', gas: 'collapse' }, midboss: 'guardian', guardian: 'forest-guardian' },
   palette: {
     tileFloorA: '#2c3b2d',
     tileFloorB: '#304131',
@@ -216,7 +218,7 @@ export const CAVES: DungeonDef = {
     { kind: 'flood', chance: [0, 0.25, 0.3, 0.35, 0, 0.35, 0.4, 0.45, 0.5] },
     { kind: 'collapse', chance: [0, 0, 0, 0.08, 0, 0.1, 0.1, 0.12, 0.12] },
   ],
-  music: { floor: 'caves', urgent: { collapse: 'collapse', fog: 'caves', flood: 'caves-flood' }, midboss: 'guardian', guardian: 'caves-guardian' },
+  music: { floor: 'caves', urgent: { collapse: 'collapse', fog: 'caves', flood: 'caves-flood', gas: 'collapse' }, midboss: 'guardian', guardian: 'caves-guardian' },
   // Deep blue-teal stone, wet and dark; the crystals bring the only light.
   palette: {
     tileFloorA: '#1f2c38',
@@ -238,6 +240,74 @@ export const CAVES: DungeonDef = {
   water: { poolChance: 0.55 },
 };
 
+/**
+ * The Toxic Swamp (Pantano Tóxico), opened by clearing the Flooded Caves:
+ * ten floors (provisional), Salazzle's den on floor 5 and Nihilego on 10.
+ * The roster's poison species finally have a home here, with Venipede
+ * packs, Salandit and Skrelp; toxic pools poison the careless on every
+ * generated floor. Its urgent floor is the gas (Gas tóxico); a sinking
+ * floor (the collapse) is rarer.
+ */
+export const SWAMP: DungeonDef = {
+  id: 'toxic-swamp',
+  lore: loreOf('toxic-swamp'),
+  plan: [
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'den', role: 'midboss' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'rift' },
+  ],
+  spawns: {
+    base: 1,
+    perDepth: 0.4,
+    jitter: 1,
+    maxPerRoom: 5,
+    // Weights by floor 1..9 (floor 5 is the den; its entry keeps the tables aligned).
+    pool: [
+      { species: 'venipede', weights: [3, 3, 2, 2, 0, 2, 2, 2, 2], pack: 3 },
+      { species: 'stunky', weights: [2, 2, 2, 1, 0, 1, 1, 1, 1], pack: 2 },
+      { species: 'ekans', weights: [2, 2, 2, 2, 0, 2, 2, 2, 2] },
+      { species: 'tentacool', weights: [1, 1, 1, 1, 0, 1, 1, 1, 1] },
+      { species: 'skrelp', weights: [1, 1, 2, 2, 0, 2, 2, 2, 2] },
+      { species: 'salandit', weights: [0, 1, 1, 2, 0, 2, 2, 3, 3] },
+      { species: 'koffing', weights: [0, 1, 1, 1, 0, 2, 2, 2, 2] },
+      { species: 'grimer', weights: [0, 0, 1, 1, 0, 1, 2, 2, 2] },
+      { species: 'croagunk', weights: [0, 0, 0, 1, 0, 1, 1, 2, 2] },
+    ],
+  },
+  urgent: [
+    { kind: 'gas', chance: [0, 0.25, 0.3, 0.35, 0, 0.35, 0.4, 0.45, 0.45] },
+    { kind: 'collapse', chance: [0, 0, 0.08, 0.1, 0, 0.1, 0.1, 0.12, 0.12] },
+  ],
+  // Salazzle on the 16-bit battle theme like the other mid-bosses; Nihilego on the symphonic-metal theme (reused, see licensed-music).
+  music: { floor: 'swamp', urgent: { collapse: 'collapse', fog: 'swamp', flood: 'swamp', gas: 'collapse' }, midboss: 'guardian', guardian: 'forest-guardian' },
+  // Murky moss and black-green water; the sludge and the spores glow.
+  palette: {
+    tileFloorA: '#273024',
+    tileFloorB: '#2b3527',
+    tileWallTop: '#0c120d',
+    tileWallBlock: '#131c14',
+    tileWallFace: '#2c3a26',
+    tileWallLip: '#4d6236',
+    mapRim: '#4a5e34',
+    floorA: '#1b2219',
+    floorB: '#1f271c',
+    wall: '#060906',
+    wallEdge: '#3c4e2c',
+    pillarTop: '#5b6e72',
+    pillarSide: '#2e3a3e',
+  },
+  unlockedBy: 'flooded-caves',
+  decor: 'swamp',
+  toxicPools: true,
+};
+
 /** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */
 const endlessUrgent = (endless: EndlessDef, floors = 40): UrgentChance[] =>
   endless.urgent.map((u) => ({
@@ -256,7 +326,7 @@ export const ECLIPSE: DungeonDef = {
   plan: [],
   spawns: { ...ENDLESS.spawns, pool: [] },
   urgent: endlessUrgent(ENDLESS),
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'crypt', gas: 'collapse' }, midboss: 'guardian', guardian: 'guardian' },
   palette: {
     tileFloorA: '#2a2030',
     tileFloorB: '#30233a',
@@ -277,7 +347,7 @@ export const ECLIPSE: DungeonDef = {
 };
 
 /** Every dungeon, in the order the dungeon select lists them. */
-export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST, CAVES, ECLIPSE];
+export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST, CAVES, SWAMP, ECLIPSE];
 
 const GENERATED: FloorPlan = { kind: 'generated' };
 

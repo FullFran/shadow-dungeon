@@ -1,6 +1,7 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { AegislashCard, ArcherCard, DanmakuCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
+import type { QueenCard, UltraCard } from '../data/swamp-enemies';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
 import type { PassiveId, SpeciesId } from '../data/species';
@@ -8,6 +9,8 @@ import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
 import type { FloodState } from './flood';
+import type { GasState } from './gas';
+import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -158,6 +161,8 @@ export interface PlayerState {
   rollTier?: { iframesEndMs: number; staminaCost: number };
   /** A held item Sableye took (stolen.ts): out of `items` until it comes back. */
   stolen?: StolenItem;
+  /** Poisoned by a Toxic Swamp pool (toxic.ts); absent = not poisoned. */
+  poison?: PoisonState;
 }
 
 export interface StolenItem {
@@ -195,7 +200,7 @@ export interface EnemyState {
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | 'slam';
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | 'slam';
 
 export interface BossState {
   stance: BossStance;
@@ -327,6 +332,8 @@ export type GameEvent =
   | { type: 'levelUp'; level: number }
   /** The floor hurt the player: collapsed ground, or the closed fog's chill (not an attack: no dodge, no Disguise). */
   | { type: 'collapseHurt'; damage: number }
+  /** The local player waded into a toxic pool and is poisoned (toxic.ts). */
+  | { type: 'poisoned' }
   /** `pierceRoll`: a positional attack is winding up (its own warning sound: walk out of it). */
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number; pierceRoll?: true }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
@@ -419,6 +426,10 @@ export interface WorldState {
   fog?: FogState;
   /** Flood urgent floors (Inundación): the rising water (flood.ts). */
   flood?: FloodState;
+  /** Gas urgent floors (Gas tóxico): the spreading cloud (gas.ts). */
+  gas?: GasState;
+  /** Toxic Swamp floors: the pools that poison on contact (toxic.ts). */
+  pools?: readonly ToxicPool[];
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
   /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */

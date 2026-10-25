@@ -84,4 +84,10 @@ export const SPRITE_KEYS = {
   remoraid: '0223/0000',
   lanturn: '0171/0000',
   dhelmise: '0781/0000',
+  // Toxic Swamp.
+  venipede: '0543/0000',
+  salandit: '0757/0000',
+  skrelp: '0690/0000',
+  salazzle: '0758/0000',
+  nihilego: '0793/0000',
 } as const;

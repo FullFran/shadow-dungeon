@@ -61,4 +61,6 @@ export const GUARDIAN_CINEMATICS: Partial<Record<SpeciesId, GuardianCinematic>> 
   aegislash: cinematic('aegislash', { sky: '#07050b', ground: '#140c16', rim: '#c8344c', mist: false }),
   decidueye: cinematic('decidueye', { sky: '#040906', ground: '#0b150e', rim: '#86d68f', mist: true }),
   dhelmise: cinematic('dhelmise', { sky: '#03070c', ground: '#081420', rim: '#5fc8e8', mist: true }),
+  // The rift: a violet wound in a black sky over green-black water.
+  nihilego: cinematic('nihilego', { sky: '#07040d', ground: '#0c140d', rim: '#c49cff', mist: true }),
 };

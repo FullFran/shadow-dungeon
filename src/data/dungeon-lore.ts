@@ -36,6 +36,13 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     floorKeys: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((floor) => `dungeon.caves.floor.${floor}`),
   },
   {
+    id: 'toxic-swamp',
+    nameKey: 'dungeon.swamp.name',
+    subtitleKey: 'dungeon.swamp.subtitle',
+    loreKeys: ['dungeon.swamp.lore.1', 'dungeon.swamp.lore.2'],
+    floorKeys: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((floor) => `dungeon.swamp.floor.${floor}`),
+  },
+  {
     id: 'eclipse-chasm',
     nameKey: 'dungeon.eclipse.name',
     subtitleKey: 'dungeon.eclipse.subtitle',

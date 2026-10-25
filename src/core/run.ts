@@ -6,6 +6,7 @@ import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { shallowWater } from './water';
+import { placePools } from './toxic';
 import { generateFloor } from './dungeon';
 import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
@@ -122,7 +123,9 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   // The caves lay shallow pools over their floors (seeded by the floor, the same on every peer).
   const water = dungeonOf(run).water;
   const arena = water ? { ...loaded.arena, water: shallowWater(floor, water) } : loaded.arena;
-  return wisp ? { ...loaded, arena, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, arena, berries };
+  const placed = wisp ? { ...loaded, arena, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, arena, berries };
+  // The Toxic Swamp's pools come from the floor seed too, so every peer places the same ones.
+  return dungeonOf(run).toxicPools ? { ...placed, pools: placePools(floor, seed) } : placed;
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

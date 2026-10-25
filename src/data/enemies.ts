@@ -1,6 +1,7 @@
 import type { Difficulty } from './difficulty';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
+import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
 
 /**
  * Enemy behaviour tuning (docs/gdd.md §4, "Contenido del primer prototipo").
@@ -1497,7 +1498,9 @@ export const DHELMISE: DanmakuDef = {
 };
 
 
-export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef;
+/** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
+export type SwampDef = RollerDef | DasherDef | SniperDef | QueenDef | UltraDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1538,6 +1541,11 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   shellos: SHELLOS,
   lanturn: LANTURN,
   dhelmise: DHELMISE,
+  venipede: VENIPEDE,
+  salandit: SALANDIT,
+  skrelp: SKRELP,
+  salazzle: SALAZZLE,
+  nihilego: NIHILEGO,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */

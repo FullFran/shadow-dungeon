@@ -9,7 +9,9 @@ import { stealItem } from './stolen';
 import { burstActive, burstTouches } from './thief';
 import { cardDef, danmakuMelee } from './danmaku';
 import { behaviourFor } from './tricks';
-import type { EnemyState, GameEvent, WorldState } from './state';
+import { isSwampDef, swampAttack } from './swamp-brains';
+import { floodPockets, hazePockets } from './swamp-bosses';
+import type { Arena, EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
 /**
@@ -64,8 +66,10 @@ export type PierceZone =
   | { kind: 'wall' }
   | { kind: 'shape' }
   | { kind: 'lanes' }
-  /** A marked circle away from the enemy (Dhelmise's riptide: where it will surface). */
-  | { kind: 'mark'; center: Vec2; radius: number };
+  /** A marked circle away from the enemy (Dhelmise's riptide: where it will surface; Nihilego's wormhole mouth). */
+  | { kind: 'mark'; center: Vec2; radius: number }
+  /** The whole arena but a few safe pockets (Salazzle's haze, Nihilego's flood): the edges mark the pockets to walk into. */
+  | { kind: 'pockets'; centers: readonly Vec2[]; radius: number };
 
 /**
  * The positional attack this enemy is winding up (or throwing) at tier `d`,
@@ -73,7 +77,7 @@ export type PierceZone =
  * Sableye's gem burst, Trevenant's roots and Decidueye's arrow rain, and any
  * other enemy whose attack data says `pierceRoll`.
  */
-export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null {
+export function pierceZone(enemy: EnemyState, d: Difficulty, arena: Pick<Arena, 'width' | 'height'> = { width: 0, height: 0 }): PierceZone | null {
   const def = ENEMY_BEHAVIOUR[enemy.species];
   const live = enemy.alive && (enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack');
   if (!def || !live) return null;
@@ -91,6 +95,13 @@ export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null 
     const p = stance ? cardDef(behaviourFor(enemy.species, d) as typeof def, stance)?.pattern : undefined;
     if (p?.kind === 'sweep') return p.attack.pierceRoll ? { kind: 'circle', radius: p.radius } : null;
     if (p?.kind === 'zone' && p.attack.pierceRoll) return p.at === 'self' ? { kind: 'circle', radius: p.radius } : { kind: 'mark', center: enemy.ai.aimPoint ?? enemy.pos, radius: p.radius };
+    return null;
+  }
+  // The swamp's bosses: the haze and the flood leave pockets (they need the arena); the wormhole bites around its mouth.
+  if (def.kind === 'queen') return stance === 'haze' && enemy.ai.aimPoint && def.haze.attack.pierceRoll ? { kind: 'pockets', centers: hazePockets(arena, enemy.ai.aimPoint), radius: def.haze.pocketRadius } : null;
+  if (def.kind === 'ultra') {
+    if (stance === 'flood' && enemy.ai.aimPoint && def.flood.attack.pierceRoll) return { kind: 'pockets', centers: floodPockets(arena, enemy.ai.aimPoint), radius: def.flood.pocketRadius };
+    if (stance === 'wormhole' && def.wormhole.attack.pierceRoll) return { kind: 'mark', center: enemy.ai.mode === 'telegraph' ? (enemy.ai.aimPoint ?? enemy.pos) : enemy.pos, radius: def.wormhole.radius };
     return null;
   }
   if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
@@ -138,6 +149,10 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     } else if (def.kind === 'danmaku') {
       // Only the anchor sweep and the bursting zones touch; bubbles, sparks and kelp are projectiles.
       const active = danmakuMelee(enemy, behaviourFor(enemy.species, worldDifficulty(current)) as typeof def, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (isSwampDef(def)) {
+      const active = swampAttack(current.arena, enemy, behaviourFor(enemy.species, worldDifficulty(current)) as typeof def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (isRosterDef(def)) {

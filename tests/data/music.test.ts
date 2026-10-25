@@ -9,7 +9,7 @@ const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
 describe('licensed music manifest', () => {
   it('has one track per used context', () => {
-    expect([...MUSIC_CONTEXTS].sort()).toEqual(['caves', 'caves-flood', 'caves-guardian', 'collapse', 'crypt', 'defeat', 'forest', 'forest-fog', 'forest-guardian', 'guardian', 'title', 'victory']);
+    expect([...MUSIC_CONTEXTS].sort()).toEqual(['caves', 'caves-flood', 'caves-guardian', 'collapse', 'crypt', 'defeat', 'forest', 'forest-fog', 'forest-guardian', 'guardian', 'swamp', 'title', 'victory']);
     for (const context of MUSIC_CONTEXTS) expect(MUSIC_TRACKS[context].context).toBe(context);
   });
 
@@ -107,6 +107,15 @@ describe('licensed music manifest', () => {
   });
 
   it('records a planned pick for every later context', () => {
-    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['hub', 'necrozma', 'prologue', 'swamp']);
+    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['hub', 'necrozma', 'prologue']);
+  });
+
+  it('plays the Swamp Theme Loop (CC0) on the Toxic Swamp floors, a seamless whole-file loop', () => {
+    const swamp = MUSIC_TRACKS.swamp;
+    expect(swamp.license).toBe('CC0 1.0');
+    expect(swamp.artist).toBe('beardalaxy');
+    expect(swamp.loop).toBe(true);
+    expect(swamp.lufs).toBe(-18);
+    expect(swamp.loopEnd - swamp.loopStart).toBeCloseTo(672768 / 44100, 5);
   });
 });
