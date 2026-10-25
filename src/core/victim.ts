@@ -2,7 +2,11 @@ import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type SlammerDef, type Thief
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
 import { isRosterDef, rosterAttack } from './roster';
+import { bladeBlow, midnightAttack } from './boss';
+import { worldDifficulty } from './difficulty';
+import type { Difficulty } from '../data/difficulty';
 import { stealItem } from './stolen';
+import { burstActive, burstTouches } from './thief';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
@@ -45,11 +49,36 @@ export const bashTouches = (enemy: EnemyState, player: Vec2): boolean => distanc
 
 /** The current blow of Aegislash's blade combo: reach and arc along the committed attack direction. */
 export function bladeTouches(enemy: EnemyState, player: Vec2): boolean {
-  const blow = AEGISLASH.blade.combo[enemy.boss?.comboIndex ?? 0]!;
+  const blow = bladeBlow(enemy.boss?.comboIndex ?? 0);
   const offset = sub(player, enemy.pos);
   const reach = length(offset) <= blow.range + PLAYER_RADIUS;
   const inArc = length(offset) <= enemy.radius || angleBetween(enemy.ai.attackDir, offset) <= (blow.arcDegrees * DEG) / 2;
   return reach && inArc;
+}
+
+/** Where a positional (`pierceRoll`) wind-up will land, for its own telegraph: a circle around the enemy, a sweeping wall, or the attack's own shape. */
+export type PierceZone = { kind: 'circle'; radius: number } | { kind: 'wall' } | { kind: 'shape' };
+
+/**
+ * The positional attack this enemy is winding up (or throwing) at tier `d`,
+ * if any: Aegislash's Shadow and Judgement walls and (hard+) Midnight,
+ * Sableye's gem burst, and any other enemy whose attack data says `pierceRoll`.
+ */
+export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null {
+  const def = ENEMY_BEHAVIOUR[enemy.species];
+  const live = enemy.alive && (enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack');
+  if (!def || !live) return null;
+  const stance = enemy.boss?.stance;
+  if (def.kind === 'boss') {
+    if (stance === 'shadow' || stance === 'judgement') return def.phase2.shadow.sword.pierceRoll ? { kind: 'wall' } : null;
+    if (stance === 'midnight') return midnightAttack(def, d).pierceRoll ? { kind: 'circle', radius: def.phase2.midnight.radius } : null;
+    return null;
+  }
+  if (def.kind === 'thief') return stance === 'gems' && (enemy.ai.mode === 'telegraph' || burstActive(enemy, def)) && def.gems.burst.attack.pierceRoll ? { kind: 'circle', radius: def.gems.burst.radius } : null;
+  if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
+  if (def.kind === 'slammer') return def.attack.pierceRoll ? { kind: 'circle', radius: def.radius } : null;
+  if (def.kind === 'lunger') return def.attack.pierceRoll ? { kind: 'shape' } : null;
+  return null;
 }
 
 /**
@@ -67,7 +96,12 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
     else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slammerTouches(enemy, current.player.pos, def), events);
     else if (def.kind === 'thief') {
-      // Only the Glint slash touches (and steals); the gems are projectiles.
+      // The Glint slash touches (and steals), and the gem burst as the first ring leaves; the rings are projectiles.
+      if (burstActive(enemy, def)) {
+        hit = contactPlayer(current, enemy, def.gems.burst.attack, burstTouches(enemy, current.player.pos, def), events);
+        if (hit.contact !== enemy.ai.contact) current = replaceEnemy(hit.state, { ...enemy, ai: { ...enemy.ai, contact: hit.contact } });
+        continue;
+      }
       if (enemy.boss?.stance !== 'glint') continue;
       hit = contactPlayer(current, enemy, def.blink.attack, thiefTouches(enemy, current.player.pos, def), events);
       if (hit.contact === 'hit') hit = { ...hit, state: { ...hit.state, player: stealItem(hit.state.player, enemy.id, def.stealMs, events) } };
@@ -81,12 +115,12 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (enemy.boss?.stance === 'midnight') {
-      hit = contactPlayer(current, enemy, def.phase2.midnight.attack, slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
+      hit = contactPlayer(current, enemy, midnightAttack(def, worldDifficulty(current)), slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
     } else if (enemy.boss && enemy.boss.stance !== 'shield' && enemy.boss.stance !== 'blade') {
       // Oaths and Shadow only throw (projectiles); the unsheathing never attacks.
       continue;
     } else if (enemy.boss?.stance === 'blade') {
-      const blow = def.blade.combo[enemy.boss.comboIndex]!;
+      const blow = bladeBlow(enemy.boss.comboIndex, def);
       hit = contactPlayer(current, enemy, blow.attack, bladeTouches(enemy, current.player.pos), events);
     } else hit = contactPlayer(current, enemy, def.shield.bash, bashTouches(enemy, current.player.pos), events);
     if (hit.contact === enemy.ai.contact) continue;

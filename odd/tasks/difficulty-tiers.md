@@ -64,7 +64,16 @@ Elite traits (data-driven `ELITE_TRAIT_DEFS`, to unify with the Sima writer's el
   - Characterisation: a golden digest of 8 seeds x the six Crypt floors x 600 scripted steps recorded on main 043cb02 (`bebcc214`) equals the easy run; mutation (easy cooldown 0.99) fails it. Crypt only, so the other writers' content changes do not break it.
   - Existing tests changed on purpose: coins "multiplies by the difficulty" (easy is now the ×1 default), settings shape (+`difficulty`).
   - Evidence: tests written right after the code (no RED first); mutation checks instead (golden digest, pierceRoll rule removed fails 2 tests). `npm test` 110 files / 1045 tests passed; `npm run build` ok.
-- [ ] T2 Hard+ content (route: same)
+- [x] T2 Hard+ content (route: same; one writer, content and its brains are one coherent change)
+  - Data gates (`TierGate.minDifficulty`, data/enemies.ts), read in core with `atLeast(worldDifficulty(state), …)`:
+    - Aegislash: `blade.extraBlows` (hard: a fourth blow behind a delayed feint, 760 ms held wind-up, wide 200° cut, then the usual 1.4 s opening); `phase2.extraCards` (nightmare: Judgement, a Shadow wall from the far end then, after a 900 ms second wind-up, another from the other end with its gap moved away from the player; 1.8 s recovery); Midnight positional from hard (`pierceRollFrom`); the Shadow sword wall positional on every tier (user feedback: one positional attack for Aegislash on all tiers).
+    - Sableye: gem burst on every tier (positional, radius 64, active 160 ms as the first ring leaves; marked through the 900 ms wind-up plus the 450 ms blink to the middle); a fourth gem ring on hard; a fourth Glint on nightmare.
+    - Pawniard: a third cut on hard (380 ms re-aimed wind-up). Poochyena: pack howl on hard (500 ms harmless wind-up with a packmate within 220 px; packmates lunge at once). Duskull: twin wisps on hard (fan of 2 at 50°). Gastly: a second ball 200 ms into the cast on hard. Golett: a ring of 8 slow rubble shots with the slam on hard.
+    - Roster (Sima), 7 species: Zubat second swoop (320 ms), Ekans poison where the lunge ends, Corphish second jet (450 ms, re-locked lane), Chinchou second ring (500 ms), Houndour flamethrower that turns after the player (70°/s), Slugma second lob (450 ms, re-marked), Croagunk second Poison Jab (380 ms; never after the counter). Generic `repeat` (`RepeatDef`) and `again()` in roster.ts.
+  - Positional telegraph: `pierceZone` (core/victim.ts) names the area of any pierceRoll wind-up; the renderer draws a pulsing white and violet double border on it and a violet "!" diamond over the enemy (the Shadow and Judgement band gets a pulsing white and violet inner edge); the wind-up event plays `zoneWarning`.
+  - Guests: Sableye's burst, Midnight at the tier and the 4th blow's hitbox (`bladeBlow`) are victim-side too; no new snapshot fields (Judgement's lane and side ride on `boss.comboIndex` and `ai.attackDir`; `ai.chain` stays host-only).
+  - Decision: easy changes only by the two requested all-tier positional attacks (Shadow wall, Sableye burst); the golden digest still matches main (its scripted runs never trigger them).
+  - Evidence: `tests/core/difficulty-content.test.ts` (11 tests) written after the code (no RED first); mutations (no roster repeat, no gem burst) fail 2 of them. `npm test` 111 files / 1056 tests passed; `npm run build` ok.
 - [ ] T3 Records, leaderboard, end screen, docs (route: same)
 
 ## Acceptance criteria

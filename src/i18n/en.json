@@ -569,5 +569,7 @@
   "difficulty.nightmare.hint": "Extra spell cards and frequent elites, no restarts. Pays ×2.2.",
   "pause.restartNone": "Restart floor (none left)",
   "elite.tough": "Tough elite",
-  "elite.frenzied": "Frenzied elite"
+  "elite.frenzied": "Frenzied elite",
+  "spell.aegislash.judgement": "King's Judgement «The Hundred Swords Return»",
+  "boss.stance.judgement": "Judgement"
 }

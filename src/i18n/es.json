@@ -569,5 +569,7 @@
   "difficulty.nightmare.hint": "Cartas de hechizo extra y élites a menudo, sin reintentos. Paga ×2,2.",
   "pause.restartNone": "Reintentar planta (no quedan)",
   "elite.tough": "Élite robusto",
-  "elite.frenzied": "Élite frenético"
+  "elite.frenzied": "Élite frenético",
+  "spell.aegislash.judgement": "Juicio del Rey «Las Cien Espadas vuelven»",
+  "boss.stance.judgement": "Juicio"
 }
