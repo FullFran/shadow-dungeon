@@ -33,6 +33,23 @@ export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   { species: 'foongus', minDepth: 3, weight: 1 },
   { species: 'hoothoot', minDepth: 4, weight: 2 },
   { species: 'pumpkaboo-super', minDepth: 6, weight: 1 },
+  // Experimental roster (EXPERIMENTAL_ENEMIES in data/enemies.ts): the
+  // suggested min depths and packs, with lighter weights so the regulars
+  // stay about half of every floor.
+  { species: 'zubat', minDepth: 1, weight: 2, pack: 3 },
+  { species: 'stunky', minDepth: 1, weight: 1, pack: 2 },
+  { species: 'ekans', minDepth: 2, weight: 1 },
+  { species: 'litleo', minDepth: 2, weight: 1 },
+  { species: 'tentacool', minDepth: 2, weight: 1 },
+  { species: 'corphish', minDepth: 3, weight: 1 },
+  { species: 'chinchou', minDepth: 3, weight: 1 },
+  { species: 'houndour', minDepth: 3, weight: 1 },
+  { species: 'koffing', minDepth: 3, weight: 1 },
+  { species: 'grimer', minDepth: 4, weight: 1 },
+  { species: 'wooper', minDepth: 4, weight: 1 },
+  { species: 'slugma', minDepth: 4, weight: 1 },
+  { species: 'clauncher', minDepth: 5, weight: 1 },
+  { species: 'croagunk', minDepth: 5, weight: 1 },
 ];
 
 /** A guardian echo: the arena of a guardian (or mid-boss) and the track it fights to. */

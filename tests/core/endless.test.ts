@@ -23,6 +23,7 @@ import { hitPlayer } from '../../src/core/step';
 import { vec } from '../../src/core/vec';
 import { createPlayer } from '../../src/core/world';
 import { CRYPT, dungeonById, ECLIPSE, FOREST, musicFor, planAt } from '../../src/data/dungeons';
+import { EXPERIMENTAL_ENEMIES } from '../../src/data/enemies';
 import { ENDLESS, ENDLESS_POOL, echoAt, isEchoFloor } from '../../src/data/endless';
 import { SPECIES } from '../../src/data/species';
 
@@ -66,6 +67,43 @@ describe('the Sima del Eclipse (data)', () => {
     expect(endlessSpawns(ENDLESS, 1).pool.find((e) => e.species === 'pumpkaboo-small')?.pack).toBe(3);
     // Every species in the pool exists.
     expect(ENDLESS_POOL.filter((e) => !SPECIES[e.species])).toEqual([]);
+  });
+
+  it('holds every species of the experimental roster, never before its suggested min depth', () => {
+    for (const roster of EXPERIMENTAL_ENEMIES) {
+      const entry = ENDLESS_POOL.find((e) => e.species === roster.species);
+      expect(entry, roster.species).toBeDefined();
+      expect(entry!.minDepth, roster.species).toBeGreaterThanOrEqual(roster.minDepth);
+      expect(entry!.weight, roster.species).toBeGreaterThan(0);
+      if (roster.pack) expect(entry!.pack, roster.species).toBe(roster.pack);
+      expect(endlessSpawns(ENDLESS, entry!.minDepth - 1).pool.map((e) => e.species)).not.toContain(roster.species);
+    }
+    expect(ENDLESS_POOL.find((e) => e.species === 'zubat')?.pack).toBe(3);
+    expect(ENDLESS_POOL.find((e) => e.species === 'stunky')?.pack).toBe(2);
+  });
+
+  it('mixes old and new: neither the dungeon regulars nor the roster outweighs the other twice over by floor 5', () => {
+    const roster = new Set<string>(EXPERIMENTAL_ENEMIES.map((e) => e.species));
+    const weight = (fresh: boolean) => endlessSpawns(ENDLESS, 5).pool.filter((e) => roster.has(e.species) === fresh).reduce((sum, e) => sum + e.weights[0]!, 0);
+    const ratio = weight(true) / weight(false);
+    expect(ratio).toBeGreaterThan(0.5);
+    expect(ratio).toBeLessThan(2);
+  });
+
+  it('seeded floors are deterministic and show roster species by floor 5, each only from its min depth', () => {
+    const minDepth = new Map(ENDLESS_POOL.map((e) => [e.species, e.minDepth]));
+    const roster = new Set<string>(EXPERIMENTAL_ENEMIES.map((e) => e.species));
+    const seen = new Set<string>();
+    for (let floor = 1; floor <= 4; floor++) {
+      const floorSpawns = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).spawns;
+      expect(floorSpawns).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).spawns);
+      for (const s of floorSpawns) {
+        expect(minDepth.get(s.species), `${s.species} on floor ${floor}`).toBeLessThanOrEqual(floor);
+        if (roster.has(s.species)) seen.add(s.species);
+      }
+    }
+    // Floor 5 is an echo; floors 1-4 of one seed already bring several new species.
+    expect(seen.size).toBeGreaterThanOrEqual(3);
   });
 
   it('urgent floors from every dungeon (collapse, Niebla) with weights that rise with depth', () => {

@@ -782,7 +782,7 @@ export interface ExperimentalEnemy {
   futureDungeon: FutureDungeon;
 }
 
-/** The experimental roster, for the Sima del Eclipse's pool (data only; no dungeon draws from it yet). */
+/** The experimental roster: every species is in the Sima del Eclipse pool (data/endless.ts, `ENDLESS_POOL`); no other dungeon draws from it yet. */
 export const EXPERIMENTAL_ENEMIES: readonly ExperimentalEnemy[] = [
   { species: 'zubat', minDepth: 1, weight: 3, pack: 3, coins: 1, futureDungeon: 'flooded-caves' },
   { species: 'stunky', minDepth: 1, weight: 2, pack: 2, coins: 1, futureDungeon: 'toxic-swamp' },
