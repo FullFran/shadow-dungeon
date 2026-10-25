@@ -689,7 +689,8 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
   let voice: MusicVoice | null = null;
   /** Bumped on every switch: a load that resolves for an older switch is dropped. */
   let switchId = 0;
-  const decoded = createLru<MusicContext, { buffer: AudioBuffer; format: MusicFormat }>(MUSIC_CACHE);
+  /** Decoded buffers by file name: a filtered variant (the forest's fog version) shares its file's buffer. */
+  const decoded = createLru<string, { buffer: AudioBuffer; format: MusicFormat }>(MUSIC_CACHE);
   const formats = musicFormats(deps.canPlayType);
   let rumble: { gain: GainNode } | null = null;
   let cue: CuePlayback | null = null;
@@ -771,7 +772,14 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
       source.loopStart = window.loopStart;
       source.loopEnd = window.loopEnd;
     }
-    source.connect(bus);
+    if (track.lowpassHz) {
+      // The muffled variant (fog floors): the same buffer through a low-pass.
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(track.lowpassHz, ctx.currentTime);
+      source.connect(filter);
+      filter.connect(bus);
+    } else source.connect(bus);
     const t = ctx.currentTime;
     if (fadeS > 0) rampGain(bus.gain, 0, track.gain, t, fadeS);
     else bus.gain.setValueAtTime(track.gain, t);
@@ -788,7 +796,7 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
 
   /** The decoded buffer of a context: cached, or fetched and decoded trying each format in turn; null if none works. */
   async function load(context: MusicContext): Promise<{ buffer: AudioBuffer; format: MusicFormat } | null> {
-    const cached = decoded.get(context);
+    const cached = decoded.get(MUSIC_TRACKS[context].file);
     if (cached) return cached;
     const fetchBytes = deps.fetchBytes;
     if (!fetchBytes) return null;
@@ -797,7 +805,7 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
         const bytes = await fetchBytes(musicUrl(deps.baseUrl, MUSIC_TRACKS[context].file, format));
         if (!ctx) return null;
         const entry = { buffer: await decode(ctx, bytes), format };
-        decoded.set(context, entry);
+        decoded.set(MUSIC_TRACKS[context].file, entry);
         return entry;
       } catch {
         // Next format; the procedural fallback when none is left.
@@ -826,7 +834,7 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
       else fallback(next);
     };
     // Without a network there is nothing to wait for: fall back now.
-    if (!deps.fetchBytes && !decoded.get(next)) begin(null);
+    if (!deps.fetchBytes && !decoded.get(MUSIC_TRACKS[next].file)) begin(null);
     else void load(next).then(begin);
   }
 

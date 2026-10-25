@@ -5,8 +5,7 @@ import { TUNING } from '../data/tuning';
 import type { UpgradeLevels } from '../data/upgrades';
 import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
-import { ENEMY_BEHAVIOUR } from '../data/enemies';
-import { initialBoss } from './boss';
+import { hasBossState, initialBoss } from './boss';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
 import type { Arena, EnemyState, LockType, PeerRole, PlayerState, Rect, WorldState } from './state';
@@ -121,7 +120,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     knockback: vec(0, 0),
     ai: options.sleepIn ? { ...initialAi(), mode: 'asleep' } : initialAi(options.dormant),
     ...(options.sleepIn ? { wakeRoom: options.sleepIn } : {}),
-    ...(ENEMY_BEHAVIOUR[speciesId]?.kind === 'boss' ? { boss: initialBoss() } : {}),
+    ...(hasBossState(speciesId) ? { boss: initialBoss(speciesId) } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }
@@ -137,5 +136,6 @@ export function enterRoom(state: WorldState): WorldState {
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
     player: { ...state.player, disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
     collapse: undefined,
+    fog: undefined,
   };
 }

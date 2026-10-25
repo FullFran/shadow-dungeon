@@ -43,6 +43,21 @@ describe('lobby', () => {
     expect(b.started).toEqual({ seed: 42, floor: 1, localId: 'p3' });
   });
 
+  it('sends the host dungeon with the start (chosen at begin, or from the start), and nothing when none was set', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(7, 1, 'mimikyu', { lobby: true, dungeon: 'crypt-of-the-sword-king' });
+    const a = peer(hub, 'a', scheduler);
+    a.session.join('mimikyu', LOADOUT);
+    host.session.begin('misty-forest');
+    expect(a.started).toEqual({ seed: 7, floor: 1, dungeon: 'misty-forest', localId: 'p2' });
+    // A late joiner gets the same dungeon.
+    const b = peer(hub, 'b', scheduler);
+    b.session.join('mimikyu', LOADOUT);
+    expect(b.started?.dungeon).toBe('misty-forest');
+  });
+
   it('carries each player species from the hello into everyone roster', () => {
     const scheduler = createFakeScheduler();
     const hub = createMemoryHub<string>();

@@ -1,4 +1,4 @@
-import { DUNGEON } from '../data/dungeon';
+import { CRYPT_SPAWNS, DUNGEON, type SpawnEntry, type SpawnTuning } from '../data/dungeon';
 import type { SpeciesId } from '../data/species';
 import { deriveSeed, nextRandom } from './rng';
 import { isWall, TILE, tileCenter, type TileGrid, type TilePoint } from './tiles';
@@ -60,22 +60,24 @@ function random(seed: number) {
 
 type Random = ReturnType<typeof random>;
 
-/** Enemy count bounds per room at a depth (tuning in `DUNGEON.spawns`). */
-export function spawnsPerRoom(depth: number): { min: number; max: number } {
-  const { base, perDepth, jitter, maxPerRoom } = DUNGEON.spawns;
-  const min = Math.min(maxPerRoom, base + perDepth * Math.max(0, depth - 1));
+/** Enemy count bounds per room at a depth (the dungeon's spawn tuning; the Crypt's by default). */
+export function spawnsPerRoom(depth: number, tuning: SpawnTuning = CRYPT_SPAWNS): { min: number; max: number } {
+  const { base, perDepth, jitter, maxPerRoom } = tuning;
+  const min = Math.min(maxPerRoom, base + Math.floor(perDepth * Math.max(0, depth - 1)));
   return { min, max: Math.min(maxPerRoom, min + jitter) };
 }
 
-function pickSpecies(rng: Random): SpeciesId {
-  const table = DUNGEON.spawns.species;
-  const total = table.reduce((sum, entry) => sum + entry.weight, 0);
+/** Weight of a pool entry at a depth (index 0 is floor 1, deeper floors use the last entry). */
+export const weightAt = (entry: SpawnEntry, depth: number): number => entry.weights[Math.min(Math.max(1, depth), entry.weights.length) - 1] ?? 0;
+
+function pickSpawn(rng: Random, pool: readonly SpawnEntry[], depth: number): SpawnEntry {
+  const total = pool.reduce((sum, entry) => sum + weightAt(entry, depth), 0);
   let roll = rng.next() * total;
-  for (const entry of table) {
-    roll -= entry.weight;
-    if (roll < 0) return entry.species;
+  for (const entry of pool) {
+    roll -= weightAt(entry, depth);
+    if (roll < 0) return entry;
   }
-  return table[table.length - 1]!.species;
+  return pool[pool.length - 1]!;
 }
 
 const centerOf = (room: TileRect): TilePoint => ({ x: room.x + Math.floor(room.width / 2), y: room.y + Math.floor(room.height / 2) });
@@ -99,7 +101,8 @@ export function tileDistances(grid: TileGrid, from: TilePoint): number[] {
   return dist;
 }
 
-export function generateFloor(seed: number, depth: number): Floor {
+/** One generated floor; `spawns` is the dungeon's enemy table (the Crypt's by default). */
+export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTuning = CRYPT_SPAWNS): Floor {
   const { cols, rows, cellCols, cellRows, corridorWidth: cw } = DUNGEON;
   const rng = random(deriveSeed(seed, depth));
   const tiles = new Array<number>(cols * rows).fill(0);
@@ -184,7 +187,7 @@ export function generateFloor(seed: number, depth: number): Floor {
 
   const spawns: FloorSpawn[] = [];
   const startPos = tileCenter(start);
-  const bounds = spawnsPerRoom(depth);
+  const bounds = spawnsPerRoom(depth, spawnTuning);
   rooms.forEach((room, index) => {
     if (index === startRoom) return;
     // Inner tiles only, so bodies do not start against a wall; never on the stairs or near the start.
@@ -197,7 +200,14 @@ export function generateFloor(seed: number, depth: number): Floor {
       }
     }
     const count = rng.int(bounds.min, bounds.max);
-    for (const tile of rng.shuffle(candidates).slice(0, count)) spawns.push({ species: pickSpecies(rng), tile, room: index });
+    const tiles = rng.shuffle(candidates).slice(0, count);
+    // A pack (swarmers) fills the next free tiles with the same species; single picks draw once each, as before.
+    for (let i = 0; i < tiles.length; ) {
+      const entry = pickSpawn(rng, spawnTuning.pool, depth);
+      const size = Math.max(1, entry.pack ?? 1);
+      for (const tile of tiles.slice(i, i + size)) spawns.push({ species: entry.species, tile, room: index });
+      i += size;
+    }
   });
 
   return { seed, depth, cols, rows, tiles, rooms, startRoom, stairsRoom, start, stairs, spawns };

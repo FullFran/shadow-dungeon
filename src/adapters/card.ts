@@ -11,6 +11,8 @@ import { floorLabel } from './hud';
  * while it shows; it only fades over the view.
  */
 export interface FloorCard {
+  /** Name of the dungeon (already translated); the game title when absent. */
+  dungeon?: string;
   floor: number;
   kind: FloorKind;
   /** The collapse floor just escaped, if the previous floor was one. */
@@ -27,7 +29,7 @@ export const CARD = {
   fadeOutMs: 600,
 } as const;
 
-const holdOf = (card: Pick<FloorCard, 'kind'>) => (card.kind === 'collapse' ? CARD.urgentHoldMs : CARD.holdMs);
+const holdOf = (card: Pick<FloorCard, 'kind'>) => (card.kind === 'normal' ? CARD.holdMs : CARD.urgentHoldMs);
 
 /** Opacity of the card `ageMs` after it appeared: fade in, hold, fade out, then 0 for good. */
 export function cardAlpha(card: Pick<FloorCard, 'kind'>, ageMs: number): number {
@@ -47,9 +49,9 @@ export function formatClock(ms: number): string {
 /** The card's text lines, top to bottom. */
 export function cardLines(card: FloorCard): { dungeon: string; floor: string; warning: string | null; bonus: string | null } {
   return {
-    dungeon: t('app.title'),
+    dungeon: card.dungeon ?? t('app.title'),
     floor: floorLabel(card.floor),
-    warning: card.kind === 'collapse' ? t('card.collapse') : null,
+    warning: card.kind === 'normal' ? null : t(`card.${card.kind}`),
     bonus: card.escape ? t('card.escaped').replace('{time}', formatClock(card.escape.ms)) : null,
   };
 }

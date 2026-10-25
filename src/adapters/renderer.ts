@@ -1,14 +1,19 @@
-import { AEGISLASH, GASTLY, POOCHYENA } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { FOG } from '../data/dungeon';
+import { fogRadiusTiles } from '../core/fog';
+import { DIVE_LOCK_MS } from '../core/archer';
 import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { collapseFront, type CollapseState } from '../core/collapse';
-import type { EnemyState, Rect, WorldState } from '../core/state';
+import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
 import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
+import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { CRYPT, type TilePalette } from '../data/dungeons';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { drawMessageLog, type MessageLog } from './message-log';
@@ -50,6 +55,14 @@ export interface RenderFrame {
   log?: MessageLog;
   /** Pokémonedas earned so far this run (HUD). */
   coins?: number;
+  /** Tile and arena colours of the dungeon (the Crypt's by default). */
+  palette?: TilePalette;
+  /** Floor 1: the dungeon's name and subtitle, while they show. */
+  intro?: DungeonIntro | null;
+  /** The track that started last ("♪ title"), while it shows. */
+  nowPlaying?: NowPlaying | null;
+  /** The boss spell card just announced, while it shows. */
+  spell?: SpellBanner | null;
 }
 
 const COLORS = {
@@ -383,7 +396,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 8, angle - half, angle + half);
       ctx.stroke();
     }
-    if (ai.mode === 'transform') {
+    const def = ENEMY_BEHAVIOUR[enemy.species];
+    if (ai.mode === 'transform' && def?.kind === 'boss') {
       ctx.strokeStyle = COLORS.transform;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -394,21 +408,97 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
     const fill = telegraphFill(enemyAttackType(enemy), winding);
-    if (enemy.species === 'poochyena') {
-      groundLane(pos, ai.attackDir, POOCHYENA.lungeDistance, enemy.radius * 2, fill, winding ? progress : 1);
-    } else if (enemy.species === 'gastly' && winding) {
+    if (def?.kind === 'lunger') {
+      groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, fill, winding ? progress : 1);
+    } else if (def?.kind === 'caster' && winding) {
       ctx.strokeStyle = COLORS.telegraphEdge;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, enemy.radius + 4 + 16 * (1 - progress), 0, Math.PI * 2);
       ctx.stroke();
-      groundLane(pos, ai.attackDir, 50, GASTLY.projectile.radius * 2, fill, progress);
+      groundLane(pos, ai.attackDir, 50, def.projectile.radius * 2, fill, progress);
+    } else if (def?.kind === 'slammer' || def?.kind === 'spore') {
+      // The area that will be hit: its edge from the start, filling in as the wind-up runs.
+      const radius = def.kind === 'slammer' ? def.radius : def.cloud.radius;
+      if (winding || def.kind === 'slammer') groundCircle(pos, radius, fill, winding ? progress : 1);
+    } else if (def?.kind === 'archer') {
+      const card = enemy.boss?.stance;
+      if (card === 'dive') {
+        // Locked aim (the last moments): the lane turns solid and stops following.
+        const locked = winding && ai.modeDurationMs - ai.modeMs <= DIVE_LOCK_MS;
+        groundLane(pos, ai.attackDir, def.dive.distance, (enemy.radius + def.dive.reach) * 2, locked || striking ? COLORS.strike : fill, winding ? progress : 1);
+      } else if (winding) {
+        groundLane(pos, ai.attackDir, 150, 4, fill, progress);
+      }
     } else if (enemy.boss?.stance === 'shield') {
       groundLane(pos, ai.attackDir, AEGISLASH.shield.bashDistance, enemy.radius * 2, fill, winding ? progress : 1);
     } else if (enemy.boss?.stance === 'blade') {
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
       groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
     }
+  }
+
+  /** A filled ground circle with a solid edge; `progress` (0..1) fills it from the centre. */
+  function groundCircle(origin: Vec2, radius: number, fill: string, progress: number): void {
+    ctx.strokeStyle = COLORS.telegraphEdge;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, Math.max(1, radius * progress), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /** Enemy shots by type: spore clouds (still), leaves, threads, arrows; anything else the old ball. */
+  function enemyShot(p: Pick<ProjectileState, 'type' | 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): Drawable | null {
+    const still = p.vel.x === 0 && p.vel.y === 0;
+    if (still) {
+      return {
+        y: pos.y - 40,
+        draw: () => {
+          ctx.globalAlpha = Math.min(1, p.remainingMs / 600) * 0.55;
+          ctx.fillStyle = '#b48ad8';
+          for (let i = 0; i < 5; i++) {
+            const a = timeMs / 700 + i * 1.3;
+            ctx.beginPath();
+            ctx.arc(pos.x + Math.cos(a) * p.radius * 0.35, pos.y + Math.sin(a) * p.radius * 0.25, p.radius * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        },
+      };
+    }
+    const color = p.type === 'grass' ? '#8fe36a' : p.type === 'bug' ? '#f0eedc' : p.type === 'ghost' ? '#b9a2ff' : null;
+    if (!color) return null;
+    const angle = Math.atan2(p.vel.y, p.vel.x);
+    return {
+      y: pos.y,
+      draw: () => {
+        shadow({ x: pos.x, y: pos.y + 8 }, p.radius * 0.7);
+        ctx.save();
+        ctx.translate(pos.x, pos.y - 6);
+        ctx.rotate(angle);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.radius * 1.8, p.radius * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.fillRect(-p.radius * 1.4, -0.5, p.radius * 2.8, 1);
+        ctx.restore();
+      },
+    };
+  }
+
+  /** Niebla: mist over everything outside the sight circle around the player (world units). */
+  function fogVeil(center: Vec2, view: Rect, radiusPx: number): void {
+    const edge = FOG.edgeTiles * TILE;
+    const gradient = ctx.createRadialGradient(center.x, center.y, Math.max(0, radiusPx - edge), center.x, center.y, radiusPx);
+    gradient.addColorStop(0, 'rgba(150, 164, 162, 0)');
+    gradient.addColorStop(1, 'rgba(150, 164, 162, 0.97)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(view.x - 40, view.y - 40, view.width + 80, view.height + 80);
   }
 
   /** Projectiles are drawn in their move type's colours (move-vfx.ts). */
@@ -495,6 +585,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
+    // The dungeon's tile and arena colours replace the defaults for this frame.
+    Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = COLORS.wall;
@@ -530,7 +622,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         y: pos.y,
         draw: () => {
           shadow(pos, enemy.radius);
-          const fade = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
+          const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
+          // Decidueye fading into the fog before it reappears at the edge.
+          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && ENEMY_BEHAVIOUR[enemy.species]?.kind === 'archer';
+          const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },
       });
@@ -560,7 +655,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         },
       });
     }
-    for (const p of current.projectiles) drawables.push(projectile(p, posOf(p.id, p.pos), timeMs));
+    for (const p of current.projectiles) {
+      const pos = posOf(p.id, p.pos);
+      drawables.push((p.owner === 'enemy' ? enemyShot(p, pos, timeMs) : null) ?? projectile(p, pos, timeMs));
+    }
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
     for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
@@ -570,6 +668,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
     numbers(juice.numbers);
+    if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
 
     // Screen space: slow-mo tint and HUD.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -582,6 +681,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
+    if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, view.width, view.height);
+    if (frame.nowPlaying) drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height);
+    if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, view.width);
   }
 
   return { draw };

@@ -35,8 +35,10 @@ export interface TownOptions {
   species: string;
   /** Replaces the page with the town's nodes (no menu backdrop). */
   show: (nodes: Node[]) => void;
-  /** The route exit was taken: start the run flow. */
-  onDepart: () => void;
+  /** The dungeons open on this device, in select order (the exit window lists them). */
+  dungeons: readonly { id: string; label: string }[];
+  /** The route exit was taken towards dungeon `id`: start the run flow. */
+  onDepart: (id: string) => void;
   /** Esc: back to the title. */
   onQuit: () => void;
   /** Opens the upgrade shop window inside `parent` (Poochyena's stall); returns a function that closes it. `onClose` runs when the player leaves it. */
@@ -101,7 +103,13 @@ function townCamera(focus: Vec2, map: TownMap) {
 }
 
 /** The notice board's lines: the local records of the first dungeon, if there are any. */
-const readBoard = (): string[] => boardLines(readRecords(browserStore()), DUNGEON_LORE[0]!.id, (key) => t(key));
+const readBoard = (): string[] =>
+  boardLines(
+    readRecords(browserStore()),
+    DUNGEON_LORE[0]!.id,
+    (key) => t(key),
+    DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
+  );
 
 export interface TownHandle {
   stop(): void;
@@ -223,14 +231,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function openExitWindow(): void {
     held.clear();
     touch.setSuspended(true);
-    const depart = () => {
+    const depart = (id: string) => {
       handle.stop();
-      options.onDepart();
+      options.onDepart(id);
     };
+    // One row per open dungeon, then stay.
     const list = cursorList({
       label: t('town.exit.title'),
       items: [
-        { label: t('town.exit.crypt'), onConfirm: depart },
+        ...options.dungeons.map((d) => ({ label: d.label, onConfirm: () => depart(d.id) })),
         { label: t('town.exit.stay'), onConfirm: closeExitWindow },
       ],
       onBack: closeExitWindow,

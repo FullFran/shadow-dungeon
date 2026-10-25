@@ -3,6 +3,7 @@ import { updateCollapse } from './collapse';
 import { updateCombat } from './combat';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
+import { updateFog } from './fog';
 import { landHitOnPlayer } from './hits';
 import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
@@ -33,7 +34,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
-  const fought = creditDefeats(onTick(applyRecoil(updateCollapse(enemies, dtMs, events), events), dtMs, events), events);
+  const fought = creditDefeats(onTick(applyRecoil(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), events), dtMs, events), events);
   return {
     ...fought,
     tick: state.tick + 1,

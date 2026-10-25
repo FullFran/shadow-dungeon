@@ -3,8 +3,8 @@ import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
 import { onContact } from './items';
-import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
-import { add, distance, length, normalize, sub, vec, type Vec2 } from './vec';
+import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
+import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 /** Shared building blocks of the enemy state machines (enemies.ts, boss.ts). */
 
@@ -28,6 +28,43 @@ export function towardTarget(target: Vec2, enemy: EnemyState): Vec2 {
 }
 
 export const perpendicular = (v: Vec2, sign: 1 | -1): Vec2 => vec(-v.y * sign, v.x * sign);
+
+/** `v` turned by `degrees` (counter-clockwise in screen terms is negative y; only the spread matters here). */
+export const rotate = (v: Vec2, degrees: number): Vec2 => fromAngle(angleOf(v) + (degrees * Math.PI) / 180);
+
+/** An enemy projectile's shape and hit. */
+export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+
+/**
+ * Fires one enemy projectile along `dir`, from just outside the body (or from
+ * `at`, e.g. a spore cloud on the spot). A speed of 0 makes it a lingering
+ * cloud that hits whoever walks in, once.
+ */
+export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot, dir: Vec2, at?: Vec2): WorldState {
+  const projectile: ProjectileState = {
+    id: `p${state.nextId}`,
+    owner: 'enemy',
+    type: shot.type,
+    attackerTypes: enemy.types,
+    power: shot.power,
+    damageMultiplier: 1,
+    pos: at ?? add(enemy.pos, scale(dir, enemy.radius + shot.radius)),
+    vel: shot.speed === 0 ? vec(0, 0) : scale(dir, shot.speed),
+    radius: shot.radius,
+    remainingMs: shot.lifetimeMs,
+    hitstunMs: 0,
+    knockback: 0,
+    hitIds: [],
+  };
+  return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
+}
+
+/** `count` shots spread evenly over `degrees` around `dir` (one straight shot when count is 1), plus `offsetDegrees`. */
+export function spreadDirections(dir: Vec2, count: number, degrees: number, offsetDegrees = 0): Vec2[] {
+  if (count <= 1) return [rotate(dir, offsetDegrees)];
+  const step = degrees / (count - 1);
+  return Array.from({ length: count }, (_, i) => rotate(dir, -degrees / 2 + i * step + offsetDegrees));
+}
 
 /**
  * Moves an enemy by `delta`, confined to the room. Walkers that bump into an

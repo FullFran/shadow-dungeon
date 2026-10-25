@@ -188,7 +188,7 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
 
 /** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation). */
 export function enemySprite(enemy: EnemyState): SpriteKey {
-  if (enemy.species !== 'aegislash') return SPRITE_KEYS[enemy.species];
+  if (enemy.species !== 'aegislash') return SPRITE_KEYS[SPECIES[enemy.species].sprite];
   const stance = enemy.boss?.stance ?? 'shield';
   const transforming = enemy.ai.mode === 'transform' && enemy.ai.modeMs >= enemy.ai.modeDurationMs / 2;
   const shown = transforming ? (stance === 'shield' ? 'blade' : 'shield') : stance;
@@ -203,6 +203,14 @@ const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   poochyena: 'Attack',
   gastly: 'Shoot',
   aegislash: 'Attack',
+  phantump: 'Attack',
+  'pumpkaboo-small': 'Attack',
+  'pumpkaboo-super': 'Attack',
+  foongus: 'Shoot',
+  spinarak: 'Shoot',
+  hoothoot: 'Attack',
+  trevenant: 'Attack',
+  decidueye: 'Shoot',
 };
 
 export interface EnemyAnimContext {

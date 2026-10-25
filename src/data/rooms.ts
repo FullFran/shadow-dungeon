@@ -21,7 +21,7 @@ export interface RoomDef {
   next: RoomId | null;
 }
 
-export type RoomId = 'sandbox' | 'boss';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -51,6 +51,33 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     obstacles: [],
     playerStart: { x: 400, y: 540 },
     spawns: [{ species: 'aegislash', x: 400, y: 220 }],
+    exit: null,
+    next: null,
+  },
+  /** Misty Forest mid-boss: Trevenant's hollow, four old trunks; the path on opens once it falls. */
+  hollow: {
+    id: 'hollow',
+    width: 800,
+    height: 640,
+    obstacles: [
+      { x: 150, y: 150, width: 48, height: 48 },
+      { x: 602, y: 150, width: 48, height: 48 },
+      { x: 150, y: 430, width: 48, height: 48 },
+      { x: 602, y: 430, width: 48, height: 48 },
+    ],
+    playerStart: { x: 400, y: 560 },
+    spawns: [{ species: 'trevenant', x: 400, y: 230 }],
+    exit: { x: 360, y: 0, width: 80, height: 50 },
+    next: null,
+  },
+  /** Misty Forest guardian: Decidueye's roost, an open clearing about one screen big, so the archer stays in sight. */
+  roost: {
+    id: 'roost',
+    width: 640,
+    height: 400,
+    obstacles: [],
+    playerStart: { x: 320, y: 330 },
+    spawns: [{ species: 'decidueye', x: 320, y: 120 }],
     exit: null,
     next: null,
   },

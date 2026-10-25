@@ -23,8 +23,8 @@ export interface RosterEntry {
 export type NetMessage =
   /** A tab joining the session announces its player; the host answers with `start`. */
   | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[] }
-  /** Host: the run seed, the current floor and who is who (sent again whenever someone joins). */
-  | { t: 'start'; seed: number; floor: number; players: readonly RosterEntry[] }
+  /** Host: the run seed, the current floor, the dungeon id (absent = the first dungeon) and who is who (sent again whenever someone joins). */
+  | { t: 'start'; seed: number; floor: number; dungeon?: string; players: readonly RosterEntry[] }
   /** Host, before the run starts: who is in the room so far (sent again on every change). */
   | { t: 'lobby'; players: readonly RosterEntry[] }
   /** Host: the room already has four players; `peer` is the one turned away. */

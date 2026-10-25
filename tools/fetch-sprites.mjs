@@ -44,6 +44,15 @@ const TARGETS = [
   { dex: '0092', form: '0000', species: 'gastly', formName: 'base' },
   { dex: '0681', form: '0000', species: 'aegislash', formName: 'shield' },
   { dex: '0681', form: '0001', species: 'aegislash', formName: 'blade' },
+  // Misty Forest (tracker.json, 2026-10-25: 0710 subgroup 0001 is "Small", 0003 is "Super").
+  { dex: '0708', form: '0000', species: 'phantump', formName: 'base' },
+  { dex: '0710', form: '0001', species: 'pumpkaboo-small', formName: 'small' },
+  { dex: '0710', form: '0003', species: 'pumpkaboo-super', formName: 'super' },
+  { dex: '0590', form: '0000', species: 'foongus', formName: 'base' },
+  { dex: '0167', form: '0000', species: 'spinarak', formName: 'base' },
+  { dex: '0163', form: '0000', species: 'hoothoot', formName: 'base' },
+  { dex: '0709', form: '0000', species: 'trevenant', formName: 'base' },
+  { dex: '0724', form: '0000', species: 'decidueye', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

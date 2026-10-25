@@ -40,10 +40,41 @@ export const DUNGEON = {
   wakeRadius: 160,
 } as const;
 
-/** One floor of a run: generated (seeded) or a fixed room such as the boss arena. */
-export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId };
+/**
+ * One floor of a run: generated (seeded) or a fixed room. A fixed room is the
+ * guardian's arena unless it says `midboss` (a fight that leads on through
+ * the room's exit).
+ */
+export type FloorPlan = { kind: 'generated' } | { kind: 'room'; room: RoomId; role?: 'midboss' };
 
-/** The MVP run (docs/gdd.md §3): three generated floors, then the Aegislash arena. */
+/** One species of a dungeon's enemy pool: its weight by floor (index 0 is floor 1, deeper floors use the last entry). */
+export interface SpawnEntry {
+  species: SpeciesId;
+  weights: readonly number[];
+  /** Swarmers: one pick places up to this many in the room (default 1). */
+  pack?: number;
+}
+
+/** Enemies of a dungeon's generated floors. */
+export interface SpawnTuning {
+  /** Enemies per room on floor 1, plus `perDepth` (rounded down) per deeper floor, plus up to `jitter` more. */
+  base: number;
+  perDepth: number;
+  jitter: number;
+  maxPerRoom: number;
+  pool: readonly SpawnEntry[];
+}
+
+/** The Crypt's enemies (the M2 table). */
+export const CRYPT_SPAWNS: SpawnTuning = {
+  base: DUNGEON.spawns.base,
+  perDepth: DUNGEON.spawns.perDepth,
+  jitter: DUNGEON.spawns.jitter,
+  maxPerRoom: DUNGEON.spawns.maxPerRoom,
+  pool: DUNGEON.spawns.species.map((entry) => ({ species: entry.species, weights: [entry.weight] })),
+};
+
+/** The Crypt run (docs/gdd.md §3): three generated floors, then the Aegislash arena. */
 export const RUN_PLAN: readonly FloorPlan[] = [{ kind: 'generated' }, { kind: 'generated' }, { kind: 'generated' }, { kind: 'room', room: 'boss' }];
 
 export const RUN = {
@@ -51,8 +82,8 @@ export const RUN = {
   floorHeal: 0.25,
 } as const;
 
-/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"); the MVP has the collapse only. */
-export type FloorKind = 'normal' | 'collapse';
+/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, or the forest's fog (Niebla). */
+export type FloorKind = 'normal' | 'collapse' | 'fog';
 
 /**
  * Urgent floor weights by depth. Index 0 is floor 1 (never urgent); deeper
@@ -86,4 +117,19 @@ export const COLLAPSE = {
   pushMarginTiles: 1.5,
   /** The rumble (sound and screen shake) is felt within this many tiles of the front. */
   rumbleTiles: 6,
+} as const;
+
+/** Niebla (core/fog.ts): the vision closes in until you find the stairs. Provisional values. */
+export const FOG = {
+  /** Vision radius on arrival and once fully closed, in tiles. */
+  startTiles: 7,
+  minTiles: 2.5,
+  graceMs: 3000,
+  /** Time from the end of the grace to the minimum radius. */
+  closeMs: 50000,
+  /** Once closed: a chill of this fraction of max HP every interval (never below 1 HP). */
+  chillFraction: 0.03,
+  chillIntervalMs: 1500,
+  /** Soft edge of the fog, in tiles (drawn as a gradient). */
+  edgeTiles: 1.5,
 } as const;

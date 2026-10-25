@@ -2,7 +2,22 @@ import type { MoveId } from './moves';
 import type { SPRITE_KEYS } from './sprites';
 import type { PokemonType } from './types';
 
-export type SpeciesId = 'mimikyu' | 'zorua' | 'litwick' | 'cubone' | 'poochyena' | 'gastly' | 'aegislash';
+export type SpeciesId =
+  | 'mimikyu'
+  | 'zorua'
+  | 'litwick'
+  | 'cubone'
+  | 'poochyena'
+  | 'gastly'
+  | 'aegislash'
+  | 'phantump'
+  | 'pumpkaboo-small'
+  | 'pumpkaboo-super'
+  | 'foongus'
+  | 'spinarak'
+  | 'hoothoot'
+  | 'trevenant'
+  | 'decidueye';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -101,6 +116,15 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     movepool: [],
     defaultLoadout: [],
   },
+  // Misty Forest (docs/species-candidates.md §2); HP provisional.
+  phantump: { id: 'phantump', types: ['ghost', 'grass'], maxHp: 60, radius: 11, sprite: 'phantump', movepool: [], defaultLoadout: [] },
+  'pumpkaboo-small': { id: 'pumpkaboo-small', types: ['ghost', 'grass'], maxHp: 30, radius: 9, sprite: 'pumpkabooSmall', movepool: [], defaultLoadout: [] },
+  'pumpkaboo-super': { id: 'pumpkaboo-super', types: ['ghost', 'grass'], maxHp: 170, radius: 15, sprite: 'pumpkabooSuper', movepool: [], defaultLoadout: [] },
+  foongus: { id: 'foongus', types: ['grass', 'poison'], maxHp: 65, radius: 11, sprite: 'foongus', movepool: [], defaultLoadout: [] },
+  spinarak: { id: 'spinarak', types: ['bug', 'poison'], maxHp: 50, radius: 10, sprite: 'spinarak', movepool: [], defaultLoadout: [] },
+  hoothoot: { id: 'hoothoot', types: ['normal', 'flying'], maxHp: 55, radius: 11, sprite: 'hoothoot', movepool: [], defaultLoadout: [] },
+  trevenant: { id: 'trevenant', types: ['ghost', 'grass'], maxHp: 520, radius: 18, sprite: 'trevenant', movepool: [], defaultLoadout: [] },
+  decidueye: { id: 'decidueye', types: ['grass', 'ghost'], maxHp: 780, radius: 15, sprite: 'decidueye', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

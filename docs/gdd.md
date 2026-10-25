@@ -58,7 +58,7 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 - Las escaleras se pueden usar en cuanto las encuentras, sin limpiar la planta (como en Mundo Misterioso).
 - La vida se arrastra de una planta a otra y cada planta nueva cura un 25 % de la vida máxima *(provisional)*. El Disfraz se recupera en cada planta.
 - Cada partida tiene una semilla (al azar, o fija con `?seed=` en la dirección) y se enseña al final, así que una partida buena se puede repetir.
-- Cada planta empieza con una tarjeta ("Mazmorra Sombría", "Planta 2") que aparece y se va en un par de segundos sin parar el juego.
+- Cada planta empieza con una tarjeta (el nombre de la mazmorra y "Planta 2") que aparece y se va en un par de segundos sin parar el juego; la planta 1 enseña en su lugar el título de la mazmorra (ver "Mazmorras").
 - Minimapa arriba a la derecha, como en Mundo Misterioso: se descubre lo que ves (la sala entera al entrar, los pasillos a tu alrededor), las escaleras salen cuando las has visto y los enemigos solo si están en pantalla. Tab lo muestra u oculta.
 - Los enemigos despiertos te persiguen rodeando paredes (siguen el camino andando hacia ti cuando no te ven).
 - Sin reloj. Solo un aviso suave si el grupo se queda muchísimo tiempo (la idea del viento de Mundo Misterioso), para cortar el quedarse farmeando, nunca para castigar a quien juega normal.
@@ -72,6 +72,7 @@ Plantas que salen de vez en cuando y te obligan a encontrar las escaleras rápid
 | Derrumbe | El techo cae desde un extremo hacia las escaleras | Te obliga a avanzar; no puedes volver a por el botín |
 | Inundación | El agua sube y frena a quien no sea de tipo Agua | El tipo de tu Pokémon decide quién va delante |
 | Gas tóxico | Una nube avanza desde la entrada y quita vida poco a poco | Aprieta sin matar de golpe |
+| Niebla | La niebla se cierra y cada vez ves menos (el minimapa solo recuerda lo que has visto de cerca) | Hay que encontrar las escaleras antes de quedarse a ciegas; sale en el Bosque Brumoso |
 | Cazador | Un Pokémon que no se puede matar te persigue por la planta | El que más juego da en directo: correr, esconderse, que un compañero lo distraiga. *Me encanta, pero no entra en el MVP; queda para después.* |
 
 Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta mejor), así que la prisa también es una oportunidad.
@@ -117,6 +118,7 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
 
 - Patrones que se aprenden y avisos claros (la animación Charge sirve como carga del golpe).
 - Débiles a tipos concretos; el final se conoce de antemano.
+- Cada guardián tiene una escena corta antes del combate (la puerta sellada, su mirada y sus palabras, y al final su figura con su nombre y su apodo, al estilo de Touhou) y otra al caer (sus últimas palabras y una pista de lo que hay más hondo). Unos 16 y 13 segundos *(provisional)*, con el motor del prólogo y saltables igual (mantener Esc o Intro, o "Saltar"). Completas la primera vez en ese navegador; después solo la tarjeta del nombre (unos 2,5 segundos). En solitario la partida se para mientras salen; en partida compartida no se para nada y solo aparece la tarjeta del nombre sobre el juego. Aegislash es "El Rey de las Espadas" y Decidueye "El Arquero de la Niebla".
 - Cómo escalan con el número de jugadores: sección 8.
 
 ### Prólogo y trasfondo *(provisional)*
@@ -132,9 +134,49 @@ Lo que cuenta:
 5. Cada mazmorra tiene su guardián, atado a un juramento que ya nadie recuerda, y más hondo que todas ellas algo sigue devorando la luz (se ven varios guardianes sin rostro, cada uno ante su puerta sellada; Aegislash es solo uno de ellos).
 6. Negro, y una voz: "…¿Me oyes? ¿Puedes oírme?" (un guiño a Mundo Misterioso). De ahí se pasa al test de personalidad.
 
-**Trasfondo de la Cripta del Rey de las Espadas** (primera mazmorra; subtítulo "Donde el acero aún espera órdenes"): "En lo más hondo de la cripta, el Rey de las Espadas guarda una puerta sellada. Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo." Está en `src/data/dungeon-lore.ts` (con sus claves en `es` y `en`) y todavía no sale en pantalla; la idea es enseñarlo al entrar en la mazmorra.
+**Trasfondo de la Cripta del Rey de las Espadas** (primera mazmorra; subtítulo "Donde el acero aún espera órdenes"): "En lo más hondo de la cripta, el Rey de las Espadas guarda una puerta sellada. Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo." Está en `src/data/dungeon-lore.ts` (con sus claves en `es` y `en`); la primera línea sale en la lista de mazmorras.
 
 Lo que hay bajo la tierra es Necrozma, el jefe final, pero el prólogo no lo enseña ni lo nombra: solo una luz que se hunde en la oscuridad y el destello de un cristal. Todo este trasfondo es un primer borrador y puede cambiar.
+
+### Mazmorras *(provisional)*
+
+Cada mazmorra es un conjunto de datos (`src/data/dungeons.ts`): su nombre y su leyenda, sus plantas (generadas, o una sala fija para un jefe intermedio o para el guardián), los enemigos de sus plantas según la profundidad, sus plantas con prisa y sus pesos, su música, los colores de sus casillas y qué la abre. La primera está abierta desde el principio; cada una de las siguientes se abre al vencer al guardián de la anterior en ese dispositivo. Tras elegir el equipo, si hay más de una abierta, sale la lista de mazmorras (con su subtítulo, la primera línea de su leyenda y la mejor planta); la salida del pueblo también las lista. En partida compartida manda la mazmorra del anfitrión. Al entrar, la planta 1 enseña el nombre de la mazmorra con su subtítulo, al estilo de los títulos de fase de Touhou, y en una esquina el tema que suena ("♪ título"), que vuelve a salir cada vez que cambia la música.
+
+**Bosque Brumoso** (segunda mazmorra; subtítulo "Donde la niebla es el aliento de los perdidos"). Se abre al vencer a Aegislash. Leyenda: "Quien se pierde en la niebla no vuelve: echa raíces, y escucha. En el claro más hondo, un arquero sin rostro vela una puerta que nadie ha visto abrirse."
+
+| Planta | Qué hay *(provisional)* |
+|---|---|
+| 1 a 3 | Plantas normales; desde la 2 puede salir Niebla |
+| 4 | Jefe intermedio: Trevenant en su hondonada (al caer se abre el camino) |
+| 5 a 7 | Plantas normales; Niebla más a menudo y algún derrumbe |
+| 8 | Guardián: Decidueye |
+
+Las primeras plantas son más suaves que el final de la Cripta (de 1 a 2 enemigos por sala en la planta 1, medio más por planta, como mucho 4) y se endurecen al bajar.
+
+| Enemigo | Cómo juega |
+|---|---|
+| Phantump | Atraviesa los árboles; se acerca despacio, avisa y agarra, y al agarrar recupera vida |
+| Pumpkaboo pequeño | Sale en grupos de tres; rápido, frágil, embestidas cortas |
+| Pumpkaboo enorme | Tanque lento; avisa mucho y golpea el suelo a su alrededor (sal del círculo o rueda) |
+| Foongus | No se mueve; si te acercas suelta una nube de esporas que se queda un rato en el sitio |
+| Spinarak | Anda a distancia y lanza tres hilos en abanico |
+| Hoothoot | Vuela por encima de los árboles, da vueltas y se lanza en picado (a partir de la planta 2) |
+
+**Trevenant** (jefe intermedio): se acerca despacio, carga el golpe más de un segundo y golpea el suelo a su alrededor lanzando un anillo de hojas; después se queda abierto.
+
+**Decidueye, el Arquero de la Niebla** (guardián). Tres cartas de hechizo en orden fijo; el nombre de cada una sale en pantalla al empezar:
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Sombra «Matorral que Cose Sombras» | Apunta casi un segundo y suelta cinco flechas, una cada medio segundo, cada una a donde estás en ese momento | No pararse |
+| Signo Niebla «Réquiem de Hojas Afiladas» | Se desvanece, reaparece en el borde del claro más lejano a ti y lanza tres abanicos de hojas; cada abanico deja los huecos en otro sitio | Buscar el hueco nuevo o rodar a través |
+| Signo Búho «Picado de la Luna Hueca» | Te sigue con la mirada, fija la puntería en el último tercio del aviso y cruza el claro en picado | Apartarse de lado cuando la línea se fija; después se queda mucho tiempo abierto |
+
+Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los caminos. Velo esta puerta desde que el sol se apagó. Nadie la cruza mientras me quede una flecha." Al caer: "Mi juramento era una cuerda tensa. Al fin descansa. Bajo las raíces algo sigue bebiendo la luz. Lo oigo respirar en la niebla."
+
+**Niebla** (planta con prisa del bosque; valores *provisionales*): al llegar ves 7 casillas a tu alrededor; tras 3 segundos la niebla se cierra poco a poco hasta 2,5 casillas en 50 segundos. Fuera de ese círculo todo es niebla, el minimapa solo apunta lo que has tenido dentro y no enseña enemigos fuera de él. Cuando se ha cerrado del todo, el frío quita un 3 % de la vida máxima cada segundo y medio, sin bajar nunca de 1 PS (aprieta, no mata). Se anuncia en la tarjeta con "¡La niebla se cierra!".
+
+**Música del bosque**: "Cathedral in the forest" (congusbongus, CC0) en las plantas; en Niebla, el mismo tema apagado con un filtro paso bajo; Trevenant usa el tema de batalla de Aegislash y Decidueye "Boss Battle #2 [Symphonic Metal]" (nene, CC0), que ya estaba en el juego y gustaba.
 
 ## 4. Combate
 

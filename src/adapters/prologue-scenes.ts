@@ -17,7 +17,7 @@ import { frameAtTime } from './sprite-anim';
 export const STAGE = { w: 320, h: 180 } as const;
 
 /** Margin drawn around the stage so a camera pan or zoom never shows an edge. */
-const BLEED = 40;
+export const BLEED = 40;
 
 export interface SceneTime {
   localMs: number;
@@ -27,18 +27,18 @@ export interface SceneTime {
 
 const { w: W, h: H } = STAGE;
 
-function gradient(ctx: CanvasRenderingContext2D, top: number, bottom: number, stops: readonly [number, string][]): CanvasGradient {
+export function gradient(ctx: CanvasRenderingContext2D, top: number, bottom: number, stops: readonly [number, string][]): CanvasGradient {
   const g = ctx.createLinearGradient(0, top, 0, bottom);
   for (const [at, color] of stops) g.addColorStop(at, color);
   return g;
 }
 
-function fillAll(ctx: CanvasRenderingContext2D, style: string | CanvasGradient): void {
+export function fillAll(ctx: CanvasRenderingContext2D, style: string | CanvasGradient): void {
   ctx.fillStyle = style;
   ctx.fillRect(-BLEED, -BLEED, W + BLEED * 2, H + BLEED * 2);
 }
 
-function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number): void {
+export function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number): void {
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, color);
   g.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -48,14 +48,14 @@ function glow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, co
   ctx.globalAlpha = 1;
 }
 
-function disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
+export function disc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function stars(ctx: CanvasRenderingContext2D, ms: number, alpha: number, count = 70, salt = 0): void {
+export function stars(ctx: CanvasRenderingContext2D, ms: number, alpha: number, count = 70, salt = 0): void {
   for (let i = 0; i < count; i++) {
     const twinkle = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(ms / (700 + hash01(i + salt + 500) * 1600) + i));
     ctx.fillStyle = `rgba(220, 225, 255, ${alpha * twinkle * hash01(i + salt + 900)})`;
@@ -63,7 +63,7 @@ function stars(ctx: CanvasRenderingContext2D, ms: number, alpha: number, count =
   }
 }
 
-function embers(ctx: CanvasRenderingContext2D, ms: number, count: number, alpha: number, colors: readonly [string, string] = [PALETTE.cursor, PALETTE.eclipseGlow]): void {
+export function embers(ctx: CanvasRenderingContext2D, ms: number, count: number, alpha: number, colors: readonly [string, string] = [PALETTE.cursor, PALETTE.eclipseGlow]): void {
   for (let i = 0; i < count; i++) {
     const e = emberAt(i, ms, W + BLEED * 2, H + BLEED);
     ctx.globalAlpha = e.alpha * alpha;
@@ -86,7 +86,7 @@ function ruins(ctx: CanvasRenderingContext2D, base: number, salt: number, color:
 
 let scratch: HTMLCanvasElement | null = null;
 
-interface Figure {
+export interface Figure {
   sprite: string;
   anim: 'Idle' | 'Walk';
   /** Sheet row: 0 faces the viewer, 4 shows the back. */
@@ -121,7 +121,7 @@ function figureLayer(image: HTMLImageElement, sx: number, sy: number, fw: number
 }
 
 /** A Pokémon as a dark shape (flat, or with a little of the sprite showing through) with a one-pixel rim of light around it. */
-function silhouette(ctx: CanvasRenderingContext2D, sheets: SheetStore | null, ms: number, f: Figure): void {
+export function silhouette(ctx: CanvasRenderingContext2D, sheets: SheetStore | null, ms: number, f: Figure): void {
   const meta = SPRITES.sprites[f.sprite]?.anims[f.anim];
   const image = meta ? sheets?.get(sheetKey(f.sprite, meta.file)) : undefined;
   if (!meta || !image) return;
@@ -444,7 +444,7 @@ function voice(ctx: CanvasRenderingContext2D): void {
 const SCENES: Record<PrologueScene, (ctx: CanvasRenderingContext2D, t: SceneTime) => void> = { light, hunger, dimming, eclipse, dungeons, shadows, guardians, voice };
 
 /** Darker corners, so every tableau reads as lit from the middle. */
-function vignette(ctx: CanvasRenderingContext2D): void {
+export function vignette(ctx: CanvasRenderingContext2D): void {
   const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62);
   g.addColorStop(0, 'rgba(0, 0, 0, 0)');
   g.addColorStop(1, 'rgba(0, 0, 0, 0.6)');

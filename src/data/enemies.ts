@@ -42,13 +42,19 @@ export interface PoochyenaDef {
   /** Recovery after a missed or dodged lunge: the punish window. */
   missRecoverMs: number;
   cooldownMs: number;
+  /** Flies or phases: goes straight over walls and obstacles (no path finding), only the map bounds confine it. */
+  floats?: true;
+  /** HP it takes back when its lunge connects (Phantump's grab). */
+  drainHp?: number;
 }
 
 export interface GastlyDef {
   kind: 'caster';
   poise: PoiseDef;
-  /** Floats over obstacles (only the room bounds confine it). */
-  floats: true;
+  /** Floats over obstacles (only the room bounds confine it); walking casters slide along walls. */
+  floats?: true;
+  /** Several projectiles in a fan per cast (Spinarak's threads); one when absent. */
+  spread?: { count: number; degrees: number };
   aggroRange: number;
   speed: number;
   /** Preferred distance band to the player. */
@@ -182,13 +188,220 @@ export const AEGISLASH: AegislashDef = {
   },
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef;
+/**
+ * Tanks: walk in slowly, telegraph a long wind-up, then slam the ground
+ * around them (a ring to roll out of or through); Trevenant also throws a
+ * ring of leaves with each slam.
+ */
+export interface SlammerDef {
+  kind: 'slammer';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  /** Starts the wind-up when the player is this close and the cooldown is over. */
+  slamRange: number;
+  telegraphMs: number;
+  /** The slam's active window. */
+  slamMs: number;
+  /** Radius of the slam around its body. */
+  radius: number;
+  attack: EnemyAttackDef;
+  /** After the slam: the punish window. */
+  recoverMs: number;
+  cooldownMs: number;
+  /** Projectiles thrown evenly around it when it slams. */
+  ring?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  /** Shows the boss bar (a mid-boss). */
+  bar?: true;
+}
+
+/** Foongus: never moves; when the player comes close it puffs, then leaves a spore cloud where it stands. */
+export interface SporeDef {
+  kind: 'spore';
+  poise: PoiseDef;
+  triggerRange: number;
+  telegraphMs: number;
+  /** The cloud: a projectile that does not move, hits once, and fades after `lifetimeMs`. */
+  cloud: EnemyAttackDef & { radius: number; lifetimeMs: number };
+  recoverMs: number;
+  cooldownMs: number;
+}
+
+/** A Decidueye spell card (docs/gdd.md, Bosque Brumoso): its i18n name key. */
+export type ArcherCard = 'volley' | 'fan' | 'dive';
+
+export type ArrowDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+
+/**
+ * Decidueye: three spell cards in a fixed order, each announced by name and
+ * telegraphed. Volley: aimed arrows one after another (keep moving). Fan:
+ * it fades out, reappears at the edge of the clearing farthest from the
+ * player and fires fans of leaves whose gaps shift between fans. Dive: a
+ * long, tracked wind-up, then a straight dive across the clearing (roll
+ * sideways) and a long recovery to punish.
+ */
+export interface ArcherDef {
+  kind: 'archer';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  /** It drifts to stay this far from the player between cards. */
+  keepDistance: number;
+  /** Pause between two cards. */
+  restMs: number;
+  cards: readonly ArcherCard[];
+  /** i18n key of each card's name, shown when it starts. */
+  cardNames: Readonly<Record<ArcherCard, string>>;
+  volley: { telegraphMs: number; shots: number; gapMs: number; arrow: ArrowDef; recoverMs: number };
+  fan: { vanishMs: number; telegraphMs: number; fans: number; leaves: number; spreadDegrees: number; gapMs: number; leaf: ArrowDef; recoverMs: number; edgeInset: number };
+  dive: { telegraphMs: number; diveMs: number; distance: number; reach: number; attack: EnemyAttackDef; recoverMs: number };
+}
+
+export const PHANTUMP: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  floats: true,
+  drainHp: 10,
+  aggroRange: 500,
+  walkSpeed: 46,
+  stalkRange: 110,
+  lungeRange: 95,
+  telegraphMs: 650,
+  lungeMs: 300,
+  lungeDistance: 110,
+  attack: { power: 30, type: 'ghost' },
+  hitRecoverMs: 550,
+  missRecoverMs: 1200,
+  cooldownMs: 1400,
+};
+
+export const PUMPKABOO_SMALL: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.4 },
+  aggroRange: 600,
+  walkSpeed: 92,
+  stalkRange: 90,
+  lungeRange: 80,
+  telegraphMs: 420,
+  lungeMs: 180,
+  lungeDistance: 80,
+  attack: { power: 16, type: 'ghost' },
+  hitRecoverMs: 400,
+  missRecoverMs: 750,
+  cooldownMs: 1000,
+};
+
+export const HOOTHOOT: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  floats: true,
+  aggroRange: 650,
+  walkSpeed: 70,
+  stalkRange: 150,
+  lungeRange: 140,
+  telegraphMs: 750,
+  lungeMs: 340,
+  lungeDistance: 210,
+  attack: { power: 30, type: 'flying' },
+  hitRecoverMs: 500,
+  missRecoverMs: 1300,
+  cooldownMs: 1700,
+};
+
+export const SPINARAK: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  spread: { count: 3, degrees: 28 },
+  aggroRange: 600,
+  speed: 50,
+  minDistance: 110,
+  maxDistance: 200,
+  telegraphMs: 700,
+  castMs: 300,
+  recoverMs: 600,
+  cooldownMs: 2300,
+  projectile: { power: 20, type: 'bug', speed: 115, radius: 5, lifetimeMs: 2600 },
+};
+
+export const PUMPKABOO_SUPER: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.25, knockbackScale: 0.3 },
+  aggroRange: 500,
+  walkSpeed: 36,
+  slamRange: 70,
+  telegraphMs: 900,
+  slamMs: 160,
+  radius: 62,
+  attack: { power: 42, type: 'ghost' },
+  recoverMs: 1300,
+  cooldownMs: 1500,
+};
+
+export const FOONGUS: SporeDef = {
+  kind: 'spore',
+  poise: { hitstunScale: 1, knockbackScale: 0 },
+  triggerRange: 95,
+  telegraphMs: 700,
+  cloud: { power: 26, type: 'poison', radius: 38, lifetimeMs: 2600 },
+  recoverMs: 900,
+  cooldownMs: 2600,
+};
+
+export const TREVENANT: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0, knockbackScale: 0.1 },
+  bar: true,
+  aggroRange: 900,
+  walkSpeed: 44,
+  slamRange: 95,
+  telegraphMs: 1000,
+  slamMs: 200,
+  radius: 85,
+  attack: { power: 38, type: 'ghost' },
+  recoverMs: 1400,
+  cooldownMs: 1100,
+  ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+};
+
+export const DECIDUEYE: ArcherDef = {
+  kind: 'archer',
+  poise: { hitstunScale: 0, knockbackScale: 0.1 },
+  aggroRange: 900,
+  walkSpeed: 60,
+  keepDistance: 150,
+  restMs: 1400,
+  cards: ['volley', 'fan', 'dive'],
+  cardNames: { volley: 'spell.decidueye.volley', fan: 'spell.decidueye.fan', dive: 'spell.decidueye.dive' },
+  volley: { telegraphMs: 900, shots: 5, gapMs: 480, arrow: { power: 24, type: 'ghost', speed: 230, radius: 5, lifetimeMs: 2400 }, recoverMs: 900 },
+  fan: {
+    vanishMs: 700,
+    telegraphMs: 800,
+    fans: 3,
+    leaves: 7,
+    spreadDegrees: 80,
+    gapMs: 650,
+    leaf: { power: 22, type: 'grass', speed: 120, radius: 6, lifetimeMs: 6000 },
+    recoverMs: 1100,
+    edgeInset: 80,
+  },
+  dive: { telegraphMs: 1100, diveMs: 420, distance: 460, reach: 8, attack: { power: 44, type: 'flying' }, recoverMs: 1700 },
+};
+
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   poochyena: POOCHYENA,
   gastly: GASTLY,
   aegislash: AEGISLASH,
+  phantump: PHANTUMP,
+  'pumpkaboo-small': PUMPKABOO_SMALL,
+  'pumpkaboo-super': PUMPKABOO_SUPER,
+  foongus: FOONGUS,
+  spinarak: SPINARAK,
+  hoothoot: HOOTHOOT,
+  trevenant: TREVENANT,
+  decidueye: DECIDUEYE,
 };
 
 const DEFAULT_POISE: PoiseDef = { hitstunScale: 1, knockbackScale: 1 };
@@ -198,5 +411,5 @@ export const poiseOf = (species: SpeciesId): PoiseDef => ENEMY_BEHAVIOUR[species
 /** Floaters ignore obstacles (walls still confine them). */
 export const floatsOf = (species: SpeciesId): boolean => {
   const def = ENEMY_BEHAVIOUR[species];
-  return def !== undefined && 'floats' in def && def.floats;
+  return def !== undefined && 'floats' in def && def.floats === true;
 };

@@ -7,7 +7,23 @@ import type { SpeciesId } from './species';
  */
 export const PROGRESSION = {
   /** Base experience per defeated enemy, by species (the player species gives none). */
-  xpBySpecies: { mimikyu: 0, zorua: 0, litwick: 0, cubone: 0, poochyena: 10, gastly: 12, aegislash: 60 } as Record<SpeciesId, number>,
+  xpBySpecies: {
+    mimikyu: 0,
+    zorua: 0,
+    litwick: 0,
+    cubone: 0,
+    poochyena: 10,
+    gastly: 12,
+    aegislash: 60,
+    phantump: 12,
+    'pumpkaboo-small': 5,
+    'pumpkaboo-super': 22,
+    foongus: 11,
+    spinarak: 10,
+    hoothoot: 12,
+    trevenant: 50,
+    decidueye: 90,
+  } as Record<SpeciesId, number>,
   /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
   xpPerDepth: 0.5,
   /**

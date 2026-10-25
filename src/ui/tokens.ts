@@ -58,6 +58,9 @@ export const TYPE_COLORS: Record<PokemonType, TypeColors> = {
   steel: { core: '#c8d2dc', glow: '#f2f6fa', edge: '#6d7a88' },
   fire: { core: '#ff7a1f', glow: '#ffd84a', edge: '#c2361a' },
   ground: { core: '#a87a46', glow: '#e6c48e', edge: '#5e3f1e' },
+  grass: { core: '#5cc23a', glow: '#b9f28c', edge: '#2a6418' },
+  bug: { core: '#b4c228', glow: '#eef59a', edge: '#5d6612' },
+  flying: { core: '#8db4f2', glow: '#e0ecff', edge: '#3f5f9e' },
 };
 
 /**

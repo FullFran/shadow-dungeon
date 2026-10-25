@@ -1,4 +1,5 @@
-import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
+import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
+import { chanceAt, CRYPT, dungeonById, type DungeonDef, type DungeonId } from '../data/dungeons';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { generateFloor } from './dungeon';
@@ -12,7 +13,7 @@ import { vec } from './vec';
 import { createWorld, type WorldOptions } from './world';
 
 /**
- * A run (docs/gdd.md §3): the floors of `RUN_PLAN` in order, generated ones
+ * A run (docs/gdd.md §3): the floors of its dungeon's plan in order, generated ones
  * from seeds derived from the run seed, so a run seed replays the same
  * dungeon. HP carries over between floors with a small heal on each new one;
  * Disguise resets per floor. Generated floors may be urgent (a collapse),
@@ -20,6 +21,8 @@ import { createWorld, type WorldOptions } from './world';
  */
 export interface RunState {
   seed: number;
+  /** The dungeon being run (data/dungeons.ts); every peer of a shared run plays the host's. */
+  dungeon: DungeonId;
   /** Current floor, 1-based. */
   floor: number;
   /** Kind of the current floor (fixed rooms are always normal). */
@@ -47,22 +50,36 @@ export interface RunProgress {
 /** Seed of one generated floor of a run. */
 export const floorSeed = (runSeed: number, floor: number): number => deriveSeed(runSeed, floor);
 
-export const floorPlanOf = (run: Pick<RunState, 'floor'>) => RUN_PLAN[run.floor - 1]!;
+export const dungeonOf = (run: Pick<RunState, 'dungeon'>): DungeonDef => dungeonById(run.dungeon);
+
+export const floorPlanOf = (run: Pick<RunState, 'floor' | 'dungeon'>): FloorPlan => dungeonOf(run).plan[run.floor - 1]!;
+
+/** Number of floors of the run's dungeon (the last is its guardian). */
+export const floorCount = (run: Pick<RunState, 'dungeon'>): number => dungeonOf(run).plan.length;
 
 /** Salt that keeps the urgent-floor draw independent of the floor generator's seed. */
 const URGENT_SALT = 0x51ab;
 
-/** Kind of a floor of a run: generated floors draw against the depth weights (never floor 1); fixed rooms are normal. */
-export function floorKind(runSeed: number, floor: number): FloorKind {
-  if (RUN_PLAN[floor - 1]?.kind !== 'generated') return 'normal';
-  const table = URGENT.collapseChance;
-  const chance = table[Math.min(floor, table.length) - 1] ?? 0;
-  return nextRandom(deriveSeed(runSeed, floor + URGENT_SALT)).value < chance ? 'collapse' : 'normal';
+/**
+ * Kind of a floor of a run: generated floors make one draw against the
+ * dungeon's urgent weights for that depth, taken in order (never floor 1 so
+ * far); fixed rooms are normal.
+ */
+export function floorKind(runSeed: number, floor: number, dungeon: DungeonDef = CRYPT): FloorKind {
+  if (dungeon.plan[floor - 1]?.kind !== 'generated') return 'normal';
+  const roll = nextRandom(deriveSeed(runSeed, floor + URGENT_SALT)).value;
+  let threshold = 0;
+  for (const urgent of dungeon.urgent) {
+    threshold += chanceAt(urgent.chance, floor);
+    if (roll < threshold) return urgent.kind;
+  }
+  return 'normal';
 }
 
-export const isBossFloor = (run: RunState): boolean => {
+/** The guardian's floor (a fixed arena that is not a mid-boss). */
+export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean => {
   const plan = floorPlanOf(run);
-  return plan.kind === 'room' && plan.room === 'boss';
+  return plan.kind === 'room' && plan.role !== 'midboss';
 };
 
 /** Loads the run's current floor into the world (the heal is the caller's: none on floor 1). */
@@ -71,7 +88,7 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const deeper = { ...world, depth: run.floor };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
-  const floor = generateFloor(seed, run.floor);
+  const floor = generateFloor(seed, run.floor, dungeonOf(run).spawns);
   return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
 }
 
@@ -79,11 +96,20 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
 const offerFor = (run: Pick<RunState, 'seed' | 'floor'>, world: WorldState): readonly ItemId[] | null =>
   run.floor > 1 ? offerItems(run.seed, run.floor, world.localId, world.player.items) : null;
 
-/** Starts a run on floor 1 (or `floor`, for development: the same floor that seed would reach, with its item offer). */
-export function startRun(seed: number, options: Omit<WorldOptions, 'seed' | 'arena' | 'playerPos'>, floor = 1): { run: RunState; world: WorldState } {
-  const start = Math.min(Math.max(1, Math.floor(floor)), RUN_PLAN.length);
+/**
+ * Starts a run of `dungeon` (the Crypt by default) on floor 1, or on `floor`
+ * for development: the same floor that seed would reach, with its item offer.
+ */
+export function startRun(
+  seed: number,
+  options: Omit<WorldOptions, 'seed' | 'arena' | 'playerPos'>,
+  floor = 1,
+  dungeon: DungeonId = CRYPT.id,
+): { run: RunState; world: WorldState } {
+  const def = dungeonById(dungeon);
+  const start = Math.min(Math.max(1, Math.floor(floor)), def.plan.length);
   const base = createWorld({ ...options, seed, arena: { width: 1, height: 1 }, playerPos: vec(0, 0) });
-  const run: RunState = { seed, floor: start, kind: floorKind(seed, start), escape: null, offer: offerFor({ seed, floor: start }, base) };
+  const run: RunState = { seed, dungeon: def.id, floor: start, kind: floorKind(seed, start, def), escape: null, offer: offerFor({ seed, floor: start }, base) };
   return { run, world: enterFloor(base, run) };
 }
 
@@ -103,7 +129,7 @@ function heal(world: WorldState): WorldState {
 /** Moves the run to `floor` (the next one): records a collapse escape, heals, and loads it. */
 function goDown(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
-  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items) };
+  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items) };
   return { run: next, world: enterFloor(heal(world), next) };
 }
 
@@ -115,7 +141,7 @@ function goDown(run: RunState, world: WorldState, floor: number): { run: RunStat
  */
 export function progressRun(run: RunState, world: WorldState): RunProgress {
   if (partyDefeated(world)) return { run, world, entered: false, outcome: 'defeat' };
-  const last = run.floor >= RUN_PLAN.length;
+  const last = run.floor >= floorCount(run);
   if (last && floorPlanOf(run).kind === 'room' && roomCleared(world)) return { run, world, entered: false, outcome: 'victory' };
   if (world.role === 'guest') return { run, world, entered: false, outcome: null };
   const plan = floorPlanOf(run);
@@ -126,6 +152,6 @@ export function progressRun(run: RunState, world: WorldState): RunProgress {
 
 /** Guest: the host went down to `floor`; every peer generates it from the shared run seed. */
 export function followToFloor(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
-  if (floor <= run.floor || floor > RUN_PLAN.length) return { run, world };
+  if (floor <= run.floor || floor > floorCount(run)) return { run, world };
   return goDown(run, world, floor);
 }

@@ -24,7 +24,7 @@ function descend(progress: RunProgress): RunProgress {
 describe('run structure', () => {
   it('starts on floor 1, generated from a floor seed derived from the run seed', () => {
     const { run, world } = startRun(SEED, {});
-    expect(run).toEqual({ seed: SEED, floor: 1, kind: 'normal', escape: null, offer: null });
+    expect(run).toEqual({ seed: SEED, dungeon: 'crypt-of-the-sword-king', floor: 1, kind: 'normal', escape: null, offer: null });
     const floor = generateFloor(floorSeed(SEED, 1), 1);
     expect(world.arena.tiles).toEqual(floor);
     expect(world.player.pos).toEqual(tileCenter(floor.start));

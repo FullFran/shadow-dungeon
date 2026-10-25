@@ -1,9 +1,8 @@
-import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
-import { initialBoss, onBossDamaged } from './boss';
+import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import type {
   ActionPhase,
@@ -168,7 +167,7 @@ function freshEnemy(snapshot: EnemySnapshot): EnemyState {
     hitstunMs: 0,
     knockback: vec(0, 0),
     ai: initialAi(),
-    ...(ENEMY_BEHAVIOUR[snapshot.species]?.kind === 'boss' ? { boss: initialBoss() } : {}),
+    ...(hasBossState(snapshot.species) ? { boss: initialBoss(snapshot.species) } : {}),
   };
 }
 

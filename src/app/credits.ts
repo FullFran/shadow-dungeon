@@ -55,7 +55,7 @@ export function creditsWindow(footer: HTMLElement): HTMLElement {
       h('ul', { className: 'credit-list' }, artists),
       h('p', { textContent: t('credits.font') }),
       h('p', { textContent: t('credits.music') }),
-      h('ul', { className: 'credit-list' }, Object.values(MUSIC_TRACKS).map((track) => h('li', {}, [h('a', { href: track.sourceUrl, target: '_blank', rel: 'noopener noreferrer', textContent: track.attribution })]))),
+      h('ul', { className: 'credit-list' }, Object.values(MUSIC_TRACKS).filter((track) => !track.variantOf).map((track) => h('li', {}, [h('a', { href: track.sourceUrl, target: '_blank', rel: 'noopener noreferrer', textContent: track.attribution })]))),
       h('p', { textContent: t('credits.audio') }),
     ]),
     footer,

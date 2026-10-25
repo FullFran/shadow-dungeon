@@ -1,5 +1,6 @@
 import type { FloorKind } from '../data/dungeon';
 import { startCollapse } from './collapse';
+import { startFog } from './fog';
 import { roomRect, type Floor } from './dungeon';
 import { insideRect } from './geometry';
 import type { Arena, WorldState } from './state';
@@ -29,6 +30,7 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
     arena: floorArena(floor),
     player: { ...entered.player, pos: tileCenter(floor.start), roll: null, facing: vec(0, 1) },
     ...(kind === 'collapse' ? { collapse: startCollapse(floor) } : {}),
+    ...(kind === 'fog' ? { fog: startFog() } : {}),
   };
   for (const spawn of floor.spawns) {
     next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!) });
