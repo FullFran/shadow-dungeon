@@ -6,11 +6,26 @@
     <title>Mazmorra Sombría</title>
     <style>
       :root { color-scheme: dark; }
-      body { margin: 0; overflow: hidden; background: #14121a; color: #e8e4f0; font-family: system-ui, sans-serif; }
+      body { margin: 0; background: #14121a; color: #e8e4f0; font-family: system-ui, sans-serif; }
       #app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; box-sizing: border-box; }
-      canvas.game { image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
+      canvas.game { max-width: 100vw; max-height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
       .notice { position: fixed; bottom: 0.25rem; left: 0; right: 0; margin: 0 auto; max-width: 60rem; font-size: 0.7rem; opacity: 0.6; text-align: center; pointer-events: none; }
       .notice p { margin: 0.25rem 0; }
+      .notice.in-game { font-size: 0.6rem; opacity: 0.45; }
+      .panel { max-width: 34rem; width: 100%; padding: 1.5rem 2rem 4rem; box-sizing: border-box; }
+      .panel h1 { margin: 0; font-size: 2rem; color: #d9c6ff; }
+      .panel h2 { margin: 1.25rem 0 0.5rem; font-size: 1rem; color: #b9a4ff; }
+      .panel .subtitle { margin: 0.25rem 0 1rem; opacity: 0.75; }
+      .panel ul { margin: 0; padding-left: 1.2rem; line-height: 1.5; font-size: 0.9rem; }
+      .panel .goal { font-size: 0.9rem; opacity: 0.85; }
+      .panel.defeat h1 { color: #ff7a7a; }
+      .panel.victory h1 { color: #ffd36b; }
+      .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+      button, select { font: inherit; color: inherit; background: #2b2638; border: 1px solid #4a4360; border-radius: 4px; padding: 0.4rem 0.8rem; }
+      button { cursor: pointer; }
+      button[aria-pressed="true"] { background: #4a3a78; border-color: #b9a4ff; }
+      button.primary { margin-top: 1.25rem; background: #6a4fc0; border-color: #b9a4ff; font-weight: bold; padding: 0.6rem 1.6rem; }
+      button:focus-visible, select:focus-visible { outline: 2px solid #ffd36b; outline-offset: 2px; }
     </style>
   </head>
   <body>
