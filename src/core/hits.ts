@@ -60,7 +60,8 @@ export function landHitOnPlayer(
   const armored = armorCovers(player, hit);
   if (armored) events.push({ type: 'passiveTriggered', passive: 'battle-armor' });
   const damage = armored ? Math.round(hit.damage * PASSIVES.battleArmorFactor) : hit.damage;
-  events.push({ type: 'playerHurt', damage });
+  // `pierceRoll` names a positional hit for the balance harness (src/sim); nothing in the game reads it.
+  events.push({ type: 'playerHurt', damage, ...(hit.pierceRoll ? { pierceRoll: true as const } : {}) });
   const hurt = breakIllusion(player, events);
   const saved = damage >= hurt.hp ? onLethalHit(hurt, events) : null;
   return { outcome: 'hurt', state: { ...state, player: saved ?? { ...hurt, hp: Math.max(0, hurt.hp - damage) } } };

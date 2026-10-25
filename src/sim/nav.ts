@@ -31,8 +31,8 @@ export class Navigator {
   direction(arena: Arena, from: Vec2, goal: Vec2): Vec2 {
     const grid = arena.tiles;
     if (!grid || lineOfSight(grid, from, goal)) return normalize(sub(goal, from));
-    const target = tileOf(goal);
-    if (isWall(grid, target.x, target.y)) return normalize(sub(goal, from));
+    const target = nearestFloor(grid, tileOf(goal));
+    if (!target) return normalize(sub(goal, from));
     const next = flowStep(grid, this.fieldTo(grid, target), tileOf(from));
     return next ? normalize(sub(tileCenter(next), from)) : normalize(sub(goal, from));
   }
@@ -45,6 +45,26 @@ export class Navigator {
     const field = this.fieldTo(grid, tileOf(goal));
     return isWall(grid, a.x, a.y) ? -1 : (field.dist[a.y * grid.cols + a.x] ?? -1);
   }
+}
+
+/** The floor tile nearest to `tile` (itself when it is floor), searching up to 4 tiles out; null when none. A floater inside a wall is reached from beside it. */
+function nearestFloor(grid: TileGrid, tile: TilePoint): TilePoint | null {
+  if (!isWall(grid, tile.x, tile.y)) return tile;
+  for (let r = 1; r <= 4; r++) {
+    let best: TilePoint | null = null;
+    let bestD = Number.POSITIVE_INFINITY;
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || isWall(grid, tile.x + dx, tile.y + dy)) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) {
+          bestD = d;
+          best = { x: tile.x + dx, y: tile.y + dy };
+        }
+      }
+    if (best) return best;
+  }
+  return null;
 }
 
 /** Centre of a room of a generated floor, in world pixels. */

@@ -34,7 +34,14 @@ Out of scope: changing game balance; co-op party scaling itself (another writer 
   - `src/sim/nav.ts`: straight in sight, else downhill on a BFS field (`core/flow.ts`) to the goal tile; unvisited rooms, then the stairs; fixed rooms: middle, then exit once cleared.
   - Architecture: core/data may not import `/sim/`; sim imports only `./`, `../core/`, `../data/`; no app layer imports sim.
   - Evidence: `tests/sim/bots.test.ts` (4 tests) written right after the module, so no RED first; mutation checks instead: perfect `dodges: false` fails 2 tests (Poochyena duel, reaction), removing the perception lag fails the reaction test. `tests/architecture.test.ts` 5/5. `npm run typecheck` ok.
-- [ ] T2 Runner + metrics (route: same)
+- [x] T2 Runner + metrics (route: same)
+  - Core hook (behaviour-neutral): `playerHurt` carries `pierceRoll: true` for a positional hit (`core/hits.ts`, `GameEvent` type). Golden digest `bebcc214` still passes; nothing in the game reads the field.
+  - `src/sim/metrics.ts` `FloorRecorder`: floor time, damage (attacks + floor hazards), hits and positional hits, biggest hit / max HP, kills, per-enemy TTK (from waking; fixed rooms from the start), boss TTK (from first on screen), telegraph→attack ms (ordinary and positional = choice), max simultaneous wind-ups (interval overlap), wind-ups started off screen (count and max at once), attacks with no pending wind-up.
+  - `src/sim/runner.ts`: `runDungeon` (floor by floor, HP/level/items carry over, the bot takes the first item offered; stops at death, timeout, victory or `maxFloors`, default 10 for the endless Sima), `runFloor` (one floor or arena in isolation: fresh level-1 player via `startRun` on that floor), `arenaFloors`, `inject` test hook. Urgent floors (collapse, fog, flood, gas): the bot heads for the stairs.
+  - `src/sim/party.ts`: the single co-op adapter. `partyScaling(size)` is identity today (no game party scaling yet); `applyParty` divides enemy HP by the party size (equal-DPS teammates) on top of it, enemy damage takes its factor. Enemies still all target the bot (pessimistic).
+  - Bot fixes found while running: a floater inside a wall is approached from the nearest floor tile; an enemy chased 15 s without losing HP is ignored for 10 s (Gastly kiting from walls timed floors out).
+  - Speed: the full Crypt × 4 bots × 3 seeds + arenas ≈ 2 s; every dungeon ≈ 2–5 s on easy.
+  - Evidence: `tests/sim/runner.test.ts` (6 tests): replay identity, floor-by-floor Crypt, Sableye arena TTK, `maxOverlap`, recorder on synthetic events, the hook (mutation: removing the hook fails it), party adapter. Full suite 139 files / 1330 tests passed; typecheck ok.
 - [ ] T3 Bands + fairness checks + planted unwinnable pattern + CI subset (route: same)
 - [ ] T4 Report + `npm run balance` + README + GDD §9 (route: same)
 

@@ -313,7 +313,8 @@ export type GameEvent =
   | { type: 'rollDenied' }
   | { type: 'hitDodged' }
   | { type: 'perfectDodge' }
-  | { type: 'playerHurt'; damage: number }
+  /** `pierceRoll`: the hit was positional (rolling could not stop it); read by the balance harness only. */
+  | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   | { type: 'disguiseBroken' }
   /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
   /** `kindled`: Flash Fire was stoked by the player's own Fire hits rather than an absorbed attack. */

@@ -57,6 +57,8 @@ export const BOT_PROFILES: Readonly<Record<BotKind, BotProfile>> = {
 /** Map knowledge the screen does not carry: where the way on is (stairs, a fixed room's exit; null for a guardian's last room). */
 export interface BotContext {
   exit: Rect | null;
+  /** An urgent floor (collapse, fog, flood, gas: the game shows it): head for the way on, fight only what stands in the way. */
+  urgent?: boolean;
 }
 
 export interface Bot {
@@ -75,6 +77,9 @@ const SHOT_ROLL_MS = 120;
 const STRIKE_GAP = 22;
 const DT_MS = 1000 / TUNING.ticksPerSecond;
 const HISTORY_MS = 1000;
+/** An enemy chased this long without losing HP (out of reach in a wall, kiting) is left alone for a while. */
+const CHASE_GIVE_UP_MS = 15_000;
+const IGNORE_MS = 10_000;
 
 interface Threat {
   /** Unit direction from the threat to the bot. */
@@ -102,6 +107,9 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
   let stuckTicks = 0;
   let unstick: { dir: Vec2; ticks: number } | null = null;
   let whimTicks = 60;
+  /** Per target: its HP when last hurt and the time chased since; enemies given up on until a time. */
+  const chase = new Map<string, { hp: number; ms: number }>();
+  const ignored = new Map<string, number>();
 
   const decision = (key: string, now: number) => {
     let d = decisions.get(key);
@@ -201,6 +209,7 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
   const navigate = (obs: Observation, context: BotContext): Vec2 => {
     const arena = obs.arena;
     const me = obs.self.pos;
+    if (arena.tiles && context.urgent && context.exit) return nav.direction(arena, me, vec(context.exit.x + context.exit.width / 2, context.exit.y + context.exit.height / 2));
     if (arena.tiles && arena.rooms) {
       arena.rooms.forEach((room, i) => {
         if (insideRect(me, { x: room.x * TILE, y: room.y * TILE, width: room.width * TILE, height: room.height * TILE })) visited.add(i);
@@ -289,9 +298,23 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
         }
       }
 
-      // Offense: the nearest enemy on screen.
+      // Offense: the nearest enemy on screen (on an urgent floor only one in the way), but not one chased for long without hurting it.
       let target: SeenEnemy | null = null;
-      for (const e of seen.enemies) if (!target || distance(self.pos, e.pos) < distance(self.pos, target.pos)) target = e;
+      for (const e of seen.enemies) {
+        if ((ignored.get(e.id) ?? -1) > now) continue;
+        if (context.urgent && distance(self.pos, e.pos) > e.radius + 40) continue;
+        if (!target || distance(self.pos, e.pos) < distance(self.pos, target.pos)) target = e;
+      }
+      if (target) {
+        // Time spent on this target since it last lost HP (summed over the ticks it was the target).
+        const c = chase.get(target.id);
+        if (!c || c.hp !== target.hp) chase.set(target.id, { hp: target.hp, ms: 0 });
+        else if ((c.ms += DT_MS) > CHASE_GIVE_UP_MS) {
+          ignored.set(target.id, now + IGNORE_MS);
+          chase.delete(target.id);
+          target = null;
+        }
+      }
       if (target) {
         const gap = distance(self.pos, target.pos);
         const reach = target.radius + STRIKE_GAP;
