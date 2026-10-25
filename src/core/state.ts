@@ -210,6 +210,10 @@ export interface EnemyState {
    * and the damage `by` another player dealt it meanwhile.
    */
   aggro?: { targetId: string; heldMs: number; pressure: number; by?: string; swung?: true };
+  /** Host only (core/bounds.ts): how long a wave enemy has been outside its sealed room. */
+  strayMs?: number;
+  /** Host only (core/bounds.ts): it was just brought back into its room (the renderer draws a poof while > 0). */
+  warpMs?: number;
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
@@ -327,7 +331,8 @@ export type GameEvent =
   | { type: 'rollDenied' }
   | { type: 'hitDodged' }
   | { type: 'perfectDodge' }
-  | { type: 'playerHurt'; damage: number }
+  /** `pierceRoll`: the hit was positional (rolling could not stop it); read by the balance harness only. */
+  | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
   | { type: 'spellCardEnd'; enemyId: string; card: SpellCardId; outcome: Exclude<CardOutcome, 'start'> }
   /** The local player went through a spell card without being hit (every peer for itself): coins and a heal. */

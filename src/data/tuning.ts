@@ -54,6 +54,20 @@ export const TUNING = {
     chargingMoveFactor: 0.4,
     /** Fraction of the remaining knockback applied per 60 Hz tick (ease-out). */
     knockbackPerTick: 0.25,
+    /** Longest knockback an enemy can take (px, total): the heaviest move with the heaviest poise stays under it. */
+    maxKnockbackPx: 160,
+  },
+
+  /** The out-of-bounds safety net (core/bounds.ts) and the wave room's failsafe (core/sima-events.ts). */
+  bounds: {
+    /** A wave enemy outside its sealed room this long is brought back to a free tile inside it. */
+    strayMs: 3000,
+    /** How long the poof of that return shows. */
+    warpMs: 450,
+    /** A floating wave enemy outside its sealed room drifts back towards it at this speed (px/s). */
+    floaterPullSpeed: 90,
+    /** A sealed wave room with a player inside whose wave enemies lose no HP this long ends (they die, unpaid; the doors open). */
+    waveStallMs: 60000,
   },
 
   /** Starter passives (data/species.ts `passive`). */

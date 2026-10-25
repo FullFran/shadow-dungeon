@@ -234,6 +234,19 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.restore();
   }
 
+  /** A wave enemy just brought back into its sealed room (core/bounds.ts): a grey puff ring that grows and fades. */
+  function warpPoof(enemy: EnemyState, pos: Vec2): void {
+    const t = 1 - (enemy.warpMs ?? 0) / TUNING.bounds.warpMs;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 0.7 * (1 - t));
+    ctx.strokeStyle = '#d8d4e8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(Math.round(pos.x), Math.round(pos.y - enemy.radius * 0.5), enemy.radius + 4 + t * 18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function shadow(pos: Vec2, radius: number): void {
     ctx.fillStyle = COLORS.shadow;
     ctx.beginPath();
@@ -1292,6 +1305,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         draw: () => {
           shadow(pos, enemy.radius);
           if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
+          if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;

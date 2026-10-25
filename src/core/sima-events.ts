@@ -7,13 +7,15 @@ import type { PactEffect, PactId, SimaEventKind, SimaEvents, SimaPact } from '..
 import type { SpeciesId } from '../data/species';
 import { enterMode } from './brain';
 import { roomRect, type Floor, type TileRect } from './dungeon';
-import { ENEMY_BEHAVIOUR } from '../data/enemies';
-import { insideRect } from './geometry';
+import { ENEMY_BEHAVIOUR, floatsOf } from '../data/enemies';
+import { confineCircle, insideRect } from './geometry';
 import { offerItems } from './items';
 import { deriveSeed } from './rng';
 import { draws, rising } from './sima';
 import type { EnemyState, PlayerState, Rect, WorldState } from './state';
-import { tileCenter, TILE, type TileGrid, type TilePoint } from './tiles';
+import { isWall, tileCenter, tileOf, TILE, type TileGrid, type TilePoint } from './tiles';
+import { nearestTile } from './bounds';
+import { TUNING } from '../data/tuning';
 import { distance, type Vec2 } from './vec';
 import { spawnEnemy } from './world';
 
@@ -52,6 +54,9 @@ export interface SimaEventState {
   /** Waves: the doors are locked; `doors` are the grid indices that close. */
   sealed?: boolean;
   doors?: readonly number[];
+  /** Waves, host only: how long the sealed room has gone with a player inside and its wave enemies losing no HP, and the HP they last had (the failsafe). */
+  stallMs?: number;
+  stallHp?: number;
   /** Ambush: where the hidden enemies wait, and what they are. */
   spots?: readonly Vec2[];
   species?: readonly SpeciesId[];
@@ -302,7 +307,7 @@ export function updateSimaEvent(state: WorldState, dtMs: number, def: SimaEvents
         return spawnWave(sealed(state, event, true), def, pool, 1);
       }
       const standing = state.enemies.some((e) => e.alive && (event.ids ?? []).includes(e.id));
-      if (standing) return state;
+      if (standing) return waveStall(state, event, dtMs);
       if (wave >= simaWaves(def, worldDifficulty(state))) {
         const open = sealed(state, event, false);
         return finish(open, open.simaEvent!, 'cleared');
@@ -330,11 +335,59 @@ export function updateSimaEvent(state: WorldState, dtMs: number, def: SimaEvents
   }
 }
 
-/** Waves: closes or opens the room's doors (the grid changes on every peer; guests follow the `sealed` flag). */
+/**
+ * Waves: closes or opens the room's doors (the grid changes on every peer;
+ * guests follow the `sealed` flag). On closing, a walker standing in a
+ * doorway is first moved into the room, never left inside the new wall.
+ */
 function sealed(state: WorldState, event: SimaEventState, closed: boolean): WorldState {
   const grid = state.arena.tiles;
   if (!grid || !event.doors) return { ...state, simaEvent: { ...event, sealed: closed } };
-  return { ...state, arena: { ...state.arena, tiles: withDoors(grid, event.doors, closed) }, simaEvent: { ...event, sealed: closed } };
+  const tiles = withDoors(grid, event.doors, closed);
+  const arena = { ...state.arena, tiles };
+  const enemies = closed ? state.enemies.map((e) => (e.alive && !floatsOf(e.species) && inDoorway(grid, event.doors!, e) ? intoRoom(arena, event.rect, e) : e)) : state.enemies;
+  return { ...state, arena, enemies, simaEvent: { ...event, sealed: closed } };
+}
+
+/** The enemy's circle touches one of the door tiles. */
+function inDoorway(grid: TileGrid, doors: readonly number[], enemy: EnemyState): boolean {
+  return doors.some((i) => {
+    const x = (i % grid.cols) * TILE;
+    const y = Math.floor(i / grid.cols) * TILE;
+    const dx = enemy.pos.x - Math.max(x, Math.min(enemy.pos.x, x + TILE));
+    const dy = enemy.pos.y - Math.max(y, Math.min(enemy.pos.y, y + TILE));
+    return Math.hypot(dx, dy) < enemy.radius;
+  });
+}
+
+/** The nearest floor tile of the room (the sealed grid), the enemy's circle confined there. */
+function intoRoom(arena: WorldState['arena'], rect: Rect, enemy: EnemyState): EnemyState {
+  const grid = arena.tiles!;
+  const x0 = Math.round(rect.x / TILE);
+  const y0 = Math.round(rect.y / TILE);
+  const x1 = x0 + Math.round(rect.width / TILE);
+  const y1 = y0 + Math.round(rect.height / TILE);
+  const to = nearestTile(grid, tileOf(enemy.pos), (x, y) => x >= x0 && y >= y0 && x < x1 && y < y1 && !isWall(grid, x, y));
+  return to ? { ...enemy, pos: confineCircle(arena, tileCenter(to), enemy.radius), knockback: { x: 0, y: 0 } } : enemy;
+}
+
+/**
+ * Waves failsafe: a sealed room where, with a player inside, the wave's
+ * enemies have lost no HP for `TUNING.bounds.waveStallMs` ends: those left die
+ * unpaid (`spent`) and the doors open. Whatever stranded them
+ * (odd/tasks/out-of-bounds-fix.md), the room never locks a run. The players'
+ * HP is left out on purpose: the Sima's collapse keeps nibbling at it, and a
+ * wave enemy that can hurt you but never be hurt is the very case to end.
+ */
+function waveStall(state: WorldState, event: SimaEventState, dtMs: number): WorldState {
+  const ids = event.ids ?? [];
+  const hp = state.enemies.reduce((sum, e) => (e.alive && ids.includes(e.id) ? sum + e.hp : sum), 0);
+  const stallMs = someoneIn(state, event.rect) && event.stallHp === hp ? (event.stallMs ?? 0) + dtMs : 0;
+  if (stallMs < TUNING.bounds.waveStallMs) return { ...state, simaEvent: { ...event, stallMs, stallHp: hp } };
+  const { stallMs: _ms, stallHp: _hp, ...rest } = event;
+  const enemies = state.enemies.map((e) => (e.alive && ids.includes(e.id) ? { ...e, hp: 0, alive: false, spent: true } : e));
+  const open = sealed({ ...state, enemies }, rest, false);
+  return finish(open, open.simaEvent!, 'cleared');
 }
 
 function spawnWave(state: WorldState, def: SimaEvents, pool: readonly { species: SpeciesId; weights: readonly number[] }[], wave: number): WorldState {

@@ -17,7 +17,18 @@ npm test           # unit tests (Vitest)
 npm run typecheck  # app + DOM-free core
 npm run build      # typecheck + production build to dist/
 node tools/fetch-sprites.mjs   # re-download sprites and regenerate meta + CREDITS.md
+npm run balance    # balance sweep with bots, writes reports/balance/latest.md (~5 min; -- --quick ~15 s)
 ```
+
+### Balance harness
+
+`src/sim` plays the game headless with bots (perfect, average, novice, masher) that see only the screen, on every dungeon × tier × party size (1–4) × seed, floor by floor and in the boss arenas alone, and checks the results against target bands (`src/sim/bands.ts`). `npm test` runs the CI subset (`tests/sim/balance-ci.test.ts`, ~12 s): a fairness invariant (biggest hit ≤ 35 % HP, telegraph floors, wind-ups at once, off-screen threats, unannounced hits) fails it unless it is a recorded known violation; performance bands (clear rates, boss TTK, HP per floor) only warn. To rebalance:
+
+1. Run `npm run balance` on the old numbers; `reports/balance/latest.md` is committed (`latest.json`, every floor result, is ignored).
+2. Change the numbers, run it again, diff the report and note the before/after in the task document.
+3. When content is fixed, delete its `KNOWN_VIOLATIONS` entry in `src/sim/bands.ts`, so the gate keeps it fixed.
+
+Options: `-- --quick` (CI subset), `-- --seeds=1,2`, `-- --dungeon=<id>`, `-- --tier=<tier>`. Details in docs/gdd.md §9.
 
 Deploy: `.github/workflows/deploy.yml` runs the tests, builds `dist/` and publishes it to GitHub Pages on every push to `main` (or manually). Enable Pages with source "GitHub Actions" in the repository settings.
 
@@ -79,6 +90,7 @@ Licenses: CC0 1.0 tracks (Eldritch Grim, Emma_MA, HydroGene, Umplix, Cleyton Kau
 | Path | What |
 |---|---|
 | `src/core` | Pure, deterministic simulation (no DOM, no adapters; compiled without DOM typings) |
+| `src/sim` | Balance harness on top of the core: bots, headless runner, metrics, bands, report (only tests and tools import it) |
 | `src/data` | Typed game data: species, moves, type chart, level curve, held items, coin rules, upgrades, sprite meta |
 | `src/adapters` | Rendering, input, assets, audio, storage |
 | `src/net` | Netcode spike: protocol, interpolation buffer, transports (BroadcastChannel, lag simulator), peer session |

@@ -6,7 +6,7 @@ import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged, rotateToward } from './boss';
 import { computeDamage, typeEffectiveness } from './damage';
-import { confineCircle, insideRect } from './geometry';
+import { confineCircle, insideRect, sweepCircle } from './geometry';
 import { partyStaggerOf, presentPlayers } from './party';
 import { noteAggroDamage } from './aggro';
 import { wallAt } from './tiles';
@@ -467,12 +467,15 @@ function updateEnemyReactions(state: WorldState, dtMs: number): WorldState {
   const fraction = 1 - (1 - COMBAT.knockbackPerTick) ** (ms / FIXED_DT_MS);
   const enemies = state.enemies.map((enemy) => {
     if (enemy.hitstunMs <= 0 && length(enemy.knockback) === 0) return enemy;
-    const push = scale(enemy.knockback, fraction);
-    const rest = sub(enemy.knockback, push);
+    // Capped (a guest's wire claim too) and swept: a heavy push meets the first wall instead of tunnelling through it.
+    const total = length(enemy.knockback);
+    const knockback = total > COMBAT.maxKnockbackPx ? scale(enemy.knockback, COMBAT.maxKnockbackPx / total) : enemy.knockback;
+    const push = scale(knockback, fraction);
+    const rest = sub(knockback, push);
     return {
       ...enemy,
       hitstunMs: Math.max(0, enemy.hitstunMs - ms),
-      pos: confineToArena(state, add(enemy.pos, push), enemy.radius, !floatsOf(enemy.species)),
+      pos: sweepCircle(state.arena, enemy.pos, push, enemy.radius, !floatsOf(enemy.species)),
       knockback: length(rest) < 0.05 ? vec(0, 0) : rest,
     };
   });
