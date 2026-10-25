@@ -98,7 +98,7 @@ export function floorKind(runSeed: number, floor: number, dungeon: DungeonDef = 
 /** The guardian's floor (a fixed arena that is not a mid-boss). */
 export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean => {
   const plan = floorPlanOf(run);
-  return plan.kind === 'room' && plan.role !== 'midboss';
+  return plan.kind === 'room' && plan.role === undefined;
 };
 
 /** Loads the run's current floor into the world (the heal is the caller's: none on floor 1). */

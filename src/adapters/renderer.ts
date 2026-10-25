@@ -13,6 +13,7 @@ import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type TilePalette } from '../data/dungeons';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
@@ -65,6 +66,8 @@ export interface RenderFrame {
   touchUi?: boolean;
   /** The boss spell card just announced, while it shows. */
   spell?: SpellBanner | null;
+  /** The endless dungeon's run clock (absent elsewhere). */
+  clock?: RunClock | null;
 }
 
 const COLORS = {
@@ -666,6 +669,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height, at);
     }
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, view.width);
+    if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, view.width);
   }
 
   return { draw };

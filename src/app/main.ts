@@ -43,6 +43,9 @@ import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
 import { endActions, returnPlace, type ReturnPlace } from './after-run';
+import { clockText, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
+import { readBoard as readScores, saveScore, scoreLine, type ScoreEntry } from '../town/leaderboard';
+import { endlessEntryScreen } from './endless-entry';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -91,6 +94,13 @@ function devStartFloor(): number | undefined {
   if (!import.meta.env.DEV) return undefined;
   const floor = Number.parseInt(new URLSearchParams(window.location.search).get('floor') ?? '', 10);
   return Number.isFinite(floor) ? floor : undefined;
+}
+
+/** Development server only: `?clock=ms` starts the endless clock there (to look at the low clock without waiting). */
+function devStartClock(): number | undefined {
+  if (!import.meta.env.DEV) return undefined;
+  const ms = Number.parseInt(new URLSearchParams(window.location.search).get('clock') ?? '', 10);
+  return Number.isFinite(ms) ? ms : undefined;
 }
 
 /** Development server only: `?dungeon=<id>` runs that dungeon without the select (to look at it without unlocking it). */
@@ -268,7 +278,28 @@ function chooseDungeon(root: HTMLElement, back: () => void): void {
     void play(root);
     return;
   }
-  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), onChoose: (dungeon) => void play(root, undefined, dungeon), onBack: back }));
+  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), onChoose: (dungeon) => enterDungeon(root, dungeon, () => chooseDungeon(root, back)), onBack: back }));
+}
+
+/** Today's day of the daily challenge (UTC). */
+const today = (): string => utcDateKey(Date.now());
+
+/** Into a dungeon: the endless one shows its entry card first (rules, modes), the others start straight away. */
+function enterDungeon(root: HTMLElement, dungeon: DungeonId, back: () => void): void {
+  if (!dungeonById(dungeon).endless) {
+    void play(root, undefined, dungeon);
+    return;
+  }
+  const day = today();
+  show(
+    root,
+    endlessEntryScreen({
+      today: day,
+      board: readScores(store),
+      onStart: (mode: EndlessMode) => void play(root, undefined, dungeon, endlessSeed(mode, day, runSeed())),
+      onBack: back,
+    }),
+  );
 }
 
 /** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
@@ -338,7 +369,7 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
         loadout(root, 'moves', dungeon);
       },
       onChange: (next) => update({ loadout: next }),
-      onStart: () => (dungeon ? void play(root, undefined, dungeon) : chooseDungeon(root, () => loadout(root, 'moves'))),
+      onStart: () => (dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'moves', dungeon)) : chooseDungeon(root, () => loadout(root, 'moves'))),
       onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : titleScreen(root, 0)),
     }),
   ]);
@@ -564,12 +595,46 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
 }
 
 /** The end screen: result, floor reached, seed, level and items, the Pokémonedas earned and the new balance, then retry or back. */
-function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number): void {
+/** An endless run's score on the end screen: its rank on this device's board (null: not in the top) and the board. */
+interface EndScore {
+  entry: ScoreEntry;
+  rank: number | null;
+  board: readonly ScoreEntry[];
+}
+
+/** The Sima del Eclipse column of the end screen: mode, date, seed, floor and time left, rank, and the top of the board. */
+function scoreColumn(score: EndScore): HTMLElement {
+  const { entry } = score;
+  // Across both columns: this run on the left, the top of the board on the right (this run's row highlighted).
+  const top = h(
+    'div',
+    {},
+    score.board.slice(0, 3).map((e, i) => {
+      const row = h('p', { className: i + 1 === score.rank ? '' : 'dim', textContent: scoreLine(e, i + 1, t) });
+      row.style.margin = '0.15rem 0';
+      if (i + 1 === score.rank) row.style.color = 'var(--cursor, #ffd447)';
+      return row;
+    }),
+  );
+  const column = h('div', { className: 'endless-score' }, [
+    h('div', {}, [
+      h('h3', { className: 'dim', textContent: t('endless.score') }),
+      statLine(t('endless.score.mode'), `${t(`endless.mode.${entry.mode}`)} · ${entry.date}`),
+      statLine(t('endless.score.time'), clockText(entry.clockMs)),
+      statLine(t('endless.score.rank'), score.rank === null ? t('endless.score.unranked') : `#${score.rank}`),
+    ]),
+    h('div', {}, [h('h3', { className: 'dim', textContent: t('endless.board.top') }), top]),
+  ]);
+  Object.assign(column.style, { gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))', gap: '0 2.5rem' });
+  return column;
+}
+
+function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore): void {
   // The town is the hub every run comes back to (after-run.ts).
   const back = () => townScreen(root);
-  const items: ListItem[] = endActions({ online }).map((action) =>
-    action === 'retry' ? { label: t('screen.retry'), onConfirm: () => void play(root, undefined, summary.dungeon) } : { label: t('screen.town'), onConfirm: back },
-  );
+  // Retrying the Sima goes back to its entry card (pick the mode again).
+  const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
+  const items: ListItem[] = endActions({ online }).map((action) => (action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t('screen.town'), onConfirm: back }));
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
     mdWindow({ className: `result ${result}` }, [
@@ -587,23 +652,32 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
         ]),
         h('div', { className: 'coin-lines' }, [
           h('h3', { className: 'dim', textContent: t('screen.coins') }),
-          ...coinLines(summary.coins, balance, (key) => t(key)).map((line) => statLine(line.label, line.value)),
+          // The Sima's ×0.5 is its pay rate, not a difficulty: its line says so.
+          ...coinLines(summary.coins, balance, (key) => t(score && key === 'screen.coins.multiplier' ? 'endless.coins.rate' : key)).map((line) => statLine(line.label, line.value)),
         ]),
+        ...(score ? [scoreColumn(score)] : []),
       ]),
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
   ], true, result === 'eclipse' ? 'victory' : result);
 }
 
+/** Records an endless run's score (floor, time left, mode from its seed, the UTC day) and returns its rank. */
+function endlessScore(summary: RunSummary): EndScore {
+  const date = today();
+  const entry: ScoreEntry = { floor: summary.floor, clockMs: Math.round(summary.clockMs ?? 0), mode: modeOfSeed(summary.seed, date), date, seed: summary.seed, species: settings.species, level: summary.level };
+  return { entry, ...saveScore(store, entry) };
+}
+
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon()): Promise<void> {
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number): Promise<void> {
   if (!sheets) {
     waitScreen(root, t('app.loading'));
     await sheetsReady();
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon'> = { seed: runSeed(), startFloor: devStartFloor(), dungeon };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon };
   if (!join && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
@@ -625,6 +699,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     clickToLock: settings.clickToLock,
     upgrades: loadSave(store).upgrades,
     ...shared,
+    ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
@@ -637,7 +712,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
       // Every peer earns its own Pokémonedas, guests too.
       const save = earnCoins(store, summary.coins.total);
-      resultScreen(root, result, summary, online, save.coins);
+      // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
+      const score = summary.clockMs !== undefined ? endlessScore(summary) : undefined;
+      resultScreen(root, result, summary, online, save.coins, score);
     },
   });
 }
@@ -670,6 +747,12 @@ function devScreen(root: HTMLElement): boolean {
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
+    endless: () => enterDungeon(root, 'eclipse-chasm', () => titleScreen(root)),
+    // The Sima's end screen with a sample score (recorded on this device's board, like a real one).
+    eclipse: () => {
+      const run = { ...summary, dungeon: 'eclipse-chasm' as const, floor: 12, level: 9, clockMs: 0, seed: endlessSeed('daily', today(), 0), coins: { ...coins, multiplier: 0.5, total: 78 } };
+      resultScreen(root, 'eclipse', run, false, loadSave(store).coins, endlessScore(run));
+    },
     defeat: () =>
       resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 83, share: 0.75, total: 62 } }, false, loadSave(store).coins),
     // Waits for the sprites so a screenshot shows the silhouettes.

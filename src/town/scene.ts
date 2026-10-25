@@ -17,6 +17,7 @@ import { inExit, nearestInteractable, stepWalker, townArena, type Interactable, 
 import { buildTownGrid } from './map';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, readRecords } from './records';
+import { leaderboardLines, readBoard as readScores } from './leaderboard';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
 
 /**
@@ -102,14 +103,16 @@ function townCamera(focus: Vec2, map: TownMap) {
   return { ...view, y: view.y - SKY_BAND };
 }
 
-/** The notice board's lines: the local records of the first dungeon, if there are any. */
-const readBoard = (): string[] =>
-  boardLines(
+/** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores. */
+const readBoard = (): string[] => [
+  ...boardLines(
     readRecords(browserStore()),
     DUNGEON_LORE[0]!.id,
     (key) => t(key),
     DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
-  );
+  ),
+  ...leaderboardLines(readScores(browserStore()), (key) => t(key)),
+];
 
 export interface TownHandle {
   stop(): void;

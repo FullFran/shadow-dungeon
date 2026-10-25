@@ -8,6 +8,8 @@ import {
   clockText,
   dailySeed,
   depthScale,
+  endlessSeed,
+  modeOfSeed,
   descendBonusMs,
   endlessSpawns,
   runUpgrades,
@@ -15,7 +17,7 @@ import {
   tickClock,
   utcDateKey,
 } from '../../src/core/endless';
-import { floorKind, floorSeed, progressRun, setClock, startRun, tickRunClock, type RunProgress } from '../../src/core/run';
+import { floorKind, floorSeed, isBossFloor, progressRun, setClock, startRun, tickRunClock, type RunProgress } from '../../src/core/run';
 import type { WorldState } from '../../src/core/state';
 import { hitPlayer } from '../../src/core/step';
 import { vec } from '../../src/core/vec';
@@ -118,6 +120,9 @@ describe('depth scaling', () => {
     const { run, world } = startRun(SEED, {}, 5, ECL);
     expect(world.enemies.map((e) => e.species)).toEqual(['aegislash']);
     expect(world.enemies[0]!.maxHp).toBeCloseTo(SPECIES.aegislash.maxHp * depthScale(ENDLESS.scaling, 5, true).hp);
+    // Not the guardian's own floor: no cinematic, only the echo's name card (the app reads `isBossFloor`).
+    expect(isBossFloor(run)).toBe(false);
+    expect(isBossFloor(startRun(SEED, {}, 4).run)).toBe(true);
     // Standing at the top does nothing while it stands.
     expect(progressRun(run, toEchoExit(world)).entered).toBe(false);
     const next = down({ run, world, entered: false, outcome: null });
@@ -219,6 +224,14 @@ describe('daily challenge seed', () => {
     expect(dailySeed('2026-10-25')).not.toBe(dailySeed('2026-10-26'));
     const seed = dailySeed('2026-10-25');
     expect(Number.isSafeInteger(seed) && seed >= 0 && seed < 2 ** 31).toBe(true);
+  });
+
+  it('daily mode plays the day seed, free mode the random one; a received seed tells its mode', () => {
+    expect(endlessSeed('daily', '2026-10-25', 123)).toBe(dailySeed('2026-10-25'));
+    expect(endlessSeed('free', '2026-10-25', 123)).toBe(123);
+    expect(modeOfSeed(dailySeed('2026-10-25'), '2026-10-25')).toBe('daily');
+    expect(modeOfSeed(dailySeed('2026-10-25'), '2026-10-26')).toBe('free');
+    expect(modeOfSeed(123, '2026-10-25')).toBe('free');
   });
 });
 

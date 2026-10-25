@@ -58,6 +58,15 @@ export function dailySeed(dateKey: string): number {
   return deriveSeed(Number.isFinite(digits) ? digits : 0, DAILY_SALT) >>> 1;
 }
 
+/** The two ways into the endless dungeon: the daily challenge (everyone gets the day's layout) or a free run. */
+export type EndlessMode = 'daily' | 'free';
+
+/** The run seed of a mode: the UTC day's for the daily challenge, `randomSeed` for a free run. */
+export const endlessSeed = (mode: EndlessMode, dateKey: string, randomSeed: number): number => (mode === 'daily' ? dailySeed(dateKey) : randomSeed);
+
+/** Which mode a seed plays on a day (a guest only receives the host's seed): the day's seed is the daily challenge. */
+export const modeOfSeed = (seed: number, dateKey: string): EndlessMode => (seed === dailySeed(dateKey) ? 'daily' : 'free');
+
 /** Modo puro: the shop's permanent upgrades do not reach a pure dungeon's runs (other dungeons keep them). */
 export const runUpgrades = (dungeon: Pick<DungeonDef, 'endless'>, upgrades: UpgradeLevels | undefined): UpgradeLevels | undefined =>
   dungeon.endless?.pure ? undefined : upgrades;

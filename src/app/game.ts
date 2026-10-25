@@ -4,8 +4,9 @@ import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, startRun, tickRunClock, type RunState } from '../core/run';
+import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
 import { runUpgrades, scaleCoins } from '../core/endless';
+import { tickDue, type RunClock } from '../adapters/clock-hud';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
 import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
@@ -77,6 +78,8 @@ export interface GameOptions {
   dungeon?: DungeonId;
   /** Development only: start on this floor of the run (`?floor=` on the dev server). */
   startFloor?: number;
+  /** Development only: the endless clock starts at this many ms (`?clock=` on the dev server). */
+  startClockMs?: number;
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
@@ -168,7 +171,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     options.startFloor,
     options.dungeon,
   );
-  let run: RunState = started.run;
+  let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = started.world;
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
@@ -212,6 +215,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
     playing = context;
   };
+  /** Endless: the last time added to the run clock, shown under it for a moment. */
+  let clockBonus: RunClock['bonus'] = null;
+  const lowMs = dungeonOf(run).endless?.clock.lowMs ?? 0;
+  /** Endless: a tick every second once the clock is low, and "+N s" when time is added. */
+  const watchClock = (beforeMs: number | undefined, bonusMs = 0) => {
+    if (bonusMs > 0) clockBonus = { ms: bonusMs, shownAtMs: realMs };
+    if (beforeMs !== undefined && run.clockMs !== undefined && tickDue(beforeMs, run.clockMs, lowMs)) audio?.play('click');
+  };
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
   /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */
@@ -232,7 +243,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
-    if (echo) intro = { name: t(`species.${echo.species}`), subtitle: t('endless.echo'), shownAtMs: realMs };
+    if (echo) {
+      // The echo's name card replaces the floor card (they would overlap).
+      intro = { name: t(`species.${echo.species}`), subtitle: t('endless.echo').replace('{floor}', String(run.floor)), shownAtMs: realMs };
+      card = null;
+    }
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
   }
@@ -439,7 +454,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const before = world;
       world = step(world, playerInput, FIXED_DT_MS);
       // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
+      const clockBefore = run.clockMs;
       if (net?.role !== 'guest') run = tickRunClock(run, FIXED_DT_MS);
+      watchClock(clockBefore);
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
       net?.session.afterStep(world, run.floor);
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
@@ -457,6 +474,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const progress = progressRun(run, world);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
+      watchClock(undefined, progress.bonusMs);
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {
@@ -528,6 +546,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro,
       nowPlaying,
       spell,
+      clock: run.clockMs !== undefined ? { ms: run.clockMs, lowMs, bonus: clockBonus } : null,
       touchUi: isTouchUi(),
     });
     overlay?.update(realMs);
