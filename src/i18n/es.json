@@ -645,6 +645,7 @@
   "boss.stance.riptide": "Corriente",
   "boss.stance.bell": "Campana",
   "boss.stance.maelstrom": "Vórtice",
+  "boss.stance.herald": "Carta",
   "boss.stance.awaken": "Despierta",
   "guardian.dhelmise.title": "El Ancla de los Juramentos Hundidos",
   "guardian.dhelmise.pre.1": "La campana te ha traído hasta el pecio. Aquí el agua no deja volver.",
@@ -780,6 +781,7 @@
   "sima.merchant.leave": "Seguir",
   "sima.merchant.leaveText": "El eco te ve marchar sin decir nada.",
   "species.eclipse-echo": "Eco del Eclipse",
+  "species.sima-herald": "Heraldo del Eclipse",
   "sima.echo.subtitle": "Planta {floor} · La sombra que bajó contigo",
   "spell.eclipse.ring": "Signo Eclipse «Anillo sin Cierre»",
   "spell.eclipse.spiral": "Signo Sombra «Espiral del Último Rayo»",
@@ -868,5 +870,10 @@
   "boss.stance.sc-dec-rain": "Lluvia del Arquero",
   "boss.stance.sc-dec-forest": "Bosque de Flechas",
   "boss.stance.sc-dec-stitch": "Costura de Sombras",
-  "boss.stance.sc-dec-moonless": "Noche sin Luna"
+  "boss.stance.sc-dec-moonless": "Noche sin Luna",
+  "sima.herald.subtitle": "Heraldo del Eclipse · Planta {floor}",
+  "card.captured": "¡Carta capturada! +{coins} Pokémonedas",
+  "card.timeout": "Se agotó el tiempo de la carta",
+  "sima.herald.awaken": "El heraldo despierta",
+  "town.board.heralds": "Heraldos del Eclipse vistos: {count}"
 }

@@ -1,3 +1,4 @@
+import { CAPTURE } from '../data/cards';
 import type { GameEvent } from '../core/state';
 import { t } from '../i18n';
 import { drawPanel, pixelText } from '../ui/canvas';
@@ -76,6 +77,9 @@ export function eventMessages(events: readonly GameEvent[], speciesOf: (enemyId:
     // Co-op revive (core/revive.ts).
     else if (event.type === 'revived') out.push({ text: t('coop.revived').replace('{name}', name), tone: 'good' });
     else if (event.type === 'reviveInterrupted') out.push({ text: t('coop.reviveInterrupted'), tone: 'warn' });
+    // Spell cards, every card boss alike (core/cards.ts): a capture pays, a timeout is lost.
+    else if (event.type === 'cardCaptured') out.push({ text: t('card.captured').replace('{coins}', String(CAPTURE.coins)), tone: 'good' });
+    else if (event.type === 'spellCardEnd' && event.outcome === 'timeout') out.push({ text: t('card.timeout'), tone: 'info' });
     else if (event.type === 'passiveTriggered') out.push({ text: t(`log.passive.${event.passive}${event.kindled ? '.kindled' : ''}`).replace('{name}', name), tone: event.passive === 'illusion' ? 'warn' : 'good' });
   }
   return out;

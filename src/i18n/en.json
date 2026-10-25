@@ -645,6 +645,7 @@
   "boss.stance.riptide": "Riptide",
   "boss.stance.bell": "Bell",
   "boss.stance.maelstrom": "Vortex",
+  "boss.stance.herald": "Spell card",
   "boss.stance.awaken": "Awakened",
   "guardian.dhelmise.title": "The Anchor of the Sunken Oaths",
   "guardian.dhelmise.pre.1": "The bell has led you to the wreck. Here the water lets no one go back.",
@@ -780,6 +781,7 @@
   "sima.merchant.leave": "Move on",
   "sima.merchant.leaveText": "The echo watches you go without a word.",
   "species.eclipse-echo": "Eclipse Echo",
+  "species.sima-herald": "Herald of the Eclipse",
   "sima.echo.subtitle": "Floor {floor} · The shadow that came down with you",
   "spell.eclipse.ring": "Eclipse Sign \"Ring Without a Clasp\"",
   "spell.eclipse.spiral": "Shadow Sign \"Spiral of the Last Ray\"",
@@ -868,5 +870,10 @@
   "boss.stance.sc-dec-rain": "The Archer's Rain",
   "boss.stance.sc-dec-forest": "Forest of Arrows",
   "boss.stance.sc-dec-stitch": "Stitch of Shadows",
-  "boss.stance.sc-dec-moonless": "Moonless Night"
+  "boss.stance.sc-dec-moonless": "Moonless Night",
+  "sima.herald.subtitle": "Herald of the Eclipse · Floor {floor}",
+  "card.captured": "Card captured! +{coins} Poké Coins",
+  "card.timeout": "The card ran out of time",
+  "sima.herald.awaken": "The herald awakens",
+  "town.board.heralds": "Heralds of the Eclipse met: {count}"
 }

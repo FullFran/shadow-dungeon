@@ -1,3 +1,4 @@
+import { escalatedEcho } from './eclipse-escalation';
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
 import { eliteTimeScale, tickAiAt, worldDifficulty } from './difficulty';
@@ -12,6 +13,7 @@ import { aggroTarget } from './aggro';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
 import { updateEclipse } from './eclipse-echo';
+import { updateHerald } from './herald/brain';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { partySizeOf } from './party';
 import { lungeTouches, pierceZone, slammerTouches } from './victim';
@@ -409,7 +411,9 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'treant') current = updateTreant(current, ticked, def, target, ems, events);
     else if (def.kind === 'danmaku') current = updateDanmaku(current, ticked, def, target, ems, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ems, events);
-    else if (def.kind === 'eclipse') current = updateEclipse(current, ticked, def, target, ems, events);
+    // The Eclipse Echo grows with every encounter (core/eclipse-escalation.ts).
+    else if (def.kind === 'eclipse') current = updateEclipse(current, ticked, escalatedEcho(def, current.depth), target, ems, events);
+    else if (def.kind === 'herald') current = updateHerald(current, ticked, def, target, ems, events);
     else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ems, events);
     else current = updateRoster(current, ticked, def, target, ems, events);
   }

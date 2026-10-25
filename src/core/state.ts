@@ -1,7 +1,7 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { BreakRule, GateKind } from '../data/encounters';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
-import type { CardOutcome, SpellCardId } from '../data/cards';
+import type { CardId, CardOutcome, HeraldCardId, SpellCardId } from '../data/cards';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { QueenCard, UltraCard } from '../data/swamp-enemies';
 import type { ItemId } from '../data/items';
@@ -226,10 +226,15 @@ export interface EnemyState {
   band?: string;
   /** A follower whose leader fell: its role's break rule and the ms it still lasts. */
   broken?: { rule: BreakRule; ms: number };
+  /** A Herald of the Eclipse (core/herald): the seed and depth its whole def is regenerated from on every peer (with the run's tier). */
+  herald?: { seed: number; depth: number };
 }
 
+/** A herald's spell card in play: `herald<i>`, and `herald<i>x` for its phase-2 version (data/herald.ts, data/cards.ts). */
+export type HeraldStance = HeraldCardId;
+
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam' | SpellCardId;
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam' | SpellCardId | HeraldStance;
 
 export interface BossState {
   stance: BossStance;
@@ -346,9 +351,9 @@ export type GameEvent =
   /** `pierceRoll`: the hit was positional (rolling could not stop it); read by the balance harness only. */
   | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
-  | { type: 'spellCardEnd'; enemyId: string; card: SpellCardId; outcome: Exclude<CardOutcome, 'start'> }
+  | { type: 'spellCardEnd'; enemyId: string; card: CardId; outcome: Exclude<CardOutcome, 'start'> }
   /** The local player went through a spell card without being hit (every peer for itself): coins and a heal. */
-  | { type: 'cardCaptured'; enemyId: string; card: SpellCardId; heal: number }
+  | { type: 'cardCaptured'; enemyId: string; card: CardId; heal: number }
   | { type: 'disguiseBroken' }
   /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
   /** `kindled`: Flash Fire was stoked by the player's own Fire hits rather than an absorbed attack. */
@@ -393,6 +398,8 @@ export type GameEvent =
   | { type: 'revived'; by: string }
   /** Co-op: the helper was hurt or stepped away; the revive count starts again. */
   | { type: 'reviveInterrupted' }
+  /** A herald blinked from one anchor to the next (teleporting movement), for its flash. */
+  | { type: 'heraldBlink'; enemyId: string; from: Vec2; to: Vec2 }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
@@ -501,7 +508,7 @@ export interface WorldState {
   /** Co-op: the local player's revive on this floor (core/revive.ts); absent solo. */
   revive?: ReviveState;
   /** The spell card the local player is trying to capture (core/cards.ts `updateCapture`, every peer for itself): whether they were hit during it. */
-  capture?: { enemyId: string; card: SpellCardId; hit: boolean };
+  capture?: { enemyId: string; card: CardId; hit: boolean };
   /** Generated floors: this floor's mandatory kill, if any (core/gates.ts); the host resolves it, guests follow its snapshot. */
   gate?: GateState;
   events: GameEvent[];

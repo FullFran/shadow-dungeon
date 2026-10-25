@@ -1,3 +1,4 @@
+import { HERALD_ARENA } from './herald';
 import type { SpeciesId } from './species';
 
 /** Axis-aligned rectangle in world pixels (same shape as the core's Rect). */
@@ -25,7 +26,7 @@ export interface RoomDef {
   pools?: readonly { x: number; y: number; radius: number }[];
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -61,6 +62,22 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     obstacles: [],
     playerStart: { x: 320, y: 340 },
     spawns: [{ species: 'eclipse-echo', x: 320, y: 144 }],
+    exit: null,
+    next: null,
+  },
+  /**
+   * The heralds' arena (Sima floors 22, 32, 42...): the Eclipse Echo's open
+   * floor with four low pillars that stop shots (cover), away from the band
+   * the herald floats in; the way on opens at the top once it falls. The
+   * fairness proof uses the same blocks (data/herald.ts `HERALD_ARENA`).
+   */
+  abyss: {
+    id: 'abyss',
+    width: HERALD_ARENA.width,
+    height: HERALD_ARENA.height,
+    obstacles: HERALD_ARENA.obstacles,
+    playerStart: { x: 320, y: 350 },
+    spawns: [{ species: 'sima-herald', x: 320, y: 130 }],
     exit: null,
     next: null,
   },

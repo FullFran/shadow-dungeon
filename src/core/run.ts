@@ -1,3 +1,5 @@
+import { isHeraldFloor } from '../data/endless';
+import { heraldSeed, withHerald } from './herald/floor';
 import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { ROOMS, type RoomRect } from '../data/rooms';
@@ -131,7 +133,11 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   // The one-hit cap's yardstick (core/fairness.ts): the level expected on this floor, the same on every peer.
   const referenceLevel = expectedLevel(run.dungeon, run.floor, worldDifficulty(world));
   const deeper: WorldState = { ...world, depth: run.floor, enemyScale, referenceLevel, simaEvent: undefined, gate: undefined };
-  if (plan.kind === 'room') return loadRoom(deeper, plan.room);
+  if (plan.kind === 'room') {
+    const room = loadRoom(deeper, plan.room);
+    // A herald floor: the generated boss of this run and floor (every peer makes the same one from the run seed). Room floors never draw a gate.
+    return endless && isHeraldFloor(endless, run.floor) ? withHerald(room, heraldSeed(run.seed, run.floor), run.floor) : room;
+  }
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
   const tier = worldDifficulty(world);

@@ -13,9 +13,15 @@ import type { DanmakuCardDef, DanmakuPattern } from './enemies';
  * cleared. The engine is core/cards.ts; a boss opts in with a
  * `spellCards: CardFightDef` field in its data (patched in per tier).
  *
- * The minimal API is meant to be unified with the procedural bosses' card
- * framework (same file names): ids, HP shares, timers, capture and the
- * `spellCardEnd`/`cardCaptured` events.
+ * One framework for every card boss: the hand-authored guardians run their
+ * cards through core/cards.ts `updateCardFight`; the Heralds of the Eclipse
+ * (data/herald.ts, generated per seed) run their own proven-fair layers
+ * (core/herald/brain.ts) on the same rules: HP segments from `hpShare`
+ * (`segmentFloorShare`; a herald's cards take equal shares), a timer per
+ * card, a declaration between cards (invulnerable, shots cleared, its
+ * outcome in `ai.attack`), the same `bossStance`/`spellCardEnd`/
+ * `cardCaptured` events, and one capture rule and reward (`CAPTURE`, judged
+ * by core/cards.ts `updateCapture` on every peer for its own player).
  */
 
 /** One move of a card: a danmaku pattern (data/enemies.ts `DanmakuPattern`) with its telegraph and opening, plus optional extra bullet layers fired on the same timeline. */
@@ -26,6 +32,15 @@ export interface CardStepDef extends DanmakuCardDef {
 
 /** A spell card's id (`sc-` + a name): it is the boss's stance while the card plays. */
 export type SpellCardId = `sc-${string}`;
+
+/** A herald's card as its stance: `herald<i>`, and `herald<i>x` for its phase-2 version (data/herald.ts); the names come from the generated def. */
+export type HeraldCardId = `herald${number}` | `herald${number}x`;
+
+/** Any spell card a boss can play (the `spellCardEnd`/`cardCaptured` events carry it). */
+export type CardId = SpellCardId | HeraldCardId;
+
+/** Whether a stance names a herald's card. */
+export const isHeraldCard = (stance: string | null | undefined): stance is HeraldCardId => stance !== null && stance !== undefined && /^herald\d+x?$/.test(stance);
 
 export interface SpellCardDef {
   /** Unique id: the boss's `stance` while the card plays (snapshots carry it); i18n `boss.stance.<id>` is its short name. */
@@ -66,8 +81,24 @@ export interface CardFightDef {
   power: number;
 }
 
-/** What a capture gives the player who made it (on their own peer): Pokémonedas and a share of their max HP back. */
+/**
+ * What a capture gives the player who made it (on their own peer):
+ * Pokémonedas and a share of their max HP back. One reward for every card
+ * boss, guardians and heralds alike (the heralds' branch paid 6 coins and no
+ * heal; aligned on integration: one rule, one table).
+ */
 export const CAPTURE = { coins: 8, healShare: 0.12 } as const;
+
+/** Where card `index` of a fight with these HP shares ends, as a share of max HP (shares are normalised; the last ends at 0). */
+export function segmentFloorShare(shares: readonly number[], index: number): number {
+  const total = shares.reduce((sum, s) => sum + s, 0);
+  if (total <= 0) return 0;
+  const used = shares.slice(0, index + 1).reduce((sum, s) => sum + s, 0);
+  return Math.max(0, 1 - used / total);
+}
+
+/** The shares of `count` equal segments (a herald's cards). */
+export const equalShares = (count: number): number[] => Array.from({ length: Math.max(0, count) }, () => 1 / Math.max(1, count));
 
 /** The outcome a declaration carries in `ai.attack` (how the previous card ended); the first declaration carries `start`. */
 export type CardOutcome = 'start' | 'broken' | 'timeout' | 'survived';
@@ -89,5 +120,8 @@ export function registerCards(fight: CardFightDef): CardFightDef {
   return fight;
 }
 
-/** The card a stance names, if it is a registered spell card. */
-export const cardInfo = (stance: string | null | undefined): CardInfo | undefined => (stance ? registry.get(stance) : undefined);
+/** Every herald card shares this info: no guard, no survival; its name is the generated def's (app/herald-run.ts `heraldCardName`). */
+const HERALD_CARD: CardInfo = { nameKey: 'boss.stance.herald' };
+
+/** The card a stance names, if it is a registered spell card or a herald's card. */
+export const cardInfo = (stance: string | null | undefined): CardInfo | undefined => (stance ? (registry.get(stance) ?? (isHeraldCard(stance) ? HERALD_CARD : undefined)) : undefined);

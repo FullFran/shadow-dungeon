@@ -62,7 +62,7 @@ export const presentPartySize = (state: Pick<WorldState, 'remotes'>): number => 
 /** The `party` field of a world entering a floor with `n` players: absent solo, so a solo world is unchanged. */
 export const partyField = (n: number): { party?: number } => (clampParty(n) > 1 ? { party: clampParty(n) } : {});
 
-const BOSS_KINDS: ReadonlySet<string> = new Set(['boss', 'archer', 'thief', 'treant', 'danmaku', 'queen', 'ultra', 'eclipse']);
+const BOSS_KINDS: ReadonlySet<string> = new Set(['boss', 'archer', 'thief', 'treant', 'danmaku', 'queen', 'ultra', 'eclipse', 'herald']);
 
 /** Guardians, mid-bosses and echoes (the enemies with boss state): they scale as bosses. */
 export const isBossClass = (species: SpeciesId): boolean => BOSS_KINDS.has(ENEMY_BEHAVIOUR[species]?.kind ?? '');

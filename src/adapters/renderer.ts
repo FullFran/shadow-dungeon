@@ -1,3 +1,5 @@
+import { drawHerald, heraldScale } from './herald-vfx';
+import { heraldOf } from '../core/herald/brain';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
 import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
 import { LEADER } from '../data/encounters';
@@ -192,6 +194,8 @@ export interface Renderer {
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
   /** The arena of the frame being drawn (the shadow-sword wall spans it). */
   let currentArena: { width: number; height: number } | null = null;
+  /** The world being drawn (a herald's telegraphs read its def from it). */
+  let currentWorld: WorldState | null = null;
   /** The world being drawn's tier (positional telegraphs depend on it). */
   let currentTier: Difficulty = 'easy';
   /** Real time of the frame being drawn (looping telegraph animations). */
@@ -199,7 +203,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
-  function drawSprite(choice: AnimChoice, pos: Vec2, alpha = 1): void {
+  function drawSprite(choice: AnimChoice, pos: Vec2, alpha = 1, scaleBy = 1): void {
     const meta = SPRITES.sprites[choice.sprite]?.anims[choice.anim];
     const image = meta && sheets.get(sheetKey(choice.sprite, meta.file));
     if (!meta || !image) {
@@ -216,10 +220,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       row * meta.frameHeight,
       meta.frameWidth,
       meta.frameHeight,
-      Math.round(pos.x - anchor.x),
-      Math.round(pos.y - anchor.y),
-      meta.frameWidth,
-      meta.frameHeight,
+      Math.round(pos.x - anchor.x * scaleBy),
+      Math.round(pos.y - anchor.y * scaleBy),
+      meta.frameWidth * scaleBy,
+      meta.frameHeight * scaleBy,
     );
     ctx.globalAlpha = 1;
   }
@@ -900,6 +904,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 8, angle - half, angle + half);
       ctx.stroke();
     }
+    // A herald: its own telegraphs, from its generated def (adapters/herald-vfx.ts).
+    if (enemy.herald && currentWorld) {
+      const herald = heraldOf(currentWorld, enemy);
+      if (herald) drawHerald(ctx, currentWorld, enemy, herald, pos, currentTimeMs);
+      return;
+    }
     // The behaviour at the world's tier, so the wind-ups show the tier's extra arms, waves and rings.
     const def = behaviourFor(enemy.species, currentTier);
     // A guardian's spell card (core/cards.ts): its declaration and its moves' telegraphs.
@@ -1377,6 +1387,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
     currentArena = current.arena;
+    currentWorld = current;
     currentTier = worldDifficulty(current);
     currentTimeMs = timeMs;
     // The dungeon's tile and arena colours replace the defaults for this frame.
@@ -1448,7 +1459,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(ELITE_TRAIT_DEFS[enemy.elite].tint);
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
           if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
-          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
+          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade, heraldScale(enemy));
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
           if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);

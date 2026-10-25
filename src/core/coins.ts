@@ -22,7 +22,7 @@ export interface CoinTally {
   midbosses: number;
   /** Simulated play time (pauses excluded). */
   playedMs: number;
-  /** Guardian spell cards the local player captured (core/cards.ts `cardCaptured`); absent = none. */
+  /** Spell cards the local player captured, guardians' and heralds' alike (core/cards.ts `cardCaptured`, one event each); absent = none. */
   captures?: number;
 }
 

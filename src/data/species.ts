@@ -53,7 +53,9 @@ export type SpeciesId =
   | 'eclipse-nest'
   | 'eclipse-hunter'
   // Its own boss, a corrupted shadow of Mimikyu (the busted form's full sheet set, tinted in the eclipse's colours).
-  | 'eclipse-echo';
+  | 'eclipse-echo'
+  // The Heralds of the Eclipse (data/herald.ts): one technical species; each herald's look, types and patterns are generated.
+  | 'sima-herald';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -201,6 +203,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
   'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
+  // Its sheets and types come from the generated herald (core/herald); the radius is HERALD_RADIUS.
+  'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

@@ -3,6 +3,7 @@ import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
 import { cardFloors, cardGuard, cardTimeLeftMs, fightOf, updateCardFight } from './cards';
 import { cardInfo } from '../data/cards';
+import { heraldBar } from './herald/brain';
 import { behaviourFor } from './tricks';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
@@ -35,6 +36,8 @@ export function initialBoss(species?: SpeciesId): BossState {
       ? def.cards[0]!
       : def?.kind === 'ultra'
         ? def.phase1[0]!
+        : def?.kind === 'herald'
+          ? 'herald0'
         : def?.kind === 'treant'
           ? 'slam'
           : 'shield';
@@ -44,7 +47,7 @@ export function initialBoss(species?: SpeciesId): BossState {
 /** Enemies that carry boss state (stances, spell cards). */
 export const hasBossState = (species: SpeciesId): boolean => {
   const kind = ENEMY_BEHAVIOUR[species]?.kind;
-  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra' || kind === 'eclipse';
+  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra' || kind === 'eclipse' || kind === 'herald';
 };
 
 /** Angle in radians between two non-zero directions, in [0, π]. */
@@ -107,6 +110,9 @@ export function bossBar(state: WorldState): BossBar | null {
   const enemy = state.enemies.find((e) => e.alive && showsBar(e));
   if (!enemy) return null;
   const bar: BossBar = { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss?.stance ?? null };
+  // A herald's cards: equal segments, its card clock (core/herald/brain.ts).
+  const herald = enemy.herald ? heraldBar(state, enemy) : null;
+  if (herald) return { ...bar, ...herald };
   const fight = cardInfo(enemy.boss?.stance) ? fightOf(behaviourFor(enemy.species, worldDifficulty(state))) : undefined;
   if (!fight) return bar;
   const left = cardTimeLeftMs(fight, enemy);

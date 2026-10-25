@@ -1,3 +1,4 @@
+import { heraldBarText } from './herald-vfx';
 import type { ItemId, Rarity } from '../data/items';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
@@ -167,9 +168,11 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const y = box.y + HUD_BOX.bossNameHeight;
     const name = t(`species.${boss.species}`);
     ctx.font = canvasFont();
-    pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
+    // A herald names itself and its card count (adapters/herald-vfx.ts) and wears its theme's colour; every card boss shares the notches and the clock.
+    const herald = heraldBarText(state, boss.enemyId);
+    pixelText(ctx, herald ? herald.label : boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
     const guarded = boss.stance === 'shield' || cardInfo(boss.stance)?.guard === 'front';
-    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), guarded ? '#8fb3ff' : PALETTE.eclipse);
+    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), herald ? herald.colour : guarded ? '#8fb3ff' : PALETTE.eclipse);
     // Spell cards: a notch where each card's segment ends, and the card's clock (host) on the right.
     if (boss.segments) {
       ctx.fillStyle = PALETTE.text;

@@ -1,4 +1,4 @@
-import { CAPTURE, cardInfo, type CardFightDef, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
+import { CAPTURE, cardInfo, segmentFloorShare, type CardFightDef, type CardId, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
 import type { DanmakuPattern, EnemyAttackDef } from '../data/enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
 import { crossed, firePattern, laneGapOf, patternAttackMs, patternMelee, patternParts, ringDirections, shoot } from './danmaku';
@@ -36,13 +36,8 @@ export const FIRST_MOVE_MS = 400;
 export const fightOf = (def: unknown): CardFightDef | undefined =>
   def !== null && typeof def === 'object' && 'spellCards' in def ? ((def as { spellCards?: CardFightDef }).spellCards ?? undefined) : undefined;
 
-/** Share of max HP left once card `index` is over: the floor of its segment (shares are normalised). */
-export function cardFloorShare(fight: CardFightDef, index: number): number {
-  const total = fight.cards.reduce((sum, c) => sum + c.hpShare, 0);
-  if (total <= 0) return 0;
-  const used = fight.cards.slice(0, index + 1).reduce((sum, c) => sum + c.hpShare, 0);
-  return Math.max(0, 1 - used / total);
-}
+/** Share of max HP left once card `index` is over: the floor of its segment (shares are normalised; data/cards.ts `segmentFloorShare`). */
+export const cardFloorShare = (fight: CardFightDef, index: number): number => segmentFloorShare(fight.cards.map((c) => c.hpShare), index);
 
 /** Where each card's segment ends, as shares of max HP (the boss bar's notches; the last is 0). */
 export const cardFloors = (fight: CardFightDef): number[] => fight.cards.map((_, i) => cardFloorShare(fight, i));
@@ -275,7 +270,8 @@ export function updateCardFight(state: WorldState, start: EnemyState, fight: Car
  * nothing.
  */
 export function updateCapture(state: WorldState, events: GameEvent[]): WorldState {
-  const hurt = events.some((e) => e.type === 'playerHurt');
+  // Any hit counts, whatever slot or shield took it: a Disguise breaking is a hit too.
+  const hurt = events.some((e) => e.type === 'playerHurt' || e.type === 'disguiseBroken');
   let capture = state.capture;
   let player = state.player;
   if (capture) {
@@ -284,7 +280,9 @@ export function updateCapture(state: WorldState, events: GameEvent[]): WorldStat
     const declaring = boss?.alive === true && boss.ai.mode === 'transform';
     const over = !boss || !boss.alive || boss.boss?.stance !== watched.card || declaring;
     if (over) {
-      const outcome = !boss ? null : !boss.alive ? 'broken' : declaring ? boss.ai.attack : null;
+      // A boss that fell on a timed-out last card (a herald fading) seen in this step's events captures nothing.
+      const fadedOut = events.some((e) => e.type === 'spellCardEnd' && e.enemyId === watched.enemyId && e.outcome === 'timeout');
+      const outcome = !boss ? null : !boss.alive ? (fadedOut ? 'timeout' : 'broken') : declaring ? boss.ai.attack : null;
       const won = !watched.hit && !hurt && player.hp > 0 && (outcome === 'broken' || outcome === 'survived');
       if (won) {
         const heal = Math.min(player.maxHp - player.hp, Math.round(player.maxHp * CAPTURE.healShare));
@@ -296,7 +294,7 @@ export function updateCapture(state: WorldState, events: GameEvent[]): WorldStat
   }
   if (!capture) {
     const boss = state.enemies.find((e) => e.alive && e.boss && cardInfo(e.boss.stance) && e.ai.mode !== 'transform' && e.ai.mode !== 'idle');
-    if (boss) capture = { enemyId: boss.id, card: boss.boss!.stance as SpellCardDef['id'], hit: hurt };
+    if (boss) capture = { enemyId: boss.id, card: boss.boss!.stance as CardId, hit: hurt };
   }
   if (capture === state.capture && player === state.player) return state;
   const { capture: _old, ...rest } = state;
