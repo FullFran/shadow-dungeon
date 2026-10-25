@@ -173,5 +173,8 @@
   "screen.level": "Nivel",
   "screen.items": "Objetos",
   "screen.summary": "Resumen de la exploración",
-  "screen.noItems": "Ninguno"
+  "screen.noItems": "Ninguno",
+  "log.defeated": "¡{name} se ha debilitado!",
+  "log.berry": "{name} se comió una Baya Aranja y recuperó {heal} PS.",
+  "log.item": "{name} se equipó {item}."
 }

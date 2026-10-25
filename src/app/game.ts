@@ -15,11 +15,13 @@ import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
 import { heldItems, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
+import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type LogTone, type MessageLog } from '../adapters/message-log';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
 import type { NetSession } from '../net/session';
+import { t } from '../i18n';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
@@ -126,8 +128,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */
   let minimap: MinimapMemory | null = null;
   let showMinimap = true;
+  /** Message log at the bottom left, on the real (pause-aware) clock. */
+  let log: MessageLog = emptyLog();
+  const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
   function announceFloor(descended: boolean): void {
     card = { floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    if (run.kind === 'collapse') say(t('card.collapse'), 'warn');
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
   }
@@ -151,12 +157,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Takes card `index` of the floor's offer; "Restart floor" keeps the item. */
   function choose(index: number): void {
     if (!closePick) return;
+    const item = run.offer?.[index];
     const picked = chooseItem(run, world, index);
     if (picked.run === run) return;
     floorStart = chooseItem(run, floorStart, index).world;
     run = picked.run;
     world = picked.world;
     audio?.play('item');
+    if (item) say(itemPickedText(world.player.species, item), 'item');
     hidePick();
   }
 
@@ -274,6 +282,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       juice = applyEvents(juice, events, world.player.pos);
       audio?.handleEvents(events);
+      for (const line of eventMessages(events, (id) => world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
       for (const event of events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
@@ -304,6 +313,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     resize();
     const frozen = juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
+    log = pruneLog(log, realMs);
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
 
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
@@ -338,6 +348,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       card,
       rumble,
       minimap: showMinimap ? minimap : null,
+      log,
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);

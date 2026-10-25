@@ -7,7 +7,8 @@ import { bossBar } from '../core/boss';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { Rect, WorldState } from '../core/state';
-import { RARITY } from '../ui/tokens';
+import { drawBar, drawPanel, noLigatures, pixelText } from '../ui/canvas';
+import { canvasFont, PALETTE, RARITY } from '../ui/tokens';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
 /** Fraction of a bar to fill, clamped to [0, 1]. */
@@ -20,10 +21,14 @@ export const floorLabel = (floor: number): string => `${t('hud.floor')} ${floor}
 export const levelUpText = (species: string, level: number): string =>
   t('hud.levelUp').replace('{name}', t(`species.${species}`)).replace('{level}', String(level));
 
-const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#b9a4ff', disguiseBroken: '#ffd36b', levelUp: '#7fd8ff', item: '#8fe39a' };
+const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#c9b8ff', disguiseBroken: PALETTE.cursor, levelUp: PALETTE.xp, item: PALETTE.good };
 
 /** Rarity colours from the design tokens, shared by the HUD badges and the pick cards. */
 export const RARITY_COLORS: Record<Rarity, string> = RARITY;
+
+/** The Mystery Dungeon-style top line: "Planta 2 · Nv. 5 · PS 52/100" (HP rounded up, as the bar shows it). */
+export const hudLine = (floor: number, level: number, hp: number, maxHp: number): string =>
+  `${floorLabel(floor)} · ${t('hud.level')} ${level} · ${t('hud.hp')} ${Math.ceil(Math.max(0, hp))}/${Math.ceil(maxHp)}`;
 
 export interface HeldItem {
   id: ItemId;
@@ -52,86 +57,131 @@ function flashText(flash: NonNullable<JuiceState['flash']>, species: string): st
 /** Key hint per slot index, from i18n. */
 const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
 
-function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill: number, color: string): void {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  ctx.fillStyle = '#2b2638';
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, Math.round(w * fill), h);
+const PANEL_WIDTH = 196;
+const PAD = 7;
+
+interface Badge {
+  text: string;
+  color: string;
+  x: number;
+  y: number;
+  w: number;
 }
 
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = '#e8e4f0', align: CanvasTextAlign = 'left'): void {
-  ctx.textAlign = align;
-  ctx.fillStyle = '#000000';
-  ctx.fillText(text, x + 1, y + 1);
-  ctx.fillStyle = color;
-  ctx.fillText(text, x, y);
+/** Held item badges laid out in rows inside `width`: a pill per item ("Restos ×2"), positions relative to the first row. */
+function badgeLayout(ctx: CanvasRenderingContext2D, items: readonly ItemId[], width: number): Badge[] {
+  const out: Badge[] = [];
+  let x = 0;
+  let y = 0;
+  for (const item of heldItems(items)) {
+    const text = `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}`;
+    const w = Math.ceil(ctx.measureText(noLigatures(text)).width) + 8;
+    if (x > 0 && x + w > width) {
+      x = 0;
+      y += 15;
+    }
+    out.push({ text, color: RARITY_COLORS[ITEMS[item.id].rarity], x, y, w });
+    x += w + 3;
+  }
+  return out;
 }
 
-/**
- * HUD in view units (the caller has applied the pixel scale): HP, stamina,
- * level and XP bar, Disguise state, held items, floor counter, move slots with the charge level, boss bar and flashes.
- */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
+function drawBadge(ctx: CanvasRenderingContext2D, badge: Badge, ox: number, oy: number): void {
+  const x = ox + badge.x;
+  const y = oy + badge.y;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x, y, badge.w, 13);
+  ctx.fillStyle = badge.color;
+  ctx.fillRect(x + 1, y + 1, badge.w - 2, 11);
+  ctx.fillStyle = PALETTE.windowBottom;
+  ctx.fillRect(x + 2, y + 2, badge.w - 4, 9);
+  ctx.fillStyle = badge.color;
+  ctx.textAlign = 'left';
+  ctx.fillText(noLigatures(badge.text), x + 4, y + 10);
+}
+
+/** The top-left window: floor / level / HP line, HP, stamina and XP bars, Disguise, held items. */
+function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number): void {
   const { player } = state;
-  ctx.font = 'bold 8px monospace';
+  const x = 6;
+  const y = 6;
+  const inner = PANEL_WIDTH - 2 * PAD;
+  ctx.font = canvasFont();
+  ctx.textAlign = 'left';
+  const items = badgeLayout(ctx, player.items, inner);
+  const height = 58 + (items.length > 0 ? (items.at(-1)?.y ?? 0) + 17 : 0);
+  drawPanel(ctx, x, y, PANEL_WIDTH, height, { alpha: 0.92 });
 
-  label(ctx, floorLabel(floor), view.width - 8, 14, '#e8e4f0', 'right');
+  const low = player.hp / player.maxHp <= 0.3;
+  pixelText(ctx, hudLine(floor, player.level, player.hp, player.maxHp), x + PAD, y + 15, PALETTE.text);
+  drawBar(ctx, x + PAD, y + 21, inner, 6, barFill(player.hp, player.maxHp), low ? PALETTE.hpLow : PALETTE.hp);
+  drawBar(ctx, x + PAD, y + 31, inner, 3, barFill(player.stamina, TUNING.stamina.max), PALETTE.stamina);
+  drawBar(ctx, x + PAD, y + 38, inner, 2, levelProgress(player.xp).fill, PALETTE.xp);
 
-  label(ctx, t('hud.hp'), 8, 14);
-  bar(ctx, 34, 8, 90, 7, barFill(player.hp, player.maxHp), player.hp / player.maxHp > 0.3 ? '#5ad16a' : '#e0524a');
-  label(ctx, `${Math.ceil(player.hp)}`, 128, 14);
-  label(ctx, t('hud.stamina'), 8, 26);
-  bar(ctx, 34, 21, 90, 5, barFill(player.stamina, TUNING.stamina.max), '#f2c94c');
+  const intact = !player.disguiseBroken;
+  // Disguise: a small mask icon, bright while intact.
+  ctx.fillStyle = intact ? PALETTE.cursor : PALETTE.disabled;
+  ctx.fillRect(x + PAD, y + 45, 7, 6);
+  ctx.fillRect(x + PAD + 1, y + 51, 5, 1);
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x + PAD + 1, y + 47, 2, 1);
+  ctx.fillRect(x + PAD + 4, y + 47, 2, 1);
+  pixelText(ctx, `${t('passive.disguise')}: ${t(intact ? 'hud.disguise.intact' : 'hud.disguise.broken')}`, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
+  for (const badge of items) drawBadge(ctx, badge, x + PAD, y + 58);
+}
 
-  const progress = levelProgress(player.xp);
-  label(ctx, `${t('hud.level')} ${player.level}`, 8, 38, '#7fd8ff');
-  bar(ctx, 34, 33, 90, 3, progress.fill, '#7fd8ff');
-
-  const disguise = player.disguiseBroken ? t('hud.disguise.broken') : t('hud.disguise.intact');
-  label(ctx, `${t('passive.disguise')}: ${disguise}`, 8, 50, player.disguiseBroken ? '#9aa0a6' : '#ffd36b');
-
-  // Held items, one line each.
-  heldItems(player.items).forEach((item, i) => {
-    label(ctx, `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}`, 8, 62 + i * 10, RARITY_COLORS[ITEMS[item.id].rarity]);
-  });
-
-  // Move slots, bottom left.
+/** Move slots at the bottom right: key hint, move name (red when unaffordable) and the charge bar. */
+function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, view: Rect): void {
+  const { player } = state;
+  const w = 104;
+  const gap = 4;
   M0_SLOT_LAYOUT.forEach((_, index) => {
     const moveId = player.loadout[index];
     if (!moveId) return;
     const move = MOVES[moveId];
-    const x = 8 + index * 112;
-    const y = view.height - 30;
+    const x = view.width - 6 - (M0_SLOT_LAYOUT.length - index) * (w + gap) + gap;
+    const y = view.height - 6 - 30;
     const busy = player.action?.slotIndex === index;
     const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
-    ctx.fillStyle = busy ? 'rgba(120, 90, 200, 0.55)' : 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(x, y, 106, 22);
-    label(ctx, t(SLOT_KEYS[index] ?? ''), x + 4, y + 9, '#9aa0a6');
-    label(ctx, t(`move.${moveId}`), x + 4, y + 19, affordable ? '#e8e4f0' : '#e0524a');
+    drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : PALETTE.border });
+    ctx.font = canvasFont();
+    pixelText(ctx, t(SLOT_KEYS[index] ?? ''), x + 6, y + 12, PALETTE.textDim);
+    pixelText(ctx, t(`move.${moveId}`), x + 6, y + 24, affordable ? PALETTE.text : PALETTE.danger);
     const action = player.action;
     if (busy && action?.phase === 'charging' && move.charge) {
       const maxHold = move.charge.at(-1)?.holdMs ?? 1;
-      bar(ctx, x + 2, y + 22, 102, 3, barFill(action.chargeMs, maxHold), ['#c9c2dd', '#ffd36b', '#ff8a3d'][action.chargeLevel] ?? '#ff8a3d');
+      drawBar(ctx, x + 4, y + 30 - 4, w - 8, 2, barFill(action.chargeMs, maxHold), [PALETTE.textDim, PALETTE.cursor, PALETTE.eclipseGlow][action.chargeLevel] ?? PALETTE.eclipseGlow);
     }
   });
+}
+
+/**
+ * HUD in view units (the caller has applied the pixel scale): the status
+ * window (floor, level, HP, stamina, XP, Disguise, held items), move slots
+ * with the charge level, boss bar and flashes. The minimap and the message
+ * log are drawn by their own modules.
+ */
+export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
+  const { player } = state;
+  statusPanel(ctx, state, floor);
+  moveSlots(ctx, state, view);
 
   const boss = bossBar(state);
   if (boss) {
     const w = Math.min(260, view.width - 40);
-    const x = (view.width - w) / 2;
-    const y = view.height - 52;
+    const x = Math.round((view.width - w) / 2);
+    const y = view.height - 82;
     const stance = t(`boss.stance.${boss.stance}`);
-    label(ctx, `${t(`species.${boss.species}`)} · ${stance}`, view.width / 2, y - 4, '#e8e4f0', 'center');
-    bar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : '#ff6b6b');
+    ctx.font = canvasFont();
+    pixelText(ctx, `${t(`species.${boss.species}`)} · ${stance}`, view.width / 2, y - 5, PALETTE.text, 'center');
+    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
   }
 
   if (juice.flash) {
     const life = juice.flash.ageMs / JUICE.flashMs;
     ctx.globalAlpha = 1 - life;
-    ctx.font = 'bold 14px monospace';
-    label(ctx, flashText(juice.flash, player.species), view.width / 2, 60 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
+    ctx.font = canvasFont(22, true);
+    pixelText(ctx, flashText(juice.flash, player.species), view.width / 2, 104 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
     ctx.globalAlpha = 1;
   }
 }

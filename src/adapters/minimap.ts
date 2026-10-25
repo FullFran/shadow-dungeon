@@ -4,6 +4,7 @@ import type { Rect, WorldState } from '../core/state';
 import { isWall, TILE, tileOf, type TileGrid, type TilePoint } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { insideRect } from '../core/geometry';
+import { drawPanel } from '../ui/canvas';
 
 /**
  * Mystery Dungeon-style minimap with fog of war. The memory of seen tiles is
@@ -17,9 +18,9 @@ export const MINIMAP = {
   revealRadius: 3,
   /** Size of one map tile on the minimap, in view pixels. */
   tilePx: 3,
-  /** Gap to the top-right corner of the view (below the floor label). */
-  margin: 8,
-  top: 20,
+  /** Gap to the top-right corner of the view (the floor shows in the status window now). */
+  margin: 10,
+  top: 10,
 } as const;
 
 export interface MinimapMemory {
@@ -69,8 +70,7 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
 }
 
 const COLORS = {
-  back: 'rgba(6, 5, 10, 0.45)',
-  floor: 'rgba(150, 170, 235, 0.55)',
+  floor: 'rgba(190, 210, 255, 0.75)',
   rubble: 'rgba(200, 70, 50, 0.55)',
   player: '#ffe066',
   stairs: '#7fd8ff',
@@ -85,8 +85,8 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, me
   const px = MINIMAP.tilePx;
   const x0 = view.width - MINIMAP.margin - grid.cols * px;
   const y0 = MINIMAP.top;
-  ctx.fillStyle = COLORS.back;
-  ctx.fillRect(x0 - 2, y0 - 2, grid.cols * px + 4, grid.rows * px + 4);
+  // The same window frame as the HUD, mostly see-through so the floor shows behind the map.
+  drawPanel(ctx, x0 - 4, y0 - 4, grid.cols * px + 8, grid.rows * px + 8, { alpha: 0.9, fill: 0.7 });
   const collapse = state.collapse;
   const front = collapse ? collapseFront(collapse) : 0;
   for (let y = 0; y < grid.rows; y++) {

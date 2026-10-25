@@ -11,6 +11,8 @@ import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
+import { drawMessageLog, type MessageLog } from './message-log';
+import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { interpolatedPositions, visibleTiles } from './view';
@@ -42,6 +44,8 @@ export interface RenderFrame {
   rumble: number;
   /** Seen tiles of the current floor; null hides the minimap (Tab, or no tile map). */
   minimap: MinimapMemory | null;
+  /** Message log at the bottom left (lines fade with `timeMs`). */
+  log?: MessageLog;
 }
 
 const COLORS = {
@@ -301,7 +305,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillRect(exit.x, exit.y, exit.width, exit.height);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#e8e4f0';
-      ctx.font = 'bold 8px monospace';
+      ctx.font = canvasFont(FONT.hudPx, true);
       ctx.textAlign = 'center';
       ctx.fillText(t('hud.exitOpen'), exit.x + exit.width / 2, exit.y - 4);
     } else {
@@ -456,7 +460,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const x = Math.round(pos.x);
     const y = Math.round(pos.y - 30);
     ctx.textAlign = 'center';
-    ctx.font = 'bold 8px monospace';
+    ctx.font = canvasFont(FONT.hudPx, true);
     const text = hp > 0 ? id.toUpperCase() : `${id.toUpperCase()} ${t('net.fainted')}`;
     ctx.fillStyle = '#000000';
     ctx.fillText(text, x + 1, y + 1);
@@ -473,7 +477,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const n of list) {
       const life = n.ageMs / JUICE.numberLifeMs;
       ctx.globalAlpha = 1 - life * life;
-      ctx.font = `bold ${n.big ? 12 : 9}px monospace`;
+      ctx.font = canvasFont(n.big ? 16 : FONT.hudPx, true);
       const text = n.style === 'blocked' ? t('hud.blocked') : String(n.value);
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
@@ -569,6 +573,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawHud(ctx, current, juice, view, frame.floor);
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
+    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
   }
 

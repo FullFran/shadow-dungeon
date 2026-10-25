@@ -51,6 +51,9 @@ export const FONT = {
   titlePx: 66,
 } as const;
 
+/** Canvas font string in the pixel font (view pixels; `bold` uses the 700 weight). */
+export const canvasFont = (px: number = FONT.hudPx, bold = false): string => `${bold ? '700 ' : ''}${px}px "${FONT.family}", monospace`;
+
 /** Window open animation and cursor bob, ms. */
 export const MOTION = { openMs: 120, bobMs: 600 } as const;
 

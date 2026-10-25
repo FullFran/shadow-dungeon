@@ -23,7 +23,7 @@ Out of scope: hub town, new art beyond code-drawn UI, story text.
 ## Tasks
 - [x] T1 UI foundation: tokens, font, window and cursor-list components, keyboard navigation (route: delegated writer; trigger: new UI modules, index.html, app)
 - [x] T2 Menus: title with eclipse backdrop, loadout, settings, credits, lobby, Esc menu, item pick, end screens (route: same writer)
-- [ ] T3 HUD line and message log, floor card restyle (route: same writer)
+- [x] T3 HUD line and message log, floor card restyle (route: same writer)
 - [ ] T4 Deploy (route: parent; standing OK for intermediate releases)
 
 ## Acceptance criteria
@@ -58,3 +58,11 @@ Created 2026-10-25. Forecast ~1200 authored lines.
 - Fix found by looking: Pixelify Sans' `fi`/`fl` ligatures read as other letters ("Ajar" for "fijar"), so ligatures are off page-wide.
 - Checks: `tests/app/settings-panel.test.ts` (5) and `tests/app/credits.test.ts` (2) RED (missing exports/module) then GREEN; i18n key test for the new strings written with the strings (not run RED). `npm test` 423 passed; `npm run build` ok. Headless Firefox screenshots (same-origin wrapper proxying the dev server, scripted key presses into the iframe, Spanish via stored settings): `/tmp/md-ui/{title,loadout,settings,credits,online,lobby,victory,defeat,esc-menu,item-pick}.png`, checked by eye; the Esc menu and item pick were reached by keyboard only (Enter, Enter, Escape / ArrowRight).
 - Not verified: mouse hover/click in a real browser (headless screenshots cannot move a mouse), clipboard copy, a real Trystero lobby.
+
+### T3 HUD and message log (delegated writer)
+- Canvas window kit `src/ui/canvas.ts`: `drawPanel` (ink outline, pale border with stepped corners, the window gradient, inner shade line; optional see-through fill and accent border), `pixelText` (one-pixel shadow; breaks the fi/fl ligatures with a zero-width non-joiner, since canvas cannot turn ligatures off), `drawBar`. All canvas text uses Pixelify Sans (`canvasFont`), including damage numbers, name tags and the exit label; the run waits for the font before starting.
+- HUD (`src/adapters/hud.ts`): top-left status window with `hudLine` ("Planta 2 · Nv. 5 · PS 52/100"), HP / stamina / XP bars, Disguise icon and state, held item badges in rarity colours wrapping in rows; move slots moved to the bottom right as small windows (gold border while in use, charge bar); boss bar raised above the log; level/item/dodge flashes kept, in the pixel font. Minimap framed with the same window (see-through fill), moved up now that the floor is in the status line; F3 net stats moved to the top centre.
+- Message log (`src/adapters/message-log.ts`): pure reducer (`pushMessage` with a cap of 4, oldest dropped; `pruneLog` expiry after 5 s; `logAlpha` fade over the last 0.8 s; `visibleMessages`), `eventMessages` for level up, enemy defeated, berry eaten and Disguise broken, plus item equipped and the collapse warning from the game loop. It runs on the game's pause-aware clock, so lines do not expire under the Esc menu.
+- Floor card: a centred window (dungeon name, "Planta N" large, collapse warning with a red-orange border, escape time in gold) that rises slightly as it fades in.
+- Checks: `tests/adapters/message-log.test.ts` (cap and ordering, expiry with injected time, fade, event lines in es/en, HUD line) RED (module missing) then GREEN. `npm test` 428 passed; `npm run build` ok. Screenshots `/tmp/md-ui/{hud-log,floor-card,boss,esc-menu,item-pick,title}.png` checked by eye (the boss shot caught "¡El disfraz se ha roto!" in the log and the flash, and the boss bar clear of the log).
+- Not verified: the shared-run item strip and HUD in a real two-tab session, a level-up line in the log (no scripted kill), legibility on a real stream encode.
