@@ -200,7 +200,7 @@ export const CAVES: DungeonDef = {
     { kind: 'flood', chance: [0, 0.25, 0.3, 0.35, 0, 0.35, 0.4, 0.45, 0.5] },
     { kind: 'collapse', chance: [0, 0, 0, 0.08, 0, 0.1, 0.1, 0.12, 0.12] },
   ],
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt', flood: 'crypt' }, midboss: 'guardian', guardian: 'forest-guardian' },
+  music: { floor: 'caves', urgent: { collapse: 'collapse', fog: 'caves', flood: 'caves-flood' }, midboss: 'guardian', guardian: 'caves-guardian' },
   // Deep blue-teal stone, wet and dark; the crystals bring the only light.
   palette: {
     tileFloorA: '#1f2c38',

@@ -9,7 +9,7 @@ const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
 describe('licensed music manifest', () => {
   it('has one track per used context', () => {
-    expect([...MUSIC_CONTEXTS].sort()).toEqual(['collapse', 'crypt', 'defeat', 'forest', 'forest-fog', 'forest-guardian', 'guardian', 'title', 'victory']);
+    expect([...MUSIC_CONTEXTS].sort()).toEqual(['caves', 'caves-flood', 'caves-guardian', 'collapse', 'crypt', 'defeat', 'forest', 'forest-fog', 'forest-guardian', 'guardian', 'title', 'victory']);
     for (const context of MUSIC_CONTEXTS) expect(MUSIC_TRACKS[context].context).toBe(context);
   });
 
@@ -89,6 +89,17 @@ describe('licensed music manifest', () => {
     expect(fog.lowpassHz).toBeLessThan(2000);
   });
 
+  it('muffles the caves track on flood floors and gives Dhelmise a track of its own', () => {
+    const flood = MUSIC_TRACKS['caves-flood'];
+    expect(flood.variantOf).toBe('caves');
+    expect(flood.file).toBe(MUSIC_TRACKS.caves.file);
+    expect(flood.lowpassHz).toBeGreaterThan(0);
+    expect([flood.loopStart, flood.loopEnd]).toEqual([MUSIC_TRACKS.caves.loopStart, MUSIC_TRACKS.caves.loopEnd]);
+    expect(MUSIC_TRACKS['caves-guardian'].file).not.toBe(MUSIC_TRACKS['forest-guardian'].file);
+    expect(MUSIC_TRACKS['caves-guardian'].license).toBe('CC0 1.0');
+    expect(MUSIC_TRACKS.caves.license).toBe('CC0 1.0');
+  });
+
   it('ships no file that the manifest does not list', () => {
     const listed = new Set(shipped.flatMap((t) => [`${t.file}.ogg`, `${t.file}.mp3`]));
     const present = readdirSync(join(ROOT, 'public', 'music')).filter((f) => /\.(ogg|mp3)$/.test(f));
@@ -96,6 +107,6 @@ describe('licensed music manifest', () => {
   });
 
   it('records a planned pick for every later context', () => {
-    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['caves', 'hub', 'necrozma', 'prologue', 'swamp']);
+    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['hub', 'necrozma', 'prologue', 'swamp']);
   });
 });

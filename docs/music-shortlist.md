@@ -108,6 +108,16 @@ introduction theme").
 | Underwater | Cleyton Kauffman | CC0 | https://opengameart.org/content/underwater-theme | Yes ("Looped: Yes") | Unknown | MP3, WAV | Bell, flute, arpeggios; "underwater, cave level" | Low–Medium (artist has a SoundCloud presence) | Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman (CC0; credit requested) |
 | Dark Cavern Ambient | Paul Wortmann | CC0 | https://opengameart.org/content/dark-cavern-ambient | Yes (file 002 is a continuous loop; 001 fades) | Unknown | OGG x2 | Dark cavern/dungeon ambience (built from CC0 SFX) | Low | Optional: "Dark Cavern Ambient" by Paul Wortmann — CC0 |
 
+Shipped 2026-10-25: *Underwater* for the caves floors (license re-read on the
+page: CC0, "Looped: Yes", attribution notice "Music by Cleyton Kauffman -
+https://soundcloud.com/cleytonkauffman"; the WAV does not wrap cleanly, so a
+2 s cross-fade makes the loop). Guardian (Dhelmise): *Fairy Boss Battles*
+(MintoDog, CC0, https://opengameart.org/content/fairy-boss-battles, "Fantasy
+Boss Battle music. This music is loopable"), the melodic synth alternate of
+section 9, picked over reusing Boss Battle #2 so each guardian has its own
+theme; no remix or cover mention on either page, no extra EULA. Nobody has
+listened to either.
+
 ### Toxic swamp
 
 | Title | Artist | License | URL | Loop | Length | Format | Mood | Content ID risk | Attribution line |
