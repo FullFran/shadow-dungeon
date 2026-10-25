@@ -40,6 +40,9 @@ Conflicts: `src/adapters/audio.ts` (main's licensed streaming voices vs the prol
 - TDD: RED observed (missing module, missing `starterChosen`/`withStarter`), then GREEN. `npm test` 59 / 580 passed; build passed.
 - Screenshots (headless Firefox driven over WebDriver BiDi, `/tmp/integrate/`): title with Prólogo, prologue, quiz voice, quiz question, quiz result "¡Eres un Cubone!" (no fallback text), loadout preselected on Cubone, in-game Zorua, Litwick, Cubone. Stored settings after the quiz: `species: cubone, starterChosen: true`.
 
+### M4 sync main
+`git merge --no-ff main` (cea8257, music track swap) merged with no conflicts; the new manifest is kept (guardian = "16-bit - Battle Theme I", `RESERVED_MUSIC` present). CREDITS.md keeps Sprites (with the new species), Font, Music, Audio. `npm test` 59 / 587 passed; build passed.
+
 ## Notes
 - Users from `main` have no `starterChosen`, so their first Play after this runs prologue and quiz once.
 - Audio flows not verified by ear (headless cannot unlock audio).
