@@ -455,6 +455,8 @@ export interface WorldState {
   pools?: readonly ToxicPool[];
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
+  /** The level a player is expected to have on this floor (core/fairness.ts): the yardstick of the one-hit cap; absent = 1. */
+  referenceLevel?: number;
   /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */
   wisp?: { cache: Vec2 };
   /** Sima del Eclipse: this floor's event (sima-events.ts); the host runs it, guests follow its snapshot. */

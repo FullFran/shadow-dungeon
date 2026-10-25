@@ -16,9 +16,9 @@ import { createWorld, spawnEnemy } from '../../src/core/world';
 import { initialAi } from '../../src/core/enemies';
 import { input } from './helpers';
 
-/** A world as it plays, without the tier field (to compare an easy world with a tierless one). */
+/** A world as it plays, without the tier field (to compare an easy world with a tierless one) nor the one-hit cap's yardstick (core/fairness.ts, added after the digest: a field, not a change of play). */
 const plain = (w: WorldState): Omit<WorldState, 'difficulty'> => {
-  const { difficulty: _d, ...rest } = w;
+  const { difficulty: _d, referenceLevel: _r, ...rest } = w;
   return rest;
 };
 

@@ -1,6 +1,7 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { tierOf } from './difficulty';
+import { hitCap, speciesMaxHpAt } from './fairness';
 import { onLethalHit } from './items';
 import { partyDamageScale } from './party';
 import { absorbsFire, armorCovers, breakIllusion } from './passives';
@@ -32,6 +33,10 @@ export function landHitOnPlayer(
   if (harder !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * harder)) };
   // A Sima pact's curse may make them hit harder.
   if (state.simaPact && state.simaPact.enemyDamage !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * state.simaPact.enemyDamage)) };
+  // The one-hit cap (P5.6), last of all the multipliers: no single hit takes more than a share of the HP a player of the
+  // floor's expected level would have (core/fairness.ts). An under-levelled player can still be one-shot; a levelled one never.
+  const cap = hitCap(speciesMaxHpAt(player.species, state.referenceLevel ?? 1));
+  if (hit.damage > cap) hit = { ...hit, damage: cap };
   const outcome = classifyHit(player, hit);
   if (outcome === 'dodged') {
     events.push({ type: 'hitDodged' });

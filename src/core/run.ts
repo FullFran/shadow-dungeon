@@ -11,6 +11,7 @@ import { shallowWater } from './water';
 import { placePools } from './toxic';
 import { generateFloor } from './dungeon';
 import { tieredSpawns, worldDifficulty } from './difficulty';
+import { expectedLevel } from './fairness';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
@@ -124,7 +125,9 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
   const enemyScale = endless ? depthScale(endless.scaling, run.floor, plan.kind === 'room' && plan.role === 'echo') : undefined;
   // A Sima event belongs to its floor (the pact outlasts it).
-  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, simaEvent: undefined };
+  // The one-hit cap's yardstick (core/fairness.ts): the level expected on this floor, the same on every peer.
+  const referenceLevel = expectedLevel(run.dungeon, run.floor, worldDifficulty(world));
+  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, referenceLevel, simaEvent: undefined };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.

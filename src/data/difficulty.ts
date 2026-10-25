@@ -71,8 +71,26 @@ export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
   nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false },
 };
 
-/** The readable floor of a scaled telegraph: never under this share of its base, nor under `minMs` (unless the base already was). */
-export const TELEGRAPH_FLOOR = { share: 0.75, minMs: 280 } as const;
+/**
+ * The readable floor of a telegraph (docs/souls-difficulty-research.md P5):
+ * the tier never scales it under `share` of its base; and after every speed
+ * modifier (tier, elite pace, enrage, a Sima pact's curse) it never lasts
+ * under `minMs`, nor a positional (`pierceRoll`: a choice of where to walk)
+ * one under `choiceMinMs` (unless the authored base already was: the floor
+ * only undoes what modifiers cut, see core/difficulty.ts `effectiveTelegraphMs`).
+ */
+export const TELEGRAPH_FLOOR = { share: 0.75, minMs: 280, choiceMinMs: 400 } as const;
+
+/** The floor of a positional (`pierceRoll`) wind-up (P5). */
+export const CHOICE_TELEGRAPH_FLOOR_MS = TELEGRAPH_FLOOR.choiceMinMs;
+
+/**
+ * The one-hit cap (P5.6): no single enemy hit, after every multiplier (tier,
+ * depth, party, pact), takes more than this share of the victim's max HP
+ * (core/hits.ts, victim side). Environmental ticks (collapse, gas, fog) are
+ * outside it: they are non-lethal by design.
+ */
+export const MAX_HIT_SHARE = 0.35;
 
 /** A wind-up of `baseMs` at tier `d`: scaled, but never below the readable floor. */
 export function scaledTelegraphMs(baseMs: number, d: Difficulty): number {
