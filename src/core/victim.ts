@@ -78,7 +78,7 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
     } else if (isSwampDef(def)) {
-      const active = swampAttack(enemy, def, current.player.pos);
+      const active = swampAttack(current.arena, enemy, def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (isRosterDef(def)) {

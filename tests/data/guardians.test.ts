@@ -9,6 +9,8 @@ const keys = [
   'spell.decidueye.volley',
   'spell.decidueye.fan',
   'spell.decidueye.dive',
+  ...['dance', 'spiral', 'haze', 'escort'].map((c) => `spell.salazzle.${c}`),
+  ...['tendrils', 'spores', 'shards', 'wormhole', 'flood', 'downpour', 'ultra'].map((c) => `spell.nihilego.${c}`),
 ];
 
 describe('guardian and dungeon lore', () => {
@@ -28,6 +30,6 @@ describe('guardian and dungeon lore', () => {
 
   it('keeps the Sword King as the first guardian only: no other line calls itself king', () => {
     const es = catalog('es');
-    for (const key of keys.filter((k) => k.includes('decidueye') || k.includes('forest'))) expect(es[key], key).not.toMatch(/rey/i);
+    for (const key of keys.filter((k) => k.includes('decidueye') || k.includes('forest') || k.includes('nihilego') || k.includes('swamp'))) expect(es[key], key).not.toMatch(/rey/i);
   });
 });

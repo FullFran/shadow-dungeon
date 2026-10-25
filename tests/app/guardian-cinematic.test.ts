@@ -5,7 +5,7 @@ import { GUARDIAN_CINEMATICS } from '../../src/data/guardian-cinematics';
 import { totalMs } from '../../src/ui/cinematic';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
-const GUARDIANS = ['aegislash', 'decidueye'] as const;
+const GUARDIANS = ['aegislash', 'decidueye', 'nihilego'] as const;
 
 describe('guardian cinematic sequencing', () => {
   it('plays in full the first time, the short name card afterwards, in full again when replayed', () => {

@@ -4,7 +4,8 @@ import type { DasherDef, RollerDef, SniperDef } from '../data/swamp-enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { worldDifficulty } from './difficulty';
 import { confineCircle } from './geometry';
-import type { EnemyState, GameEvent, WorldState } from './state';
+import type { Arena, EnemyState, GameEvent, WorldState } from './state';
+import { queenAttack, ultraAttack, updateQueen, updateUltra } from './swamp-bosses';
 import { TUNING } from '../data/tuning';
 import { add, distance, length, normalize, scale, vec, type Vec2 } from './vec';
 
@@ -18,7 +19,8 @@ const lungeTouches = (enemy: EnemyState, player: Vec2): boolean => distance(enem
  * locked ink line from afar and spits a fast bolt, then hops back (sniper).
  * Each has one extra trick on hard and above.
  */
-export const isSwampDef = (def: EnemyDef): def is SwampDef => def.kind === 'roller' || def.kind === 'dasher' || def.kind === 'sniper';
+export const isSwampDef = (def: EnemyDef): def is SwampDef =>
+  def.kind === 'roller' || def.kind === 'dasher' || def.kind === 'sniper' || def.kind === 'queen' || def.kind === 'ultra';
 
 /** The aim follows the player until the last `lockMs` of the wind-up (the dodge cue). */
 const tracking = (enemy: EnemyState, lockMs: number): boolean => enemy.ai.modeDurationMs - enemy.ai.modeMs > lockMs;
@@ -224,11 +226,15 @@ function updateSniper(state: WorldState, start: EnemyState, def: SniperDef, targ
 export function updateSwamp(state: WorldState, enemy: EnemyState, def: SwampDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (def.kind === 'roller') return updateRoller(state, enemy, def, target, ms, events);
   if (def.kind === 'dasher') return updateDasher(state, enemy, def, target, ms, events);
+  if (def.kind === 'queen') return updateQueen(state, enemy, def, target, ms, events);
+  if (def.kind === 'ultra') return updateUltra(state, enemy, def, target, ms, events);
   return updateSniper(state, enemy, def, target, ms, events);
 }
 
 /** Guest side: the swamp melee attack in progress, if any, and whether it touches `player` (Skrelp only throws). */
-export function swampAttack(enemy: EnemyState, def: SwampDef, player: Vec2): { attack: EnemyAttackDef; touches: boolean } | null {
+export function swampAttack(arena: Pick<Arena, 'width' | 'height'>, enemy: EnemyState, def: SwampDef, player: Vec2): { attack: EnemyAttackDef; touches: boolean } | null {
+  if (def.kind === 'queen') return queenAttack(arena, enemy, def, player);
+  if (def.kind === 'ultra') return ultraAttack(arena, enemy, def, player);
   if (enemy.ai.mode !== 'attack' || def.kind === 'sniper') return null;
   return { attack: def.attack, touches: lungeTouches(enemy, player) };
 }

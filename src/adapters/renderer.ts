@@ -25,6 +25,7 @@ import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
+import { drawQueenTelegraph, drawUltraTelegraph } from './swamp-telegraphs';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
@@ -153,6 +154,8 @@ export interface Renderer {
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
   /** The arena of the frame being drawn (the shadow-sword wall spans it). */
   let currentArena: { width: number; height: number } | null = null;
+  /** Real time of the frame being drawn (the swamp bosses' pulsing telegraphs). */
+  let lastTimeMs = 0;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -542,6 +545,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.stroke();
     }
     const def = ENEMY_BEHAVIOUR[enemy.species];
+    if (def?.kind === 'queen' || def?.kind === 'ultra') {
+      const arena = currentArena ?? { width: 0, height: 0 };
+      if (def.kind === 'queen') drawQueenTelegraph(ctx, enemy, def, arena, pos, lastTimeMs);
+      else drawUltraTelegraph(ctx, enemy, def, arena, pos, lastTimeMs);
+      return;
+    }
     if (ai.mode === 'transform' && def?.kind === 'boss') {
       // The unsheathing (phase 2) is a bigger, double ring.
       const big = enemy.boss?.stance === 'unsheathe';
@@ -840,6 +849,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
     currentArena = current.arena;
+    lastTimeMs = timeMs;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -882,7 +892,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
           // (Sableye blinking out works the same way.)
-          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
+          const vanishing =
+            enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || (kind === 'ultra' && enemy.ai.mode === 'telegraph' && enemy.boss?.stance === 'wormhole'));
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },
