@@ -16,7 +16,8 @@ import {
   ZUBAT,
   DUSKULL,
 } from '../../src/data/enemies';
-import { bladeCombo, midnightAttack, phase2Cards } from '../../src/core/boss';
+import { bladeCombo, midnightAttack, phase2Cards, updateBoss } from '../../src/core/boss';
+import { tickAiAt } from '../../src/core/difficulty';
 import { gemRings, glintBlinks } from '../../src/core/thief';
 import { pierceZone } from '../../src/core/victim';
 import type { EnemyState, GameEvent, WorldState } from '../../src/core/state';
@@ -58,9 +59,10 @@ describe('hard+ content: the Crypt', () => {
     const feint = hard[3]!;
     expect(feint.telegraphMs).toBeGreaterThan(Math.max(...AEGISLASH.blade.combo.map((b) => b.telegraphMs)));
     const blade = (d: Difficulty) => {
+      // Normal and harder fight with spell cards (data/aegislash-cards.ts); the stance duel's tier content now plays in a Sima echo.
       const w = arena('aegislash', d, vec(400, 240));
       const boss = w.enemies[0]!;
-      return { ...w, enemies: [{ ...boss, boss: { ...boss.boss!, stance: 'blade' as const }, ai: { ...boss.ai, mode: 'approach' as const } }] };
+      return { ...w, enemyScale: { hp: 1, damage: 1, echo: true as const }, enemies: [{ ...boss, boss: { ...boss.boss!, stance: 'blade' as const }, ai: { ...boss.ai, mode: 'approach' as const } }] };
     };
     const easy = run(blade('easy'), 4000, recovering);
     expect(attacks(easy.events)).toEqual(['combo1', 'combo2', 'combo3']);
@@ -71,14 +73,21 @@ describe('hard+ content: the Crypt', () => {
     expect(wound.durationMs).toBe(feint.telegraphMs);
   });
 
-  it('Aegislash: nightmare adds Judgement to phase 2 (two shadow walls from opposite ends, each with a gap), positional like Shadow', () => {
+  it('Aegislash: the duel data adds Judgement to phase 2 on nightmare (two shadow walls from opposite ends, each with a gap), positional like Shadow', () => {
     expect(phase2Cards(AEGISLASH, 'hard')).toEqual(['midnight', 'oaths', 'shadow']);
     expect(phase2Cards(AEGISLASH, 'nightmare')).toEqual(['midnight', 'oaths', 'shadow', 'judgement']);
+    // Nightmare's Aegislash now fights with spell cards (its own Juicio del Rey card); the duel's walls are driven through its state machine directly.
     const throne = { width: 640, height: 480 };
     const w = arena('aegislash', 'nightmare', vec(320, 240), vec(320, 400), throne);
     const boss = w.enemies[0]!;
     const ready: WorldState = { ...w, enemies: [{ ...boss, hp: boss.maxHp * 0.3, boss: { ...boss.boss!, phase: 2, stance: 'blade', combosDone: 1, cardsPlayed: 3 }, ai: { ...boss.ai, mode: 'approach' } }] };
-    const played = run(ready, 6000, recovering);
+    let current = ready;
+    const events: GameEvent[] = [];
+    for (let i = 0; i < 6000 / FIXED_DT_MS && !recovering(current); i++) {
+      const e = current.enemies[0]!;
+      current = updateBoss(current, { ...e, ai: tickAiAt(e.ai, FIXED_DT_MS, 'nightmare') }, AEGISLASH, current.player.pos, FIXED_DT_MS, events);
+    }
+    const played = { state: current, events };
     const winds = telegraphsOf(played.events);
     expect(winds.map((e) => e.attack)).toEqual(['judgement', 'judgement2']);
     expect(winds.every((e) => e.pierceRoll === true && e.durationMs >= TELEGRAPH_FLOOR.minMs)).toBe(true);

@@ -836,5 +836,19 @@
   "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it.",
   "coop.revived": "{name} gets back up!",
   "coop.reviveInterrupted": "The help was cut short: it starts again.",
-  "coop.reviveHint": "stay by them"
+  "coop.reviveHint": "stay by them",
+  "spell.aegislash.walls": "Royal Shield \"Closing Wall\"",
+  "spell.aegislash.fans": "Royal Edge \"Midnight Fan\"",
+  "spell.aegislash.swords": "Oath \"Floating Swords\"",
+  "spell.aegislash.hundred": "Eclipse Edict \"Parade of a Hundred Swords\"",
+  "spell.aegislash.crown": "Eternal Oath \"Crown of Swords\"",
+  "spell.aegislash.judgement2": "King's Judgement \"The Hundred Swords Return\"",
+  "spell.aegislash.lastword": "Last Word \"King Without a Kingdom\"",
+  "boss.stance.sc-aeg-walls": "Closing Wall",
+  "boss.stance.sc-aeg-fans": "Midnight Fan",
+  "boss.stance.sc-aeg-swords": "Floating Swords",
+  "boss.stance.sc-aeg-hundred": "Hundred Swords",
+  "boss.stance.sc-aeg-crown": "Crown of Swords",
+  "boss.stance.sc-aeg-judgement": "King's Judgement",
+  "boss.stance.sc-aeg-lastword": "King Without a Kingdom"
 }

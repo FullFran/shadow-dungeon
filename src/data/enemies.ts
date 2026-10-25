@@ -1388,7 +1388,30 @@ export type DanmakuShot = EnemyAttackDef & { speed: number; radius: number; life
 export type DanmakuPattern =
   | { kind: 'rings'; rings: number; perRing: number; gap: number; gapTurnDeg: number; gapMs: number; shot: DanmakuShot }
   | { kind: 'spiral'; arms: number; everyMs: number; durationMs: number; turnDegPerShot: number; shot: DanmakuShot }
-  | { kind: 'lanes'; waves: number; gapMs: number; spacing: number; gapWidth: number; shiftPx: number; shot: DanmakuShot }
+  /** Lane walls; `snake`: the safe lane moves `shiftPx` every wave towards the open side and bounces off the walls (a curtain to walk along) instead of shifting every other wave; `alternate`: odd waves come from the other end (no shelter lasts behind cover). */
+  | { kind: 'lanes'; waves: number; gapMs: number; spacing: number; gapWidth: number; shiftPx: number; snake?: true; alternate?: true; shot: DanmakuShot }
+  /**
+   * Fans of shots from the boss, `perFan` across `spreadDeg`: every other fan
+   * is shifted half a slot (the gaps alternate, so a gap does not work
+   * twice); `aim: 'each'` aims every fan at the player as it leaves (keep
+   * moving), `first` keeps the wind-up's aim (static).
+   */
+  | { kind: 'fan'; fans: number; perFan: number; spreadDeg: number; gapMs: number; aim: 'each' | 'first'; shot: DanmakuShot }
+  /**
+   * Two walls at once, from the left and right edges moving in (shields
+   * closing): a column of shots every `spacing` px with one gap row
+   * `gapWidth` tall, the same on both walls; wave 0's gap is the row the
+   * player stood in, every other wave shifts by `shiftPx`.
+   */
+  | { kind: 'walls'; waves: number; gapMs: number; spacing: number; gapWidth: number; shiftPx: number; shot: DanmakuShot }
+  /**
+   * Floating weapons at fixed points of the room (`points` as shares of its
+   * width and height): volley k fires from `atOnce` of them in turn (points
+   * `i` with `i % groups === k % groups`), each `perVolley` shots across
+   * `spreadDeg` aimed at the player: aimed pressure that never comes from
+   * more than `atOnce` places at once.
+   */
+  | { kind: 'turrets'; points: readonly { x: number; y: number }[]; atOnce: number; volleys: number; gapMs: number; perVolley: number; spreadDeg: number; shot: DanmakuShot }
   /** An anchor or chain swung around the body: `sweepDeg` of a turn over `sweepMs`, hitting within `radius` near the arm. */
   | { kind: 'sweep'; radius: number; sweepDeg: number; sweepMs: number; armDeg: number; attack: EnemyAttackDef }
   /**

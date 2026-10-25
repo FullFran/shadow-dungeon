@@ -1,4 +1,4 @@
-import { laneGap, sweepAngle } from '../core/danmaku';
+import { fanDirections, laneGap, laneGapOf, sweepAngle, turretPoints, turretsFiring } from '../core/danmaku';
 import type { EnemyState } from '../core/state';
 import type { Vec2 } from '../core/vec';
 import type { DanmakuCard, DanmakuDef, DanmakuPattern } from '../data/enemies';
@@ -100,9 +100,68 @@ function drawPattern(ctx: CanvasRenderingContext2D, enemy: EnemyState, p: Danmak
     }
     return;
   }
+  if (p.kind === 'lanes' && striking && p.snake && ai.aimPoint) {
+    // A snaking curtain: the next wave's lane, faintly, so the walk can be read ahead.
+    const next = laneGapOf(p, arena.width, ai.aimPoint.x, (enemy.boss?.comboIndex ?? 0) + 1);
+    ctx.fillStyle = SAFE;
+    ctx.fillRect(next - p.gapWidth / 2, 0, p.gapWidth, arena.height);
+    return;
+  }
+  if (p.kind === 'fan') {
+    if (!winding) return;
+    // The first fan's blades, growing from the body.
+    ctx.strokeStyle = EDGE;
+    ctx.lineWidth = 2;
+    for (const d of fanDirections(ai.attackDir, p.perFan, p.spreadDeg, 0)) {
+      ctx.beginPath();
+      ctx.moveTo(pos.x + d.x * (enemy.radius + 4), pos.y + d.y * (enemy.radius + 4));
+      ctx.lineTo(pos.x + d.x * (enemy.radius + 4 + 70 * progress), pos.y + d.y * (enemy.radius + 4 + 70 * progress));
+      ctx.stroke();
+    }
+    return;
+  }
+  if (p.kind === 'walls') {
+    if (!winding || !ai.aimPoint) return;
+    // Both edges darken; the gap row (where the shields will not meet) is lit across the room.
+    const gap = laneGap(arena.height, ai.aimPoint.y, p.gapWidth, p.shiftPx, 0);
+    const band = 22;
+    ctx.fillStyle = `rgba(120, 140, 200, ${0.3 + 0.4 * progress})`;
+    for (const x of [0, arena.width - band]) {
+      ctx.fillRect(x, 0, band, Math.max(0, gap - p.gapWidth / 2));
+      ctx.fillRect(x, gap + p.gapWidth / 2, band, Math.max(0, arena.height - gap - p.gapWidth / 2));
+    }
+    ctx.fillStyle = SAFE;
+    ctx.fillRect(0, gap - p.gapWidth / 2, arena.width, p.gapWidth);
+    return;
+  }
+  if (p.kind === 'turrets') {
+    // The floating swords: the pair about to fire glows.
+    const points = turretPoints(p, arena);
+    const next = turretsFiring(points.length, p.atOnce, winding ? 0 : (enemy.boss?.comboIndex ?? 0) + 1);
+    for (const [i, at] of points.entries()) {
+      const hot = next.includes(i);
+      const bob = Math.sin(timeMs / 260 + i) * 3;
+      ctx.strokeStyle = hot ? 'rgba(255, 120, 120, 0.95)' : 'rgba(200, 210, 235, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(at.x, at.y - 12 + bob);
+      ctx.lineTo(at.x, at.y + 12 + bob);
+      ctx.moveTo(at.x - 6, at.y + 5 + bob);
+      ctx.lineTo(at.x + 6, at.y + 5 + bob);
+      ctx.stroke();
+      if (hot) {
+        ctx.strokeStyle = EDGE;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(at.x, at.y + bob, 16 + 6 * (1 - progress), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
   if (p.kind === 'lanes') {
     if (!winding || !ai.aimPoint) return;
-    const gap = laneGap(arena.width, ai.aimPoint.x, p.gapWidth, p.shiftPx, 0);
+    const gap = laneGapOf(p, arena.width, ai.aimPoint.x, 0);
     const band = 24;
     const down = ai.attackDir.y > 0;
     const y = down ? 0 : arena.height - band;

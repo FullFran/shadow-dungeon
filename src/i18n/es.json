@@ -836,5 +836,19 @@
   "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella.",
   "coop.revived": "¡{name} vuelve a levantarse!",
   "coop.reviveInterrupted": "La ayuda se ha cortado: vuelve a empezar.",
-  "coop.reviveHint": "quédate a su lado"
+  "coop.reviveHint": "quédate a su lado",
+  "spell.aegislash.walls": "Escudo Real «Muralla Cerrada»",
+  "spell.aegislash.fans": "Filo Real «Abanico de Medianoche»",
+  "spell.aegislash.swords": "Juramento «Espadas Flotantes»",
+  "spell.aegislash.hundred": "Edicto del Eclipse «Desfile de las Cien Espadas»",
+  "spell.aegislash.crown": "Juramento Eterno «Corona de Espadas»",
+  "spell.aegislash.judgement2": "Juicio del Rey «Las Cien Espadas Vuelven»",
+  "spell.aegislash.lastword": "Última Palabra «Rey sin Reino»",
+  "boss.stance.sc-aeg-walls": "Muralla Cerrada",
+  "boss.stance.sc-aeg-fans": "Abanico de Medianoche",
+  "boss.stance.sc-aeg-swords": "Espadas Flotantes",
+  "boss.stance.sc-aeg-hundred": "Cien Espadas",
+  "boss.stance.sc-aeg-crown": "Corona de Espadas",
+  "boss.stance.sc-aeg-judgement": "Juicio del Rey",
+  "boss.stance.sc-aeg-lastword": "Rey sin Reino"
 }

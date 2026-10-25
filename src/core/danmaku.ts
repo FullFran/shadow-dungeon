@@ -1,6 +1,6 @@
 import type { DanmakuCard, DanmakuCardDef, DanmakuDef, DanmakuPattern, DanmakuShot, EnemyAttackDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
-import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, rotate, spawnShot, towardTarget } from './brain';
+import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, rotate, spawnShot, spreadDirections, towardTarget } from './brain';
 import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -82,6 +82,37 @@ export function laneGap(arenaWidth: number, markX: number, gapWidth: number, shi
   return Math.min(hi, Math.max(lo, x));
 }
 
+/** Centre of the safe lane of wave `index` of a snaking curtain: from the mark, `shiftPx` a wave towards the open side, bouncing off the walls. */
+export function snakeGap(arenaWidth: number, markX: number, gapWidth: number, shiftPx: number, index: number): number {
+  const lo = gapWidth / 2 + 8;
+  const hi = arenaWidth - gapWidth / 2 - 8;
+  const span = hi - lo;
+  if (span <= 0) return arenaWidth / 2;
+  const side = markX < arenaWidth / 2 ? 1 : -1;
+  const raw = Math.min(hi, Math.max(lo, markX)) - lo + side * shiftPx * index;
+  const t = ((raw % (2 * span)) + 2 * span) % (2 * span);
+  return lo + (t <= span ? t : 2 * span - t);
+}
+
+/** The safe lane (x) of wave `index` of a lane pattern, shifting or snaking. */
+export const laneGapOf = (p: { gapWidth: number; shiftPx: number; snake?: true }, arenaWidth: number, markX: number, index: number): number =>
+  p.snake ? snakeGap(arenaWidth, markX, p.gapWidth, p.shiftPx, index) : laneGap(arenaWidth, markX, p.gapWidth, p.shiftPx, index);
+
+/** Directions of fan `index`: `perFan` across `spreadDeg` around `aim`, every other fan shifted half a slot. */
+export function fanDirections(aim: Vec2, perFan: number, spreadDeg: number, index: number): Vec2[] {
+  const half = perFan > 1 ? spreadDeg / (perFan - 1) / 2 : 0;
+  return spreadDirections(aim, perFan, spreadDeg, index % 2 === 1 ? half : 0);
+}
+
+/** The points volley `index` of a turret pattern fires from: `atOnce` of them, in turn. */
+export function turretsFiring(points: number, atOnce: number, index: number): number[] {
+  const groups = Math.max(1, Math.ceil(points / Math.max(1, atOnce)));
+  return Array.from({ length: points }, (_, i) => i).filter((i) => i % groups === index % groups);
+}
+
+/** Where a turret pattern's weapons float in a room. */
+export const turretPoints = (p: { points: readonly { x: number; y: number }[] }, arena: { width: number; height: number }): Vec2[] => p.points.map((q) => vec(q.x * arena.width, q.y * arena.height));
+
 /** The x of each kelp shot of one wave: every `spacing` px, none inside the safe lane. */
 export function laneShots(arenaWidth: number, gapX: number, gapWidth: number, spacing: number): number[] {
   const out: number[] = [];
@@ -153,16 +184,41 @@ function firePart(state: WorldState, enemy: EnemyState, def: DanmakuDef, cd: Dan
  * keeping the room under `maxShots` enemy shots, each `power` times as
  * strong. Shared with the guardians' spell cards (core/cards.ts).
  */
-export function firePattern(state: WorldState, enemy: EnemyState, maxShots: number, p: DanmakuPattern, index: number, power = 1, _target?: Vec2): WorldState {
+export function firePattern(state: WorldState, enemy: EnemyState, maxShots: number, p: DanmakuPattern, index: number, power = 1, target?: Vec2): WorldState {
   let next = state;
   const aim = enemy.ai.attackDir;
+  const { width, height } = state.arena;
   if (p.kind === 'rings') for (const dir of ringDirections(aim, p.perRing, p.gap, p.gapTurnDeg, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
   if (p.kind === 'spiral') for (const dir of spiralDirections(aim, p.arms, p.turnDegPerShot, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
   if (p.kind === 'lanes') {
-    const mark = enemy.ai.aimPoint ?? vec(state.arena.width / 2, 0);
-    const gapX = laneGap(state.arena.width, mark.x, p.gapWidth, p.shiftPx, index);
-    const y = aim.y > 0 ? p.shot.radius + 2 : state.arena.height - p.shot.radius - 2;
-    for (const x of laneShots(state.arena.width, gapX, p.gapWidth, p.spacing)) next = shoot(next, enemy, maxShots, p.shot, aim, vec(x, y), power);
+    const mark = enemy.ai.aimPoint ?? vec(width / 2, 0);
+    const gapX = laneGapOf(p, width, mark.x, index);
+    // Alternating curtains: odd waves come from the other end.
+    const dir = p.alternate && index % 2 === 1 ? vec(0, -aim.y) : aim;
+    const y = dir.y > 0 ? p.shot.radius + 2 : height - p.shot.radius - 2;
+    for (const x of laneShots(width, gapX, p.gapWidth, p.spacing)) next = shoot(next, enemy, maxShots, p.shot, dir, vec(x, y), power);
+  }
+  if (p.kind === 'fan') {
+    const dir = p.aim === 'each' && target ? towardTarget(target, enemy) : aim;
+    for (const d of fanDirections(dir, p.perFan, p.spreadDeg, index)) next = shoot(next, enemy, maxShots, p.shot, d, undefined, power);
+  }
+  if (p.kind === 'walls') {
+    // The gap row: the mark's y (where the player stood), shifted every other wave.
+    const gapY = laneGap(height, enemy.ai.aimPoint?.y ?? height / 2, p.gapWidth, p.shiftPx, index);
+    for (const y of laneShots(height, gapY, p.gapWidth, p.spacing)) {
+      next = shoot(next, enemy, maxShots, p.shot, vec(1, 0), vec(p.shot.radius + 2, y), power);
+      next = shoot(next, enemy, maxShots, p.shot, vec(-1, 0), vec(width - p.shot.radius - 2, y), power);
+    }
+  }
+  if (p.kind === 'turrets') {
+    const points = turretPoints(p, state.arena);
+    const at = target ?? state.player.pos;
+    for (const i of turretsFiring(points.length, p.atOnce, index)) {
+      const from = points[i]!;
+      const dir = normalize(sub(at, from));
+      if (length(dir) === 0) continue;
+      for (const d of spreadDirections(dir, p.perVolley, p.spreadDeg)) next = shoot(next, enemy, maxShots, p.shot, d, add(from, scale(d, p.shot.radius + 4)), power);
+    }
   }
   return next;
 }
@@ -174,7 +230,9 @@ const partsOf = (cd: DanmakuCardDef): { count: number; every: number } | null =>
 export function patternParts(p: DanmakuPattern): { count: number; every: number } | null {
   if (p.kind === 'rings') return { count: p.rings, every: p.gapMs };
   if (p.kind === 'spiral') return { count: Math.max(1, Math.floor(p.durationMs / p.everyMs)), every: p.everyMs };
-  if (p.kind === 'lanes') return { count: p.waves, every: p.gapMs };
+  if (p.kind === 'lanes' || p.kind === 'walls') return { count: p.waves, every: p.gapMs };
+  if (p.kind === 'fan') return { count: p.fans, every: p.gapMs };
+  if (p.kind === 'turrets') return { count: p.volleys, every: p.gapMs };
   return null;
 }
 

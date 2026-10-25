@@ -5,10 +5,11 @@ import { FOREST_TRICKS, type Trick } from '../data/forest-tricks';
 import { SIMA_TRICKS } from '../data/sima-tricks';
 import { SWAMP_TRICKS } from '../data/swamp-tricks';
 import { PARTY_TRICKS } from '../data/party-tricks';
+import { GUARDIAN_TRICKS } from '../data/guardian-tricks';
 import type { SpeciesId } from '../data/species';
 
-/** Every dungeon's trick table; a species' tricks are their concatenation, in this order. */
-const TRICK_TABLES: readonly Partial<Record<SpeciesId, readonly Trick[]>>[] = [FOREST_TRICKS, CAVES_TRICKS, SWAMP_TRICKS, SIMA_TRICKS];
+/** Every dungeon's trick table, then the guardians' spell cards (data/guardian-tricks.ts); a species' tricks are their concatenation, in this order. */
+const TRICK_TABLES: readonly Partial<Record<SpeciesId, readonly Trick[]>>[] = [FOREST_TRICKS, CAVES_TRICKS, SWAMP_TRICKS, SIMA_TRICKS, GUARDIAN_TRICKS];
 
 /**
  * An enemy's behaviour at a difficulty tier: its data (data/enemies.ts) with

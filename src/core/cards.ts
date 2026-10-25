@@ -1,7 +1,7 @@
 import { CAPTURE, cardInfo, type CardFightDef, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
 import type { DanmakuPattern, EnemyAttackDef } from '../data/enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
-import { crossed, firePattern, laneGap, patternAttackMs, patternMelee, patternParts, ringDirections, shoot } from './danmaku';
+import { crossed, firePattern, laneGapOf, patternAttackMs, patternMelee, patternParts, ringDirections, shoot } from './danmaku';
 import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
@@ -136,10 +136,12 @@ function startStep(state: WorldState, enemy: EnemyState, card: SpellCardDef, ind
   let attackDir = toPlayer;
   let aimPoint: Vec2 | undefined;
   if (p.kind === 'zone') aimPoint = p.at === 'self' ? enemy.pos : target;
+  // Closing walls: the gap row is the one the player stands in now.
+  if (p.kind === 'walls') aimPoint = vec(0, target.y);
   if (p.kind === 'lanes') {
     // The wall starts at the far end from the player and comes at them; the mark is the safe lane.
     attackDir = target.y > state.arena.height / 2 ? vec(0, 1) : vec(0, -1);
-    aimPoint = vec(laneGap(state.arena.width, target.x, p.gapWidth, p.shiftPx, 0), attackDir.y > 0 ? 0 : state.arena.height);
+    aimPoint = vec(laneGapOf(p, state.arena.width, target.x, 0), attackDir.y > 0 ? 0 : state.arena.height);
   }
   const { aimPoint: _old, ...ai } = enemy.ai;
   const next = withBoss(enemy, { comboIndex: 0 });
@@ -188,7 +190,7 @@ function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, car
         break;
       }
       const p = step.pattern;
-      if (p.kind === 'rings' || p.kind === 'spiral' || p.kind === 'sweep') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      if (p.kind === 'rings' || p.kind === 'spiral' || p.kind === 'sweep' || p.kind === 'fan') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       // A mark on the player follows them, then holds still for the last `lockMs` (walk out of it).
       if (p.kind === 'zone' && p.at === 'target' && ai.modeDurationMs - ai.modeMs > p.lockMs) enemy = withAi(enemy, { ...enemy.ai, aimPoint: target });
       if (!modeOver(ai)) break;
