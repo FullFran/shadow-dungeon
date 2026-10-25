@@ -29,7 +29,7 @@ Out of scope: the personality quiz, new sprites, voice acting, the licensed trac
 ## Tasks
 - [x] T1 Script: narration in i18n (es, en), 8 panels; provisional lore section in `docs/gdd.md` (route: inline, single writer worktree).
 - [x] T2 Cinematic player: pure timeline (panel at t, alpha curves, text reveal, camera, skip), scenes renderer, player screen, title entry, first-play hook, seen flag (route: inline in this writer).
-- [ ] T3 Music: procedural prologue score in the audio adapter, manifest hook for a licensed file (route: inline in this writer).
+- [x] T3 Music: procedural prologue score in the audio adapter, manifest hook for a licensed file (route: inline in this writer).
 
 ## Acceptance criteria
 - Total length between 60 and 75 s; every narration key exists in es and en.
@@ -56,3 +56,11 @@ Route: inline (single writer; delegation trigger not applicable inside a delegat
 - Seen flag `src/app/prologue-seen.ts` (own storage key). `main.ts`: Play goes through `newAdventure` (prologue first time), title entry "Prólogo" (index 4), dev `?screen=prologue&at=ms`.
 - RED observed (modules missing), GREEN: 19 new tests. `npm test`: 52 files, 447 tests passed. `npm run build`: passed.
 - Screenshots (headless Firefox 1280×720) in `/tmp/prologue/`: light, hunger, eclipse, shadows, king. Fixes made from them: figures and the crystal moved above the text band; Aegislash switched from a flat silhouette (unreadable blob) to a shaded one; text raised off the fan notice.
+
+### T3 Music
+Route: inline.
+- Score as data `src/data/prologue-music.ts`: drones (D2 A2), choir-like pads per scene (F major for the age of light, then D minor), sparse bells, timpani on the eclipse reveal (27.9 s; boom then boom-boom) and at the Sword King; 1.2 s of silence before the reveal. Derived from the panel timeline, so it stays in sync if panels change.
+- Manifest hook: `PROLOGUE_MUSIC.file` (null = procedural). Set it to a path under `public/` and the adapter plays that file through the music bus, falling back to the score if it fails. No dependency on `src/data/music.ts`.
+- Adapter `src/adapters/audio.ts`: `playCue(music, offsetS)` / `stopCue()` on `AudioEngine`, sustained voices (swell envelope, detuned saws, vibrato pad, inharmonic bells, pitched timpani), lookahead scheduling like the loops, cue requested before unlock starts on unlock in sync; `setMusic(id)` stops a cue.
+- RED observed (module missing, then `playCue` missing), GREEN: 8 new tests. `npm test`: 53 files, 455 tests passed. `npm run build`: passed.
+- Not verified by ear: headless runs cannot unlock audio (needs a user gesture). Next step: listen once in a browser and tune gains.

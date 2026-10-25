@@ -1,4 +1,5 @@
 import type { ItemId } from '../data/items';
+import { PROLOGUE_MUSIC } from '../data/prologue-music';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
@@ -205,6 +206,7 @@ function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void
   const screen = prologueScreen({
     sheets: () => sheets,
     startMs,
+    music: { start: (offsetS) => audio.playCue(PROLOGUE_MUSIC, offsetS), stop: () => audio.stopCue() },
     onDone: () => {
       markPrologueSeen(store);
       onDone();

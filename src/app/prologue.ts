@@ -16,8 +16,8 @@ import { h } from '../ui/window';
 export const PROLOGUE_ROUTE = 'prologue';
 
 export interface PrologueMusic {
-  /** Starts the prologue track from the top. */
-  start(): void;
+  /** Starts the prologue track `offsetS` in (0 is the top). */
+  start(offsetS: number): void;
   /** Fades it out (skip or end). */
   stop(): void;
 }
@@ -142,7 +142,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     }
     if (started === null) {
       started = now - elapsed;
-      options.music?.start();
+      options.music?.start(elapsed / 1000);
     }
     elapsed = now - started;
     if (holdProgress(pressedAt, now) >= 1) {
