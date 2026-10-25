@@ -47,7 +47,7 @@ import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
 import { endActions, returnPlace, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
-import { readBoard as readScores, saveScore, scoreLine, type ScoreEntry } from '../town/leaderboard';
+import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 
@@ -316,7 +316,8 @@ function enterDungeon(root: HTMLElement, dungeon: DungeonId, back: () => void): 
     root,
     endlessEntryScreen({
       today: day,
-      board: readScores(store),
+      // The Sima's board of the tier picked on the loadout (each tier keeps its own).
+      board: tierBoard(readScores(store), settings.difficulty),
       onStart: (mode: EndlessMode) => void play(root, undefined, dungeon, endlessSeed(mode, day, runSeed())),
       onBack: back,
     }),
@@ -438,7 +439,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, difficulty: () => settings.difficulty, ...at });
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -687,6 +688,7 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       h('div', { className: 'result-columns' }, [
         h('div', {}, [
           h('h3', { className: 'dim', textContent: t('screen.summary') }),
+          statLine(t('difficulty.label'), t(`difficulty.${summary.difficulty}`)),
           statLine(t('screen.floorReached'), String(summary.floor)),
           statLine(t('screen.level'), String(summary.level)),
           statLine(t('screen.seed'), String(summary.seed)),
@@ -708,8 +710,11 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
 /** Records an endless run's score (floor, time left, mode from its seed, the UTC day) and returns its rank. */
 function endlessScore(summary: RunSummary): EndScore {
   const date = today();
-  const entry: ScoreEntry = { floor: summary.floor, clockMs: Math.round(summary.clockMs ?? 0), mode: modeOfSeed(summary.seed, date), date, seed: summary.seed, species: settings.species, level: summary.level };
-  return { entry, ...saveScore(store, entry) };
+  const tier = summary.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: summary.difficulty } : {};
+  const entry: ScoreEntry = { floor: summary.floor, clockMs: Math.round(summary.clockMs ?? 0), mode: modeOfSeed(summary.seed, date), date, seed: summary.seed, species: settings.species, level: summary.level, ...tier };
+  // Ranked on its own tier's board, which the end screen shows.
+  const saved = saveScore(store, entry);
+  return { entry, rank: saved.rank, board: tierBoard(saved.board, summary.difficulty) };
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
@@ -753,7 +758,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
-      if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
+      if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
       // Every peer earns its own Pokémonedas, guests too.
       const save = earnCoins(store, summary.coins.total);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).

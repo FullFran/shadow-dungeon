@@ -571,5 +571,7 @@
   "elite.tough": "Tough elite",
   "elite.frenzied": "Frenzied elite",
   "spell.aegislash.judgement": "King's Judgement «The Hundred Swords Return»",
-  "boss.stance.judgement": "Judgement"
+  "boss.stance.judgement": "Judgement",
+  "town.board.tier": "{tier} difficulty",
+  "town.board.clears": "Crypt clears: {clears}"
 }

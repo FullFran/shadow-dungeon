@@ -74,7 +74,13 @@ Elite traits (data-driven `ELITE_TRAIT_DEFS`, to unify with the Sima writer's el
   - Guests: Sableye's burst, Midnight at the tier and the 4th blow's hitbox (`bladeBlow`) are victim-side too; no new snapshot fields (Judgement's lane and side ride on `boss.comboIndex` and `ai.attackDir`; `ai.chain` stays host-only).
   - Decision: easy changes only by the two requested all-tier positional attacks (Shadow wall, Sableye burst); the golden digest still matches main (its scripted runs never trigger them).
   - Evidence: `tests/core/difficulty-content.test.ts` (11 tests) written after the code (no RED first); mutations (no roster repeat, no gem burst) fail 2 of them. `npm test` 111 files / 1056 tests passed; `npm run build` ok.
-- [ ] T3 Records, leaderboard, end screen, docs (route: same)
+- [x] T3 Records, leaderboard, end screen, docs (route: same)
+  - Records (`src/town/records.ts`): `DungeonRecord.tiers` (best floor and clears per tier), written when the run passes its `difficulty`; `tierRecord` reads records from before tiers as easy (one clear if cleared) and the first tiered run carries them over; the overall `bestFloor`/`cleared` (what unlocks dungeons) unchanged. Hostile tier entries are dropped.
+  - Sima board (`src/town/leaderboard.ts`, same key `mazmorra-sombria.endless`): `ScoreEntry.difficulty` (absent = easy, so every old score migrates as easy; unknown reads as easy), `recordScore` ranks within the entry's tier (top 10 per tier, other tiers kept), `parseBoard` keeps ten per tier, `tierBoard`, `leaderboardLines(..., tier)` names the tier.
+  - Town notice board shows the tier picked now (solo: the player's last; a room: the host's) with its clears and best floors; the Sima entry card shows the tier's board; the end screen has a "Dificultad" line (and the coin column already showed the multiplier); the end screen's Sima column ranks on the tier's board.
+  - Docs: GDD §9 rewritten in Spanish (design study, rules, table, elites, encounters, new attacks, records), §6 and §11 rows updated; README "Difficulty" paragraph.
+  - Screenshots (silent, headless Firefox BiDi on own ports 4571/9471, own profile with `media.volume_scale` 0 and `muted: true`): `/tmp/difficulty/selector-loadout.png` (tier row on the moves screen, Difícil), `aegislash-hard-feint.png` and `aegislash-hard-contact.jpg` (the wide fourth blow on hard), `end-screen-tier.png` (Dificultad Difícil, ×1.7), `sableye-gem-burst-positional.png` and `sableye-gem-burst-contact.jpg` (double ring and "!" over the burst zone, on easy). The room window and the host tier row were not captured.
+  - Evidence: `tests/town/difficulty-records.test.ts` (6 tests) written with the code; existing records and leaderboard tests unchanged and green. `npm test` 112 files / 1062 tests passed; `npm run build` ok.
 
 ## Acceptance criteria
 - Easy: same floors, same spawns, same HP, same damage, same AI timings and same coins as a world without a tier (tests).
@@ -86,4 +92,9 @@ Elite traits (data-driven `ELITE_TRAIT_DEFS`, to unify with the Sima writer's el
 `npm test`, `npm run build`, `git log --format=%B -n 4 | grep -ic co-authored` = 0, silent screenshots in /tmp/difficulty/.
 
 ## Progress
-- Branch `feat/difficulty-tiers` from main 043cb02 (the seam).
+- Branch `feat/difficulty-tiers` from main 043cb02 (the seam). T1 064b22f, T2 0e4f497, T3 (this commit).
+- Native review: not run by this writer (RDD assessment and consent belong to the parent).
+- Unverified: the room flow (host tier row, guests seeing it, a guest playing the host's tier) only by unit tests over the in-memory transport, not in two browsers; Judgement and Midnight-as-positional not seen on screen; balance of the numbers not playtested.
+
+## Next step
+Parent: review, then playtest Hard and Nightmare on the Crypt; unify the elite trait list with the Sima writer's elites and wire its set-piece events to `encounterChance`/`encounterWaves`.

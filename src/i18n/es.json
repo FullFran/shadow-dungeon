@@ -571,5 +571,7 @@
   "elite.tough": "Élite robusto",
   "elite.frenzied": "Élite frenético",
   "spell.aegislash.judgement": "Juicio del Rey «Las Cien Espadas vuelven»",
-  "boss.stance.judgement": "Juicio"
+  "boss.stance.judgement": "Juicio",
+  "town.board.tier": "Dificultad {tier}",
+  "town.board.clears": "Victorias en la cripta: {clears}"
 }

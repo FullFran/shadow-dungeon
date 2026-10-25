@@ -2,6 +2,7 @@ import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
+import type { Difficulty } from '../data/difficulty';
 import { TILE } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -65,6 +66,8 @@ export interface TownOptions {
    * the host may lead the group into a dungeon (`onDepart`).
    */
   lobby?: TownLobby;
+  /** The tier picked now (solo: the player's last; a room: the host's), for the notice board's records. */
+  difficulty?: () => Difficulty;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -123,16 +126,20 @@ function townCamera(focus: Vec2, map: MapShape) {
   return { ...view, y: view.y - SKY_BAND };
 }
 
-/** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores. */
-const readBoard = (): string[] => [
-  ...boardLines(
-    readRecords(browserStore()),
-    DUNGEON_LORE[0]!.id,
-    (key) => t(key),
-    DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
-  ),
-  ...leaderboardLines(readScores(browserStore()), (key) => t(key)),
-];
+/** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores; both for the tier picked now. */
+const readBoard = (difficulty: Difficulty): string[] => {
+  const tier = { difficulty, name: t(`difficulty.${difficulty}`) };
+  return [
+    ...boardLines(
+      readRecords(browserStore()),
+      DUNGEON_LORE[0]!.id,
+      (key) => t(key),
+      DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
+      tier,
+    ),
+    ...leaderboardLines(readScores(browserStore()), (key) => t(key), 5, tier),
+  ];
+};
 
 export interface TownHandle {
   stop(): void;
@@ -304,7 +311,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
+        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')) }
         : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
   }
 

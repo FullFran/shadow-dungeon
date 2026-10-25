@@ -382,8 +382,8 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 | Situación | Regla |
 |---|---|
 | Cae alguien en cooperativo | Queda en el suelo y un compañero vivo puede levantarlo (momento de directo) |
-| Caes jugando sola | Objetos para revivirte tú misma por planta, según la dificultad (sección 9) |
-| Cae todo el grupo | Depende de la dificultad (sección 9): hoguera o vuelta a la planta 1 |
+| Caes jugando sola | Se acaba la partida; antes puedes «Reintentar planta» desde el menú, sin límite en Fácil y Normal, una vez por planta en Difícil y ninguna en Pesadilla (sección 9) |
+| Cae todo el grupo | Se acaba la partida, en todos los niveles |
 
 ## 7. Cooperativo
 
@@ -408,18 +408,65 @@ Escalar solo la vida (lo que hace PokéSurvivor) en un souls se queda corto: el 
 
 ## 9. Dificultad
 
-La elige el anfitrión. En un souls, la dificultad de verdad es el tiempo que tienes para reaccionar (cuánto dura el aviso). Subir la vida solo alarga los combates.
+Hay cuatro niveles: Fácil, Normal, Difícil y Pesadilla. Fácil es el equilibrio de siempre: mismos números, mismos tiempos, mismas plantas (lo único nuevo en todos los niveles son los dos ataques de zona de Aegislash y Sableye que se cuentan abajo). Jugando sola se elige en la pantalla de movimientos, encima de «Empezar», y se recuerda para la próxima. En una sala la elige el anfitrión para todo el grupo, en la ventana de la boca de la mazmorra o del poste del camino; los invitados la ven en la ventana de la sala y juegan la del anfitrión (viaja en el mensaje de inicio; un anfitrión antiguo que no la manda cuenta como Fácil).
+
+### Qué hace divertida y justa una dificultad alta
+
+Antes de tocar números miré cómo lo resuelven otros juegos:
+
+- **Dark Souls (NG+) y Elden Ring:** los ciclos siguientes suben vida y daño, pero lo que se recuerda son los enemigos nuevos en sitios nuevos (los mismos movimientos en otra situación). Cambiar la situación vale más que cambiar el número.
+- **Hades (Calor, el Pacto del Castigo):** modificadores opcionales, con nombre y acumulables; muchos añaden comportamiento (Medidas Extremas da a los jefes ataques y fases nuevas) y no solo vida, y la recompensa sube con el Calor.
+- **Touhou (rango, de Easy a Lunatic):** más balas y oleadas más rápidas, pero cada carta de hechizo conserva su forma legible y en los rangos altos aparecen cartas extra; esquivar siempre es posible.
+- **Enter the Gungeon:** los enemigos Jammed se ven rojos de lejos y pegan más. Un élite tiene que leerse de un vistazo y tener un rasgo claro.
+- **Elden Ring Nightreign (Profundidades):** cada nivel trae mezclas de enemigos más duras y jefes más agresivos, y paga más.
+- **Hollow Knight (Radiante):** los mismos patrones con tiempos más justos, pero aún legibles; los Panteones encadenan jefes.
+
+De ahí salen las reglas de este juego:
+
+1. **El aviso nunca baja de un mínimo legible:** como mucho se acorta al 85 %, y nunca por debajo del 75 % de su duración ni de 280 ms (si ya duraba menos, se queda como estaba).
+2. **Más patrones antes que más vida:** ataques nuevos, combos más largos, cartas de hechizo extra, una IA más agresiva (esperas más cortas) y élites. La vida sube como mucho un 45 %.
+3. **Más enemigos no es más divertido** (lo dijo la jugadora al probarlo): ningún nivel añade enemigos por sala. La dificultad va en enemigos más duros, no en más.
+4. **Todo ataque nuevo se avisa y deja castigar:** aviso de al menos 280 ms y una recuperación después.
+5. **La voltereta no lo arregla todo:** los ataques de zona (`pierceRoll`: zonas en el suelo, muros que barren, carriles) atraviesan la invulnerabilidad de la voltereta y nunca cuentan como esquiva perfecta; hay que salir de su área andando o rodando hacia fuera, no a través. Se avisan distinto: un doble borde blanco y violeta que late sobre la zona, un «!» violeta sobre el enemigo y un sonido propio.
+6. **Más difícil paga más:** Pokémonedas multiplicadas (también por minuto jugado) y récords propios por nivel.
+
+### La tabla
 
 | | Fácil | Normal | Difícil | Pesadilla |
 |---|---|---|---|---|
-| Duración del aviso | ×1,4 | ×1 | ×0,8 | ×0,65 |
-| Daño enemigo | ×0,6 | ×1 | ×1,5 | ×2 |
-| Vida enemiga | ×0,8 | ×1 | ×1,3 | ×1,6 |
-| Revividas en solitario por planta | 2 | 1 | 1 | 0 |
-| Si cae todo el grupo | Hoguera cada 3 plantas | Hoguera cada 5 plantas | Vuelta a la planta 1 | Vuelta a la planta 1 y pierdes lo que llevas |
-| Pokémonedas | ×0,5 | ×1 | ×2,5 | ×5 |
+| Vida enemiga | ×1 | ×1,15 | ×1,3 | ×1,45 |
+| Daño enemigo | ×1 | ×1,15 | ×1,3 | ×1,5 |
+| Duración del aviso | ×1 | ×0,95 | ×0,9 | ×0,85 (con el mínimo de arriba) |
+| Enemigos extra por sala | 0 | 0 | 0 | 0 |
+| Esperas entre ataques (agresividad) | ×1 | ×0,9 | ×0,8 | ×0,7 |
+| Élites (por enemigo de planta generada) | 0 | 10 % | 20 % | 30 % |
+| Encuentros especiales (frecuencia, oleadas extra) | ×1, +0 | ×1,2, +0 | ×1,5, +0 | ×2, +1 |
+| Voltereta (ventana invulnerable, estamina) | ×1, ×1 | ×1, ×1 | ×0,9, ×1,1 | ×0,8, ×1,2 |
+| «Reintentar planta» jugando sola | sin límite | sin límite | 1 por planta | ninguno |
+| Pokémonedas | ×1 | ×1,3 | ×1,7 | ×2,2 |
+| Ataques nuevos | no | no | los de Difícil | los de Difícil y los de Pesadilla |
 
-*(Todo provisional.)* Una regla que no es provisional: lo que pagas tiene que subir por minuto jugado, no solo por partida. Si no, la dificultad más fácil acaba siendo la mejor forma de farmear.
+*(Todo provisional.)* Una regla que no es provisional: lo que pagas sube por minuto jugado, no solo por partida (el multiplicador se aplica también a la línea de minutos), así que el nivel fácil nunca es la mejor forma de farmear.
+
+- **Élites:** un enemigo de planta generada puede salir élite (se decide con la semilla de la planta, así que todos los jugadores de la sala ven los mismos sin mandar nada por la red). Brilla con el color de su rasgo y tiene uno solo: *robusto* (vida ×1,5, ámbar) o *frenético* (sus esperas duran un 65 %, rojo). Los rasgos son datos, para poder sumar otros.
+- **Encuentros especiales:** nidos que no paran de sacar enemigos hasta romperlos, salas que se cierran por oleadas, emboscadas, plantas con cazador. Los define cada mazmorra como datos; el nivel solo multiplica su frecuencia y, en Pesadilla, añade una oleada.
+- **Si cae todo el grupo:** la partida termina en todos los niveles, como siempre.
+
+### Ataques nuevos por nivel
+
+**Cripta del Rey de las Espadas**
+
+- **Aegislash:** en todos los niveles, el muro de espadas de «Cien Espadas» es un ataque de zona (se pasa por el hueco, no rodando). En Difícil, el combo de la Espada gana un cuarto golpe: el Rey sostiene el filo en alto mucho más que el ritmo del combo (la finta) y luego da un tajo ancho; quien rueda al ritmo de los tres primeros rueda demasiado pronto. Después, la apertura de siempre. También en Difícil, la estocada en círculo de «Corte de Medianoche» pasa a ser de zona (sal del anillo). En Pesadilla, la fase 2 añade una carta: **Juicio del Rey «Las Cien Espadas vuelven»**, un muro desde un extremo de la sala y, tras un segundo aviso, otro desde el contrario con el hueco movido lejos de ti.
+- **Sableye:** en todos los niveles, al soltar el primer anillo de gemas el suelo revienta a su alrededor (zona marcada durante todo el aviso; sal del círculo). En Difícil, un cuarto anillo; en Pesadilla, un cuarto Destello.
+- **Pawniard:** en Difícil, un tercer corte tras un aviso más largo. **Poochyena:** en Difícil, si tiene compañeros cerca aúlla al verte (no hace daño: es una apertura) y la manada embiste enseguida. **Duskull:** en Difícil, dos fuegos fatuos que se abren y te cierran por los lados. **Gastly:** en Difícil, una segunda bola apuntada de nuevo. **Golett:** en Difícil, su golpe lanza cascotes lentos en todas direcciones.
+
+**Plantel (Sima del Eclipse)**, en Difícil: Zubat repite la embestida, Ekans deja veneno donde acaba la suya, Corphish dispara un segundo chorro, Chinchou suelta un segundo anillo, Houndour gira la llamarada siguiéndote, Slugma lanza una segunda bola de lava y Croagunk encadena un segundo Puya Nociva.
+
+Los enemigos del Bosque Brumoso solo reciben los cambios de la tabla; sus patrones de Difícil y Pesadilla llegan con su remasterización.
+
+### Récords
+
+Cada mazmorra guarda la mejor planta y las victorias por nivel; los récords de antes cuentan como Fácil. La Sima guarda su tablón de diez mejores marcas por nivel (las marcas antiguas, en Fácil). El tablón del pueblo enseña los del nivel elegido ahora, y la pantalla final dice en qué nivel se jugó.
 
 ## 10. Directo
 
@@ -447,7 +494,7 @@ Cada jugador suma lo suyo en su propio ordenador (también los invitados de una 
 | Derrotar a un jefe intermedio (Sableye en la Cripta, Trevenant en el Bosque Brumoso) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
 | Minuto jugado | 2 por minuto completo (las pausas no cuentan) |
 | Si caes | Te quedas el 75 % de lo ganado |
-| Dificultad | Todo × la fila de la sección 9 (de momento se juega en Normal, × 1) |
+| Dificultad | Todo × la fila de la sección 9 (Fácil × 1, Normal × 1,3, Difícil × 1,7, Pesadilla × 2,2) |
 
 Una victoria completa en la Cripta da unas 165 Pokémonedas; el Bosque Brumoso paga con las mismas reglas por planta, enemigo y minuto, así que sus ocho plantas pagan más. El pago sube con lo que juegas (plantas, enemigos y minutos), no solo por terminar la partida, como pide la sección 9. "Reintentar planta" vuelve al recuento con que entraste en ella (no se cobra dos veces) y salir desde el menú de pausa no paga nada.
 
