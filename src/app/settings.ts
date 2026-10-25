@@ -2,13 +2,16 @@ import { MOVES, type MoveId } from '../data/moves';
 import { M0_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { SPECIES } from '../data/species';
 import { validateLoadout } from '../core/loadout';
+import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
 import type { KeyValueStore } from '../adapters/storage';
 
 /** Player settings remembered between sessions (guest-only, local). */
 export interface Settings {
   language: Language;
-  /** A left click on an enemy locks onto it. */
+  /** How Shift / middle mouse lock on (toggle, hold, click only, off). */
+  lockType: LockType;
+  /** A left click on an enemy locks onto it (with toggle and hold; implied by click only, ignored by off). */
   clickToLock: boolean;
   loadout: readonly (MoveId | null)[];
   /** Volumes in 0..1; the music and sfx buses sit under the master gain. */
@@ -21,7 +24,7 @@ export interface Settings {
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, clickToLock: true, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+  return { language, lockType: 'toggle', clickToLock: true, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -36,7 +39,8 @@ export function slotOptions(kind: SlotKind): MoveId[] {
 
 /**
  * Reads settings, keeping each stored field only if it is valid. Unknown fields
- * (the old `lockMode`) are dropped; fields added later (sound) take the fallback.
+ * are dropped; fields added later (sound) take the fallback. The old `lockMode`
+ * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).
  */
 export function loadSettings(store: KeyValueStore, fallback: Settings): Settings {
   let raw: unknown;
@@ -48,6 +52,8 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
   if (typeof raw !== 'object' || raw === null) return fallback;
   const stored = raw as Partial<Record<keyof Settings, unknown>>;
   const language = LANGUAGES.find((l) => l === stored.language) ?? fallback.language;
+  const legacy = (raw as { lockMode?: unknown }).lockMode === 'hold' ? 'hold' : 'toggle';
+  const lockType = LOCK_TYPES.find((l) => l === stored.lockType) ?? (stored.lockType === undefined && 'lockMode' in raw ? legacy : fallback.lockType);
   const clickToLock = typeof stored.clickToLock === 'boolean' ? stored.clickToLock : fallback.clickToLock;
   const loadoutOk =
     Array.isArray(stored.loadout) &&
@@ -56,6 +62,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
   const loadout = loadoutOk ? (stored.loadout as (MoveId | null)[]) : fallback.loadout;
   return {
     language,
+    lockType,
     clickToLock,
     loadout,
     masterVolume: volume(stored.masterVolume, fallback.masterVolume),

@@ -1,13 +1,14 @@
 import { TUNING } from '../data/tuning';
-import type { EnemyState, GameEvent, LockState, Rect } from './state';
+import type { EnemyState, GameEvent, LockState, LockType, Rect } from './state';
 import { angleOf, distance, sub, type Vec2 } from './vec';
 
 /**
  * Lock-on rules (docs/gdd.md §4 "Apuntar y fijar"). The target only changes
- * through explicit gestures: a press of the lock input (toggles: nearest enemy
- * to the cursor, or release), a left click on an enemy (click-to-lock), the
- * wheel (next enemy by angle around the player), or the target dying. Moving
- * the mouse never switches target.
+ * through explicit gestures: the lock input (per `LockType`: a press toggles,
+ * or holding keeps the lock; it picks the enemy nearest the cursor), a left
+ * click on an enemy (click-to-lock; with `clickOnly` a click on the ground
+ * releases), the wheel (next enemy by angle around the player), or the target
+ * dying. Moving the mouse never switches target.
  */
 const { lockOn: LOCK } = TUNING;
 const TAU = Math.PI * 2;
@@ -20,7 +21,7 @@ export interface LockContext {
 }
 
 export interface LockInput {
-  /** Lock input (Shift or middle mouse) held; only press edges matter. */
+  /** Lock input (Shift or middle mouse) held; `toggle` uses press edges, `hold` the level. */
   held: boolean;
   /** Left click held; only press edges matter. */
   click: boolean;
@@ -89,7 +90,7 @@ function acquire(lock: LockState, ctx: LockContext, events: GameEvent[]): LockSt
   return { ...lock, targetId: target?.id ?? null, wheelAccum: 0 };
 }
 
-function release(lock: LockState, reason: 'key' | 'range' | 'offscreen' | 'noTarget', events: GameEvent[]): LockState {
+function release(lock: LockState, reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget', events: GameEvent[]): LockState {
   events.push({ type: 'lockReleased', reason });
   return { ...lock, targetId: null, wheelAccum: 0 };
 }
@@ -127,22 +128,55 @@ function applyWheel(lock: LockState, wheel: number, ctx: LockContext, events: Ga
   return { ...lock, targetId, wheelAccum: accum };
 }
 
-/** Click-to-lock: a click on an enemy locks onto it; a click on empty ground or on the current target changes nothing. */
+/** Click-to-lock is on with the setting, always with `clickOnly`, never with `off`. Also drives the hover marker. */
+export function clickLockActive(lock: Pick<LockState, 'lockType' | 'clickToLock'>): boolean {
+  if (lock.lockType === 'clickOnly') return true;
+  return lock.lockType !== 'off' && lock.clickToLock;
+}
+
+/** Applies changed settings mid-run; a different lock type starts unlocked (no event). */
+export function configureLock(lock: LockState, settings: { lockType: LockType; clickToLock: boolean }): LockState {
+  const next = { ...lock, ...settings };
+  return settings.lockType === lock.lockType ? next : { ...next, targetId: null, wheelAccum: 0 };
+}
+
+/**
+ * Click-to-lock: a click on an enemy locks onto it; a click on the current target
+ * changes nothing; a click on empty ground changes nothing, or releases with `clickOnly`.
+ */
 function clickLock(lock: LockState, ctx: LockContext, events: GameEvent[]): LockState {
   const clicked = enemyUnderCursor(ctx);
-  if (!clicked || clicked.id === lock.targetId) return lock;
+  if (!clicked) return lock.lockType === 'clickOnly' && lock.targetId !== null ? release(lock, 'click', events) : lock;
+  if (clicked.id === lock.targetId) return lock;
   events.push(lock.targetId === null ? { type: 'lockAcquired', targetId: clicked.id } : { type: 'lockSwitched', targetId: clicked.id });
   return { ...lock, targetId: clicked.id, wheelAccum: 0 };
 }
 
-/** One tick of lock-on: toggle on a key press, click-to-lock, target validity, then wheel switching. */
-export function updateLock(lock: LockState, input: LockInput, ctx: LockContext, events: GameEvent[]): LockState {
+/** The lock input for one tick, per lock type. `clickOnly` and `off` ignore it. */
+function lockInput(lock: LockState, input: LockInput, ctx: LockContext, events: GameEvent[]): LockState {
   const pressed = input.held && !lock.keyHeld;
-  const clicked = input.click && !lock.clickHeld;
-  let next: LockState = { ...lock, keyHeld: input.held, clickHeld: input.click };
+  const letGo = !input.held && lock.keyHeld;
+  if (lock.lockType === 'toggle' && pressed) return lock.targetId === null ? acquire(lock, ctx, events) : release(lock, 'key', events);
+  if (lock.lockType === 'hold') {
+    if (pressed && lock.targetId === null) return acquire(lock, ctx, events);
+    if (letGo && lock.targetId !== null) return release(lock, 'key', events);
+  }
+  return lock;
+}
 
-  if (pressed) next = next.targetId === null ? acquire(next, ctx, events) : release(next, 'key', events);
-  else if (clicked && next.clickToLock) next = clickLock(next, ctx, events);
+/**
+ * One tick of lock-on: the lock input (per lock type), click-to-lock, target
+ * validity, then wheel switching. With `hold`, click-to-lock only acts while the
+ * lock input is held, since the lock lasts only that long.
+ */
+export function updateLock(lock: LockState, input: LockInput, ctx: LockContext, events: GameEvent[]): LockState {
+  if (lock.lockType === 'off') return { ...lock, targetId: null, wheelAccum: 0, keyHeld: input.held, clickHeld: input.click };
+  const pressed = input.held && !lock.keyHeld && lock.lockType !== 'clickOnly';
+  const clicked = input.click && !lock.clickHeld && clickLockActive(lock) && (lock.lockType !== 'hold' || input.held);
+  let next: LockState = lockInput(lock, input, ctx, events);
+  next = { ...next, keyHeld: input.held, clickHeld: input.click };
+
+  if (!pressed && clicked) next = clickLock(next, ctx, events);
 
   if (next.targetId === null) return next;
   next = validate(next, ctx, events);

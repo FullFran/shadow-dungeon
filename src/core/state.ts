@@ -19,7 +19,7 @@ export interface PlayerInput {
    * along the facing; with both held the mouse wins.
    */
   slotMouse: readonly boolean[];
-  /** Level: lock-on input (Shift or middle mouse) held. Only its press edge matters: each press toggles the lock. */
+  /** Level: lock-on input (Shift or middle mouse) held. With `toggle` each press edge locks or releases; with `hold` the level is the lock. */
   lock: boolean;
   /** Level: fast-slot mouse button (left click) held. Its press edge drives click-to-lock; Q does not set it. */
   click: boolean;
@@ -36,8 +36,20 @@ export interface Rect {
   height: number;
 }
 
+/**
+ * How the lock input works (docs/gdd.md §4 "Apuntar y fijar"):
+ * `toggle` each press of Shift / middle mouse locks or releases; `hold` locked
+ * only while held; `clickOnly` Shift / middle do nothing and a left click locks
+ * an enemy or, on the ground, releases; `off` never locks.
+ */
+export type LockType = 'toggle' | 'hold' | 'clickOnly' | 'off';
+
+export const LOCK_TYPES: readonly LockType[] = ['toggle', 'hold', 'clickOnly', 'off'];
+
 export interface LockState {
-  /** Setting: a left click on an enemy locks onto it (acquire or switch). */
+  /** Setting: how the lock input works. */
+  lockType: LockType;
+  /** Setting: a left click on an enemy locks onto it (acquire or switch). Implied by `clickOnly`, ignored by `off`. */
   clickToLock: boolean;
   targetId: string | null;
   /** Wheel delta accumulated towards the switch threshold (touchpad-friendly). */
@@ -205,7 +217,7 @@ export type GameEvent =
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
-  | { type: 'lockReleased'; reason: 'key' | 'range' | 'offscreen' | 'noTarget' };
+  | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' };
 
 export interface WorldState {
   tick: number;

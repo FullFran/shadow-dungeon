@@ -7,7 +7,7 @@ import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { initialBoss } from './boss';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
-import type { Arena, EnemyState, PlayerState, WorldState } from './state';
+import type { Arena, EnemyState, LockType, PlayerState, WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 
 export interface WorldOptions {
@@ -19,6 +19,8 @@ export interface WorldOptions {
   loadout?: readonly (MoveId | null)[];
   /** Click-to-lock setting: a left click on an enemy locks onto it (default on). */
   clickToLock?: boolean;
+  /** How the lock input works (default `toggle`). */
+  lockType?: LockType;
 }
 
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[]): PlayerState {
@@ -44,7 +46,7 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
   };
 }
 
-export function createWorld({ seed, arena, playerPos, species, loadout, clickToLock = true }: WorldOptions): WorldState {
+export function createWorld({ seed, arena, playerPos, species, loadout, clickToLock = true, lockType = 'toggle' }: WorldOptions): WorldState {
   return {
     tick: 0,
     timeMs: 0,
@@ -54,7 +56,7 @@ export function createWorld({ seed, arena, playerPos, species, loadout, clickToL
     player: createPlayer(playerPos, species, loadout),
     enemies: [],
     projectiles: [],
-    lock: { clickToLock, targetId: null, wheelAccum: 0, keyHeld: false, clickHeld: false },
+    lock: { lockType, clickToLock, targetId: null, wheelAccum: 0, keyHeld: false, clickHeld: false },
     slowMoMs: 0,
     events: [],
   };

@@ -47,14 +47,15 @@ describe('settings', () => {
 
   const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
 
-  it('defaults to the species loadout, click-to-lock on, sound on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
+  it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
+    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
   });
 
   it('round-trips through the store', () => {
     const store = memoryStore();
     const settings = {
       language: 'en' as const,
+      lockType: 'clickOnly' as const,
       clickToLock: false,
       loadout: ['shadow-sneak', 'shadow-ball'] as const,
       masterVolume: 0.3,
@@ -79,14 +80,26 @@ describe('settings', () => {
     expect(loadSettings(store, fallback).clickToLock).toBe(true);
   });
 
-  it('loads settings saved before the lock-mode option was removed', () => {
+  it('loads settings saved with the old lock mode: hold stays hold, anything else becomes toggle', () => {
     const store = memoryStore();
-    for (const lockMode of ['hold', 'toggle']) {
+    for (const [lockMode, lockType] of [['hold', 'hold'], ['toggle', 'toggle'], ['weird', 'toggle']]) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
+      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
+  });
+
+  it('accepts every lock type and rejects unknown ones; a stored lock type wins over the old lock mode', () => {
+    const store = memoryStore();
+    for (const lockType of ['toggle', 'hold', 'clickOnly', 'off']) {
+      store.set('mazmorra-sombria.settings', JSON.stringify({ lockType }));
+      expect(loadSettings(store, defaultSettings('es')).lockType).toBe(lockType);
+    }
+    store.set('mazmorra-sombria.settings', JSON.stringify({ lockType: 'sticky' }));
+    expect(loadSettings(store, defaultSettings('es')).lockType).toBe('toggle');
+    store.set('mazmorra-sombria.settings', JSON.stringify({ lockType: 'off', lockMode: 'hold' }));
+    expect(loadSettings(store, defaultSettings('es')).lockType).toBe('off');
   });
 
   it('clamps volumes to 0..1 and rejects non-numbers', () => {
@@ -105,6 +118,6 @@ describe('settings', () => {
   it('loads settings saved before sound existed with the sound defaults', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
   });
 });
