@@ -50,11 +50,11 @@ describe('the Sima del Eclipse (data)', () => {
     expect(dungeonById(ECL)).toBe(ECLIPSE);
   });
 
-  it('puts an echo on every 5th floor: the Eclipse Echo on every 10th, the guardians (Aegislash, Trevenant, Decidueye) in turn between', () => {
+  it('puts an echo on every 5th floor: the Eclipse Echo on every 10th, the guardians (Aegislash, Trevenant, Decidueye, Dhelmise, Nihilego) in turn between', () => {
     expect([1, 2, 3, 4, 5, 6, 9, 10, 15, 20].map((f) => isEchoFloor(ENDLESS, f))).toEqual([false, false, false, false, true, false, false, true, true, true]);
-    expect([5, 10, 15, 20, 25, 35].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'boss']);
+    expect([5, 10, 15, 20, 25, 35, 45, 55].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'wreck', 'rift', 'boss']);
     expect(planAt(ECLIPSE, 7)).toEqual({ kind: 'generated' });
-    expect(planAt(ECLIPSE, 55)).toEqual({ kind: 'room', room: 'roost', role: 'echo' });
+    expect(planAt(ECLIPSE, 65)).toEqual({ kind: 'room', room: 'hollow', role: 'echo' });
     expect(planAt(ECLIPSE, 50)).toEqual({ kind: 'room', room: 'eclipse', role: 'echo' });
   });
 

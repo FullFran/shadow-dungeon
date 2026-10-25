@@ -1,4 +1,4 @@
-import type { DungeonId, TilePalette } from './dungeons';
+import type { DungeonDef, DungeonId, TilePalette } from './dungeons';
 import type { EliteTrait } from './difficulty';
 import type { SpeciesId } from './species';
 
@@ -9,7 +9,7 @@ import type { SpeciesId } from './species';
  * core/sima.ts.
  */
 
-export type SimaBandId = 'crypt' | 'forest' | 'abyss';
+export type SimaBandId = 'crypt' | 'forest' | 'caves' | 'swamp' | 'abyss';
 
 /**
  * A depth band: the look of a stretch of floors. The first ones borrow a
@@ -22,7 +22,7 @@ export interface SimaBand {
   fromFloor: number;
   /** A dungeon's palette (by id) or the band's own. */
   palette: DungeonId | TilePalette;
-  decor?: 'crypt';
+  decor?: DungeonDef['decor'];
   /** Rooms are rock islands over the void, with red light falling through it. */
   abyss?: true;
   nameKey: string;
@@ -53,8 +53,11 @@ const loreKeys = (band: SimaBandId, count: number): string[] => Array.from({ len
 /** Bands every 10 floors; append one to deepen the Sima (the last one lasts forever). */
 export const SIMA_BANDS: readonly SimaBand[] = [
   { id: 'crypt', fromFloor: 1, palette: 'crypt-of-the-sword-king', decor: 'crypt', nameKey: 'sima.band.crypt.name', subtitleKey: 'sima.band.crypt.subtitle', loreKeys: loreKeys('crypt', 4) },
-  { id: 'forest', fromFloor: 11, palette: 'misty-forest', nameKey: 'sima.band.forest.name', subtitleKey: 'sima.band.forest.subtitle', loreKeys: loreKeys('forest', 4) },
-  { id: 'abyss', fromFloor: 21, palette: ABYSS_PALETTE, abyss: true, nameKey: 'sima.band.abyss.name', subtitleKey: 'sima.band.abyss.subtitle', loreKeys: loreKeys('abyss', 5) },
+  { id: 'forest', fromFloor: 11, palette: 'misty-forest', decor: 'forest', nameKey: 'sima.band.forest.name', subtitleKey: 'sima.band.forest.subtitle', loreKeys: loreKeys('forest', 4) },
+  // Integration (2026-10-25): the Flooded Caves and the Toxic Swamp lend their look to the next two strata; the abyss comes after them.
+  { id: 'caves', fromFloor: 21, palette: 'flooded-caves', decor: 'caves', nameKey: 'sima.band.caves.name', subtitleKey: 'sima.band.caves.subtitle', loreKeys: loreKeys('caves', 4) },
+  { id: 'swamp', fromFloor: 31, palette: 'toxic-swamp', decor: 'swamp', nameKey: 'sima.band.swamp.name', subtitleKey: 'sima.band.swamp.subtitle', loreKeys: loreKeys('swamp', 4) },
+  { id: 'abyss', fromFloor: 41, palette: ABYSS_PALETTE, abyss: true, nameKey: 'sima.band.abyss.name', subtitleKey: 'sima.band.abyss.subtitle', loreKeys: loreKeys('abyss', 5) },
 ];
 
 /**
@@ -110,6 +113,11 @@ export const SIMA_SQUADS: readonly SimaSquad[] = [
   { minDepth: 10, members: ['pumpkaboo-super', 'hoothoot', 'litleo'] },
   { minDepth: 12, members: ['grimer', 'houndour', 'chinchou'] },
   { minDepth: 15, members: ['clauncher', 'pawniard', 'koffing'] },
+  // The Flooded Caves and the Toxic Swamp (integration): a pincer tank with a gunner, a mortar behind a dasher, a sniper with a roller.
+  { minDepth: 12, members: ['krabby', 'remoraid'] },
+  { minDepth: 16, members: ['shellos', 'krabby', 'tentacool'] },
+  { minDepth: 18, members: ['salandit', 'skrelp'] },
+  { minDepth: 22, members: ['venipede', 'skrelp', 'salandit'] },
 ];
 
 /** Chance that a room with two or more enemies holds a squad instead: from floor 4, rising, capped. */

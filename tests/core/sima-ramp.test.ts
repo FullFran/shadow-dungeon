@@ -43,7 +43,8 @@ describe('Sima ramp: tougher, not more', () => {
   });
 
   it('depth shifts the pool towards tougher species', () => {
-    const tough = new Set(['golett', 'pumpkaboo-super', 'croagunk', 'clauncher', 'grimer', 'houndour', 'slugma']);
+    // The caves' and swamp's regulars that grow with depth count as tough too (integration).
+    const tough = new Set(['golett', 'pumpkaboo-super', 'croagunk', 'clauncher', 'grimer', 'houndour', 'slugma', 'krabby', 'shellos', 'salandit', 'skrelp']);
     const share = (depth: number) => {
       const pool = endlessSpawns(ENDLESS, depth).pool;
       const total = pool.reduce((s, e) => s + e.weights[0]!, 0);

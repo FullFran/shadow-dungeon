@@ -1,31 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { bandLoreKey, bandStartsAt, simaBandAt, simaBandIndex, simaPalette } from '../../src/core/sima';
-import { CRYPT, ECLIPSE, FOREST } from '../../src/data/dungeons';
+import { CAVES, CRYPT, ECLIPSE, FOREST, SWAMP } from '../../src/data/dungeons';
 import { ENDLESS } from '../../src/data/endless';
 import { SIMA_BANDS } from '../../src/data/sima';
 import { eclipseRadius } from '../../src/adapters/sima-backdrop';
 import { catalog } from '../../src/i18n';
 
 describe('Sima depth bands', () => {
-  it('the Sima carries its bands: 1-10 Crypt, 11-20 Forest, 21 and deeper the abyss', () => {
+  it('the Sima carries its bands: 1-10 Crypt, 11-20 Forest, 21-30 Caves, 31-40 Swamp, 41 and deeper the abyss', () => {
     expect(ENDLESS.bands).toBe(SIMA_BANDS);
-    expect([1, 10, 11, 20, 21, 40, 400].map((f) => simaBandAt(SIMA_BANDS, f).id)).toEqual(['crypt', 'crypt', 'forest', 'forest', 'abyss', 'abyss', 'abyss']);
-    expect([1, 10, 11, 21, 99].map((f) => simaBandIndex(SIMA_BANDS, f))).toEqual([0, 0, 1, 2, 2]);
+    expect([1, 10, 11, 20, 21, 30, 31, 40, 41, 400].map((f) => simaBandAt(SIMA_BANDS, f).id)).toEqual(['crypt', 'crypt', 'forest', 'forest', 'caves', 'caves', 'swamp', 'swamp', 'abyss', 'abyss']);
+    expect([1, 10, 11, 21, 31, 41, 99].map((f) => simaBandIndex(SIMA_BANDS, f))).toEqual([0, 0, 1, 2, 3, 4, 4]);
   });
 
   it('a band card only on the first floor of a new band (floor 1 has the dungeon title instead)', () => {
-    const starts = Array.from({ length: 40 }, (_, i) => i + 1).filter((f) => bandStartsAt(SIMA_BANDS, f));
-    expect(starts).toEqual([11, 21]);
+    const starts = Array.from({ length: 60 }, (_, i) => i + 1).filter((f) => bandStartsAt(SIMA_BANDS, f));
+    expect(starts).toEqual([11, 21, 31, 41]);
   });
 
-  it('borrows the Crypt and Forest palettes, then its own abyss; only the abyss floats over the void', () => {
+  it('borrows the Crypt, Forest, Caves and Swamp palettes and decoration, then its own abyss; only the abyss floats over the void', () => {
     expect(simaPalette(simaBandAt(SIMA_BANDS, 3))).toBe(CRYPT.palette);
     expect(simaPalette(simaBandAt(SIMA_BANDS, 15))).toBe(FOREST.palette);
-    const abyss = simaBandAt(SIMA_BANDS, 25);
+    expect(simaPalette(simaBandAt(SIMA_BANDS, 25))).toBe(CAVES.palette);
+    expect(simaPalette(simaBandAt(SIMA_BANDS, 35))).toBe(SWAMP.palette);
+    const abyss = simaBandAt(SIMA_BANDS, 45);
     expect(simaPalette(abyss)).not.toBe(CRYPT.palette);
     expect(simaPalette(abyss)).not.toBe(ECLIPSE.palette);
-    expect(SIMA_BANDS.map((b) => b.abyss === true)).toEqual([false, false, true]);
-    expect(simaBandAt(SIMA_BANDS, 2).decor).toBe('crypt');
+    expect(SIMA_BANDS.map((b) => b.abyss === true)).toEqual([false, false, false, false, true]);
+    expect([2, 15, 25, 35].map((f) => simaBandAt(SIMA_BANDS, f).decor)).toEqual(['crypt', 'forest', 'caves', 'swamp']);
   });
 
   it('every band has a name, a subtitle and lore lines that rotate floor by floor', () => {

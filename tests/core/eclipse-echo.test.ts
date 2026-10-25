@@ -36,7 +36,7 @@ const CENTER = vec(ARENA.width / 2, ARENA.height / 2);
 
 describe('Eclipse Echo: where it fights', () => {
   it('holds every 10th floor; the guardian echoes keep 5, 15, 25... in turn', () => {
-    expect([5, 10, 15, 20, 25, 30, 35].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'eclipse', 'boss']);
+    expect([5, 10, 15, 20, 25, 30, 35].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'eclipse', 'wreck']);
     const { world, run } = startRun(7, {}, 10, 'eclipse-chasm');
     expect(world.enemies.map((e) => e.species)).toEqual(['eclipse-echo']);
     expect(isBossFloor(run)).toBe(false);

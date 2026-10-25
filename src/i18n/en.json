@@ -720,7 +720,7 @@
   "sima.band.forest.lore.2": "The pumpkins still sing, though no one down here listens.",
   "sima.band.forest.lore.3": "The moss glows red. It is not daylight any more.",
   "sima.band.forest.lore.4": "An owl hoots very far away, or very close. Down here it is the same.",
-  "sima.band.abyss.name": "Stratum III · The Abyss beneath the Ring",
+  "sima.band.abyss.name": "Stratum V · The Abyss beneath the Ring",
   "sima.band.abyss.subtitle": "Islands of stone over nothing, and the falling light",
   "sima.band.abyss.lore.1": "There are no walls any more. Only floating stone and the fall all around.",
   "sima.band.abyss.lore.2": "The red light rains downwards and never reaches the bottom.",
@@ -821,5 +821,17 @@
   "elite.swift": "Swift elite",
   "elite.volley": "Volley elite",
   "elite.armored": "Armored elite",
-  "elite.enrage": "Enraged elite"
+  "elite.enrage": "Enraged elite",
+  "sima.band.caves.name": "Stratum III · The Drowned Bell",
+  "sima.band.caves.subtitle": "The lake's water came down here, and so did its bell",
+  "sima.band.caves.lore.1": "Water runs up the walls here, towards the eclipse.",
+  "sima.band.caves.lore.2": "The bell of the wreck rings below you. Or above.",
+  "sima.band.caves.lore.3": "Crystals keep a light that never reached the lake.",
+  "sima.band.caves.lore.4": "An anchor chain hangs into the dark and pulls at nothing.",
+  "sima.band.swamp.name": "Stratum IV · The Poisoned Sky",
+  "sima.band.swamp.subtitle": "Where the red light drips and turns the water sweet",
+  "sima.band.swamp.lore.1": "The water does not reflect this sky. It reflects the other one.",
+  "sima.band.swamp.lore.2": "The mist smells sweet. Do not breathe deep.",
+  "sima.band.swamp.lore.3": "Dead trees grow downwards, towards the eclipse.",
+  "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it."
 }

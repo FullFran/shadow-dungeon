@@ -178,8 +178,8 @@ function rest(enemy: EnemyState, cd: DanmakuCardDef): EnemyState {
   return withAi(withBoss(enemy, { combosDone: boss.combosDone + 1 }), { ...enterMode(enemy.ai, 'recover', cd.recoverMs), contact: 'none' });
 }
 
-/** Phase 2 starts once, below `belowHp`, only between cards. */
-const awakens = (enemy: EnemyState, def: DanmakuDef): boolean => def.phase2 !== undefined && enemy.boss?.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.belowHp;
+/** Phase 2 starts once, below `belowHp`, only between cards (never in a Sima echo: phase 1 only). */
+const awakens = (state: WorldState, enemy: EnemyState, def: DanmakuDef): boolean => !state.enemyScale?.echo && def.phase2 !== undefined && enemy.boss?.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.belowHp;
 
 export function updateDanmaku(state: WorldState, start: EnemyState, def: DanmakuDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
@@ -195,7 +195,7 @@ export function updateDanmaku(state: WorldState, start: EnemyState, def: Danmaku
       if (dist <= def.aggroRange) enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: restMs });
       break;
     case 'approach': {
-      if (awakens(enemy, def)) {
+      if (awakens(state, enemy, def)) {
         events.push({ type: 'bossStance', enemyId: enemy.id, stance: 'awaken' });
         events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'awaken', durationMs: def.phase2!.transformMs });
         enemy = withAi(withBoss(enemy, { stance: 'awaken', stanceMs: 0, phase: 2, combosDone: 0, comboIndex: 0 }), { ...enterMode(ai, 'transform', def.phase2!.transformMs), contact: 'none' });

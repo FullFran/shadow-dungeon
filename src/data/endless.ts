@@ -61,6 +61,17 @@ export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   { species: 'slugma', minDepth: 3, weight: 1, perDepth: 0.06 },
   { species: 'clauncher', minDepth: 4, weight: 1, perDepth: 0.08 },
   { species: 'croagunk', minDepth: 4, weight: 1, perDepth: 0.08 },
+  // Flooded Caves (integration 2026-10-25): its regulars a little deeper than
+  // in their own dungeon, the Sima being harder per floor; Krabby the tank,
+  // Remoraid the gunner, Shellos the mortar. Lanturn stays the caves' mid-boss.
+  { species: 'krabby', minDepth: 6, weight: 1, perDepth: 0.06 },
+  { species: 'remoraid', minDepth: 7, weight: 1, perDepth: 0.04 },
+  { species: 'shellos', minDepth: 8, weight: 1, perDepth: 0.06 },
+  // Toxic Swamp: Venipede rolls in pairs, Salandit dashes, Skrelp snipes.
+  // Salazzle stays the swamp's mid-boss.
+  { species: 'venipede', minDepth: 9, weight: 1, pack: 2, perDepth: 0.02 },
+  { species: 'salandit', minDepth: 10, weight: 1, perDepth: 0.06 },
+  { species: 'skrelp', minDepth: 11, weight: 1, perDepth: 0.05 },
 ];
 
 /** A guardian echo: the arena of a guardian (or mid-boss) and the track it fights to. */
@@ -121,6 +132,9 @@ export const ENDLESS: EndlessDef = {
     { room: 'boss', music: 'guardian' },
     { room: 'hollow', music: 'guardian' },
     { room: 'roost', music: 'forest-guardian' },
+    // The Flooded Caves' and Toxic Swamp's guardians (integration); phase 1 only, as every echo.
+    { room: 'wreck', music: 'caves-guardian' },
+    { room: 'rift', music: 'forest-guardian' },
   ],
   // The Sima's own boss on 10, 20, 30...; the guardian echoes keep 5, 15, 25... in turn.
   eclipseEvery: 10,

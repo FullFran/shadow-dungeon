@@ -247,8 +247,8 @@ export function ultraAttack(arena: Pick<Arena, 'width' | 'height'>, enemy: Enemy
 const phaseOf = (enemy: EnemyState): 1 | 2 => (enemy.boss?.phase === 2 ? 2 : 1);
 
 function startUltraCard(state: WorldState, enemy: EnemyState, def: UltraDef, target: Vec2, events: GameEvent[]): EnemyState {
-  // The awakening: once, at half HP, between cards (never mid-pattern).
-  if (phaseOf(enemy) === 1 && enemy.hp <= def.phase2.threshold * enemy.maxHp) {
+  // The awakening: once, at half HP, between cards (never mid-pattern; never in a Sima echo: phase 1 only).
+  if (!state.enemyScale?.echo && phaseOf(enemy) === 1 && enemy.hp <= def.phase2.threshold * enemy.maxHp) {
     events.push({ type: 'bossStance', enemyId: enemy.id, stance: 'ultra' });
     events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'ultra', durationMs: def.phase2.awakenMs });
     const awakening = withBoss(enemy, { stance: 'ultra', stanceMs: 0, comboIndex: 0, combosDone: 0, phase: 2 });
