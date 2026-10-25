@@ -40,7 +40,7 @@ export interface RunResult {
 }
 
 export interface RunOptions {
-  /** Floors to play at most (the endless dungeon has no last one). Default 10. */
+  /** Floors of the endless Sima to play at most (it has no last one; other dungeons play to their guardian). Default 10. */
   maxFloors?: number;
   /** A floor or arena still going after this long is a timeout. Default 5 min. */
   floorTimeoutMs?: number;
@@ -69,10 +69,10 @@ function floorMeta(run: RunState): Pick<FloorResult, 'floor' | 'kind' | 'boss'> 
   return { floor: run.floor, kind: 'room', boss: ROOMS[plan.room].spawns[0]?.species ?? null };
 }
 
-/** The floor numbers of a dungeon's fixed arenas (guardian, mid-bosses, echoes) up to `maxFloors`. */
+/** The floor numbers of a dungeon's fixed arenas (guardian, mid-bosses; the Sima's echoes up to `maxFloors`). */
 export function arenaFloors(dungeon: DungeonId, maxFloors = 10): number[] {
   const def = dungeonById(dungeon);
-  const last = Math.min(floorsOf(def), maxFloors);
+  const last = def.endless ? maxFloors : floorsOf(def);
   const out: number[] = [];
   for (let f = 1; f <= last; f++) if (planAt(def, f)?.kind === 'room') out.push(f);
   return out;
@@ -81,11 +81,12 @@ export function arenaFloors(dungeon: DungeonId, maxFloors = 10): number[] {
 /**
  * Plays from `startFloor` floor by floor: HP, level and items carry over as in
  * a real run (the bot takes the first item offered). Stops at the first death,
- * a timeout, victory, or `maxFloors` floors played. With `single`, plays only
+ * a timeout, victory, or (the endless Sima) `maxFloors` floors played. With `single`, plays only
  * the first floor (an arena in isolation).
  */
 function play(s: Scenario, startFloor: number, options: RunOptions, single: boolean): RunResult {
   const maxFloors = options.maxFloors ?? 10;
+  const endless = dungeonById(s.dungeon).endless !== undefined;
   const timeout = options.floorTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const bot = createBot(s.bot, botSeed(s));
   const started = startRun(s.seed, { difficulty: s.tier }, startFloor, s.dungeon);
@@ -108,7 +109,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
     }
     if (progress.entered) {
       close('cleared');
-      if (single || floors.length >= maxFloors) return { scenario: s, floors, outcome: 'depth' };
+      if (single || (endless && floors.length >= maxFloors)) return { scenario: s, floors, outcome: 'depth' };
       const picked = chooseItem(progress.run, progress.world, 0);
       run = picked.run;
       world = applyParty(picked.world, s.party);

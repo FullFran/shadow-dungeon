@@ -42,7 +42,13 @@ Out of scope: changing game balance; co-op party scaling itself (another writer 
   - Bot fixes found while running: a floater inside a wall is approached from the nearest floor tile; an enemy chased 15 s without losing HP is ignored for 10 s (Gastly kiting from walls timed floors out).
   - Speed: the full Crypt × 4 bots × 3 seeds + arenas ≈ 2 s; every dungeon ≈ 2–5 s on easy.
   - Evidence: `tests/sim/runner.test.ts` (6 tests): replay identity, floor-by-floor Crypt, Sableye arena TTK, `maxOverlap`, recorder on synthetic events, the hook (mutation: removing the hook fails it), party adapter. Full suite 139 files / 1330 tests passed; typecheck ok.
-- [ ] T3 Bands + fairness checks + planted unwinnable pattern + CI subset (route: same)
+- [x] T3 Bands + fairness checks + planted unwinnable pattern + CI subset (route: same)
+  - `src/sim/bands.ts`: fairness invariants (`fail`): max hit ≤ 35 % max HP, ordinary telegraph ≥ 280 ms, positional (choice) telegraph ≥ 400 ms (one tick of slack), ≤ 2 wind-ups at once (3 on nightmare), ≤ 1 off-screen wind-up at once, 0 blind hits. Performance bands (`warn`): average clears easy ≥ 80 %, average boss TTK 45–150 s solo (isolated arena), HP lost per floor (average) ≤ 25/35/50/65 %, nightmare harder than easy, perfect clears nightmare ≥ 80 %, perfect never dies.
+  - New metric `blindHits` (`metrics.ts`): a hit whose best-announced nearby threat had been on screen < 263 ms (shots inherit the wind-up of an enemy that just attacked beside them; lingering clouds were false positives before that).
+  - `KNOWN_VIOLATIONS` ratchet (band × dungeon, with reason): a listed violation reports WARN, any other fails CI. Filled from the first full sweep.
+  - `src/sim/sweep.ts`: `FULL_SWEEP` (5 dungeons × 4 tiers × 4 bots × parties 1–4 × 3 seeds, arenas for every bot; 960 runs + 1920 arenas, measured 200 s) and `CI_SWEEP` (easy + nightmare, perfect/average/masher, solo, 2 seeds, Sima to floor 5; 60 runs + 72 arenas, ~12 s).
+  - Bug fixed: `maxFloors` now caps only the endless Sima (it had cut finite dungeons short and zeroed their clear rate).
+  - Evidence: `tests/sim/bands.test.ts` (4): clean arena passes, each invariant fails alone, known violation scoped to its dungeon, planted unwinnable pattern (a no-wind-up positional burst on the player every 300 ms) kills the perfect bot and fails `blind-hits` while the same floor without it has 0 blind hits. `tests/sim/balance-ci.test.ts` (2): CI subset has no unknown failures (with the list emptied it fails: 20+ fails seen in the exploratory run). 16 sim tests in 12.3 s.
 - [ ] T4 Report + `npm run balance` + README + GDD §9 (route: same)
 
 ## Acceptance criteria

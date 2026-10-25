@@ -1,5 +1,14 @@
+import { TELEGRAPH_FLOOR } from '../data/difficulty';
+import { TUNING } from '../data/tuning';
 import type { WorldState } from '../core/state';
+import { distance } from '../core/vec';
 import { cameraRect, onScreen } from './observe';
+
+/** A hit whose threat was on screen for less than this (the one-answer telegraph floor, less one tick) gave no fair warning. */
+/** An enemy's wind-up still announces what it leaves behind (clouds, bursts) this long after its attack ends. */
+const LINGER_MS = 600;
+
+export const BLIND_WARNING_MS = TELEGRAPH_FLOOR.minMs - 1000 / TUNING.ticksPerSecond;
 
 /**
  * What the harness measures on one floor or boss arena (docs/souls-difficulty-research.md P7).
@@ -37,6 +46,12 @@ export interface FloorMetrics {
   maxSimultaneousUnseen: number;
   /** Attacks with no wind-up of their own pending (combo follow-ups, bullets of a running card). */
   untelegraphedAttacks: number;
+  /**
+   * Hits with no fair warning: no threat near the player (a shot about to
+   * touch it, a winding-up or attacking enemy close by; failing those, any
+   * enemy winding up on screen) had been on screen for `BLIND_WARNING_MS`.
+   */
+  blindHits: number;
 }
 
 interface Pending {
@@ -78,6 +93,9 @@ export class FloorRecorder {
   private readonly alive = new Set<string>();
   private bossId: string | null = null;
   private bossSeenAt: number | null = null;
+  /** First time each enemy shot was on screen; since when each on-screen enemy has been winding up or attacking. */
+  private readonly shotSeen = new Map<string, number>();
+  private readonly windupSince = new Map<string, { since: number; until: number | null }>();
   private endMs: number;
 
   constructor(world: WorldState) {
@@ -103,6 +121,7 @@ export class FloorRecorder {
       unseenAttacks: 0,
       maxSimultaneousUnseen: 0,
       untelegraphedAttacks: 0,
+      blindHits: 0,
     };
     this.bossId = this.fixedRoom ? (world.enemies.find((e) => e.boss)?.id ?? null) : null;
     this.track(world);
@@ -116,12 +135,60 @@ export class FloorRecorder {
     }
   }
 
+  /** How long the best-announced threat near the player had been on screen (null: none). */
+  private warningMs(before: WorldState, after: WorldState): number | null {
+    const now = after.timeMs;
+    const me = after.player.pos;
+    let best: number | null = null;
+    const consider = (since: number | undefined) => {
+      if (since !== undefined) best = Math.max(best ?? 0, now - since);
+    };
+    for (const p of before.projectiles) if (p.owner === 'enemy' && distance(p.pos, me) <= p.radius + TUNING.player.radius + 12) consider(this.shotSeen.get(p.id));
+    for (const e of before.enemies) if (distance(e.pos, me) <= e.radius + 160) consider(this.windupSince.get(e.id)?.since);
+    if (best === null) for (const w of this.windupSince.values()) consider(w.since);
+    return best;
+  }
+
+  /**
+   * Keeps when each threat came on screen: an enemy from the start of its
+   * wind-up (kept a moment after its attack ends), a shot from when it was
+   * first seen, or, when it appears beside an enemy that was just winding up
+   * (a lingering cloud, a burst), from that wind-up.
+   */
+  private watchThreats(world: WorldState): void {
+    const now = world.timeMs;
+    const view = cameraRect(world.player.pos, world.arena);
+    for (const e of world.enemies) {
+      const threatening = e.alive && (e.ai.mode === 'telegraph' || e.ai.mode === 'attack' || e.boss !== undefined);
+      const w = this.windupSince.get(e.id);
+      if (threatening) {
+        if (!w && onScreen(e.pos, view, e.radius)) this.windupSince.set(e.id, { since: now, until: null });
+        else if (w) w.until = null;
+      } else if (w) {
+        if (w.until === null) w.until = now;
+        else if (now - w.until > LINGER_MS) this.windupSince.delete(e.id);
+      }
+    }
+    for (const p of world.projectiles) {
+      if (p.owner !== 'enemy' || this.shotSeen.has(p.id) || !onScreen(p.pos, view, p.radius)) continue;
+      let since = now;
+      for (const e of world.enemies) {
+        const w = this.windupSince.get(e.id);
+        if (w && distance(e.pos, p.pos) <= e.radius + p.radius + 200) since = Math.min(since, w.since);
+      }
+      this.shotSeen.set(p.id, since);
+    }
+  }
+
   record(before: WorldState, after: WorldState): void {
     const now = after.timeMs;
     this.endMs = now;
     const view = cameraRect(before.player.pos, before.arena);
+    this.watchThreats(before);
     for (const ev of after.events) {
       if (ev.type === 'playerHurt') {
+        const warned = this.warningMs(before, after);
+        if (warned === null || warned < BLIND_WARNING_MS) this.m.blindHits += 1;
         this.m.damage += ev.damage;
         this.m.hits += 1;
         if (ev.pierceRoll) this.m.hitsPierce += 1;
