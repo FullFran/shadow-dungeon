@@ -49,7 +49,13 @@ Out of scope: changing game balance; co-op party scaling itself (another writer 
   - `src/sim/sweep.ts`: `FULL_SWEEP` (5 dungeons × 4 tiers × 4 bots × parties 1–4 × 3 seeds, arenas for every bot; 960 runs + 1920 arenas, measured 200 s) and `CI_SWEEP` (easy + nightmare, perfect/average/masher, solo, 2 seeds, Sima to floor 5; 60 runs + 72 arenas, ~12 s).
   - Bug fixed: `maxFloors` now caps only the endless Sima (it had cut finite dungeons short and zeroed their clear rate).
   - Evidence: `tests/sim/bands.test.ts` (4): clean arena passes, each invariant fails alone, known violation scoped to its dungeon, planted unwinnable pattern (a no-wind-up positional burst on the player every 300 ms) kills the perfect bot and fails `blind-hits` while the same floor without it has 0 blind hits. `tests/sim/balance-ci.test.ts` (2): CI subset has no unknown failures (with the list emptied it fails: 20+ fails seen in the exploratory run). 16 sim tests in 12.3 s.
-- [ ] T4 Report + `npm run balance` + README + GDD §9 (route: same)
+- [x] Integration: merged main be4e833 (co-op scaling) into the branch (clean merge); `src/sim/party.ts` now uses `data/party-scaling.ts` + `core/party.ts`: floor 1 starts with `WorldOptions.party`, later floors (no remote peers in the harness) are rescaled to the party's spawn HP and keep `world.party`; HP then split by party size. Commit 9462f23. Two new known violations from it: Aegislash (Crypt) and Trevenant (Forest) hit 36 % / 40 % on nightmare in 3–4 parties (boss damage ×1.1–1.15).
+- [x] T4 Report + `npm run balance` + README + GDD §9 (route: same)
+  - `src/sim/report.ts`: markdown (gate line, failures, known violations with reasons, performance warnings, per dungeon: runs per tier/bot/party, arenas per arena/tier/bot/party, telegraph and threat table per tier) and JSON. No date or timing in the markdown, so it diffs cleanly.
+  - `tools/balance.ts` (`npm run balance`, via `vite-node`, which ships with Vitest): full sweep, `--quick`, `--seeds=`, `--dungeon=`, `--tier=`, `--out=`; exit 1 on an unknown fairness failure.
+  - Decision: `reports/balance/latest.md` is committed (the baseline to diff); `reports/balance/*.json` is gitignored (~MBs of floor results).
+  - README (commands, "Balance harness" with the rebalance steps, layout row) and GDD §9 "Arnés de balance" (Spanish).
+  - Evidence: `tests/sim/report.test.ts` (tables per party, arena rows, deterministic text, JSON shape). `npm run balance -- --quick` 12.5 s; full `npm run balance` 295 s, 960 runs + 1920 arena fights, gate PASS (59 known fairness violations, 94 performance warnings, 167 passes). `npm test` 146 files / 1386 tests in 28.5 s; `npm run build` ok.
 
 ## Acceptance criteria
 - Bots are deterministic per seed; the perfect bot dodges a lone telegraphed attack; the delayed bot reacts no earlier than its reaction time.
@@ -62,7 +68,12 @@ Out of scope: changing game balance; co-op party scaling itself (another writer 
 `npm test`, `npm run build`, `npm run balance` (timed), `git log --format=%B -n 4 | grep -ic co-authored` = 0.
 
 ## Progress
-(updated per task)
+All four tasks done (commits 2cb8931, eadb510, 863fb3d, merge of main, 9462f23, T4).
+
+## First findings (full sweep, reports/balance/latest.md)
+- Bosses die far under the 45–150 s band for the average bot solo: Aegislash 10–18 s, Decidueye 14 s, Lanturn/Dhelmise 16–29 s, Trevenant 24 s, Sableye ~42 s (just under). Salazzle, Nihilego and the floor-10 Eclipse Echo are not felled by the average bot (level 1, isolated).
+- The perfect bot clears no dungeon on nightmare (0 %); the average bot clears the Crypt on easy 67 % and the Swamp 33 % (band ≥ 80 %).
+- Fairness: every dungeon has more wind-ups at once than P5.3 allows (up to 8 on Forest fog floors) and 2–4 off-screen wind-ups at once; blind hits in the Forest (Trevenant/Decidueye), Caves, Swamp (Nihilego) and deep Sima floors; Sima wind-ups of 200–217 ms from normal up (under the 280 ms floor; suspected elite pace); single hits of 36–40 % (Dhelmise, Aegislash echo, and bosses in 3–4 parties) on nightmare against a level-1 starter.
 
 ## Next step
-T1.
+Parent: review and PR slicing. Content follow-ups (outside this feature): attack tokens (P5.3), hit cap (P5.6), elite pace vs telegraph floor, boss HP vs TTK band; then delete the matching `KNOWN_VIOLATIONS` entries.

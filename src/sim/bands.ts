@@ -93,6 +93,8 @@ const SIMULTANEOUS = 'every awake enemy of a floor winds up at the player at onc
 const UNSEEN = 'awake walkers and casters start wind-ups off screen (no off-screen limit yet, P5.1)';
 export const KNOWN_VIOLATIONS: readonly KnownViolation[] = [
   { band: 'simultaneous-telegraphs', dungeon: 'crypt-of-the-sword-king', reason: SIMULTANEOUS },
+  { band: 'max-hit', dungeon: 'crypt-of-the-sword-king', reason: 'Aegislash on nightmare in a 3–4 party (boss damage ×1.1–1.15, data/party-scaling.ts) hits a level-1 starter for 36 %: no hit cap yet (P5.6)' },
+  { band: 'max-hit', dungeon: 'misty-forest', reason: 'Trevenant on nightmare in a 3–4 party (boss damage ×1.1–1.15) hits a level-1 starter for 40 %: no hit cap yet (P5.6)' },
   { band: 'unseen-threats', dungeon: 'crypt-of-the-sword-king', reason: UNSEEN },
   { band: 'simultaneous-telegraphs', dungeon: 'misty-forest', reason: `${SIMULTANEOUS}; worst on fog floors (up to 8)` },
   { band: 'unseen-threats', dungeon: 'misty-forest', reason: UNSEEN },
