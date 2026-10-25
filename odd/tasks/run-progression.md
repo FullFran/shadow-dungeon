@@ -24,7 +24,7 @@ Out of scope: permanent currency, shop, gacha, new species, move-modifying items
 - [x] T1 Experience and in-run levels (core, data, HUD, sound, co-op XP sharing) (route: delegated writer; trigger: core state/combat, data, adapters, net)
 - [x] T2 Held items: data, effects in core, pick-1-of-3 overlay on floor entry, co-op behaviour (route: same writer)
 - [x] T3 Oran Berries on the floor, host-authoritative pickups in shared runs (route: same writer)
-- [ ] T4 Docs: GDD (Spanish) and README (route: same writer)
+- [x] T4 Docs: GDD (Spanish) and README (route: same writer)
 - [ ] T5 Deploy (route: parent, needs user OK)
 
 ## Acceptance criteria
@@ -61,3 +61,11 @@ Created 2026-10-25. Forecast ~1200 authored lines.
 - Presentation: drawn berry (blue circle, leaf, bob; no asset), green heal number, `berry` sound, minimap marks seen berries.
 - Checks: `tests/core/berries.test.ts` RED (module missing) then GREEN (7); protocol round-trips for `pick`, `berry` and snapshot berries; loopback test (lagged transport): a guest walking over a berry is granted it once, healed once, host and guest lists drop it; mutation check (guest never sends `pick`) fails the loopback test; minimap test; `npm test` 402 passed; `npm run build` passed.
 - Commit: `feat(core): add Oran Berries with host-authoritative pickups`.
+
+### T4 (done)
+- `docs/gdd.md` §3: new subsection "Progresión dentro de la partida" (levels, held items table with rarity, effect and cap, Oran Berries; provisional values), the run-reset bullet updated; §12: berries host-authoritative, experience per peer, items per player. README: in-run progression paragraph, 1/2/3 control, shared-run notes, data layout row.
+- Checks: `npm test` 402 passed, `npm run build` passed (docs only).
+- Commit: `docs: describe in-run levels, held items and Oran Berries`.
+
+### Next
+- T5 deploy (parent, needs the user's OK). Unverified by hand: the feel of the numbers, the shared-run pick strip and berry claims between two real browsers, the level-up/item/berry sounds.

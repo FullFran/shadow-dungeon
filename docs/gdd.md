@@ -48,7 +48,7 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 
 - Duración objetivo: unos 25 a 30 minutos *(provisional)*.
 - Antes de entrar, el grupo ve el jefe final y su tipo, así que elegir equipo ya es una decisión de estrategia.
-- Los niveles se reinician en cada partida. Las Pokémonedas se quedan (sección 11).
+- Los niveles, los objetos equipados y las bayas son de la partida y se pierden al acabar (ver "Progresión dentro de la partida"). Las Pokémonedas se quedan (sección 11).
 
 ### Plantas normales
 
@@ -85,6 +85,33 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 - Los enemigos que andan y se quedan en el escombro caen; Gastly flota y sigue.
 - Cerca del frente hay un rumor grave que sube de volumen y la pantalla tiembla un poco; el suelo a punto de caer se agrieta.
 - Escapar enseña en la tarjeta de la planta siguiente cuánto has tardado ("Escapaste del derrumbe en 0:42"). Todavía no da Pokémonedas, solo la línea.
+
+### Progresión dentro de la partida
+
+Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sección 11. Valores *provisionales*.
+
+**Niveles.** Cada enemigo derrotado da experiencia según la especie (Poochyena 10, Gastly 12, Aegislash 60) y la profundidad (un 50 % más por cada planta por debajo de la primera). Empiezas en el nivel 1 y el tope es el 10 (hacen falta 25, 60, 110, 175... puntos en total). Cada nivel da 8 PS máximos más (que se curan al momento) y un 5 % más de daño. Al subir sale "¡Mimikyu subió al nivel N!" con una fanfarria corta; arriba a la izquierda están el nivel y la barra de experiencia. En cooperativo, como en Mundo Misterioso, cada jugador en pie gana la experiencia de cada enemigo derrotado, lo haya derrotado quien lo haya derrotado (también el derrumbe). Quien está debilitado no gana nada, para que subir de nivel no lo levante.
+
+**Objetos equipados.** Al entrar en cada planta a partir de la segunda (la del jefe incluida), cada jugador elige uno de tres objetos. Salen según su rareza (común 6, poco común 3, rara 1 por objeto), sin repetirse en la misma oferta, y la oferta depende de la semilla de la partida, la planta y el jugador. Se acumulan durante la partida hasta un tope por objeto; uno que ya está en su tope no vuelve a salir. Se eligen con un clic en la carta o con 1, 2 o 3. En solitario el juego se para mientras eliges; en partida compartida no se para nada (las cartas salen abajo, puedes seguir andando y rodando, y el clic en una carta no ataca). Si bajas sin elegir, la oferta de la planta nueva sustituye a la anterior. Los objetos salen en el HUD y, con su descripción, en el menú de Esc.
+
+| Objeto | Rareza | Efecto | Tope |
+|---|---|---|---|
+| Cinta Elegida | Rara | Un 30 % más de daño, pero los movimientos y rodar gastan un 30 % más de estamina | 1 |
+| Restos | Poco común | Recuperas un 1 % de la vida máxima por segundo | 3 |
+| Garra Rápida | Poco común | Los movimientos arrancan y se recuperan un 15 % antes | 2 |
+| Baya Zidra | Común | Al bajar de la mitad de la vida curas un 25 % de golpe, una vez por planta | 2 |
+| Periscopio | Común | Un 10 % de golpes críticos (daño ×1,5) | 3 |
+| Banda Focus | Rara | Aguantas con 1 PS un ataque que te debilitaría, una vez por planta (el derrumbe no es un ataque) | 1 |
+| Campana Concha | Poco común | Curas un 12 % del daño que haces | 2 |
+| Cinta Fuerte | Común | Un 20 % más de daño con el movimiento fuerte | 3 |
+| Cinta Experto | Común | Un 20 % más de daño con los golpes supereficaces | 2 |
+| Polvo Brillo | Poco común | La esquiva perfecta tiene 40 ms más de margen | 2 |
+| Lupa | Común | Los golpes alcanzan un 15 % más y los proyectiles son un 15 % más grandes | 2 |
+| Casco Dentado | Poco común | Quien te alcanza cuerpo a cuerpo recibe 8 de daño | 3 |
+
+Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
+
+**Bayas Aranja.** En las plantas generadas, cada sala menos la de entrada tiene un 35 % de llevar una Baya Aranja en el suelo (se decide con la semilla, así que la misma semilla pone las mismas bayas). Pasar por encima cura 20 PS. El minimapa enseña las bayas que has visto. En partida compartida manda el anfitrión: quien la pisa la pide, el anfitrión se la da al primero que la pidió y las instantáneas dicen qué bayas quedan.
 
 ### Jefes
 
@@ -243,6 +270,7 @@ La elige el anfitrión. En un souls, la dificultad de verdad es el tiempo que ti
   - Prototipo de red (M1, *provisional*): cada jugador simula su propio Pokémon sin esperar a nadie y envía su estado unas 20 veces por segundo. El anfitrión mueve a los enemigos y al jefe contra todos los jugadores (cada enemigo va a por el más cercano) y envía una instantánea unas 20 veces por segundo (unos 55 bytes por enemigo en JSON compacto: entre 115 y 760 bytes por instantánea en las plantas generadas). Los golpes de un invitado a un enemigo se resuelven en su pantalla y se mandan al anfitrión como reclamaciones, que este aplica una sola vez (en el prototipo se confía en ellas). Los golpes enemigos se comprueban solo contra el jugador de cada pantalla: si has rodado en tu pantalla, has esquivado. Los demás jugadores y, en los invitados, los enemigos se dibujan unos 100 ms en el pasado, interpolando entre instantáneas. Las escaleras las decide el anfitrión y se lleva a todos. Pendiente de la prueba con lag real.
   - Salas en línea (M1, *provisional*): "Crear sala" da un código de 5 caracteres sin letras que se confunden (ni 0/O ni 1/I/L), con botón de copiar y opción de ocultarlo en pantalla para quien hace directo; "Unirse" con el código (o con `?room=CÓDIGO` en la dirección). Máximo 4 jugadores (al quinto se le dice que la sala está llena). El anfitrión ve quién ha entrado y pulsa Empezar; todos juegan con su semilla. Los navegadores se encuentran por relés públicos de Nostr (Trystero) y luego hablan directamente por WebRTC, sin servidor TURN (dos jugadores detrás de NAT estrictos pueden no conectar). Con F3 se ven las estadísticas de red (ida y vuelta por jugador, instantáneas por segundo y su edad, bytes por segundo).
   - La cámara lenta de la esquiva perfecta, en partida compartida, es solo para quien esquiva (destello, sonido, tinte y el golpe reforzado): los enemigos son los mismos para todos y no se ralentizan para nadie. En solitario no cambia nada.
+  - Las Bayas Aranja las decide el anfitrión, como los golpes: el invitado que pisa una la reclama, el anfitrión se la da una sola vez al primero que la pidió (y se lo dice) y sus instantáneas llevan las bayas que quedan. La experiencia la calcula cada jugador para sí mismo al ver caer cada enemigo (una vez por enemigo). Cada jugador elige sus propios objetos.
   - Si se va el anfitrión, la partida se acaba para los invitados con un aviso y el botón de volver al menú (no hay migración de anfitrión en el prototipo).
 - Contenido como datos: especies, movimientos (los kits de Q y E), enemigos, jefes, tipos de planta y tablas de dificultad en ficheros de datos, igual que hace PokéSurvivor con `js/data`.
 - Guardado: una sola fachada de guardado con `migrate()` y `sanitize()` versionados (el patrón de `G.DB` de PokéSurvivor merece la pena).
