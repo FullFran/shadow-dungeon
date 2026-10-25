@@ -649,11 +649,18 @@ interface MusicVoice {
   stop(fadeS: number): void;
 }
 
-/** Sets a gain along an equal-power curve; a linear ramp where curves are refused. */
+/** Sets a gain along an equal-power curve; a linear ramp where curves are refused or cannot be held (Firefox). */
 function rampGain(param: AudioParam, from: number, to: number, t: number, dur: number): void {
   const p = param as AudioParam & { cancelAndHoldAtTime?: (t: number) => void };
-  if (typeof p.cancelAndHoldAtTime === 'function') p.cancelAndHoldAtTime(t);
-  else param.cancelScheduledValues(t);
+  if (typeof p.cancelAndHoldAtTime !== 'function') {
+    // Firefox: no cancelAndHoldAtTime, a value curve under way cannot be cancelled and any event inside
+    // it throws (a track switch mid-fade aborted the run start). Plain ramps cancel cleanly: use them.
+    param.cancelScheduledValues(t);
+    param.setValueAtTime(from, t);
+    param.linearRampToValueAtTime(to, t + dur);
+    return;
+  }
+  p.cancelAndHoldAtTime(t);
   try {
     param.setValueCurveAtTime(fadeCurve(from, to, CURVE_STEPS), t, dur);
   } catch {

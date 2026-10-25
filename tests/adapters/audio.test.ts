@@ -148,6 +148,8 @@ interface FakeGain {
 
 /** Just enough of Web Audio to run the synthesis; it throws where real browsers do. */
 class FakeAudioContext {
+  /** Firefox: no cancelAndHoldAtTime, no event may land inside a value curve, and a curve under way cannot be cancelled. */
+  static strictCurves = false;
   currentTime = 0;
   state = 'running';
   sampleRate = 64;
@@ -156,23 +158,35 @@ class FakeAudioContext {
   sources: FakeSource[] = [];
   gains: FakeGain[] = [];
   private param() {
+    const strict = FakeAudioContext.strictCurves;
+    let live: { t: number; end: number }[] = [];
+    // A point inside a curve, or a new curve overlapping one, throws.
+    const inCurve = (t: number, end?: number) => strict && live.some((c) => (end === undefined ? t > c.t && t < c.end : t < c.end && end > c.t));
     const param = {
       value: 1,
       curves: [] as { from: number; to: number; t: number; dur: number }[],
       setValueCurveAtTime: (curve: Float32Array, t: number, dur: number) => {
+        if (inCurve(t, t + dur)) throw new DOMException("Can't add events during a curve event", 'NotSupportedError');
         param.curves.push({ from: curve[0]!, to: curve[curve.length - 1]!, t, dur });
+        live.push({ t, end: t + dur });
         param.value = curve[curve.length - 1]!;
       },
-      setValueAtTime: (v: number) => {
+      setValueAtTime: (v: number, t = 0) => {
+        if (inCurve(t)) throw new DOMException("Can't add events during a curve event", 'NotSupportedError');
         param.value = v;
       },
       linearRampToValueAtTime: () => undefined,
       setTargetAtTime: () => undefined,
-      cancelScheduledValues: () => undefined,
+      // A curve already under way stays, whatever the cancel time (what Firefox does).
+      cancelScheduledValues: (t: number) => {
+        live = live.filter((c) => c.t < t || c.t <= this.currentTime);
+      },
       exponentialRampToValueAtTime: (v: number) => {
         if (!(v > 0)) throw new RangeError('exponential ramp to a non-positive value');
       },
     };
+    // Chromium and Safari hold a running curve where it is.
+    if (!strict) Object.assign(param, { cancelAndHoldAtTime: () => undefined });
     return param;
   }
   private node() {
@@ -378,6 +392,22 @@ describe('music: licensed tracks on a fake AudioContext', () => {
     await flush();
     expect(fetched).toEqual(['./music/lonely-village.ogg', `./music/${MUSIC_TRACKS.crypt.file}.ogg`]);
     expect(fileSources(fake)).toHaveLength(3);
+  });
+
+  it('switches tracks in the middle of a fade without throwing where cancelAndHoldAtTime is missing (Firefox)', async () => {
+    FakeAudioContext.strictCurves = true;
+    try {
+      const { audio, fake } = setup();
+      audio.setMusic('title');
+      await flush();
+      fake.currentTime = CROSSFADE_S / 2;
+      expect(() => audio.setMusic('crypt')).not.toThrow();
+      await flush();
+      fake.currentTime = CROSSFADE_S * 0.75;
+      expect(() => audio.setMusic('title')).not.toThrow();
+    } finally {
+      FakeAudioContext.strictCurves = false;
+    }
   });
 
   it('evicts the least recently used buffer beyond the cache size', async () => {
