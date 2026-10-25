@@ -4,9 +4,10 @@ import { angleOf, distance, sub, type Vec2 } from './vec';
 
 /**
  * Lock-on rules (docs/gdd.md §4 "Apuntar y fijar"). The target only changes
- * through explicit gestures: pressing the lock key (nearest enemy to the
- * cursor), the wheel (next enemy by angle around the player), or the target
- * dying. Moving the mouse while locked never switches target.
+ * through explicit gestures: a press of the lock input (toggles: nearest enemy
+ * to the cursor, or release), a left click on an enemy (click-to-lock), the
+ * wheel (next enemy by angle around the player), or the target dying. Moving
+ * the mouse never switches target.
  */
 const { lockOn: LOCK } = TUNING;
 const TAU = Math.PI * 2;
@@ -19,7 +20,10 @@ export interface LockContext {
 }
 
 export interface LockInput {
+  /** Lock input (Shift or middle mouse) held; only press edges matter. */
   held: boolean;
+  /** Left click held; only press edges matter. */
+  click: boolean;
   /** Wheel deltaY since the last tick; negative = wheel up. */
   wheel: number;
 }
@@ -36,6 +40,17 @@ export function nearestToCursor(ctx: LockContext): EnemyState | null {
   let best: EnemyState | null = null;
   for (const enemy of lockCandidates(ctx)) {
     if (!best || distance(enemy.pos, ctx.cursor) < distance(best.pos, ctx.cursor)) best = enemy;
+  }
+  return best;
+}
+
+/** Candidate whose body the cursor is over (radius plus a margin); the closest one if several overlap. */
+export function enemyUnderCursor(ctx: LockContext): EnemyState | null {
+  let best: EnemyState | null = null;
+  for (const enemy of lockCandidates(ctx)) {
+    const d = distance(enemy.pos, ctx.cursor);
+    if (d > enemy.radius + LOCK.clickMargin) continue;
+    if (!best || d < distance(best.pos, ctx.cursor)) best = enemy;
   }
   return best;
 }
@@ -112,17 +127,22 @@ function applyWheel(lock: LockState, wheel: number, ctx: LockContext, events: Ga
   return { ...lock, targetId, wheelAccum: accum };
 }
 
-/** One tick of lock-on: key handling per mode, target validity, then wheel switching. */
+/** Click-to-lock: a click on an enemy locks onto it; a click on empty ground or on the current target changes nothing. */
+function clickLock(lock: LockState, ctx: LockContext, events: GameEvent[]): LockState {
+  const clicked = enemyUnderCursor(ctx);
+  if (!clicked || clicked.id === lock.targetId) return lock;
+  events.push(lock.targetId === null ? { type: 'lockAcquired', targetId: clicked.id } : { type: 'lockSwitched', targetId: clicked.id });
+  return { ...lock, targetId: clicked.id, wheelAccum: 0 };
+}
+
+/** One tick of lock-on: toggle on a key press, click-to-lock, target validity, then wheel switching. */
 export function updateLock(lock: LockState, input: LockInput, ctx: LockContext, events: GameEvent[]): LockState {
   const pressed = input.held && !lock.keyHeld;
-  let next: LockState = { ...lock, keyHeld: input.held };
+  const clicked = input.click && !lock.clickHeld;
+  let next: LockState = { ...lock, keyHeld: input.held, clickHeld: input.click };
 
-  if (next.mode === 'hold') {
-    if (!input.held) return next.targetId === null ? next : release(next, 'key', events);
-    if (pressed) next = acquire(next, ctx, events);
-  } else if (pressed) {
-    next = next.targetId === null ? acquire(next, ctx, events) : release(next, 'key', events);
-  }
+  if (pressed) next = next.targetId === null ? acquire(next, ctx, events) : release(next, 'key', events);
+  else if (clicked && next.clickToLock) next = clickLock(next, ctx, events);
 
   if (next.targetId === null) return next;
   next = validate(next, ctx, events);

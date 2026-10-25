@@ -45,13 +45,13 @@ describe('settings', () => {
     expect(slotOptions('heavy')).toEqual(['play-rough', 'shadow-ball']);
   });
 
-  it('defaults to the species loadout, hold lock and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', lockMode: 'hold', loadout: ['shadow-claw', 'play-rough'] });
+  it('defaults to the species loadout, click-to-lock on and the given language', () => {
+    expect(defaultSettings('en')).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-claw', 'play-rough'] });
   });
 
   it('round-trips through the store', () => {
     const store = memoryStore();
-    const settings = { language: 'en' as const, lockMode: 'toggle' as const, loadout: ['shadow-sneak', 'shadow-ball'] as const };
+    const settings = { language: 'en' as const, clickToLock: false, loadout: ['shadow-sneak', 'shadow-ball'] as const };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
   });
@@ -62,8 +62,20 @@ describe('settings', () => {
     expect(loadSettings(store, fallback)).toEqual(fallback);
     store.set('mazmorra-sombria.settings', '{not json');
     expect(loadSettings(store, fallback)).toEqual(fallback);
-    // A heavy move in the fast slot and an unknown language are rejected; the valid lock mode is kept.
-    store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'fr', lockMode: 'toggle', loadout: ['play-rough', 'shadow-ball'] }));
-    expect(loadSettings(store, fallback)).toEqual({ ...fallback, lockMode: 'toggle' });
+    // A heavy move in the fast slot and an unknown language are rejected; the valid click-to-lock flag is kept.
+    store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'fr', clickToLock: false, loadout: ['play-rough', 'shadow-ball'] }));
+    expect(loadSettings(store, fallback)).toEqual({ ...fallback, clickToLock: false });
+    store.set('mazmorra-sombria.settings', JSON.stringify({ clickToLock: 'yes' }));
+    expect(loadSettings(store, fallback).clickToLock).toBe(true);
+  });
+
+  it('loads settings saved before the lock-mode option was removed', () => {
+    const store = memoryStore();
+    for (const lockMode of ['hold', 'toggle']) {
+      store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
+      const loaded = loadSettings(store, defaultSettings('es'));
+      expect(loaded).toEqual({ language: 'en', clickToLock: true, loadout: ['shadow-sneak', 'play-rough'] });
+      expect(loaded).not.toHaveProperty('lockMode');
+    }
   });
 });

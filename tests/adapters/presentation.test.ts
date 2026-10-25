@@ -127,12 +127,13 @@ describe('input mapping', () => {
   });
   const view = { x: 100, y: 50, width: 512, height: 320 };
 
-  it('maps WASD, roll, slots (mouse or Q/E), Shift and the wheel', () => {
+  it('maps WASD, roll, slots (mouse or Q/E), Shift, the left click and the wheel', () => {
     const input = toPlayerInput(raw({ keys: new Set(['KeyD', 'KeyW', 'ShiftLeft', 'KeyE']), buttons: new Set([0]), rollPressed: true, wheel: -100, mouse: vec(20, 40) }), view, 2);
     expect(input.move).toEqual(vec(1, -1));
     expect(input.roll).toBe(true);
     expect(input.slots).toEqual([true, true]);
     expect(input.lock).toBe(true);
+    expect(input.click).toBe(true);
     expect(input.wheel).toBe(-100);
     expect(input.aim).toEqual(vec(110, 70));
     expect(input.view).toBe(view);
@@ -143,6 +144,17 @@ describe('input mapping', () => {
     expect(input.move).toEqual(vec(0, 0));
     expect(input.slots).toEqual([false, true]);
     expect(input.lock).toBe(false);
+    expect(input.click).toBe(false);
+  });
+
+  it('reads the middle button as the lock toggle and Q as a cursor-free fast slot', () => {
+    const middle = toPlayerInput(raw({ buttons: new Set([1]) }), view, 1);
+    expect(middle.lock).toBe(true);
+    expect(middle.slots).toEqual([false, false]);
+    const q = toPlayerInput(raw({ keys: new Set(['KeyQ', 'ShiftRight']) }), view, 1);
+    expect(q.slots).toEqual([true, false]);
+    expect(q.click).toBe(false);
+    expect(q.lock).toBe(true);
   });
 
   it('normalises wheel deltas to pixels', () => {

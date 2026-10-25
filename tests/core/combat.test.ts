@@ -26,6 +26,7 @@ const held = (slots: boolean[], aim = RIGHT, extra: Partial<PlayerInput> = {}): 
   roll: false,
   slots,
   lock: false,
+  click: false,
   wheel: 0,
   view: { x: 0, y: 0, width: 800, height: 600 },
   ...extra,

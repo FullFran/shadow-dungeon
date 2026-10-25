@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TUNING } from '../../src/data/tuning';
-import { cycleTarget, lockCandidates, nearestToCursor, updateLock, type LockContext } from '../../src/core/lockon';
+import { cycleTarget, enemyUnderCursor, lockCandidates, nearestToCursor, updateLock, type LockContext } from '../../src/core/lockon';
 import type { EnemyState, GameEvent, LockState, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
@@ -45,14 +45,14 @@ const ctx = (overrides: Partial<LockContext> = {}): LockContext => ({
   ...overrides,
 });
 
-const unlocked = (mode: LockState['mode'] = 'hold'): LockState => ({ mode, targetId: null, wheelAccum: 0, keyHeld: false });
-const lockedOn = (targetId: string, mode: LockState['mode'] = 'hold'): LockState => ({ mode, targetId, wheelAccum: 0, keyHeld: true });
+const unlocked = (clickToLock = true): LockState => ({ clickToLock, targetId: null, wheelAccum: 0, keyHeld: false, clickHeld: false });
+const lockedOn = (targetId: string, clickToLock = true): LockState => ({ clickToLock, targetId, wheelAccum: 0, keyHeld: false, clickHeld: false });
 
 /** Runs updateLock over a sequence of inputs, collecting events. */
-function drive(lock: LockState, inputs: { held: boolean; wheel?: number }[], context = ctx()) {
+function drive(lock: LockState, inputs: { held?: boolean; click?: boolean; wheel?: number }[], context = ctx()) {
   const events: GameEvent[] = [];
   let current = lock;
-  for (const { held, wheel = 0 } of inputs) current = updateLock(current, { held, wheel }, context, events);
+  for (const { held = false, click = false, wheel = 0 } of inputs) current = updateLock(current, { held, click, wheel }, context, events);
   return { lock: current, events };
 }
 
@@ -83,44 +83,90 @@ describe('cycling order', () => {
   });
 });
 
-describe('hold mode', () => {
-  it('locks on press, never switches when the cursor moves, and releases with the key', () => {
-    const pressed = drive(unlocked(), [{ held: true }]);
-    expect(pressed.lock.targetId).toBe('east');
-    expect(pressed.events).toContainEqual({ type: 'lockAcquired', targetId: 'east' });
+describe('lock toggle', () => {
+  it('a press locks the enemy nearest the cursor and the next press releases it', () => {
+    const on = drive(unlocked(), [{ held: true }, { held: true }, { held: false }]);
+    expect(on.lock.targetId).toBe('east');
+    expect(on.events).toEqual([{ type: 'lockAcquired', targetId: 'east' }]);
 
-    const cursorOnWest = drive(pressed.lock, [{ held: true }, { held: true }], ctx({ cursor: vec(300, 300) }));
-    expect(cursorOnWest.lock.targetId).toBe('east');
-
-    const released = drive(cursorOnWest.lock, [{ held: false }]);
-    expect(released.lock.targetId).toBeNull();
-    expect(released.events).toContainEqual({ type: 'lockReleased', reason: 'key' });
+    const off = drive(on.lock, [{ held: true }]);
+    expect(off.lock.targetId).toBeNull();
+    expect(off.events).toContainEqual({ type: 'lockReleased', reason: 'key' });
   });
 
-  it('re-locks on a new target by releasing and pointing', () => {
-    const relocked = drive(lockedOn('east'), [{ held: false }, { held: true }], ctx({ cursor: vec(300, 310) }));
+  it('keeps the lock after the key is let go, and never switches when the cursor moves', () => {
+    const on = drive(unlocked(), [{ held: true }, { held: false }]);
+    const cursorOnWest = drive(on.lock, [{ held: false }, { held: false }], ctx({ cursor: vec(300, 300) }));
+    expect(cursorOnWest.lock.targetId).toBe('east');
+    expect(cursorOnWest.events).toEqual([]);
+  });
+
+  it('re-locks on a new target by releasing and pressing again while pointing', () => {
+    const relocked = drive(lockedOn('east'), [{ held: true }, { held: false }, { held: true }], ctx({ cursor: vec(300, 310) }));
     expect(relocked.lock.targetId).toBe('west');
   });
 });
 
-describe('toggle mode', () => {
-  it('locks on one press and releases on the next', () => {
-    const on = drive(unlocked('toggle'), [{ held: true }, { held: false }, { held: false }]);
-    expect(on.lock.targetId).toBe('east');
-    const off = drive(on.lock, [{ held: true }]);
-    expect(off.lock.targetId).toBeNull();
+describe('click to lock', () => {
+  const onWest = ctx({ cursor: vec(305, 302) });
+
+  it('finds the enemy whose body the cursor is over, within the margin', () => {
+    const edge = TUNING.lockOn.clickMargin + WEST.radius;
+    expect(enemyUnderCursor(ctx({ cursor: vec(300 + edge - 0.5, 300) }))?.id).toBe('west');
+    expect(enemyUnderCursor(ctx({ cursor: vec(300 + edge + 0.5, 300) }))).toBeNull();
+    const deadWest = enemy('west', vec(300, 300), { alive: false });
+    expect(enemyUnderCursor(ctx({ enemies: [deadWest], cursor: vec(300, 300) }))).toBeNull();
+  });
+
+  it('a click on an enemy acquires it when nothing is locked', () => {
+    const { lock, events } = drive(unlocked(), [{ click: true }], onWest);
+    expect(lock.targetId).toBe('west');
+    expect(events).toEqual([{ type: 'lockAcquired', targetId: 'west' }]);
+  });
+
+  it('a click on another enemy switches the lock to it', () => {
+    const { lock, events } = drive(lockedOn('east'), [{ click: true }], onWest);
+    expect(lock.targetId).toBe('west');
+    expect(events).toEqual([{ type: 'lockSwitched', targetId: 'west' }]);
+  });
+
+  it('a click on the locked enemy or on empty ground keeps the lock', () => {
+    const same = drive(lockedOn('east'), [{ click: true }], ctx({ cursor: vec(500, 300) }));
+    expect(same.lock.targetId).toBe('east');
+    expect(same.events).toEqual([]);
+
+    const ground = drive(lockedOn('east'), [{ click: true }], ctx({ cursor: vec(350, 250) }));
+    expect(ground.lock.targetId).toBe('east');
+    const groundUnlocked = drive(unlocked(), [{ click: true }], ctx({ cursor: vec(350, 250) }));
+    expect(groundUnlocked.lock.targetId).toBeNull();
+  });
+
+  it('only the press edge counts: holding the button and moving onto an enemy does not switch', () => {
+    const held = drive(lockedOn('east'), [{ click: true }], ctx({ cursor: vec(350, 250) }));
+    const dragged = drive(held.lock, [{ click: true }, { click: true }], onWest);
+    expect(dragged.lock.targetId).toBe('east');
+  });
+
+  it('moving the cursor over an enemy without clicking never switches', () => {
+    const { lock } = drive(lockedOn('east'), [{}, {}, {}], onWest);
+    expect(lock.targetId).toBe('east');
+  });
+
+  it('does nothing when the setting is off', () => {
+    expect(drive(lockedOn('east', false), [{ click: true }], onWest).lock.targetId).toBe('east');
+    expect(drive(unlocked(false), [{ click: true }], onWest).lock.targetId).toBeNull();
   });
 });
 
 describe('wheel switching', () => {
   it('wheel up goes clockwise, wheel down counter-clockwise', () => {
-    expect(drive(lockedOn('east'), [{ held: true, wheel: -100 }]).lock.targetId).toBe('south');
-    expect(drive(lockedOn('east'), [{ held: true, wheel: 100 }]).lock.targetId).toBe('north');
+    expect(drive(lockedOn('east'), [{ wheel: -100 }]).lock.targetId).toBe('south');
+    expect(drive(lockedOn('east'), [{ wheel: 100 }]).lock.targetId).toBe('north');
   });
 
   it('accumulates small touchpad deltas up to the threshold before switching once', () => {
     const small = -TUNING.lockOn.wheelThreshold / 6;
-    const ticks = Array.from({ length: 8 }, () => ({ held: true, wheel: small }));
+    const ticks = Array.from({ length: 8 }, () => ({ wheel: small }));
     const { lock, events } = drive(lockedOn('east'), ticks);
     expect(lock.targetId).toBe('south');
     expect(events.filter((e) => e.type === 'lockSwitched')).toHaveLength(1);
@@ -131,7 +177,7 @@ describe('wheel switching', () => {
 
   it('drops the accumulated delta when the wheel changes direction', () => {
     const almost = -TUNING.lockOn.wheelThreshold * 0.8;
-    const { lock } = drive(lockedOn('east'), [{ held: true, wheel: almost }, { held: true, wheel: 20 }, { held: true, wheel: almost * 0.5 }]);
+    const { lock } = drive(lockedOn('east'), [{ wheel: almost }, { wheel: 20 }, { wheel: almost * 0.5 }]);
     expect(lock.targetId).toBe('east');
   });
 });
@@ -139,21 +185,21 @@ describe('wheel switching', () => {
 describe('automatic release', () => {
   it('jumps to the enemy nearest the cursor when the target dies', () => {
     const eastDead = [enemy('east', vec(500, 300), { alive: false }), SOUTH, WEST, NORTH];
-    const { lock, events } = drive(lockedOn('east'), [{ held: true }], ctx({ enemies: eastDead, cursor: vec(310, 300) }));
+    const { lock, events } = drive(lockedOn('east'), [{}], ctx({ enemies: eastDead, cursor: vec(310, 300) }));
     expect(lock.targetId).toBe('west');
     expect(events).toContainEqual({ type: 'lockSwitched', targetId: 'west' });
 
-    const nobody = drive(lockedOn('east'), [{ held: true }], ctx({ enemies: [enemy('east', vec(500, 300), { alive: false })] }));
+    const nobody = drive(lockedOn('east'), [{}], ctx({ enemies: [enemy('east', vec(500, 300), { alive: false })] }));
     expect(nobody.lock.targetId).toBeNull();
     expect(nobody.events).toContainEqual({ type: 'lockReleased', reason: 'noTarget' });
   });
 
-  it('releases when the target leaves range or the screen, and does not re-acquire while held', () => {
-    const far = drive(lockedOn('east'), [{ held: true }, { held: true }], ctx({ enemies: [enemy('east', vec(400 + TUNING.lockOn.range + 20, 300)), WEST] }));
+  it('releases when the target leaves range or the screen, and does not re-acquire on its own', () => {
+    const far = drive(lockedOn('east'), [{}, {}], ctx({ enemies: [enemy('east', vec(400 + TUNING.lockOn.range + 20, 300)), WEST] }));
     expect(far.lock.targetId).toBeNull();
     expect(far.events).toContainEqual({ type: 'lockReleased', reason: 'range' });
 
-    const hidden = drive(lockedOn('east'), [{ held: true }], ctx({ view: { x: 0, y: 0, width: 450, height: 600 } }));
+    const hidden = drive(lockedOn('east'), [{}], ctx({ view: { x: 0, y: 0, width: 450, height: 600 } }));
     expect(hidden.lock.targetId).toBeNull();
     expect(hidden.events).toContainEqual({ type: 'lockReleased', reason: 'offscreen' });
   });
@@ -164,7 +210,7 @@ describe('lock-on in the simulation', () => {
     let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER });
     state = spawnEnemy(state, 'gastly', vec(400, 275), { dormant: true }); // north, close enough to claw
     state = spawnEnemy(state, 'gastly', vec(600, 300), { dormant: true }); // east, far from the claw
-    // Point at the north enemy and press Shift.
+    // Point at the north enemy and tap Shift.
     return step(state, { ...IDLE, aim: vec(400, 270), lock: true }, FIXED_DT_MS);
   }
 
@@ -172,7 +218,7 @@ describe('lock-on in the simulation', () => {
     let state = lockedWorld();
     expect(state.lock.targetId).toBe(state.enemies[0]!.id);
     const events: GameEvent[] = [];
-    const cursorEast = { ...IDLE, aim: vec(700, 300), lock: true };
+    const cursorEast = { ...IDLE, aim: vec(700, 300) };
     state = step(state, { ...cursorEast, slots: [true, false] }, FIXED_DT_MS);
     for (let i = 0; i < 30; i++) {
       state = step(state, cursorEast, FIXED_DT_MS);
@@ -183,10 +229,25 @@ describe('lock-on in the simulation', () => {
 
   it('still rolls along WASD while locked', () => {
     const state = lockedWorld();
-    let rolled = step(state, { ...IDLE, aim: vec(400, 270), lock: true, move: vec(1, 0), roll: true }, FIXED_DT_MS);
-    for (let i = 0; i < 10; i++) rolled = step(rolled, { ...IDLE, lock: true, move: vec(1, 0) }, FIXED_DT_MS);
+    let rolled = step(state, { ...IDLE, aim: vec(400, 270), move: vec(1, 0), roll: true }, FIXED_DT_MS);
+    for (let i = 0; i < 10; i++) rolled = step(rolled, { ...IDLE, move: vec(1, 0) }, FIXED_DT_MS);
     expect(rolled.player.pos.x).toBeGreaterThan(PLAYER.x + 40);
     expect(rolled.player.pos.y).toBeCloseTo(PLAYER.y);
     expect(rolled.lock.targetId).toBe(state.enemies[0]!.id);
+  });
+
+  it('a left click on an enemy locks it and still attacks; Q never click-locks', () => {
+    let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER });
+    state = spawnEnemy(state, 'gastly', vec(400, 275), { dormant: true });
+    const clicked = step(state, { ...IDLE, aim: vec(400, 275), slots: [true, false], click: true }, FIXED_DT_MS);
+    expect(clicked.lock.targetId).toBe(clicked.enemies[0]!.id);
+    expect(clicked.player.action?.moveId).toBe('shadow-claw');
+
+    const withQ = step(state, { ...IDLE, aim: vec(400, 275), slots: [true, false] }, FIXED_DT_MS);
+    expect(withQ.lock.targetId).toBeNull();
+
+    const optedOut = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER, clickToLock: false });
+    const ignored = step(spawnEnemy(optedOut, 'gastly', vec(400, 275), { dormant: true }), { ...IDLE, aim: vec(400, 275), slots: [true, false], click: true }, FIXED_DT_MS);
+    expect(ignored.lock.targetId).toBeNull();
   });
 });

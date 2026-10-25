@@ -86,7 +86,8 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 | Clic izquierdo (o Q) | Ataque ligero: rápido, se recupera enseguida y castiga huecos pequeños (Placaje, Arañazo) |
 | Clic derecho (o E) | Movimiento fuerte de su tipo: arranque lento, gasta estamina y si lo mantienes carga (Ascuas, Pistola Agua) |
 | Ratón | Apuntar (por defecto) |
-| Mantener Shift | Fijar objetivo (en ajustes, opción de pulsar una vez para fijar y otra para soltar) |
+| Shift o clic central | Fijar objetivo: una pulsación fija y otra lo suelta (mantener Shift resultó incómodo en la primera prueba) |
+| Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |
 
 Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al derecho, esquiva al Espacio), así que le resulta natural a cualquiera que haya jugado algo parecido. Todas las teclas se pueden cambiar.
@@ -110,11 +111,11 @@ Si ruedas a través de un golpe en el último instante, el tiempo se ralentiza m
 | Libre (por defecto) | Q y E salen hacia el cursor |
 | Fijar | Fija al enemigo más cercano al cursor (no al más cercano a ti), así fijas a quien estás mirando |
 | Cambiar de objetivo (rueda) | Rueda arriba: el siguiente enemigo en sentido horario alrededor de ti, contando desde el fijado; rueda abajo: el siguiente en sentido antihorario. Solo cuentan los enemigos en pantalla y a alcance |
-| Cambiar de objetivo (apuntando) | Sueltas Shift, pones el cursor sobre otro enemigo y vuelves a mantener Shift |
+| Cambiar de objetivo (apuntando) | Haces clic izquierdo sobre otro enemigo (como en LoL); el enemigo bajo el cursor se marca con un aro tenue. Un clic en el suelo no cambia nada. También vale soltar con Shift y volver a fijar apuntando a otro |
 | Con objetivo fijado | Los ataques van al objetivo y la rueda sigue las WASD, así que puedes rodear al jefe sin perderlo |
 | Se suelta solo | Si el objetivo muere, salta al siguiente más cercano al cursor; si se aleja demasiado o sale de pantalla, se suelta |
 
-Mover el ratón con un objetivo fijado no cambia de objetivo. En Elden Ring con ratón hay quejas justo por eso (cambios de objetivo sin querer), así que el cambio solo ocurre con un gesto explícito: la rueda o volver a fijar. Dos detalles para la rueda: el orden es por ángulo alrededor del jugador (así arriba y abajo son predecibles) y los eventos se acumulan hasta un umbral, porque un touchpad dispara muchos eventos pequeños y, si no, salta varios enemigos de golpe.
+Mover el ratón con un objetivo fijado no cambia de objetivo. En Elden Ring con ratón hay quejas justo por eso (cambios de objetivo sin querer), así que el cambio solo ocurre con un gesto explícito: la rueda, un clic sobre un enemigo o volver a fijar. Dos detalles para la rueda: el orden es por ángulo alrededor del jugador (así arriba y abajo son predecibles) y los eventos se acumulan hasta un umbral, porque un touchpad dispara muchos eventos pequeños y, si no, salta varios enemigos de golpe.
 
 ### Que se sienta bien
 

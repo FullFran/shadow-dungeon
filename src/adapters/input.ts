@@ -5,13 +5,14 @@ import { screenToWorld } from './view';
 /**
  * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
  * WASD move, Space roll, LMB or Q fast slot, RMB or E heavy slot (hold to
- * charge), Shift lock-on, wheel switches target. The DOM part only records
- * raw state; `toPlayerInput` is the pure mapping.
+ * charge), Shift or middle mouse toggle lock-on, LMB on an enemy locks it
+ * (click-to-lock, Q never does), wheel switches target. The DOM part only
+ * records raw state; `toPlayerInput` is the pure mapping.
  */
 export interface RawInput {
   /** `KeyboardEvent.code`s currently held. */
   keys: ReadonlySet<string>;
-  /** `MouseEvent.button`s currently held (0 left, 2 right). */
+  /** `MouseEvent.button`s currently held (0 left, 1 middle, 2 right). */
   buttons: ReadonlySet<number>;
   /** Cursor in canvas pixels. */
   mouse: Vec2;
@@ -31,7 +32,8 @@ export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number): Pl
     aim: screenToWorld(raw.mouse, view, pixelScale),
     roll: raw.rollPressed,
     slots: [buttons.has(0) || keys.has('KeyQ'), buttons.has(2) || keys.has('KeyE')],
-    lock: keys.has('ShiftLeft') || keys.has('ShiftRight'),
+    lock: keys.has('ShiftLeft') || keys.has('ShiftRight') || buttons.has(1),
+    click: buttons.has(0),
     wheel: raw.wheel,
     view,
   };
@@ -76,6 +78,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   const onMouseDown = (e: MouseEvent) => {
     onMouseMove(e);
     buttons.add(e.button);
+    // Also stops middle-button autoscroll.
     e.preventDefault();
   };
   const onMouseUp = (e: MouseEvent) => buttons.delete(e.button);
@@ -84,6 +87,8 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
     wheel += wheelPixels(e.deltaY, e.deltaMode, window.innerHeight);
   };
   const onContextMenu = (e: Event) => e.preventDefault();
+  // Middle click would otherwise open links or paste on some platforms.
+  const onAuxClick = (e: MouseEvent) => e.preventDefault();
   const onBlur = () => {
     keys.clear();
     buttons.clear();
@@ -96,6 +101,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   window.addEventListener('mouseup', onMouseUp);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('contextmenu', onContextMenu);
+  canvas.addEventListener('auxclick', onAuxClick);
   window.addEventListener('blur', onBlur);
 
   return {
@@ -113,6 +119,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('contextmenu', onContextMenu);
+      canvas.removeEventListener('auxclick', onAuxClick);
       window.removeEventListener('blur', onBlur);
     },
   };

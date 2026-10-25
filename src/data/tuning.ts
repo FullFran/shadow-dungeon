@@ -61,5 +61,7 @@ export const TUNING = {
     range: 340,
     /** Accumulated |wheel deltaY| needed to switch target once (one mouse notch is ~100). */
     wheelThreshold: 90,
+    /** Slack around an enemy's body radius for click-to-lock and the hover marker. */
+    clickMargin: 6,
   },
 } as const;

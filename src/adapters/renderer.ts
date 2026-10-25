@@ -28,6 +28,8 @@ export interface RenderFrame {
   /** Real time at which each enemy was defeated. */
   defeatedAt: ReadonlyMap<string, number>;
   moving: boolean;
+  /** Enemy under the cursor that a click would lock (click-to-lock on, not the current target). */
+  hoverId: string | null;
 }
 
 const COLORS = {
@@ -44,6 +46,7 @@ const COLORS = {
   transform: 'rgba(200, 160, 255, 0.8)',
   shadow: 'rgba(0, 0, 0, 0.35)',
   lock: '#ff6b9a',
+  hover: 'rgba(255, 107, 154, 0.45)',
   slowMo: 'rgba(110, 80, 200, 0.18)',
   exitClosed: '#3a3350',
   exitOpen: 'rgba(170, 120, 255, 0.55)',
@@ -254,6 +257,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
+  /** Faint dashed ring under the hovered enemy: what a click would lock. */
+  function hoverMarker(pos: Vec2, radius: number): void {
+    ctx.strokeStyle = COLORS.hover;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, radius + 4, (radius + 4) * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   function chargeRing(state: WorldState, pos: Vec2): void {
     const action = state.player.action;
     if (!action || action.phase !== 'charging') return;
@@ -333,6 +347,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const p of current.projectiles) drawables.push(projectile(p, posOf(p.id, p.pos), timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
 
+    const hovered = current.enemies.find((e) => e.id === frame.hoverId && e.alive);
+    if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
     numbers(juice.numbers);

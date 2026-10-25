@@ -16,7 +16,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const events: GameEvent[] = [];
   const player = updatePlayer(state.player, input, dtMs, state.arena, events);
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
-  const lock = updateLock(state.lock, { held: input.lock, wheel: input.wheel }, lockContext, events);
+  const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
   const fought = updateEnemies(updateCombat({ ...state, player, lock }, input, dtMs, events), dtMs, events);
   return {
     ...fought,

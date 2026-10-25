@@ -1,6 +1,5 @@
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
-import type { LockMode } from '../core/state';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, LANGUAGES, setLanguage, t, type Language } from '../i18n';
@@ -8,7 +7,7 @@ import { startGame, type GameResult, type RunningGame } from './game';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
 
 /**
- * Page flow: pre-run menu (loadout, language, lock mode) -> sandbox room ->
+ * Page flow: pre-run menu (loadout, language, click-to-lock) -> sandbox room ->
  * boss room -> defeat or victory screen. Settings persist through the
  * storage port; the fan-project notice is always on screen.
  */
@@ -78,18 +77,15 @@ function menu(root: HTMLElement): void {
     return el('label', {}, [`${t(`slot.${kind}`)} `, select]);
   });
 
-  const lock = el(
-    'select',
-    {},
-    (['hold', 'toggle'] as const).map((mode) => el('option', { value: mode, textContent: t(`lockMode.${mode}`) })),
-  );
-  lock.value = settings.lockMode;
-  lock.addEventListener('change', () => update({ lockMode: lock.value as LockMode }));
+  const clickToLock = el('input', { type: 'checkbox' });
+  clickToLock.checked = settings.clickToLock;
+  clickToLock.addEventListener('change', () => update({ clickToLock: clickToLock.checked }));
+  const lock = el('label', {}, [clickToLock, ` ${t('menu.clickToLock')}`]);
 
   const start = el('button', { type: 'button', className: 'primary', textContent: t('menu.start') });
   start.addEventListener('click', () => play(root));
 
-  const controls = ['move', 'roll', 'fast', 'heavy', 'lock'].map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
+  const controls = ['move', 'roll', 'fast', 'heavy', 'lock', 'clickLock'].map((key) => el('li', { textContent: t(`menu.controls.${key}`) }));
 
   show(
     root,
@@ -99,7 +95,7 @@ function menu(root: HTMLElement): void {
       languages,
       el('h2', { textContent: t('menu.loadout') }),
       el('div', { className: 'row' }, slots),
-      el('h2', { textContent: t('menu.lockMode') }),
+      el('h2', { textContent: t('menu.lockOn') }),
       el('div', { className: 'row' }, [lock]),
       el('h2', { textContent: t('menu.controls') }),
       el('ul', {}, controls),
@@ -136,7 +132,7 @@ async function play(root: HTMLElement): Promise<void> {
   root.querySelector('.notice')?.classList.add('in-game');
   running = startGame(canvas, sheets, {
     loadout: settings.loadout,
-    lockMode: settings.lockMode,
+    clickToLock: settings.clickToLock,
     seed: Date.now() | 0,
     onEnd: (result) => resultScreen(root, result),
   });

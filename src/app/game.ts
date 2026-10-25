@@ -1,7 +1,8 @@
 import type { MoveId } from '../data/moves';
 import { ROOMS, type RoomId } from '../data/rooms';
 import { atExit, loadRoom, roomCleared } from '../core/rooms';
-import type { LockMode, WorldState } from '../core/state';
+import { enemyUnderCursor } from '../core/lockon';
+import type { PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { advanceClock, FIXED_DT_MS } from '../core/timestep';
 import { length, vec } from '../core/vec';
@@ -22,7 +23,7 @@ export type GameResult = 'defeat' | 'victory';
 
 export interface GameOptions {
   loadout: readonly (MoveId | null)[];
-  lockMode: LockMode;
+  clickToLock: boolean;
   seed?: number;
   onEnd(result: GameResult): void;
 }
@@ -44,7 +45,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     arena: { width: 1, height: 1 },
     playerPos: vec(0, 0),
     loadout: options.loadout,
-    lockMode: options.lockMode,
+    clickToLock: options.clickToLock,
   });
   let world: WorldState = loadRoom(base, roomId);
   let prev = world;
@@ -55,6 +56,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let lastHurtAt = Number.NEGATIVE_INFINITY;
   const defeatedAt = new Map<string, number>();
   let moving = false;
+  let lastInput: PlayerInput | null = null;
   let pixelScale = 1;
   let ended = false;
   let raf = 0;
@@ -83,6 +85,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const view = cameraView(world.player.pos, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
       const playerInput = toPlayerInput(input.take(), view, pixelScale);
       moving = length(playerInput.move) > 0;
+      lastInput = playerInput;
       prev = world;
       world = step(world, playerInput, FIXED_DT_MS);
       juice = applyEvents(juice, world.events, world.player.pos);
@@ -118,6 +121,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     const focus = lerpVec(prev.player.pos, world.player.pos, alpha);
     const exit = ROOMS[roomId].exit;
+    // Click-to-lock hover: the enemy a click would lock (same rule as the core).
+    const hovered =
+      options.clickToLock && lastInput
+        ? enemyUnderCursor({ playerPos: world.player.pos, cursor: lastInput.aim, view: lastInput.view, enemies: world.enemies })
+        : null;
     renderer.draw({
       prev,
       current: world,
@@ -131,6 +139,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       sinceHurtMs: realMs - lastHurtAt,
       defeatedAt,
       moving,
+      hoverId: hovered && hovered.id !== world.lock.targetId ? hovered.id : null,
     });
     raf = requestAnimationFrame(frame);
   }

@@ -13,8 +13,10 @@ export interface PlayerInput {
   roll: boolean;
   /** Level: whether each move slot's button is held, aligned with the loadout. Edges are derived in the core. */
   slots: readonly boolean[];
-  /** Level: lock-on key (Shift) held. In toggle mode only its press edge matters. */
+  /** Level: lock-on input (Shift or middle mouse) held. Only its press edge matters: each press toggles the lock. */
   lock: boolean;
+  /** Level: fast-slot mouse button (left click) held. Its press edge drives click-to-lock; Q does not set it. */
+  click: boolean;
   /** Wheel deltaY accumulated since the last tick, DOM convention: negative = wheel up. */
   wheel: number;
   /** Visible world rectangle (camera view); lock-on only considers enemies inside it. */
@@ -28,15 +30,16 @@ export interface Rect {
   height: number;
 }
 
-export type LockMode = 'hold' | 'toggle';
-
 export interface LockState {
-  mode: LockMode;
+  /** Setting: a left click on an enemy locks onto it (acquire or switch). */
+  clickToLock: boolean;
   targetId: string | null;
   /** Wheel delta accumulated towards the switch threshold (touchpad-friendly). */
   wheelAccum: number;
   /** Lock key state on the previous tick, to detect press edges. */
   keyHeld: boolean;
+  /** Left click state on the previous tick, to detect press edges. */
+  clickHeld: boolean;
 }
 
 export interface RollState {

@@ -10,6 +10,7 @@ export const IDLE: PlayerInput = {
   roll: false,
   slots: [false, false],
   lock: false,
+  click: false,
   wheel: 0,
   view: { x: 0, y: 0, width: 800, height: 600 },
 };
