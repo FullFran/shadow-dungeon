@@ -61,8 +61,8 @@ export const heraldHpScale = (count: number): number => 0.8 + 0.12 * count;
 /** Cards by depth: 3 until floor 40, 4 until 70, then 5 (nightmare one more), at most 5. */
 export const heraldCardCount = (depth: number, tier: Difficulty): number => Math.min(5, (depth < 40 ? 3 : depth < 70 ? 4 : 5) + TIER_KNOBS[tier].extraCards);
 
-/** The arena's cells the herald may attack from (upper band, clear of the pillars). */
-const ANCHOR_SLOTS: readonly Vec2[] = [vec(320, 100), vec(190, 110), vec(450, 110), vec(120, 130), vec(520, 130), vec(260, 140), vec(380, 140)];
+/** Where the herald may attack from: the upper band, clear of the pillars, away from the corners the HUD covers (the status panel, the minimap). */
+const ANCHOR_SLOTS: readonly Vec2[] = [vec(320, 130), vec(220, 140), vec(420, 140), vec(175, 165), vec(465, 165), vec(270, 170), vec(370, 170)];
 
 export function originsOf(def: Pick<HeraldDef, 'anchors'>, move: HeraldMove): Vec2[] {
   const all = def.anchors.map((a) => vec(a.x, a.y));

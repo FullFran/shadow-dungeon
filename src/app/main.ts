@@ -1,3 +1,8 @@
+import { devHeraldFloor } from '../core/herald/floor';
+import { hasMet } from '../town/bestiary';
+import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
+import { drawHeraldScene } from '../adapters/herald-scenes';
+import type { HeraldDef } from '../data/herald';
 import { recordHerald } from '../town/bestiary';
 import { simaEventLines } from './sima-summary';
 import type { ItemId } from '../data/items';
@@ -7,7 +12,7 @@ import { PROLOGUE_MUSIC } from '../data/prologue-music';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
-import { detectLanguage, setLanguage, t, type Language } from '../i18n';
+import { detectLanguage, getLanguage, setLanguage, t, type Language } from '../i18n';
 import { BroadcastChannelTransport } from '../net/broadcast';
 import { autoJoin } from '../net/election';
 import { LagTransport, parseLagParams } from '../net/lag';
@@ -119,6 +124,19 @@ function devSpawns(): SpeciesId[] | undefined {
   if (!import.meta.env.DEV) return undefined;
   const species = parseSpawnList(new URLSearchParams(window.location.search).get('spawn'));
   return species.length > 0 ? species : undefined;
+}
+
+/**
+ * Development server only: `?boss=<seed>` fights herald `<seed>` straight
+ * away on a Sima herald floor (`&floor=32`: that depth, rounded to a herald
+ * floor; default 22), at the tier picked on the loadout.
+ */
+function devBoss(): { seed: number; floor: number } | undefined {
+  if (!import.meta.env.DEV) return undefined;
+  const params = new URLSearchParams(window.location.search);
+  const seed = Number.parseInt(params.get('boss') ?? '', 10);
+  if (!Number.isFinite(seed)) return undefined;
+  return { seed: seed >>> 0, floor: devHeraldFloor(Number.parseInt(params.get('floor') ?? '', 10)) };
 }
 
 /** Development server only: `?dungeon=<id>` runs that dungeon without the select (to look at it without unlocking it). */
@@ -369,6 +387,44 @@ function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; pha
   screen.style.zIndex = '6';
   root.append(screen);
   return () => screen.remove();
+}
+
+/**
+ * A herald's intro over the running game (solo): in full the first time this
+ * device meets its seed (the bestiary), then the 2 s title card
+ * (ui/herald-intro.ts); skippable like the guardian cinematics. The herald
+ * is remembered either way. Its title card is drawn in its type's colour.
+ */
+function heraldCinematic(root: HTMLElement, def: HeraldDef, onDone: () => void): (() => void) | null {
+  const mode = heraldIntroMode({ seen: hasMet(store, def.seed), shared: false });
+  recordHerald(store, { seed: def.seed, name: def.name });
+  if (mode === 'card') return null;
+  const intro = composeHeraldIntro(def, mode, getLanguage());
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    panels: intro.panels,
+    draw: (ctx, panel, time, camera, alpha) => drawHeraldScene(ctx, def, intro, panel, time, camera, alpha),
+    label: def.name,
+    music: { start: (offsetS) => audio.playCue(intro.music, offsetS), stop: () => audio.stopCue() },
+    styleLines: (panel, lines) => styleHeraldLines(panel.scene === 'title', def, lines),
+    onDone: () => {
+      screen.remove();
+      onDone();
+    },
+  });
+  screen.style.zIndex = '6';
+  root.append(screen);
+  return () => screen.remove();
+}
+
+/** The herald title card's lines: the name large and in its colour, the epithet, the epigraph quieter. */
+function styleHeraldLines(title: boolean, def: HeraldDef, lines: readonly HTMLElement[]): void {
+  const [name, epithet, epigraph] = lines;
+  for (const p of lines) p.removeAttribute('style');
+  if (!title || !name || !epithet || !epigraph) return;
+  name.style.cssText = `font-size: 2.1em; letter-spacing: 0.12em; color: ${def.theme.colour}; text-shadow: 0 0 12px ${def.theme.glow}, 0 2px 0 #000, 0 0 22px #000`;
+  epithet.style.cssText = `color: ${def.theme.colour}; opacity: 0.9`;
+  epigraph.style.cssText = 'font-style: italic; opacity: 0.75; font-size: 0.85em';
 }
 
 /** The personality quiz over a black screen; its starter becomes the `species` setting. */
@@ -738,7 +794,10 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: settings.difficulty };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: settings.difficulty };
+  // `?boss=<seed>`: that herald on a Sima herald floor.
+  const boss = devBoss();
+  if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
   if (!join && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
@@ -770,6 +829,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     onQuit: () => townScreen(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
+    playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
@@ -842,6 +902,12 @@ function devScreen(root: HTMLElement): boolean {
     // Waits for the sprites so a screenshot shows the silhouettes.
     prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };
+  // `?boss=<seed>`: straight into that herald's fight.
+  if (devBoss()) {
+    applyLanguage(settings.language);
+    void play(root, undefined, 'eclipse-chasm');
+    return true;
+  }
   const open = screen ? screens[screen] : undefined;
   if (!open) return false;
   applyLanguage(settings.language);

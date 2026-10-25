@@ -1,3 +1,4 @@
+import { ENDLESS } from '../../data/endless';
 import { deriveSeed } from '../rng';
 import { worldDifficulty } from '../difficulty';
 import type { WorldState } from '../state';
@@ -18,6 +19,13 @@ const HERALD_SALT = 0x4e8a1d;
 /** The herald seed of a run's floor. */
 export const heraldSeed = (runSeed: number, floor: number): number => deriveSeed(runSeed, HERALD_SALT + floor) >>> 1;
 
+/** The herald floor at or after `floor` (22 for anything shallower or unreadable): the dev route's depth. */
+export function devHeraldFloor(floor: number): number {
+  const h = ENDLESS.heralds!;
+  const f = Number.isFinite(floor) ? Math.max(h.from, Math.floor(floor)) : h.from;
+  return f + ((h.offset - (f % h.every) + h.every) % h.every);
+}
+
 /** Turns the room's `sima-herald` into herald `seed` at `depth`. */
 export function withHerald(world: WorldState, seed: number, depth: number): WorldState {
   const types = SPECIES[heraldWear(seed).source].types;
@@ -26,7 +34,9 @@ export function withHerald(world: WorldState, seed: number, depth: number): Worl
     ...world,
     enemies: world.enemies.map((e) => {
       if (e.species !== 'sima-herald') return e;
-      const maxHp = Math.round(e.maxHp * scale);
+      // Already a herald (the dev route swaps it): back to the base herald's HP first.
+      const base = e.herald ? e.maxHp / heraldHpScale(heraldCardCount(e.herald.depth, worldDifficulty(world))) : e.maxHp;
+      const maxHp = Math.round(base * scale);
       return { ...e, herald: { seed, depth }, types, maxHp, hp: maxHp };
     }),
   };

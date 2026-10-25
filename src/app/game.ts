@@ -1,3 +1,5 @@
+import { withHerald } from '../core/herald/floor';
+import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
 import { heraldCardName, heraldHere, heraldIntro, newCaptureJudge, watchCapture } from './herald-run';
 import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
@@ -107,6 +109,8 @@ export interface GameOptions {
   startClockMs?: number;
   /** Development only, solo: replace the first floor with the test arena and these enemies (`?spawn=` on the dev server). */
   testSpawns?: readonly SpeciesId[];
+  /** Development (`?boss=<seed>`): the start floor's herald is this seed's. */
+  heraldSeed?: number;
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
@@ -126,6 +130,12 @@ export interface GameOptions {
   playCinematic?(request: { species: SpeciesId; phase: CinematicPhase }, onDone: () => void): (() => void) | null;
   /** A herald was met on this floor (the local bestiary, town/bestiary.ts). */
   onHeraldMet?(seed: number, name: string): void;
+  /**
+   * Solo only: a herald's intro cutscene over the game (ui/herald-intro.ts),
+   * or null when nothing plays; the run stands still meanwhile. Shared runs
+   * get the name card on the canvas instead and never pause.
+   */
+  playHeraldIntro?(def: HeraldDef, onDone: () => void): (() => void) | null;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
@@ -208,6 +218,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   );
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
+  if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
   // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
   const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
   if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };
@@ -334,10 +345,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const herald = heraldHere(world);
     if (herald) {
       // A herald: its own name, epithet and epigraph (core/herald); remembered on this device.
-      intro = { ...heraldIntro(herald.def), shownAtMs: realMs };
+      // Solo plays its intro cutscene instead (heraldMoment); a shared run shows the name card over the running game.
+      intro = net || !options.playHeraldIntro ? { ...heraldIntro(herald.def), shownAtMs: realMs } : null;
       card = null;
       heraldJudge = newCaptureJudge();
-      options.onHeraldMet?.(herald.def.seed, herald.def.name);
+      if (net || !options.playHeraldIntro) options.onHeraldMet?.(herald.def.seed, herald.def.name);
     } else if (echo) {
       // The echo's name card replaces the floor card (they would overlap).
       // The Sima's own boss has its own line under its name.
@@ -627,6 +639,26 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
+  /** Before a herald fight, solo: its intro cutscene (the run stands still, input cut off until it ends). `then` runs once it is over. */
+  function heraldMoment(then: () => void): void {
+    const herald = heraldHere(world);
+    if (!herald || net || !options.playHeraldIntro) return then();
+    input.setSuspended(true);
+    audio?.setDucked(true);
+    closeCinematic = options.playHeraldIntro(herald.def, () => {
+      closeCinematic = null;
+      audio?.setDucked(false);
+      if (!closeMenu && !closePick) input.setSuspended(false);
+      lastFrame = performance.now();
+      then();
+    });
+    if (!closeCinematic) {
+      audio?.setDucked(false);
+      input.setSuspended(false);
+      then();
+    }
+  }
+
   function end(result: GameResult): void {
     if (ended) return;
     ended = true;
@@ -673,8 +705,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     music();
     announceFloor(true);
-    // The guardian's floor opens with its cinematic; the held item pick waits for it.
-    guardianMoment('pre', offerPick);
+    // The guardian's floor opens with its cinematic (a herald's with its intro); the held item pick waits for it.
+    guardianMoment('pre', () => heraldMoment(offerPick));
   }
 
   function simulate(frameMs: number): void {
@@ -848,7 +880,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   lastEvent = world.simaEvent;
   announceFloor(false);
   // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
-  guardianMoment('pre', offerPick);
+  guardianMoment('pre', () => heraldMoment(offerPick));
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cardHpFloor } from '../../src/core/cards';
 import { dailySeed } from '../../src/core/endless';
 import { heraldCard, heraldContact, heraldOf } from '../../src/core/herald/brain';
-import { heraldSeed } from '../../src/core/herald/floor';
+import { devHeraldFloor, heraldSeed, withHerald } from '../../src/core/herald/floor';
 import { generateBoss, heraldDef } from '../../src/core/herald/generate';
 import { followToFloor, startRun } from '../../src/core/run';
 import type { GameEvent, WorldState } from '../../src/core/state';
@@ -157,5 +157,15 @@ describe('herald co-op', () => {
     const guest = followToFloor(host.run, { ...host.world, role: 'guest', localId: 'p2' }, 22);
     expect(herald(guest.world).herald).toEqual({ seed: heraldSeed(77, 22), depth: 22 });
     expect(heraldDef(heraldSeed(77, 22), 22, 'easy').name).toBe(heraldOf(guest.world, herald(guest.world))!.name);
+  });
+});
+
+describe('herald dev route helpers', () => {
+  it('rounds any depth to a herald floor (22 at least) and swaps a floor\'s herald without compounding its HP', () => {
+    expect([Number.NaN, 1, 22, 23, 32, 39, 41].map(devHeraldFloor)).toEqual([22, 22, 22, 32, 32, 42, 42]);
+    const w = startRun(3, {}, 22, ECL).world;
+    const swapped = withHerald(withHerald(w, 999, 22), 999, 22);
+    expect(herald(swapped).herald).toEqual({ seed: 999, depth: 22 });
+    expect(herald(swapped).maxHp).toBe(herald(withHerald(w, 999, 22)).maxHp);
   });
 });

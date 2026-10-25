@@ -77,7 +77,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     height: HERALD_ARENA.height,
     obstacles: HERALD_ARENA.obstacles,
     playerStart: { x: 320, y: 350 },
-    spawns: [{ species: 'sima-herald', x: 320, y: 100 }],
+    spawns: [{ species: 'sima-herald', x: 320, y: 130 }],
     exit: null,
     next: null,
   },

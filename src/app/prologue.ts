@@ -34,6 +34,8 @@ export interface PrologueOptions {
   draw?(ctx: CanvasRenderingContext2D, panel: CinematicPanel, time: SceneTime, camera: Shot, alpha: number): void;
   /** Accessible name of the screen (default: the Prologue title entry). */
   label?: string;
+  /** Styles the narration lines when a panel starts (a herald's title card: its name big, in its colour). */
+  styleLines?(panel: CinematicPanel, lines: readonly HTMLElement[]): void;
 }
 
 /** Largest whole-number scale at which the stage fits the window. */
@@ -45,7 +47,8 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const canvas = h('canvas', { className: 'prologue-canvas' });
   canvas.width = STAGE.w;
   canvas.height = STAGE.h;
-  const lines = [h('p'), h('p')];
+  // Two lines of narration, or as many as the longest panel needs (a herald's title card has three).
+  const lines = Array.from({ length: Math.max(2, ...(options.panels ?? []).map((p) => p.lines.length)) }, () => h('p'));
   const text = h('div', { className: 'prologue-text' }, lines);
   text.setAttribute('aria-live', 'polite');
   const stage = h('div', { className: 'prologue-stage' }, [canvas, text]);
@@ -111,6 +114,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     if (index !== shownPanel) {
       shownPanel = index;
       text.classList.toggle('is-voice', panel.scene === 'voice');
+      options.styleLines?.(panel, lines);
     }
     if (key !== shownText) {
       shownText = key;
