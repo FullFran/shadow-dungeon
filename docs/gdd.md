@@ -318,6 +318,8 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 
 - De 1 a 4 jugadores en todo el juego, cada uno desde su navegador.
 - Se entra igual que en PokéSurvivor (sala con código). Gran parte de su interfaz de menús y salas se puede aprovechar. Su código está bajo PolyForm Noncommercial 1.0.0 (antes de su commit `b297089`, MIT): se puede reutilizar sin ánimo de lucro manteniendo su aviso de licencia, y por cortesía conviene escribirle al autor.
+- La sala es el pueblo: al crearla o entrar, todos aparecen andando juntos por el mundo (§3, «El mundo»), cada uno con su apodo encima de la cabeza; en una esquina, el código de la sala (oculto si se ha pedido para el directo) y quién está. Solo el anfitrión lleva al grupo a una mazmorra, entrando por su boca o desde el poste del camino; al acabar la partida, «Volver al pueblo» devuelve a toda la sala al pueblo para la siguiente.
+- Apodo: se elige en Ajustes o en la pantalla de jugar en línea; sin apodo se usa «Jugador-XYZ». Como mucho 16 caracteres, sin caracteres de control ni invisibles. Sale sobre cada jugador en el pueblo y en la mazmorra y en la pantalla final.
 - La dificultad la elige el anfitrión para todo el grupo.
 - Botín y reclutas: un premio por jugador, para que nadie del chat sienta que ha ido de relleno.
 

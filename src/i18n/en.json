@@ -481,5 +481,14 @@
   "world.lore.idol.name": "Lake idol",
   "world.lore.idol.1": "A moss-covered frog idol. The lake folk leave it offerings so the water stays still.",
   "world.lore.idol.2": "There is a new offering: a broken sword, its hilt turned towards the lake.",
-  "world.lore.idol.3": "For an instant, the water by the idol mirrors a sun that no longer exists."
+  "world.lore.idol.3": "For an instant, the water by the idol mirrors a sun that no longer exists.",
+  "nickname.default": "Player",
+  "nickname.placeholder": "Your nickname",
+  "settings.nickname": "Nickname",
+  "lobby.backToTown": "Back to town",
+  "lobby.hostOnly": "Only the room's host can lead the group into a dungeon.",
+  "lobby.townHint": "Esc: room menu",
+  "lobby.resume": "Stay in town",
+  "world.enter.party": "Enter {name}? (the whole group)",
+  "screen.party": "Party"
 }

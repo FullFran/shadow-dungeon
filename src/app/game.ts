@@ -39,6 +39,8 @@ import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
+import { displayName } from '../net/nickname';
+import type { RosterEntry } from '../net/protocol';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
@@ -92,7 +94,7 @@ export interface GameOptions {
    */
   playCinematic?(request: { species: SpeciesId; phase: CinematicPhase }, onDone: () => void): (() => void) | null;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
-  net?: { session: NetSession; role: 'host' | 'guest'; localId: string };
+  net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
   touch?: { autoAim(): boolean; haptics(): boolean };
 }
@@ -118,6 +120,11 @@ export interface RunningGame {
  * off and the game pauses until one is picked; a shared run keeps running
  * and only clicks on the cards or 1/2/3 pick.
  */
+/** Player id -> nickname (or the "Jugador-XYZ" fallback) for the tags over remote players. */
+export function rosterNames(roster: readonly RosterEntry[]): Map<string, string> {
+  return new Map(roster.map((r) => [r.id, displayName(r.name, t('nickname.default'), r.peer)]));
+}
+
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const keyboard = attachInput(canvas);
   /** On-screen controls (hidden by CSS unless html.touch); Pause stands in for Esc. */
@@ -508,6 +515,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       nowPlaying,
       spell,
       touchUi: isTouchUi(),
+      ...(net ? { names: rosterNames(net.session.roster()) } : {}),
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);
@@ -537,7 +545,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       cancelAnimationFrame(raf);
       input.dispose();
       releaseWakeLock();
-      net?.session.leave();
+      // A room's session outlives its run: the room goes back to the town together.
+      if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
       window.removeEventListener('keydown', onKeyDown);
     },

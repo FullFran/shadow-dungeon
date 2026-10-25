@@ -5,7 +5,8 @@ import { applyBerryClaims, berryGranted, type BerryClaim } from '../core/berries
 import { applyHitClaims, applyHostSnapshot, applyRemotePlayers, hostSnapshot, playerSnapshot, removeRemote, type HostSnapshot, type PlayerSnapshot } from '../core/sync';
 import { applyHolds, holdClaimedHits, type HpHold } from './hold';
 import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from './interpolation';
-import { decodeMessage, encodeMessage, type NetMessage, type RosterEntry } from './protocol';
+import { decodeMessage, encodeMessage, type NetMessage, type RosterEntry, type TownPresence } from './protocol';
+import { sanitizeNickname } from './nickname';
 import { createStatsTracker, type StatsSummary } from './stats';
 import type { Scheduler, Transport } from './transport';
 
@@ -23,7 +24,23 @@ import type { Scheduler, Transport } from './transport';
  * that knocked before the host was there knocks again when a peer joins or
  * when a roster without it arrives. Every peer pings the others about once a
  * second (reliable) for the round trip shown in the F3 overlay.
+ *
+ * Town lobby: while the room walks the town, every peer sends where its
+ * walker is (`sendPresence`, ~10 Hz) and draws the others from
+ * `townWalkers` (interpolated like remote players). Only the host can lead
+ * the room into a dungeon (`canLead`, `begin`); after a shared run the
+ * host's `reopenLobby` brings everyone back to the town for another round
+ * in the same room (guests hear it through `onLobby`).
  */
+
+/** Another peer's walker in the town, at the render time. */
+export interface TownWalker extends TownPresence {
+  peer: string;
+  /** Player id ("p2"…), species and nickname from the roster. */
+  id: string;
+  species: SpeciesId;
+  name?: string;
+}
 export interface SessionOptions {
   transport: Transport<string>;
   scheduler: Pick<Scheduler, 'now'>;
@@ -56,13 +73,24 @@ export interface NetSession {
   peerId(): string;
   roster(): readonly RosterEntry[];
   /** This tab runs the run: player p1. */
-  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string }): void;
+  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string; name?: string }): void;
   /** Host: true while waiting in the lobby for `begin`. */
   inLobby(): boolean;
   /** Host: leaves the lobby and starts every admitted player with this seed (and `dungeon`, if given). */
   begin(dungeon?: string): void;
   /** Asks the session's host to let this player in; `onStart` fires when it answers. */
-  join(species: SpeciesId, loadout: readonly (MoveId | null)[]): void;
+  join(species: SpeciesId, loadout: readonly (MoveId | null)[], name?: string): void;
+  /** Host in the lobby: it may lead the room into a dungeon (guests never can). */
+  canLead(): boolean;
+  /** Host, after a shared run: back to the town lobby with a new seed; guests are told (`onLobby`). */
+  reopenLobby(seed: number): void;
+  /** Guest: the host brought the room back to the town lobby after a run. */
+  onLobby(handler: () => void): void;
+  /** Where this peer's walker is in the town (unreliable; the caller sends it ~10 Hz). */
+  sendPresence(presence: TownPresence): void;
+  /** The other peers' walkers in the town, interpolated `townDelayMs` in the past. */
+  townWalkers(): TownWalker[];
+  townDelayMs(): number;
   onStart(handler: (start: StartInfo) => void): void;
   /** The roster changed (someone was admitted or left). */
   onRoster(handler: (roster: readonly RosterEntry[]) => void): void;
@@ -87,6 +115,8 @@ export interface NetSession {
 }
 
 const MAX_PLAYERS = 4;
+/** Town presence comes at ~10 Hz: draw walkers a bit further in the past than run players. */
+const TOWN_DELAY_MS = 150;
 const PING_EVERY_TICKS = 60;
 const SNAP_DISTANCE = 64;
 
@@ -105,6 +135,12 @@ function mixPlayer(a: PlayerSnapshot, b: PlayerSnapshot, t: number): PlayerSnaps
       return pa && pb ? { ...p, pos: lerpPos(pa, pb, t, SNAP_DISTANCE) } : p;
     }),
   };
+}
+
+/** Walkers slide between presences on one map and jump when the map changes (or the gap is a teleport). */
+function mixPresence(a: TownPresence, b: TownPresence, t: number): TownPresence {
+  if (a.map !== b.map) return t < 1 ? a : b;
+  return { ...pick(a, b, t), pos: lerpPos(a.pos, b.pos, Math.min(1, t), SNAP_DISTANCE * 2) };
 }
 
 function mixSnapshot(a: HostSnapshot, b: HostSnapshot, t: number): HostSnapshot {
@@ -142,16 +178,19 @@ export function createSession(options: SessionOptions): NetSession {
   let ticks = 0;
   let left = false;
   let lobby = false;
-  let joining: { species: SpeciesId; loadout: readonly (MoveId | null)[] } | null = null;
+  let joining: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string } | null = null;
   let admitted = false;
   let full = false;
   const startHandlers: Array<(start: StartInfo) => void> = [];
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
   const fullHandlers: Array<() => void> = [];
   const hostLeftHandlers: Array<() => void> = [];
+  const lobbyHandlers: Array<() => void> = [];
+  /** Town walkers by transport peer id. */
+  const walkers = new Map<string, InterpBuffer<TownPresence>>();
   let hostGone = false;
   /** Hellos heard before this peer started or hosted (local election; admitted at once if it hosts). */
-  const pending = new Map<string, SpeciesId>();
+  const pending = new Map<string, { species: SpeciesId; name: string }>();
   let holds: HpHold[] = [];
   const tracker = createStatsTracker();
   const offsets = new Map<string, number>();
@@ -184,7 +223,7 @@ export function createSession(options: SessionOptions): NetSession {
 
   /** Guest still waiting to be let in: knock (again). */
   const knock = () => {
-    if (joining && !started && !admitted && !full && role !== 'host') send({ t: 'hello', species: joining.species, loadout: joining.loadout }, true);
+    if (joining && !started && !admitted && !full && role !== 'host') send(helloOf(joining), true);
   };
 
   /** Sender clock -> local timeline: the smallest observed (arrival - sent) is the clock difference plus the fastest path. */
@@ -195,14 +234,16 @@ export function createSession(options: SessionOptions): NetSession {
     return at + offset;
   }
 
+  const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}) });
+
   /** Host: gives `peer` a player id; false when the room is full. */
-  function admit(peer: string, species: SpeciesId): boolean {
+  function admit(peer: string, species: SpeciesId, name = ''): boolean {
     if (roster.some((r) => r.peer === peer)) return true;
     const taken = new Set(roster.map((r) => r.id));
     let id: string | null = null;
     for (let n = 1; n <= MAX_PLAYERS && !id; n++) if (!taken.has(`p${n}`)) id = `p${n}`;
     if (!id) return false;
-    setRoster([...roster, { peer, id, species }]);
+    setRoster([...roster, { peer, id, species, ...(name ? { name } : {}) }]);
     return true;
   }
 
@@ -210,6 +251,7 @@ export function createSession(options: SessionOptions): NetSession {
     const entry = roster.find((r) => r.peer === peer);
     tracker.forget(peer);
     pending.delete(peer);
+    walkers.delete(peer);
     if (!entry) return;
     if (entry.id === 'p1') hostLeft();
     setRoster(roster.filter((r) => r !== entry));
@@ -224,19 +266,29 @@ export function createSession(options: SessionOptions): NetSession {
     const message = decodeMessage(wire);
     if (!message) return;
     switch (message.t) {
-      case 'hello':
+      case 'hello': {
+        const name = sanitizeNickname(message.name);
         if (role !== 'host') {
-          if (!started) pending.set(from, message.species);
+          if (!started) pending.set(from, { species: message.species, name });
           return;
         }
-        if (!admit(from, message.species)) send({ t: 'full', peer: from }, true);
+        if (!admit(from, message.species, name)) send({ t: 'full', peer: from }, true);
         else if (lobby) send({ t: 'lobby', players: roster }, true);
         else send(startMessage(), true);
         return;
+      }
       case 'lobby':
         if (role === 'host') return;
         pending.delete(from);
-        setRoster([...message.players]);
+        setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
+        if (started && roster.some((r) => r.peer === transport.selfId)) {
+          // The host brought the room back to the town after a run: wait for its next start.
+          started = false;
+          admitted = true;
+          resetRun();
+          for (const handler of lobbyHandlers) handler();
+          return;
+        }
         if (roster.some((r) => r.peer === transport.selfId)) admitted = true;
         else knock();
         return;
@@ -254,7 +306,7 @@ export function createSession(options: SessionOptions): NetSession {
       case 'start': {
         if (role === 'host') return;
         pending.delete(from);
-        setRoster([...message.players]);
+        setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         const me = roster.find((r) => r.peer === transport.selfId);
         if (!me) return knock();
         if (started) return;
@@ -294,13 +346,31 @@ export function createSession(options: SessionOptions): NetSession {
       case 'floor':
         if (role === 'guest') floorChange = Math.max(floorChange ?? 0, message.floor);
         return;
+      case 'town': {
+        if (from === transport.selfId) return;
+        const buffer = walkers.get(from) ?? createBuffer<TownPresence>(16);
+        walkers.set(from, pushSample(buffer, { at: stamp(from, message.at), epoch: 0, value: { map: message.map, pos: message.pos, facing: message.facing, moving: message.moving } }));
+        return;
+      }
       case 'leave':
         if (message.id === 'p1') hostLeft();
+        for (const r of roster) if (r.id === message.id) walkers.delete(r.peer);
         players.delete(message.id);
         setRoster(roster.filter((r) => r.id !== message.id));
         return;
     }
   });
+  /** A new round: forget the last run's remote players, snapshots and pending claims. */
+  function resetRun(): void {
+    players.clear();
+    snapshots = createBuffer<HostSnapshot>();
+    inbox = [];
+    berryInbox = [];
+    berryGrants = [];
+    holds = [];
+    floorChange = null;
+  }
+
   transport.onPeerLeave(dropPeer);
   transport.onPeerJoin(() => knock());
 
@@ -317,9 +387,10 @@ export function createSession(options: SessionOptions): NetSession {
       hostFloor = floor;
       dungeon = hostOptions?.dungeon;
       lobby = hostOptions?.lobby ?? false;
-      setRoster([{ peer: transport.selfId, id: 'p1', species }]);
+      const name = sanitizeNickname(hostOptions?.name);
+      setRoster([{ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }]);
       // Tabs that knocked while this one was still searching are let in now (local election).
-      for (const [peer, theirs] of pending) admit(peer, theirs);
+      for (const [peer, theirs] of pending) admit(peer, theirs.species, theirs.name);
       pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
       if (lobby) send({ t: 'lobby', players: roster }, true);
@@ -332,10 +403,33 @@ export function createSession(options: SessionOptions): NetSession {
       if (chosen !== undefined) dungeon = chosen;
       send(startMessage(), true);
     },
-    join(species, loadout) {
-      joining = { species, loadout };
-      send({ t: 'hello', species, loadout }, true);
+    join(species, loadout, name) {
+      const clean = sanitizeNickname(name);
+      joining = { species, loadout, ...(clean ? { name: clean } : {}) };
+      send(helloOf(joining), true);
     },
+    canLead: () => role === 'host' && lobby,
+    reopenLobby(nextSeed) {
+      if (role !== 'host') return;
+      lobby = true;
+      seed = nextSeed;
+      hostFloor = 1;
+      resetRun();
+      send({ t: 'lobby', players: roster }, true);
+    },
+    onLobby: (handler) => void lobbyHandlers.push(handler),
+    sendPresence(presence) {
+      send({ t: 'town', at: scheduler.now(), ...presence }, false);
+    },
+    townWalkers() {
+      const renderAt = scheduler.now() - TOWN_DELAY_MS;
+      return roster.flatMap((r): TownWalker[] => {
+        const buffer = r.peer === transport.selfId ? undefined : walkers.get(r.peer);
+        const value = buffer && sampleAt(buffer, renderAt, mixPresence, { maxExtrapolateMs: 0 });
+        return value ? [{ ...value, peer: r.peer, id: r.id, species: r.species, ...(r.name ? { name: r.name } : {}) }] : [];
+      });
+    },
+    townDelayMs: () => TOWN_DELAY_MS,
     onStart: (handler) => void startHandlers.push(handler),
     onRoster: (handler) => void rosterHandlers.push(handler),
     onFull: (handler) => void fullHandlers.push(handler),

@@ -481,5 +481,14 @@
   "world.lore.idol.name": "Ídolo del lago",
   "world.lore.idol.1": "Un ídolo de rana cubierto de musgo. Los del lago le dejan ofrendas para que el agua siga quieta.",
   "world.lore.idol.2": "Hay una ofrenda nueva: una espada rota, con la empuñadura vuelta hacia el lago.",
-  "world.lore.idol.3": "Por un instante, el agua junto al ídolo refleja un sol que ya no existe."
+  "world.lore.idol.3": "Por un instante, el agua junto al ídolo refleja un sol que ya no existe.",
+  "nickname.default": "Jugador",
+  "nickname.placeholder": "Tu apodo",
+  "settings.nickname": "Apodo",
+  "lobby.backToTown": "Volver al pueblo",
+  "lobby.hostOnly": "Solo quien creó la sala puede llevar al grupo a una mazmorra.",
+  "lobby.townHint": "Esc: menú de la sala",
+  "lobby.resume": "Seguir en el pueblo",
+  "world.enter.party": "¿Entrar en {name}? (todo el grupo)",
+  "screen.party": "Grupo"
 }

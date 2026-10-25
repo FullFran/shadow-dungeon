@@ -13,13 +13,14 @@ import { isTouchUi } from '../adapters/touch-mode';
 import { createTouchControls } from '../ui/touch-controls';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
-import { FONT } from '../ui/tokens';
+import { FONT, PALETTE } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
+import { canTravel, entranceAction, presenceDue, type TownLobby } from './lobby';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
@@ -54,6 +55,12 @@ export interface TownOptions {
   at?: WorldMapId;
   /** The tile to start on (the map's spawn or first arrival when absent). */
   tile?: { x: number; y: number };
+  /**
+   * The online room walking the town together: other players' walkers and
+   * names, the room window in a corner, Esc opens the room menu, and only
+   * the host may lead the group into a dungeon (`onDepart`).
+   */
+  lobby?: TownLobby;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -192,6 +199,33 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let bannerAt = 0;
 
   const sprite = playerSprite(options.species);
+  const lobby = options.lobby ?? null;
+  let presenceAt: number | null = null;
+  /** The room window in a corner (lobby only): code and players, redrawn when they change. */
+  const roomList = h('ul', { className: 'roster' });
+  // The code in the corner stays small: the big lobby style would cover the sky.
+  const roomCode = h('div', { className: 'town-room-code' });
+  Object.assign(roomCode.style, { fontSize: '1.5em', letterSpacing: '0.2em', color: PALETTE.cursor });
+  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomList, h('p', { className: 'dim', textContent: t('lobby.townHint') })])]) : null;
+  if (roomWindow) {
+    Object.assign(roomWindow.style, { position: 'fixed', top: '8px', right: '8px', zIndex: '4', maxWidth: '40vw', fontSize: '0.8em', pointerEvents: 'none' });
+    canvas.parentElement?.append(roomWindow);
+  }
+  let roomShown = '';
+  function renderRoom(): void {
+    if (!lobby) return;
+    const players = lobby.players();
+    const key = lobby.code() + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
+    if (key === roomShown) return;
+    roomShown = key;
+    roomCode.textContent = lobby.code();
+    roomList.replaceChildren(
+      ...players.map((p) => {
+        const tags = [p.host ? t('lobby.host') : null, p.self ? t('lobby.you') : null].filter(Boolean);
+        return h('li', {}, [h('span', { className: 'roster-id', textContent: p.name }), tags.length > 0 ? h('span', { className: 'dim', textContent: ` ${tags.join(' · ')}` }) : null]);
+      }),
+    );
+  }
   let targets = targetsOf(map);
   /** The wandering Pokémon of the current map, restarted at home on every visit. */
   let wanderers = new Map<string, WanderState>(map.wanderers.map((w) => [w.id, startWander(w)]));
@@ -249,7 +283,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!target) return;
     held.clear();
     if (target.kind === 'waystone') {
-      openExitWindow();
+      if (canTravel(lobby)) openExitWindow();
+      else dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
       return;
     }
     if (target.kind === 'lore') {
@@ -319,12 +354,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const stepBack = () => {
       walker = { pos: tileCentre(entrance.back.x, entrance.back.y), facing: { x: -walker.facing.x, y: -walker.facing.y } };
     };
-    if (state === 'open') {
+    const action = entranceAction(state, lobby);
+    if (action === 'enter') {
       const stay = () => {
         closeExitWindow();
         stepBack();
       };
-      openChoiceWindow(name, t('world.enter.text').replace('{name}', name), [
+      openChoiceWindow(name, t(lobby ? 'world.enter.party' : 'world.enter.text').replace('{name}', name), [
         { label: t('world.enter.yes'), onConfirm: () => depart(entrance.dungeon) },
         { label: t('world.enter.no'), onConfirm: stay },
       ], stay);
@@ -333,7 +369,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     held.clear();
     stepBack();
     const before = def?.unlockedBy ? DUNGEONS.find((d) => d.id === def.unlockedBy) : undefined;
-    const line = state === 'locked' && before ? t('world.sealed.locked').replace('{dungeon}', t(before.lore.nameKey)) : t('world.sealed.missing');
+    const line =
+      action === 'host-only' ? t('lobby.hostOnly') : action === 'locked' && before ? t('world.sealed.locked').replace('{dungeon}', t(before.lore.nameKey)) : t('world.sealed.missing');
     dialog = { speaker: name, state: openDialog([line]) };
   }
 
@@ -348,7 +385,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       if (!e.repeat) interact();
     } else if (e.code === 'Escape') {
       if (dialog) dialog = null;
-      else {
+      else if (lobby) {
+        // In a room Esc opens the room menu (copy or hide the code, leave) instead of leaving at once.
+        openChoiceWindow(t('lobby.room'), lobby.code(), [...lobby.menu(closeExitWindow), { label: t('lobby.resume'), onConfirm: closeExitWindow }], closeExitWindow);
+      } else {
         handle.stop();
         options.onQuit();
       }
@@ -369,7 +409,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const state = wanderers.get(w.id);
       return state ? [{ sprite: npcSprite(w.species), pos: state.pos, facing: state.facing, moving: state.target !== null && state.waitMs <= 0, floats: FLOATERS.has(w.species) }] : [];
     });
-    return [...npcs, ...roaming, { sprite, pos: walker.pos, facing: walker.facing, moving }];
+    const others = (lobby?.walkers() ?? []).filter((w) => w.map === map.id).map((w): TownCharacter => ({ sprite: playerSprite(w.species), pos: w.pos, facing: w.facing, moving: w.moving }));
+    return [...npcs, ...roaming, ...others, { sprite, pos: walker.pos, facing: walker.facing, moving }];
+  }
+
+  /** Names over the room's walkers on this map, this player's own dimmer. */
+  function nameLabels(): { text: string; pos: Vec2; dim?: boolean }[] {
+    if (!lobby) return [];
+    const others = lobby.walkers().filter((w) => w.map === map.id).map((w) => ({ text: w.name, pos: w.pos }));
+    return [...others, { text: lobby.selfName, pos: walker.pos, dim: true }];
   }
 
   function frame(now: number): void {
@@ -401,6 +449,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const entrance = dialog ? null : entranceAt(walker.pos, map.entrances);
       if (entrance) reachEntrance(entrance);
     }
+    if (lobby && presenceDue(presenceAt, now)) {
+      presenceAt = now;
+      lobby.sendPresence({ map: map.id, pos: walker.pos, facing: walker.facing, moving });
+    }
+    renderRoom();
     camera = followCamera(camera, walker.pos, dt);
     resize();
     const view = townCamera(camera, map);
@@ -418,6 +471,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state) } : null,
         banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),
+        names: nameLabels(),
       },
       timeMs,
     );
@@ -430,6 +484,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       stopped = true;
       cancelAnimationFrame(raf);
       exitWindow?.remove();
+      roomWindow?.remove();
       closeShop?.();
       closeShop = null;
       touch.dispose();

@@ -426,6 +426,19 @@ export interface TownOverlay {
   banner?: { text: string; alpha: number } | null;
   /** Black over everything while changing maps (0..1). */
   fade?: number;
+  /** Player names over their heads (world px), the local one dimmer. */
+  names?: readonly { text: string; pos: Vec2; dim?: boolean }[];
+}
+
+/** A name in the pixel font with a one-pixel dark outline, centred over a walker's head. */
+function nameLabel(ctx: CanvasRenderingContext2D, view: Rect, label: { text: string; pos: Vec2; dim?: boolean }): void {
+  const x = Math.round(label.pos.x - view.x);
+  const y = Math.round(label.pos.y - view.y - 34);
+  if (x < -60 || x > view.width + 60 || y < SKY_BAND - 12 || y > view.height + 10) return;
+  ctx.globalAlpha = label.dim ? 0.6 : 1;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) pixelText(ctx, label.text, x + dx, y + dy, '#0b0410', 'center');
+  pixelText(ctx, label.text, x, y, label.dim ? PALETTE.text : '#9fd8ff', 'center');
+  ctx.globalAlpha = 1;
 }
 
 /** Greedy word wrap to `maxWidth` view px in the current font. */
@@ -446,6 +459,7 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
 /** Interaction prompt and the dialog box (Mystery Dungeon window language), in view pixels. */
 export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
   ctx.font = canvasFont();
+  for (const label of overlay.names ?? []) nameLabel(ctx, view, label);
   if (overlay.prompt && !overlay.dialog) {
     const width = Math.ceil(ctx.measureText(overlay.prompt.text).width) + 12;
     const x = Math.round(Math.min(view.width - width - 4, Math.max(4, overlay.prompt.pos.x - view.x - width / 2)));

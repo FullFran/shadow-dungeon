@@ -30,7 +30,7 @@ User (2026-10-25): "¿podemos poner varios pueblos y hacerlo más duro de cojone
 - [x] T2 Second town + routes + entrances: Mirador, Cráter, Lago Negro, entrance windows (registry-guarded) (route: inline)
 - [x] T3 Ambience + lore points + wanderers: fog, leaves, birds, water shimmer, lore lines by progression, wandering Pokémon (route: inline)
 - [x] T4 Docs: README, docs/gdd.md, CREDITS.md (route: inline)
-- [ ] T5 Online lobby in town + nicknames (route: inline)
+- [x] T5 Online lobby in town + nicknames (route: inline)
 
 ## Acceptance criteria
 - Every map is a rectangle of known characters; every floor tile of a map is reachable from its arrival points; every map is reachable from the hub spawn through links; links pair both ways with equal spans; arrivals land on floor outside any trigger.
@@ -69,3 +69,11 @@ Created 2026-10-25 on branch `feat/overworld` from main 4c90a5d. Forecast ~1800 
 ### T4 Docs
 - docs/gdd.md §3 "El mundo (provisional)": the five maps, entrances, lore growth, wanderers, looks, music; §15 outlook updated. README Town paragraph rewritten (maps, dev `map`/`tile` query, entrances, waystone). CREDITS Tiles prose kept (no table rows), now mentions overworld crops, hashes and code-drawn water/bridges/chasms/rock.
 - Checks: `npx vitest run` 843 passed (credits test included).
+
+### T5 Online lobby in town + nicknames
+- Net (additive, back-compatible): `hello.name?`, `RosterEntry.name?` (sanitised by the host and again by guests), new unreliable `town` presence `{at, m, p:[x,y,fx,fy,moving]}` decoded strictly (finite numbers, map id <= 24 chars) and ignored by older peers as unknown. Session: `sendPresence`, `townWalkers` (interpolation buffers reused, 150 ms delay, no extrapolation, jump on map change), `canLead` (host in lobby only), `reopenLobby(seed)` (host) and `onLobby` (guest resets the run state and waits for the next `start`), walkers dropped on leave.
+- `src/net/nickname.ts`: trim, whitespace runs to one space, strip Cc/Cf/Cn/Co/Cs (control, zero-width, bidi overrides), 16 code points; fallback "Jugador-XYZ" hashed from the peer id. Setting `nickname` (default empty) in Settings and the online screen.
+- Town lobby (`TownOptions.lobby`, `src/town/lobby.ts`): other walkers on the same map with names (own name dimmer, outlined pixel font), corner room window (code or dots, players with host/you tags), Esc opens the room menu (copy, hide/show code, leave, stay), presence at 10 Hz, guests at an open mouth or the waystone get "only the host…", host's window reads "¿Entrar en …? (todo el grupo)" and `onDepart` begins the run for everyone.
+- App: `openLobby` now ends in `townLobby` (single entry point: create/join and after every shared run); room session kept across runs (`GameOptions.net.keepSession`, `show()` keeps `current` for the room); end screen of a room run shows the party and "Volver al pueblo" (host reopens the lobby with a new seed, guests follow via `onLobby`). Dungeon name tags use nicknames (`RenderFrame.names`).
+- Checks: `npx vitest run` 865 passed (+22: nickname 6, town presence/lobby session 11, lobby rules 4, settings nickname 1); `npm run build` ok; two silent Firefox windows on `?screen=lobby` / `&guest=1`: both see each other with names, room window, room menu, guest host-only dialog, host waystone starts the Crypt for both, guest's run shows "Anfitriona" over the host (`/tmp/overworld/t5-*.png`).
+- Not verified in a browser: "Volver al pueblo" after a finished shared run (covered by the session test `reopenLobby` / `onLobby`), Trystero rooms (only the BroadcastChannel preview was driven).
