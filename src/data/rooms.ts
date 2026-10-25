@@ -21,9 +21,11 @@ export interface RoomDef {
   /** Standing here with the room cleared moves on to `next` (null = no exit). */
   exit: RoomRect | null;
   next: RoomId | null;
+  /** Toxic pools set into the floor (Toxic Swamp arenas): wading in poisons (core/toxic.ts). */
+  pools?: readonly { x: number; y: number; radius: number }[];
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'den' | 'rift';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -108,5 +110,53 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     spawns: [{ species: 'decidueye', x: 320, y: 120 }],
     exit: null,
     next: null,
+  },
+  /**
+   * Toxic Swamp mid-boss: Salazzle's den, a clearing of dead roots and two
+   * sludge pools in the lower corners; the way on opens at the top once she
+   * falls. The roots break her dashes but do not stop shots.
+   */
+  den: {
+    id: 'den',
+    width: 800,
+    height: 600,
+    obstacles: [
+      { x: 140, y: 130, width: 44, height: 44 },
+      { x: 616, y: 130, width: 44, height: 44 },
+      { x: 378, y: 330, width: 44, height: 36 },
+    ],
+    playerStart: { x: 400, y: 520 },
+    spawns: [{ species: 'salazzle', x: 400, y: 190 }],
+    exit: { x: 360, y: 0, width: 80, height: 50 },
+    next: null,
+    pools: [
+      { x: 110, y: 480, radius: 46 },
+      { x: 690, y: 480, radius: 46 },
+    ],
+  },
+  /**
+   * Toxic Swamp guardian: the rift where the sky tore open, Nihilego's arena.
+   * Four crystal spires (cover: they stop shards and spores, not the
+   * tendrils) and two pools of the poison that fell with it in the far
+   * corners.
+   */
+  rift: {
+    id: 'rift',
+    width: 760,
+    height: 600,
+    obstacles: [
+      { x: 160, y: 150, width: 48, height: 48, cover: true },
+      { x: 552, y: 150, width: 48, height: 48, cover: true },
+      { x: 160, y: 402, width: 48, height: 48, cover: true },
+      { x: 552, y: 402, width: 48, height: 48, cover: true },
+    ],
+    playerStart: { x: 380, y: 530 },
+    spawns: [{ species: 'nihilego', x: 380, y: 210 }],
+    exit: null,
+    next: null,
+    pools: [
+      { x: 56, y: 56, radius: 40 },
+      { x: 704, y: 56, radius: 40 },
+    ],
   },
 };

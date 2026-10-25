@@ -35,7 +35,12 @@ export type SpeciesId =
   | 'duskull'
   | 'golett'
   | 'pawniard'
-  | 'sableye';
+  | 'sableye'
+  | 'venipede'
+  | 'salandit'
+  | 'skrelp'
+  | 'salazzle'
+  | 'nihilego';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -163,6 +168,12 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   golett: { id: 'golett', types: ['ground', 'ghost'], maxHp: 160, radius: 14, sprite: 'golett', movepool: [], defaultLoadout: [] },
   pawniard: { id: 'pawniard', types: ['dark', 'steel'], maxHp: 34, radius: 9, sprite: 'pawniard', movepool: [], defaultLoadout: [] },
   sableye: { id: 'sableye', types: ['dark', 'ghost'], maxHp: 460, radius: 13, sprite: 'sableye', movepool: [], defaultLoadout: [] },
+  // Toxic Swamp (docs/species-candidates.md §2, Dungeon 4); HP provisional.
+  venipede: { id: 'venipede', types: ['bug', 'poison'], maxHp: 32, radius: 9, sprite: 'venipede', movepool: [], defaultLoadout: [] },
+  salandit: { id: 'salandit', types: ['poison', 'fire'], maxHp: 55, radius: 10, sprite: 'salandit', movepool: [], defaultLoadout: [] },
+  skrelp: { id: 'skrelp', types: ['poison', 'water'], maxHp: 60, radius: 10, sprite: 'skrelp', movepool: [], defaultLoadout: [] },
+  salazzle: { id: 'salazzle', types: ['poison', 'fire'], maxHp: 520, radius: 14, sprite: 'salazzle', movepool: [], defaultLoadout: [] },
+  nihilego: { id: 'nihilego', types: ['rock', 'poison'], maxHp: 980, radius: 17, sprite: 'nihilego', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

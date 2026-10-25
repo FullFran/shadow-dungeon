@@ -4,6 +4,8 @@ import { updateCombat } from './combat';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
 import { updateFog } from './fog';
+import { updateGas } from './gas';
+import { updateToxic } from './toxic';
 import { landHitOnPlayer } from './hits';
 import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
@@ -36,7 +38,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
-  const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
+  const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   return {
     ...fought,
     tick: state.tick + 1,

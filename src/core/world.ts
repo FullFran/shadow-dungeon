@@ -128,6 +128,12 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }
 
+/** A swamp pool's poison does not follow the player to the next floor. */
+const cured = (player: PlayerState): PlayerState => {
+  const { poison: _gone, ...rest } = player;
+  return rest;
+};
+
 /** Starts a new room: clears enemies and projectiles and restores per-room passives (Disguise, Illusion) and per-floor item uses. */
 export function enterRoom(state: WorldState): WorldState {
   return {
@@ -138,8 +144,10 @@ export function enterRoom(state: WorldState): WorldState {
     credited: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
     // An item Sableye still holds comes back on leaving its room.
-    player: { ...returnStolen(state.player), disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
+    player: { ...cured(returnStolen(state.player)), disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
     collapse: undefined,
     fog: undefined,
+    gas: undefined,
+    pools: undefined,
   };
 }

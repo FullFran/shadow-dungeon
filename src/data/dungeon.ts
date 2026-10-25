@@ -96,8 +96,8 @@ export const RUN = {
   floorHeal: 0.25,
 } as const;
 
-/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, or the forest's fog (Niebla). */
-export type FloorKind = 'normal' | 'collapse' | 'fog';
+/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, the forest's fog (Niebla), or the swamp's gas (Gas tóxico). */
+export type FloorKind = 'normal' | 'collapse' | 'fog' | 'gas';
 
 /**
  * Urgent floor weights by depth. Index 0 is floor 1 (never urgent); deeper

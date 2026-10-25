@@ -3,6 +3,7 @@ import { updateArcher } from './archer';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
+import { isSwampDef, updateSwamp } from './swamp-brains';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -275,6 +276,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
     else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
+    else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ms, events);
     else current = updateRoster(current, ticked, def, target, ms, events);
   }
   return current;

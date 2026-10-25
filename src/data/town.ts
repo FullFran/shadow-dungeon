@@ -130,7 +130,7 @@ export interface TownProp {
   y: number;
 }
 
-export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle';
+export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle' | 'hermit';
 
 /** Species an NPC or a wandering Pokémon can use: any existing sprite (public/sprites). */
 export type NpcSpecies = keyof typeof SPRITE_KEYS;

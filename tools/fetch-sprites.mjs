@@ -74,6 +74,12 @@ const TARGETS = [
   { dex: '0622', form: '0000', species: 'golett', formName: 'base' },
   { dex: '0624', form: '0000', species: 'pawniard', formName: 'base' },
   { dex: '0302', form: '0000', species: 'sableye', formName: 'base' },
+  // Toxic Swamp (docs/species-candidates.md §2 Dungeon 4; tracker.json 2026-10-25: all have Idle, Walk, Attack, Shoot, Charge and Hurt).
+  { dex: '0543', form: '0000', species: 'venipede', formName: 'base' },
+  { dex: '0757', form: '0000', species: 'salandit', formName: 'base' },
+  { dex: '0690', form: '0000', species: 'skrelp', formName: 'base' },
+  { dex: '0758', form: '0000', species: 'salazzle', formName: 'base' },
+  { dex: '0793', form: '0000', species: 'nihilego', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

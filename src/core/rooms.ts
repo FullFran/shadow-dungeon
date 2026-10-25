@@ -11,6 +11,7 @@ export function loadRoom(state: WorldState, roomId: RoomId): WorldState {
   let next: WorldState = {
     ...entered,
     arena: { width: room.width, height: room.height, obstacles: room.obstacles },
+    ...(room.pools ? { pools: room.pools } : {}),
     player: { ...entered.player, pos: vec(room.playerStart.x, room.playerStart.y), roll: null, facing: vec(1, 0) },
   };
   for (const spawn of room.spawns) next = spawnEnemy(next, spawn.species, vec(spawn.x, spawn.y));

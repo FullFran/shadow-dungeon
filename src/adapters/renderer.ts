@@ -24,9 +24,11 @@ import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState 
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
+import { rollReach } from '../core/swamp-brains';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
+import { drawDeadTree, drawGas, drawPool, drawReeds, drawSpores, drawSwampArena, drawSwampBlock, drawToxicMist, swampDecor, type SwampDecor } from './swamp-decor';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -62,7 +64,7 @@ export interface RenderFrame {
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
   /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure), if any. */
-  decor?: 'crypt' | null;
+  decor?: 'crypt' | 'swamp' | null;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
@@ -343,13 +345,29 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
+  /** Swamp decoration of a generated floor, worked out once per floor. */
+  const swampOf = new WeakMap<TileGrid, SwampDecor>();
+  function swampFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = swampOf.get(grid);
+    if (!decor) {
+      const stairs = state.arena.stairs ? tileOf({ x: state.arena.stairs.x + 1, y: state.arena.stairs.y + 1 }) : undefined;
+      decor = swampDecor({ ...grid, rooms: state.arena.rooms ?? [], ...(stairs ? { stairs } : {}) });
+      swampOf.set(grid, decor);
+    }
+    const visible = (x: number, y: number) => x * TILE + TILE >= view.x && x * TILE <= view.x + view.width && y * TILE + TILE >= view.y && y * TILE <= view.y + view.height + TILE;
+    for (const r of decor.reeds) if (visible(r.x, r.y)) drawReeds(ctx, r.x * TILE, r.y * TILE, decorHash(r.x, r.y, 24));
+    for (const t of decor.trees) if (visible(t.x, t.y)) drawDeadTree(ctx, t.x * TILE, t.y * TILE, decorHash(t.x, t.y, 22), timeMs);
+  }
+
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | 'swamp' | null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       ctx.fillStyle = COLORS.mapVoid;
       ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       tiles(grid, view, state.collapse, timeMs);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
+      if (decor === 'swamp') swampFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -369,6 +387,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
     if (decor === 'crypt') cryptArena(width, height, timeMs);
+    if (decor === 'swamp') drawSwampArena(ctx, width, height);
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -415,8 +434,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function pillar(rect: Obstacle, decor: 'crypt' | null, timeMs: number): Drawable {
+  function pillar(rect: Obstacle, decor: 'crypt' | 'swamp' | null, timeMs: number): Drawable {
     const lift = 18;
+    if (decor === 'swamp') return { y: rect.y + rect.height, draw: () => drawSwampBlock(ctx, rect, timeMs) };
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     return {
       y: rect.y + rect.height,
@@ -583,6 +603,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       // Ekans' coil: the lane turns solid once the aim is locked.
       const locked = lockedFor(def.lockMs) || (striking && def.lockMs !== undefined);
       groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'roller' || def?.kind === 'dasher') {
+      // Venipede's roll and Salandit's dash: the lane turns solid once the aim locks.
+      const locked = lockedFor(def.lockMs) || (striking && def.kind === 'dasher');
+      const reach = def.kind === 'roller' ? rollReach(def) : def.dashDistance;
+      if (winding || def.kind === 'dasher') groundLane(pos, ai.attackDir, reach, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'sniper') {
+      // Skrelp's ink line: thin and long, solid once locked.
+      if (winding) groundLane(pos, ai.attackDir, 340, lockedFor(def.lockMs) ? 4 : 2, lockedFor(def.lockMs) ? COLORS.strike : fill, progress);
     } else if (def?.kind === 'beam') {
       const locked = lockedFor(def.lockMs) || striking;
       groundLane(pos, ai.attackDir, def.length, def.width, locked ? COLORS.strike : fill, winding ? progress : 1);
@@ -829,6 +857,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     floor(current, view, timeMs, frame.decor ?? null);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
+    for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
@@ -898,6 +927,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
+    if (current.gas && current.arena.tiles) drawGas(ctx, current.arena.tiles, current.gas, view, timeMs);
+    if (frame.decor === 'swamp') {
+      drawToxicMist(ctx, view, timeMs);
+      drawSpores(ctx, view, timeMs);
+    }
 
     // Screen space: slow-mo tint and HUD.
     ctx.setTransform(1, 0, 0, 1, 0, 0);

@@ -7,6 +7,8 @@ import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
+import type { GasState } from './gas';
+import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -155,6 +157,8 @@ export interface PlayerState {
   upgrades?: UpgradeLevels;
   /** A held item Sableye took (stolen.ts): out of `items` until it comes back. */
   stolen?: StolenItem;
+  /** Poisoned by a Toxic Swamp pool (toxic.ts); absent = not poisoned. */
+  poison?: PoisonState;
 }
 
 export interface StolenItem {
@@ -318,6 +322,8 @@ export type GameEvent =
   | { type: 'levelUp'; level: number }
   /** The floor hurt the player: collapsed ground, or the closed fog's chill (not an attack: no dodge, no Disguise). */
   | { type: 'collapseHurt'; damage: number }
+  /** The local player waded into a toxic pool and is poisoned (toxic.ts). */
+  | { type: 'poisoned' }
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
@@ -407,6 +413,10 @@ export interface WorldState {
   collapse?: CollapseState;
   /** Fog urgent floors (Niebla): the closing vision (fog.ts). */
   fog?: FogState;
+  /** Gas urgent floors (Gas tóxico): the spreading cloud (gas.ts). */
+  gas?: GasState;
+  /** Toxic Swamp floors: the pools that poison on contact (toxic.ts). */
+  pools?: readonly ToxicPool[];
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
   events: GameEvent[];

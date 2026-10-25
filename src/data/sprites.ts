@@ -74,4 +74,9 @@ export const SPRITE_KEYS = {
   golett: '0622/0000',
   pawniard: '0624/0000',
   sableye: '0302/0000',
+  venipede: '0543/0000',
+  salandit: '0757/0000',
+  skrelp: '0690/0000',
+  salazzle: '0758/0000',
+  nihilego: '0793/0000',
 } as const;

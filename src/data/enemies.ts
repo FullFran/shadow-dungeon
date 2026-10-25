@@ -1,5 +1,6 @@
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
+import { SALANDIT, SKRELP, VENIPEDE, type DasherDef, type RollerDef, type SniperDef } from './swamp-enemies';
 
 /**
  * Enemy behaviour tuning (docs/gdd.md §4, "Contenido del primer prototipo").
@@ -988,7 +989,10 @@ export const SABLEYE: ThiefDef = {
   stealMs: 9000,
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef;
+
+/** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
+export type SwampDef = RollerDef | DasherDef | SniperDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1021,6 +1025,9 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   golett: GOLETT,
   pawniard: PAWNIARD,
   sableye: SABLEYE,
+  venipede: VENIPEDE,
+  salandit: SALANDIT,
+  skrelp: SKRELP,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
