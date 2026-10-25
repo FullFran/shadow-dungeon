@@ -91,6 +91,10 @@ Decisión del 25-10-2026: muchos enemigos hacían pesado matarlos, así que se s
 
 Una línea en pantalla dice qué cierra la escalera mientras dura. El enemigo marcado da un 50 % más de experiencia. **Seguridad**: si el enemigo marcado (o la llave caída) queda fuera del alcance de todos los jugadores durante 60 s seguidos (atrapado fuera del mapa o tras una pared), el sello se rompe solo y no da la recompensa. En cooperativo manda el anfitrión: todos colocan el mismo sello desde la semilla y la instantánea del anfitrión dice cuándo se abre, dónde cae la llave y cuándo se abren las puertas.
 
+Esa seguridad convive con la red de seguridad contra enemigos fuera del mapa (`core/bounds.ts`): la red devuelve cada paso a cualquier enemigo que anda (no flota) a una casilla alcanzable, así que los 60 s del sello solo llegan a contar para lo que la red no puede mover (un enemigo que flota fuera de alcance o una llave caída sobre una pared). La sala de la escalera cerrada con llave no cuenta como "fuera de alcance" para la red: sus enemigos esperan dentro. La sala de oleadas de la Sima tiene su propia salida de 60 s sin daño a la oleada, y al acabar así también abre su sello.
+
+**Sonidos.** Efectos cortos sintetizados como el resto (sección del sonido): el grito de mando suena como un cuerno de dos toques (la carga solo se ve, el aro crece), la caída de un líder como una corona que tintinea y tres notas que bajan, abrirse un sello o una puerta como un cerrojo, piedra que roza y un acorde claro, y la llave al caer como dos botes metálicos.
+
 ### Plantas con prisa
 
 Plantas que salen de vez en cuando y te obligan a encontrar las escaleras rápido. Se anuncian al entrar. Salen según unos pesos que dependen de la profundidad (casi nunca al principio y más cuanto más bajas), igual que Pokelike reparte sus tipos de nodo según la fase del mapa.
