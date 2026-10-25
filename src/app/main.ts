@@ -792,6 +792,8 @@ function devScreen(root: HTMLElement): boolean {
     lobby: () => void openLobby(root, 'K7M2Q', new URLSearchParams(window.location.search).get('guest') !== '1', () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
     endless: () => enterDungeon(root, 'eclipse-chasm', () => titleScreen(root)),
+    // `&dungeon=toxic-swamp&floor=5&seed=3`: straight into a run of that dungeon (any of the story dungeons).
+    run: () => void sheetsReady().then(() => enterDungeon(root, devDungeon(), () => titleScreen(root))),
     // The Sima's end screen with a sample score (recorded on this device's board, like a real one).
     eclipse: () => {
       const run = { ...summary, dungeon: 'eclipse-chasm' as const, floor: 12, level: 9, clockMs: 0, seed: endlessSeed('daily', today(), 0), coins: { ...coins, multiplier: 0.5, total: 78 } };

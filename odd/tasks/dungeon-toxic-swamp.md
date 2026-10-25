@@ -46,7 +46,20 @@ Out of scope: the difficulty framework itself (another writer), the Flooded Cave
   - Context `swamp` (swamp floors, and its fog entry); `PLANNED_MUSIC` swamp entry removed. Guardian music decision: no new download; Nihilego reuses *Boss Battle #2 [Symphonic Metal]* (nene, CC0, already loop-checked) and Salazzle the 16-bit battle theme like every mid-boss; the gas floor plays the collapse chase (*Determined Pursuit*). CREDITS.md Music and `public/music/LICENSES.md` updated; `docs/music-shortlist.md` notes what shipped.
   - Not done: the *Swamp Environment Audio* ambience layer (the audio adapter has no ambience bus; left for later). The loop is short (15 s), so it may feel repetitive; nobody has listened (muted runs only).
   - Evidence: `tests/data/music.test.ts` changed first (new context, CC0, whole-file loop length, planned list) and failed (4) before the manifest change, then GREEN. `npm test` 110 files / 1080 tests passed.
-- [ ] T4 Integration: coins, unlock, co-op, overworld map, waystone, difficulty hooks, docs (route: same)
+- [x] T4 Integration: coins, unlock, co-op, overworld map, waystone, difficulty hooks, docs (route: same)
+  - No code change needed for coins, records, the waystone or `start`: the den's `role: 'midboss'` pays `COINS.midboss` (25); `cleared` comes from a victory on Nihilego; the waystone and the dungeon select list `unlockedDungeons` (the swamp shows once `flooded-caves` is cleared); `start.dungeon` carries `toxic-swamp` and `dungeonById` knows it. New per-peer state (pools from the seed, gas and poison clocks) never goes over the wire; the bosses use `boss.stance`/`comboIndex`, `ai.attackDir`/`ai.aimPoint` only.
+  - Difficulty hooks (done in T1/T2, listed here): Venipede +1 bounce, Salandit return dash, Skrelp fan of 3, Salazzle 4th dash, Nihilego 3rd tendril wave and 4th shard ring, all `minDifficulty: 'hard'`; nightmare cards Salazzle Escort and Nihilego Downpour (`minDifficulty: 'nightmare'`); read with `atLeast(worldDifficulty(state), ...)`.
+  - Dev: `?screen=run&dungeon=<id>` starts a run of that dungeon (for screenshots). Ciénaga tint darkened after the screenshot.
+  - Docs: GDD §3 "Gas tóxico" row, a "Pantano Tóxico" block in "Mazmorras" (Spanish, no em dashes), the Ciénaga in "El mundo"; README (dungeon, coins, dev params, map, music).
+  - Evidence: `tests/core/swamp-meta.test.ts` (4, characterisation, green on first run by design): Salazzle pays 25 on top of the guardian; locked until `flooded-caves` is cleared, a loss records best floor 10 without clearing, a win clears it; `start` round-trip and identical pools per seed; haze/flood/tendrils/wormhole cards with wave and aim survive encode/decode onto a guest with no new snapshot fields. Silent screenshots (headless Firefox over WebDriver BiDi, `media.volume_scale` 0, `muted: true` stored first) in `/tmp/swamp/`: `02-swamp-floor1.png`, `03-swamp-floor3.png` (dead trees, reeds, spores, mist), `05-gas-spread.png`/`06-gas-later.png`, `contact-salazzle.jpg` (spiral, haze with pocket, dance lane), `contact-nihilego1.jpg`/`contact-nihilego2.jpg` (awakening, wormhole mouth and burst, tendril lanes, spore spiral, tide with pocket), `09-cienaga.png`. `npm test` 111 files / 1084 tests passed; `npm run build` ok.
+
+## Integration notes
+- `DungeonId` here gains `'flooded-caves'` (no def) so `unlockedBy` type-checks; merge with the Caves writer's union. `world.ts`: the Ciénaga's crystal ties its second line to the Forest; switch it to `flooded-caves` once that dungeon is in the registry (the lore-point test requires registry ids). Until then the swamp's mouth reads as "missing" in the overworld.
+- Shared lines touched: `FloorKind` (`gas`), every `DungeonDef.music.urgent` (`gas`), `POKEMON_TYPES`/`TYPE_CHART` (`rock`), `EnemyAttackDef.pierceRoll` (also added by the difficulty writer), `BossStance`, `TownNpcRole` (`hermit`), `?screen=run` in `main.ts` (the Caves writer has the same dev screen).
+- `pierceRoll` attacks still resolve as normal hits here; the difficulty branch supplies the rule.
+
+## Not verified
+- Balance by hand (no play-through of the ten floors); whether 140 shots on nightmare phase 2 is readable; the 15 s swamp loop by ear (nobody listened); the swamp ambience layer is not shipped; guests feel the wormhole pull from snapshots (each peer applies it) but this was not run in two tabs.
 
 ## Acceptance criteria
 - Swamp plan: 10 floors, mid-boss on 5 (exit), Nihilego on 10; the gas never takes the last HP and reaches the stairs no sooner than its safety factor; pools poison on contact, poison never kills.
@@ -60,4 +73,4 @@ Out of scope: the difficulty framework itself (another writer), the Flooded Cave
 About 2400 authored lines over 4 tasks (T1 ~1000, T2 ~900, T3 ~150 plus assets, T4 ~350). Above the ~400 slice budget; the delivery decision stays with the parent.
 
 ## Progress
-Created 2026-10-25 on `feat/dungeon-toxic-swamp` from `main` 043cb02. Baseline `npm test`: 106 files / 1018 tests passed. Engram mirror: pending (writer has no Engram session; parent owns it).
+Created 2026-10-25 on `feat/dungeon-toxic-swamp` from `main` 043cb02. Baseline `npm test`: 106 files / 1018 tests passed. T1 `cd68c2c`, T2 `38b8480`, T3 `c3be74d`, T4 in the commit after them. Each task ran above the ~400-line heuristic (T1 and T2 most: each boss or enemy needed its data, brain, guest hitbox, telegraph and tests to be playable); not split. Engram mirror: pending (writer has no Engram session; parent owns it).

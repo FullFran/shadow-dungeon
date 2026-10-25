@@ -381,7 +381,7 @@ export const CIENAGA: WorldMap = {
     { id: 'mire-skrelp', species: 'skrelp', x: 22, y: 19, radius: 2 },
     { id: 'mire-venipede', species: 'venipede', x: 30, y: 10, radius: 3 },
   ],
-  look: { ground: 'dark', tint: ['#c8d8a8', '#5a4a72'], eclipse: 1.6, fog: 0.7 },
+  look: { ground: 'dark', tint: ['#9fb888', '#3e3a58'], eclipse: 1.6, fog: 0.9 },
 };
 
 export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO, cienaga: CIENAGA };
