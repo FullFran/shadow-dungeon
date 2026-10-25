@@ -55,7 +55,11 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
   set (now lists the evolutions), the Sima "whole pool by depth" check (30 -> 40, the swamp evolutions join on 36-38)
   and the Sima "Crypt newcomers seen" check (seeds widened: Pawniard still shows, 16 times on late floors over 40
   seeds, but not on the original four once the evolutions share its floors); suite 157 files / 1680 tests
-- [ ] T4 GDD, README, balance before/after, screenshots (route: inline, this writer)
+- [x] T4 GDD, README, balance before/after, screenshots (route: inline, this writer; passive docs: structural readback)
+  — GDD §3 "Evoluciones" (Spanish roster table), README paragraph, `reports/balance/latest.md` refreshed; screenshots
+  in /tmp/evolved/ (headless Firefox over WebDriver BiDi, profile `media.volume_scale` 0, settings `muted: true` set
+  before the run loads, dev `?screen=run&spawn=`): gengar-haunter, mightyena-poochyena-bisharp, drifblim-ariados,
+  crawdaunt-kingler, houndoom-muk, four frames each
 
 ## Acceptance criteria
 
@@ -73,6 +77,18 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 
 - Baseline (main da33dc1): `npm test` 154 files / 1521 tests passed; `npm run balance -- --quick` 0 failures,
   39 warnings, 74 passes (copy in /tmp/evolved/balance-before.md).
+- After T3 (`npm run balance -- --quick`): 0 failures, 39 warnings, 74 passes, gate PASS. Same 10 known fairness
+  violations by band, some moved: Crypt unseen-threats now on easy F4 (was nightmare F5), Forest easy gains an
+  unseen-threats entry (F7 fog) and its blind hits drop 18 -> 7, Caves easy loses unseen-threats and blind hits 2 -> 1.
+  Perfect-bot deaths unchanged in count (Crypt nightmare 4, Forest nightmare 6).
+- Final: `npm test` 157 files / 1680 tests passed; `npm run build` built (typecheck clean).
+
+## Unverified
+
+- Not played by hand: feel of each escalation, readability of Gengar's ring plus aimed ball, Weezing's bigger blast.
+- Balance quick sweep only (2 seeds, Sima floors <= 5): the Sima evolutions (floors 6+) are not in the quick sweep.
+- Integration: sprite-meta and CREDITS will be regenerated with the parallel bosses/slots branch; `ENEMY_ATTACK_ANIM`
+  picks Attack/Shoot per species by eye from the base form.
 
 ## Decisions
 
@@ -101,4 +117,5 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 
 ## Next step
 
-T4.
+Integration with the procedural-bosses/four-slots branch (regenerate sprite-meta), then a hand playtest of the deep
+floors and a full `npm run balance` sweep.
