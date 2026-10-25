@@ -21,7 +21,7 @@ Out of scope: gacha (stays "Próximamente"), difficulty selection (the multiplie
 ## Tasks
 - [x] T1 Save facade + Pokémonedas earning, HUD and end screen (route: delegated writer, this worker; trigger: 2+ non-trivial files)
 - [x] T2 Upgrades + shop window (town and title) (route: same writer)
-- [ ] T3 Docs: GDD §11 and README (route: same writer)
+- [x] T3 Docs: GDD §11 and README (route: same writer)
 
 ## Acceptance criteria
 - Corrupted, hostile or missing save data reads as an empty save and never throws; a failing store never throws.
@@ -57,3 +57,10 @@ Created 2026-10-25 on `feat/meta-pokemonedas` from `main` d3d4f9a.
 - End screen: summary and Pokémonedas in two columns from 900 px wide (the victory window no longer runs into the footer at 720p).
 - Checks: RED observed (`src/core/upgrades`, `src/app/shop` missing), GREEN 9 + 3 tests; `tests/town/lines.test.ts` updated (shop opens the window, gacha keeps "coming soon"); `npm test` 70 files / 652 tests passed; `npm run build` ok.
 - Screenshots `/tmp/meta/` (headless Firefox over WebDriver BiDi, dev server 4431): `01-town-shop.png`, `02-town-shop-bought.png` (Aliento bought, 300 -> 220 P, row levels updated), `03-town-after-shop.png` (Esc closes the shop and stays in the town), `04-title-shop-entry.png`, `05-title-shop.png` (40 P: every row disabled), `06-victory-coins.png`, `07-defeat-coins.png` (dev screens with mocked breakdowns), `08-hud-start.png`, `09-hud-later.png` (a real run after 63 s idle: "2 P" and PS 108/108 from Vitalidad 2).
+
+### T3 Docs (done)
+- `docs/gdd.md` §11: subsections "Cómo se ganan" (earning table) and "Mejoras permanentes" (upgrade table), both marked provisional, plus the save key and its migrate/sanitize; parentheses, no em dashes. README: title list with Shop, end screens with Pokémonedas, `?screen=town|shop`, a Pokémonedas and shop paragraph, layout rows.
+- Test-first exception: passive documentation. Checks: `npm test` 70 files / 652 tests passed; `npm run build` ok.
+
+### Next
+- Parent: PR slicing and delivery (three work-unit commits, ~1000 authored lines including tests). Unverified by hand: the feel of the numbers over real runs, earning in a real shared run between two browsers (guests earn locally by construction, no test drives two peers to the end screen), a played run ending on the real end screen (the screenshots use the dev screens' mocked breakdowns; the HUD count was observed in a real run).

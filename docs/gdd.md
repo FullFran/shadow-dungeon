@@ -290,6 +290,38 @@ La elige el anfitrión. En un souls, la dificultad de verdad es el tiempo que ti
 - Con ellas compras mejoras permanentes y tiradas del gacha. Es un roguelike como las mazmorras de Mundo Misterioso: lo que llevas dentro se pierde, lo que compras fuera se queda.
 - El MVP tiene una sola mazmorra. Las demás se diseñan después.
 
+### Cómo se ganan *(provisional)*
+
+Cada jugador suma lo suyo en su propio ordenador (también los invitados de una partida compartida; no viaja nada por la red). El HUD enseña lo ganado hasta ahora ("12 P") y la pantalla final lo desglosa junto al saldo nuevo.
+
+| Qué | Pokémonedas |
+|---|---|
+| Planta superada | 6 × profundidad (la planta 3 da 18) |
+| Enemigo derrotado | 1 × (1 + 0,5 (profundidad − 1)) |
+| Huir de un derrumbe | 20 en menos de 30 s, 12 en menos de 60 s, si no 6 |
+| Derrotar al guardián | 50 |
+| Minuto jugado | 2 por minuto completo (las pausas no cuentan) |
+| Si caes | Te quedas el 75 % de lo ganado |
+| Dificultad | Todo × la fila de la sección 9 (de momento se juega en Normal, × 1) |
+
+Una victoria completa da unas 165 Pokémonedas. El pago sube con lo que juegas (plantas, enemigos y minutos), no solo por terminar la partida, como pide la sección 9. "Reintentar planta" vuelve al recuento con que entraste en ella (no se cobra dos veces) y salir desde el menú de pausa no paga nada.
+
+### Mejoras permanentes *(provisional)*
+
+Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú principal) y se aplican al empezar cada partida, a cualquier especie. Los saltos son pequeños a propósito: el juego tiene que seguir siendo difícil.
+
+| Mejora | Efecto por nivel | Niveles y precios |
+|---|---|---|
+| Vitalidad | +4 PS máximos | 60, 120, 220, 360, 550 |
+| Aliento | La estamina se recupera un 5 % más rápido | 80, 160, 300, 500 |
+| Respiro | Al bajar de planta te curas un 3 % más de los PS máximos (sobre el 25 % de base) | 100, 220, 400 |
+| Reflejos | +8 ms de ventana de esquiva perfecta (base 120 ms) | 120, 260, 480 |
+| Estudio | +5 % de experiencia | 90, 180, 320, 520 |
+
+Comprarlo todo cuesta unas 5000 Pokémonedas (unas 30 victorias). El gacha sigue pendiente ("Próximamente").
+
+Guardado: el saldo y los niveles comprados viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes.
+
 ## 12. Notas técnicas
 
 - Red: si todo lo decide el anfitrión, a los invitados les dan golpes "aunque habían rodado". Cada cliente tiene que resolver en su propio ordenador su rueda y sus ataques (predicción en el cliente), y el anfitrión reconcilia. Esto se diseña desde el primer prototipo; no se puede parchear después.
