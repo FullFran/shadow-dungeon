@@ -1,5 +1,6 @@
 import { UNKILLABLE } from '../data/sima';
 import { applySimaSync, simaSync, type SimaSync } from './sima-events';
+import { applyGateSync, gateSync, type GateSync } from './gates';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
@@ -96,6 +97,8 @@ export interface HostSnapshot {
   sima?: SimaSync;
   /** Co-op: the floor's party size as the host counted it (core/party.ts); absent solo or from an older host. */
   party?: number;
+  /** The floor's gate progress (core/gates.ts); absent without a gate or from an older host. */
+  gate?: GateSync;
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
@@ -184,6 +187,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
     ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
     ...(state.party !== undefined ? { party: state.party } : {}),
+    ...(gateSync(state) ? { gate: gateSync(state)! } : {}),
   };
 }
 
@@ -276,7 +280,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
   });
   // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
   const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
-  return applySimaSync({ ...counted, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima);
+  return applyGateSync(applySimaSync({ ...counted, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima), snapshot.gate);
 }
 
 const withoutParty = (state: WorldState): WorldState => {

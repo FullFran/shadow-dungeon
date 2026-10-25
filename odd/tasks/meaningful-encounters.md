@@ -25,7 +25,7 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 ## Tasks
 - [x] T1 Roles + threat budget + XP/coin parity (route: inline in this writer; RED: 4 existing tests pinned the old counts/XP/digest and failed, updated on purpose; new tests/core/encounters.test.ts)
 - [x] T2 Leaders and break rules (route: inline; RED: 3 existing tests broke where a leader's extra HP or crowned spawns showed (fixed to pick non-leaders), new tests/core/leaders.test.ts written with the code)
-- [ ] T3 Floor gates (route: inline)
+- [x] T3 Floor gates (route: inline; RED: 11 existing tests failed once gates shut stairs or locked doors, fixed with a test helper `openGate` and door-aware map comparisons; new tests/core/gates.test.ts)
 - [ ] T4 Tuning, docs, screenshots (route: inline)
 
 ## Acceptance criteria
@@ -57,6 +57,9 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 - Budget per room = base + perDepth × (depth − 1) + int jitter; max 3 bodies; roles per room by tier (2 up to Normal, 3 from Hard), the tier never adds bodies.
 - XP parity through a per-role XP scale (`ROLE_XP_SCALE`) applied in `xpFor`; guardians and mid-bosses have no role and pay as before. Pokémonedas per enemy 1 → 1.65.
 - Leaders: one per group of 2+, the highest-threat enemy, chance rising with depth (never on floor 1); ×1.6 HP, ×2 XP, crown and gold ring; signature move = rally cry (0.9 s wind-up, heals followers in 192 px by 15 % and resets their cooldowns, every 7.5 s). Followers run 1.1× while it stands. Break rule per role: brute/swarm/support stagger 1.5 s, skirmisher/ranged slow (0.6× clock) 6 s, controller only loses the pace. Seeded on every peer (no wire change); host runs cries, every peer breaks bands when the leader is seen down.
+- Gates: `chooseGate` from the run seed (salted), per-dungeon chance and kind weights by floor in `DungeonDef.gates`; never floor 1, never urgent floors, never fixed rooms, never a Sima hunter floor; a key gate beside a Sima wave room becomes a seal. Wave gate is Sima-only (it reuses the Sima's wave-room event). The marked enemy is the floor's leader, else an elite, else its highest threat; its stats are not changed (Easy keeps zero elites), it is marked by a red seal or a key over its head and on the minimap. The key drops where the bearer fell; touching it opens the doorways. Marked enemy pays ×1.5 XP unless its gate broke.
+- Out-of-bounds safety: own reachability check on the players' flow field (tile or a 4-neighbour reachable, off-map = unreachable); 60 s in a row breaks the gate (`outcome: 'broken'`), no bonus. It does not depend on the parallel out-of-bounds hotfix.
+- Co-op: every peer places the same gate from the seed; the host resolves it and sends `g: [done, outcome, keyX, keyY]` in its snapshot (optional, older peers ignore it); guests open their door tiles from it.
 - Easy golden digest re-recorded on purpose ('bebcc214' → new value per task).
 
 ## Progress

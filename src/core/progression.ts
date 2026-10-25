@@ -3,6 +3,7 @@ import { PROGRESSION } from '../data/progression';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { leaderXp } from './leaders';
+import { gateBonus } from './gates';
 import type { EnemyState, GameEvent, PlayerState, WorldState } from './state';
 import { upgradeBonuses } from './upgrades';
 
@@ -68,6 +69,7 @@ export function creditDefeats(state: WorldState, events: GameEvent[]): WorldStat
   const credited = [...state.credited, ...fresh.map((e) => e.id)];
   if (state.player.hp <= 0) return { ...state, credited };
   // The Insight upgrade scales every defeat's experience.
-  const amount = fresh.reduce((sum, e) => sum + enemyXp(e, state.depth), 0) * upgradeBonuses(state.player.upgrades).xpGain;
+  // The floor's gate enemy pays its bonus too (core/gates.ts), unless its gate broke.
+  const amount = fresh.reduce((sum, e) => sum + enemyXp(e, state.depth) * gateBonus(state, e), 0) * upgradeBonuses(state.player.upgrades).xpGain;
   return { ...state, credited, player: gainXp(state.player, amount, events) };
 }

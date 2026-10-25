@@ -190,3 +190,33 @@ export const LEADER = {
   /** The break: how long a stagger and a slow last, and how slow. */
   break: { staggerMs: 1500, slowMs: 6000, slowPace: 0.6 },
 } as const;
+
+// Mandatory kills (docs/gdd.md §3 "Encuentros con sentido"): sometimes, not always.
+
+/**
+ * A floor's gate (at most one, never on floor 1, never on an urgent floor
+ * where the clock or the hazard already pushes):
+ * - `seal`: Sello de la escalera, the stairs stay sealed until the floor's
+ *   marked enemy (a leader or an elite, shown on the minimap) falls.
+ * - `key`: the stairs room's doorways are locked; an elite carries the key,
+ *   which it drops when it falls (walk over it).
+ * - `waves`: the Sima's wave room (data/sima.ts) must be cleared first.
+ */
+export type GateKind = 'seal' | 'key' | 'waves';
+
+export const GATE_KINDS: readonly GateKind[] = ['seal', 'key', 'waves'];
+
+/** A dungeon's gates: the chance by floor (index 0 is floor 1, deeper floors use the last entry) and each kind's weight by floor. */
+export interface GateTuning {
+  chance: readonly number[];
+  kinds: readonly { kind: GateKind; weights: readonly number[] }[];
+}
+
+export const GATE = {
+  /** A gate enemy (or its dropped key) out of every player's reach this long in a row breaks the gate, without its reward. */
+  unreachableMs: 60_000,
+  /** The marked enemy pays this many times its experience (on top of a leader's bonus) when its gate opens by its fall. */
+  xp: 1.5,
+  /** A player this close to the dropped key takes it (px). */
+  keyTouch: 28,
+} as const;

@@ -836,5 +836,9 @@
   "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it.",
   "coop.revived": "{name} gets back up!",
   "coop.reviveInterrupted": "The help was cut short: it starts again.",
-  "coop.reviveHint": "stay by them"
+  "coop.reviveHint": "stay by them",
+  "gate.seal.hud": "Stairs sealed: defeat the marked enemy",
+  "gate.key.hud": "Door locked: the marked enemy carries the key",
+  "gate.key.dropped": "The key fell: pick it up",
+  "gate.waves.hud": "Stairs sealed: clear the wave room"
 }

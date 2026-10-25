@@ -1,5 +1,6 @@
 import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnTuning, type WaterTuning } from './dungeon';
 import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
+import type { GateTuning } from './encounters';
 import type { MusicContext } from './music';
 import { ROOMS } from './rooms';
 import type { SpeciesId } from './species';
@@ -69,6 +70,8 @@ export interface DungeonDef {
   water?: WaterTuning;
   /** Toxic pools on its generated floors (core/toxic.ts): the Toxic Swamp. */
   toxicPools?: true;
+  /** Mandatory kills on some generated floors (core/gates.ts): a sealed stairs, a locked door, a wave room. */
+  gates?: GateTuning;
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -104,6 +107,14 @@ export const CRYPT: DungeonDef = {
   },
   unlockedBy: null,
   decor: 'crypt',
+  // Floors 1..5 (3 is the vault): never floor 1; the locked door from floor 4.
+  gates: {
+    chance: [0, 0.35, 0, 0.45, 0.5],
+    kinds: [
+      { kind: 'seal', weights: [0, 1, 0, 1, 1] },
+      { kind: 'key', weights: [0, 0, 0, 0.8, 1] },
+    ],
+  },
 };
 
 /**
@@ -172,6 +183,14 @@ export const FOREST: DungeonDef = {
   decor: 'forest',
   // A spirit light on about a third of the generated floors from floor 2 (more often deeper), three berries.
   wisp: { chance: [0, 0.35, 0.35, 0, 0.35, 0.4, 0.4], berries: 3 },
+  // Floors 1..7 (4 is the hollow): the locked door from floor 3.
+  gates: {
+    chance: [0, 0.3, 0.35, 0, 0.4, 0.45, 0.5],
+    kinds: [
+      { kind: 'seal', weights: [0, 1, 1, 0, 1, 1, 1] },
+      { kind: 'key', weights: [0, 0, 0.5, 0, 0.8, 1, 1] },
+    ],
+  },
 };
 
 /**
@@ -240,6 +259,14 @@ export const CAVES: DungeonDef = {
   unlockedBy: 'misty-forest',
   decor: 'caves',
   water: { poolChance: 0.55 },
+  // Floors 1..9 (5 is the grotto).
+  gates: {
+    chance: [0, 0.3, 0.35, 0.4, 0, 0.4, 0.45, 0.5, 0.5],
+    kinds: [
+      { kind: 'seal', weights: [0, 1, 1, 1, 0, 1, 1, 1, 1] },
+      { kind: 'key', weights: [0, 0, 0.5, 0.7, 0, 0.8, 1, 1, 1] },
+    ],
+  },
 };
 
 /**
@@ -309,6 +336,14 @@ export const SWAMP: DungeonDef = {
   unlockedBy: 'flooded-caves',
   decor: 'swamp',
   toxicPools: true,
+  // Floors 1..9 (5 is the den).
+  gates: {
+    chance: [0, 0.3, 0.35, 0.4, 0, 0.4, 0.45, 0.5, 0.5],
+    kinds: [
+      { kind: 'seal', weights: [0, 1, 1, 1, 0, 1, 1, 1, 1] },
+      { kind: 'key', weights: [0, 0, 0.5, 0.7, 0, 0.8, 1, 1, 1] },
+    ],
+  },
 };
 
 /** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */
@@ -347,6 +382,15 @@ export const ECLIPSE: DungeonDef = {
   },
   unlockedBy: null,
   endless: ENDLESS,
+  // From floor 3, rising to 40 %; the locked door from 4, the wave room (its own event) from 7, as the event.
+  gates: {
+    chance: Array.from({ length: 40 }, (_, i) => (i + 1 < 3 ? 0 : Math.min(0.4, 0.2 + 0.01 * (i - 2)))),
+    kinds: [
+      { kind: 'seal', weights: [0, 0, 1] },
+      { kind: 'key', weights: [0, 0, 0, 0.6] },
+      { kind: 'waves', weights: [0, 0, 0, 0, 0, 0, 0.5] },
+    ],
+  },
 };
 
 /** Every dungeon, in the order the dungeon select lists them. */

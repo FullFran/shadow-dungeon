@@ -13,7 +13,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { inPool, placePools, updateToxic } from '../../src/core/toxic';
 import { distance, vec } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
-import { IDLE, input, ticksFor } from './helpers';
+import { IDLE, input, ticksFor, openGate } from './helpers';
 
 const swampFloor = (seed: number, depth = 3) => generateFloor(seed, depth, SWAMP.spawns);
 
@@ -59,7 +59,7 @@ describe('the Toxic Swamp plan', () => {
 
   it('plays through: stairs, the den exit once Salazzle falls, stairs, then victory on Nihilego', () => {
     let progress: RunProgress = { ...startRun(5, {}, 1, SWAMP.id), entered: false, outcome: null };
-    const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+    const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
     const clear = (w: WorldState): WorldState => ({ ...w, enemies: w.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) });
     for (let floor = 2; floor <= 5; floor++) progress = progressRun(progress.run, toStairs(progress.world));
     expect(progress.run.floor).toBe(5);

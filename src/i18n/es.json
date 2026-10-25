@@ -836,5 +836,9 @@
   "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella.",
   "coop.revived": "¡{name} vuelve a levantarse!",
   "coop.reviveInterrupted": "La ayuda se ha cortado: vuelve a empezar.",
-  "coop.reviveHint": "quédate a su lado"
+  "coop.reviveHint": "quédate a su lado",
+  "gate.seal.hud": "Escalera sellada: derrota al enemigo marcado",
+  "gate.key.hud": "Puerta cerrada: el enemigo marcado lleva la llave",
+  "gate.key.dropped": "La llave ha caído: recógela",
+  "gate.waves.hud": "Escalera sellada: supera la sala de oleadas"
 }

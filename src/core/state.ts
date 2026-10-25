@@ -1,5 +1,5 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
-import type { BreakRule } from '../data/encounters';
+import type { BreakRule, GateKind } from '../data/encounters';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { QueenCard, UltraCard } from '../data/swamp-enemies';
@@ -14,6 +14,7 @@ import type { GasState } from './gas';
 import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { SimaEventState, SimaPactState } from './sima-events';
+import type { GateOutcome, GateState } from './gates';
 import type { ReviveState } from './revive';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -344,6 +345,10 @@ export type GameEvent =
   | { type: 'enemyDefeated'; enemyId: string }
   /** A leader winds up its rally cry (`windup`) or calls it (`cry`) (core/leaders.ts). */
   | { type: 'leaderRally'; enemyId: string; phase: 'windup' | 'cry' }
+  /** The floor's gate opened (its enemy fell, its key was taken, its wave room cleared) or broke (out of reach too long): core/gates.ts. */
+  | { type: 'gateOpened'; kind: GateKind; outcome: GateOutcome }
+  /** The key gate's bearer fell: its key lies at `pos`. */
+  | { type: 'keyDropped'; pos: Vec2 }
   /** A leader fell and its followers broke. */
   | { type: 'leaderFell'; enemyId: string; followers: number }
   /** Sableye took a held item of the local player, or it came back (stolen.ts). */
@@ -477,6 +482,8 @@ export interface WorldState {
   simaPact?: SimaPactState;
   /** Co-op: the local player's revive on this floor (core/revive.ts); absent solo. */
   revive?: ReviveState;
+  /** Generated floors: this floor's mandatory kill, if any (core/gates.ts); the host resolves it, guests follow its snapshot. */
+  gate?: GateState;
   events: GameEvent[];
 }
 

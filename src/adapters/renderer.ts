@@ -23,6 +23,7 @@ import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
+import { drawGateLine } from './hud';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
@@ -130,6 +131,9 @@ const COLORS = {
   tileWallFace: '#433a57',
   tileWallLip: '#5a4f73',
   tileShadow: 'rgba(0, 0, 0, 0.35)',
+  /** The floor's gate: the seal over shut stairs and on its enemy, the locked door's bars. */
+  gateSeal: '#e0463c',
+  gateBars: '#6a6f7e',
   /** A group's leader: its crown and ring; a slowed follower's drop. */
   leader: '#f2c44c',
   leaderGem: '#d0402c',
@@ -381,6 +385,78 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillRect(rect.x + 4 + i * 2, rect.y + 5 + i * 6, rect.width - 8 - i * 4, 3);
     }
     ctx.globalAlpha = 1;
+  }
+
+  /**
+   * The floor's gate (core/gates.ts) in the world: a red seal over shut
+   * stairs, iron bars across a locked stairs room's doorways, the dropped key.
+   */
+  function gateMarks(state: WorldState, timeMs: number): void {
+    const gate = state.gate;
+    if (!gate || gate.done) return;
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 200);
+    const stairs = state.arena.stairs;
+    if (stairs) {
+      const cx = stairs.x + stairs.width / 2;
+      const cy = stairs.y + stairs.height / 2;
+      ctx.save();
+      ctx.globalAlpha = 0.65 + 0.35 * pulse;
+      ctx.strokeStyle = COLORS.gateSeal;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, stairs.width * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, cy - 7);
+      ctx.lineTo(cx + 7, cy + 7);
+      ctx.moveTo(cx + 7, cy - 7);
+      ctx.lineTo(cx - 7, cy + 7);
+      ctx.stroke();
+      ctx.restore();
+    }
+    const grid = state.arena.tiles;
+    if (gate.doors && grid) {
+      ctx.fillStyle = COLORS.gateBars;
+      for (const i of gate.doors) {
+        const x = (i % grid.cols) * TILE;
+        const y = Math.floor(i / grid.cols) * TILE;
+        for (let b = 0; b < 4; b++) ctx.fillRect(x + 3 + b * 8, y + 2, 3, TILE - 4);
+        ctx.fillRect(x + 1, y + TILE / 2 - 2, TILE - 2, 3);
+      }
+    }
+    if (gate.key) keyGlyph(gate.key.x, gate.key.y - 6 - 3 * pulse);
+  }
+
+  /** A small gold key (the dropped one, or over its bearer's head). */
+  function keyGlyph(x: number, y: number): void {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    ctx.fillStyle = COLORS.leader;
+    ctx.fillRect(rx - 5, ry - 3, 5, 5);
+    ctx.fillRect(rx, ry - 1, 7, 2);
+    ctx.fillRect(rx + 4, ry + 1, 2, 2);
+    ctx.fillStyle = COLORS.stairsPit;
+    ctx.fillRect(rx - 4, ry - 2, 2, 2);
+  }
+
+  /** The gate's enemy: a red seal (or the key it carries) over its head, readable from across the room. */
+  function gateTargetMark(enemy: EnemyState, pos: Vec2, kind: string, timeMs: number): void {
+    const x = Math.round(pos.x);
+    const y = Math.round(pos.y - enemy.radius * 2 - (enemy.leader ? 16 : 8) - 2 * Math.sin(timeMs / 180));
+    if (kind === 'key') {
+      keyGlyph(x, y);
+      return;
+    }
+    ctx.save();
+    ctx.fillStyle = COLORS.gateSeal;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x + 5, y);
+    ctx.lineTo(x, y + 5);
+    ctx.lineTo(x - 5, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   /** Crypt decoration of a generated floor, worked out once per floor. */
@@ -1300,6 +1376,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     floor(current, view, timeMs, frame.decor ?? null, frame.sima ?? null);
     if (frame.sima?.abyss) drawFallingLight(ctx, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
+    gateMarks(current, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     // Inundación: the rising water lies over the floor, under everyone.
     if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
@@ -1352,6 +1429,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
+          if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);
         },
       });
       // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
@@ -1434,6 +1512,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
+    // The floor's gate, while it holds: one line under the floor card's place (the card shows it too as it fades in).
+    if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, frame.card ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78, timeMs);
   }
 
   return { draw };

@@ -22,6 +22,7 @@ import { settleStolen } from './stolen';
 import { guestEnemyContacts } from './victim';
 import { updateSimaEvent } from './sima-events';
 import { breakBands, updateLeaders } from './leaders';
+import { updateGate } from './gates';
 import { endlessSpawns } from './endless';
 import { ENDLESS } from '../data/endless';
 import { SIMA_EVENTS } from '../data/sima';
@@ -51,7 +52,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const enemies =
     state.role === 'guest'
       ? breakBands(guestEnemyContacts(combat, events), events)
-      : simaEventStep(updateLeaders(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs, events), dtMs);
+      : updateGate(simaEventStep(updateLeaders(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs, events), dtMs), dtMs, events);
   const pulled = wormholePull(enemies, dtMs, NIHILEGO);
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFlood(updateFog(updateCollapse(pulled, dtMs, events), dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   // Co-op: a fainted local player may be got up by an ally standing by (core/revive.ts; nothing solo).

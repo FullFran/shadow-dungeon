@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { bossBar } from '../core/boss';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
+import type { GateState } from '../core/gates';
 import type { PlayerState, Rect, WorldState } from '../core/state';
 import { drawBar, drawPanel, pixelText } from '../ui/canvas';
 import { bossRect, HUD_BOX, slotRect, statusRect } from '../ui/hud-layout';
@@ -176,4 +177,22 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     pixelText(ctx, flashText(juice.flash, player.species), screen.width / 2, 104 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
     ctx.globalAlpha = 1;
   }
+}
+
+/** The line of the floor's gate (core/gates.ts) while it holds: what keeps the stairs shut. */
+export function gateText(gate: Pick<GateState, 'kind' | 'key'>): string {
+  if (gate.kind === 'key') return t(gate.key ? 'gate.key.dropped' : 'gate.key.hud');
+  return t(gate.kind === 'waves' ? 'gate.waves.hud' : 'gate.seal.hud');
+}
+
+/** Draws the gate's line centred at `y` (HUD units), in a small window. */
+export function drawGateLine(ctx: CanvasRenderingContext2D, gate: Pick<GateState, 'kind' | 'key'>, width: number, y: number, timeMs: number): void {
+  const text = gateText(gate);
+  ctx.font = canvasFont();
+  const w = Math.ceil(ctx.measureText(text).width) + 20;
+  drawPanel(ctx, Math.round(width / 2 - w / 2), Math.round(y - 11), w, 18, { alpha: 0.85, fill: 0.8 });
+  const pulse = 0.75 + 0.25 * Math.sin(timeMs / 240);
+  ctx.globalAlpha = pulse;
+  pixelText(ctx, text, width / 2, y + 2, PALETTE.danger, 'center');
+  ctx.globalAlpha = 1;
 }

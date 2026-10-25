@@ -1,3 +1,5 @@
+import { openGate } from './helpers';
+import { withDoors } from '../../src/core/sima-events';
 import { describe, expect, it } from 'vitest';
 import { coinBreakdown, emptyTally, tallyFloor } from '../../src/core/coins';
 import { generateFloor } from '../../src/core/dungeon';
@@ -30,7 +32,7 @@ import { SPECIES } from '../../src/data/species';
 const SEED = 4242;
 const ECL = 'eclipse-chasm' as const;
 
-const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
 const killAll = (w: WorldState): WorldState => ({ ...w, enemies: w.enemies.map((e) => ({ ...e, hp: 0, alive: false })) });
 const toEchoExit = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.width / 2, 10) } });
 
@@ -219,7 +221,12 @@ describe('endless run', () => {
       expect(p.outcome).toBeNull();
       expect(p.run.floor).toBe(floor);
       // The map is the generator's; the Sima may swap a room's enemies for a squad, so only the grid is compared.
-      if (planAt(ECLIPSE, floor)!.kind === 'generated') expect(p.world.arena.tiles!.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).tiles);
+      // A key gate keeps the stairs room's doorways shut (core/gates.ts).
+      if (planAt(ECLIPSE, floor)!.kind === 'generated') {
+        const drawn = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor));
+        const doors = p.world.gate?.doors;
+        expect(p.world.arena.tiles!.tiles).toEqual(doors ? withDoors(drawn, doors, true).tiles : drawn.tiles);
+      }
     }
   });
 

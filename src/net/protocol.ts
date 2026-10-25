@@ -1,4 +1,5 @@
 import type { SimaSync } from '../core/sima-events';
+import type { GateSync } from '../core/gates';
 import { isEliteTrait } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
@@ -204,6 +205,19 @@ function decodeProjectile(w: unknown[]): ProjectileSnapshot {
   return { id, type, attackerTypes, power, pos: { x, y }, vel: { x: vx, y: vy }, radius, remainingMs, ...(pierce === 1 ? { pierceRoll: true } : {}) };
 }
 
+/** A gate's progress on the wire: [done, outcome, key x, key y] (key and outcome optional). */
+function encodeGate(g: GateSync): unknown[] {
+  return [g.done ? 1 : 0, g.outcome ?? null, ...(g.key ? [r1(g.key.x), r1(g.key.y)] : [])];
+}
+
+/** A gate's progress from the wire, or undefined when it is not one (an older or hostile host). */
+function decodeGate(w: unknown): GateSync | undefined {
+  if (!Array.isArray(w) || w.length < 2 || (w[0] !== 0 && w[0] !== 1)) return undefined;
+  const outcome = w[1] === 'opened' || w[1] === 'broken' ? w[1] : undefined;
+  const key = w.length >= 4 && finite(w[2]) && finite(w[3]) ? { x: w[2], y: w[3] } : undefined;
+  return { done: w[0] === 1, ...(outcome ? { outcome } : {}), ...(key ? { key } : {}) };
+}
+
 export function encodeMessage(message: NetMessage): string {
   let wire: Wire;
   switch (message.t) {
@@ -222,6 +236,8 @@ export function encodeMessage(message: NetMessage): string {
         ...(message.s.sima ? { v: message.s.sima } : {}),
         // Co-op party size of the floor (optional: an older guest ignores it).
         ...(message.s.party !== undefined ? { n: message.s.party } : {}),
+        // The floor's gate (optional): done flag, outcome, the dropped key's position.
+        ...(message.s.gate ? { g: encodeGate(message.s.gate) } : {}),
       };
       break;
     case 'town':
@@ -268,6 +284,7 @@ export function decodeMessage(text: string): NetMessage | null {
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
         ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
         ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),
+        ...(decodeGate(wire.g) ? { gate: decodeGate(wire.g)! } : {}),
       },
     };
   }

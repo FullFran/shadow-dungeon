@@ -34,3 +34,9 @@ export function run(state: WorldState, playerInput: PlayerInput, ticks: number, 
 
 /** Number of ticks covering `ms` of simulated time. */
 export const ticksFor = (ms: number): number => Math.round(ms / FIXED_DT_MS);
+
+/**
+ * The floor's gate opened (core/gates.ts), for tests that walk a run down by
+ * standing on the stairs: a mandatory kill would otherwise keep them shut.
+ */
+export const openGate = (w: WorldState): WorldState => (w.gate && !w.gate.done ? { ...w, gate: { ...w.gate, done: true, outcome: 'opened' } } : w);
