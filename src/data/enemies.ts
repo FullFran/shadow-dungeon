@@ -46,6 +46,10 @@ export interface PoochyenaDef {
   floats?: true;
   /** HP it takes back when its lunge connects (Phantump's grab). */
   drainHp?: number;
+  /** Erratic flier (Zubat): weaves sideways while it closes in, `amplitude` of the forward speed, one sway per `periodMs`. */
+  weave?: { amplitude: number; periodMs: number };
+  /** The aim stops tracking the player this long before the lunge (Ekans' coil): the locked lane is the dodge cue. */
+  lockMs?: number;
 }
 
 export interface GastlyDef {
@@ -213,7 +217,16 @@ export interface SlammerDef {
   ring?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
   /** Shows the boss bar (a mid-boss). */
   bar?: true;
+  /** Floats over obstacles (Tentacool drifts). */
+  floats?: true;
+  /** A lingering hazard left where it slams (Tentacool's poison, Wooper's mud). */
+  puddle?: HazardDef;
+  /** Hazards dropped behind it every `everyMs` while it walks (Grimer's sludge trail). */
+  trail?: { everyMs: number; puddle: HazardDef };
 }
+
+/** A lingering ground hazard: a still projectile that hits whoever walks in, once, and fades after `lifetimeMs`. */
+export type HazardDef = EnemyAttackDef & { radius: number; lifetimeMs: number };
 
 /** Foongus: never moves; when the player comes close it puffs, then leaves a spore cloud where it stands. */
 export interface SporeDef {
@@ -386,6 +399,406 @@ export const DECIDUEYE: ArcherDef = {
   },
   dive: { telegraphMs: 1100, diveMs: 420, distance: 460, reach: 8, attack: { power: 44, type: 'flying' }, recoverMs: 1700 },
 };
+
+/*
+ * Experimental roster (docs/gdd.md "Plantel experimental"): the Flooded
+ * Caves and Toxic Swamp species of docs/species-candidates.md plus three Fire
+ * species, first tried in the Sima del Eclipse. Every attack follows the same
+ * souls contract: a telegraph that shows where it lands, a dodge window (the
+ * telegraph itself, or the last part of it once the aim locks) and a punish
+ * window after it (`recoverMs`). Values are provisional.
+ */
+
+/** Crabs (Corphish, Clauncher): keep a distance band, telegraph a lane, then a water jet down it; the shell blocks frontal hits except while recovering. */
+export interface BeamDef {
+  kind: 'beam';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  minDistance: number;
+  maxDistance: number;
+  /** Slow turning makes flanking the shell possible. */
+  turnRateDegPerSec: number;
+  telegraphMs: number;
+  /** The lane stops following the player this long before the jet. */
+  lockMs: number;
+  /** The jet's active window. */
+  beamMs: number;
+  length: number;
+  width: number;
+  attack: EnemyAttackDef;
+  recoverMs: number;
+  cooldownMs: number;
+  /** Frontal sector that blocks hits (chip damage only) outside the recovery. */
+  guard?: { arcDegrees: number; chipFactor: number };
+}
+
+/** Chinchou: its lure glows, then an electric ring sweeps out from its body to `radius`; roll through it or stay outside. */
+export interface PulseDef {
+  kind: 'pulse';
+  poise: PoiseDef;
+  aggroRange: number;
+  speed: number;
+  minDistance: number;
+  maxDistance: number;
+  telegraphMs: number;
+  /** Time the ring takes to sweep out to `radius`. */
+  pulseMs: number;
+  radius: number;
+  /** Thickness of the ring's front. */
+  width: number;
+  attack: EnemyAttackDef;
+  recoverMs: number;
+  cooldownMs: number;
+}
+
+/** Breath attacks in a frontal cone: Houndour's flamethrower, Stunky's spray (turned away, leaving a cloud). */
+export interface ConeDef {
+  kind: 'cone';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  /** Starts the wind-up when the player is this close. */
+  engageRange: number;
+  telegraphMs: number;
+  breathMs: number;
+  reach: number;
+  arcDegrees: number;
+  attack: EnemyAttackDef;
+  recoverMs: number;
+  cooldownMs: number;
+  /** Turns its back to spray (Stunky): only the look changes. */
+  turnsAway?: true;
+  /** A cloud left in the cone when the breath ends. */
+  linger?: HazardDef;
+}
+
+/** Slugma: lobs a lava blob at where the player stands; the landing circle is marked until impact and leaves a lava pool. */
+export interface MortarDef {
+  kind: 'mortar';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  minDistance: number;
+  maxDistance: number;
+  /** Farthest landing point from its body. */
+  maxThrow: number;
+  /** Tracks the player; the landing point is fixed when it ends. */
+  telegraphMs: number;
+  /** Flight time: the marked circle is the dodge window. */
+  flightMs: number;
+  /** The last part of the flight that hits (the landing). */
+  impactMs: number;
+  radius: number;
+  attack: EnemyAttackDef;
+  pool: HazardDef;
+  recoverMs: number;
+  cooldownMs: number;
+}
+
+/** Koffing: floats close and puffs gas clouds; when its HP drops low it swells and explodes (a big marked ring), unless killed first. */
+export interface BomberDef {
+  kind: 'bomber';
+  poise: PoiseDef;
+  floats: true;
+  aggroRange: number;
+  speed: number;
+  /** Stops drifting closer at this distance. */
+  keepDistance: number;
+  puffRange: number;
+  telegraphMs: number;
+  cloud: HazardDef;
+  recoverMs: number;
+  cooldownMs: number;
+  explode: {
+    /** Starts the fuse once its HP is at or below this share of its max. */
+    belowHp: number;
+    /** The fuse: cannot be staggered; killing it in time cancels the blast. */
+    telegraphMs: number;
+    blastMs: number;
+    radius: number;
+    attack: EnemyAttackDef;
+  };
+}
+
+/**
+ * Croagunk: closes in and takes a counter stance. Hitting it during the
+ * stance is blocked and answered with a fast counter-punch; if nobody
+ * bites, the stance ends in a slower Poison Jab. Both end in a recovery.
+ */
+export interface CounterDef {
+  kind: 'counter';
+  poise: PoiseDef;
+  aggroRange: number;
+  walkSpeed: number;
+  engageRange: number;
+  stanceMs: number;
+  counter: { telegraphMs: number; lungeMs: number; lungeDistance: number; attack: EnemyAttackDef };
+  jab: { telegraphMs: number; lungeMs: number; lungeDistance: number; attack: EnemyAttackDef };
+  recoverMs: number;
+  cooldownMs: number;
+}
+
+export const ZUBAT: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.3, knockbackScale: 1.4 },
+  floats: true,
+  weave: { amplitude: 0.9, periodMs: 700 },
+  aggroRange: 600,
+  walkSpeed: 95,
+  stalkRange: 120,
+  lungeRange: 120,
+  telegraphMs: 500,
+  lungeMs: 240,
+  lungeDistance: 170,
+  attack: { power: 22, type: 'flying' },
+  hitRecoverMs: 450,
+  missRecoverMs: 900,
+  cooldownMs: 1100,
+};
+
+export const EKANS: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  lockMs: 300,
+  aggroRange: 550,
+  walkSpeed: 60,
+  stalkRange: 150,
+  lungeRange: 150,
+  telegraphMs: 800,
+  lungeMs: 260,
+  lungeDistance: 200,
+  attack: { power: 34, type: 'poison' },
+  hitRecoverMs: 500,
+  missRecoverMs: 1300,
+  cooldownMs: 1500,
+};
+
+export const TENTACOOL: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.8, knockbackScale: 0.6 },
+  floats: true,
+  aggroRange: 500,
+  walkSpeed: 40,
+  slamRange: 60,
+  telegraphMs: 650,
+  slamMs: 140,
+  radius: 46,
+  attack: { power: 28, type: 'poison' },
+  recoverMs: 1000,
+  cooldownMs: 1600,
+  puddle: { power: 16, type: 'poison', radius: 26, lifetimeMs: 3500 },
+};
+
+export const WOOPER: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.5, knockbackScale: 0.5 },
+  aggroRange: 500,
+  walkSpeed: 34,
+  slamRange: 70,
+  telegraphMs: 950,
+  slamMs: 180,
+  radius: 64,
+  attack: { power: 36, type: 'ground' },
+  recoverMs: 1400,
+  cooldownMs: 1700,
+  puddle: { power: 14, type: 'water', radius: 34, lifetimeMs: 3000 },
+};
+
+export const GRIMER: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.4, knockbackScale: 0.3 },
+  aggroRange: 500,
+  walkSpeed: 30,
+  slamRange: 55,
+  telegraphMs: 900,
+  slamMs: 160,
+  radius: 50,
+  attack: { power: 32, type: 'poison' },
+  recoverMs: 1300,
+  cooldownMs: 1500,
+  trail: { everyMs: 450, puddle: { power: 12, type: 'poison', radius: 14, lifetimeMs: 4000 } },
+};
+
+export const CORPHISH: BeamDef = {
+  kind: 'beam',
+  poise: { hitstunScale: 0.6, knockbackScale: 0.5 },
+  aggroRange: 550,
+  walkSpeed: 55,
+  minDistance: 90,
+  maxDistance: 170,
+  turnRateDegPerSec: 140,
+  telegraphMs: 700,
+  lockMs: 250,
+  beamMs: 260,
+  length: 190,
+  width: 18,
+  attack: { power: 30, type: 'water' },
+  recoverMs: 1000,
+  cooldownMs: 1700,
+  guard: { arcDegrees: 120, chipFactor: 0.2 },
+};
+
+export const CLAUNCHER: BeamDef = {
+  kind: 'beam',
+  poise: { hitstunScale: 0.8, knockbackScale: 0.7 },
+  aggroRange: 700,
+  walkSpeed: 40,
+  minDistance: 180,
+  maxDistance: 300,
+  turnRateDegPerSec: 90,
+  telegraphMs: 1100,
+  lockMs: 350,
+  beamMs: 200,
+  length: 340,
+  width: 12,
+  attack: { power: 40, type: 'water' },
+  recoverMs: 1300,
+  cooldownMs: 2400,
+  guard: { arcDegrees: 90, chipFactor: 0.25 },
+};
+
+export const CHINCHOU: PulseDef = {
+  kind: 'pulse',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  aggroRange: 600,
+  speed: 50,
+  minDistance: 60,
+  maxDistance: 120,
+  telegraphMs: 900,
+  pulseMs: 450,
+  radius: 110,
+  width: 10,
+  attack: { power: 28, type: 'electric' },
+  recoverMs: 900,
+  cooldownMs: 2000,
+};
+
+export const HOUNDOUR: ConeDef = {
+  kind: 'cone',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  aggroRange: 600,
+  walkSpeed: 85,
+  engageRange: 90,
+  telegraphMs: 600,
+  breathMs: 500,
+  reach: 100,
+  arcDegrees: 50,
+  attack: { power: 30, type: 'fire' },
+  recoverMs: 900,
+  cooldownMs: 1500,
+};
+
+export const STUNKY: ConeDef = {
+  kind: 'cone',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.2 },
+  turnsAway: true,
+  aggroRange: 550,
+  walkSpeed: 80,
+  engageRange: 70,
+  telegraphMs: 550,
+  breathMs: 300,
+  reach: 70,
+  arcDegrees: 70,
+  attack: { power: 20, type: 'poison' },
+  recoverMs: 800,
+  cooldownMs: 1700,
+  linger: { power: 14, type: 'poison', radius: 22, lifetimeMs: 2500 },
+};
+
+export const SLUGMA: MortarDef = {
+  kind: 'mortar',
+  poise: { hitstunScale: 0.7, knockbackScale: 0.5 },
+  aggroRange: 600,
+  walkSpeed: 30,
+  minDistance: 100,
+  maxDistance: 220,
+  maxThrow: 260,
+  telegraphMs: 700,
+  flightMs: 650,
+  impactMs: 100,
+  radius: 40,
+  attack: { power: 34, type: 'fire' },
+  pool: { power: 16, type: 'fire', radius: 30, lifetimeMs: 3500 },
+  recoverMs: 900,
+  cooldownMs: 2200,
+};
+
+export const LITLEO: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  aggroRange: 650,
+  speed: 60,
+  minDistance: 120,
+  maxDistance: 220,
+  telegraphMs: 600,
+  castMs: 250,
+  recoverMs: 500,
+  cooldownMs: 1700,
+  projectile: { power: 30, type: 'fire', speed: 150, radius: 8, lifetimeMs: 2500 },
+};
+
+export const KOFFING: BomberDef = {
+  kind: 'bomber',
+  poise: { hitstunScale: 0.6, knockbackScale: 0.8 },
+  floats: true,
+  aggroRange: 550,
+  speed: 38,
+  keepDistance: 50,
+  puffRange: 80,
+  telegraphMs: 600,
+  cloud: { power: 22, type: 'poison', radius: 34, lifetimeMs: 3000 },
+  recoverMs: 800,
+  cooldownMs: 2400,
+  explode: { belowHp: 0.35, telegraphMs: 1500, blastMs: 150, radius: 95, attack: { power: 60, type: 'poison' } },
+};
+
+export const CROAGUNK: CounterDef = {
+  kind: 'counter',
+  poise: { hitstunScale: 0.8, knockbackScale: 0.7 },
+  aggroRange: 550,
+  walkSpeed: 70,
+  engageRange: 80,
+  stanceMs: 1200,
+  counter: { telegraphMs: 320, lungeMs: 180, lungeDistance: 90, attack: { power: 48, type: 'fighting' } },
+  jab: { telegraphMs: 450, lungeMs: 200, lungeDistance: 80, attack: { power: 30, type: 'poison' } },
+  recoverMs: 1100,
+  cooldownMs: 1500,
+};
+
+/** Where an experimental species is meant to live once its dungeon exists. */
+export type FutureDungeon = 'flooded-caves' | 'toxic-swamp' | 'undecided';
+
+export interface ExperimentalEnemy {
+  species: SpeciesId;
+  /** Suggested first floor (depth) it may appear on. */
+  minDepth: number;
+  /** Relative spawn weight once allowed. */
+  weight: number;
+  /** Comes in groups of this many. */
+  pack?: number;
+  /** Suggested Pokémonedas per defeat (the run tally pays a flat `COINS.perEnemy` today). */
+  coins: number;
+  futureDungeon: FutureDungeon;
+}
+
+/** The experimental roster, for the Sima del Eclipse's pool (data only; no dungeon draws from it yet). */
+export const EXPERIMENTAL_ENEMIES: readonly ExperimentalEnemy[] = [
+  { species: 'zubat', minDepth: 1, weight: 3, pack: 3, coins: 1, futureDungeon: 'flooded-caves' },
+  { species: 'stunky', minDepth: 1, weight: 2, pack: 2, coins: 1, futureDungeon: 'toxic-swamp' },
+  { species: 'ekans', minDepth: 2, weight: 2, coins: 1, futureDungeon: 'toxic-swamp' },
+  { species: 'litleo', minDepth: 2, weight: 2, coins: 1, futureDungeon: 'undecided' },
+  { species: 'tentacool', minDepth: 2, weight: 2, coins: 1, futureDungeon: 'flooded-caves' },
+  { species: 'corphish', minDepth: 3, weight: 2, coins: 2, futureDungeon: 'flooded-caves' },
+  { species: 'chinchou', minDepth: 3, weight: 2, coins: 2, futureDungeon: 'flooded-caves' },
+  { species: 'houndour', minDepth: 3, weight: 2, coins: 2, futureDungeon: 'undecided' },
+  { species: 'koffing', minDepth: 3, weight: 1, coins: 2, futureDungeon: 'toxic-swamp' },
+  { species: 'grimer', minDepth: 4, weight: 1, coins: 2, futureDungeon: 'toxic-swamp' },
+  { species: 'wooper', minDepth: 4, weight: 1, coins: 2, futureDungeon: 'flooded-caves' },
+  { species: 'slugma', minDepth: 4, weight: 1, coins: 2, futureDungeon: 'undecided' },
+  { species: 'clauncher', minDepth: 5, weight: 1, coins: 3, futureDungeon: 'flooded-caves' },
+  { species: 'croagunk', minDepth: 5, weight: 1, coins: 3, futureDungeon: 'toxic-swamp' },
+];
 
 export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef;
 

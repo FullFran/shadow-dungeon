@@ -61,6 +61,9 @@ export const TYPE_COLORS: Record<PokemonType, TypeColors> = {
   grass: { core: '#5cc23a', glow: '#b9f28c', edge: '#2a6418' },
   bug: { core: '#b4c228', glow: '#eef59a', edge: '#5d6612' },
   flying: { core: '#8db4f2', glow: '#e0ecff', edge: '#3f5f9e' },
+  water: { core: '#3f8ef0', glow: '#a8dcff', edge: '#1c4a96' },
+  electric: { core: '#ffd52e', glow: '#fff6a8', edge: '#a87a00' },
+  fighting: { core: '#c8432b', glow: '#ffb08a', edge: '#6e1d10' },
 };
 
 /**

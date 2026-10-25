@@ -439,5 +439,22 @@
   "guardian.aegislash.pre.1": "Soy el primero de los que guardan. Ninguna sombra pasa de esta puerta.",
   "guardian.aegislash.pre.2": "Desenvaina, pequeño. Que el acero diga quién sigue.",
   "guardian.aegislash.post.1": "El juramento se quiebra… pero esta no era la única puerta.",
-  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo."
+  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo.",
+  "species.zubat": "Zubat",
+  "species.tentacool": "Tentacool",
+  "species.chinchou": "Chinchou",
+  "species.corphish": "Corphish",
+  "species.clauncher": "Clauncher",
+  "species.wooper": "Wooper",
+  "species.grimer": "Grimer",
+  "species.koffing": "Koffing",
+  "species.ekans": "Ekans",
+  "species.croagunk": "Croagunk",
+  "species.stunky": "Stunky",
+  "species.houndour": "Houndour",
+  "species.slugma": "Slugma",
+  "species.litleo": "Litleo",
+  "type.water": "Agua",
+  "type.electric": "Eléctrico",
+  "type.fighting": "Lucha"
 }
