@@ -17,4 +17,10 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     subtitleKey: 'dungeon.crypt.subtitle',
     loreKeys: ['dungeon.crypt.lore.1', 'dungeon.crypt.lore.2'],
   },
+  {
+    id: 'misty-forest',
+    nameKey: 'dungeon.forest.name',
+    subtitleKey: 'dungeon.forest.subtitle',
+    loreKeys: ['dungeon.forest.lore.1', 'dungeon.forest.lore.2'],
+  },
 ];

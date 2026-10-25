@@ -1,8 +1,10 @@
+import type { ArcherCard } from '../data/enemies';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
 import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
+import type { FogState } from './fog';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -163,7 +165,8 @@ export interface EnemyState {
   wakeRoom?: Rect;
 }
 
-export type BossStance = 'shield' | 'blade';
+/** Aegislash's two stances, or the spell card Decidueye is playing. */
+export type BossStance = 'shield' | 'blade' | ArcherCard;
 
 export interface BossState {
   stance: BossStance;
@@ -171,9 +174,9 @@ export interface BossState {
   stanceMs: number;
   /** Damage taken since the current stance began. */
   stanceDamage: number;
-  /** Blow of the Blade combo in progress (0-based). */
+  /** Blow of the Blade combo in progress (0-based); Decidueye: shot or fan of the current card. */
   comboIndex: number;
-  /** Combos finished in the current Blade stance. */
+  /** Combos finished in the current Blade stance; Decidueye: cards played so far. */
   combosDone: number;
 }
 
@@ -270,7 +273,7 @@ export type GameEvent =
   | { type: 'berryClaim'; berryId: string }
   /** The local player reached `level` (progression.ts). */
   | { type: 'levelUp'; level: number }
-  /** Collapsed ground hurt the player (not an attack: no dodge, no Disguise). */
+  /** The floor hurt the player: collapsed ground, or the closed fog's chill (not an attack: no dodge, no Disguise). */
   | { type: 'collapseHurt'; damage: number }
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
@@ -357,6 +360,8 @@ export interface WorldState {
   flow?: FlowField;
   /** Collapse urgent floors: the advancing front (collapse.ts). */
   collapse?: CollapseState;
+  /** Fog urgent floors (Niebla): the closing vision (fog.ts). */
+  fog?: FogState;
   events: GameEvent[];
 }
 

@@ -98,7 +98,13 @@ function townCamera(focus: Vec2, map: TownMap) {
 }
 
 /** The notice board's lines: the local records of the first dungeon, if there are any. */
-const readBoard = (): string[] => boardLines(readRecords(browserStore()), DUNGEON_LORE[0]!.id, (key) => t(key));
+const readBoard = (): string[] =>
+  boardLines(
+    readRecords(browserStore()),
+    DUNGEON_LORE[0]!.id,
+    (key) => t(key),
+    DUNGEON_LORE.slice(1).map((l) => ({ id: l.id, name: t(l.nameKey) })),
+  );
 
 export interface TownHandle {
   stop(): void;

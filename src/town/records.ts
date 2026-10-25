@@ -113,12 +113,21 @@ export function saveRun(store: KeyValueStore, run: RunRecord): void {
   }
 }
 
-/** The notice board text for one dungeon (`tr` is the i18n lookup). */
-export function boardLines(records: Records, dungeon: string, tr: (key: string) => string): string[] {
+/**
+ * The notice board text for one dungeon (`tr` is the i18n lookup), plus a
+ * best-floor line for each of the `others` (later dungeons, by translated
+ * name) once a run went there.
+ */
+export function boardLines(records: Records, dungeon: string, tr: (key: string) => string, others: readonly { id: string; name: string }[] = []): string[] {
   if (records.runs === 0) return [tr('town.board.title'), tr('town.board.none')];
   const floor = records.dungeons[dungeon]?.bestFloor;
+  const elsewhere = others.flatMap((o) => {
+    const best = records.dungeons[o.id]?.bestFloor;
+    return best === undefined ? [] : [tr('town.board.bestIn').replace('{dungeon}', o.name).replace('{floor}', String(best))];
+  });
   const parts = [
     tr('town.board.best').replace('{floor}', floor === undefined ? '-' : String(floor)),
+    ...elsewhere,
     tr('town.board.runs').replace('{runs}', String(records.runs)),
     tr('town.board.victories').replace('{wins}', String(records.victories)),
     tr('town.board.level').replace('{level}', records.bestLevel === null ? '-' : String(records.bestLevel)),

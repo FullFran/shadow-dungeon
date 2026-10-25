@@ -88,3 +88,13 @@ describe('cleared dungeons', () => {
     expect([...clearedDungeons(EMPTY_RECORDS)]).toEqual([]);
   });
 });
+
+describe('board lines for later dungeons', () => {
+  it('adds a best floor line for each other dungeon once a run went there', () => {
+    const tr = (key: string) => ({ 'town.board.title': 'Records:', 'town.board.best': 'Best floor: {floor}', 'town.board.bestIn': 'Best in {dungeon}: {floor}', 'town.board.runs': 'Runs: {runs}', 'town.board.victories': 'Wins: {wins}', 'town.board.level': 'Best level: {level}' })[key] ?? key;
+    const records = [run({ floor: 4, victory: true }), run({ dungeon: 'misty-forest', floor: 3 })].reduce(recordRun, EMPTY_RECORDS);
+    const others = [{ id: 'misty-forest', name: 'Forest' }];
+    expect(boardLines(records, crypt, tr, others)).toEqual(['Records: Best floor: 4 · Best in Forest: 3 · Runs: 2 · Wins: 1 · Best level: 4']);
+    expect(boardLines(recordRun(EMPTY_RECORDS, run()), crypt, tr, others)).toEqual(['Records: Best floor: 2 · Runs: 1 · Wins: 0 · Best level: 4']);
+  });
+});

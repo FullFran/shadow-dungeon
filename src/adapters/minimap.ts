@@ -1,8 +1,9 @@
+import { fogRadiusTiles } from '../core/fog';
 import type { TileRect } from '../core/dungeon';
 import { collapseFront } from '../core/collapse';
 import type { Rect, WorldState } from '../core/state';
 import { isWall, TILE, tileOf, type TileGrid, type TilePoint } from '../core/tiles';
-import type { Vec2 } from '../core/vec';
+import { distance, type Vec2 } from '../core/vec';
 import { insideRect } from '../core/geometry';
 import { drawPanel } from '../ui/canvas';
 
@@ -42,7 +43,17 @@ function markRect(memory: MinimapMemory, x0: number, y0: number, x1: number, y1:
 }
 
 /** Marks what the player at `at` sees: its whole room (and walls) or a square around it. Mutates `memory`. */
-export function revealAround(memory: MinimapMemory, grid: TileGrid, rooms: readonly TileRect[], at: TilePoint): void {
+/**
+ * Marks what the player sees from `at`: its whole room on entering it and a
+ * square around it. In the fog (`sightTiles`) only the tiles inside the sight
+ * circle are remembered, rooms included.
+ */
+export function revealAround(memory: MinimapMemory, grid: TileGrid, rooms: readonly TileRect[], at: TilePoint, sightTiles?: number): void {
+  if (sightTiles !== undefined) {
+    const r = Math.floor(sightTiles);
+    for (let y = at.y - r; y <= at.y + r; y++) for (let x = at.x - r; x <= at.x + r; x++) if ((x - at.x) ** 2 + (y - at.y) ** 2 <= sightTiles ** 2) markRect(memory, x, y, x, y);
+    return;
+  }
   const room = isWall(grid, at.x, at.y) ? undefined : rooms.find((r) => at.x >= r.x && at.x < r.x + r.width && at.y >= r.y && at.y < r.y + r.height);
   if (room) markRect(memory, room.x - 1, room.y - 1, room.x + room.width, room.y + room.height);
   const r = MINIMAP.revealRadius;
@@ -64,7 +75,10 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
   return {
     player: { x: state.player.pos.x / TILE, y: state.player.pos.y / TILE },
     stairs: stairs && isSeen(memory, stairs.x, stairs.y) ? stairs : null,
-    enemies: state.enemies.filter((e) => e.alive && insideRect(e.pos, view)).map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
+    // In the fog only what is inside the sight circle shows.
+    enemies: state.enemies
+      .filter((e) => e.alive && insideRect(e.pos, view) && (!state.fog || distance(e.pos, state.player.pos) <= fogRadiusTiles(state.fog) * TILE))
+      .map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
     berries: state.berries.map((b) => tileOf(b.pos)).filter((t) => isSeen(memory, t.x, t.y)),
   };
 }

@@ -66,6 +66,34 @@ export function drawDungeonIntro(ctx: CanvasRenderingContext2D, intro: DungeonIn
   ctx.globalAlpha = 1;
 }
 
+/** A boss spell card announced on screen (Touhou style): its full name, for a couple of seconds. */
+export interface SpellBanner {
+  name: string;
+  shownAtMs: number;
+}
+
+export const SPELL = { fadeInMs: 250, holdMs: 2200, fadeOutMs: 500 } as const;
+
+export const spellAlpha = (spell: Pick<SpellBanner, 'shownAtMs'>, nowMs: number): number =>
+  fadeAlpha(nowMs - spell.shownAtMs, SPELL.fadeInMs, SPELL.holdMs, SPELL.fadeOutMs);
+
+/** Draws the spell card name across the top of the view, sliding in from the right. */
+export function drawSpellBanner(ctx: CanvasRenderingContext2D, spell: SpellBanner, nowMs: number, width: number): void {
+  const alpha = spellAlpha(spell, nowMs);
+  if (alpha <= 0) return;
+  const slide = Math.round(24 * (1 - Math.min(1, alpha * 1.4)));
+  const y = 100;
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, y - 13, width, 19);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = PALETTE.eclipseGlow;
+  ctx.fillRect(0, y + 6, width, 1);
+  ctx.font = canvasFont();
+  pixelText(ctx, spell.name, width / 2 + slide, y, PALETTE.cursor, 'center');
+  ctx.globalAlpha = 1;
+}
+
 /** Draws "♪ title" at the top right, under the minimap's corner. */
 export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, nowMs: number, width: number, height: number): void {
   const alpha = noteAlpha(note, nowMs);

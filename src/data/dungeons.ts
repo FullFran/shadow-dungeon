@@ -9,7 +9,7 @@ import type { MusicContext } from './music';
  * music of each kind of floor, the colours of its tiles and what unlocks it.
  * The run (core/run.ts) reads everything from here.
  */
-export type DungeonId = 'crypt-of-the-sword-king';
+export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -66,7 +66,7 @@ export const CRYPT: DungeonDef = {
   plan: RUN_PLAN,
   spawns: CRYPT_SPAWNS,
   urgent: [{ kind: 'collapse', chance: URGENT.collapseChance }],
-  music: { floor: 'crypt', urgent: { collapse: 'collapse' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
   palette: {
     tileFloorA: '#2b2533',
     tileFloorB: '#2f2938',
@@ -85,8 +85,67 @@ export const CRYPT: DungeonDef = {
   unlockedBy: null,
 };
 
+/**
+ * The Misty Forest (Bosque Brumoso), opened by beating the Crypt's guardian:
+ * eight floors (provisional), the Trevenant mid-boss on floor 4 and Decidueye
+ * on floor 8. Its first floors are gentler than the Crypt's last ones (fewer
+ * enemies per room, weaker hits) and it ramps with depth: the tank and the
+ * diving owl only show up from floor 2-3. Its urgent floor is the fog
+ * (Niebla); a landslide (the collapse) is rarer here.
+ */
+export const FOREST: DungeonDef = {
+  id: 'misty-forest',
+  lore: loreOf('misty-forest'),
+  plan: [
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'hollow', role: 'midboss' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'roost' },
+  ],
+  spawns: {
+    base: 1,
+    perDepth: 0.5,
+    jitter: 1,
+    maxPerRoom: 4,
+    // Weights by floor 1..7 (floors 4 and 8 are arenas; their entries keep the tables aligned).
+    pool: [
+      { species: 'pumpkaboo-small', weights: [3, 3, 2, 2, 2, 2, 2], pack: 3 },
+      { species: 'phantump', weights: [2, 2, 2, 2, 2, 2, 2] },
+      { species: 'spinarak', weights: [1, 1, 2, 2, 2, 3, 3] },
+      { species: 'foongus', weights: [1, 1, 1, 1, 2, 2, 2] },
+      { species: 'hoothoot', weights: [0, 1, 2, 2, 2, 2, 3] },
+      { species: 'pumpkaboo-super', weights: [0, 0, 1, 1, 1, 2, 2] },
+    ],
+  },
+  urgent: [
+    { kind: 'fog', chance: [0, 0.3, 0.35, 0, 0.4, 0.45, 0.5] },
+    { kind: 'collapse', chance: [0, 0, 0.1, 0, 0.1, 0.15, 0.15] },
+  ],
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  palette: {
+    tileFloorA: '#2c3b2d',
+    tileFloorB: '#304131',
+    tileWallTop: '#0d1710',
+    tileWallBlock: '#142318',
+    tileWallFace: '#2b4630',
+    tileWallLip: '#3e6644',
+    mapRim: '#3a5a3e',
+    floorA: '#1b261d',
+    floorB: '#1f2c21',
+    wall: '#060c07',
+    wallEdge: '#2f4a33',
+    pillarTop: '#4b3b2b',
+    pillarSide: '#2e241a',
+  },
+  unlockedBy: 'crypt-of-the-sword-king',
+};
+
 /** Every dungeon, in the order the dungeon select lists them. */
-export const DUNGEONS: readonly DungeonDef[] = [CRYPT];
+export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST];
 
 const isDungeonId = (id: unknown): id is DungeonId => DUNGEONS.some((d) => d.id === id);
 

@@ -29,7 +29,7 @@ export const CARD = {
   fadeOutMs: 600,
 } as const;
 
-const holdOf = (card: Pick<FloorCard, 'kind'>) => (card.kind === 'collapse' ? CARD.urgentHoldMs : CARD.holdMs);
+const holdOf = (card: Pick<FloorCard, 'kind'>) => (card.kind === 'normal' ? CARD.holdMs : CARD.urgentHoldMs);
 
 /** Opacity of the card `ageMs` after it appeared: fade in, hold, fade out, then 0 for good. */
 export function cardAlpha(card: Pick<FloorCard, 'kind'>, ageMs: number): number {
@@ -51,7 +51,7 @@ export function cardLines(card: FloorCard): { dungeon: string; floor: string; wa
   return {
     dungeon: card.dungeon ?? t('app.title'),
     floor: floorLabel(card.floor),
-    warning: card.kind === 'collapse' ? t('card.collapse') : null,
+    warning: card.kind === 'normal' ? null : t(`card.${card.kind}`),
     bonus: card.escape ? t('card.escaped').replace('{time}', formatClock(card.escape.ms)) : null,
   };
 }

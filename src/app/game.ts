@@ -7,7 +7,10 @@ import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, progressRun, startRun, type RunState } from '../core/run';
 import { musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
-import { trackNote, type DungeonIntro, type NowPlaying } from '../adapters/intro-card';
+import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
+import { bossBar } from '../core/boss';
+import { fogRadiusTiles } from '../core/fog';
+import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -138,6 +141,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let intro: DungeonIntro | null = null;
   let nowPlaying: NowPlaying | null = null;
   let playing: MusicContext | null = null;
+  /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
+  let spell: SpellBanner | null = null;
+  let lastCard: string | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
   const music = () => {
     const context = musicFor(dungeonOf(run), floorPlanOf(run), run.kind);
@@ -161,7 +167,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs };
       card = null;
     }
-    if (run.kind === 'collapse') say(t('card.collapse'), 'warn');
+    if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
   }
@@ -347,7 +353,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
-    if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos));
+    if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
+    const bar = bossBar(world);
+    const def = bar ? ENEMY_BEHAVIOUR[bar.species] : undefined;
+    const cardNow = def?.kind === 'archer' && bar?.stance && world.enemies.some((e) => e.id === bar.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar.stance : null;
+    if (cardNow && cardNow !== lastCard && def?.kind === 'archer') spell = { name: t(def.cardNames[cardNow as keyof typeof def.cardNames]), shownAtMs: realMs };
+    if (cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
     audio?.setRumble(rumble);
@@ -380,6 +391,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       palette: dungeonOf(run).palette,
       intro,
       nowPlaying,
+      spell,
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);

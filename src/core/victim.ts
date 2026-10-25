@@ -1,4 +1,4 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
 import type { EnemyState, GameEvent, WorldState } from './state';
@@ -20,6 +20,12 @@ function angleBetween(a: Vec2, b: Vec2): number {
 
 /** Poochyena's lunge: body contact. */
 export const lungeTouches = (enemy: EnemyState, player: Vec2): boolean => distance(enemy.pos, player) <= enemy.radius + PLAYER_RADIUS;
+
+/** A tank's ground slam: anywhere within `radius` of its body. */
+export const slamTouches = (enemy: EnemyState, player: Vec2, radius: number): boolean => distance(enemy.pos, player) <= radius + PLAYER_RADIUS;
+
+/** Decidueye's dive: body contact with the dive's extra reach. */
+export const diveTouches = (enemy: EnemyState, player: Vec2, def: ArcherDef): boolean => distance(enemy.pos, player) <= enemy.radius + PLAYER_RADIUS + def.dive.reach;
 
 /** Aegislash's shield bash: body contact with a small margin. */
 export const bashTouches = (enemy: EnemyState, player: Vec2): boolean => distance(enemy.pos, player) <= enemy.radius + PLAYER_RADIUS + 4;
@@ -43,10 +49,15 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
   for (const enemy of state.enemies) {
     if (!enemy.alive || enemy.ai.mode !== 'attack' || enemy.ai.contact !== 'none' || enemy.hitstunMs > 0) continue;
     const def = ENEMY_BEHAVIOUR[enemy.species];
-    if (!def || def.kind === 'caster') continue;
+    if (!def || def.kind === 'caster' || def.kind === 'spore') continue;
     let hit;
     if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
-    else if (enemy.boss?.stance === 'blade') {
+    else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slamTouches(enemy, current.player.pos, def.radius), events);
+    else if (def.kind === 'archer') {
+      // Only the dive touches; arrows and leaves are projectiles.
+      if (enemy.boss?.stance !== 'dive') continue;
+      hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
+    } else if (enemy.boss?.stance === 'blade') {
       const blow = def.blade.combo[enemy.boss.comboIndex]!;
       hit = contactPlayer(current, enemy, blow.attack, bladeTouches(enemy, current.player.pos), events);
     } else hit = contactPlayer(current, enemy, def.shield.bash, bashTouches(enemy, current.player.pos), events);

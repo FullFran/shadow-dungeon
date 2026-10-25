@@ -1,10 +1,11 @@
-import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef } from '../data/enemies';
+import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
+import { updateArcher } from './archer';
 import { updateBoss } from './boss';
 import { flowStep } from './flow';
-import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
+import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, spawnShot, spreadDirections, towardTarget } from './brain';
 import { targetOf } from './party';
-import { lungeTouches } from './victim';
-import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
+import { lungeTouches, slamTouches } from './victim';
+import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { lineOfSight, tileCenter, tileOf } from './tiles';
 import { enemyTimeScale } from './time';
 import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -36,8 +37,10 @@ function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: V
  * of sight (or on arenas without tiles), otherwise towards the next tile
  * downhill on the shared flow field (towards the nearest player). Null when it sees the target.
  */
-function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2): Vec2 | null {
+function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2, floats = false): Vec2 | null {
   const grid = state.arena.tiles;
+  // Fliers and phasers go straight over the walls.
+  if (floats) return null;
   if (!grid || !state.flow || lineOfSight(grid, enemy.pos, target)) return null;
   const next = flowStep(grid, state.flow, tileOf(enemy.pos));
   if (!next) return null;
@@ -45,7 +48,11 @@ function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2): Vec2
   return length(dir) > 0 ? dir : null;
 }
 
-/** Poochyena: stalks, telegraphs with Charge, lunges in a straight line; a dodged lunge leaves it exposed. */
+/**
+ * Lungers (Poochyena, Phantump, Pumpkaboo Small, Hoothoot): stalk, telegraph
+ * with Charge, lunge in a straight line; a dodged lunge leaves them exposed.
+ * Fliers and phasers (`floats`) cross walls; Phantump drains on a hit.
+ */
 function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
   const toPlayer = towardTarget(target, enemy);
@@ -57,7 +64,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
       break;
     case 'approach': {
-      const path = pathDirection(state, enemy, target);
+      const path = pathDirection(state, enemy, target, def.floats === true);
       if (path) {
         // Out of sight: follow the flow field around the walls, no stalking or lunging.
         enemy = { ...moveEnemy(state, enemy, scale(path, (def.walkSpeed * ms) / 1000)), facing: path };
@@ -90,6 +97,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
       if (hit.contact === 'hit') {
+        if (def.drainHp) enemy = { ...enemy, hp: Math.min(enemy.maxHp, enemy.hp + def.drainHp) };
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.hitRecoverMs), cooldownMs: def.cooldownMs } };
       } else if (modeOver(ai)) {
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.missRecoverMs), cooldownMs: def.cooldownMs } };
@@ -108,26 +116,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
   return replaceEnemy(state, enemy);
 }
 
-function spawnEnemyProjectile(state: WorldState, enemy: EnemyState, def: GastlyDef['projectile'], dir: Vec2): WorldState {
-  const projectile: ProjectileState = {
-    id: `p${state.nextId}`,
-    owner: 'enemy',
-    type: def.type,
-    attackerTypes: enemy.types,
-    power: def.power,
-    damageMultiplier: 1,
-    pos: add(enemy.pos, scale(dir, enemy.radius + def.radius)),
-    vel: scale(dir, def.speed),
-    radius: def.radius,
-    remainingMs: def.lifetimeMs,
-    hitstunMs: 0,
-    knockback: 0,
-    hitIds: [],
-  };
-  return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
-}
-
-/** Gastly: floats, keeps its distance band, telegraphs and casts a slow ball. */
+/** Casters: keep a distance band, telegraph and cast a slow ball (Gastly floats) or a fan of threads (Spinarak walks). */
 function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
   const toPlayer = towardTarget(target, enemy);
@@ -153,7 +142,7 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'ball' });
-        state = spawnEnemyProjectile(state, enemy, def.projectile, enemy.ai.attackDir);
+        for (const dir of spreadDirections(enemy.ai.attackDir, def.spread?.count ?? 1, def.spread?.degrees ?? 0)) state = spawnShot(state, enemy, def.projectile, dir);
         enemy = { ...enemy, ai: enterMode(enemy.ai, 'attack', def.castMs) };
       }
       break;
@@ -165,6 +154,79 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
         const strafeSign = ai.strafeSign === 1 ? -1 : 1;
         enemy = { ...enemy, ai: { ...enterMode(ai, 'reposition'), strafeSign } };
       }
+      break;
+    default:
+      break;
+  }
+  return replaceEnemy(state, enemy);
+}
+
+/** Tanks (Pumpkaboo Super, Trevenant): walk in slowly, a long wind-up, then a ground slam around them (and a ring of leaves). */
+function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
+  let enemy = start;
+  const toPlayer = towardTarget(target, enemy);
+  const dist = distance(enemy.pos, target);
+  const ai = enemy.ai;
+
+  switch (ai.mode) {
+    case 'idle':
+      if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
+      break;
+    case 'approach': {
+      if (ai.cooldownMs <= 0 && dist <= def.slamRange) {
+        enemy = telegraph(enemy, 'slam', def.telegraphMs, toPlayer, events);
+        break;
+      }
+      const dir = pathDirection(state, enemy, target) ?? toPlayer;
+      // Close enough to slam: hold the ground while the slam recharges.
+      if (dist > def.slamRange * 0.6) enemy = moveEnemy(state, enemy, scale(dir, (def.walkSpeed * ms) / 1000));
+      enemy = { ...enemy, facing: dir };
+      break;
+    }
+    case 'telegraph':
+      enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      if (modeOver(ai)) {
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
+        if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.slamMs), contact: 'none' } };
+      }
+      break;
+    case 'attack': {
+      const hit = contactPlayer(state, enemy, def.attack, slamTouches(enemy, state.player.pos, def.radius), events);
+      state = hit.state;
+      enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
+      if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
+      break;
+    }
+    case 'recover':
+      if (modeOver(ai)) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
+      break;
+    default:
+      break;
+  }
+  return replaceEnemy(state, enemy);
+}
+
+/** Foongus: stands still; when a player comes close it puffs and leaves a spore cloud on the spot. */
+function updateSpore(state: WorldState, start: EnemyState, def: SporeDef, target: Vec2, events: GameEvent[]): WorldState {
+  let enemy = start;
+  const ai = enemy.ai;
+  const toPlayer = towardTarget(target, enemy);
+  switch (ai.mode) {
+    case 'idle':
+    case 'approach':
+      enemy = { ...enemy, facing: toPlayer };
+      if (ai.cooldownMs <= 0 && distance(enemy.pos, target) <= def.triggerRange) enemy = telegraph(enemy, 'spores', def.telegraphMs, toPlayer, events);
+      break;
+    case 'telegraph':
+      if (modeOver(ai)) {
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'spores' });
+        state = spawnShot(state, enemy, { ...def.cloud, speed: 0 }, toPlayer, enemy.pos);
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
+      }
+      break;
+    case 'recover':
+      if (modeOver(ai)) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
       break;
     default:
       break;
@@ -202,6 +264,9 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     const target = targetOf(current, enemy).pos;
     if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
     else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);
+    else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ms, events);
+    else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
+    else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
     else current = updateBoss(current, ticked, def, target, ms, events);
   }
   return current;

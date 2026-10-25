@@ -82,8 +82,8 @@ export const RUN = {
   floorHeal: 0.25,
 } as const;
 
-/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"); the MVP has the collapse only. */
-export type FloorKind = 'normal' | 'collapse';
+/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, or the forest's fog (Niebla). */
+export type FloorKind = 'normal' | 'collapse' | 'fog';
 
 /**
  * Urgent floor weights by depth. Index 0 is floor 1 (never urgent); deeper
@@ -117,4 +117,19 @@ export const COLLAPSE = {
   pushMarginTiles: 1.5,
   /** The rumble (sound and screen shake) is felt within this many tiles of the front. */
   rumbleTiles: 6,
+} as const;
+
+/** Niebla (core/fog.ts): the vision closes in until you find the stairs. Provisional values. */
+export const FOG = {
+  /** Vision radius on arrival and once fully closed, in tiles. */
+  startTiles: 7,
+  minTiles: 2.5,
+  graceMs: 3000,
+  /** Time from the end of the grace to the minimum radius. */
+  closeMs: 50000,
+  /** Once closed: a chill of this fraction of max HP every interval (never below 1 HP). */
+  chillFraction: 0.03,
+  chillIntervalMs: 1500,
+  /** Soft edge of the fog, in tiles (drawn as a gradient). */
+  edgeTiles: 1.5,
 } as const;

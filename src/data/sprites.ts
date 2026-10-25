@@ -47,4 +47,12 @@ export const SPRITE_KEYS = {
   gastly: '0092/0000',
   aegislashShield: '0681/0000',
   aegislashBlade: '0681/0001',
+  phantump: '0708/0000',
+  pumpkabooSmall: '0710/0001',
+  pumpkabooSuper: '0710/0003',
+  foongus: '0590/0000',
+  spinarak: '0167/0000',
+  hoothoot: '0163/0000',
+  trevenant: '0709/0000',
+  decidueye: '0724/0000',
 } as const;

@@ -1,4 +1,4 @@
-import { AEGISLASH, type AegislashDef } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashDef } from '../data/enemies';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, towardTarget } from './brain';
@@ -17,9 +17,18 @@ import { angleOf, distance, dot, fromAngle, length, normalize, scale, sub, type 
 const PLAYER_RADIUS = TUNING.player.radius;
 const DEG = Math.PI / 180;
 
-export function initialBoss(): BossState {
-  return { stance: 'shield', stanceMs: 0, stanceDamage: 0, comboIndex: 0, combosDone: 0 };
+/** A boss's starting state: Aegislash in Shield, Decidueye on its first spell card. */
+export function initialBoss(species?: SpeciesId): BossState {
+  const def = species ? ENEMY_BEHAVIOUR[species] : undefined;
+  const stance: BossStance = def?.kind === 'archer' ? def.cards[0]! : 'shield';
+  return { stance, stanceMs: 0, stanceDamage: 0, comboIndex: 0, combosDone: 0 };
 }
+
+/** Enemies that carry boss state (stances, spell cards). */
+export const hasBossState = (species: SpeciesId): boolean => {
+  const kind = ENEMY_BEHAVIOUR[species]?.kind;
+  return kind === 'boss' || kind === 'archer';
+};
 
 /** Angle in radians between two non-zero directions, in [0, π]. */
 function angleBetween(a: Vec2, b: Vec2): number {
@@ -55,14 +64,20 @@ export interface BossBar {
   species: SpeciesId;
   hp: number;
   maxHp: number;
-  stance: BossStance;
+  /** Null for a mid-boss without stances (Trevenant). */
+  stance: BossStance | null;
 }
 
-/** Data for the HUD boss bar: the first living boss, if any. */
+const showsBar = (enemy: EnemyState): boolean => {
+  const def = ENEMY_BEHAVIOUR[enemy.species];
+  return enemy.boss !== undefined || (def !== undefined && 'bar' in def && def.bar === true);
+};
+
+/** Data for the HUD boss bar: the first living boss (or mid-boss), if any. */
 export function bossBar(state: WorldState): BossBar | null {
-  const enemy = state.enemies.find((e) => e.boss && e.alive);
-  if (!enemy?.boss) return null;
-  return { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss.stance };
+  const enemy = state.enemies.find((e) => e.alive && showsBar(e));
+  if (!enemy) return null;
+  return { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss?.stance ?? null };
 }
 
 const withAi = (enemy: EnemyState, ai: AiState): EnemyState => ({ ...enemy, ai });

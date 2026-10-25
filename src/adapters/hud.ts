@@ -190,9 +190,9 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const w = Math.min(260, view.width - 40);
     const x = Math.round((view.width - w) / 2);
     const y = view.height - 82;
-    const stance = t(`boss.stance.${boss.stance}`);
+    const name = t(`species.${boss.species}`);
     ctx.font = canvasFont();
-    pixelText(ctx, `${t(`species.${boss.species}`)} · ${stance}`, view.width / 2, y - 5, PALETTE.text, 'center');
+    pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, view.width / 2, y - 5, PALETTE.text, 'center');
     drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
   }
 
