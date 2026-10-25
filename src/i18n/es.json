@@ -332,5 +332,16 @@
   "town.exit.title": "Destino",
   "town.exit.text": "El camino sale del pueblo hacia las mazmorras.",
   "town.exit.crypt": "Cripta del Rey de las Espadas",
-  "town.exit.stay": "Quedarse en el pueblo"
+  "town.exit.stay": "Quedarse en el pueblo",
+  "hud.coins": "{coins} P",
+  "screen.coins": "Pokémonedas",
+  "screen.coins.floors": "Plantas superadas",
+  "screen.coins.enemies": "Enemigos derrotados",
+  "screen.coins.escapes": "Huidas del derrumbe",
+  "screen.coins.guardian": "Guardián derrotado",
+  "screen.coins.time": "Tiempo explorando",
+  "screen.coins.share": "Te quedas con el {pct} %",
+  "screen.coins.multiplier": "Dificultad",
+  "screen.coins.total": "Ganadas",
+  "screen.coins.balance": "Saldo"
 }

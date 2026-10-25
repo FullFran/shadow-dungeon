@@ -55,6 +55,9 @@ function flashText(flash: NonNullable<JuiceState['flash']>, species: string): st
   return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
 }
 
+/** "12 P": Pokémonedas earned so far this run. */
+export const coinsLabel = (coins: number): string => t('hud.coins').replace('{coins}', String(Math.max(0, Math.floor(coins))));
+
 /** Key hint per slot index, from i18n. */
 const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
 
@@ -120,7 +123,7 @@ export function passiveStatus(player: Pick<PlayerState, 'species' | 'disguiseBro
 }
 
 /** The top-left window: floor / level / HP line, HP, stamina and XP bars, passive, held items. */
-function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number): void {
+function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number, coins: number | undefined): void {
   const { player } = state;
   const x = 6;
   const y = 6;
@@ -146,6 +149,7 @@ function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: nu
   ctx.fillRect(x + PAD + 1, y + 47, 2, 1);
   ctx.fillRect(x + PAD + 4, y + 47, 2, 1);
   pixelText(ctx, passiveText, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
+  if (coins !== undefined) pixelText(ctx, coinsLabel(coins), x + PANEL_WIDTH - PAD, y + 52, PALETTE.cursor, 'right');
   for (const badge of items) drawBadge(ctx, badge, x + PAD, y + 58);
 }
 
@@ -176,13 +180,13 @@ function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, view: Rect)
 
 /**
  * HUD in view units (the caller has applied the pixel scale): the status
- * window (floor, level, HP, stamina, XP, Disguise, held items), move slots
+ * window (floor, level, HP, stamina, XP, Disguise, coins this run, held items), move slots
  * with the charge level, boss bar and flashes. The minimap and the message
  * log are drawn by their own modules.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
+export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number, coins?: number): void {
   const { player } = state;
-  statusPanel(ctx, state, floor);
+  statusPanel(ctx, state, floor, coins);
   moveSlots(ctx, state, view);
 
   const boss = bossBar(state);

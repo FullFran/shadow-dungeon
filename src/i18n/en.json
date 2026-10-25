@@ -332,5 +332,16 @@
   "town.exit.title": "Destination",
   "town.exit.text": "The road leaves town towards the dungeons.",
   "town.exit.crypt": "Crypt of the Sword King",
-  "town.exit.stay": "Stay in town"
+  "town.exit.stay": "Stay in town",
+  "hud.coins": "{coins} P",
+  "screen.coins": "Poké Coins",
+  "screen.coins.floors": "Floors cleared",
+  "screen.coins.enemies": "Enemies defeated",
+  "screen.coins.escapes": "Collapse escapes",
+  "screen.coins.guardian": "Guardian defeated",
+  "screen.coins.time": "Time exploring",
+  "screen.coins.share": "You keep {pct} %",
+  "screen.coins.multiplier": "Difficulty",
+  "screen.coins.total": "Earned",
+  "screen.coins.balance": "Balance"
 }

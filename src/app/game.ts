@@ -8,6 +8,7 @@ import { chooseItem, floorPlanOf, followToFloor, isBossFloor, progressRun, start
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
+import { coinBreakdown, emptyTally, tallyFloor, tallyStep, type CoinBreakdown, type CoinTally } from '../core/coins';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
@@ -39,6 +40,8 @@ export interface RunSummary {
   seed: number;
   level: number;
   items: readonly ItemId[];
+  /** Pokémonedas this peer earned (each peer of a shared run earns for itself). */
+  coins: CoinBreakdown;
 }
 
 export interface GameOptions {
@@ -106,6 +109,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;
+  /** Pokémonedas tally of the run, and as the current floor was entered ("Restart floor" must not pay twice). */
+  let tally: CoinTally = emptyTally();
+  let floorStartTally = tally;
   let prev = world;
   let accumulator = 0;
   let juice = initialJuice();
@@ -187,6 +193,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A shared run cannot rewind one peer.
     if (net) return;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
+    tally = floorStartTally;
     prev = world;
     accumulator = 0;
     juice = initialJuice();
@@ -252,10 +259,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     hidePick();
     audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
-    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items }), 700);
+    window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items, coins: coinBreakdown(tally, result) }), 700);
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
+    tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null);
+    floorStartTally = tally;
     run = next.run;
     world = next.world;
     floorStart = world;
@@ -282,7 +291,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         world = synced.world;
         netEvents = synced.events;
       }
+      const before = world;
       world = step(world, playerInput, FIXED_DT_MS);
+      tally = tallyStep(tally, before, world, FIXED_DT_MS);
       net?.session.afterStep(world, run.floor);
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       juice = applyEvents(juice, events, world.player.pos);
@@ -354,6 +365,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
+      coins: coinBreakdown(tally, null).total,
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);

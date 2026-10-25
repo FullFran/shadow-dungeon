@@ -30,6 +30,8 @@ import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-pane
 import { openTown } from '../town/scene';
 import { saveRun } from '../town/records';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
+import { earnCoins, loadSave } from './save';
+import { coinLines } from './coin-lines';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -439,8 +441,8 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   renderRoster(session.roster());
 }
 
-/** The end screen: result, floor reached, seed, level and items, then retry or back. */
-function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean): void {
+/** The end screen: result, floor reached, seed, level and items, the Pokémonedas earned and the new balance, then retry or back. */
+function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number): void {
   const back = () => titleScreen(root);
   const items: ListItem[] = [{ label: t('screen.menu'), onConfirm: back }];
   if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root) });
@@ -454,6 +456,8 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       statLine(t('screen.level'), String(summary.level)),
       statLine(t('screen.seed'), String(summary.seed)),
       statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
+      h('h3', { className: 'dim', textContent: t('screen.coins') }),
+      h('div', { className: 'coin-lines' }, coinLines(summary.coins, balance, (key) => t(key)).map((line) => statLine(line.label, line.value))),
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
   ], true, result);
@@ -494,7 +498,9 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: DUNGEON_LORE[0]!.id, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
-      resultScreen(root, result, summary, online);
+      // Every peer earns its own Pokémonedas, guests too.
+      const save = earnCoins(store, summary.coins.total);
+      resultScreen(root, result, summary, online, save.coins);
     },
   });
 }
@@ -507,7 +513,8 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
 function devScreen(root: HTMLElement): boolean {
   if (!import.meta.env.DEV) return false;
   const screen = new URLSearchParams(window.location.search).get('screen');
-  const summary: RunSummary = { floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'] };
+  const coins = { floors: 36, enemies: 41, escapes: 12, guardian: 50, time: 18, subtotal: 157, share: 1, multiplier: 1, total: 157 };
+  const summary: RunSummary = { floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'], coins };
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
@@ -516,8 +523,9 @@ function devScreen(root: HTMLElement): boolean {
     town: () => townScreen(root),
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
-    victory: () => resultScreen(root, 'victory', summary, false),
-    defeat: () => resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [] }, false),
+    victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
+    defeat: () =>
+      resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 60, share: 0.75, total: 45 } }, false, loadSave(store).coins),
     // Waits for the sprites so a screenshot shows the silhouettes.
     prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };

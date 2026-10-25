@@ -47,6 +47,8 @@ export interface RenderFrame {
   minimap: MinimapMemory | null;
   /** Message log at the bottom left (lines fade with `timeMs`). */
   log?: MessageLog;
+  /** Pokémonedas earned so far this run (HUD). */
+  coins?: number;
 }
 
 const COLORS = {
@@ -574,7 +576,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    drawHud(ctx, current, juice, view, frame.floor);
+    drawHud(ctx, current, juice, view, frame.floor, frame.coins);
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
