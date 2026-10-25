@@ -3,7 +3,7 @@ import type { CardFightDef, CardStepDef } from '../../src/data/cards';
 import { scaledTelegraphMs, type Difficulty } from '../../src/data/difficulty';
 import type { DanmakuPattern } from '../../src/data/enemies';
 import { ROOMS, type RoomId } from '../../src/data/rooms';
-import type { SpeciesId } from '../../src/data/species';
+
 import { TUNING } from '../../src/data/tuning';
 import { bossBar } from '../../src/core/boss';
 import { cardFloorShare, cardStep, fightOf, stepAttackMs, updateCardFight } from '../../src/core/cards';
@@ -17,6 +17,11 @@ import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { IDLE } from './helpers';
+import { computeDamage } from '../../src/core/damage';
+import { firePattern } from '../../src/core/danmaku';
+import { hitCap, speciesMaxHpAt } from '../../src/core/fairness';
+import { hitPlayer } from '../../src/core/step';
+import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
 
 /**
  * The guardians' spell cards (data/aegislash-cards.ts, data/decidueye-cards.ts)
@@ -134,6 +139,35 @@ describe('guardian spell cards: structure per tier', () => {
         }
       }
       expect(changed).toBeGreaterThan(0);
+    });
+  }
+});
+
+describe('guardian spell cards: damage per tier', () => {
+  for (const { species } of GUARDIANS) {
+    it(`${species}: hits harder on hard and nightmare (moderately), normal as the data says`, () => {
+      expect(fight(species, 'normal')!.power).toBe(1);
+      expect(fight(species, 'hard')!.power).toBeGreaterThan(1);
+      expect(fight(species, 'nightmare')!.power).toBeGreaterThan(fight(species, 'hard')!.power);
+      expect(fight(species, 'nightmare')!.power).toBeLessThanOrEqual(1.3);
+    });
+
+    it(`${species}: the card's power is in every shot it fires, and no landed hit passes the one-hit cap`, () => {
+      const f = fight(species, 'nightmare')!;
+      const state = loadRoom(createWorld({ seed: 2, arena: { width: 1, height: 1 }, playerPos: vec(0, 0), difficulty: 'nightmare' }), species === 'aegislash' ? 'boss' : 'roost');
+      const boss = state.enemies[0]!;
+      const ring = { kind: 'rings' as const, rings: 1, perRing: 8, gap: 2, gapTurnDeg: 0, gapMs: 100, shot: { power: 20, type: 'steel' as const, speed: 100, radius: 6, lifetimeMs: 1000 } };
+      const fired = firePattern(state, boss, 100, ring, 0, f.power).projectiles.filter((p) => p.owner === 'enemy');
+      expect(fired.length).toBe(6);
+      expect(fired.every((p) => p.power === Math.round(20 * f.power))).toBe(true);
+      // The strongest card hit, on every starter at level 1: capped at 35 % of the reference max HP (core/fairness.ts).
+      const strongest = Math.max(...f.cards.flatMap((c) => c.steps.flatMap((s) => patternsOf(s).map((p) => ('shot' in p ? p.shot.power : p.attack.power)))));
+      for (const playable of PLAYABLE_SPECIES) {
+        const victim = { ...state, player: { ...state.player, species: playable, maxHp: SPECIES[playable].maxHp, hp: SPECIES[playable].maxHp, disguiseBroken: true } };
+        const { damage } = computeDamage({ power: strongest * f.power, moveType: 'ghost', attackerTypes: SPECIES[species].types, defenderTypes: SPECIES[playable].types });
+        const hit = hitPlayer(victim, { damage, type: 'ghost' });
+        expect(SPECIES[playable].maxHp - hit.player.hp, playable).toBeLessThanOrEqual(hitCap(speciesMaxHpAt(playable, victim.referenceLevel ?? 1)));
+      }
     });
   }
 });

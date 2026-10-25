@@ -165,7 +165,7 @@ export const DECIDUEYE_CARDS_NORMAL: CardFightDef = registerCards({
 export const DECIDUEYE_CARDS_HARD: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 120,
-  power: 1,
+  power: 1.12,
   cards: [
     volley(volleySteps(230, false), 0.27),
     leaves(leavesSteps(11, true), 0.27),
@@ -179,7 +179,7 @@ export const DECIDUEYE_CARDS_HARD: CardFightDef = registerCards({
 export const DECIDUEYE_CARDS_NIGHTMARE: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 140,
-  power: 1,
+  power: 1.22,
   cards: [
     volley(volleySteps(230, true), 0.18),
     leaves(leavesSteps(11, true), 0.18),

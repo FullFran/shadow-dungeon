@@ -46,7 +46,12 @@ docs/souls-difficulty-research.md P4 (cards with an HP segment and a timer, capt
   - The pillar-safespot check found tree shelters (below and beside the trunks against patterns from the boss); fixed by firing the clones from all four corners in turn.
   - forest-difficulty.test.ts changed on purpose: normal Decidueye only gains `spellCards`; the hard card rotation is checked in a Sima echo.
   - Evidence: guardian-cards.test.ts now covers both guardians (49 + 1 tests); full suite 150 files / 1470 tests green.
-- [ ] T4 Guardian damage on Hard/Nightmare + docs
+- [x] T4 Guardian damage on Hard/Nightmare + docs (route: inline in the bounded writer)
+  - `CardFightDef.power`: Normal 1, Hard 1.12, Nightmare 1.22 for both guardians (on top of the tier's damage); every shot and melee move of a card carries it. Main's one-hit cap (35 % of the reference max HP, core/fairness.ts) bounds the result; Easy unchanged.
+  - Dev `?card=N` (core/cards.ts `atCard`): starts a spell-card guardian on card N with its segment full.
+  - Tests: guardian-cards.test.ts damage block (power per tier, shots carry it, the strongest card hit on every starter stays under the cap); cards.test.ts `atCard`.
+  - Screenshots (silent: profile user.js volume 0, localStorage muted): `/tmp/guardians-touhou/aeg-nightmare-{0..6}-*-{a,b}.png` (Muralla closing walls, swords + rings, Cien Espadas curtain with its lane, Rey sin Reino spiral) and `dec-hard-{0..4}-*-{a,b}.png` (counter-rotating feather spirals, snaking rain). Readable; the player camera (512x320 of the room) hides the corner turrets and the boss in some shots.
+  - Docs: GDD (Spanish) section on spell cards, README dev `?card=`.
 
 ## Acceptance criteria
 
