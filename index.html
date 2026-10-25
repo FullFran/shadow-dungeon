@@ -148,6 +148,19 @@
       .result-actions { margin-top: 16px; }
       .result-columns { display: grid; gap: 0 2.5rem; }
       @media (min-width: 900px) { .result-columns { grid-template-columns: 1fr 1fr; } .result { min-width: 46rem; } }
+      /* End screen: the fan notice flows under the window instead of floating over its buttons (the page scrolls if it must). */
+      #app:has(.result) { padding-bottom: 12px; }
+      #app:has(.result) > .notice { position: static; width: 100%; box-sizing: border-box; }
+      /* Short windows (1024×640 and the like): tighter lines and the two actions on one row, so the Sima's end screen fits. */
+      @media (max-height: 760px) {
+        #app:has(.result) { gap: 10px; padding-top: 16px; }
+        .result { padding-top: 16px; padding-bottom: 12px; }
+        .result h1 { font-size: 28px; }
+        .result > .md-window-body > p { margin: 0.2em 0; }
+        .result h3 { margin: 8px 0 2px; font-size: 14px; }
+        .result .md-stat { padding: 0; line-height: 1.25; }
+        .result-actions { flex-direction: row; justify-content: center; gap: 24px; margin-top: 10px; }
+      }
       .shop { min-width: 30rem; max-width: 36rem; }
       .shop .shop-effect { min-height: 2.6em; margin: 10px 0 0; }
       .shop .shop-balance { margin-bottom: 8px; }
@@ -276,6 +289,9 @@
         html.touch .result .md-stat { padding: 0; font-size: 16px; line-height: 1.3; gap: 1em; }
         html.touch .result-actions { flex-direction: row; gap: 12px; margin-top: 8px; }
         html.touch .result-actions .md-item { flex: 1; }
+        /* The Sima's longer end screen scrolls inside its window, with the two actions pinned at the bottom (never off screen). */
+        html.touch .result { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+        html.touch .result-actions { position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px; background: var(--md-window-bottom); }
       }
       /* ---- Touch controls (src/ui/touch-controls.ts): floating joystick left, actions right ---- */
       .touch-layer { display: none; }
