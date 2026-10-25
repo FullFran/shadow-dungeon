@@ -17,3 +17,11 @@ export function nextRandom(state: number): RngResult {
 }
 
 export const seedRng = (seed: number): number => seed | 0;
+
+/** Mixes a seed with a salt (floor index, depth...) into an independent seed, deterministically. */
+export function deriveSeed(seed: number, salt: number): number {
+  let h = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(salt + 0x632be59b, 0xc2b2ae35);
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return (h ^ (h >>> 16)) | 0;
+}
