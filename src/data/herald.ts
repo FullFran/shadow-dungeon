@@ -132,8 +132,70 @@ export const HERALD_BASE: HeraldBaseDef = {
   aggroRange: 900,
 };
 
-/** The arena heralds fight in (data/rooms.ts `abyss`), for the fairness checks. */
-export const HERALD_ARENA = { width: 640, height: 400 } as const;
+/**
+ * The arena heralds fight in (data/rooms.ts `abyss`): open like the Eclipse
+ * Echo's, with four low pillars that stop shots (cover), away from the
+ * band the herald floats in. The fairness checks use the same blocks.
+ */
+export const HERALD_ARENA = {
+  width: 640,
+  height: 400,
+  obstacles: [
+    { x: 104, y: 236, width: 32, height: 32, cover: true },
+    { x: 504, y: 236, width: 32, height: 32, cover: true },
+    { x: 214, y: 322, width: 26, height: 26, cover: true },
+    { x: 400, y: 322, width: 26, height: 26, cover: true },
+  ],
+} as const;
+
+/**
+ * Who a herald may wear (a SPRITE_KEYS name and the species its types come
+ * from): the dramatic ones among the sheets already in public/sprites. The
+ * generator keeps only those whose sheets have every animation it plays
+ * (Idle, Walk, Attack, Shoot, Charge, Hurt) without a fallback, read from
+ * data/sprite-meta.json. The starters stay out (they are the player).
+ */
+export const HERALD_SPECIES: readonly { sprite: string; source: SpeciesId }[] = [
+  { sprite: 'gastly', source: 'gastly' },
+  { sprite: 'aegislashBlade', source: 'aegislash' },
+  { sprite: 'trevenant', source: 'trevenant' },
+  { sprite: 'decidueye', source: 'decidueye' },
+  { sprite: 'lanturn', source: 'lanturn' },
+  { sprite: 'dhelmise', source: 'dhelmise' },
+  { sprite: 'salazzle', source: 'salazzle' },
+  { sprite: 'nihilego', source: 'nihilego' },
+  { sprite: 'drifloon', source: 'drifloon' },
+  { sprite: 'duskull', source: 'duskull' },
+  { sprite: 'houndour', source: 'houndour' },
+  { sprite: 'croagunk', source: 'croagunk' },
+  { sprite: 'clauncher', source: 'clauncher' },
+  { sprite: 'corphish', source: 'corphish' },
+  { sprite: 'grimer', source: 'grimer' },
+  { sprite: 'koffing', source: 'koffing' },
+  { sprite: 'ekans', source: 'ekans' },
+  { sprite: 'salandit', source: 'salandit' },
+  { sprite: 'skrelp', source: 'skrelp' },
+  { sprite: 'chinchou', source: 'chinchou' },
+  { sprite: 'tentacool', source: 'tentacool' },
+  { sprite: 'zubat', source: 'zubat' },
+  { sprite: 'hoothoot', source: 'hoothoot' },
+  { sprite: 'litleo', source: 'litleo' },
+  { sprite: 'slugma', source: 'slugma' },
+  { sprite: 'impidimp', source: 'impidimp' },
+  { sprite: 'golett', source: 'golett' },
+  { sprite: 'sableye', source: 'sableye' },
+  { sprite: 'phantump', source: 'phantump' },
+  { sprite: 'pawniard', source: 'pawniard' },
+];
+
+/** The animations a herald's sheets must have (no fallback). */
+export const HERALD_ANIMS = ['Idle', 'Walk', 'Attack', 'Shoot', 'Charge', 'Hurt'] as const;
+
+/** Weak floaters a summoning card may call. */
+export const HERALD_MINIONS: readonly SpeciesId[] = ['gastly', 'zubat', 'duskull', 'hoothoot'];
+
+/** The herald's body radius (data/species.ts `sima-herald`). */
+export const HERALD_RADIUS = 18;
 
 /** Hard fairness constraints (docs/souls-difficulty-research.md P4, P5). */
 export const HERALD_FAIRNESS = {

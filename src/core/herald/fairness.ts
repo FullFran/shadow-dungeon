@@ -141,14 +141,19 @@ class Grid {
   }
 }
 
-/** Marks every cell whose centre lies within `radius` of the segment p0-p1 (sampled as circles every radius/2). */
+/**
+ * Marks every cell whose centre lies within `radius` of the segment p0-p1: a
+ * short segment as one circle around its middle (radius + half its length,
+ * which covers the capsule), a long one (lasers) as circles every radius/2.
+ */
 function markCapsule(g: Grid, x0: number, y0: number, x1: number, y1: number, radius: number): void {
   const len = Math.hypot(x1 - x0, y1 - y0);
-  const n = Math.max(1, Math.ceil(len / (radius * 0.5)));
-  const rr = radius + 1;
+  const short = len <= radius * 0.5;
+  const n = short ? 0 : Math.ceil(len / (radius * 0.5));
+  const rr = radius + 1 + (short ? len / 2 : 0);
   for (let i = 0; i <= n; i++) {
-    const cx = x0 + ((x1 - x0) * i) / n;
-    const cy = y0 + ((y1 - y0) * i) / n;
+    const cx = short ? (x0 + x1) / 2 : x0 + ((x1 - x0) * i) / n;
+    const cy = short ? (y0 + y1) / 2 : y0 + ((y1 - y0) * i) / n;
     const r0 = Math.max(0, Math.ceil((cy - rr) / CELL - 0.5));
     const r1 = Math.min(g.rows - 1, Math.floor((cy + rr) / CELL - 0.5));
     for (let r = r0; r <= r1; r++) {
@@ -156,16 +161,27 @@ function markCapsule(g: Grid, x0: number, y0: number, x1: number, y1: number, ra
       const half = Math.sqrt(Math.max(0, rr * rr - dy * dy));
       const c0 = Math.max(0, Math.ceil((cx - half) / CELL - 0.5));
       const c1 = Math.min(g.cols - 1, Math.floor((cx + half) / CELL - 0.5));
-      for (let c = c0; c <= c1; c++) g.data[r * g.words + (c >> 5)]! |= 1 << (c & 31);
+      if (c1 >= c0) setSpan(g.data, r * g.words, c0, c1);
     }
   }
 }
 
-/** reach := dilate4(reach & ~unsafe) & ~unsafe & valid, in place via `tmp`. */
-function walk(reach: Grid, unsafe: Grid, valid: Grid, tmp: Uint32Array): void {
+/** Sets bits c0..c1 of the row starting at word `base`, a word at a time. */
+function setSpan(data: Uint32Array, base: number, c0: number, c1: number): void {
+  for (let w = c0 >> 5; w <= c1 >> 5; w++) {
+    const lo = w === c0 >> 5 ? c0 & 31 : 0;
+    const hi = w === c1 >> 5 ? c1 & 31 : 31;
+    const bits = hi - lo === 31 ? 0xffffffff : ((1 << (hi - lo + 1)) - 1) << lo;
+    data[base + w]! |= bits;
+  }
+}
+
+/** reach := dilate4(reach & ~unsafe) & ~unsafe & valid in place (unsafe = `base` | `own`), via `tmp`; whether any cell is left. */
+function walk(reach: Grid, base: Uint32Array, own: Uint32Array | null, valid: Grid, tmp: Uint32Array): boolean {
   const { words: W, rows } = reach;
   const a = reach.data;
-  for (let i = 0; i < a.length; i++) tmp[i] = a[i]! & ~unsafe.data[i]!;
+  for (let i = 0; i < a.length; i++) tmp[i] = a[i]! & ~(base[i]! | (own ? own[i]! : 0));
+  let any = 0;
   for (let r = 0; r < rows; r++) {
     for (let w = 0; w < W; w++) {
       const i = r * W + w;
@@ -174,9 +190,12 @@ function walk(reach: Grid, unsafe: Grid, valid: Grid, tmp: Uint32Array): void {
       const right = (v >>> 1) | (w < W - 1 ? tmp[i + 1]! << 31 : 0);
       const up = r > 0 ? tmp[i - W]! : 0;
       const down = r < rows - 1 ? tmp[i + W]! : 0;
-      a[i] = (v | left | right | up | down) & ~unsafe.data[i]! & valid.data[i]!;
+      const next = (v | left | right | up | down) & ~(base[i]! | (own ? own[i]! : 0)) & valid.data[i]!;
+      a[i] = next;
+      any |= next;
     }
   }
+  return any !== 0;
 }
 
 function validGrid(cols: number, rows: number, env: FairnessEnv, origin: Vec2, pr: number): Grid {
@@ -200,8 +219,10 @@ function validGrid(cols: number, rows: number, env: FairnessEnv, origin: Vec2, p
 function nearestValid(valid: Grid, p: Vec2): [number, number] | null {
   let best: [number, number] | null = null;
   let bestD = Infinity;
-  for (let r = 0; r < valid.rows; r++)
-    for (let c = 0; c < valid.cols; c++) {
+  const pc = Math.floor(p.x / CELL);
+  const pr = Math.floor(p.y / CELL);
+  for (let r = Math.max(0, pr - 4); r <= Math.min(valid.rows - 1, pr + 4); r++)
+    for (let c = Math.max(0, pc - 4); c <= Math.min(valid.cols - 1, pc + 4); c++) {
       if (!valid.get(c, r)) continue;
       const d = Math.hypot((c + 0.5) * CELL - p.x, (r + 0.5) * CELL - p.y);
       if (d < bestD) {
@@ -212,47 +233,110 @@ function nearestValid(valid: Grid, p: Vec2): [number, number] | null {
   return bestD <= CELL * 3 ? best : null;
 }
 
-/** Whether a player starting at `start` survives the card's cycle (from the wind-up to the last shot) against `shots` and the pockets. */
-function survives(shots: readonly SimShot[], pockets: readonly Extract<HeraldLayer, { kind: 'pockets' }>[], valid: Grid, start: [number, number], fromMs: number, toMs: number, pr: number, dtMs: number): boolean {
+/** Rasterises the shots alive in [t, t + dt) into `unsafe` (`from` keeps the sorted scan's place). */
+function markShots(unsafe: Grid, shots: readonly SimShot[], t: number, dtMs: number, pr: number, box?: Box): void {
+  const t1 = t + dtMs;
+  const reachR = pr + CELL / 2 + 8;
+  for (let i = 0; i < shots.length; i++) {
+    const s = shots[i]!;
+    if (s.t0 >= t1) break;
+    if (s.t1 <= t) continue;
+    const a = Math.max(t, s.t0) - s.t0;
+    const b = Math.min(t1, s.t1) - s.t0;
+    if (box) {
+      // Far from every cell the player can be in this step: it cannot matter.
+      const xa = s.x + s.vx * a;
+      const xb = s.x + s.vx * b;
+      const ya = s.y + s.vy * a;
+      const yb = s.y + s.vy * b;
+      const m = s.r + reachR;
+      if (Math.max(xa, xb) + m < box.x0 || Math.min(xa, xb) - m > box.x1 || Math.max(ya, yb) + m < box.y0 || Math.min(ya, yb) - m > box.y1) continue;
+    }
+    markCapsule(unsafe, s.x + s.vx * a, s.y + s.vy * a, s.x + s.vx * b, s.y + s.vy * b, s.r + pr + CELL / 2);
+  }
+}
+
+/** The cells outside every pocket (where a burning pocket layer hurts). */
+function pocketBurn(p: Extract<HeraldLayer, { kind: 'pockets' }>, valid: Grid): Uint32Array {
+  const g = new Grid(valid.cols, valid.rows);
+  for (let r = 0; r < valid.rows; r++)
+    for (let c = 0; c < valid.cols; c++) {
+      const x = (c + 0.5) * CELL;
+      const y = (r + 0.5) * CELL;
+      if (!p.pockets.some((q) => Math.hypot(x - q.x, y - q.y) <= p.radius - CELL / 2 - 1)) g.set(c, r);
+    }
+  for (let j = 0; j < g.data.length; j++) g.data[j]! &= valid.data[j]!;
+  return g.data;
+}
+
+/** The unsafe cells of every step from `fromMs` for the shots and pockets that do not depend on the player (shared by every start). */
+function timeline(shots: readonly SimShot[], pockets: readonly Extract<HeraldLayer, { kind: 'pockets' }>[], valid: Grid, fromMs: number, steps: number, dtMs: number, pr: number): Uint32Array[] {
+  const burns = pockets.map((p) => pocketBurn(p, valid));
+  const out: Uint32Array[] = [];
+  for (let k = 0; k < steps; k++) {
+    const t = fromMs + k * dtMs;
+    const unsafe = new Grid(valid.cols, valid.rows);
+    markShots(unsafe, shots, t, dtMs, pr);
+    pockets.forEach((p, i) => {
+      const on = p.startMs + p.warnMs;
+      if (t + dtMs > on && t < on + p.flashMs) for (let j = 0; j < unsafe.data.length; j++) unsafe.data[j]! |= burns[i]![j]!;
+    });
+    out.push(unsafe.data);
+  }
+  return out;
+}
+
+/** Whether a player starting at `start` survives every step: the shared timeline plus this start's own (aimed) shots. */
+function survives(base: readonly Uint32Array[], own: readonly SimShot[], valid: Grid, start: [number, number], fromMs: number, dtMs: number, pr: number): boolean {
   const reach = new Grid(valid.cols, valid.rows);
   reach.set(start[0], start[1]);
   const unsafe = new Grid(valid.cols, valid.rows);
   const tmp = new Uint32Array(reach.data.length);
-  const pocketSafe = pockets.map((p) => {
-    const g = new Grid(valid.cols, valid.rows);
-    for (let r = 0; r < valid.rows; r++)
-      for (let c = 0; c < valid.cols; c++) {
-        const x = (c + 0.5) * CELL;
-        const y = (r + 0.5) * CELL;
-        if (p.pockets.some((q) => Math.hypot(x - q.x, y - q.y) <= p.radius - CELL / 2 - 1)) g.set(c, r);
-      }
-    return g;
-  });
-  let first = 0;
-  for (let t = fromMs; t < toMs; t += dtMs) {
-    unsafe.data.fill(0);
-    const t1 = t + dtMs;
-    while (first < shots.length && shots[first]!.t1 <= t) first++;
-    for (let i = first; i < shots.length; i++) {
-      const s = shots[i]!;
-      if (s.t0 >= t1) break;
-      if (s.t1 <= t) continue;
-      const a = Math.max(t, s.t0) - s.t0;
-      const b = Math.min(t1, s.t1) - s.t0;
-      markCapsule(unsafe, s.x + s.vx * a, s.y + s.vy * a, s.x + s.vx * b, s.y + s.vy * b, s.r + pr + CELL / 2);
+  for (let k = 0; k < base.length; k++) {
+    if (own.length > 0) {
+      unsafe.data.fill(0);
+      markShots(unsafe, own, fromMs + k * dtMs, dtMs, pr, boxOf(reach));
     }
-    pockets.forEach((p, i) => {
-      const on = p.startMs + p.warnMs;
-      if (t1 > on && t < on + p.flashMs) {
-        const safe = pocketSafe[i]!.data;
-        for (let j = 0; j < unsafe.data.length; j++) unsafe.data[j]! |= valid.data[j]! & ~safe[j]!;
-      }
-    });
-    walk(reach, unsafe, valid, tmp);
-    if (!reach.any()) return false;
+    if (!walk(reach, base[k]!, own.length > 0 ? unsafe.data : null, valid, tmp)) return false;
   }
   return true;
 }
+
+interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** The pixel box around the reachable cells, one step of walking wider. */
+function boxOf(g: Grid): Box {
+  let r0 = -1;
+  let r1 = -1;
+  let cols = new Uint32Array(g.words);
+  for (let r = 0; r < g.rows; r++) {
+    let any = 0;
+    for (let w = 0; w < g.words; w++) {
+      const v = g.data[r * g.words + w]!;
+      any |= v;
+      cols[w]! |= v;
+    }
+    if (any !== 0) {
+      if (r0 < 0) r0 = r;
+      r1 = r;
+    }
+  }
+  let c0 = 0;
+  let c1 = g.cols - 1;
+  for (let c = 0; c < g.cols; c++) if (cols[c >> 5]! & (1 << (c & 31))) { c0 = c; break; }
+  for (let c = g.cols - 1; c >= 0; c--) if (cols[c >> 5]! & (1 << (c & 31))) { c1 = c; break; }
+  cols = cols.fill(0);
+  return { x0: (c0 - 1) * CELL, y0: (r0 - 1) * CELL, x1: (c1 + 2) * CELL, y1: (r1 + 2) * CELL };
+}
+
+/** Layers whose shots depend on where the player stood (the mark): simulated once per start; the rest once per anchor. */
+const followsMark = (l: HeraldLayer): boolean =>
+  l.kind === 'lanes' || l.kind === 'closing' || l.kind === 'stream' || ((l.kind === 'ring' || l.kind === 'wave' || l.kind === 'scatter' || l.kind === 'laser') && l.aim === 'aimed');
 
 /** Every hard constraint on one card; `ok` only when there is no failure. */
 export function checkCard(card: Pick<HeraldCard, 'telegraphMs' | 'layers' | 'density' | 'speed'>, env: FairnessEnv): FairnessReport {
@@ -300,20 +384,30 @@ export function checkCard(card: Pick<HeraldCard, 'telegraphMs' | 'layers' | 'den
   const pockets = layers.filter((l): l is Extract<HeraldLayer, { kind: 'pockets' }> => l.kind === 'pockets');
   let peakShots = 0;
   let clearMs = 0;
+  const shared = layers.filter((l) => !followsMark(l));
+  const personal = layers.filter(followsMark);
+  const followers = layers.filter((l): l is Extract<HeraldLayer, { kind: 'homing' | 'stream' }> => l.kind === 'homing' || (l.kind === 'stream' && l.aim === 'tracking'));
+  const followEnd = Math.max(0, ...followers.map((l) => Math.max(...partTimes(l)) + l.shot.lifetimeMs));
+  const pocketEnd = Math.max(0, ...pockets.map((p) => p.startMs + p.warnMs + p.flashMs));
   for (const origin of env.origins) {
     const valid = validGrid(cols, rows, env, origin, pr);
-    for (const start of starts) {
-      const cell = nearestValid(valid, start);
-      if (!cell) continue;
-      const ctx: EmitContext = { origin, bossRadius: env.bossRadius, mark: start, arena: env.arena };
-      const shots = simShots(layers, ctx);
-      peakShots = Math.max(peakShots, peakOf(layers, ctx, shots));
-      const end = Math.max(0, ...shots.map((s) => s.t1), ...pockets.map((p) => p.startMs + p.warnMs + p.flashMs));
-      const followers = layers.filter((l): l is Extract<HeraldLayer, { kind: 'homing' | 'stream' }> => l.kind === 'homing' || (l.kind === 'stream' && l.aim === 'tracking'));
-      const followEnd = Math.max(0, ...followers.map((l) => Math.max(...partTimes(l)) + l.shot.lifetimeMs));
-      clearMs = Math.max(clearMs, end, followEnd);
-      if (!survives(shots, pockets, valid, cell, -tele, end + dtMs, pr, dtMs)) {
-        failures.push(`no safe path from (${start.x}, ${start.y}) with the herald at (${Math.round(origin.x)}, ${Math.round(origin.y)})`);
+    const ctx0: EmitContext = { origin, bossRadius: env.bossRadius, mark: origin, arena: env.arena };
+    const sharedShots = simShots(shared, ctx0);
+    const runs = starts.map((start) => {
+      const ctx: EmitContext = { ...ctx0, mark: start };
+      const own = simShots(personal, ctx);
+      const all = [...sharedShots, ...own].sort((x, y) => x.t0 - y.t0);
+      peakShots = Math.max(peakShots, peakOf(layers, ctx, all));
+      return { start, cell: nearestValid(valid, start), own, end: Math.max(0, ...own.map((x) => x.t1)) };
+    });
+    const end = Math.max(pocketEnd, ...sharedShots.map((x) => x.t1), ...runs.map((r) => r.end));
+    clearMs = Math.max(clearMs, end, followEnd);
+    const steps = Math.ceil((end + dtMs + tele) / dtMs);
+    const base = timeline(sharedShots, pockets, valid, -tele, steps, dtMs, pr);
+    for (const run of runs) {
+      if (!run.cell) continue;
+      if (!survives(base, run.own, valid, run.cell, -tele, dtMs, pr)) {
+        failures.push(`no safe path from (${run.start.x}, ${run.start.y}) with the herald at (${Math.round(origin.x)}, ${Math.round(origin.y)})`);
         // One trapped start is enough to reject the card.
         return { ok: false, failures, peakShots, clearMs };
       }
