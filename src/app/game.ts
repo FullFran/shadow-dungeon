@@ -1,5 +1,6 @@
 import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
+import type { SpeciesId } from '../data/species';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
@@ -41,6 +42,8 @@ export interface RunSummary {
 }
 
 export interface GameOptions {
+  /** The local player's species (default Mimikyu); `loadout` must be its own moves. */
+  species?: SpeciesId;
   loadout: readonly (MoveId | null)[];
   lockType: LockType;
   clickToLock: boolean;
@@ -90,6 +93,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const started = startRun(
     options.seed ?? 1,
     {
+      ...(options.species ? { species: options.species } : {}),
       loadout: options.loadout,
       lockType: options.lockType,
       clickToLock: options.clickToLock,

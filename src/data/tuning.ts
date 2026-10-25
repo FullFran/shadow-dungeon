@@ -56,6 +56,17 @@ export const TUNING = {
     knockbackPerTick: 0.25,
   },
 
+  /** Starter passives (data/species.ts `passive`). */
+  passives: {
+    /** Illusion: a sleeping enemy closer than its radius + the player's + this margin is touched and wakes. */
+    illusionTouchMargin: 6,
+    /** Flash Fire: share of an absorbed Fire hit's damage that heals, and the next heavy move's damage multiplier. */
+    flashFireHeal: 0.25,
+    flashFireBoost: 1.5,
+    /** Battle Armor: damage multiplier of frontal hits while charging or winding up a heavy move. */
+    battleArmorFactor: 0.5,
+  },
+
   lockOn: {
     /** Max player-to-target distance to acquire or keep a lock. */
     range: 340,

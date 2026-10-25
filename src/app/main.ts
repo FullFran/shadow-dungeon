@@ -77,7 +77,6 @@ interface NetJoin {
 }
 
 const HOST_SEARCH_MS = 700;
-const SPECIES = 'mimikyu';
 
 /** A session over `base`, with `?lag=` simulation and `?delay=` render delay from the page address. */
 function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
@@ -109,7 +108,7 @@ async function connectLocal(root: HTMLElement, seed: number, floor: number): Pro
     searchMs: HOST_SEARCH_MS,
     seed,
     floor,
-    species: SPECIES,
+    species: settings.species,
     loadout: settings.loadout,
     forceHost: params.get('host') === '1',
   });
@@ -357,8 +356,8 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
       mdWindow({ title: t('lobby.players'), className: 'players' }, [players]),
     ]),
   ]);
-  if (asHost) session.host(seed, 1, SPECIES, { lobby: true });
-  else session.join(SPECIES, settings.loadout);
+  if (asHost) session.host(seed, 1, settings.species, { lobby: true });
+  else session.join(settings.species, settings.loadout);
   renderRoster(session.roster());
 }
 
@@ -407,6 +406,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
   running = startGame(canvas, sheets!, {
+    species: settings.species,
     loadout: settings.loadout,
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,

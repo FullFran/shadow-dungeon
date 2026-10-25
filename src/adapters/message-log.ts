@@ -70,6 +70,7 @@ export function eventMessages(events: readonly GameEvent[], speciesOf: (enemyId:
       if (enemy) out.push({ text: t('log.defeated').replace('{name}', t(`species.${enemy}`)), tone: 'good' });
     } else if (event.type === 'berryEaten') out.push({ text: t('log.berry').replace('{name}', name).replace('{heal}', String(Math.round(event.heal))), tone: 'good' });
     else if (event.type === 'disguiseBroken') out.push({ text: t('hud.disguiseBroken'), tone: 'warn' });
+    else if (event.type === 'passiveTriggered') out.push({ text: t(`log.passive.${event.passive}`).replace('{name}', name), tone: event.passive === 'illusion' ? 'warn' : 'good' });
   }
   return out;
 }

@@ -56,6 +56,24 @@ describe('message log', () => {
     setLanguage('en');
     expect(eventMessages([{ type: 'enemyDefeated', enemyId: 'e1' }], () => 'gastly', 'mimikyu')).toEqual([{ text: 'Gastly fainted!', tone: 'good' }]);
   });
+
+  it('names the starter in its passive lines and level ups', () => {
+    setLanguage('es');
+    const lines = eventMessages(
+      [
+        { type: 'levelUp', level: 3 },
+        { type: 'passiveTriggered', passive: 'illusion' },
+        { type: 'passiveTriggered', passive: 'flash-fire' },
+      ],
+      () => null,
+      'zorua',
+    );
+    expect(lines).toEqual([
+      { text: '¡Zorua subió al nivel 3!', tone: 'level' },
+      { text: '¡La ilusión de Zorua se ha desvanecido!', tone: 'warn' },
+      { text: '¡Zorua absorbió el fuego!', tone: 'good' },
+    ]);
+  });
 });
 
 describe('HUD line', () => {

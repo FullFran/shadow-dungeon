@@ -43,12 +43,14 @@ describe('settings', () => {
   it('offers only moves of the right slot kind', () => {
     expect(slotOptions('fast')).toEqual(['shadow-claw', 'shadow-sneak']);
     expect(slotOptions('heavy')).toEqual(['play-rough', 'shadow-ball']);
+    expect(slotOptions('fast', 'cubone')).toEqual(['bone-club', 'bone-rush']);
+    expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
   });
 
   const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
+    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', loadout: ['shadow-claw', 'play-rough'], ...SOUND });
   });
 
   it('round-trips through the store', () => {
@@ -57,6 +59,7 @@ describe('settings', () => {
       language: 'en' as const,
       lockType: 'clickOnly' as const,
       clickToLock: false,
+      species: 'mimikyu' as const,
       loadout: ['shadow-sneak', 'shadow-ball'] as const,
       masterVolume: 0.3,
       musicVolume: 0,
@@ -65,6 +68,20 @@ describe('settings', () => {
     };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
+  });
+
+  it('remembers the picked species with a loadout of its own moves', () => {
+    const store = memoryStore();
+    saveSettings(store, { ...defaultSettings('es'), species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
+  });
+
+  it('gives a stored species its default loadout when the stored moves are not its own, and drops unknown species', () => {
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'cubone', loadout: ['shadow-claw', 'play-rough'] }));
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'cubone', loadout: ['bone-club', 'bonemerang'] });
+    store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'aegislash', loadout: ['shadow-sneak', 'shadow-ball'] }));
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'mimikyu', loadout: ['shadow-sneak', 'shadow-ball'] });
   });
 
   it('falls back field by field on missing, corrupt or invalid data', () => {
@@ -85,7 +102,7 @@ describe('settings', () => {
     for (const [lockMode, lockType] of [['hold', 'hold'], ['toggle', 'toggle'], ['weird', 'toggle']]) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
+      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
   });
@@ -118,6 +135,6 @@ describe('settings', () => {
   it('loads settings saved before sound existed with the sound defaults', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
   });
 });

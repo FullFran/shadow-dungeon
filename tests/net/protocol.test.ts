@@ -22,6 +22,7 @@ function close(actual: unknown, expected: unknown, path = '$'): void {
 describe('protocol', () => {
   const messages: NetMessage[] = [
     { t: 'hello', species: 'mimikyu', loadout: ['shadow-claw', 'play-rough'] },
+    { t: 'hello', species: 'zorua', loadout: ['feint-attack', 'night-daze'] },
     { t: 'start', seed: 42, floor: 1, players: [{ peer: 'tab-a', id: 'p1', species: 'mimikyu' }] },
     {
       t: 'claim',
@@ -45,6 +46,15 @@ describe('protocol', () => {
     const message: NetMessage = { t: 'state', at: 1234.5, floor: 2, p: playerSnapshot(rolling) };
     const decoded = decodeMessage(encodeMessage(message));
     close(decoded, message);
+  });
+
+  it('carries the species and the Illusion of a starter player', () => {
+    const zorua = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(10, 10), localId: 'p2', species: 'zorua' });
+    const decoded = decodeMessage(encodeMessage({ t: 'state', at: 5, floor: 1, p: playerSnapshot(zorua) }));
+    expect(decoded?.t === 'state' && [decoded.p.species, decoded.p.hidden, decoded.p.projectiles]).toEqual(['zorua', true, []]);
+    const broken = { ...zorua, player: { ...zorua.player, illusionBroken: true } };
+    const plain = decodeMessage(encodeMessage({ t: 'state', at: 5, floor: 1, p: playerSnapshot(broken) }));
+    expect(plain?.t === 'state' && plain.p.hidden).toBeUndefined();
   });
 
   it('round-trips the player own projectiles in its state, and none as an empty list', () => {

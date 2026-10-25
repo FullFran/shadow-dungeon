@@ -43,6 +43,17 @@ describe('lobby', () => {
     expect(b.started).toEqual({ seed: 42, floor: 1, localId: 'p3' });
   });
 
+  it('carries each player species from the hello into everyone roster', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(42, 1, 'cubone', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    a.session.join('zorua', ['feint-attack', 'night-daze']);
+    expect(host.roster.map((r) => r.species)).toEqual(['cubone', 'zorua']);
+    expect(a.roster.map((r) => r.species)).toEqual(['cubone', 'zorua']);
+  });
+
   it('tells a fifth player the room is full and leaves the four others alone', () => {
     const scheduler = createFakeScheduler();
     const hub = createMemoryHub<string>();

@@ -2,8 +2,8 @@ import type { MoveId } from './moves';
 import type { SPRITE_KEYS } from './sprites';
 import type { PokemonType } from './types';
 
-export type SpeciesId = 'mimikyu' | 'poochyena' | 'gastly' | 'aegislash';
-export type PassiveId = 'disguise';
+export type SpeciesId = 'mimikyu' | 'zorua' | 'litwick' | 'cubone' | 'poochyena' | 'gastly' | 'aegislash';
+export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
   id: SpeciesId;
@@ -12,6 +12,10 @@ export interface SpeciesDef {
   /** Body radius for hurtboxes and collisions, in world pixels. */
   radius: number;
   sprite: keyof typeof SPRITE_KEYS;
+  /** Sheet drawn once the passive is spent for the room (Mimikyu's Busted form). */
+  spentSprite?: keyof typeof SPRITE_KEYS;
+  /** Playable species: walking speed relative to `TUNING.player.moveSpeed` (default 1). */
+  speedScale?: number;
   /** Moves the species can equip; empty for enemy-only species in M0. */
   movepool: readonly MoveId[];
   /** Default loadout, aligned with the slot layout. */
@@ -19,7 +23,12 @@ export interface SpeciesDef {
   passive?: PassiveId;
 }
 
-/** HP values are provisional. Enemy behaviour lives in its own data/state machines. */
+/**
+ * HP values and speed scales are provisional. The playable starters share
+ * one damage and safety budget with distinct shapes: Zorua is fast and
+ * fragile, Litwick slow and fragile but ranged, Cubone slow and sturdy.
+ * Enemy behaviour lives in its own data/state machines.
+ */
 export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   mimikyu: {
     id: 'mimikyu',
@@ -27,9 +36,43 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     maxHp: 100,
     radius: 10,
     sprite: 'mimikyu',
+    spentSprite: 'mimikyuBusted',
     movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball'],
     defaultLoadout: ['shadow-claw', 'play-rough'],
     passive: 'disguise',
+  },
+  zorua: {
+    id: 'zorua',
+    types: ['dark'],
+    maxHp: 90,
+    radius: 10,
+    sprite: 'zorua',
+    speedScale: 1.12,
+    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play'],
+    defaultLoadout: ['feint-attack', 'night-daze'],
+    passive: 'illusion',
+  },
+  litwick: {
+    id: 'litwick',
+    types: ['ghost', 'fire'],
+    maxHp: 85,
+    radius: 10,
+    sprite: 'litwick',
+    speedScale: 0.95,
+    movepool: ['ember', 'astonish', 'hex', 'inferno'],
+    defaultLoadout: ['ember', 'hex'],
+    passive: 'flash-fire',
+  },
+  cubone: {
+    id: 'cubone',
+    types: ['ground'],
+    maxHp: 115,
+    radius: 10,
+    sprite: 'cubone',
+    speedScale: 0.92,
+    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum'],
+    defaultLoadout: ['bone-club', 'bonemerang'],
+    passive: 'battle-armor',
   },
   poochyena: {
     id: 'poochyena',
@@ -59,3 +102,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     defaultLoadout: [],
   },
 };
+
+/** Species a player can pick, in picker order (Mimikyu first, then the three starters). */
+export const PLAYABLE_SPECIES: readonly SpeciesId[] = ['mimikyu', 'zorua', 'litwick', 'cubone'];
+
+export const isPlayable = (id: unknown): id is SpeciesId => PLAYABLE_SPECIES.some((s) => s === id);

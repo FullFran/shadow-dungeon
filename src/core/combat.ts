@@ -1,6 +1,6 @@
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
-import { MOVES, type MoveDef } from '../data/moves';
+import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged } from './boss';
 import { computeDamage, typeEffectiveness } from './damage';
@@ -8,6 +8,7 @@ import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
+import { bonusMultiplier, breakIllusion, illusionActive } from './passives';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -51,8 +52,9 @@ function phaseDuration(move: MoveDef, phase: ActionPhase, actionTime: number): n
   return Number.POSITIVE_INFINITY;
 }
 
-/** Damage multiplier of the player's items and level for a move (heavy-slot bonus included). */
-const moveMultiplier = (stats: PlayerStats, move: MoveDef): number => stats.damage * (move.slot === 'heavy' ? stats.heavyDamage : 1);
+/** Damage multiplier of the player's items, level and passive boost for a move (heavy-slot bonus included). */
+const moveMultiplier = (stats: PlayerStats, move: MoveDef, action: ActionState): number =>
+  stats.damage * (move.slot === 'heavy' ? stats.heavyDamage : 1) * (action.boost ?? 1);
 
 const NEXT_PHASE: Record<ActionPhase, ActionPhase | null> = {
   charging: 'windup',
@@ -75,6 +77,8 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   }
   events.push({ type: 'moveStarted', moveId: move.id, slotIndex });
   const mouseAim = Boolean(input.slotMouse[slotIndex]);
+  // Flash Fire: the powered-up heavy move takes the boost with it.
+  const boosted = move.slot === 'heavy' && player.flashFire;
   const action: ActionState = {
     slotIndex,
     moveId: move.id,
@@ -86,9 +90,10 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     mouseAim,
     hitIds: [],
     startTick: state.tick,
+    ...(boosted ? { boost: TUNING.passives.flashFireBoost } : {}),
   };
   const paid = cost > 0 ? { stamina: player.stamina - cost, staminaRegenDelayMs: TUNING.stamina.regenDelayMs } : {};
-  return { ...state, player: { ...player, ...paid, action } };
+  return { ...state, player: { ...player, ...paid, action, ...(boosted ? { flashFire: false } : {}) } };
 }
 
 type StrikeHit = {
@@ -100,6 +105,7 @@ type StrikeHit = {
   from: Vec2;
   /** Names the swing or projectile in hit claims. */
   source: string;
+  bonus?: MoveBonus;
 };
 
 /**
@@ -135,7 +141,9 @@ function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, eve
 /**
  * Damages one enemy, applies stagger and knockback away from `from`, and
  * consumes the next-hit buff. Held items act here: Expert Belt on super
- * effective hits, Scope Lens crits (seeded RNG) and the Shell Bell heal.
+ * effective hits, Scope Lens crits (seeded RNG) and the Shell Bell heal; so
+ * do move bonuses (Foul Play, Hex, Stomping Tantrum) and Illusion, whose
+ * first hit is critical and breaks it.
  */
 function strikeEnemy(
   state: WorldState,
@@ -149,13 +157,15 @@ function strikeEnemy(
   const rolled = rollCrit(state, stats.critChance);
   state = rolled.state;
   const superEffective = typeEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
-  const crit = rolled.crit ? ITEM_EFFECTS.critMultiplier : 1;
+  const fromIllusion = illusionActive(state.player);
+  const crit = rolled.crit || fromIllusion ? ITEM_EFFECTS.critMultiplier : 1;
+  const bonus = bonusMultiplier(hit.bonus, enemy, state.player);
   const { damage, effectiveness } = computeDamage({
     power: hit.power,
     moveType: hit.type,
     attackerTypes: state.player.types,
     defenderTypes: enemy.types,
-    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit,
+    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus,
   });
   const hp = Math.max(0, enemy.hp - damage);
   const poise = poiseOf(enemy.species);
@@ -172,7 +182,7 @@ function strikeEnemy(
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
-    player: { ...onHitDealt(state.player, damage), nextHitBuff: null },
+    player: { ...onHitDealt(breakIllusion(state.player, events), damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
 }
@@ -205,16 +215,17 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
       {
         power: move.power,
         type: move.type,
-        multiplier: charge.damageMultiplier * moveMultiplier(stats, move),
+        multiplier: charge.damageMultiplier * moveMultiplier(stats, move, action),
         hitstunMs: move.hitstunMs,
         knockback: move.knockback,
         from: origin,
-        source: `m${action.startTick ?? state.tick}`,
+        source: `m${action.startTick ?? state.tick}${action.hitWindow ? `w${action.hitWindow}` : ''}`,
+        ...(move.bonus ? { bonus: move.bonus } : {}),
       },
       events,
     );
   }
-  return hitIds === action.hitIds ? current : withAction(current, { ...action, hitIds });
+  return hitIds === action.hitIds ? current : withAction(current, { ...action, hitIds, landed: true });
 }
 
 function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionState): WorldState {
@@ -228,7 +239,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     type: move.type,
     attackerTypes: state.player.types,
     power: move.power,
-    damageMultiplier: charge.damageMultiplier * moveMultiplier(stats, move),
+    damageMultiplier: charge.damageMultiplier * moveMultiplier(stats, move, action),
     pos: add(state.player.pos, scale(action.aimDir, PLAYER.radius + radius)),
     vel: scale(action.aimDir, move.hitbox.speed * charge.speedMultiplier),
     radius,
@@ -236,6 +247,8 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     hitstunMs: move.hitstunMs,
     knockback: move.knockback,
     hitIds: [],
+    ...(move.bonus ? { bonus: move.bonus } : {}),
+    ...(move.hitbox.boomerang ? { returnAtMs: move.hitbox.lifetimeMs / 2, pierce: true } : {}),
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }
@@ -248,9 +261,18 @@ const withAction = (state: WorldState, action: ActionState | null): WorldState =
 const confineToArena = (state: WorldState, pos: Vec2, radius: number, solid = true): Vec2 =>
   confineCircle(state.arena, pos, radius, solid);
 
+/** Multi-hit moves: which part of the active window `action` is in; a new part may hit everyone again. */
+function withHitWindow(move: MoveDef, action: ActionState, actionTime: number): ActionState {
+  if (!move.multiHit || move.multiHit < 2) return action;
+  const part = (move.activeMs * actionTime) / move.multiHit;
+  const window = Math.min(move.multiHit - 1, Math.floor(action.phaseMs / part));
+  return window === (action.hitWindow ?? 0) ? action : { ...action, hitWindow: window, hitIds: [] };
+}
+
 /** Runs the active-phase work of a move for `ms` of time inside the active window. */
-function runActive(state: WorldState, move: MoveDef, action: ActionState, ms: number, events: GameEvent[]): WorldState {
-  let current = state;
+function runActive(state: WorldState, move: MoveDef, active: ActionState, ms: number, events: GameEvent[]): WorldState {
+  const action = withHitWindow(move, active, playerStats(state.player).actionTime);
+  let current = action === active ? state : withAction(state, action);
   if (move.hitbox.kind === 'dash' && ms > 0) {
     const stepDistance = (move.hitbox.distance * ms) / (move.activeMs * playerStats(current.player).actionTime);
     const pos = confineToArena(current, add(current.player.pos, scale(action.aimDir, stepDistance)), PLAYER.radius);
@@ -292,6 +314,8 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
     if (action.phaseMs >= duration) {
       const next: ActionPhase | null = NEXT_PHASE[action.phase];
       if (next === null) {
+        // A finished melee move that struck nothing feeds Stomping Tantrum.
+        if (move.hitbox.kind !== 'projectile') current = { ...current, player: { ...current.player, lastMoveMissed: !action.landed } };
         action = null;
         break;
       }
@@ -331,6 +355,12 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       remainingMs: projectile.remainingMs - ms,
     };
     if (moved.remainingMs <= 0 || !insideArena(current, moved.pos)) continue;
+    if (moved.returnAtMs !== undefined && moved.remainingMs <= moved.returnAtMs) {
+      // A boomerang turns back and may hit everything again on the way home.
+      const { returnAtMs: _turned, ...rest } = moved;
+      moved = { ...rest, vel: scale(moved.vel, -1), hitIds: [] };
+    }
+    const returning = Boolean(moved.pierce) && moved.returnAtMs === undefined;
 
     if (moved.owner === 'player') {
       const target = current.enemies.find(
@@ -347,11 +377,12 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             hitstunMs: moved.hitstunMs,
             knockback: moved.knockback,
             from: moved.pos,
-            source: moved.id,
+            source: returning ? `${moved.id}r` : moved.id,
+            ...(moved.bonus ? { bonus: moved.bonus } : {}),
           },
           events,
         );
-        moved = null;
+        moved = moved.pierce ? { ...moved, hitIds: [...moved.hitIds, target.id] } : null;
       }
     } else if (!moved.hitIds.includes(PLAYER_ID) && distance(current.player.pos, moved.pos) <= PLAYER.radius + moved.radius) {
       const { damage } = computeDamage({
@@ -361,7 +392,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
         defenderTypes: current.player.types,
         multiplier: moved.damageMultiplier,
       });
-      const landed = landHitOnPlayer(current, { damage }, events);
+      const from = sub(moved.pos, scale(normalize(moved.vel), moved.radius + PLAYER.radius));
+      const landed = landHitOnPlayer(current, { damage, type: moved.type, from }, events);
       current = landed.state;
       // Rolled through: the projectile keeps flying; otherwise it is spent.
       const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';

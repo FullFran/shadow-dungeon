@@ -10,6 +10,7 @@ import { lungeTouches } from '../../src/core/victim';
 import { LagTransport } from '../../src/net/lag';
 import { createSession, type NetSession } from '../../src/net/session';
 import { createFakeScheduler, createMemoryHub } from '../../src/net/transport';
+import { SPECIES, type SpeciesId } from '../../src/data/species';
 import { input } from '../core/helpers';
 
 /**
@@ -37,24 +38,24 @@ interface Loop {
   tick(hostInput: PlayerInput, guestInput: PlayerInput): void;
 }
 
-function loopback(hostPos = vec(100, 300), guestPos = vec(1000, 300)): Loop {
+function loopback(hostPos = vec(100, 300), guestPos = vec(1000, 300), species: { host: SpeciesId; guest: SpeciesId } = { host: 'mimikyu', guest: 'mimikyu' }): Loop {
   const scheduler = createFakeScheduler(5000);
   const hub = createMemoryHub<string>();
   const random = seeded(7);
   const host = createSession({ transport: new LagTransport(hub.connect('tab-a'), { ...LAG, scheduler, random }), scheduler });
   const guest = createSession({ transport: new LagTransport(hub.connect('tab-b'), { ...LAG, scheduler, random }), scheduler });
-  host.host(1, 1, 'mimikyu');
+  host.host(1, 1, species.host);
   let localId: string | null = null;
   guest.onStart((start) => (localId = start.localId));
-  guest.join('mimikyu', ['shadow-claw', 'play-rough']);
+  guest.join(species.guest, SPECIES[species.guest].defaultLoadout);
   scheduler.advance(400);
   expect(localId).toBe('p2');
 
   const loop: Loop = {
     host,
     guest,
-    hostWorld: createWorld({ seed: 1, arena: ARENA, playerPos: hostPos, localId: 'p1' }),
-    guestWorld: createWorld({ seed: 1, arena: ARENA, playerPos: guestPos, localId: localId!, role: 'guest' }),
+    hostWorld: createWorld({ seed: 1, arena: ARENA, playerPos: hostPos, localId: 'p1', species: species.host }),
+    guestWorld: createWorld({ seed: 1, arena: ARENA, playerPos: guestPos, localId: localId!, role: 'guest', species: species.guest }),
     hostEvents: [],
     guestEvents: [],
     tick(hostInput, guestInput) {
@@ -76,6 +77,14 @@ const ticks = (ms: number) => Math.round(ms / FIXED_DT_MS);
 const swing = (aim: { x: number; y: number }) => input({ slots: [true, false], slotMouse: [true, false], aim });
 
 describe('two-world loopback over a lagged transport', () => {
+  it('each peer draws the other player as its own species', () => {
+    const loop = loopback(vec(100, 300), vec(1000, 300), { host: 'cubone', guest: 'zorua' });
+    for (let i = 0; i < ticks(500); i++) loop.tick(input(), input());
+    expect(loop.hostWorld.remotes.map((r) => [r.id, r.player.species])).toEqual([['p2', 'zorua']]);
+    expect(loop.guestWorld.remotes.map((r) => [r.id, r.player.species])).toEqual([['p1', 'cubone']]);
+    expect(loop.hostWorld.remotes[0]!.player.illusionBroken).toBe(false);
+  });
+
   it('a guest walking over a berry gets it from the host once; the host and the snapshots drop it', () => {
     const loop = loopback();
     const berries = [{ id: 'f1b1', pos: vec(1000, 300) }, { id: 'f1b2', pos: vec(600, 500) }];
