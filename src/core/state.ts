@@ -398,6 +398,8 @@ export interface WorldState {
   tick: number;
   /** Difficulty tier chosen by the host (data/difficulty.ts); absent means `easy`. */
   difficulty?: Difficulty;
+  /** Co-op: players present when this floor was entered (core/party.ts `partySizeOf`); absent = solo. */
+  party?: number;
   /** Id of this peer's player (`player`); "p1" solo. */
   localId: string;
   role: PeerRole;

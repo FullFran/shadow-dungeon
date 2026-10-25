@@ -216,6 +216,8 @@ export function encodeMessage(message: NetMessage): string {
         e: message.s.enemies.map(encodeEnemy),
         p: message.s.projectiles.map(encodeProjectile),
         ...(message.s.sima ? { v: message.s.sima } : {}),
+        // Co-op party size of the floor (optional: an older guest ignores it).
+        ...(message.s.party !== undefined ? { n: message.s.party } : {}),
       };
       break;
     case 'town':
@@ -261,6 +263,7 @@ export function decodeMessage(text: string): NetMessage | null {
         enemies: (wire.e as unknown[][]).map(decodeEnemy),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
         ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
+        ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),
       },
     };
   }

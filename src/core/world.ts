@@ -10,6 +10,7 @@ import { validateLoadout } from './loadout';
 import { hasBossState, initialBoss } from './boss';
 import { returnStolen } from './stolen';
 import { initialAi } from './enemies';
+import { partyField, partyHpScale } from './party';
 import { seedRng } from './rng';
 import type { Arena, EnemyState, LockType, PeerRole, PlayerState, Rect, WorldState } from './state';
 import { vec, type Vec2 } from './vec';
@@ -33,6 +34,8 @@ export interface WorldOptions {
   upgrades?: UpgradeLevels;
   /** The run's tier, the host's for every peer (absent = easy, data/difficulty.ts). */
   difficulty?: Difficulty;
+  /** Co-op: the room's roster size when the run starts (core/party.ts; absent or 1 = solo). */
+  party?: number;
 }
 
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels): PlayerState {
@@ -85,10 +88,12 @@ export function createWorld({
   role = 'host',
   upgrades,
   difficulty,
+  party,
 }: WorldOptions): WorldState {
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),
+    ...partyField(party ?? 1),
     localId,
     role,
     remotes: [],
@@ -125,8 +130,8 @@ export interface SpawnOptions {
 /** Adds an enemy with a deterministic id ("e<n>"). */
 export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, options: SpawnOptions = {}): WorldState {
   const species = SPECIES[speciesId];
-  // The endless dungeon's deeper floors spawn tougher enemies, and so do harder tiers (a tough elite more so).
-  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite) * (options.elite ? (options.eliteHp ?? 1) : 1);
+  // The endless dungeon's deeper floors spawn tougher enemies, and so do harder tiers (a tough elite more so) and bigger parties (core/party.ts).
+  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite) * (options.elite ? (options.eliteHp ?? 1) : 1) * partyHpScale(state, speciesId);
   const enemy: EnemyState = {
     id: `e${state.nextId}`,
     species: speciesId,

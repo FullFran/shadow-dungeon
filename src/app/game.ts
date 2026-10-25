@@ -196,7 +196,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       clickToLock: options.clickToLock,
       // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
       ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
-      ...(net ? { localId: net.localId, role: net.role } : {}),
+      // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
+      ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
       ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
     },
     options.startFloor,

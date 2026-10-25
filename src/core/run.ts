@@ -14,7 +14,7 @@ import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
-import { partyDefeated } from './party';
+import { partyDefeated, partyField, partySizeOf, presentPartySize } from './party';
 import { deriveSeed, nextRandom } from './rng';
 import { atExit, loadRoom, roomCleared } from './rooms';
 import type { WorldState } from './state';
@@ -111,8 +111,13 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
   return plan.kind === 'room' && plan.role === undefined;
 };
 
-/** Loads the run's current floor into the world (the heal is the caller's: none on floor 1). */
-function enterFloor(world: WorldState, run: RunState): WorldState {
+/**
+ * Loads the run's current floor into the world (the heal is the caller's: none on floor 1).
+ * `party`: the players present at the floor entry (core/party.ts), frozen for the floor.
+ */
+function enterFloor(entering: WorldState, run: RunState, party = presentPartySize(entering)): WorldState {
+  const { party: _before, ...rest } = entering;
+  const world: WorldState = { ...rest, ...partyField(party) };
   const plan = floorPlanOf(run);
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
@@ -168,7 +173,7 @@ export function startRun(
     offer: offerFor({ seed, floor: start }, base),
     ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false, ...(def.endless.clock.graceMs ? { graceMs: def.endless.clock.graceMs } : {}) } : {}),
   };
-  return { run, world: enterFloor(base, run) };
+  return { run, world: enterFloor(base, run, partySizeOf(base)) };
 }
 
 /** The local player takes item `index` of the current offer; anything else (no offer, bad index) changes nothing. */

@@ -23,6 +23,8 @@ import type {
 } from './state';
 import { vec, type Vec2 } from './vec';
 import { createPlayer } from './world';
+import { clampParty } from '../data/party-scaling';
+import { partyField, partyHpScale, partySizeOf } from './party';
 
 /**
  * Pure state exchange between peers (docs/gdd.md §12). Each peer owns its
@@ -89,6 +91,8 @@ export interface HostSnapshot {
   projectiles: readonly ProjectileSnapshot[];
   /** Sima: the floor event's progress and the pact in force (absent elsewhere). */
   sima?: SimaSync;
+  /** Co-op: the floor's party size as the host counted it (core/party.ts); absent solo or from an older host. */
+  party?: number;
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
@@ -175,6 +179,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
     ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
+    ...(state.party !== undefined ? { party: state.party } : {}),
   };
 }
 
@@ -223,9 +228,19 @@ function withoutNamedAttack(ai: EnemyState['ai']): EnemyState['ai'] {
  * player and player projectiles.
  */
 export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): WorldState {
+  // The host's party size wins (core/party.ts): a guest that counted differently rescales the enemies it spawned.
+  const party = snapshot.party !== undefined ? clampParty(snapshot.party) : partySizeOf(state);
+  const counted = { ...withoutParty(state), ...partyField(party) };
+  const adopted = party !== partySizeOf(state);
   const enemies = snapshot.enemies.map((s): EnemyState => {
     const local = state.enemies.find((e) => e.id === s.id && e.species === s.species);
-    const base = local ?? freshEnemy(s);
+    const rescaled = local && adopted ? { ...local, maxHp: (local.maxHp * partyHpScale(counted, s.species)) / partyHpScale(state, s.species) } : local;
+    const fresh = (): EnemyState => {
+      const e = freshEnemy(s);
+      const maxHp = e.maxHp * partyHpScale(counted, s.species);
+      return { ...e, maxHp, hp: maxHp };
+    };
+    const base = rescaled ?? fresh();
     const contact = local && sameAttack(local, s) ? local.ai.contact : 'none';
     return {
       ...base,
@@ -257,8 +272,13 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
   });
   // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
   const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
-  return applySimaSync({ ...state, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima);
+  return applySimaSync({ ...counted, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima);
 }
+
+const withoutParty = (state: WorldState): WorldState => {
+  const { party: _party, ...rest } = state;
+  return rest;
+};
 
 /** How many applied claim ids the host remembers (claims older than this are long settled). */
 const CLAIM_MEMORY = 512;
