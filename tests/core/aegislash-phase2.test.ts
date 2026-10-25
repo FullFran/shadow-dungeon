@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { AEGISLASH, spellCardKey } from '../../src/data/enemies';
+import { ECLIPSE } from '../../src/data/dungeons';
 import { ROOMS } from '../../src/data/rooms';
 import { blocksHit, shadowGapX } from '../../src/core/boss';
+import { startRun } from '../../src/core/run';
 import { loadRoom } from '../../src/core/rooms';
 import type { BossState, EnemyState, GameEvent, PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
@@ -167,5 +169,21 @@ describe('Aegislash phase 2: "El Rey desenvaina"', () => {
       guestEnemyContacts({ ...guest, enemies: [{ ...e, boss: { ...e.boss!, stance }, ai: { ...e.ai, contact: 'none' } }] }, quiet);
       expect(hurt(quiet)).toBe(false);
     }
+  });
+});
+
+describe('Aegislash echo in the Sima del Eclipse', () => {
+  it('stays in phase 1 on an echo floor (the same throne room, pillars and all), however low its HP', () => {
+    const run = startRun(7, {}, 5, ECLIPSE.id);
+    expect(run.world.enemies.map((e) => e.species)).toEqual(['aegislash']);
+    expect(run.world.enemyScale?.echo).toBe(true);
+    expect(run.world.arena.obstacles?.filter((o) => o.cover)).toHaveLength(4);
+    const low = throne(vec(400, 540), 0.3);
+    const echo = stepUntil({ ...low, enemyScale: run.world.enemyScale }, () => false, ticksFor(8000));
+    expect(echo.events.some((e) => e.type === 'bossStance' && e.stance === 'unsheathe')).toBe(false);
+    expect(boss(echo.state).boss?.phase).toBeUndefined();
+    // The same HP in the Crypt's own throne room unsheathes.
+    const crypt = stepUntil(low, (s) => boss(s).boss?.phase === 2, ticksFor(1000));
+    expect(boss(crypt.state).boss?.phase).toBe(2);
   });
 });

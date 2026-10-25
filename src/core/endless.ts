@@ -15,12 +15,19 @@ import { deriveSeed } from './rng';
 export interface EnemyScale {
   hp: number;
   damage: number;
+  /**
+   * A guardian echo's floor: the guardian fights its first phase only
+   * (Aegislash never unsheathes in an echo; the echo is shorter and hits
+   * harder with depth, and the clock is running).
+   */
+  echo?: true;
 }
 
 export function depthScale(scaling: EndlessDef['scaling'], floor: number, echo = false): EnemyScale {
   const past = Math.max(0, Math.floor(floor) - 1);
   const hp = Math.min(scaling.maxHp, 1 + scaling.hpPerFloor * past);
-  return { hp: echo ? hp * scaling.echoHp : hp, damage: Math.min(scaling.maxDamage, 1 + scaling.damagePerFloor * past) };
+  const damage = Math.min(scaling.maxDamage, 1 + scaling.damagePerFloor * past);
+  return echo ? { hp: hp * scaling.echoHp, damage, echo: true } : { hp, damage };
 }
 
 /** The spawn tuning of one endless floor: every pool entry whose `minDepth` is reached, with its weight. */

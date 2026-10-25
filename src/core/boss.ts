@@ -326,8 +326,8 @@ export function updateBoss(state: WorldState, start: EnemyState, def: AegislashD
   }
   enemy = withBoss(enemy, { stanceMs: enemy.boss!.stanceMs + ms });
 
-  // Half HP: "El Rey desenvaina", once, never in the middle of a blow.
-  if (enemy.boss!.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.threshold && ai.mode !== 'attack') {
+  // Half HP: "El Rey desenvaina", once, never in the middle of a blow (not in a Sima echo: phase 1 only).
+  if (!state.enemyScale?.echo && enemy.boss!.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.threshold && ai.mode !== 'attack') {
     events.push({ type: 'bossStance', enemyId: enemy.id, stance: 'unsheathe' });
     events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'unsheathe', durationMs: def.phase2.unsheatheMs });
     enemy = withBoss(enemy, { phase: 2, stance: 'unsheathe', stanceMs: 0, comboIndex: 0, combosDone: 0, cardsPlayed: 0 });
