@@ -93,6 +93,28 @@ describe('animation choice', () => {
   });
 });
 
+describe('starter sprites', () => {
+  const at = vec(100, 100);
+  it('draws each species with its own sheet, and Mimikyu Busted once Disguise is spent', () => {
+    const zorua = createWorld({ seed: 1, arena: { width: 400, height: 400 }, playerPos: at, species: 'zorua' }).player;
+    expect(playerAnim(zorua, { timeMs: 0, sinceHurtMs: Infinity, moving: false }).sprite).toBe(SPRITE_KEYS.zorua);
+    const mimikyu = createWorld({ seed: 1, arena: { width: 400, height: 400 }, playerPos: at }).player;
+    expect(playerAnim(mimikyu, { timeMs: 0, sinceHurtMs: Infinity, moving: false }).sprite).toBe(SPRITE_KEYS.mimikyu);
+    expect(playerAnim({ ...mimikyu, disguiseBroken: true }, { timeMs: 0, sinceHurtMs: Infinity, moving: false }).sprite).toBe(SPRITE_KEYS.mimikyuBusted);
+  });
+
+  it('plays an existing sheet for every move of every starter', () => {
+    for (const species of ['mimikyu', 'zorua', 'litwick', 'cubone'] as const) {
+      const base = createWorld({ seed: 1, arena: { width: 400, height: 400 }, playerPos: at, species }).player;
+      for (const moveId of Object.keys(MOVES) as (keyof typeof MOVES)[]) {
+        const action = { slotIndex: 0, moveId, phase: 'active' as const, phaseMs: 0, chargeMs: 0, chargeLevel: 0, aimDir: vec(1, 0), mouseAim: false, hitIds: [] };
+        const choice = playerAnim({ ...base, action }, { timeMs: 0, sinceHurtMs: Infinity, moving: false });
+        expect(SPRITES.sprites[choice.sprite]?.anims[choice.anim], `${species} ${moveId}`).toBeDefined();
+      }
+    }
+  });
+});
+
 describe('interpolation and camera', () => {
   it('renders entities between the previous and current step', () => {
     const a = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(100, 100) });

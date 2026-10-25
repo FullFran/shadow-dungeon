@@ -1,17 +1,21 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { onLethalHit } from './items';
+import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
 
 const PERFECT = TUNING.perfectDodge;
+const PASSIVES = TUNING.passives;
 
 export type LandedOutcome = 'hurt' | 'absorbed' | 'dodged' | 'perfectDodge';
 
 /**
  * Lands a hit on the player, pushing events into `events`. I-frames turn it
  * into a dodge (perfect right after they start: slow-mo + next-hit buff);
- * otherwise Disguise absorbs the first damaging hit of the room. A lethal
+ * otherwise Flash Fire absorbs a Fire hit (and a perfect dodge of one), Disguise
+ * absorbs the first damaging hit of the room and Battle Armor halves a
+ * frontal hit during a heavy wind-up; being hurt breaks Illusion. A lethal
  * hit may be survived with a held item (Focus Sash, items.ts).
  */
 export function landHitOnPlayer(
@@ -27,20 +31,31 @@ export function landHitOnPlayer(
   }
   if (outcome === 'perfectDodge') {
     events.push({ type: 'perfectDodge' });
+    const fire = absorbsFire(player, hit);
+    if (fire) events.push({ type: 'passiveTriggered', passive: 'flash-fire' });
     return {
       outcome,
       state: {
         ...state,
         slowMoMs: PERFECT.slowMoDurationMs,
-        player: { ...player, nextHitBuff: { multiplier: PERFECT.damageMultiplier, remainingMs: PERFECT.buffDurationMs } },
+        player: { ...player, nextHitBuff: { multiplier: PERFECT.damageMultiplier, remainingMs: PERFECT.buffDurationMs }, ...(fire ? { flashFire: true } : {}) },
       },
     };
+  }
+  if (hit.damage > 0 && absorbsFire(player, hit)) {
+    events.push({ type: 'passiveTriggered', passive: 'flash-fire' });
+    const hp = Math.min(player.maxHp, player.hp + hit.damage * PASSIVES.flashFireHeal);
+    return { outcome: 'absorbed', state: { ...state, player: { ...player, hp, flashFire: true } } };
   }
   if (hit.damage > 0 && SPECIES[player.species].passive === 'disguise' && !player.disguiseBroken) {
     events.push({ type: 'disguiseBroken' });
     return { outcome: 'absorbed', state: { ...state, player: { ...player, disguiseBroken: true } } };
   }
-  events.push({ type: 'playerHurt', damage: hit.damage });
-  const saved = hit.damage >= player.hp ? onLethalHit(player, events) : null;
-  return { outcome: 'hurt', state: { ...state, player: saved ?? { ...player, hp: Math.max(0, player.hp - hit.damage) } } };
+  const armored = armorCovers(player, hit);
+  if (armored) events.push({ type: 'passiveTriggered', passive: 'battle-armor' });
+  const damage = armored ? Math.round(hit.damage * PASSIVES.battleArmorFactor) : hit.damage;
+  events.push({ type: 'playerHurt', damage });
+  const hurt = breakIllusion(player, events);
+  const saved = damage >= hurt.hp ? onLethalHit(hurt, events) : null;
+  return { outcome: 'hurt', state: { ...state, player: saved ?? { ...hurt, hp: Math.max(0, hurt.hp - damage) } } };
 }

@@ -1,4 +1,5 @@
 import { MOVES, type MoveId } from '../data/moves';
+import { SPECIES } from '../data/species';
 import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import type { EnemyState, PlayerState } from '../core/state';
@@ -97,13 +98,31 @@ function once(sprite: SpriteKey, anim: string, timeMs: number, facing: Vec2): An
   return { sprite, anim, frame: frameAtTime(meta.durations, timeMs, false), row: directionRow(facing) };
 }
 
-/** Sheet used by each Mimikyu move. */
+/** Sheet used by each player move (a species without that sheet falls back to Attack). */
 export const MOVE_ANIMS: Record<MoveId, { charge?: string; attack: string }> = {
   'shadow-claw': { attack: 'Attack' },
   'shadow-sneak': { attack: 'Strike' },
   'play-rough': { charge: 'Charge', attack: 'Double' },
   'shadow-ball': { charge: 'Charge', attack: 'Shoot' },
+  'fury-swipes': { attack: 'Double' },
+  'feint-attack': { attack: 'Strike' },
+  'night-daze': { charge: 'Charge', attack: 'SpAttack' },
+  'foul-play': { charge: 'Charge', attack: 'Attack' },
+  ember: { attack: 'Shoot' },
+  astonish: { attack: 'Attack' },
+  hex: { charge: 'Charge', attack: 'Shoot' },
+  inferno: { charge: 'Charge', attack: 'SpAttack' },
+  'bone-club': { attack: 'Attack' },
+  'bone-rush': { attack: 'Double' },
+  bonemerang: { charge: 'Charge', attack: 'Swing' },
+  'stomping-tantrum': { charge: 'Charge', attack: 'SpAttack' },
 };
+
+/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form). */
+export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken'>): SpriteKey {
+  const species = SPECIES[player.species];
+  return SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
+}
 
 export interface PlayerAnimContext {
   timeMs: number;
@@ -113,13 +132,14 @@ export interface PlayerAnimContext {
 }
 
 export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimChoice {
-  const sprite = SPRITE_KEYS.mimikyu;
+  const sprite = playerSprite(player);
   const facing = player.action?.aimDir ?? player.facing;
   if (player.hp <= 0) return once(sprite, 'Faint', ctx.sinceHurtMs, facing);
   if (player.roll) {
-    const meta = animMeta(sprite, 'Hop')!;
+    const hop = animMeta(sprite, 'Hop') ? 'Hop' : 'Walk';
+    const meta = animMeta(sprite, hop)!;
     const progress = player.roll.elapsedMs / TUNING.roll.durationMs;
-    return { sprite, anim: 'Hop', frame: frameInRange(meta.durations, 0, meta.durations.length, progress), row: directionRow(player.roll.dir) };
+    return { sprite, anim: hop, frame: frameInRange(meta.durations, 0, meta.durations.length, progress), row: directionRow(player.roll.dir) };
   }
   const action = player.action;
   if (action) {
@@ -127,8 +147,9 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
     if (action.phase === 'charging') return looping(sprite, anims.charge ?? 'Charge', action.chargeMs, facing);
     const move = MOVES[action.moveId];
     const duration = { windup: move.windupMs, active: move.activeMs, recovery: move.recoveryMs }[action.phase];
-    const meta = animMeta(sprite, anims.attack)!;
-    return { sprite, anim: anims.attack, frame: attackFrame(meta, action.phase, action.phaseMs / duration), row: directionRow(facing) };
+    const attack = animMeta(sprite, anims.attack) ? anims.attack : 'Attack';
+    const meta = animMeta(sprite, attack)!;
+    return { sprite, anim: attack, frame: attackFrame(meta, action.phase, action.phaseMs / duration), row: directionRow(facing) };
   }
   if (ctx.sinceHurtMs < 250) return once(sprite, 'Hurt', ctx.sinceHurtMs, facing);
   return looping(sprite, ctx.moving ? 'Walk' : 'Idle', ctx.timeMs, facing);
@@ -145,6 +166,9 @@ export function enemySprite(enemy: EnemyState): SpriteKey {
 
 const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   mimikyu: 'Attack',
+  zorua: 'Attack',
+  litwick: 'Shoot',
+  cubone: 'Attack',
   poochyena: 'Attack',
   gastly: 'Shoot',
   aegislash: 'Attack',

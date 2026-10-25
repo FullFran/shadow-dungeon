@@ -1,6 +1,6 @@
 import type { ItemId } from '../data/items';
-import type { MoveId } from '../data/moves';
-import type { SpeciesId } from '../data/species';
+import type { MoveBonus, MoveId } from '../data/moves';
+import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { TileRect } from './dungeon';
@@ -96,6 +96,12 @@ export interface ActionState {
   hitIds: readonly string[];
   /** World tick the move started on: names the swing in hit claims (one claim per enemy per swing). */
   startTick?: number;
+  /** Multi-hit moves: part of the active window being played (each part may hit a target again). */
+  hitWindow?: number;
+  /** Some target was struck by this use (melee moves; feeds `lastMoveMissed`). */
+  landed?: boolean;
+  /** Passive damage multiplier taken when the move started (Flash Fire on a heavy move). */
+  boost?: number;
 }
 
 export interface PlayerState {
@@ -119,6 +125,12 @@ export interface PlayerState {
   action: ActionState | null;
   /** Disguise passive: true once the free hit of this room has been used. */
   disguiseBroken: boolean;
+  /** Illusion passive: true once the disguise of this room is gone (Zorua hit something or was hurt). */
+  illusionBroken: boolean;
+  /** Flash Fire passive: a Fire hit was absorbed and the next heavy move is powered up. */
+  flashFire: boolean;
+  /** The last finished melee move struck nothing (Stomping Tantrum). */
+  lastMoveMissed: boolean;
   /** In-run level (progression.ts), 1 at the run start. */
   level: number;
   /** Total experience gained this run. */
@@ -214,6 +226,12 @@ export interface ProjectileState {
   knockback: number;
   /** Entities already hit or passed through (a dodged projectile keeps flying). */
   hitIds: readonly string[];
+  /** Bonus damage condition of the move that fired it (Hex). */
+  bonus?: MoveBonus;
+  /** Boomerang: turns back when `remainingMs` drops to this, and goes through what it hits. */
+  returnAtMs?: number;
+  /** Goes through enemies instead of being spent on the first hit (boomerangs). */
+  pierce?: boolean;
 }
 
 export interface Arena {
@@ -237,6 +255,8 @@ export type GameEvent =
   | { type: 'perfectDodge' }
   | { type: 'playerHurt'; damage: number }
   | { type: 'disguiseBroken' }
+  /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
+  | { type: 'passiveTriggered'; passive: PassiveId }
   | { type: 'moveStarted'; moveId: MoveId; slotIndex: number }
   | { type: 'moveDenied'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
@@ -343,4 +363,8 @@ export interface WorldState {
 /** A hit about to land on the player (from an enemy attack or projectile), damage already computed. */
 export interface IncomingHit {
   damage: number;
+  /** Type of the attack (Flash Fire absorbs Fire). */
+  type?: PokemonType;
+  /** Where the attack comes from (Battle Armor only covers the front). */
+  from?: Vec2;
 }

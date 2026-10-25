@@ -32,9 +32,14 @@ const OUT_META = join(ROOT, 'src', 'data', 'sprite-meta.json');
 const OUT_CREDITS = join(ROOT, 'CREDITS.md');
 
 // Form names verified against SpriteCollab's tracker.json
-// (0681 subgroup 0001 is named "Blade"; the base folder is the Shield form).
+// (0681 subgroup 0001 is named "Blade"; the base folder is the Shield form;
+// 0778 subgroup 0001 is Mimikyu's Busted form).
 const TARGETS = [
   { dex: '0778', form: '0000', species: 'mimikyu', formName: 'disguised' },
+  { dex: '0778', form: '0001', species: 'mimikyu', formName: 'busted' },
+  { dex: '0570', form: '0000', species: 'zorua', formName: 'base' },
+  { dex: '0607', form: '0000', species: 'litwick', formName: 'base' },
+  { dex: '0104', form: '0000', species: 'cubone', formName: 'base' },
   { dex: '0261', form: '0000', species: 'poochyena', formName: 'base' },
   { dex: '0092', form: '0000', species: 'gastly', formName: 'base' },
   { dex: '0681', form: '0000', species: 'aegislash', formName: 'shield' },
@@ -55,6 +60,7 @@ const WANTED = {
   Double: [],
   Hop: [],
   Rotate: [],
+  SpAttack: [],
 };
 
 async function fetchBuffer(url) {

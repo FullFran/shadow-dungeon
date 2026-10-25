@@ -1,6 +1,7 @@
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
+import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
 import { initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
@@ -40,6 +41,8 @@ export interface PlayerSnapshot {
   action: { moveId: MoveId; phase: ActionPhase; phaseMs: number; chargeMs: number; chargeLevel: number; aimDir: Vec2 } | null;
   /** Its own projectiles in flight, for the others to draw. */
   projectiles: readonly ProjectileSnapshot[];
+  /** Still under Illusion (Zorua): the host's sleeping enemies only notice it by touch. */
+  hidden?: boolean;
 }
 
 export interface EnemySnapshot {
@@ -92,6 +95,7 @@ export function playerSnapshot(state: WorldState): PlayerSnapshot {
     roll: p.roll,
     action: a ? { moveId: a.moveId, phase: a.phase, phaseMs: a.phaseMs, chargeMs: a.chargeMs, chargeLevel: a.chargeLevel, aimDir: a.aimDir } : null,
     projectiles: state.projectiles.filter((p) => p.owner === 'player').map(projectileSnapshot),
+    ...(illusionActive(p) ? { hidden: true } : {}),
   };
 }
 
@@ -109,6 +113,7 @@ function remoteFrom(snapshot: PlayerSnapshot, previous: PlayerState | undefined)
     maxHp: snapshot.maxHp,
     roll: snapshot.roll,
     action,
+    illusionBroken: !snapshot.hidden,
   };
 }
 

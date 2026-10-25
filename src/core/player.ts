@@ -1,3 +1,4 @@
+import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
 import { confineCircle } from './geometry';
@@ -75,7 +76,7 @@ export function updatePlayer(
     const pos = confine(add(next.pos, scale(next.roll.dir, ROLL_SPEED * rollMs)), arena);
     next = { ...next, pos, roll: elapsedMs >= ROLL.durationMs ? null : { ...next.roll, elapsedMs } };
   } else if (length(moveDir) > 0 && walkFactor(next) > 0) {
-    const speed = PLAYER.moveSpeed * walkFactor(next);
+    const speed = PLAYER.moveSpeed * (SPECIES[next.species].speedScale ?? 1) * walkFactor(next);
     const pos = confine(add(next.pos, scale(moveDir, (speed * dtMs) / 1000)), arena);
     next = { ...next, pos, facing: moveDir };
   }

@@ -37,8 +37,8 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     types: species.types,
     pos,
     facing: vec(0, 1),
-    hp: TUNING.player.maxHp,
-    maxHp: TUNING.player.maxHp,
+    hp: species.maxHp,
+    maxHp: species.maxHp,
     stamina: TUNING.stamina.max,
     staminaRegenDelayMs: 0,
     roll: null,
@@ -47,6 +47,9 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     slotsHeld: equipped.map(() => false),
     action: null,
     disguiseBroken: false,
+    illusionBroken: false,
+    flashFire: false,
+    lastMoveMissed: false,
     level: 1,
     xp: 0,
     items: [],
@@ -116,7 +119,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }
 
-/** Starts a new room: clears enemies and projectiles and restores per-room passives (Disguise) and per-floor item uses. */
+/** Starts a new room: clears enemies and projectiles and restores per-room passives (Disguise, Illusion) and per-floor item uses. */
 export function enterRoom(state: WorldState): WorldState {
   return {
     ...state,
@@ -125,7 +128,7 @@ export function enterRoom(state: WorldState): WorldState {
     berries: [],
     credited: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
-    player: { ...state.player, disguiseBroken: false, action: null, itemUses: {} },
+    player: { ...state.player, disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
     collapse: undefined,
   };
 }

@@ -15,6 +15,7 @@ import { drawMessageLog, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
+import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
@@ -536,7 +537,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       draw: () => {
         shadow(playerPos, TUNING.player.radius);
         chargeRing(current, playerPos);
-        drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos);
+        // Under Illusion (Zorua) the player shimmers, half see-through.
+        const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
+        drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled);
       },
     });
     for (const remote of current.remotes) {

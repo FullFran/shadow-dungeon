@@ -139,7 +139,7 @@ describe('PNG decoding and shadow anchor', () => {
 });
 
 describe('generated sprite meta', () => {
-  it('covers every M0 sprite with the seven core animations in 8 directions', () => {
+  it('covers every sprite with the seven core animations in 8 directions', () => {
     expect(SPRITES.directions).toHaveLength(8);
     for (const key of Object.values(SPRITE_KEYS)) {
       const sprite = SPRITES.sprites[key];

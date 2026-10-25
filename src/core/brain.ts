@@ -65,7 +65,7 @@ export function contactPlayer(
     attackerTypes: enemy.types,
     defenderTypes: state.player.types,
   });
-  const landed = landHitOnPlayer(state, { damage }, events);
+  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos }, events);
   if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);
   const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
