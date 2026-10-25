@@ -5,6 +5,8 @@ import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
+import { worldDifficulty } from './difficulty';
+import { trickedDef } from './tricks';
 import { lungeTouches, slammerTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { enemyTimeScale } from './time';
@@ -57,7 +59,9 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       // Only while recharging: with the lunge ready it closes in to lunge range (it used to hover at the stalk ring).
       const stalking = ai.cooldownMs > 0 && dist <= def.stalkRange;
       // Circle the player while the lunge recharges, otherwise close in.
-      const straight = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : toPlayer;
+      // Crabs (Krabby) close in sideways: mostly across the line to the player, a little along it.
+      const closing = def.scuttle ? normalize(add(toPlayer, scale(perpendicular(toPlayer, ai.strafeSign), def.scuttle))) : toPlayer;
+      const straight = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : closing;
       // Erratic fliers (Zubat) sway sideways on the way in.
       const sway = def.weave ? def.weave.amplitude * Math.sin((2 * Math.PI * state.timeMs) / def.weave.periodMs) : 0;
       const dir = sway === 0 ? straight : normalize(add(straight, scale(perpendicular(toPlayer, 1), sway)));
@@ -142,6 +146,14 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       }
       break;
     case 'attack':
+      // A burst (Remoraid): the rest of the shots follow down the lane locked when the first one left.
+      if (def.burst) {
+        const before = ai.modeMs - ms;
+        for (let shot = 1; shot < def.burst.shots; shot++) {
+          const at = shot * def.burst.gapMs;
+          if (before < at && ai.modeMs >= at) state = spawnShot(state, enemy, def.projectile, ai.attackDir);
+        }
+      }
       if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
       break;
     case 'recover':
@@ -259,8 +271,10 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
   let current = state;
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
-    const def = enemy && ENEMY_BEHAVIOUR[enemy.species];
-    if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
+    const raw = enemy && ENEMY_BEHAVIOUR[enemy.species];
+    // Harder tiers lay their tricks over the definition (core/tricks.ts); easy plays it as written.
+    const def = raw && trickedDef(raw, worldDifficulty(current));
+    if (!enemy || !def ||!enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
     // Koffing's fuse cannot be staggered out of (killing it is the answer).
     if (enemy.hitstunMs > 0 && !unstoppable(enemy)) {
       current = replaceEnemy(current, interrupted(enemy));

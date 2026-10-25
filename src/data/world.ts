@@ -313,7 +313,8 @@ export const LAGO: WorldMap = {
     { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.1', 'town.soon', 'world.npc.oracle.2'] },
   ],
   links: [{ id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' }],
-  entrances: [],
+  // The Flooded Caves: a sunken stair going down into the black water at the far end of the pier.
+  entrances: [{ dungeon: 'flooded-caves', nameKey: 'dungeon.caves.name', x: 23, y: 6, width: 2, height: 1, back: { x: 23, y: 8 } }],
   lore: [{ id: 'idol', nameKey: 'world.lore.idol.name', x: 20, y: 16.5, lines: [{ key: 'world.lore.idol.1' }, { key: 'world.lore.idol.2', after: CRYPT }, { key: 'world.lore.idol.3', after: FOREST }] }],
   wanderers: [{ id: 'lake-spinarak', species: 'spinarak', x: 27, y: 19, radius: 2 }],
   look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1, fog: 0.8, birds: 1 },

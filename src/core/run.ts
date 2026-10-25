@@ -5,6 +5,7 @@ import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from '.
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
+import { shallowWater } from './water';
 import { generateFloor } from './dungeon';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
@@ -111,7 +112,11 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
   const floor = generateFloor(seed, run.floor, endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns);
-  return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
+  const loaded = loadFloor(deeper, floor, run.kind);
+  // The caves lay shallow pools over their floors (seeded by the floor, the same on every peer).
+  const water = dungeonOf(run).water;
+  const arena = water ? { ...loaded.arena, water: shallowWater(floor, water) } : loaded.arena;
+  return { ...loaded, arena, berries: placeBerries(floor, seed, run.floor) };
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

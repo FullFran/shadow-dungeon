@@ -23,7 +23,7 @@ export interface RoomDef {
   next: RoomId | null;
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -106,6 +106,46 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     obstacles: [],
     playerStart: { x: 320, y: 330 },
     spawns: [{ species: 'decidueye', x: 320, y: 120 }],
+    exit: null,
+    next: null,
+  },
+  /**
+   * Flooded Caves mid-boss: Lanturn's grotto, a pool of blue light with four
+   * crystal-capped rocks that stop its bubbles and sparks (cover); the way on
+   * opens at the top once it falls.
+   */
+  grotto: {
+    id: 'grotto',
+    width: 760,
+    height: 600,
+    obstacles: [
+      { x: 140, y: 168, width: 64, height: 52, cover: true },
+      { x: 556, y: 150, width: 58, height: 60, cover: true },
+      { x: 170, y: 410, width: 56, height: 56, cover: true },
+      { x: 540, y: 420, width: 64, height: 52, cover: true },
+    ],
+    playerStart: { x: 380, y: 530 },
+    spawns: [{ species: 'lanturn', x: 380, y: 230 }],
+    exit: { x: 340, y: 0, width: 80, height: 50 },
+    next: null,
+  },
+  /**
+   * Flooded Caves guardian: the sunken ship where Dhelmise keeps watch. The
+   * broken hull (bow and stern, long and low) and two rocks are cover: they
+   * stop bubbles and kelp in their column, never the anchor.
+   */
+  wreck: {
+    id: 'wreck',
+    width: 880,
+    height: 680,
+    obstacles: [
+      { x: 130, y: 230, width: 120, height: 40, cover: true },
+      { x: 630, y: 230, width: 120, height: 40, cover: true },
+      { x: 200, y: 470, width: 48, height: 48, cover: true },
+      { x: 632, y: 470, width: 48, height: 48, cover: true },
+    ],
+    playerStart: { x: 440, y: 600 },
+    spawns: [{ species: 'dhelmise', x: 440, y: 250 }],
     exit: null,
     next: null,
   },

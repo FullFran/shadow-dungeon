@@ -1,3 +1,4 @@
+import type { Difficulty } from './difficulty';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 
@@ -12,6 +13,16 @@ import type { PokemonType } from './types';
 export interface EnemyAttackDef {
   power: number;
   type: PokemonType;
+}
+
+/**
+ * A difficulty trick (core/tricks.ts): from `minDifficulty` on, these fields
+ * replace the definition's own (an extra cut, a longer burst, an extra spell
+ * card). Easy plays the definition as written.
+ */
+export interface DifficultyTrick<D> {
+  minDifficulty: Difficulty;
+  set: Partial<Omit<D, 'kind' | 'tricks'>>;
 }
 
 /** How an enemy reacts to the player's hits. */
@@ -55,6 +66,9 @@ export interface PoochyenaDef {
    * wind-up and lunge, so rolling into it on the first one gets punished.
    */
   followUp?: { telegraphMs: number; lungeMs: number; lungeDistance: number };
+  /** Crab walk (Krabby): while closing in it moves this much sideways for every step towards the player. */
+  scuttle?: number;
+  tricks?: readonly DifficultyTrick<PoochyenaDef>[];
 }
 
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
@@ -82,6 +96,9 @@ export interface GastlyDef {
   recoverMs: number;
   cooldownMs: number;
   projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+  /** A burst down the lane locked at the end of the wind-up (Remoraid's Octazooka): `shots` in all, one every `gapMs`. */
+  burst?: { shots: number; gapMs: number };
+  tricks?: readonly DifficultyTrick<GastlyDef>[];
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -571,6 +588,9 @@ export interface MortarDef {
   pool: HazardDef;
   recoverMs: number;
   cooldownMs: number;
+  /** The landing throws a ring of droplets outwards (Shellos from hard on). */
+  splash?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  tricks?: readonly DifficultyTrick<MortarDef>[];
 }
 
 /** Koffing: floats close and puffs gas clouds; when its HP drops low it swells and explodes (a big marked ring), unless killed first. */
@@ -988,6 +1008,64 @@ export const SABLEYE: ThiefDef = {
   stealMs: 9000,
 };
 
+// Flooded Caves (docs/species-candidates.md §2, Dungeon 3). Telegraphs >= 500 ms on easy.
+
+/** Krabby: scuttles sideways around you, then a Crabhammer lunge; from hard on a second, re-aimed pincer follows. */
+export const KRABBY: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1, knockbackScale: 1 },
+  aggroRange: 560,
+  walkSpeed: 78,
+  stalkRange: 120,
+  lungeRange: 110,
+  telegraphMs: 600,
+  lungeMs: 220,
+  lungeDistance: 125,
+  attack: { power: 30, type: 'water' },
+  hitRecoverMs: 450,
+  missRecoverMs: 1000,
+  cooldownMs: 1300,
+  scuttle: 1.6,
+  tricks: [{ minDifficulty: 'hard', set: { followUp: { telegraphMs: 320, lungeMs: 160, lungeDistance: 95 } } }],
+};
+
+/** Remoraid: keeps its distance and fires an Octazooka burst down the lane it locked (step sideways); from hard on the burst is longer. */
+export const REMORAID: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1.1, knockbackScale: 1.2 },
+  aggroRange: 650,
+  speed: 62,
+  minDistance: 130,
+  maxDistance: 240,
+  telegraphMs: 650,
+  castMs: 420,
+  recoverMs: 650,
+  cooldownMs: 2100,
+  projectile: { power: 20, type: 'water', speed: 200, radius: 6, lifetimeMs: 1800 },
+  burst: { shots: 3, gapMs: 150 },
+  tricks: [{ minDifficulty: 'hard', set: { burst: { shots: 5, gapMs: 120 }, castMs: 560 } }],
+};
+
+/** Shellos: crawls slowly and lobs mud where you stand (the circle follows you, then stays); from hard on the landing splashes droplets around it. */
+export const SHELLOS: MortarDef = {
+  kind: 'mortar',
+  poise: { hitstunScale: 0.7, knockbackScale: 0.6 },
+  aggroRange: 560,
+  walkSpeed: 26,
+  minDistance: 90,
+  maxDistance: 210,
+  maxThrow: 240,
+  telegraphMs: 650,
+  flightMs: 650,
+  impactMs: 100,
+  radius: 38,
+  attack: { power: 28, type: 'ground' },
+  pool: { power: 12, type: 'water', radius: 28, lifetimeMs: 3000 },
+  recoverMs: 1000,
+  cooldownMs: 2300,
+  tricks: [{ minDifficulty: 'hard', set: { splash: { count: 6, projectile: { power: 14, type: 'water', speed: 110, radius: 5, lifetimeMs: 1400 } } } }],
+};
+
 export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
@@ -1021,6 +1099,9 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   golett: GOLETT,
   pawniard: PAWNIARD,
   sableye: SABLEYE,
+  krabby: KRABBY,
+  remoraid: REMORAID,
+  shellos: SHELLOS,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */

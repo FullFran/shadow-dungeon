@@ -96,8 +96,8 @@ export const RUN = {
   floorHeal: 0.25,
 } as const;
 
-/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, or the forest's fog (Niebla). */
-export type FloorKind = 'normal' | 'collapse' | 'fog';
+/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"): the collapse, the forest's fog (Niebla) or the caves' flood (Inundación). */
+export type FloorKind = 'normal' | 'collapse' | 'fog' | 'flood';
 
 /**
  * Urgent floor weights by depth. Index 0 is floor 1 (never urgent); deeper
@@ -147,4 +147,34 @@ export const FOG = {
   chillIntervalMs: 1500,
   /** Soft edge of the fog, in tiles (drawn as a gradient). */
   edgeTiles: 1.5,
+} as const;
+
+/**
+ * Inundación (core/flood.ts), the Flooded Caves' urgent floor: the water
+ * rises over the whole floor and slows every player who is not a Water type
+ * more and more; once it has fully risen the cold water bites a little at a
+ * time (never below 1 HP). Provisional values.
+ */
+export const FLOOD = {
+  graceMs: 4000,
+  /** Time from the end of the grace to the full level. */
+  riseMs: 45000,
+  /** Walking speed lost at the full level (a share of the normal speed) by a non-Water player. */
+  maxSlow: 0.45,
+  /** Once risen: a chill of this fraction of max HP every interval (never below 1 HP; Water types are spared). */
+  chillFraction: 0.02,
+  chillIntervalMs: 2000,
+} as const;
+
+/** Shallow water pools of the Flooded Caves' floors (core/water.ts). Provisional values. */
+export interface WaterTuning {
+  /** Chance that a room other than the start one holds a pool. */
+  poolChance: number;
+}
+
+export const WATER = {
+  /** Walking speed of a non-Water walker in shallow water (player or enemy). */
+  shallowFactor: 0.7,
+  /** The combined slow (pool and flood) never goes below this. */
+  minFactor: 0.4,
 } as const;

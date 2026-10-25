@@ -7,6 +7,7 @@ import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
+import type { FloodState } from './flood';
 import type { EnemyScale } from './endless';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -286,6 +287,8 @@ export interface Arena {
   stairs?: Rect;
   /** Generated floors: the rooms, in tiles (the minimap reveals a whole room on entering it). */
   rooms?: readonly TileRect[];
+  /** Flooded Caves floors: shallow water per tile, aligned with `tiles` (1 = shallow; water.ts). */
+  water?: readonly number[];
 }
 
 /** Things that happened during the last step, for renderer juice and audio. Cleared every step. */
@@ -407,6 +410,8 @@ export interface WorldState {
   collapse?: CollapseState;
   /** Fog urgent floors (Niebla): the closing vision (fog.ts). */
   fog?: FogState;
+  /** Flood urgent floors (Inundación): the rising water (flood.ts). */
+  flood?: FloodState;
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
   events: GameEvent[];

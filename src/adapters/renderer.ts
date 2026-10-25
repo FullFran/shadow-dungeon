@@ -15,7 +15,9 @@ import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
-import { CRYPT, type TilePalette } from '../data/dungeons';
+import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
+import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
+import { floodLevel } from '../core/flood';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
@@ -62,7 +64,7 @@ export interface RenderFrame {
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
   /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure), if any. */
-  decor?: 'crypt' | null;
+  decor?: DungeonDecor | null;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
@@ -343,13 +345,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: DungeonDecor | null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       ctx.fillStyle = COLORS.mapVoid;
       ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       tiles(grid, view, state.collapse, timeMs);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
+      if (decor === 'caves') caveFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -369,6 +372,34 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
     if (decor === 'crypt') cryptArena(width, height, timeMs);
+    if (decor === 'caves') cavesArena(ctx, width, height, timeMs);
+  }
+
+  /** Caves decoration of a generated floor: pools (deep at the rock), crystals and drops; placement worked out once per floor. */
+  const caveDecorOf = new WeakMap<TileGrid, CaveDecor>();
+  function caveFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = caveDecorOf.get(grid);
+    if (!decor) {
+      decor = caveDecor(grid);
+      caveDecorOf.set(grid, decor);
+    }
+    const { x0, y0, x1, y1 } = visibleTiles(view, grid);
+    const water = state.arena.water;
+    const front = state.collapse ? collapseFront(state.collapse) : 0;
+    if (water) {
+      for (let ty = y0; ty <= y1; ty++) {
+        for (let tx = x0; tx <= x1; tx++) {
+          if (water[ty * grid.cols + tx] !== 1) continue;
+          const d = state.collapse ? (state.collapse.dist[ty * grid.cols + tx] ?? -1) : -1;
+          if (front > 0 && d >= 0 && d < front) continue;
+          waterTile(ctx, tx * TILE, ty * TILE, tx, ty, timeMs, deepEdge(grid, tx, ty));
+        }
+      }
+    }
+    const visible = (x: number, y: number) => x >= x0 - 1 && x <= x1 + 1 && y >= y0 - 1 && y <= y1 + 1;
+    for (const c of decor.crystals) if (visible(c.x, c.y)) crystal(ctx, c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
+    for (const d of decor.drips) if (visible(d.x, d.y)) drip(ctx, d.x * TILE, d.y * TILE, timeMs, decorHash(d.x, d.y, 6));
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -415,9 +446,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function pillar(rect: Obstacle, decor: 'crypt' | null, timeMs: number): Drawable {
+  function pillar(rect: Obstacle, decor: DungeonDecor | null, timeMs: number): Drawable {
     const lift = 18;
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
+    if (decor === 'caves') return { y: rect.y + rect.height, draw: () => caveCover(ctx, rect, lift, timeMs) };
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -829,6 +861,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     floor(current, view, timeMs, frame.decor ?? null);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
+    // Inundación: the rising water lies over the floor, under everyone.
+    if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);

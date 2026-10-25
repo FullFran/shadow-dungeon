@@ -74,4 +74,10 @@ export const SPRITE_KEYS = {
   golett: '0622/0000',
   pawniard: '0624/0000',
   sableye: '0302/0000',
+  // Flooded Caves.
+  krabby: '0098/0000',
+  shellos: '0422/0000',
+  remoraid: '0223/0000',
+  lanturn: '0171/0000',
+  dhelmise: '0781/0000',
 } as const;

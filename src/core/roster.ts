@@ -1,6 +1,6 @@
 import { ENEMY_BEHAVIOUR, type BeamDef, type BomberDef, type ConeDef, type CounterDef, type EnemyAttackDef, type EnemyDef, type MortarDef, type PulseDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
-import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, telegraph, towardTarget } from './brain';
+import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { add, angleOf, clamp, distance, dot, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
@@ -314,6 +314,12 @@ function updateMortar(state: WorldState, start: EnemyState, def: MortarDef, targ
       ({ state, enemy } = strikePhase(state, enemy, def, events));
       if (modeOver(ai)) {
         if (ai.aimPoint) state = spawnShot(state, enemy, { ...def.pool, speed: 0 }, ai.attackDir, ai.aimPoint);
+        // Shellos (hard on): the landing throws a ring of droplets outwards from where it fell.
+        if (ai.aimPoint && def.splash) {
+          for (const dir of spreadDirections(ai.attackDir, def.splash.count, 360 - 360 / def.splash.count)) {
+            state = spawnShot(state, enemy, def.splash.projectile, dir, add(ai.aimPoint, scale(dir, def.splash.projectile.radius + 4)));
+          }
+        }
         enemy = rest(enemy, def.recoverMs, def.cooldownMs);
       }
       break;
