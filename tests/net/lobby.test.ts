@@ -81,4 +81,35 @@ describe('lobby', () => {
     expect(guest.liveStats().bytesOutPerSec).toBeGreaterThan(0);
     expect(guest.liveStats().bytesInPerSec).toBeGreaterThan(0);
   });
+
+  it('tells guests once when the host leaves, in the lobby or mid-run', () => {
+    for (const midRun of [false, true]) {
+      const scheduler = createFakeScheduler();
+      const hub = createMemoryHub<string>();
+      const host = peer(hub, 'h', scheduler);
+      host.session.host(1, 1, 'mimikyu', { lobby: true });
+      const guest = peer(hub, 'a', scheduler);
+      let told = 0;
+      guest.session.onHostLeft(() => told++);
+      guest.session.join('mimikyu', LOADOUT);
+      if (midRun) host.session.begin();
+      host.session.leave();
+      expect(told).toBe(1);
+    }
+  });
+
+  it('a guest leaving is not the host leaving', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(1, 1, 'mimikyu');
+    const a = peer(hub, 'a', scheduler);
+    const b = peer(hub, 'b', scheduler);
+    let told = 0;
+    a.session.onHostLeft(() => told++);
+    a.session.join('mimikyu', LOADOUT);
+    b.session.join('mimikyu', LOADOUT);
+    b.session.leave();
+    expect(told).toBe(0);
+  });
 });

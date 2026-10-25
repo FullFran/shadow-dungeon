@@ -5,6 +5,7 @@ import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, setLanguage, t, type Language } from '../i18n';
 import { BroadcastChannelTransport } from '../net/broadcast';
+import { autoJoin } from '../net/election';
 import { LagTransport, parseLagParams } from '../net/lag';
 import { generateRoomCode, normalizeRoomCode, roomCodeFromSearch } from '../net/room-code';
 import { createSession, type NetSession } from '../net/session';
@@ -52,7 +53,8 @@ function devStartFloor(): number | undefined {
 /**
  * `?net=local`: a shared run between tabs of this browser (netcode spike,
  * docs/gdd.md §12). `?host=1` makes this tab the host; otherwise it looks for
- * one and, if nobody answers in a moment, becomes it. `?lag=ms&jitter=ms&loss=0..1`
+ * one and, if nobody answers in a moment, the lowest-id searching tab hosts
+ * (`autoJoin`). `?lag=ms&jitter=ms&loss=0..1`
  * simulates a bad network on what this tab sends; `?delay=ms` tunes the render delay.
  */
 interface NetJoin {
@@ -69,13 +71,18 @@ const HOST_SEARCH_MS = 700;
 const SPECIES = 'mimikyu';
 
 /** A session over `base`, with `?lag=` simulation and `?delay=` render delay from the page address. */
-function sessionOver(base: Transport<string>): NetSession {
+function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const params = new URLSearchParams(window.location.search);
   const scheduler = realScheduler();
   const lag = parseLagParams(window.location.search);
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
-  return createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
+  const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
+  // The host left: the run (or lobby) ends with a notice and the way back to the menu.
+  session.onHostLeft(() => {
+    if (current === session) messageScreen(root, t('net.hostLeft'));
+  });
+  return session;
 }
 
 function leaveNet(): void {
@@ -83,30 +90,23 @@ function leaveNet(): void {
   current = null;
 }
 
-function connectLocal(seed: number, floor: number): Promise<NetJoin> {
+async function connectLocal(root: HTMLElement, seed: number, floor: number): Promise<NetJoin> {
   const params = new URLSearchParams(window.location.search);
-  const session = sessionOver(new BroadcastChannelTransport());
-  const species = SPECIES;
-  const asHost = (): NetJoin => {
-    session.host(seed, floor, species);
-    return { session, role: 'host', localId: 'p1', seed, floor, online: false };
-  };
-  if (params.get('host') === '1') return Promise.resolve(asHost());
-  return new Promise((resolve) => {
-    let done = false;
-    session.onStart((start) => {
-      if (done) return;
-      done = true;
-      resolve({ session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, online: false });
-    });
-    session.join(species, settings.loadout);
-    window.setTimeout(() => {
-      if (done) return;
-      done = true;
-      resolve(asHost());
-    }, HOST_SEARCH_MS);
+  const session = sessionOver(root, new BroadcastChannelTransport());
+  current = session;
+  const joined = await autoJoin({
+    session,
+    scheduler: realScheduler(),
+    searchMs: HOST_SEARCH_MS,
+    seed,
+    floor,
+    species: SPECIES,
+    loadout: settings.loadout,
+    forceHost: params.get('host') === '1',
   });
+  return { session, ...joined, online: false };
 }
+
 
 const netMode = (): boolean => new URLSearchParams(window.location.search).get('net') === 'local';
 
@@ -180,7 +180,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean): Prom
   let session: NetSession;
   try {
     const { joinTrysteroRoom } = await import('../adapters/trystero');
-    session = sessionOver(joinTrysteroRoom(code));
+    session = sessionOver(root, joinTrysteroRoom(code));
   } catch {
     messageScreen(root, t('lobby.error'));
     return;
@@ -344,7 +344,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
   let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor'> = { seed: runSeed(), startFloor: devStartFloor() };
   if (!join && netMode()) {
     show(root, el('p', { textContent: t('net.connecting') }));
-    join = await connectLocal(shared.seed!, shared.startFloor ?? 1);
+    join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1);
   }
   if (join) {
     if (join.online && current !== join.session) return;

@@ -49,11 +49,13 @@ function encodePlayer(p: PlayerSnapshot): unknown[] {
   const roll = p.roll ? [ri(p.roll.elapsedMs), r3(p.roll.dir.x), r3(p.roll.dir.y)] : 0;
   const a = p.action;
   const action = a ? [a.moveId, a.phase, ri(a.phaseMs), ri(a.chargeMs), a.chargeLevel, r3(a.aimDir.x), r3(a.aimDir.y)] : 0;
-  return [p.id, p.species, r1(p.pos.x), r1(p.pos.y), r3(p.facing.x), r3(p.facing.y), r1(p.hp), r1(p.maxHp), roll, action];
+  const out: unknown[] = [p.id, p.species, r1(p.pos.x), r1(p.pos.y), r3(p.facing.x), r3(p.facing.y), r1(p.hp), r1(p.maxHp), roll, action];
+  if (p.projectiles.length > 0) out.push(p.projectiles.map(encodeProjectile));
+  return out;
 }
 
 function decodePlayer(w: unknown[]): PlayerSnapshot {
-  const [id, species, x, y, fx, fy, hp, maxHp, roll, action] = w as [string, SpeciesId, number, number, number, number, number, number, unknown, unknown];
+  const [id, species, x, y, fx, fy, hp, maxHp, roll, action, shots] = w as [string, SpeciesId, number, number, number, number, number, number, unknown, unknown, unknown];
   const r = Array.isArray(roll) ? (roll as number[]) : null;
   const a = Array.isArray(action) ? (action as [MoveId, ActionPhase, number, number, number, number, number]) : null;
   return {
@@ -65,6 +67,7 @@ function decodePlayer(w: unknown[]): PlayerSnapshot {
     maxHp,
     roll: r ? { elapsedMs: r[0]!, dir: { x: r[1]!, y: r[2]! } } : null,
     action: a ? { moveId: a[0], phase: a[1], phaseMs: a[2], chargeMs: a[3], chargeLevel: a[4], aimDir: { x: a[5], y: a[6] } } : null,
+    projectiles: Array.isArray(shots) ? (shots as unknown[][]).map(decodeProjectile) : [],
   };
 }
 

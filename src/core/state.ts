@@ -250,6 +250,16 @@ export type PeerRole = 'host' | 'guest';
 export interface RemotePlayer {
   id: string;
   player: PlayerState;
+  /** That player's own projectiles in flight, drawn only (they never hit anything on this peer). */
+  projectiles: readonly RemoteProjectile[];
+}
+
+/** Enough of another player's projectile to draw it. */
+export interface RemoteProjectile {
+  id: string;
+  pos: Vec2;
+  vel: Vec2;
+  radius: number;
 }
 
 /**

@@ -38,6 +38,8 @@ export interface PlayerSnapshot {
   maxHp: number;
   roll: RollState | null;
   action: { moveId: MoveId; phase: ActionPhase; phaseMs: number; chargeMs: number; chargeLevel: number; aimDir: Vec2 } | null;
+  /** Its own projectiles in flight, for the others to draw. */
+  projectiles: readonly ProjectileSnapshot[];
 }
 
 export interface EnemySnapshot {
@@ -53,7 +55,7 @@ export interface EnemySnapshot {
   boss?: { stance: BossStance; comboIndex: number };
 }
 
-/** An enemy projectile in flight (players' own projectiles stay on their peer). */
+/** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
 export interface ProjectileSnapshot {
   id: string;
   type: PokemonType;
@@ -71,6 +73,10 @@ export interface HostSnapshot {
   projectiles: readonly ProjectileSnapshot[];
 }
 
+function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
+  return { id: p.id, type: p.type, attackerTypes: p.attackerTypes, power: p.power, pos: p.pos, vel: p.vel, radius: p.radius, remainingMs: p.remainingMs };
+}
+
 export function playerSnapshot(state: WorldState): PlayerSnapshot {
   const p = state.player;
   const a = p.action;
@@ -83,6 +89,7 @@ export function playerSnapshot(state: WorldState): PlayerSnapshot {
     maxHp: p.maxHp,
     roll: p.roll,
     action: a ? { moveId: a.moveId, phase: a.phase, phaseMs: a.phaseMs, chargeMs: a.chargeMs, chargeLevel: a.chargeLevel, aimDir: a.aimDir } : null,
+    projectiles: state.projectiles.filter((p) => p.owner === 'player').map(projectileSnapshot),
   };
 }
 
@@ -109,7 +116,8 @@ export function applyRemotePlayers(state: WorldState, snapshots: readonly Player
   for (const snapshot of snapshots) {
     if (snapshot.id === state.localId) continue;
     const previous = remotes.find((r) => r.id === snapshot.id);
-    const next = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player) };
+    const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius }));
+    const next: RemotePlayer = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player), projectiles };
     remotes = previous ? remotes.map((r) => (r.id === snapshot.id ? next : r)) : [...remotes, next];
   }
   remotes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -133,18 +141,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       ai: { mode: e.ai.mode, modeMs: e.ai.modeMs, modeDurationMs: e.ai.modeDurationMs, attackDir: e.ai.attackDir },
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
     })),
-    projectiles: state.projectiles
-      .filter((p) => p.owner === 'enemy')
-      .map((p) => ({
-        id: p.id,
-        type: p.type,
-        attackerTypes: p.attackerTypes,
-        power: p.power,
-        pos: p.pos,
-        vel: p.vel,
-        radius: p.radius,
-        remainingMs: p.remainingMs,
-      })),
+    projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
   };
 }
 

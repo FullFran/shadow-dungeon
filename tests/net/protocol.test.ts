@@ -45,6 +45,17 @@ describe('protocol', () => {
     close(decoded, message);
   });
 
+  it('round-trips the player own projectiles in its state, and none as an empty list', () => {
+    const world = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(10, 10), localId: 'p2' });
+    const shot = { id: 'j4', owner: 'player' as const, type: 'ghost' as const, attackerTypes: ['ghost' as const], power: 40, pos: vec(55.55, 66.66), vel: vec(210, -3), radius: 6, remainingMs: 700, damageMultiplier: 1, hitstunMs: 0, knockback: 0, hitIds: [] };
+    const message: NetMessage = { t: 'state', at: 5, floor: 1, p: playerSnapshot({ ...world, projectiles: [shot] }) };
+    const decoded = decodeMessage(encodeMessage(message));
+    expect(decoded?.t === 'state' && decoded.p.projectiles.map((p) => p.id)).toEqual(['j4']);
+    close(decoded, message);
+    const none = decodeMessage(encodeMessage({ t: 'state', at: 5, floor: 1, p: playerSnapshot(world) }));
+    expect(none?.t === 'state' && none.p.projectiles).toEqual([]);
+  });
+
   it('round-trips a host snapshot within the wire rounding and reports its size', () => {
     const { world } = startRun(7, {}, 3);
     const snapshot = hostSnapshot(world);

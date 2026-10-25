@@ -98,6 +98,24 @@ describe('two-world loopback over a lagged transport', () => {
     expect(distance(loop.hostWorld.remotes[0]!.player.pos, loop.guestWorld.player.pos)).toBeLessThan(1);
   });
 
+  it('the guest health bar never flickers back up between its hit and the host confirming it', () => {
+    const loop = loopback();
+    loop.hostWorld = spawnEnemy(loop.hostWorld, 'poochyena', vec(1035, 300), { dormant: true }); // e1, next to the guest
+    for (let i = 0; i < ticks(500); i++) loop.tick(input(), input());
+    loop.tick(input(), swing(vec(1200, 300)));
+    let lowest = Number.POSITIVE_INFINITY;
+    let flickered = false;
+    for (let i = 0; i < ticks(1500); i++) {
+      loop.tick(input(), input());
+      const hp = loop.guestWorld.enemies[0]!.hp;
+      if (hp > lowest + 1e-6) flickered = true;
+      lowest = Math.min(lowest, hp);
+    }
+    expect(lowest).toBeLessThan(loop.guestWorld.enemies[0]!.maxHp);
+    expect(flickered).toBe(false);
+    expect(loop.guestWorld.enemies[0]!.hp).toBe(loop.hostWorld.enemies[0]!.hp);
+  });
+
   it('a guest that rolls through a lunge on its screen dodges it, though the host-side guest position took it', () => {
     const loop = loopback(vec(100, 300), vec(700, 300));
     loop.hostWorld = spawnEnemy(loop.hostWorld, 'poochyena', vec(900, 300));

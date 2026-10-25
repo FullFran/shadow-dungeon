@@ -373,7 +373,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function projectile(p: ProjectileState, pos: Vec2, timeMs: number): Drawable {
+  function projectile(p: Pick<ProjectileState, 'owner' | 'radius'>, pos: Vec2, timeMs: number): Drawable {
     return {
       y: pos.y,
       draw: () => {
@@ -527,6 +527,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       });
     }
     for (const p of current.projectiles) drawables.push(projectile(p, posOf(p.id, p.pos), timeMs));
+    // Other players' projectiles: drawn only, as reported (they hit nothing here).
+    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
 
     const hovered = current.enemies.find((e) => e.id === frame.hoverId && e.alive);

@@ -2,6 +2,7 @@ import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { GameEvent, HitClaim, WorldState } from '../core/state';
 import { applyHitClaims, applyHostSnapshot, applyRemotePlayers, hostSnapshot, playerSnapshot, removeRemote, type HostSnapshot, type PlayerSnapshot } from '../core/sync';
+import { applyHolds, holdClaimedHits, type HpHold } from './hold';
 import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from './interpolation';
 import { decodeMessage, encodeMessage, type NetMessage, type RosterEntry } from './protocol';
 import { createStatsTracker, type StatsSummary } from './stats';
@@ -64,6 +65,10 @@ export interface NetSession {
   onRoster(handler: (roster: readonly RosterEntry[]) => void): void;
   /** Guest: the host turned this player away, the room has four already. */
   onFull(handler: () => void): void;
+  /** Guest (in the lobby or mid-run): the host left; fires once. */
+  onHostLeft(handler: () => void): void;
+  /** Not started yet: the other tabs knocking at the same time (for the local host election). */
+  rivals(): readonly string[];
   /** Sends a round-trip probe to every peer (also done every 60 steps). */
   ping(): void;
   /** Rates, snapshot age and round trips for the net stats overlay. */
@@ -85,7 +90,18 @@ const SNAP_DISTANCE = 64;
 const pick = <T>(a: T, b: T, t: number): T => (t < 1 ? a : b);
 
 function mixPlayer(a: PlayerSnapshot, b: PlayerSnapshot, t: number): PlayerSnapshot {
-  return { ...pick(a, b, t), pos: lerpPos(a.pos, b.pos, t, SNAP_DISTANCE) };
+  const base = pick(a, b, t);
+  const from = new Map(a.projectiles.map((p) => [p.id, p.pos]));
+  const to = new Map(b.projectiles.map((p) => [p.id, p.pos]));
+  return {
+    ...base,
+    pos: lerpPos(a.pos, b.pos, t, SNAP_DISTANCE),
+    projectiles: base.projectiles.map((p) => {
+      const pa = from.get(p.id);
+      const pb = to.get(p.id);
+      return pa && pb ? { ...p, pos: lerpPos(pa, pb, t, SNAP_DISTANCE) } : p;
+    }),
+  };
 }
 
 function mixSnapshot(a: HostSnapshot, b: HostSnapshot, t: number): HostSnapshot {
@@ -127,6 +143,11 @@ export function createSession(options: SessionOptions): NetSession {
   const startHandlers: Array<(start: StartInfo) => void> = [];
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
   const fullHandlers: Array<() => void> = [];
+  const hostLeftHandlers: Array<() => void> = [];
+  let hostGone = false;
+  /** Hellos heard before this peer started or hosted (local election; admitted at once if it hosts). */
+  const pending = new Map<string, SpeciesId>();
+  let holds: HpHold[] = [];
   const tracker = createStatsTracker();
   const offsets = new Map<string, number>();
   const players = new Map<string, InterpBuffer<PlayerSnapshot>>();
@@ -145,6 +166,12 @@ export function createSession(options: SessionOptions): NetSession {
   const setRoster = (next: RosterEntry[]) => {
     roster = next;
     for (const handler of rosterHandlers) handler(roster);
+  };
+
+  const hostLeft = () => {
+    if (role === 'host' || hostGone || !(started || admitted)) return;
+    hostGone = true;
+    for (const handler of hostLeftHandlers) handler();
   };
 
   /** Guest still waiting to be let in: knock (again). */
@@ -174,7 +201,9 @@ export function createSession(options: SessionOptions): NetSession {
   function dropPeer(peer: string): void {
     const entry = roster.find((r) => r.peer === peer);
     tracker.forget(peer);
+    pending.delete(peer);
     if (!entry) return;
+    if (entry.id === 'p1') hostLeft();
     setRoster(roster.filter((r) => r !== entry));
     players.delete(entry.id);
     if (role === 'host') send({ t: 'leave', id: entry.id }, true);
@@ -186,13 +215,17 @@ export function createSession(options: SessionOptions): NetSession {
     if (!message) return;
     switch (message.t) {
       case 'hello':
-        if (role !== 'host') return;
+        if (role !== 'host') {
+          if (!started) pending.set(from, message.species);
+          return;
+        }
         if (!admit(from, message.species)) send({ t: 'full', peer: from }, true);
         else if (lobby) send({ t: 'lobby', players: roster }, true);
         else send({ t: 'start', seed, floor: hostFloor, players: roster }, true);
         return;
       case 'lobby':
         if (role === 'host') return;
+        pending.delete(from);
         setRoster([...message.players]);
         if (roster.some((r) => r.peer === transport.selfId)) admitted = true;
         else knock();
@@ -210,6 +243,7 @@ export function createSession(options: SessionOptions): NetSession {
         return;
       case 'start': {
         if (role === 'host') return;
+        pending.delete(from);
         setRoster([...message.players]);
         const me = roster.find((r) => r.peer === transport.selfId);
         if (!me) return knock();
@@ -245,6 +279,7 @@ export function createSession(options: SessionOptions): NetSession {
         if (role === 'guest') floorChange = Math.max(floorChange ?? 0, message.floor);
         return;
       case 'leave':
+        if (message.id === 'p1') hostLeft();
         players.delete(message.id);
         setRoster(roster.filter((r) => r.id !== message.id));
         return;
@@ -266,8 +301,12 @@ export function createSession(options: SessionOptions): NetSession {
       hostFloor = floor;
       lobby = hostOptions?.lobby ?? false;
       setRoster([{ peer: transport.selfId, id: 'p1', species }]);
+      // Tabs that knocked while this one was still searching are let in now (local election).
+      for (const [peer, theirs] of pending) admit(peer, theirs);
+      pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
       if (lobby) send({ t: 'lobby', players: roster }, true);
+      else if (roster.length > 1) send({ t: 'start', seed, floor: hostFloor, players: roster }, true);
     },
     inLobby: () => role === 'host' && lobby,
     begin() {
@@ -282,6 +321,8 @@ export function createSession(options: SessionOptions): NetSession {
     onStart: (handler) => void startHandlers.push(handler),
     onRoster: (handler) => void rosterHandlers.push(handler),
     onFull: (handler) => void fullHandlers.push(handler),
+    onHostLeft: (handler) => void hostLeftHandlers.push(handler),
+    rivals: () => (started || role === 'host' ? [] : [...pending.keys()]),
     ping() {
       send({ t: 'ping', at: scheduler.now() }, true);
     },
@@ -299,6 +340,7 @@ export function createSession(options: SessionOptions): NetSession {
       if (role === 'guest' && snapshots.samples.at(-1)?.epoch === floor) {
         const snapshot = sampleAt(snapshots, renderAt, mixSnapshot, sampleOptions);
         if (snapshot) next = applyHostSnapshot(next, snapshot);
+        ({ world: next, holds } = applyHolds(holds, next, scheduler.now()));
       }
       const events: GameEvent[] = [];
       if (role === 'host' && inbox.length > 0) {
@@ -315,7 +357,10 @@ export function createSession(options: SessionOptions): NetSession {
       if (ticks % PING_EVERY_TICKS === 0) send({ t: 'ping', at: scheduler.now() }, true);
       if (role === 'guest') {
         const claims = world.events.flatMap((e) => (e.type === 'hitClaim' ? [e.claim] : []));
-        if (claims.length > 0) send({ t: 'claim', claims }, true);
+        if (claims.length > 0) {
+          send({ t: 'claim', claims }, true);
+          holds = holdClaimedHits(holds, world, claims, scheduler.now());
+        }
       }
       if (ticks % sendEvery !== 0) return;
       const at = scheduler.now();
