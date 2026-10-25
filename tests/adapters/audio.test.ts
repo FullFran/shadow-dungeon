@@ -27,6 +27,7 @@ describe('event -> sound mapping', () => {
     [{ type: 'bossStance', enemyId: 'e', stance: 'blade' }, 'stance'],
     [{ type: 'levelUp', level: 2 }, 'levelUp'],
     [{ type: 'itemTriggered', item: 'sitrus-berry' }, 'item'],
+    [{ type: 'berryEaten', berryId: 'f1b2', heal: 20 }, 'berry'],
   ];
   for (const [event, sound] of cases) {
     it(`${event.type} -> ${sound}`, () => expect(soundFor(event)).toBe(sound));

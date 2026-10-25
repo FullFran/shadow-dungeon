@@ -6,7 +6,7 @@ import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } 
 
 /**
  * Netcode spike protocol (docs/gdd.md §12). Reliable: hello, start, lobby,
- * full, ping, pong, claim, floor, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
+ * full, ping, pong, claim, pick, berry, floor, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
  * snap (host: enemies and enemy projectiles). `at` is the sender's clock
  * (ms), for the receiver's interpolation timeline; `floor` is the epoch that
  * separates floors. Compact JSON: the two frequent messages travel as
@@ -34,6 +34,10 @@ export type NetMessage =
   | { t: 'pong'; to: string; at: number }
   | { t: 'state'; at: number; floor: number; p: PlayerSnapshot }
   | { t: 'claim'; claims: readonly HitClaim[] }
+  /** Guest: its player walked over Oran Berry `id`; the host decides (first claim wins). */
+  | { t: 'pick'; id: string; by: string }
+  /** Host: player `to` gets Oran Berry `id` (it heals on receiving this, once). */
+  | { t: 'berry'; id: string; to: string }
   | { t: 'snap'; at: number; floor: number; s: HostSnapshot }
   /** Host: everyone goes down to this floor. */
   | { t: 'floor'; floor: number }
@@ -156,6 +160,7 @@ export function encodeMessage(message: NetMessage): string {
         at: r1(message.at),
         f: message.floor,
         k: message.s.tick,
+        b: message.s.berries,
         e: message.s.enemies.map(encodeEnemy),
         p: message.s.projectiles.map(encodeProjectile),
       };
@@ -166,7 +171,7 @@ export function encodeMessage(message: NetMessage): string {
   return JSON.stringify(wire);
 }
 
-const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'snap', 'floor', 'leave']);
+const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'leave']);
 
 /** Parses a wire message; null for anything that is not one (the spike trusts the content otherwise). */
 export function decodeMessage(text: string): NetMessage | null {
@@ -185,6 +190,7 @@ export function decodeMessage(text: string): NetMessage | null {
       floor: wire.f as number,
       s: {
         tick: wire.k as number,
+        berries: Array.isArray(wire.b) ? (wire.b as string[]) : [],
         enemies: (wire.e as unknown[][]).map(decodeEnemy),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
       },

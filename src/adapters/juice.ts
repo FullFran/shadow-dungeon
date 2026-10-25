@@ -25,7 +25,7 @@ export const JUICE = {
   rumblePx: 1.5,
 } as const;
 
-export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hurt';
+export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hurt' | 'heal';
 
 export interface FloatingNumber {
   pos: Vec2;
@@ -96,6 +96,9 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
       case 'itemTriggered':
         // Rocky Helmet shows as the enemy's damage number; the heals and the save get the flash.
         if (event.item !== 'rocky-helmet') next = { ...next, flash: { kind: 'item', ageMs: 0, item: event.item } };
+        break;
+      case 'berryEaten':
+        next = { ...next, numbers: [...next.numbers, { pos: playerPos, value: event.heal, style: 'heal', big: false, ageMs: 0 }] };
         break;
       case 'levelUp':
         next = { ...next, flash: { kind: 'levelUp', ageMs: 0, level: event.level } };

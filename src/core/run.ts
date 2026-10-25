@@ -1,5 +1,6 @@
 import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
 import type { ItemId } from '../data/items';
+import { placeBerries } from './berries';
 import { generateFloor } from './dungeon';
 import { addItem, offerItems } from './items';
 import { loadFloor, onStairs } from './floor';
@@ -68,7 +69,10 @@ export const isBossFloor = (run: RunState): boolean => {
 function enterFloor(world: WorldState, run: RunState): WorldState {
   const plan = floorPlanOf(run);
   const deeper = { ...world, depth: run.floor };
-  return plan.kind === 'generated' ? loadFloor(deeper, generateFloor(floorSeed(run.seed, run.floor), run.floor), run.kind) : loadRoom(deeper, plan.room);
+  if (plan.kind === 'room') return loadRoom(deeper, plan.room);
+  const seed = floorSeed(run.seed, run.floor);
+  const floor = generateFloor(seed, run.floor);
+  return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

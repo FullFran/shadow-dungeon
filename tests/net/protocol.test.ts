@@ -27,6 +27,8 @@ describe('protocol', () => {
       t: 'claim',
       claims: [{ id: 'p2:m4:e1', playerId: 'p2', enemyId: 'e1', damage: 12, effectiveness: 2, hitstunMs: 180, knockback: vec(3, -4), blocked: false }],
     },
+    { t: 'pick', id: 'f2b3', by: 'p2' },
+    { t: 'berry', id: 'f2b3', to: 'p2' },
     { t: 'floor', floor: 3 },
     { t: 'leave', id: 'p3' },
   ];
@@ -54,6 +56,12 @@ describe('protocol', () => {
     close(decoded, message);
     const none = decodeMessage(encodeMessage({ t: 'state', at: 5, floor: 1, p: playerSnapshot(world) }));
     expect(none?.t === 'state' && none.p.projectiles).toEqual([]);
+  });
+
+  it('carries the berries left on the floor in host snapshots', () => {
+    const world = { ...createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(0, 0) }), berries: [{ id: 'f1b2', pos: vec(10, 10) }] };
+    const decoded = decodeMessage(encodeMessage({ t: 'snap', at: 1, floor: 1, s: hostSnapshot(world) }));
+    expect(decoded?.t === 'snap' && decoded.s.berries).toEqual(['f1b2']);
   });
 
   it('round-trips a host snapshot within the wire rounding and reports its size', () => {

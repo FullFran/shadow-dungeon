@@ -88,3 +88,17 @@ export const ITEM_OFFER = {
   size: 3,
   rarityWeights: { common: 6, uncommon: 3, rare: 1 } as Record<Rarity, number>,
 } as const;
+
+/**
+ * Oran Berries lying on generated floors (docs/gdd.md §3): each room but the
+ * start one may hold one (seeded from the floor seed); walking over it heals.
+ * Provisional values.
+ */
+export const ORAN_BERRY = {
+  /** Chance per non-start room. */
+  roomChance: 0.35,
+  /** HP healed. */
+  heal: 20,
+  /** Pickup distance from the player's centre (world px). */
+  pickupRadius: 14,
+} as const;

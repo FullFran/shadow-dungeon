@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ORAN_BERRY } from '../../src/data/items';
 import { TUNING } from '../../src/data/tuning';
 import type { GameEvent, PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
@@ -63,7 +64,7 @@ function loopback(hostPos = vec(100, 300), guestPos = vec(1000, 300)): Loop {
       host.afterStep(loop.hostWorld, 1);
       const g = guest.beforeStep(loop.guestWorld, 1);
       loop.guestWorld = step(g.world, guestInput, FIXED_DT_MS);
-      loop.guestEvents.push(...loop.guestWorld.events);
+      loop.guestEvents.push(...g.events, ...loop.guestWorld.events);
       guest.afterStep(loop.guestWorld, 1);
       scheduler.advance(FIXED_DT_MS);
     },
@@ -75,6 +76,22 @@ const ticks = (ms: number) => Math.round(ms / FIXED_DT_MS);
 const swing = (aim: { x: number; y: number }) => input({ slots: [true, false], slotMouse: [true, false], aim });
 
 describe('two-world loopback over a lagged transport', () => {
+  it('a guest walking over a berry gets it from the host once; the host and the snapshots drop it', () => {
+    const loop = loopback();
+    const berries = [{ id: 'f1b1', pos: vec(1000, 300) }, { id: 'f1b2', pos: vec(600, 500) }];
+    loop.hostWorld = { ...loop.hostWorld, berries };
+    loop.guestWorld = { ...loop.guestWorld, berries, player: { ...loop.guestWorld.player, hp: 40 } };
+    for (let i = 0; i < ticks(1500); i++) loop.tick(input(), input());
+    expect(loop.hostWorld.berries.map((b) => b.id)).toEqual(['f1b2']);
+    expect(loop.guestWorld.berries.map((b) => b.id)).toEqual(['f1b2']);
+    expect(loop.guestEvents.filter((e) => e.type === 'berryClaim')).toHaveLength(1);
+    expect(loop.guestEvents.filter((e) => e.type === 'berryEaten')).toEqual([{ type: 'berryEaten', berryId: 'f1b1', heal: ORAN_BERRY.heal }]);
+    expect(loop.guestWorld.player.hp).toBe(40 + ORAN_BERRY.heal);
+    expect(loop.hostWorld.player.hp).toBe(loop.hostWorld.player.maxHp);
+    expect(loop.hostEvents.filter((e) => e.type === 'berryEaten')).toEqual([]);
+  });
+
+
   it('both players damage enemies; the host applies the guest claim once and the guest sees both results', () => {
     const loop = loopback();
     loop.hostWorld = spawnEnemy(loop.hostWorld, 'poochyena', vec(135, 300), { dormant: true }); // e1, next to the host

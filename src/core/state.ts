@@ -190,6 +190,13 @@ export interface AiState {
   strafeSign: 1 | -1;
 }
 
+/** An Oran Berry lying on the floor (berries.ts). */
+export interface Berry {
+  /** `f<floor>b<room>`: unique within a run. */
+  id: string;
+  pos: Vec2;
+}
+
 export interface ProjectileState {
   id: string;
   owner: 'player' | 'enemy';
@@ -237,6 +244,10 @@ export type GameEvent =
   | { type: 'enemyDefeated'; enemyId: string }
   /** A held item acted (Sitrus Berry heal, Focus Sash save, Rocky Helmet recoil on `enemyId`). */
   | { type: 'itemTriggered'; item: ItemId; enemyId?: string }
+  /** The local player ate an Oran Berry (solo and host at once; a guest when the host grants its claim). */
+  | { type: 'berryEaten'; berryId: string; heal: number }
+  /** A guest walked over a berry: the host decides who gets it (berries.ts). */
+  | { type: 'berryClaim'; berryId: string }
   /** The local player reached `level` (progression.ts). */
   | { type: 'levelUp'; level: number }
   /** Collapsed ground hurt the player (not an attack: no dodge, no Disguise). */
@@ -317,6 +328,8 @@ export interface WorldState {
   player: PlayerState;
   enemies: readonly EnemyState[];
   projectiles: readonly ProjectileState[];
+  /** Oran Berries still on this floor (a guest's list follows the host's snapshots). */
+  berries: readonly Berry[];
   lock: LockState;
   /** Remaining perfect-dodge slow-mo, in real time. */
   slowMoMs: number;

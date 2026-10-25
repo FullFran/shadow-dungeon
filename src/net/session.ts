@@ -1,6 +1,7 @@
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { GameEvent, HitClaim, WorldState } from '../core/state';
+import { applyBerryClaims, berryGranted, type BerryClaim } from '../core/berries';
 import { applyHitClaims, applyHostSnapshot, applyRemotePlayers, hostSnapshot, playerSnapshot, removeRemote, type HostSnapshot, type PlayerSnapshot } from '../core/sync';
 import { applyHolds, holdClaimedHits, type HpHold } from './hold';
 import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from './interpolation';
@@ -12,8 +13,8 @@ import type { Scheduler, Transport } from './transport';
  * One peer's side of a shared run (docs/gdd.md §12), between the transport
  * and the pure core. Around each fixed step the app calls `beforeStep`
  * (remote players, and on a guest the host's enemies, from the
- * interpolation buffers; on the host, guests' hit claims) and `afterStep`
- * (claims out at once; own state, and the host's snapshot, every
+ * interpolation buffers; on the host, guests' hit and berry claims; on a
+ * guest, the berries the host granted it) and `afterStep` (claims out at once; own state, and the host's snapshot, every
  * `sendEveryTicks` steps, ~20 Hz at 60 Hz).
  *
  * Room-code lobby: a host started with `{ lobby: true }` admits players
@@ -153,6 +154,9 @@ export function createSession(options: SessionOptions): NetSession {
   const players = new Map<string, InterpBuffer<PlayerSnapshot>>();
   let snapshots = createBuffer<HostSnapshot>();
   let inbox: HitClaim[] = [];
+  /** Host: guests' berry claims since the last step. Guest: berries the host granted this player. */
+  let berryInbox: BerryClaim[] = [];
+  let berryGrants: string[] = [];
   let floorChange: number | null = null;
   const stats: NetStats = { snapshotBytes: 0, stateBytes: 0, snapshotsReceived: 0 };
 
@@ -275,6 +279,12 @@ export function createSession(options: SessionOptions): NetSession {
       case 'claim':
         if (role === 'host') inbox = [...inbox, ...message.claims];
         return;
+      case 'pick':
+        if (role === 'host') berryInbox = [...berryInbox, { berryId: message.id, playerId: message.by }];
+        return;
+      case 'berry':
+        if (role === 'guest' && message.to === localId) berryGrants = [...berryGrants, message.id];
+        return;
       case 'floor':
         if (role === 'guest') floorChange = Math.max(floorChange ?? 0, message.floor);
         return;
@@ -349,6 +359,16 @@ export function createSession(options: SessionOptions): NetSession {
         events.push(...next.events.slice(before));
         inbox = [];
       }
+      if (role === 'host' && berryInbox.length > 0) {
+        const claimed = applyBerryClaims(next, berryInbox);
+        next = claimed.state;
+        berryInbox = [];
+        for (const grant of claimed.granted) send({ t: 'berry', id: grant.berryId, to: grant.playerId }, true);
+      }
+      if (role === 'guest' && berryGrants.length > 0) {
+        for (const id of berryGrants) next = berryGranted(next, id, events);
+        berryGrants = [];
+      }
       return { world: next, events };
     },
     afterStep(world, floor) {
@@ -356,6 +376,7 @@ export function createSession(options: SessionOptions): NetSession {
       ticks++;
       if (ticks % PING_EVERY_TICKS === 0) send({ t: 'ping', at: scheduler.now() }, true);
       if (role === 'guest') {
+        for (const e of world.events) if (e.type === 'berryClaim') send({ t: 'pick', id: e.berryId, by: localId }, true);
         const claims = world.events.flatMap((e) => (e.type === 'hitClaim' ? [e.claim] : []));
         if (claims.length > 0) {
           send({ t: 'claim', claims }, true);

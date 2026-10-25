@@ -4,6 +4,7 @@ import { updateCombat } from './combat';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
 import { landHitOnPlayer } from './hits';
+import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
 import { updateLock } from './lockon';
 import { updatePlayer } from './player';
@@ -25,10 +26,11 @@ export { enemyTimeScale } from './time';
  */
 export function step(state: WorldState, input: PlayerInput, dtMs: number): WorldState {
   const events: GameEvent[] = [];
-  const player = updatePlayer(state.player, input, dtMs, state.arena, events);
+  const walked = pickUpBerries({ ...state, player: updatePlayer(state.player, input, dtMs, state.arena, events) }, events);
+  const { player } = walked;
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
-  const combat = updateCombat({ ...state, player, lock }, input, dtMs, events);
+  const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
   const fought = creditDefeats(onTick(applyRecoil(updateCollapse(enemies, dtMs, events), events), dtMs, events), events);

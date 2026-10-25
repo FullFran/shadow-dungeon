@@ -69,6 +69,8 @@ export interface ProjectileSnapshot {
 
 export interface HostSnapshot {
   tick: number;
+  /** Ids of the Oran Berries still on the floor (positions are seeded, so every peer has them). */
+  berries: readonly string[];
   enemies: readonly EnemySnapshot[];
   projectiles: readonly ProjectileSnapshot[];
 }
@@ -130,6 +132,7 @@ export const removeRemote = (state: WorldState, id: string): WorldState => ({ ..
 export function hostSnapshot(state: WorldState): HostSnapshot {
   return {
     tick: state.tick,
+    berries: state.berries.map((b) => b.id),
     enemies: state.enemies.map((e) => ({
       id: e.id,
       species: e.species,
@@ -180,7 +183,7 @@ function sameAttack(local: EnemyState, snapshot: EnemySnapshot): boolean {
 
 /**
  * Guest: takes the host's enemies and enemy projectiles as they are (host ids
- * win), keeping only the guest's own per-attack contact records and its own
+ * win), drops the berries the host no longer has, keeping only the guest's own per-attack contact records and its own
  * player and player projectiles.
  */
 export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): WorldState {
@@ -212,7 +215,9 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       hitIds: local?.hitIds ?? [],
     };
   });
-  return { ...state, enemies, projectiles: [...own, ...theirs] };
+  // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
+  const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
+  return { ...state, enemies, projectiles: [...own, ...theirs], berries };
 }
 
 /** How many applied claim ids the host remembers (claims older than this are long settled). */

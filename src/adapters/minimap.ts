@@ -10,7 +10,7 @@ import { insideRect } from '../core/geometry';
  * presentation state kept by the game loop per floor: entering a room reveals
  * all of it (walls included), corridors reveal a small square around the
  * player. The stairs show once their tile has been seen; enemies only while
- * they are on screen.
+ * they are on screen; Oran Berries once their tile has been seen (until eaten).
  */
 export const MINIMAP = {
   /** Corridor reveal: tiles in every direction around the player. */
@@ -53,6 +53,8 @@ export interface MinimapMarks {
   player: Vec2;
   stairs: TilePoint | null;
   enemies: Vec2[];
+  /** Berries still on the floor whose tile has been seen. */
+  berries: TilePoint[];
 }
 
 export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rect): MinimapMarks {
@@ -62,6 +64,7 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
     player: { x: state.player.pos.x / TILE, y: state.player.pos.y / TILE },
     stairs: stairs && isSeen(memory, stairs.x, stairs.y) ? stairs : null,
     enemies: state.enemies.filter((e) => e.alive && insideRect(e.pos, view)).map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
+    berries: state.berries.map((b) => tileOf(b.pos)).filter((t) => isSeen(memory, t.x, t.y)),
   };
 }
 
@@ -72,6 +75,7 @@ const COLORS = {
   player: '#ffe066',
   stairs: '#7fd8ff',
   enemy: '#ff5a5a',
+  berry: '#5b8cff',
 };
 
 /** Draws the minimap at the top right of the view (view units; the caller has applied the pixel scale). */
@@ -99,6 +103,8 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, me
     ctx.fillStyle = COLORS.stairs;
     ctx.fillRect(x0 + marks.stairs.x * px - 1, y0 + marks.stairs.y * px - 1, px + 2, px + 2);
   }
+  ctx.fillStyle = COLORS.berry;
+  for (const b of marks.berries) ctx.fillRect(x0 + b.x * px, y0 + b.y * px, px, px);
   ctx.fillStyle = COLORS.enemy;
   for (const e of marks.enemies) ctx.fillRect(Math.round(x0 + e.x * px - 1), Math.round(y0 + e.y * px - 1), 2, 2);
   // The player blinks slowly so it is easy to find.

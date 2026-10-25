@@ -23,7 +23,7 @@ Out of scope: permanent currency, shop, gacha, new species, move-modifying items
 ## Tasks
 - [x] T1 Experience and in-run levels (core, data, HUD, sound, co-op XP sharing) (route: delegated writer; trigger: core state/combat, data, adapters, net)
 - [x] T2 Held items: data, effects in core, pick-1-of-3 overlay on floor entry, co-op behaviour (route: same writer)
-- [ ] T3 Oran Berries on the floor, host-authoritative pickups in shared runs (route: same writer)
+- [x] T3 Oran Berries on the floor, host-authoritative pickups in shared runs (route: same writer)
 - [ ] T4 Docs: GDD (Spanish) and README (route: same writer)
 - [ ] T5 Deploy (route: parent, needs user OK)
 
@@ -54,3 +54,10 @@ Created 2026-10-25. Forecast ~1200 authored lines.
 - Overlay `src/app/item-pick.ts` (DOM cards above the canvas, rarity colours in index.html). Solo: modal, input suspended and simulation paused (`pickPausesSimulation`, same policy as the Esc menu). Shared run: a non-modal strip at the bottom, no pause, the player keeps moving and rolling; cards are page elements so a click never reaches the canvas (no attack) and they never take keyboard focus (Space keeps rolling); 1/2/3 pick. Held items in the HUD (one line each, rarity colour) and in the Esc menu with descriptions. Picking also updates the floor-start snapshot so "Restart floor" keeps the item.
 - Checks: `tests/core/items.test.ts` (19, one behaviour test per item, offers, stacking, pipeline; written before the module, though not run RED separately), mutation check (Shell Bell and Rocky Helmet hooks disabled -> their tests fail); `tests/app/item-pick.test.ts` RED (module missing) then GREEN; scripted fighting run in `tests/core/run.test.ts` (levels > 2, 3 items, identical replay); `npm test` 389 passed; `npm run build` passed; headless Firefox screenshot `/tmp/run-progression-pick.png` shows the three cards.
 - Commit: `feat(core): add held items with seeded pick-1-of-3 offers per floor`.
+
+### T3 (done)
+- Data `ORAN_BERRY` in `src/data/items.ts` (35 % per non-start room, heals 20 HP, 14 px pickup). Core `src/core/berries.ts`: `placeBerries(floor, floorSeed, depth)` with its own salt (the floor generator is untouched, so existing floors are identical), never on the start, stairs or spawn tiles; ids `f<floor>b<room>`; `WorldState.berries` set by the run on generated floors (none on the boss floor).
+- Pickup in `step` right after the player moves: solo and host eat at once (`berryEaten`); a guest hides the berry and emits `berryClaim`. Host-authoritative in shared runs: protocol `pick` (guest -> host) and `berry` (host -> the granted player), both reliable; `applyBerryClaims` grants the first claim per berry; host snapshots carry the berry ids left (`b`), and a guest's list only ever shrinks from them; `berryGranted` heals the guest once per grant.
+- Presentation: drawn berry (blue circle, leaf, bob; no asset), green heal number, `berry` sound, minimap marks seen berries.
+- Checks: `tests/core/berries.test.ts` RED (module missing) then GREEN (7); protocol round-trips for `pick`, `berry` and snapshot berries; loopback test (lagged transport): a guest walking over a berry is granted it once, healed once, host and guest lists drop it; mutation check (guest never sends `pick`) fails the loopback test; minimap test; `npm test` 402 passed; `npm run build` passed.
+- Commit: `feat(core): add Oran Berries with host-authoritative pickups`.

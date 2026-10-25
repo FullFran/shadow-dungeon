@@ -53,4 +53,15 @@ describe('minimap fog of war', () => {
     revealAround(memory, floor, floor.rooms, floor.stairs);
     expect(minimapMarks(state, memory, view).stairs).toEqual(floor.stairs);
   });
+
+  it('marks the berries still on the floor whose tile has been seen', () => {
+    const memory = createMemory(floor);
+    const other = floor.rooms.find((_, i) => i !== floor.startRoom)!;
+    const seenAt = tileCenter(floor.start);
+    const unseenAt = tileCenter({ x: other.x, y: other.y });
+    const state: WorldState = { ...world(), berries: [{ id: 'a', pos: seenAt }, { id: 'b', pos: unseenAt }] };
+    revealAround(memory, floor, floor.rooms, floor.start);
+    const view = { x: 0, y: 0, width: 1, height: 1 };
+    expect(minimapMarks(state, memory, view).berries).toEqual([floor.start]);
+  });
 });

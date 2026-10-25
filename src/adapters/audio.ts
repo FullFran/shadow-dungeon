@@ -39,6 +39,7 @@ export const SOUND_IDS = [
   'floorCard',
   'levelUp',
   'item',
+  'berry',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -93,6 +94,8 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'levelUp';
     case 'itemTriggered':
       return 'item';
+    case 'berryEaten':
+      return 'berry';
     default:
       return null;
   }
@@ -351,6 +354,14 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     ms: 260,
     // A short two-note sparkle: an item acted, or one was picked.
     play: (s, t) => arpeggio(s, t, 'triangle', [988, 1319], 0.07, 0.18, 0.07),
+  },
+  berry: {
+    ms: 240,
+    // A soft bite and a rising gulp.
+    play: (s, t) => {
+      noise(s, t, { filter: 'bandpass', from: 1800, to: 900, dur: 0.04, gain: 0.12, q: 2 });
+      tone(s, t + 0.05, { type: 'sine', from: 420, to: 880, dur: 0.16, gain: 0.12 });
+    },
   },
   collapse: {
     ms: 1400,

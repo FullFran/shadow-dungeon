@@ -100,6 +100,7 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   weak: '#9aa0a6',
   blocked: '#8fb3ff',
   hurt: '#ff5a5a',
+  heal: '#6ee07a',
 };
 
 const TILE = 32;
@@ -269,6 +270,27 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.strokeStyle = COLORS.wallEdge;
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
+  }
+
+  /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
+  function berry(pos: Vec2, timeMs: number): void {
+    const bob = Math.round(Math.sin(timeMs / 300 + pos.x) * 1.5);
+    const x = Math.round(pos.x);
+    const y = Math.round(pos.y) + bob;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(x, Math.round(pos.y) + 6, 5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2f5fd0';
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7fb0ff';
+    ctx.fillRect(x - 3, y - 3, 2, 2);
+    ctx.fillStyle = '#4fbf5a';
+    ctx.fillRect(x, y - 8, 4, 3);
+    ctx.fillStyle = '#2e7a35';
+    ctx.fillRect(x - 1, y - 6, 1, 2);
   }
 
   function exitGate(exit: Rect, open: boolean, timeMs: number): void {
@@ -480,6 +502,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     floor(current, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
+    for (const b of current.berries) berry(b.pos, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
     const posOf = (id: string, fallback: Vec2) => positions.get(id) ?? fallback;
