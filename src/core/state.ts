@@ -105,6 +105,31 @@ export interface EnemyState {
   hitstunMs: number;
   /** Knockback displacement still to be applied. */
   knockback: Vec2;
+  /** Behaviour state machine (enemies.ts). */
+  ai: AiState;
+}
+
+/**
+ * Enemy behaviour modes. Not every species uses every mode: Poochyena goes
+ * idle -> approach -> telegraph -> attack -> recover; Gastly uses reposition
+ * instead of approach. A dormant enemy never acts (training dummy).
+ */
+export type AiMode = 'dormant' | 'idle' | 'approach' | 'reposition' | 'telegraph' | 'attack' | 'recover';
+
+export interface AiState {
+  mode: AiMode;
+  /** Time spent in the current mode (enemy time scale). */
+  modeMs: number;
+  /** Planned length of the current timed mode (telegraph, attack, recover); 0 when open-ended. */
+  modeDurationMs: number;
+  /** Unit direction of the current attack: tracked during the telegraph, committed when it fires. */
+  attackDir: Vec2;
+  /** Whether the current attack already met the player (one contact per attack). */
+  contact: 'none' | 'hit' | 'dodged';
+  /** Time before the next attack may start. */
+  cooldownMs: number;
+  /** Strafing side while circling or keeping distance. */
+  strafeSign: 1 | -1;
 }
 
 export interface ProjectileState {
@@ -129,6 +154,8 @@ export interface ProjectileState {
 export interface Arena {
   width: number;
   height: number;
+  /** Solid blocks for walkers; floaters and projectiles ignore them. */
+  obstacles?: readonly Rect[];
 }
 
 /** Things that happened during the last step, for renderer juice and audio. Cleared every step. */
@@ -144,6 +171,8 @@ export type GameEvent =
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
   | { type: 'enemyDefeated'; enemyId: string }
+  | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
+  | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'range' | 'offscreen' | 'noTarget' };

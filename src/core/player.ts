@@ -1,6 +1,7 @@
 import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
-import { add, clamp, length, normalize, scale, vec, type Vec2 } from './vec';
+import { confineCircle } from './geometry';
+import { add, length, normalize, scale, type Vec2 } from './vec';
 
 const { roll: ROLL, stamina: STAMINA, perfectDodge: PERFECT, player: PLAYER, combat: COMBAT } = TUNING;
 const ROLL_SPEED = ROLL.distance / ROLL.durationMs; // px per ms
@@ -23,10 +24,7 @@ function regenStamina(player: PlayerState, dtMs: number): PlayerState {
   return stamina === player.stamina ? player : { ...player, stamina };
 }
 
-function confine(pos: Vec2, arena: Arena): Vec2 {
-  const r = PLAYER.radius;
-  return vec(clamp(pos.x, r, arena.width - r), clamp(pos.y, r, arena.height - r));
-}
+const confine = (pos: Vec2, arena: Arena): Vec2 => confineCircle(arena, pos, PLAYER.radius);
 
 function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): PlayerState {
   if (player.roll || player.action) return player;

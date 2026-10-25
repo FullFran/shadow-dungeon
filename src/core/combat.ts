@@ -1,11 +1,13 @@
+import { floatsOf, poiseOf } from '../data/enemies';
 import { MOVES, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { computeDamage } from './damage';
+import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
-import { add, clamp, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
+import { add, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 const { combat: COMBAT, player: PLAYER } = TUNING;
 export const PLAYER_ID = 'player';
@@ -92,13 +94,14 @@ function strikeEnemy(
     multiplier: hit.multiplier * (buff?.multiplier ?? 1),
   });
   const hp = Math.max(0, enemy.hp - damage);
+  const poise = poiseOf(enemy.species);
   const pushDir = normalize(sub(enemy.pos, hit.from));
   const struck: EnemyState = {
     ...enemy,
     hp,
     alive: hp > 0,
-    hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs),
-    knockback: scale(length(pushDir) > 0 ? pushDir : state.player.facing, hit.knockback),
+    hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),
+    knockback: scale(length(pushDir) > 0 ? pushDir : state.player.facing, hit.knockback * poise.knockbackScale),
   };
   events.push({ type: 'enemyHit', enemyId: enemy.id, damage, effectiveness, pos: enemy.pos });
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
@@ -167,9 +170,8 @@ const withAction = (state: WorldState, action: ActionState | null): WorldState =
   player: { ...state.player, action },
 });
 
-function confineToArena(state: WorldState, pos: Vec2, radius: number): Vec2 {
-  return vec(clamp(pos.x, radius, state.arena.width - radius), clamp(pos.y, radius, state.arena.height - radius));
-}
+const confineToArena = (state: WorldState, pos: Vec2, radius: number, solid = true): Vec2 =>
+  confineCircle(state.arena, pos, radius, solid);
 
 /** Runs the active-phase work of a move for `ms` of time inside the active window. */
 function runActive(state: WorldState, move: MoveDef, action: ActionState, ms: number, events: GameEvent[]): WorldState {
@@ -292,7 +294,7 @@ function updateEnemyReactions(state: WorldState, dtMs: number): WorldState {
     return {
       ...enemy,
       hitstunMs: Math.max(0, enemy.hitstunMs - ms),
-      pos: confineToArena(state, add(enemy.pos, push), enemy.radius),
+      pos: confineToArena(state, add(enemy.pos, push), enemy.radius, !floatsOf(enemy.species)),
       knockback: length(rest) < 0.05 ? vec(0, 0) : rest,
     };
   });

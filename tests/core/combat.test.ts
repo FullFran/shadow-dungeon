@@ -15,7 +15,8 @@ const RIGHT = vec(600, 300);
 
 function arena(loadout: [MoveId, MoveId], enemies: [SpeciesId, Vec2][] = []): WorldState {
   let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER, loadout });
-  for (const [species, pos] of enemies) state = spawnEnemy(state, species, pos);
+  // Dormant: these tests isolate the player's moves from enemy behaviour (enemies.test.ts).
+  for (const [species, pos] of enemies) state = spawnEnemy(state, species, pos, { dormant: true });
   return state;
 }
 

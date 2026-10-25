@@ -4,6 +4,7 @@ import { cycleTarget, lockCandidates, nearestToCursor, updateLock, type LockCont
 import type { EnemyState, GameEvent, LockState, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
+import { initialAi } from '../../src/core/enemies';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { vec, type Vec2 } from '../../src/core/vec';
 import { IDLE } from './helpers';
@@ -24,6 +25,7 @@ function enemy(id: string, pos: Vec2, overrides: Partial<EnemyState> = {}): Enem
     alive: true,
     hitstunMs: 0,
     knockback: vec(0, 0),
+    ai: initialAi(true),
     ...overrides,
   };
 }
@@ -160,8 +162,8 @@ describe('automatic release', () => {
 describe('lock-on in the simulation', () => {
   function lockedWorld(): WorldState {
     let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: PLAYER });
-    state = spawnEnemy(state, 'gastly', vec(400, 275)); // north, close enough to claw
-    state = spawnEnemy(state, 'gastly', vec(600, 300)); // east, far from the claw
+    state = spawnEnemy(state, 'gastly', vec(400, 275), { dormant: true }); // north, close enough to claw
+    state = spawnEnemy(state, 'gastly', vec(600, 300), { dormant: true }); // east, far from the claw
     // Point at the north enemy and press Shift.
     return step(state, { ...IDLE, aim: vec(400, 270), lock: true }, FIXED_DT_MS);
   }
