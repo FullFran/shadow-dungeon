@@ -61,6 +61,10 @@ User feedback relayed 2026-10-25 ("rolling is too strong"). The field is `EnemyA
 - Decidueye: `DECIDUEYE.phase2.rain.arrow` (Rain card arrows; every lane but one of 8; telegraph 1200 ms, later waves 800 ms; trees are shelter).
 - Not yet carried by `ProjectileSnapshot` (guests simulate host projectiles without it): add the field there when the rule lands.
 
+- [x] Screenshot pass (route: same; after T4)
+  - Headless Firefox over WebDriver BiDi, own profile with `media.volume_scale` 0 and the game's `muted: true` stored before each load (silent), dev server on 4583, 1024x640, `/tmp/forest-remaster/`: `intro-1.png` (forest title card with the floor-1 line, shrine, roots, mushrooms, fireflies), `floor2-1.png` (spirit light, cache log line, fallen log, floor card line), `contact-arena.jpg` (Impidimp feint lanes, Shroomish landing circle, Drifloon wisp rings), `contact-hollow.jpg` (Trevenant slam, root lanes and spikes, spiral, banners), `contact-roost.jpg` and `rain-5.png` (phase-2 banner, rain lanes with the safe lane, roost trees, feather spiral). The curse ring and the stitch clones were not caught on screen.
+  - Fixes after looking: the rain's struck lanes were hard to see early in the wind-up (now tinted from the first moment, filling as it runs); the spirit light's log line was cut by the log width (shortened to "Una luz errante te llama entre los árboles.").
+
 ## Acceptance criteria
 - Every forest floor has a lore line in es and en; the floor card shows it.
 - Each new species behaviour is covered by a deterministic test; mixed packs only add tiles (the Crypt generates exactly as before).
@@ -76,3 +80,6 @@ About 2000 authored lines over 4 tasks (T1 ~800 incl. sprite metadata, T2 ~450, 
 
 ## Progress
 Created 2026-10-25 on `feat/forest-remaster` from `main` 043cb02. Engram mirror: pending (writer has no Engram session; parent owns it).
+- T1 `ab35be7`, T2 `2d3aa3d`, T3 `1e08a9d`, T4 `38e9acd`, screenshot fixes in the commit after them. Each task ran above the ~400-line heuristic (T1 most, with sprite metadata); not split.
+- Not verified: balance by hand (no full play-through on any tier), the curse ring and the stitch in motion, how hard and nightmare feel with the framework's stat and telegraph scaling on top, the `pierceRoll` rule itself (another branch).
+- Next: play the forest end to end on easy and hard; integrate with the difficulty framework (`pierceRoll` in the core rule and in `ProjectileSnapshot`).

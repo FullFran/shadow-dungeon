@@ -802,6 +802,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           ctx.fillRect(lane * laneW, 0, laneW, height);
           continue;
         }
+        // Marked from the first moment (a roll will not save you here), filling from the top as the arrows draw near.
+        ctx.fillStyle = 'rgba(70, 30, 110, 0.24)';
+        ctx.fillRect(lane * laneW + 2, 0, laneW - 4, height);
         ctx.fillStyle = fill;
         ctx.fillRect(lane * laneW + 2, 0, laneW - 4, height * progress);
       }
