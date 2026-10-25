@@ -2,6 +2,7 @@ import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
+import { rollElites, simaSquads } from './sima';
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
@@ -110,8 +111,11 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const deeper: WorldState = { ...world, depth: run.floor, enemyScale };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
-  const floor = generateFloor(seed, run.floor, endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns);
-  return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
+  const drawn = generateFloor(seed, run.floor, endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns);
+  // The Sima: some rooms hold mixed squads, and some enemies are elites (tougher, not more).
+  const floor = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
+  const loaded: WorldState = { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
+  return endless?.elites ? rollElites(loaded, seed, run.floor, endless.elites) : loaded;
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

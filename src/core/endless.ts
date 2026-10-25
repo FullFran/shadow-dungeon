@@ -1,6 +1,6 @@
 import type { SpawnTuning } from '../data/dungeon';
 import type { DungeonDef } from '../data/dungeons';
-import type { EndlessDef } from '../data/endless';
+import type { EndlessDef, EndlessPoolEntry } from '../data/endless';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { CoinBreakdown } from './coins';
 import { deriveSeed } from './rng';
@@ -30,9 +30,15 @@ export function depthScale(scaling: EndlessDef['scaling'], floor: number, echo =
   return echo ? { hp: hp * scaling.echoHp, damage, echo: true } : { hp, damage };
 }
 
+/** An entry's weight at a depth: `perDepth` per floor past its first, between a quarter and four times its base weight. */
+export const depthWeight = (e: Pick<EndlessPoolEntry, 'weight' | 'minDepth' | 'perDepth'>, depth: number): number =>
+  Math.min(e.weight * 4, Math.max(e.weight * 0.25, e.weight + (e.perDepth ?? 0) * Math.max(0, depth - e.minDepth)));
+
 /** The spawn tuning of one endless floor: every pool entry whose `minDepth` is reached, with its weight. */
 export function endlessSpawns(endless: Pick<EndlessDef, 'pool' | 'spawns'>, depth: number): SpawnTuning {
-  const pool = endless.pool.filter((e) => e.minDepth <= depth && e.weight > 0).map((e) => ({ species: e.species, weights: [e.weight], ...(e.pack ? { pack: e.pack } : {}) }));
+  const pool = endless.pool
+    .filter((e) => e.minDepth <= depth && e.weight > 0)
+    .map((e) => ({ species: e.species, weights: [depthWeight(e, depth)], ...(e.pack ? { pack: e.pack } : {}) }));
   return { ...endless.spawns, pool };
 }
 

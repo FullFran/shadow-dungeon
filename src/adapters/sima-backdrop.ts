@@ -151,3 +151,6 @@ export function drawFallingLight(ctx: CanvasRenderingContext2D, view: Rect, time
     ctx.fillRect(Math.round(x), Math.round(y), 1, length);
   }
 }
+
+/** A Sima elite's look: a glow in its trait's colour around the sprite (a CSS filter on the canvas). */
+export const eliteFilter = (tint: string): string => `drop-shadow(0 0 1px ${tint}) drop-shadow(0 0 2px ${tint})`;

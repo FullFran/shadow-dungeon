@@ -73,7 +73,8 @@ describe('the Sima del Eclipse (data)', () => {
     for (const roster of EXPERIMENTAL_ENEMIES) {
       const entry = ENDLESS_POOL.find((e) => e.species === roster.species);
       expect(entry, roster.species).toBeDefined();
-      expect(entry!.minDepth, roster.species).toBeGreaterThanOrEqual(roster.minDepth);
+      // Tougher, not more (2026-10-25): the tough ones may come up to two floors earlier than suggested.
+      expect(entry!.minDepth, roster.species).toBeGreaterThanOrEqual(roster.minDepth - 2);
       expect(entry!.weight, roster.species).toBeGreaterThan(0);
       if (roster.pack) expect(entry!.pack, roster.species).toBe(roster.pack);
       expect(endlessSpawns(ENDLESS, entry!.minDepth - 1).pool.map((e) => e.species)).not.toContain(roster.species);
@@ -82,15 +83,15 @@ describe('the Sima del Eclipse (data)', () => {
     expect(ENDLESS_POOL.find((e) => e.species === 'stunky')?.pack).toBe(2);
   });
 
-  it("holds the Crypt's new enemies from the floors they first walk there: Duskull and a Pawniard pair from 2, Golett from 4", () => {
+  it("holds the Crypt's new enemies: Duskull and a Pawniard pair from 2 as in the Crypt, Golett a floor earlier (tougher, not more)", () => {
     const entry = (species: string) => ENDLESS_POOL.find((e) => e.species === species);
     expect(entry('duskull')).toMatchObject({ minDepth: 2 });
     expect(entry('pawniard')).toMatchObject({ minDepth: 2, pack: 2 });
-    expect(entry('golett')).toMatchObject({ minDepth: 4 });
+    expect(entry('golett')).toMatchObject({ minDepth: 3 });
     for (const species of ['duskull', 'pawniard', 'golett']) {
       const first = entry(species)!.minDepth;
       const cryptFirst = CRYPT.spawns.pool.find((p) => p.species === species)!.weights.findIndex((w) => w > 0) + 1;
-      expect(first, species).toBe(cryptFirst);
+      expect(first, species).toBe(species === 'golett' ? cryptFirst - 1 : cryptFirst);
       expect(entry(species)!.weight, species).toBeGreaterThan(0);
       expect(endlessSpawns(ENDLESS, first - 1).pool.map((e) => e.species)).not.toContain(species);
       expect(endlessSpawns(ENDLESS, first).pool.map((e) => e.species)).toContain(species);
@@ -215,7 +216,8 @@ describe('endless run', () => {
       p = down(p);
       expect(p.outcome).toBeNull();
       expect(p.run.floor).toBe(floor);
-      if (planAt(ECLIPSE, floor)!.kind === 'generated') expect(p.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)));
+      // The map is the generator's; the Sima may swap a room's enemies for a squad, so only the grid is compared.
+      if (planAt(ECLIPSE, floor)!.kind === 'generated') expect(p.world.arena.tiles!.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).tiles);
     }
   });
 

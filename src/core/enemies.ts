@@ -3,6 +3,7 @@ import { updateArcher } from './archer';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
+import { eliteTimeScale } from './sima';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -266,16 +267,18 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       current = replaceEnemy(current, interrupted(enemy));
       continue;
     }
-    const ticked = { ...enemy, ai: tickAi(enemy.ai, ms) };
+    // Sima elites: swift ones always act faster, enraged ones once hurt.
+    const ems = ms * eliteTimeScale(enemy);
+    const ticked = { ...enemy, ai: tickAi(enemy.ai, ems) };
     const target = targetOf(current, enemy).pos;
-    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
-    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);
-    else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ms, events);
+    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);
+    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ems, events);
+    else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ems, events);
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
-    else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
-    else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
-    else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
-    else current = updateRoster(current, ticked, def, target, ms, events);
+    else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ems, events);
+    else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ems, events);
+    else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ems, events);
+    else current = updateRoster(current, ticked, def, target, ems, events);
   }
   return current;
 }

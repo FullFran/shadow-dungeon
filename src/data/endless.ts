@@ -1,7 +1,7 @@
 import type { MusicContext } from './music';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
-import { SIMA_BANDS, type SimaBand } from './sima';
+import { SIMA_BANDS, SIMA_ELITES, SIMA_SQUADS, type SimaBand, type SimaElites, type SimaSquad } from './sima';
 
 /**
  * The endless dungeon (Sima del Eclipse, docs/gdd.md §3 "La Sima del
@@ -21,42 +21,46 @@ export interface EndlessPoolEntry {
   minDepth: number;
   weight: number;
   pack?: number;
+  /** Weight change per floor past `minDepth` (tough species grow, weak ones fade to a quarter, never out). */
+  perDepth?: number;
 }
 
 export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
+  // Tougher, not more (2026-10-25): the weak regulars fade with depth and the
+  // tough species come earlier and grow (`perDepth`); counts per room stay low.
   // Crypt of the Sword King
-  { species: 'poochyena', minDepth: 1, weight: 3 },
-  { species: 'gastly', minDepth: 1, weight: 2 },
+  { species: 'poochyena', minDepth: 1, weight: 3, perDepth: -0.15 },
+  { species: 'gastly', minDepth: 1, weight: 2, perDepth: -0.05 },
   // The remastered Crypt's new enemies, from the floors they first walk
-  // there (CRYPT_SPAWNS): Duskull and a Pawniard pair from 2, Golett from 4.
+  // there (CRYPT_SPAWNS): Duskull and a Pawniard pair from 2, Golett from 3.
   // Sableye stays the Crypt's mid-boss (no vault echo).
   { species: 'duskull', minDepth: 2, weight: 2 },
-  { species: 'pawniard', minDepth: 2, weight: 1, pack: 2 },
-  { species: 'golett', minDepth: 4, weight: 1 },
+  { species: 'pawniard', minDepth: 2, weight: 1, pack: 2, perDepth: 0.05 },
+  { species: 'golett', minDepth: 3, weight: 1, perDepth: 0.1 },
   // Misty Forest
-  { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3 },
+  { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1 },
   { species: 'phantump', minDepth: 2, weight: 2 },
   { species: 'spinarak', minDepth: 2, weight: 2 },
   { species: 'foongus', minDepth: 3, weight: 1 },
-  { species: 'hoothoot', minDepth: 4, weight: 2 },
-  { species: 'pumpkaboo-super', minDepth: 6, weight: 1 },
+  { species: 'hoothoot', minDepth: 3, weight: 2 },
+  { species: 'pumpkaboo-super', minDepth: 4, weight: 1, perDepth: 0.1 },
   // Experimental roster (EXPERIMENTAL_ENEMIES in data/enemies.ts): the
-  // suggested min depths and packs, with lighter weights so the regulars
-  // stay about half of every floor.
-  { species: 'zubat', minDepth: 1, weight: 2, pack: 3 },
-  { species: 'stunky', minDepth: 1, weight: 1, pack: 2 },
+  // suggested min depths and packs (the tough ones a floor or two earlier),
+  // with lighter weights so the regulars stay about half of every early floor.
+  { species: 'zubat', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1 },
+  { species: 'stunky', minDepth: 1, weight: 1, pack: 2, perDepth: -0.05 },
   { species: 'ekans', minDepth: 2, weight: 1 },
   { species: 'litleo', minDepth: 2, weight: 1 },
   { species: 'tentacool', minDepth: 2, weight: 1 },
   { species: 'corphish', minDepth: 3, weight: 1 },
   { species: 'chinchou', minDepth: 3, weight: 1 },
-  { species: 'houndour', minDepth: 3, weight: 1 },
+  { species: 'houndour', minDepth: 3, weight: 1, perDepth: 0.06 },
   { species: 'koffing', minDepth: 3, weight: 1 },
-  { species: 'grimer', minDepth: 4, weight: 1 },
+  { species: 'grimer', minDepth: 3, weight: 1, perDepth: 0.06 },
   { species: 'wooper', minDepth: 4, weight: 1 },
-  { species: 'slugma', minDepth: 4, weight: 1 },
-  { species: 'clauncher', minDepth: 5, weight: 1 },
-  { species: 'croagunk', minDepth: 5, weight: 1 },
+  { species: 'slugma', minDepth: 3, weight: 1, perDepth: 0.06 },
+  { species: 'clauncher', minDepth: 4, weight: 1, perDepth: 0.08 },
+  { species: 'croagunk', minDepth: 4, weight: 1, perDepth: 0.08 },
 ];
 
 /** A guardian echo: the arena of a guardian (or mid-boss) and the track it fights to. */
@@ -98,6 +102,10 @@ export interface EndlessDef {
   pure: boolean;
   /** The Sima's depth bands (data/sima.ts): its look changes as you descend. */
   bands?: readonly SimaBand[];
+  /** Sima elites by depth (data/sima.ts): tougher enemies instead of more of them. */
+  elites?: SimaElites;
+  /** Sima mixed squads (data/sima.ts). */
+  squads?: readonly SimaSquad[];
 }
 
 export const ENDLESS: EndlessDef = {
@@ -109,8 +117,8 @@ export const ENDLESS: EndlessDef = {
   ],
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
-  spawns: { base: 1, perDepth: 0.34, jitter: 1, maxPerRoom: 5 },
-  scaling: { hpPerFloor: 0.08, damagePerFloor: 0.05, maxHp: 4, maxDamage: 3, echoHp: 0.6 },
+  spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3 },
+  scaling: { hpPerFloor: 0.05, damagePerFloor: 0.035, maxHp: 3, maxDamage: 2.5, echoHp: 0.6 },
   urgent: [
     { kind: 'collapse', fromFloor: 2, start: 0.08, perFloor: 0.01, max: 0.22 },
     { kind: 'fog', fromFloor: 3, start: 0.08, perFloor: 0.01, max: 0.22 },
@@ -121,6 +129,8 @@ export const ENDLESS: EndlessDef = {
   coinScale: 0.5,
   pure: true,
   bands: SIMA_BANDS,
+  elites: SIMA_ELITES,
+  squads: SIMA_SQUADS,
 };
 
 /** True on the floors that hold a guardian echo (5, 10, 15...). */

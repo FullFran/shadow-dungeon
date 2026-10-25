@@ -158,6 +158,11 @@ function strikeEnemy(
   events: GameEvent[],
 ): WorldState {
   const buff = state.player.nextHitBuff;
+  // An armored Sima elite shrugs off the first hit, and the armor is gone.
+  if (enemy.armor) {
+    const blocked = blockedStrike(state, enemy, hit, events, 0);
+    return { ...blocked, enemies: blocked.enemies.map((e) => (e.id === enemy.id ? { ...e, armor: undefined } : e)) };
+  }
   if (enemy.boss && blocksHit(enemy, hit.from)) return blockedStrike(state, enemy, hit, events, AEGISLASH.shield.chipFactor);
   const guard = guardChip(enemy, hit.from);
   if (guard !== null) return blockedStrike(state, enemy, hit, events, guard);

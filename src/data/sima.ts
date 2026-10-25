@@ -1,4 +1,5 @@
 import type { DungeonId, TilePalette } from './dungeons';
+import type { SpeciesId } from './species';
 
 /**
  * The Sima del Eclipse remaster (docs/gdd.md §3 "La Sima del Eclipse"):
@@ -54,3 +55,65 @@ export const SIMA_BANDS: readonly SimaBand[] = [
   { id: 'forest', fromFloor: 11, palette: 'misty-forest', nameKey: 'sima.band.forest.name', subtitleKey: 'sima.band.forest.subtitle', loreKeys: loreKeys('forest', 4) },
   { id: 'abyss', fromFloor: 21, palette: ABYSS_PALETTE, abyss: true, nameKey: 'sima.band.abyss.name', subtitleKey: 'sima.band.abyss.subtitle', loreKeys: loreKeys('abyss', 5) },
 ];
+
+/**
+ * Tougher, not more (user feedback 2026-10-25): depth brings Sima elites,
+ * tinted enemies with one extra trait. `swift` acts faster, `volley` (casters
+ * only) throws two more shots beside each one, `armored` shrugs off the first
+ * hit, `enrage` speeds up once hurt below `enrageBelow` of its HP. Chance per
+ * enemy: `start` from `fromFloor`, + `perFloor`, at most `max`.
+ */
+export type EliteTrait = 'swift' | 'volley' | 'armored' | 'enrage';
+
+export interface SimaElites {
+  fromFloor: number;
+  start: number;
+  perFloor: number;
+  max: number;
+  /** Elites spawn with this much more HP (on top of the floor's scale). */
+  hpScale: number;
+  swiftScale: number;
+  enrageScale: number;
+  enrageBelow: number;
+  /** Volley: the two extra shots fly this many degrees to each side. */
+  volleyDegrees: number;
+  traits: readonly EliteTrait[];
+  /** Presentation: the glow of each trait. */
+  tints: Readonly<Record<EliteTrait, string>>;
+}
+
+export const SIMA_ELITES: SimaElites = {
+  fromFloor: 6,
+  start: 0.06,
+  perFloor: 0.015,
+  max: 0.4,
+  hpScale: 1.35,
+  swiftScale: 1.3,
+  enrageScale: 1.5,
+  enrageBelow: 0.4,
+  volleyDegrees: 16,
+  traits: ['swift', 'volley', 'armored', 'enrage'],
+  tints: { swift: '#7fe3ff', volley: '#d68cff', armored: '#c9d2e0', enrage: '#ff5a3a' },
+};
+
+/**
+ * Mixed squads: a room's enemies replaced by a set that combines roles (a
+ * tank with a caster behind it, two blades with a gunner...), from
+ * `minDepth` on. Never more enemies than the room had. Append to add one.
+ */
+export interface SimaSquad {
+  minDepth: number;
+  members: readonly SpeciesId[];
+}
+
+export const SIMA_SQUADS: readonly SimaSquad[] = [
+  { minDepth: 4, members: ['golett', 'duskull'] },
+  { minDepth: 6, members: ['pawniard', 'gastly', 'pawniard'] },
+  { minDepth: 8, members: ['croagunk', 'spinarak'] },
+  { minDepth: 10, members: ['pumpkaboo-super', 'hoothoot', 'litleo'] },
+  { minDepth: 12, members: ['grimer', 'houndour', 'chinchou'] },
+  { minDepth: 15, members: ['clauncher', 'pawniard', 'koffing'] },
+];
+
+/** Chance that a room with two or more enemies holds a squad instead: from floor 4, rising, capped. */
+export const SQUAD_CHANCE = { fromFloor: 4, start: 0.15, perFloor: 0.015, max: 0.5 } as const;

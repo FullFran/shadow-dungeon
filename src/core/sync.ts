@@ -2,6 +2,7 @@ import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
+import type { EliteTrait } from '../data/sima';
 import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import { answerGuardedHit } from './roster';
@@ -58,6 +59,9 @@ export interface EnemySnapshot {
   boss?: { stance: BossStance; comboIndex: number };
   /** Fell by its own hand: the guest credits it nothing either. */
   spent?: boolean;
+  /** Sima elite trait, and whether its armor still holds. */
+  elite?: EliteTrait;
+  armor?: true;
 }
 
 /** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
@@ -158,6 +162,8 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       },
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
       ...(e.spent ? { spent: true } : {}),
+      ...(e.elite ? { elite: e.elite } : {}),
+      ...(e.armor ? { armor: true as const } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
   };
@@ -223,6 +229,8 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       ai: { ...withoutNamedAttack(base.ai), ...s.ai, contact },
       ...(s.boss ? { boss: { ...(base.boss ?? initialBoss()), ...s.boss } } : {}),
       ...(s.spent ? { spent: true } : {}),
+      elite: s.elite,
+      armor: s.armor,
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');
@@ -262,9 +270,9 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
     let struck: EnemyState;
     if (claim.blocked) {
       events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
-      // Croagunk's stance answers whoever struck it.
+      // Croagunk's stance answers whoever struck it; a Sima elite's armor is spent.
       const striker = state.remotes.find((r) => r.id === claim.playerId)?.player.pos ?? state.player.pos;
-      struck = answerGuardedHit({ ...enemy, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
+      struck = answerGuardedHit({ ...enemy, armor: undefined, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
     } else {
       const hp = Math.max(0, enemy.hp - claim.damage);
       struck = {

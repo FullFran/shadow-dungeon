@@ -1,4 +1,5 @@
 import type { Difficulty } from '../data/difficulty';
+import type { EliteTrait } from '../data/sima';
 import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
@@ -187,6 +188,10 @@ export interface EnemyState {
   wakeRoom?: Rect;
   /** Fell by its own hand (Koffing's blast): no experience, no Pokémonedas. */
   spent?: boolean;
+  /** Sima elite (data/sima.ts): its extra trait. */
+  elite?: EliteTrait;
+  /** Armored elite: the next hit is shrugged off (then it is gone). */
+  armor?: true;
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */

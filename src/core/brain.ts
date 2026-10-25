@@ -1,3 +1,4 @@
+import { SIMA_ELITES } from '../data/sima';
 import { floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
@@ -43,6 +44,12 @@ export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifeti
  * cloud that hits whoever walks in, once.
  */
 export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot, dir: Vec2, at?: Vec2): WorldState {
+  // A Sima volley elite throws two more beside each shot.
+  if (enemy.elite === 'volley' && shot.speed > 0) {
+    const plain = { ...enemy, elite: undefined };
+    const spread = SIMA_ELITES.volleyDegrees;
+    return [-spread, spread].reduce((s, deg) => spawnShot(s, plain, shot, rotate(dir, deg), at), spawnShot(state, plain, shot, dir, at));
+  }
   const projectile: ProjectileState = {
     id: `p${state.nextId}`,
     owner: 'enemy',

@@ -27,7 +27,8 @@ import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
-import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, type SimaLook } from './sima-backdrop';
+import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilter, type SimaLook } from './sima-backdrop';
+import { SIMA_ELITES } from '../data/sima';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -869,7 +870,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // (Sableye blinking out works the same way.)
           const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
+          // A Sima elite glows in its trait's colour.
+          if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(SIMA_ELITES.tints[enemy.elite]);
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
+          ctx.filter = 'none';
         },
       });
     }
