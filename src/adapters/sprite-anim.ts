@@ -56,21 +56,25 @@ export type ActionPhaseName = 'windup' | 'active' | 'recovery';
 /**
  * Frame of an attack animation stretched over a move's phases, so the sheet's
  * HitFrame lands on the first active tick and its ReturnFrame on recovery.
- * Without markers the whole sheet is spread over the move.
+ * Without markers, or with a HitFrame of 0 or 1 (which would hold frame 0
+ * through the whole windup), the whole sheet is spread over the move.
+ * `windupFrom` skips the first frames of the windup, for a move whose windup
+ * is much shorter than the sheet's (it would race through them).
  */
 export function attackFrame(
   anim: Pick<AnimMeta, 'durations' | 'hitFrame' | 'returnFrame'>,
   phase: ActionPhaseName,
   progress: number,
+  windupFrom = 0,
 ): number {
   const count = anim.durations.length;
   const hit = anim.hitFrame;
-  if (hit === undefined || hit <= 0 || hit >= count) {
+  if (hit === undefined || hit <= 1 || hit >= count) {
     const third = { windup: 0, active: 1, recovery: 2 }[phase];
     return frameInRange(anim.durations, 0, count, (third + progress) / 3);
   }
   const back = anim.returnFrame !== undefined && anim.returnFrame > hit && anim.returnFrame < count ? anim.returnFrame : Math.min(count, hit + 1);
-  if (phase === 'windup') return frameInRange(anim.durations, 0, hit, progress);
+  if (phase === 'windup') return frameInRange(anim.durations, Math.max(0, Math.min(windupFrom, hit - 1)), hit, progress);
   if (phase === 'active') return frameInRange(anim.durations, hit, back, progress);
   return frameInRange(anim.durations, back, count, progress);
 }
@@ -98,25 +102,51 @@ function once(sprite: SpriteKey, anim: string, timeMs: number, facing: Vec2): An
   return { sprite, anim, frame: frameAtTime(meta.durations, timeMs, false), row: directionRow(facing) };
 }
 
-/** Sheet used by each player move (a species without that sheet falls back to Attack). */
-export const MOVE_ANIMS: Record<MoveId, { charge?: string; attack: string }> = {
+/**
+ * Sheet used by each player move (`attackSheet` picks a fallback when a
+ * species lacks it). `windupFrom`: first windup frame (see `attackFrame`);
+ * `turnAround`: a dash that carries the player past its target faces back
+ * during recovery.
+ */
+export interface MoveAnim {
+  charge?: string;
+  attack: string;
+  windupFrom?: number;
+  turnAround?: boolean;
+}
+
+export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
   'shadow-claw': { attack: 'Attack' },
   'shadow-sneak': { attack: 'Strike' },
   'play-rough': { charge: 'Charge', attack: 'Double' },
   'shadow-ball': { charge: 'Charge', attack: 'Shoot' },
   'fury-swipes': { attack: 'Double' },
-  'feint-attack': { attack: 'Strike' },
+  'feint-attack': { attack: 'Strike', windupFrom: 2, turnAround: true },
   'night-daze': { charge: 'Charge', attack: 'SpAttack' },
   'foul-play': { charge: 'Charge', attack: 'Attack' },
-  ember: { attack: 'Shoot' },
+  ember: { attack: 'Attack' },
   astonish: { attack: 'Attack' },
-  hex: { charge: 'Charge', attack: 'Shoot' },
-  inferno: { charge: 'Charge', attack: 'SpAttack' },
+  hex: { charge: 'Charge', attack: 'Rotate' },
+  inferno: { charge: 'Charge', attack: 'Double' },
   'bone-club': { attack: 'Attack' },
   'bone-rush': { attack: 'Double' },
   bonemerang: { charge: 'Charge', attack: 'Swing' },
   'stomping-tantrum': { charge: 'Charge', attack: 'SpAttack' },
 };
+
+/** Release sheets tried, in order, when a move's own sheet is missing or only a copy of Charge. */
+const RELEASE_FALLBACKS = ['Double', 'Rotate', 'Attack'] as const;
+
+/** Sheet a sprite plays for a move's windup, active and recovery phases. */
+export function attackSheet(sprite: SpriteKey, moveId: MoveId): string {
+  const usable = (name: string) => {
+    const meta = animMeta(sprite, name);
+    return meta !== undefined && (name === 'Charge' || meta.source !== 'Charge');
+  };
+  const wanted = MOVE_ANIMS[moveId].attack;
+  if (usable(wanted)) return wanted;
+  return RELEASE_FALLBACKS.find(usable) ?? 'Attack';
+}
 
 /** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form). */
 export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken'>): SpriteKey {
@@ -147,9 +177,10 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
     if (action.phase === 'charging') return looping(sprite, anims.charge ?? 'Charge', action.chargeMs, facing);
     const move = MOVES[action.moveId];
     const duration = { windup: move.windupMs, active: move.activeMs, recovery: move.recoveryMs }[action.phase];
-    const attack = animMeta(sprite, anims.attack) ? anims.attack : 'Attack';
+    const attack = attackSheet(sprite, action.moveId);
     const meta = animMeta(sprite, attack)!;
-    return { sprite, anim: attack, frame: attackFrame(meta, action.phase, action.phaseMs / duration), row: directionRow(facing) };
+    const turned = anims.turnAround && action.phase === 'recovery' ? { x: -facing.x, y: -facing.y } : facing;
+    return { sprite, anim: attack, frame: attackFrame(meta, action.phase, action.phaseMs / duration, anims.windupFrom), row: directionRow(turned) };
   }
   if (ctx.sinceHurtMs < 250) return once(sprite, 'Hurt', ctx.sinceHurtMs, facing);
   return looping(sprite, ctx.moving ? 'Walk' : 'Idle', ctx.timeMs, facing);
