@@ -2,13 +2,13 @@ import type { MoveId } from '../data/moves';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { floorPlanOf, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
-import type { LockType, PlayerInput, WorldState } from '../core/state';
+import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
-import { length } from '../core/vec';
+import { length, vec } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
 import type { FloorCard } from '../adapters/card';
@@ -17,6 +17,7 @@ import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
+import type { NetSession } from '../net/session';
 import { simulationPaused, type MenuActions } from './menu';
 
 /** World pixels shown on screen; the canvas is this times an integer scale. */
@@ -47,6 +48,13 @@ export interface GameOptions {
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
   onEnd(result: GameResult, summary: RunSummary): void;
+  /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
+  net?: { session: NetSession; role: 'host' | 'guest'; localId: string };
+}
+
+/** What a fainted player sends in a shared run: nothing (no revive in the spike). */
+function idleInput(from: PlayerInput): PlayerInput {
+  return { ...from, move: vec(0, 0), roll: false, slots: from.slots.map(() => false), slotMouse: from.slotMouse.map(() => false), click: false, lock: false, wheel: 0 };
 }
 
 export interface RunningGame {
@@ -65,12 +73,14 @@ export interface RunningGame {
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
   const renderer = createRenderer(canvas, sheets);
+  const net = options.net;
   const started = startRun(
     options.seed ?? 1,
     {
       loadout: options.loadout,
       lockType: options.lockType,
       clickToLock: options.clickToLock,
+      ...(net ? { localId: net.localId, role: net.role } : {}),
     },
     options.startFloor,
   );
@@ -118,6 +128,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   function restartFloor(): void {
     hideMenu();
+    // A shared run cannot rewind one peer.
+    if (net) return;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     prev = world;
     accumulator = 0;
@@ -139,6 +151,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       restart: restartFloor,
       quit: () => {
         hideMenu();
+        net?.session.leave();
         options.onQuit?.();
       },
     });
@@ -176,33 +189,48 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed }), 700);
   }
 
+  function enterFloor(next: { run: RunState; world: WorldState }): void {
+    run = next.run;
+    world = next.world;
+    floorStart = world;
+    prev = world;
+    camera = world.player.pos;
+    defeatedAt.clear();
+    music();
+    announceFloor(true);
+  }
+
   function simulate(frameMs: number): void {
     const clock = advanceClock(accumulator, frameMs);
     accumulator = clock.accumulatorMs;
     for (let i = 0; i < clock.steps; i++) {
-      const playerInput = toPlayerInput(input.take(), view, pixelScale);
+      const raw = toPlayerInput(input.take(), view, pixelScale);
+      const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
       prev = world;
+      let netEvents: GameEvent[] = [];
+      if (net) {
+        const synced = net.session.beforeStep(world, run.floor);
+        world = synced.world;
+        netEvents = synced.events;
+      }
       world = step(world, playerInput, FIXED_DT_MS);
-      juice = applyEvents(juice, world.events, world.player.pos);
-      audio?.handleEvents(world.events);
-      for (const event of world.events) {
+      net?.session.afterStep(world, run.floor);
+      const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
+      juice = applyEvents(juice, events, world.player.pos);
+      audio?.handleEvents(events);
+      for (const event of events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
       }
       const progress = progressRun(run, world);
+      const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {
-        run = progress.run;
-        world = progress.world;
-        floorStart = world;
-        prev = world;
-        camera = world.player.pos;
-        defeatedAt.clear();
-        music();
-        announceFloor(true);
-      }
+        enterFloor(progress);
+        if (net) net.session.sendFloor(run.floor);
+      } else if (hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
         accumulator = 0;
@@ -213,7 +241,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   function frame(now: number): void {
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
-    const time = frameTime(lastFrame, now, simulationPaused(closeMenu !== null));
+    // A shared run never pauses: the others keep playing.
+    const time = frameTime(lastFrame, now, simulationPaused(closeMenu !== null, !net));
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
     realMs += frameMs;
@@ -275,6 +304,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       audio?.setRumble(0);
       cancelAnimationFrame(raf);
       input.dispose();
+      net?.session.leave();
       window.removeEventListener('keydown', onKeyDown);
     },
   };

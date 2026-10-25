@@ -429,6 +429,23 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.stroke();
   }
 
+  /** Over a remote player: its tag ("P2"), a small HP bar, and "fainted" once down. */
+  function nameTag(id: string, hp: number, maxHp: number, pos: Vec2): void {
+    const x = Math.round(pos.x);
+    const y = Math.round(pos.y - 30);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 8px monospace';
+    const text = hp > 0 ? id.toUpperCase() : `${id.toUpperCase()} ${t('net.fainted')}`;
+    ctx.fillStyle = '#000000';
+    ctx.fillText(text, x + 1, y + 1);
+    ctx.fillStyle = hp > 0 ? '#9fd8ff' : '#9aa0a6';
+    ctx.fillText(text, x, y);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x - 12, y + 3, 24, 3);
+    ctx.fillStyle = hp / maxHp > 0.3 ? '#5ad16a' : '#e0524a';
+    ctx.fillRect(x - 12, y + 3, Math.round(24 * Math.max(0, Math.min(1, hp / maxHp))), 3);
+  }
+
   function numbers(list: readonly FloatingNumber[]): void {
     ctx.textAlign = 'center';
     for (const n of list) {
@@ -495,6 +512,20 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos);
       },
     });
+    for (const remote of current.remotes) {
+      const pos = posOf(`remote:${remote.id}`, remote.player.pos);
+      const before = frame.prev.remotes.find((r) => r.id === remote.id)?.player.pos;
+      const moving = before !== undefined && (before.x !== remote.player.pos.x || before.y !== remote.player.pos.y);
+      drawables.push({
+        y: pos.y,
+        draw: () => {
+          shadow(pos, TUNING.player.radius);
+          // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
+          drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, remote.player.hp > 0 ? 1 : 0.7);
+          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos);
+        },
+      });
+    }
     for (const p of current.projectiles) drawables.push(projectile(p, posOf(p.id, p.pos), timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
 

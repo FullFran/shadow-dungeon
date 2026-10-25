@@ -4,7 +4,11 @@ import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, setLanguage, t, type Language } from '../i18n';
-import { startGame, type GameResult, type RunningGame, type RunSummary } from './game';
+import { BroadcastChannelTransport } from '../net/broadcast';
+import { LagTransport, parseLagParams } from '../net/lag';
+import { createSession, type NetSession } from '../net/session';
+import { realScheduler, type Transport } from '../net/transport';
+import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { openPauseMenu } from './menu';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, type Settings } from './settings';
 import { CONTROL_KEYS, el, languageRow, lockRow, soundRow } from './settings-panel';
@@ -38,6 +42,54 @@ function devStartFloor(): number | undefined {
   const floor = Number.parseInt(new URLSearchParams(window.location.search).get('floor') ?? '', 10);
   return Number.isFinite(floor) ? floor : undefined;
 }
+
+/**
+ * `?net=local`: a shared run between tabs of this browser (netcode spike,
+ * docs/gdd.md §12). `?host=1` makes this tab the host; otherwise it looks for
+ * one and, if nobody answers in a moment, becomes it. `?lag=ms&jitter=ms&loss=0..1`
+ * simulates a bad network on what this tab sends; `?delay=ms` tunes the render delay.
+ */
+interface NetJoin {
+  session: NetSession;
+  role: 'host' | 'guest';
+  localId: string;
+  seed: number;
+  floor: number;
+}
+
+const HOST_SEARCH_MS = 700;
+
+function connectLocal(seed: number, floor: number): Promise<NetJoin> {
+  const params = new URLSearchParams(window.location.search);
+  const scheduler = realScheduler();
+  const lag = parseLagParams(window.location.search);
+  const base = new BroadcastChannelTransport();
+  const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
+  const delay = Number.parseFloat(params.get('delay') ?? '');
+  const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
+  const species = 'mimikyu';
+  const asHost = (): NetJoin => {
+    session.host(seed, floor, species);
+    return { session, role: 'host', localId: 'p1', seed, floor };
+  };
+  if (params.get('host') === '1') return Promise.resolve(asHost());
+  return new Promise((resolve) => {
+    let done = false;
+    session.onStart((start) => {
+      if (done) return;
+      done = true;
+      resolve({ session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor });
+    });
+    session.join(species, settings.loadout);
+    window.setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve(asHost());
+    }, HOST_SEARCH_MS);
+  });
+}
+
+const netMode = (): boolean => new URLSearchParams(window.location.search).get('net') === 'local';
 
 function applyLanguage(language: Language): void {
   setLanguage(language);
@@ -135,6 +187,12 @@ async function play(root: HTMLElement): Promise<void> {
     show(root, el('p', { textContent: t('app.loading') }));
     sheets = await loadSheets();
   }
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor'> = { seed: runSeed(), startFloor: devStartFloor() };
+  if (netMode()) {
+    show(root, el('p', { textContent: t('net.connecting') }));
+    const join = await connectLocal(shared.seed!, shared.startFloor ?? 1);
+    shared = { seed: join.seed, startFloor: join.floor, net: { session: join.session, role: join.role, localId: join.localId } };
+  }
   const canvas = el('canvas', { className: 'game' });
   show(root, canvas);
   root.querySelector('.notice')?.classList.add('in-game');
@@ -142,8 +200,7 @@ async function play(root: HTMLElement): Promise<void> {
     loadout: settings.loadout,
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
-    seed: runSeed(),
-    startFloor: devStartFloor(),
+    ...shared,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions),

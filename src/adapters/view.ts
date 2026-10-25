@@ -14,6 +14,7 @@ export const lerpVec = (a: Vec2, b: Vec2, t: number): Vec2 => ({ x: lerp(a.x, b.
 export function interpolatedPositions(prev: WorldState, current: WorldState, alpha: number): Map<string, Vec2> {
   const before = new Map<string, Vec2>();
   before.set('player', prev.player.pos);
+  for (const r of prev.remotes) before.set(`remote:${r.id}`, r.player.pos);
   for (const e of prev.enemies) before.set(e.id, e.pos);
   for (const p of prev.projectiles) before.set(p.id, p.pos);
 
@@ -23,6 +24,7 @@ export function interpolatedPositions(prev: WorldState, current: WorldState, alp
     out.set(id, from ? lerpVec(from, pos, alpha) : pos);
   };
   put('player', current.player.pos);
+  for (const r of current.remotes) put(`remote:${r.id}`, r.player.pos);
   for (const e of current.enemies) put(e.id, e.pos);
   for (const p of current.projectiles) put(p.id, p.pos);
   return out;

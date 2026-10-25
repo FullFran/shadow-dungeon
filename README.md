@@ -43,6 +43,10 @@ Moving the mouse never changes the locked target; only the gestures above do.
 
 Aegislash blocks hits from the front in Shield Forme (the blue arc): flank it. In Blade Forme it attacks in combos and stays open afterwards.
 
+### Two tabs together (netcode spike)
+
+Open the game with `?net=local` in two or more windows of the same browser (up to 4 players) and press Start in each: the first one (or the one with `?host=1`) hosts and the others join it; everyone plays the host's seed. Each tab simulates its own player with no wait, the host runs the enemies, and an enemy attack only hurts you if it touches you on your own screen. Remote players show as "P2", "P3"... with an HP bar; a fainted one stays down (no revive yet). The host's stairs take everyone down. `?lag=150&jitter=30&loss=0.05` simulates a bad network on what that tab sends, and `?delay=100` tunes how far in the past remote players and enemies are drawn. Use separate windows side by side: a browser stops animating a hidden tab, and a hidden host stops the run.
+
 ## Sound
 
 All audio is procedural Web Audio (`src/adapters/audio.ts`), with no sound files: short retro effects synthesised from oscillators, noise and filters, mapped from the core's `GameEvent`s (a pure `soundFor(event)`), throttled per sound and capped in simultaneous voices. The music is an original looping chiptune in A minor (square lead, triangle bass, noise drums; patterns in `src/data/audio.ts`) played by a lookahead scheduler on the AudioContext clock; the boss room switches to a faster, busier variant and the music fades out on the end screens. Sound starts on the first click or key press, since browsers block autoplay. The menu has master, music and effects volume sliders and a mute checkbox (remembered with the other settings); `M` toggles mute in game.
@@ -54,6 +58,7 @@ All audio is procedural Web Audio (`src/adapters/audio.ts`), with no sound files
 | `src/core` | Pure, deterministic simulation (no DOM, no adapters; compiled without DOM typings) |
 | `src/data` | Typed game data: species, moves, type chart, sprite meta |
 | `src/adapters` | Rendering, input, assets, audio, storage |
+| `src/net` | Netcode spike: protocol, interpolation buffer, transports (BroadcastChannel, lag simulator), peer session |
 | `src/app` | Bootstrap and wiring |
 | `src/i18n` | `es.json` (default) and `en.json` |
 

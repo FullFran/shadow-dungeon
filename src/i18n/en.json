@@ -78,5 +78,8 @@
   "screen.seed": "Seed",
   "card.collapse": "The floor is collapsing!",
   "card.escaped": "You escaped the collapse in {time}",
-  "menu.controls.minimap": "Tab: show or hide the minimap"
+  "menu.controls.minimap": "Tab: show or hide the minimap",
+  "net.fainted": "fainted",
+  "net.connecting": "Looking for a game in other tabs…",
+  "net.hostLeft": "The host left."
 }

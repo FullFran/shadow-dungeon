@@ -25,7 +25,7 @@ Out of scope: difficulty selection, enemy scaling by n, revive, anti-cheat, reco
 
 ## Tasks
 - [x] T1 Core multi-player model: N players in the world, enemies target among players, peer roles (host runs enemies, guest applies snapshots), hit claims, victim-side hits (route: delegated writer A; trigger: core state/step/enemies/hits refactor + tests)
-- [ ] T2 Net protocol and sync: message types, snapshot/state encoding, interpolation buffer, lag simulator, BroadcastChannel transport, two-tab local play via `?net=local` (route: writer A)
+- [x] T2 Net protocol and sync: message types, snapshot/state encoding, interpolation buffer, lag simulator, BroadcastChannel transport, two-tab local play via `?net=local` (route: writer A)
 - [ ] T3 Trystero transport, room-code lobby (create/join, up to 4), net stats overlay (route: delegated writer B; trigger: new dependency, adapters, app UI)
 - [ ] T4 Manual latency playtest with the user, findings and go/no-go recorded in the GDD (route: parent + user)
 - [ ] T5 Deploy (route: parent, needs user OK)
@@ -49,6 +49,14 @@ Out of scope: difficulty selection, enemy scaling by n, revive, anti-cheat, reco
 - Run: `onStairs` counts any standing player; `progressRun` on a guest never takes the stairs; `followToFloor` loads the host's floor from the shared seed; defeat only when every player is down.
 - Known spike gaps: a host-side lunge that hits a remote guest (on the guest) does not end early on the host; guest hp/hit feedback on enemies is overwritten by the next snapshot until the host applies the claim.
 - Checks: tests first in `tests/core/party.test.ts` (RED observed: missing modules, then 4 failing shared-run tests), GREEN 289/289 with all pre-existing tests unchanged; `npm run build` green.
+
+## T2 evidence and decisions
+- `src/net` (may import core and data only; architecture test extended, core may not import net): `protocol.ts` (hello, start, state, claim, snap, floor, leave; state and snap as rounded arrays), `interpolation.ts` (pure buffer: render delay, linear mix, 50 ms extrapolation then hold, epoch = floor drops older samples, snap over 64 px), `transport.ts` (port, in-memory hub, fake scheduler), `lag.ts` (`LagTransport`, `parseLagParams`), `broadcast.ts` (`BroadcastChannelTransport`, hello/here discovery, 1 s heartbeat, 3.5 s timeout), `session.ts` (roster p1..p4, clock offset = min(arrival - sent), beforeStep/afterStep around each fixed step, claims sent reliably the step they happen, state/snap every 3 ticks).
+- Bytes (compact JSON, measured by encoding `hostSnapshot` of run seed 7): floor 1: 4 enemies 269 B; floor 2: 13 enemies 759 B; floor 3: 10 enemies 589 B; boss floor: 1 enemy 115 B (~55-58 B per enemy). Own player state: 77 B. At 20 Hz: worst ~15 KB/s per guest from the host.
+- Decisions: enemy velocity is not sent (extrapolation uses the last two samples); snapshots carry every enemy of the floor (asleep and dead too: simple, small enough); only enemy projectiles travel (remote players' projectiles are not drawn on other peers); the guest's own projectile/melee hits show locally and are overwritten by the next snapshot until the host applies the claim; host discovery waits 700 ms for a `start` answer, else the tab hosts (`?host=1` forces it); two tabs opened at the same instant can both become hosts (spike gap); a shared run never pauses on Esc and "restart floor" does nothing; fainted local player sends idle input; the host's perfect-dodge slow-mo slows enemies for everyone (spike gap).
+- App: `?net=local`, `?host=1`, `?lag=&jitter=&loss=`, `?delay=` (render delay). Remote players drawn with the local sprite path, tag "P2".., HP bar, "debilitado"/"fainted" when down (i18n `net.fainted`, `net.connecting`, `net.hostLeft` unused yet).
+- Checks: tests first (`tests/net/*`: interpolation 9, lag + hub 6, protocol 8, loopback 2), RED observed as missing modules; loopback mutants observed failing (guest not rolling -> hurt assertion fails; host ignoring claims -> e2 hp assertion fails). `npm test` 315/315, `npm run build` green.
+- Not verified: headless two-tab smoke (no Chromium installed for Playwright); manual two-window run still needed: join/host election, enemies chasing both, both killing enemies, stairs moving both, `?lag=150&jitter=30` feel, remote faint display, closing a guest window.
 
 ## Progress
 Created 2026-10-25. Forecast ~1500 authored lines; delivery as work-unit commits on `feat/m1-netcode-spike`, deployed by fast-forwarding `main` with the user's OK.

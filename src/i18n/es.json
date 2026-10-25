@@ -78,5 +78,8 @@
   "screen.seed": "Semilla",
   "card.collapse": "¡La planta se derrumba!",
   "card.escaped": "Escapaste del derrumbe en {time}",
-  "menu.controls.minimap": "Tab: mostrar u ocultar el minimapa"
+  "menu.controls.minimap": "Tab: mostrar u ocultar el minimapa",
+  "net.fainted": "debilitado",
+  "net.connecting": "Buscando partida en otras pestañas…",
+  "net.hostLeft": "El anfitrión se ha ido."
 }
