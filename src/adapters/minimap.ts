@@ -71,8 +71,8 @@ export interface MinimapMarks {
   berries: TilePoint[];
   /** The Sima's floor event, once its tile has been seen (not the hunter: it has no place). */
   event?: { tile: TilePoint; color: string; done: boolean } | null;
-  /** The floor's gate while it holds (core/gates.ts): its marked enemy (always shown, wherever it is), the dropped key, the locked doorways seen so far. */
-  gate?: { target: Vec2 | null; key: Vec2 | null; doors: TilePoint[] };
+  /** The floor's gate while it holds (core/gates.ts): its marked enemy (always shown, wherever it is), the locked doorways seen so far. */
+  gate?: { target: Vec2 | null; doors: TilePoint[] };
 }
 
 function gateMark(state: WorldState, memory: MinimapMemory): MinimapMarks['gate'] | undefined {
@@ -83,7 +83,6 @@ function gateMark(state: WorldState, memory: MinimapMemory): MinimapMarks['gate'
   const doors = (gate.doors ?? []).map((i) => ({ x: i % grid.cols, y: Math.floor(i / grid.cols) })).filter((t) => isSeen(memory, t.x, t.y));
   return {
     target: target ? { x: target.pos.x / TILE, y: target.pos.y / TILE } : null,
-    key: gate.key ? { x: gate.key.x / TILE, y: gate.key.y / TILE } : null,
     doors,
   };
 }
@@ -111,6 +110,9 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
   };
 }
 
+/** How long a just-opened gate's doorways flash on the minimap (ms). */
+const GATE_FLASH_MS = 3000;
+
 const COLORS = {
   floor: 'rgba(190, 210, 255, 0.75)',
   rubble: 'rgba(200, 70, 50, 0.55)',
@@ -118,7 +120,7 @@ const COLORS = {
   stairs: '#7fd8ff',
   enemy: '#ff5a5a',
   berry: '#5b8cff',
-  /** The floor's gate: its marked enemy and shut stairs, the locked doorways, the dropped key. */
+  /** The floor's gate: its marked enemy and shut stairs, the locked doorways; the doorways flash gold as they open. */
   gate: '#ff3b30',
   gateDoor: '#9aa0b0',
   key: '#f2c44c',
@@ -127,9 +129,18 @@ const COLORS = {
 /**
  * Draws the minimap at the top right of the HUD space (HUD units; the caller
  * has applied the HUD scale). `view` is the camera's world rectangle (which
- * enemies show); `screen` the HUD space, the view itself when omitted.
+ * enemies show); `screen` the HUD space, the view itself when omitted;
+ * `opened` a gate that just opened (its doorway tiles, ms since).
  */
-export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, memory: MinimapMemory, view: Rect, timeMs: number, screen: Pick<Rect, 'width'> = view): void {
+export function drawMinimap(
+  ctx: CanvasRenderingContext2D,
+  state: WorldState,
+  memory: MinimapMemory,
+  view: Rect,
+  timeMs: number,
+  screen: Pick<Rect, 'width'> = view,
+  opened?: { doors: readonly number[]; ageMs: number },
+): void {
   const grid = state.arena.tiles;
   if (!grid) return;
   const px = MINIMAP.tilePx;
@@ -164,10 +175,13 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, me
       ctx.fillStyle = COLORS.gate;
       ctx.fillRect(Math.round(x0 + marks.gate.target.x * px - 2), Math.round(y0 + marks.gate.target.y * px - 2), 4, 4);
     }
-    if (marks.gate.key) {
-      ctx.fillStyle = COLORS.key;
-      ctx.fillRect(Math.round(x0 + marks.gate.key.x * px - 2), Math.round(y0 + marks.gate.key.y * px - 2), 4, 4);
-    }
+    ctx.globalAlpha = 1;
+  }
+  if (opened && opened.doors.length > 0) {
+    // The gate just opened: its doorways blink gold for a moment (wherever they are, seen or not), fading out.
+    ctx.globalAlpha = Math.max(0, 1 - opened.ageMs / GATE_FLASH_MS) * (0.55 + 0.45 * Math.sin(opened.ageMs / 90));
+    ctx.fillStyle = COLORS.key;
+    for (const i of opened.doors) ctx.fillRect(x0 + (i % grid.cols) * px - 1, y0 + Math.floor(i / grid.cols) * px - 1, px + 2, px + 2);
     ctx.globalAlpha = 1;
   }
   ctx.fillStyle = COLORS.berry;

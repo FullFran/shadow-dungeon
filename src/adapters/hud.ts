@@ -217,19 +217,53 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
 }
 
 /** The line of the floor's gate (core/gates.ts) while it holds: what keeps the stairs shut. */
-export function gateText(gate: Pick<GateState, 'kind' | 'key'>): string {
-  if (gate.kind === 'key') return t(gate.key ? 'gate.key.dropped' : 'gate.key.hud');
+export function gateText(gate: Pick<GateState, 'kind'>): string {
+  if (gate.kind === 'key') return t('gate.key.hud');
   return t(gate.kind === 'waves' ? 'gate.waves.hud' : 'gate.seal.hud');
 }
 
-/** Draws the gate's line centred at `y` (HUD units), in a small window. */
-export function drawGateLine(ctx: CanvasRenderingContext2D, gate: Pick<GateState, 'kind' | 'key'>, width: number, y: number, timeMs: number): void {
-  const text = gateText(gate);
+/** How long the "gate opened" notice shows (ms). */
+export const GATE_NOTICE_MS = 3500;
+
+/** A seal or key gate just opened by its enemy's fall: what the notice says and which doorways flash on the minimap. */
+export interface GateNotice {
+  kind: 'seal' | 'key';
+  doors: readonly number[];
+  atMs: number;
+}
+
+/**
+ * Frame to frame (host and guest alike, the guest's gate follows the
+ * snapshot): a notice the moment a seal or key gate goes from shut to opened.
+ * Nothing for a wave room, a broken gate, or a gate already open.
+ */
+export function gateNotice(before: Pick<GateState, 'done'> | undefined, now: GateState | undefined, timeMs: number): GateNotice | null {
+  if (!before || before.done || !now || !now.done || now.outcome !== 'opened' || now.kind === 'waves') return null;
+  return { kind: now.kind, doors: now.doors ?? [], atMs: timeMs };
+}
+
+/** The notice's line: the key taken and the door opening, or the seal broken. */
+export const gateNoticeText = (kind: GateNotice['kind']): string => t(kind === 'key' ? 'gate.key.taken' : 'gate.seal.opened');
+
+/** Draws a gate line centred at `y` (HUD units), in a small window. */
+function gateBanner(ctx: CanvasRenderingContext2D, text: string, color: string, look: { panel: number; text: number }, width: number, y: number): void {
   ctx.font = canvasFont();
   const w = Math.ceil(ctx.measureText(text).width) + 20;
-  drawPanel(ctx, Math.round(width / 2 - w / 2), Math.round(y - 11), w, 18, { alpha: 0.85, fill: 0.8 });
-  const pulse = 0.75 + 0.25 * Math.sin(timeMs / 240);
-  ctx.globalAlpha = pulse;
-  pixelText(ctx, text, width / 2, y + 2, PALETTE.danger, 'center');
+  drawPanel(ctx, Math.round(width / 2 - w / 2), Math.round(y - 11), w, 18, { alpha: look.panel, fill: 0.8 });
+  ctx.globalAlpha = look.text;
+  pixelText(ctx, text, width / 2, y + 2, color, 'center');
   ctx.globalAlpha = 1;
+}
+
+/** Draws the gate's line centred at `y` (HUD units), in a small window. */
+export function drawGateLine(ctx: CanvasRenderingContext2D, gate: Pick<GateState, 'kind'>, width: number, y: number, timeMs: number): void {
+  gateBanner(ctx, gateText(gate), PALETTE.danger, { panel: 0.85, text: 0.75 + 0.25 * Math.sin(timeMs / 240) }, width, y);
+}
+
+/** Draws the "gate opened" notice, fading out over its last second. */
+export function drawGateNotice(ctx: CanvasRenderingContext2D, notice: GateNotice, width: number, y: number, timeMs: number): void {
+  const age = timeMs - notice.atMs;
+  if (age < 0 || age >= GATE_NOTICE_MS) return;
+  const fade = Math.min(1, (GATE_NOTICE_MS - age) / 1000);
+  gateBanner(ctx, gateNoticeText(notice.kind), PALETTE.cursor, { panel: 0.85 * fade, text: fade }, width, y);
 }

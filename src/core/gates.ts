@@ -1,21 +1,22 @@
 import type { FloorKind } from '../data/dungeon';
 import { GATE, threatOf, type GateKind, type GateTuning } from '../data/encounters';
 import { tileDistances, type Floor } from './dungeon';
-import { presentPlayers } from './party';
 import { deriveSeed } from './rng';
 import { doorTiles, withDoors } from './sima-events';
 import { draws } from './sima';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { isWall, tileOf, type TileGrid } from './tiles';
-import { distance, type Vec2 } from './vec';
+import type { Vec2 } from './vec';
 
 /**
  * Mandatory kills (docs/gdd.md §3 "Encuentros con sentido"), pure: some
  * generated floors hold one gate between the player and the stairs (data
  * `GateTuning`). Every peer places the same gate from the run seed; only the
  * host (or solo) resolves it, guests follow its snapshot (`gateSync`). The
- * out-of-bounds safety: a gate enemy (or its dropped key) that no player can
- * reach for `GATE.unreachableMs` in a row breaks the gate, without reward.
+ * out-of-bounds safety: a living gate enemy that no player can reach for
+ * `GATE.unreachableMs` in a row breaks the gate, without reward. Its fall,
+ * wherever and however it happens, always resolves the gate: a key is never
+ * left on the ground to fetch (that could soft-lock a floor).
  */
 
 export type GateOutcome = 'opened' | 'broken';
@@ -26,11 +27,11 @@ export interface GateState {
   target?: string;
   /** Key: the stairs room's doorway tiles, walls while it is locked. */
   doors?: readonly number[];
-  /** Key: where the key lies once its bearer fell, until a player walks over it. */
+  /** Legacy (older states): where a dropped key lay. Never written; a gate holding one resolves as opened. */
   key?: Vec2;
   done: boolean;
   outcome?: GateOutcome;
-  /** Host: ms the gate's enemy (or key) has been out of every player's reach, in a row. */
+  /** Host: ms the gate's living enemy has been out of every player's reach, in a row. */
   stuckMs: number;
 }
 
@@ -38,6 +39,7 @@ export interface GateState {
 export interface GateSync {
   done: boolean;
   outcome?: GateOutcome;
+  /** Legacy (an older host waiting on a dropped key): never sent; the guest takes it as opened. */
   key?: Vec2;
 }
 
@@ -140,27 +142,23 @@ const settle = (state: WorldState, gate: GateState, outcome: GateOutcome, events
 
 /**
  * Host (and solo), every step: a wave gate opens with its cleared wave room;
- * a seal with its marked enemy's fall; a key gate drops its key where the
- * bearer fell and opens once a player walks over it. The out-of-bounds
- * safety breaks a gate whose enemy or key stays out of reach too long.
+ * a seal and a key gate with their marked enemy's fall, whatever felled it
+ * and wherever (a hit, a guest's claim, a hazard, a collapse, a self-destruct;
+ * gone from the world counts as fallen): the party takes the key at once and
+ * the stairs room's doors open. The out-of-bounds safety breaks a gate whose
+ * living enemy stays out of reach too long.
  */
 export function updateGate(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   const gate = state.gate;
   if (!gate || gate.done) return state;
   if (gate.kind === 'waves') return state.simaEvent?.kind !== 'waves' || state.simaEvent.done ? settle(state, gate, 'opened', events) : state;
   const target = state.enemies.find((e) => e.id === gate.target);
-  if (!target || !target.alive) {
-    if (gate.kind === 'seal') return settle(state, gate, 'opened', events);
-    const key = gate.key ?? target?.pos;
-    if (!key) return settle(state, gate, 'broken', events);
-    if (!gate.key) events.push({ type: 'keyDropped', pos: key });
-    if (presentPlayers(state).some((p) => distance(p.pos, key) <= GATE.keyTouch)) return settle(state, gate, 'opened', events);
-    return watch({ ...state, gate: { ...gate, key } }, key, dtMs, events);
-  }
+  // A legacy dropped key (an older state) is taken as collected too.
+  if (!target || !target.alive || gate.key) return settle(state, gate, 'opened', events);
   return watch(state, target.pos, dtMs, events);
 }
 
-/** The out-of-bounds safety for the gate's enemy or key at `pos`. */
+/** The out-of-bounds safety for the gate's living enemy at `pos`. */
 function watch(state: WorldState, pos: Vec2, dtMs: number, events: GameEvent[]): WorldState {
   const gate = state.gate!;
   if (reachable(state, pos)) return gate.stuckMs === 0 ? state : { ...state, gate: { ...gate, stuckMs: 0 } };
@@ -173,15 +171,22 @@ function watch(state: WorldState, pos: Vec2, dtMs: number, events: GameEvent[]):
 export function gateSync(state: Pick<WorldState, 'gate'>): GateSync | undefined {
   const g = state.gate;
   if (!g) return undefined;
-  return { done: g.done, ...(g.outcome ? { outcome: g.outcome } : {}), ...(g.key ? { key: g.key } : {}) };
+  return { done: g.done, ...(g.outcome ? { outcome: g.outcome } : {}) };
 }
 
-/** Guest: takes the host's gate progress (its own gate was placed from the same seed); a key gate's doors follow. */
+/**
+ * Guest: takes the host's gate progress (its own gate was placed from the
+ * same seed); a key gate's doors follow. An older host's dropped key is taken
+ * as the key collected: opened.
+ */
 export function applyGateSync(state: WorldState, sync: GateSync | undefined): WorldState {
   const gate = state.gate;
   if (!gate || !sync) return state;
-  const opening = sync.done && !gate.done && gate.doors && state.arena.tiles;
+  const legacyKey = !sync.done && sync.key !== undefined;
+  const done = sync.done || legacyKey;
+  const outcome: GateOutcome | undefined = legacyKey ? 'opened' : sync.outcome;
+  const opening = done && !gate.done && gate.doors && state.arena.tiles;
   const arena = opening ? { ...state.arena, tiles: withDoors(state.arena.tiles!, gate.doors!, false) } : state.arena;
   const { key: _key, ...rest } = gate;
-  return { ...state, arena, gate: { ...rest, done: sync.done, ...(sync.outcome ? { outcome: sync.outcome } : {}), ...(sync.key && !sync.done ? { key: sync.key } : {}) } };
+  return { ...state, arena, gate: { ...rest, done, ...(outcome ? { outcome } : {}) } };
 }

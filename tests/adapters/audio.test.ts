@@ -53,7 +53,6 @@ describe('event -> sound mapping', () => {
     [{ type: 'gateOpened', kind: 'seal', outcome: 'opened' }, 'gateOpen'],
     [{ type: 'gateOpened', kind: 'key', outcome: 'opened' }, 'gateOpen'],
     [{ type: 'gateOpened', kind: 'waves', outcome: 'broken' }, 'gateOpen'],
-    [{ type: 'keyDropped', pos: { x: 0, y: 0 } }, 'keyDrop'],
   ];
   for (const [event, sound] of cases) {
     it(`${event.type} -> ${sound}`, () => expect(soundFor(event)).toBe(sound));

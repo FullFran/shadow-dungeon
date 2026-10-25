@@ -95,7 +95,7 @@ describe('gates: Sello de la escalera', () => {
 });
 
 describe('gates: the locked door and its key', () => {
-  it('locks the stairs room, gives the key to an enemy the player can reach, drops it where it falls, opens on touch', () => {
+  it('locks the stairs room, gives the key to an enemy the player can reach; its fall hands the key over and opens the door at once', () => {
     const { run, world } = findGate(DUNGEONS[0]!, 'key');
     const gate = world.gate!;
     const grid = world.arena.tiles!;
@@ -108,17 +108,86 @@ describe('gates: the locked door and its key', () => {
     const bearer = world.enemies.find((e) => e.id === gate.target)!;
     const at = tileOf(bearer.pos);
     expect(dist[at.y * grid.cols + at.x]).toBeGreaterThanOrEqual(0);
-    // Felled: the key lies where it fell, the door still shut.
+    expect(progressRun(run, onStairs(world)).entered).toBe(false);
+    // Felled, wherever the player stands: no key to fetch, the doorways are floor again and the stairs open.
     const events: GameEvent[] = [];
-    const dropped = updateGate(kill(world, bearer.id), FIXED_DT_MS, events);
-    expect(dropped.gate).toMatchObject({ done: false, key: bearer.pos });
-    expect(events).toContainEqual({ type: 'keyDropped', pos: bearer.pos });
-    expect(progressRun(run, onStairs(dropped)).entered).toBe(false);
-    // Walked over: the doorways are floor again and the stairs open.
-    const taken = updateGate({ ...dropped, player: { ...dropped.player, pos: bearer.pos } }, FIXED_DT_MS, []);
+    const taken = updateGate(kill(world, bearer.id), FIXED_DT_MS, events);
     expect(taken.gate).toMatchObject({ done: true, outcome: 'opened' });
+    expect(taken.gate!.key).toBeUndefined();
+    expect(events).toEqual([{ type: 'gateOpened', kind: 'key', outcome: 'opened' }]);
     for (const i of gate.doors!) expect(taken.arena.tiles!.tiles[i]).toBe(1);
     expect(progressRun(run, onStairs(taken)).entered).toBe(true);
+    // The marked kill still pays its bonus.
+    expect(gateBonus(taken, bearer)).toBe(GATE.xp);
+  });
+
+  it('a bearer that falls where no body can stand (a floater over a wall) still opens the door: the dropped-key soft-lock', () => {
+    const { world } = findGate(DUNGEONS[0]!, 'key');
+    const flowing = step(world, IDLE, FIXED_DT_MS);
+    const grid = flowing.arena.tiles!;
+    const start = (grid as Floor).start;
+    let wall = start;
+    while (!isWall(grid, wall.x, wall.y)) wall = { x: wall.x, y: wall.y - 1 };
+    const id = flowing.gate!.target!;
+    // Its body over the wall tile, the player pressed right below it on the floor.
+    const enemies = flowing.enemies.map((e) => (e.id === id ? { ...e, pos: tileCenter(wall), alive: false, hp: 0 } : e));
+    let w: WorldState = { ...flowing, enemies, player: { ...flowing.player, pos: tileCenter({ x: wall.x, y: wall.y + 1 }) } };
+    for (let s = 0; s < 10; s++) w = updateGate(w, FIXED_DT_MS, []);
+    expect(w.gate).toMatchObject({ done: true, outcome: 'opened' });
+  });
+
+  it('a bearer gone from the world (fell through a collapse, blew itself up) opens the door too', () => {
+    const { world } = findGate(DUNGEONS[0]!, 'key');
+    const gone = { ...world, enemies: world.enemies.filter((e) => e.id !== world.gate!.target) };
+    expect(updateGate(gone, FIXED_DT_MS, []).gate).toMatchObject({ done: true, outcome: 'opened' });
+  });
+
+  it('a living bearer out of every player\'s reach for 60 s still breaks the gate, without reward, doors open', () => {
+    const { world } = findGate(DUNGEONS[0]!, 'key');
+    const id = world.gate!.target!;
+    const flowing = step(world, IDLE, FIXED_DT_MS);
+    let w: WorldState = { ...flowing, enemies: flowing.enemies.map((e) => (e.id === id ? { ...e, pos: vec(-200, -200) } : e)) };
+    for (let s = 0; s < 59; s++) w = updateGate(w, 1000, []);
+    expect(w.gate).toMatchObject({ done: false });
+    w = updateGate(w, 1000, []);
+    expect(w.gate).toMatchObject({ done: true, outcome: 'broken' });
+    for (const i of w.gate!.doors!) expect(w.arena.tiles!.tiles[i]).toBe(1);
+    expect(gateBonus(w, { id })).toBe(1);
+  });
+
+  it('an older state with a key lying on the ground resolves as opened', () => {
+    const { run, world } = findGate(DUNGEONS[0]!, 'key');
+    const legacy: WorldState = { ...kill(world, world.gate!.target!), gate: { ...world.gate!, key: vec(-500, -500) } };
+    const after = updateGate(legacy, FIXED_DT_MS, []);
+    expect(after.gate).toMatchObject({ done: true, outcome: 'opened' });
+    expect(after.gate!.key).toBeUndefined();
+    expect(progressRun(run, onStairs(after)).entered).toBe(true);
+  });
+});
+
+describe('gates: the seal never soft-locks', () => {
+  it('the marked enemy falling anywhere (in a hazard, out of view, off the map, gone) unseals the stairs at once', () => {
+    const { run, world } = findGate(DUNGEONS[0]!, 'seal');
+    const id = world.gate!.target!;
+    const fellAt = (pos: { x: number; y: number }): WorldState => ({ ...world, enemies: world.enemies.map((e) => (e.id === id ? { ...e, pos, alive: false, hp: 0 } : e)) });
+    const cases: WorldState[] = [fellAt(vec(-300, -300)), fellAt(vec(1e6, 1e6)), { ...world, enemies: world.enemies.filter((e) => e.id !== id) }];
+    for (const c of cases) {
+      const events: GameEvent[] = [];
+      const after = updateGate(c, FIXED_DT_MS, events);
+      expect(after.gate).toMatchObject({ done: true, outcome: 'opened' });
+      expect(events).toEqual([{ type: 'gateOpened', kind: 'seal', outcome: 'opened' }]);
+      expect(progressRun(run, onStairs(after)).entered).toBe(true);
+    }
+  });
+
+  it('a marked enemy finished off by the world (a hazard after the gate check) unseals the stairs on the host\'s next steps', () => {
+    const { run, world } = findGate(DUNGEONS[0]!, 'seal');
+    const id = world.gate!.target!;
+    // Stand-in for any hazard: the enemy is dead before the step's gate check runs.
+    const dying = { ...world, enemies: world.enemies.map((e) => (e.id === id ? { ...e, hp: 0, alive: false } : e)) };
+    const after = step(step(dying, IDLE, FIXED_DT_MS), IDLE, FIXED_DT_MS);
+    expect(after.gate).toMatchObject({ done: true, outcome: 'opened' });
+    expect(progressRun(run, onStairs(after)).entered).toBe(true);
   });
 });
 
@@ -188,16 +257,22 @@ describe('gates: shared runs', () => {
     expect(guest0.gate).toEqual(host.gate);
     expect(guest0.arena.tiles!.tiles).toEqual(host.arena.tiles!.tiles);
     const bearer = host.enemies.find((e) => e.id === host.gate!.target)!;
-    const dropped = updateGate(kill(host, bearer.id), FIXED_DT_MS, []);
     const wire = (w: WorldState) => decodeMessage(encodeMessage({ t: 'snap', at: 0, floor: run.floor, s: hostSnapshot(w) } as NetMessage));
-    const snap1 = wire(dropped);
-    expect(snap1?.t).toBe('snap');
-    let guest = applyHostSnapshot(guest0, (snap1 as Extract<NetMessage, { t: 'snap' }>).s);
-    expect(guest.gate).toMatchObject({ done: false, key: { x: Math.round(bearer.pos.x * 10) / 10, y: Math.round(bearer.pos.y * 10) / 10 } });
-    const opened = updateGate({ ...dropped, player: { ...dropped.player, pos: bearer.pos } }, FIXED_DT_MS, []);
-    guest = applyHostSnapshot(guest, (wire(opened) as Extract<NetMessage, { t: 'snap' }>).s);
+    // Still locked on the wire while the bearer lives.
+    let guest = applyHostSnapshot(guest0, (wire(host) as Extract<NetMessage, { t: 'snap' }>).s);
+    expect(guest.gate).toMatchObject({ done: false });
+    // The bearer falls on the host: the next snapshot opens the guest's doors, no key in between.
+    const opened = updateGate(kill(host, bearer.id), FIXED_DT_MS, []);
+    const snap = wire(opened);
+    expect(snap?.t).toBe('snap');
+    expect((snap as Extract<NetMessage, { t: 'snap' }>).s.gate?.key).toBeUndefined();
+    guest = applyHostSnapshot(guest, (snap as Extract<NetMessage, { t: 'snap' }>).s);
     expect(guest.gate).toMatchObject({ done: true, outcome: 'opened' });
     expect(guest.arena.tiles!.tiles).toEqual(opened.arena.tiles!.tiles);
+    // An older host still waiting on a dropped key: the guest takes it as opened.
+    const fromOld = applyHostSnapshot(guest0, { ...hostSnapshot(host), gate: { done: false, key: bearer.pos } });
+    expect(fromOld.gate).toMatchObject({ done: true, outcome: 'opened' });
+    expect(fromOld.arena.tiles!.tiles).toEqual(opened.arena.tiles!.tiles);
     // An older host (no gate field) changes nothing on the guest.
     const { gate: _g, ...older } = hostSnapshot(opened);
     expect(applyHostSnapshot(guest0, older).gate).toEqual(guest0.gate);
