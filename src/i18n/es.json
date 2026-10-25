@@ -455,5 +455,13 @@
   "dungeon.crypt.floor.5": "El aire tiembla. Más abajo, el acero espera.",
   "dungeon.crypt.floor.6": "La sala del trono. Arrodíllate, o desenvaina.",
   "boss.stance.glint": "Destello",
-  "boss.stance.gems": "Gemas"
+  "boss.stance.gems": "Gemas",
+  "spell.aegislash.unsheathe": "El Rey desenvaina",
+  "spell.aegislash.midnight": "Filo Real «Corte de Medianoche»",
+  "spell.aegislash.oaths": "Escudo Real «Muralla de los Juramentos»",
+  "spell.aegislash.shadow": "Edicto del Eclipse «Desfile de las Cien Espadas»",
+  "boss.stance.unsheathe": "Desenvaina",
+  "boss.stance.midnight": "Medianoche",
+  "boss.stance.oaths": "Juramentos",
+  "boss.stance.shadow": "Cien Espadas"
 }

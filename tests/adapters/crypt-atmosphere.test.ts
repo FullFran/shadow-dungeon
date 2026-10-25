@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { CRYPT, FOREST } from '../../src/data/dungeons';
-import { SABLEYE } from '../../src/data/enemies';
+import { AEGISLASH, SABLEYE } from '../../src/data/enemies';
 import { generateFloor } from '../../src/core/dungeon';
 import { isWall } from '../../src/core/tiles';
 import { cardLines } from '../../src/adapters/card';
@@ -55,10 +55,13 @@ describe('Crypt atmosphere', () => {
 
 describe('boss bar stance names', () => {
   it('names every stance and spell card of the Crypt bosses in every language', () => {
-    const stances = ['shield', 'blade', ...SABLEYE.cards];
+    const stances = ['shield', 'blade', 'unsheathe', ...AEGISLASH.phase2.cards, ...SABLEYE.cards];
+    const spells = [...Object.values(AEGISLASH.cardNames), ...Object.values(SABLEYE.cardNames)];
     for (const language of LANGUAGES) {
       const strings = catalog(language);
       expect(stances.filter((s) => !strings[`boss.stance.${s}`])).toEqual([]);
+      expect(spells.filter((k) => !strings[k])).toEqual([]);
+      for (const k of spells) expect(strings[k]).not.toMatch(/—|Necrozma/);
     }
   });
 });

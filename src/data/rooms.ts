@@ -46,11 +46,17 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     exit: { x: 900, y: 280, width: 60, height: 80 },
     next: 'boss',
   },
+  /** The throne room: four pillars with braziers, cover from Aegislash's thrown blades and shadow swords. */
   boss: {
     id: 'boss',
     width: 800,
     height: 640,
-    obstacles: [],
+    obstacles: [
+      { x: 172, y: 150, width: 56, height: 56, cover: true },
+      { x: 572, y: 150, width: 56, height: 56, cover: true },
+      { x: 172, y: 400, width: 56, height: 56, cover: true },
+      { x: 572, y: 400, width: 56, height: 56, cover: true },
+    ],
     playerStart: { x: 400, y: 540 },
     spawns: [{ species: 'aegislash', x: 400, y: 220 }],
     exit: null,

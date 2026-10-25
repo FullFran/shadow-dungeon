@@ -123,8 +123,42 @@ export interface ComboHitDef {
   attack: EnemyAttackDef;
 }
 
+/** Aegislash's phase-2 spell cards (docs/gdd.md, Cripta). */
+export type AegislashCard = 'midnight' | 'oaths' | 'shadow';
+
+/** An enemy shot (shape, speed, life). */
+export type ShotDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+
+/**
+ * Aegislash's second phase, "El Rey desenvaina": at half HP a long,
+ * harmless unsheathing (the opening), then faster stance swaps, and after
+ * every Blade stance one named spell card in turn. Midnight: a spin that hits
+ * a ring around it and throws a ring of blades. Oaths: planted shield that
+ * guards from every side while it fires fans of blades (hide behind a pillar),
+ * then lowers it. Shadow: a wall of shadow swords sweeps the throne room from
+ * one end to the other, with a gap away from the player; the pillars stop the
+ * swords of their column.
+ */
+export interface AegislashPhase2Def {
+  /** Fraction of max HP at or below which it starts. */
+  threshold: number;
+  unsheatheMs: number;
+  transformMs: number;
+  shieldMaxMs: number;
+  shieldDamageToBreak: number;
+  bladeMaxMs: number;
+  bladeCombosPerStance: number;
+  cards: readonly AegislashCard[];
+  midnight: { telegraphMs: number; radius: number; strikeMs: number; attack: EnemyAttackDef; blades: { count: number; shot: ShotDef }; recoverMs: number };
+  oaths: { telegraphMs: number; volleys: number; perVolley: number; spreadDegrees: number; gapMs: number; blade: ShotDef; recoverMs: number };
+  shadow: { telegraphMs: number; lanes: number; spacing: number; gapWidth: number; sword: ShotDef; sweepMs: number; recoverMs: number };
+}
+
 export interface AegislashDef {
   kind: 'boss';
+  /** i18n keys of the phase-2 spell cards and of the unsheathing, shown when they start. */
+  cardNames: Readonly<Record<AegislashCard | 'unsheathe', string>>;
+  phase2: AegislashPhase2Def;
   poise: PoiseDef;
   aggroRange: number;
   /** Telegraphed stance change; it neither blocks nor attacks meanwhile (an opening). */
@@ -166,6 +200,32 @@ export interface AegislashDef {
 
 export const AEGISLASH: AegislashDef = {
   kind: 'boss',
+  cardNames: {
+    unsheathe: 'spell.aegislash.unsheathe',
+    midnight: 'spell.aegislash.midnight',
+    oaths: 'spell.aegislash.oaths',
+    shadow: 'spell.aegislash.shadow',
+  },
+  phase2: {
+    threshold: 0.5,
+    unsheatheMs: 1600,
+    transformMs: 600,
+    shieldMaxMs: 6000,
+    shieldDamageToBreak: 80,
+    bladeMaxMs: 6000,
+    bladeCombosPerStance: 1,
+    cards: ['midnight', 'oaths', 'shadow'],
+    midnight: {
+      telegraphMs: 1100,
+      radius: 110,
+      strikeMs: 220,
+      attack: { power: 34, type: 'ghost' },
+      blades: { count: 12, shot: { power: 18, type: 'steel', speed: 120, radius: 7, lifetimeMs: 4000 } },
+      recoverMs: 1500,
+    },
+    oaths: { telegraphMs: 800, volleys: 3, perVolley: 5, spreadDegrees: 60, gapMs: 750, blade: { power: 15, type: 'steel', speed: 150, radius: 6, lifetimeMs: 4000 }, recoverMs: 1600 },
+    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', speed: 160, radius: 9, lifetimeMs: 5000 }, sweepMs: 900, recoverMs: 1400 },
+  },
   poise: { hitstunScale: 0, knockbackScale: 0.15 },
   aggroRange: 900,
   transformMs: 900,

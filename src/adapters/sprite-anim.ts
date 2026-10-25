@@ -191,8 +191,11 @@ export function enemySprite(enemy: EnemyState): SpriteKey {
   if (enemy.species !== 'aegislash') return SPRITE_KEYS[SPECIES[enemy.species].sprite];
   const stance = enemy.boss?.stance ?? 'shield';
   const transforming = enemy.ai.mode === 'transform' && enemy.ai.modeMs >= enemy.ai.modeDurationMs / 2;
-  const shown = transforming ? (stance === 'shield' ? 'blade' : 'shield') : stance;
-  return shown === 'shield' ? SPRITE_KEYS.aegislashShield : SPRITE_KEYS.aegislashBlade;
+  // Shield form: Shield, the planted Oaths shield and the start of the unsheathing; the other cards are the Blade.
+  const now = stance === 'shield' || stance === 'oaths' || stance === 'unsheathe' ? 'shield' : 'blade';
+  // Halfway through a change it shows what it turns into: Shield and the unsheathing become Blade, everything else Shield.
+  const next = stance === 'shield' || stance === 'unsheathe' ? 'blade' : 'shield';
+  return (transforming ? next : now) === 'shield' ? SPRITE_KEYS.aegislashShield : SPRITE_KEYS.aegislashBlade;
 }
 
 const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {

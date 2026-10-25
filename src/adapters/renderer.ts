@@ -2,6 +2,7 @@ import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS } from '../core/archer';
+import { shadowGapX } from '../core/boss';
 import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
@@ -142,6 +143,8 @@ export interface Renderer {
 }
 
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
+  /** The arena of the frame being drawn (the shadow-sword wall spans it). */
+  let currentArena: { width: number; height: number } | null = null;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -514,12 +517,47 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     const def = ENEMY_BEHAVIOUR[enemy.species];
     if (ai.mode === 'transform' && def?.kind === 'boss') {
+      // The unsheathing (phase 2) is a bigger, double ring.
+      const big = enemy.boss?.stance === 'unsheathe';
       ctx.strokeStyle = COLORS.transform;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = big ? 3 : 2;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, enemy.radius + 6 + 30 * progress, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, enemy.radius + 6 + (big ? 70 : 30) * progress, 0, Math.PI * 2);
       ctx.stroke();
+      if (big) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + 6 + 70 * ((progress + 0.5) % 1), 0, Math.PI * 2);
+        ctx.stroke();
+      }
       return;
+    }
+    if (def?.kind === 'boss' && enemy.boss) {
+      const stance = enemy.boss.stance;
+      if (stance === 'oaths' && (winding || striking)) {
+        // The planted shield guards every side.
+        ctx.strokeStyle = COLORS.guard;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (stance === 'midnight' && (winding || striking)) {
+        groundCircle(pos, def.phase2.midnight.radius, telegraphFill(enemyAttackType(enemy), winding), winding ? progress : 1);
+        return;
+      }
+      if (stance === 'oaths' && winding) {
+        const o = def.phase2.oaths;
+        for (let i = 0; i < o.perVolley; i++) {
+          const a = Math.atan2(ai.attackDir.y, ai.attackDir.x) + ((-o.spreadDegrees / 2 + (i * o.spreadDegrees) / (o.perVolley - 1)) * Math.PI) / 180;
+          groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 120, 3, telegraphFill(enemyAttackType(enemy), true), progress);
+        }
+        return;
+      }
+      if (stance === 'shadow') {
+        if (winding) shadowWall(enemy, progress);
+        return;
+      }
+      if (stance === 'unsheathe' || stance === 'midnight' || stance === 'oaths') return;
     }
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
@@ -574,6 +612,29 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(Math.round(at.x - 1), Math.round(at.y - size), 2, Math.round(size * 2));
     ctx.fillStyle = 'rgba(255, 255, 255, 1)';
     ctx.fillRect(Math.round(at.x - 2), Math.round(at.y - 2), 4, 4);
+  }
+
+  /** The shadow-sword wall about to sweep: a dark band along its starting end, the gap left bright, filling as the wind-up runs. */
+  function shadowWall(enemy: EnemyState, progress: number): void {
+    if (!currentArena) return;
+    const { width, height } = currentArena;
+    const shadow = AEGISLASH.phase2.shadow;
+    const gap = shadowGapX(width, enemy.boss!.comboIndex, shadow.lanes);
+    const down = enemy.ai.attackDir.y > 0;
+    const band = 22;
+    const y = down ? 0 : height - band;
+    const left = gap - shadow.gapWidth / 2;
+    const right = gap + shadow.gapWidth / 2;
+    ctx.fillStyle = `rgba(60, 20, 90, ${0.35 + 0.35 * progress})`;
+    ctx.fillRect(0, y, Math.max(0, left), band);
+    ctx.fillRect(right, y, Math.max(0, width - right), band);
+    ctx.fillStyle = COLORS.telegraphEdge;
+    const edge = down ? y + band - 2 : y;
+    ctx.fillRect(0, edge, Math.max(0, left) * progress, 2);
+    ctx.fillRect(width - Math.max(0, width - right) * progress, edge, Math.max(0, width - right) * progress, 2);
+    // The safe lane, shown down the whole room.
+    ctx.fillStyle = 'rgba(255, 230, 160, 0.08)';
+    ctx.fillRect(left, 0, shadow.gapWidth, height);
   }
 
   /** A filled ground circle with a solid edge; `progress` (0..1) fills it from the centre. */
@@ -698,6 +759,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
+    currentArena = current.arena;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;

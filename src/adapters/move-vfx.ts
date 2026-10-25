@@ -76,8 +76,12 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
   const def = ENEMY_BEHAVIOUR[enemy.species];
   switch (def?.kind) {
     case 'boss': {
-      if (enemy.boss?.stance !== 'blade') return AEGISLASH.shield.bash.type;
-      const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
+      const stance = enemy.boss?.stance;
+      if (stance === 'midnight') return AEGISLASH.phase2.midnight.attack.type;
+      if (stance === 'oaths') return AEGISLASH.phase2.oaths.blade.type;
+      if (stance === 'shadow') return AEGISLASH.phase2.shadow.sword.type;
+      if (stance !== 'blade') return AEGISLASH.shield.bash.type;
+      const blow = AEGISLASH.blade.combo[enemy.boss?.comboIndex ?? 0] ?? AEGISLASH.blade.combo[0]!;
       return blow.attack.type;
     }
     case 'archer': {
@@ -197,7 +201,7 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
  */
 export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cloud'; puff: string; speck: string; edge: string };
 
-const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying'];
+const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying', 'steel'];
 
 export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemyShotLook | null {
   if (p.vel.x === 0 && p.vel.y === 0) return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };

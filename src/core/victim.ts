@@ -75,6 +75,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
+    } else if (enemy.boss?.stance === 'midnight') {
+      hit = contactPlayer(current, enemy, def.phase2.midnight.attack, slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
+    } else if (enemy.boss && enemy.boss.stance !== 'shield' && enemy.boss.stance !== 'blade') {
+      // Oaths and Shadow only throw (projectiles); the unsheathing never attacks.
+      continue;
     } else if (enemy.boss?.stance === 'blade') {
       const blow = def.blade.combo[enemy.boss.comboIndex]!;
       hit = contactPlayer(current, enemy, blow.attack, bladeTouches(enemy, current.player.pos), events);

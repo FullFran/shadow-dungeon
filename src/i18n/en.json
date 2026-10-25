@@ -455,5 +455,13 @@
   "dungeon.crypt.floor.5": "The air trembles. Further down, the steel is waiting.",
   "dungeon.crypt.floor.6": "The throne room. Kneel, or draw.",
   "boss.stance.glint": "Glint",
-  "boss.stance.gems": "Gems"
+  "boss.stance.gems": "Gems",
+  "spell.aegislash.unsheathe": "The King Draws His Blade",
+  "spell.aegislash.midnight": "Royal Edge \"Midnight Cut\"",
+  "spell.aegislash.oaths": "Royal Shield \"Wall of Oaths\"",
+  "spell.aegislash.shadow": "Eclipse Edict \"Parade of a Hundred Swords\"",
+  "boss.stance.unsheathe": "Drawing",
+  "boss.stance.midnight": "Midnight",
+  "boss.stance.oaths": "Oaths",
+  "boss.stance.shadow": "Hundred Swords"
 }

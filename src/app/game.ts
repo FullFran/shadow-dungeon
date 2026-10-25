@@ -166,6 +166,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   );
   let run: RunState = started.run;
   let world: WorldState = started.world;
+  // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
+  const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
+  if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;

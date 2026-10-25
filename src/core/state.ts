@@ -1,4 +1,4 @@
-import type { ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
@@ -185,8 +185,8 @@ export interface EnemyState {
   wakeRoom?: Rect;
 }
 
-/** Aegislash's two stances, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | ArcherCard | ThiefCard;
+/** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard;
 
 export interface BossState {
   stance: BossStance;
@@ -198,6 +198,10 @@ export interface BossState {
   comboIndex: number;
   /** Combos finished in the current Blade stance; Decidueye: cards played so far. */
   combosDone: number;
+  /** Aegislash: 2 once "El Rey desenvaina" has started (host only; never goes back). */
+  phase?: 2;
+  /** Aegislash: phase-2 spell cards played so far (host only). */
+  cardsPlayed?: number;
 }
 
 /**
