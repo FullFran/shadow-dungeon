@@ -38,6 +38,7 @@ export const SOUND_IDS = [
   'stairs',
   'floorCard',
   'levelUp',
+  'item',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -90,6 +91,8 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'stance';
     case 'levelUp':
       return 'levelUp';
+    case 'itemTriggered':
+      return 'item';
     default:
       return null;
   }
@@ -343,6 +346,11 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     ms: 700,
     // A bright rising fanfare, Mystery Dungeon style.
     play: (s, t) => arpeggio(s, t, 'square', [523, 659, 784, 1047], 0.08, 0.4, 0.08),
+  },
+  item: {
+    ms: 260,
+    // A short two-note sparkle: an item acted, or one was picked.
+    play: (s, t) => arpeggio(s, t, 'triangle', [988, 1319], 0.07, 0.18, 0.07),
   },
   collapse: {
     ms: 1400,

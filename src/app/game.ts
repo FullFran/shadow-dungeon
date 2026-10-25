@@ -2,7 +2,7 @@ import type { MoveId } from '../data/moves';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { chooseItem, floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -11,6 +11,7 @@ import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
+import { heldItems, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
 import { attachInput, toPlayerInput } from '../adapters/input';
@@ -18,6 +19,7 @@ import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/j
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
 import type { NetSession } from '../net/session';
+import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
 
@@ -44,8 +46,8 @@ export interface GameOptions {
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
   onToggleMute?(): void;
-  /** Esc: shows the menu overlay and returns a function that removes it. */
-  openMenu?(actions: MenuActions): () => void;
+  /** Esc: shows the menu overlay (with the held items listed) and returns a function that removes it. */
+  openMenu?(actions: MenuActions, held: readonly HeldItem[]): () => void;
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
   onEnd(result: GameResult, summary: RunSummary): void;
@@ -69,7 +71,10 @@ export interface RunningGame {
  * the run (generated floors 1-3 -> stairs -> boss floor; death or the boss falling ends it),
  * with sound driven by the same events and the music following the room.
  * Esc opens the menu: game input is cut off and, per the pause policy in
- * `menu.ts`, the simulation stands still until it closes.
+ * `menu.ts`, the simulation stands still until it closes. Entering a floor
+ * after the first offers three held items (item-pick.ts): solo, input is cut
+ * off and the game pauses until one is picked; a shared run keeps running
+ * and only clicks on the cards or 1/2/3 pick.
  */
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
@@ -108,6 +113,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let camera = world.player.pos;
   let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
   let closeMenu: (() => void) | null = null;
+  /** The held item pick overlay, while open. */
+  let closePick: (() => void) | null = null;
+  const overlayParent = canvas.parentElement ?? document.body;
   const audio = options.audio;
   const music = () => audio?.setMusic(isBossFloor(run) ? 'boss' : 'room');
   /** Title card of the current floor; game input keeps working while it shows. */
@@ -125,8 +133,37 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!closeMenu) return;
     closeMenu();
     closeMenu = null;
-    input.setSuspended(false);
+    // A solo pick still open keeps game input cut off.
+    input.setSuspended(closePick !== null && !net);
     audio?.setDucked(false);
+  }
+
+  function hidePick(): void {
+    if (!closePick) return;
+    closePick();
+    closePick = null;
+    if (!net && !closeMenu) input.setSuspended(false);
+  }
+
+  /** Takes card `index` of the floor's offer; "Restart floor" keeps the item. */
+  function choose(index: number): void {
+    if (!closePick) return;
+    const picked = chooseItem(run, world, index);
+    if (picked.run === run) return;
+    floorStart = chooseItem(run, floorStart, index).world;
+    run = picked.run;
+    world = picked.world;
+    audio?.play('item');
+    hidePick();
+  }
+
+  /** Shows the current floor's held item offer, if any. */
+  function offerPick(): void {
+    hidePick();
+    if (!run.offer || run.offer.length === 0 || ended) return;
+    // Solo: menu clicks must not attack and held keys must not stick (the game pauses meanwhile).
+    if (!net) input.setSuspended(true);
+    closePick = openItemPick(overlayParent, pickCards(run.offer, world.player.items), Boolean(net), choose);
   }
 
   function restartFloor(): void {
@@ -149,15 +186,18 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Release everything held: menu clicks must not attack, and keys held now must not stick.
     input.setSuspended(true);
     audio?.setDucked(true);
-    closeMenu = options.openMenu({
-      resume: hideMenu,
-      restart: restartFloor,
-      quit: () => {
-        hideMenu();
-        net?.session.leave();
-        options.onQuit?.();
+    closeMenu = options.openMenu(
+      {
+        resume: hideMenu,
+        restart: restartFloor,
+        quit: () => {
+          hideMenu();
+          net?.session.leave();
+          options.onQuit?.();
+        },
       },
-    });
+      heldItems(world.player.items),
+    );
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -170,6 +210,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // F3 would open the browser's find bar.
       e.preventDefault();
       overlay.toggle();
+    } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
+      choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
     else if (e.code === 'Tab' && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
@@ -191,6 +233,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function end(result: GameResult): void {
     if (ended) return;
     ended = true;
+    hidePick();
     audio?.setMusic(null);
     // Let the last hit land on screen before the result screen.
     window.setTimeout(() => options.onEnd(result, { floor: run.floor, seed: run.seed }), 700);
@@ -205,6 +248,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     music();
     announceFloor(true);
+    offerPick();
   }
 
   function simulate(frameMs: number): void {
@@ -249,7 +293,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function frame(now: number): void {
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
-    const time = frameTime(lastFrame, now, simulationPaused(closeMenu !== null, !net));
+    const paused = simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net));
+    const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
     realMs += frameMs;
@@ -298,6 +343,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   resize();
   music();
   announceFloor(false);
+  // Development start below floor 1 (`?floor=`): that floor's offer.
+  offerPick();
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
@@ -308,6 +355,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     stop() {
       closeMenu?.();
       closeMenu = null;
+      closePick?.();
+      closePick = null;
       audio?.setDucked(false);
       audio?.setRumble(0);
       cancelAnimationFrame(raf);

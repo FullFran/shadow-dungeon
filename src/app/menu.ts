@@ -1,3 +1,4 @@
+import type { HeldItem } from '../adapters/hud';
 import { t, type Language } from '../i18n';
 import type { Settings } from './settings';
 import { el, languageRow, lockRow, soundRow, type UpdateSettings } from './settings-panel';
@@ -27,11 +28,22 @@ export interface MenuSettings {
   setLanguage(language: Language): void;
 }
 
+/** The held items section: each item with its stacks and what it does. */
+function itemList(held: readonly HeldItem[]): HTMLElement {
+  if (held.length === 0) return el('p', { className: 'subtitle', textContent: t('pause.noItems') });
+  return el(
+    'ul',
+    { className: 'held-items' },
+    held.map((item) => el('li', {}, [el('strong', { textContent: `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}` }), `: ${item.description}`])),
+  );
+}
+
 /**
- * Builds the Esc menu overlay inside `parent`: resume, quick settings, restart
- * room, quit. Returns a function that removes it.
+ * Builds the Esc menu overlay inside `parent`: resume, restart room, quit,
+ * the held items with their descriptions, quick settings. Returns a function
+ * that removes it.
  */
-export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actions: MenuActions): () => void {
+export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actions: MenuActions, held: readonly HeldItem[] = []): () => void {
   const overlay = el('div', { className: 'overlay' });
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
@@ -47,6 +59,8 @@ export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actio
     const panel = el('div', { className: 'panel' }, [
       el('h1', { textContent: t('pause.title') }),
       el('div', { className: 'row' }, [resume, button('pause.restart', actions.restart), button('pause.quit', actions.quit)]),
+      el('h2', { textContent: t('pause.items') }),
+      itemList(held),
       el('h2', { textContent: t('pause.settings') }),
       languageRow(current, (language) => {
         settings.update({ language });

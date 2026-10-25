@@ -1,8 +1,10 @@
+import { ITEMS, type ItemId, type Rarity } from '../data/items';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { bossBar } from '../core/boss';
+import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { Rect, WorldState } from '../core/state';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
@@ -17,10 +19,32 @@ export const floorLabel = (floor: number): string => `${t('hud.floor')} ${floor}
 export const levelUpText = (species: string, level: number): string =>
   t('hud.levelUp').replace('{name}', t(`species.${species}`)).replace('{level}', String(level));
 
-const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#b9a4ff', disguiseBroken: '#ffd36b', levelUp: '#7fd8ff' };
+const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#b9a4ff', disguiseBroken: '#ffd36b', levelUp: '#7fd8ff', item: '#8fe39a' };
+
+/** Rarity colours, shared by the HUD list and the pick cards' palette in index.html. */
+export const RARITY_COLORS: Record<Rarity, string> = { common: '#c9c2dd', uncommon: '#5aa9ff', rare: '#ffd36b' };
+
+export interface HeldItem {
+  id: ItemId;
+  name: string;
+  description: string;
+  count: number;
+}
+
+/** Held items, one entry per item with its stacks, in pick order (HUD and Esc menu). */
+export function heldItems(items: readonly ItemId[]): HeldItem[] {
+  const out: HeldItem[] = [];
+  for (const id of items) {
+    const known = out.find((h) => h.id === id);
+    if (known) known.count++;
+    else out.push({ id, name: t(`item.${id}`), description: t(`item.${id}.description`), count: 1 });
+  }
+  return out;
+}
 
 function flashText(flash: NonNullable<JuiceState['flash']>, species: string): string {
   if (flash.kind === 'levelUp') return levelUpText(species, flash.level ?? 1);
+  if (flash.kind === 'item') return t('hud.itemTriggered').replace('{item}', t(`item.${flash.item ?? ''}`));
   return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
 }
 
@@ -46,7 +70,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 
 /**
  * HUD in view units (the caller has applied the pixel scale): HP, stamina,
- * level and XP bar, Disguise state, floor counter, move slots with the charge level, boss bar and flashes.
+ * level and XP bar, Disguise state, held items, floor counter, move slots with the charge level, boss bar and flashes.
  */
 export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
   const { player } = state;
@@ -67,6 +91,11 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
   const disguise = player.disguiseBroken ? t('hud.disguise.broken') : t('hud.disguise.intact');
   label(ctx, `${t('passive.disguise')}: ${disguise}`, 8, 50, player.disguiseBroken ? '#9aa0a6' : '#ffd36b');
 
+  // Held items, one line each.
+  heldItems(player.items).forEach((item, i) => {
+    label(ctx, `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}`, 8, 62 + i * 10, RARITY_COLORS[ITEMS[item.id].rarity]);
+  });
+
   // Move slots, bottom left.
   M0_SLOT_LAYOUT.forEach((_, index) => {
     const moveId = player.loadout[index];
@@ -75,7 +104,7 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const x = 8 + index * 112;
     const y = view.height - 30;
     const busy = player.action?.slotIndex === index;
-    const affordable = player.stamina >= move.staminaCost;
+    const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
     ctx.fillStyle = busy ? 'rgba(120, 90, 200, 0.55)' : 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(x, y, 106, 22);
     label(ctx, t(SLOT_KEYS[index] ?? ''), x + 4, y + 9, '#9aa0a6');

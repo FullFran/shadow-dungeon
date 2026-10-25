@@ -1,12 +1,13 @@
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
+import { ITEM_EFFECTS } from '../data/items';
 import { MOVES, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged } from './boss';
-import { computeDamage } from './damage';
+import { computeDamage, typeEffectiveness } from './damage';
 import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
-import { levelDamage } from './progression';
+import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -42,12 +43,16 @@ function chargeOf(move: MoveDef, level: number) {
   return move.charge?.[level] ?? { holdMs: 0, damageMultiplier: 1, sizeMultiplier: 1, speedMultiplier: 1 };
 }
 
-function phaseDuration(move: MoveDef, phase: ActionPhase): number {
-  if (phase === 'windup') return move.windupMs;
-  if (phase === 'active') return move.activeMs;
-  if (phase === 'recovery') return move.recoveryMs;
+/** Length of a move phase, scaled by the player's action time (Quick Claw). */
+function phaseDuration(move: MoveDef, phase: ActionPhase, actionTime: number): number {
+  if (phase === 'windup') return move.windupMs * actionTime;
+  if (phase === 'active') return move.activeMs * actionTime;
+  if (phase === 'recovery') return move.recoveryMs * actionTime;
   return Number.POSITIVE_INFINITY;
 }
+
+/** Damage multiplier of the player's items and level for a move (heavy-slot bonus included). */
+const moveMultiplier = (stats: PlayerStats, move: MoveDef): number => stats.damage * (move.slot === 'heavy' ? stats.heavyDamage : 1);
 
 const NEXT_PHASE: Record<ActionPhase, ActionPhase | null> = {
   charging: 'windup',
@@ -63,7 +68,8 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   const slotIndex = player.loadout.findIndex((moveId, i) => moveId !== null && input.slots[i] && !player.slotsHeld[i]);
   if (slotIndex < 0) return state;
   const move = MOVES[player.loadout[slotIndex]!];
-  if (player.stamina < move.staminaCost) {
+  const cost = move.staminaCost * playerStats(player).staminaCost;
+  if (player.stamina < cost) {
     events.push({ type: 'moveDenied', moveId: move.id });
     return state;
   }
@@ -81,10 +87,7 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     hitIds: [],
     startTick: state.tick,
   };
-  const paid =
-    move.staminaCost > 0
-      ? { stamina: player.stamina - move.staminaCost, staminaRegenDelayMs: TUNING.stamina.regenDelayMs }
-      : {};
+  const paid = cost > 0 ? { stamina: player.stamina - cost, staminaRegenDelayMs: TUNING.stamina.regenDelayMs } : {};
   return { ...state, player: { ...player, ...paid, action } };
 }
 
@@ -129,7 +132,11 @@ function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, eve
   return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? { ...e, hp } : e)) };
 }
 
-/** Damages one enemy, applies stagger and knockback away from `from`, and consumes the next-hit buff. */
+/**
+ * Damages one enemy, applies stagger and knockback away from `from`, and
+ * consumes the next-hit buff. Held items act here: Expert Belt on super
+ * effective hits, Scope Lens crits (seeded RNG) and the Shell Bell heal.
+ */
 function strikeEnemy(
   state: WorldState,
   enemy: EnemyState,
@@ -138,12 +145,17 @@ function strikeEnemy(
 ): WorldState {
   const buff = state.player.nextHitBuff;
   if (enemy.boss && blocksHit(enemy, hit.from)) return blockedStrike(state, enemy, hit, events);
+  const stats = playerStats(state.player);
+  const rolled = rollCrit(state, stats.critChance);
+  state = rolled.state;
+  const superEffective = typeEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
+  const crit = rolled.crit ? ITEM_EFFECTS.critMultiplier : 1;
   const { damage, effectiveness } = computeDamage({
     power: hit.power,
     moveType: hit.type,
     attackerTypes: state.player.types,
     defenderTypes: enemy.types,
-    multiplier: hit.multiplier * (buff?.multiplier ?? 1),
+    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit,
   });
   const hp = Math.max(0, enemy.hp - damage);
   const poise = poiseOf(enemy.species);
@@ -160,7 +172,7 @@ function strikeEnemy(
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
-    player: { ...state.player, nextHitBuff: null },
+    player: { ...onHitDealt(state.player, damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
 }
@@ -168,6 +180,7 @@ function strikeEnemy(
 /** Melee hit test for the active frames of arc and dash moves. */
 function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, events: GameEvent[]): WorldState {
   const charge = chargeOf(move, action.chargeLevel);
+  const stats = playerStats(state.player);
   const origin = state.player.pos;
   let current = state;
   let hitIds = action.hitIds;
@@ -177,12 +190,12 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
     const dist = length(offset);
     let touches = false;
     if (move.hitbox.kind === 'arc') {
-      const reach = move.hitbox.range * charge.sizeMultiplier + enemy.radius;
+      const reach = move.hitbox.range * charge.sizeMultiplier * stats.reach + enemy.radius;
       const halfArc = (move.hitbox.arcDegrees * Math.PI) / 360;
       const cosToEnemy = dist === 0 ? 1 : dot(offset, action.aimDir) / dist;
       touches = dist <= reach && (dist <= enemy.radius || cosToEnemy >= Math.cos(halfArc));
     } else if (move.hitbox.kind === 'dash') {
-      touches = dist <= move.hitbox.radius * charge.sizeMultiplier + enemy.radius;
+      touches = dist <= move.hitbox.radius * charge.sizeMultiplier * stats.reach + enemy.radius;
     }
     if (!touches) continue;
     hitIds = [...hitIds, enemy.id];
@@ -192,7 +205,7 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
       {
         power: move.power,
         type: move.type,
-        multiplier: charge.damageMultiplier * levelDamage(state.player.level),
+        multiplier: charge.damageMultiplier * moveMultiplier(stats, move),
         hitstunMs: move.hitstunMs,
         knockback: move.knockback,
         from: origin,
@@ -207,14 +220,15 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
 function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionState): WorldState {
   if (move.hitbox.kind !== 'projectile') return state;
   const charge = chargeOf(move, action.chargeLevel);
-  const radius = move.hitbox.radius * charge.sizeMultiplier;
+  const stats = playerStats(state.player);
+  const radius = move.hitbox.radius * charge.sizeMultiplier * stats.reach;
   const projectile: ProjectileState = {
     id: `p${state.nextId}`,
     owner: 'player',
     type: move.type,
     attackerTypes: state.player.types,
     power: move.power,
-    damageMultiplier: charge.damageMultiplier * levelDamage(state.player.level),
+    damageMultiplier: charge.damageMultiplier * moveMultiplier(stats, move),
     pos: add(state.player.pos, scale(action.aimDir, PLAYER.radius + radius)),
     vel: scale(action.aimDir, move.hitbox.speed * charge.speedMultiplier),
     radius,
@@ -238,7 +252,7 @@ const confineToArena = (state: WorldState, pos: Vec2, radius: number, solid = tr
 function runActive(state: WorldState, move: MoveDef, action: ActionState, ms: number, events: GameEvent[]): WorldState {
   let current = state;
   if (move.hitbox.kind === 'dash' && ms > 0) {
-    const stepDistance = (move.hitbox.distance * ms) / move.activeMs;
+    const stepDistance = (move.hitbox.distance * ms) / (move.activeMs * playerStats(current.player).actionTime);
     const pos = confineToArena(current, add(current.player.pos, scale(action.aimDir, stepDistance)), PLAYER.radius);
     current = { ...current, player: { ...current.player, pos } };
   }
@@ -265,8 +279,9 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
   }
 
   let remaining = dtMs;
+  const actionTime = playerStats(state.player).actionTime;
   while (action && remaining > 0) {
-    const duration = phaseDuration(move, action.phase);
+    const duration = phaseDuration(move, action.phase, actionTime);
     const take = Math.min(remaining, duration - action.phaseMs);
     if (action.phase === 'active') {
       current = runActive(withAction(current, action), move, action, take, events);

@@ -1,9 +1,10 @@
 import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
 import { confineCircle } from './geometry';
+import { playerStats } from './items';
 import { add, length, normalize, scale, type Vec2 } from './vec';
 
-const { roll: ROLL, stamina: STAMINA, perfectDodge: PERFECT, player: PLAYER, combat: COMBAT } = TUNING;
+const { roll: ROLL, stamina: STAMINA, player: PLAYER, combat: COMBAT } = TUNING;
 const ROLL_SPEED = ROLL.distance / ROLL.durationMs; // px per ms
 
 export function isInvulnerable(player: PlayerState): boolean {
@@ -28,13 +29,14 @@ const confine = (pos: Vec2, arena: Arena): Vec2 => confineCircle(arena, pos, PLA
 
 function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): PlayerState {
   if (player.roll || player.action) return player;
-  if (player.stamina < ROLL.staminaCost) {
+  const cost = ROLL.staminaCost * playerStats(player).staminaCost;
+  if (player.stamina < cost) {
     events.push({ type: 'rollDenied' });
     return player;
   }
   events.push({ type: 'rollStarted' });
   const dir = length(moveDir) > 0 ? moveDir : player.facing;
-  return { ...spendStamina(player, ROLL.staminaCost), roll: { elapsedMs: 0, dir }, facing: dir };
+  return { ...spendStamina(player, cost), roll: { elapsedMs: 0, dir }, facing: dir };
 }
 
 function tickBuff(player: PlayerState, dtMs: number): PlayerState {
@@ -87,5 +89,5 @@ export type HitOutcome = 'hurt' | 'dodged' | 'perfectDodge';
 export function classifyHit(player: PlayerState, _hit: IncomingHit): HitOutcome {
   if (!isInvulnerable(player)) return 'hurt';
   const sinceIframes = (player.roll?.elapsedMs ?? 0) - ROLL.iframesStartMs;
-  return sinceIframes <= PERFECT.windowMs ? 'perfectDodge' : 'dodged';
+  return sinceIframes <= playerStats(player).perfectWindowMs ? 'perfectDodge' : 'dodged';
 }

@@ -49,6 +49,8 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     disguiseBroken: false,
     level: 1,
     xp: 0,
+    items: [],
+    itemUses: {},
   };
 }
 
@@ -113,7 +115,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }
 
-/** Starts a new room: clears enemies and projectiles and restores per-room passives (Disguise). */
+/** Starts a new room: clears enemies and projectiles and restores per-room passives (Disguise) and per-floor item uses. */
 export function enterRoom(state: WorldState): WorldState {
   return {
     ...state,
@@ -121,7 +123,7 @@ export function enterRoom(state: WorldState): WorldState {
     projectiles: [],
     credited: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
-    player: { ...state.player, disguiseBroken: false, action: null },
+    player: { ...state.player, disguiseBroken: false, action: null, itemUses: {} },
     collapse: undefined,
   };
 }

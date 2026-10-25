@@ -1,5 +1,6 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
+import { onLethalHit } from './items';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
 
@@ -10,7 +11,8 @@ export type LandedOutcome = 'hurt' | 'absorbed' | 'dodged' | 'perfectDodge';
 /**
  * Lands a hit on the player, pushing events into `events`. I-frames turn it
  * into a dodge (perfect right after they start: slow-mo + next-hit buff);
- * otherwise Disguise absorbs the first damaging hit of the room.
+ * otherwise Disguise absorbs the first damaging hit of the room. A lethal
+ * hit may be survived with a held item (Focus Sash, items.ts).
  */
 export function landHitOnPlayer(
   state: WorldState,
@@ -39,5 +41,6 @@ export function landHitOnPlayer(
     return { outcome: 'absorbed', state: { ...state, player: { ...player, disguiseBroken: true } } };
   }
   events.push({ type: 'playerHurt', damage: hit.damage });
-  return { outcome: 'hurt', state: { ...state, player: { ...player, hp: Math.max(0, player.hp - hit.damage) } } };
+  const saved = hit.damage >= player.hp ? onLethalHit(player, events) : null;
+  return { outcome: 'hurt', state: { ...state, player: saved ?? { ...player, hp: Math.max(0, player.hp - hit.damage) } } };
 }

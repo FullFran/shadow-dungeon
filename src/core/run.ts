@@ -1,5 +1,7 @@
 import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
+import type { ItemId } from '../data/items';
 import { generateFloor } from './dungeon';
+import { addItem, offerItems } from './items';
 import { loadFloor, onStairs } from './floor';
 import { partyDefeated } from './party';
 import { deriveSeed, nextRandom } from './rng';
@@ -23,6 +25,12 @@ export interface RunState {
   kind: FloorKind;
   /** Set on entering the floor right after a collapse floor: how long the escape took, for its title card. */
   escape: { floor: number; ms: number } | null;
+  /**
+   * Held items offered to the local player on entering this floor (every
+   * floor after the first), until it picks one (`chooseItem`). Entering the
+   * next floor first replaces an unpicked offer.
+   */
+  offer: readonly ItemId[] | null;
 }
 
 export type RunOutcome = 'defeat' | 'victory';
@@ -63,12 +71,23 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   return plan.kind === 'generated' ? loadFloor(deeper, generateFloor(floorSeed(run.seed, run.floor), run.floor), run.kind) : loadRoom(deeper, plan.room);
 }
 
-/** Starts a run on floor 1 (or `floor`, for development: the same floor that seed would reach). */
+/** The offer of a floor for the world's local player: none on floor 1. */
+const offerFor = (run: Pick<RunState, 'seed' | 'floor'>, world: WorldState): readonly ItemId[] | null =>
+  run.floor > 1 ? offerItems(run.seed, run.floor, world.localId, world.player.items) : null;
+
+/** Starts a run on floor 1 (or `floor`, for development: the same floor that seed would reach, with its item offer). */
 export function startRun(seed: number, options: Omit<WorldOptions, 'seed' | 'arena' | 'playerPos'>, floor = 1): { run: RunState; world: WorldState } {
   const start = Math.min(Math.max(1, Math.floor(floor)), RUN_PLAN.length);
-  const run: RunState = { seed, floor: start, kind: floorKind(seed, start), escape: null };
   const base = createWorld({ ...options, seed, arena: { width: 1, height: 1 }, playerPos: vec(0, 0) });
+  const run: RunState = { seed, floor: start, kind: floorKind(seed, start), escape: null, offer: offerFor({ seed, floor: start }, base) };
   return { run, world: enterFloor(base, run) };
+}
+
+/** The local player takes item `index` of the current offer; anything else (no offer, bad index) changes nothing. */
+export function chooseItem(run: RunState, world: WorldState, index: number): { run: RunState; world: WorldState } {
+  const item = run.offer?.[index];
+  if (item === undefined) return { run, world };
+  return { run: { ...run, offer: null }, world: { ...world, player: addItem(world.player, item) } };
 }
 
 function heal(world: WorldState): WorldState {
@@ -79,7 +98,7 @@ function heal(world: WorldState): WorldState {
 /** Moves the run to `floor` (the next one): records a collapse escape, heals, and loads it. */
 function goDown(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
-  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape };
+  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items) };
   return { run: next, world: enterFloor(heal(world), next) };
 }
 

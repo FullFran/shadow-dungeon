@@ -362,7 +362,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     ...shared,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
-    openMenu: (actions) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions),
+    openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     onQuit: () => menu(root),
     onEnd: (result, summary) => resultScreen(root, result, summary, online),
   });

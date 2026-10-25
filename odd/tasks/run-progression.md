@@ -22,7 +22,7 @@ Out of scope: permanent currency, shop, gacha, new species, move-modifying items
 
 ## Tasks
 - [x] T1 Experience and in-run levels (core, data, HUD, sound, co-op XP sharing) (route: delegated writer; trigger: core state/combat, data, adapters, net)
-- [ ] T2 Held items: data, effects in core, pick-1-of-3 overlay on floor entry, co-op behaviour (route: same writer)
+- [x] T2 Held items: data, effects in core, pick-1-of-3 overlay on floor entry, co-op behaviour (route: same writer)
 - [ ] T3 Oran Berries on the floor, host-authoritative pickups in shared runs (route: same writer)
 - [ ] T4 Docs: GDD (Spanish) and README (route: same writer)
 - [ ] T5 Deploy (route: parent, needs user OK)
@@ -44,3 +44,13 @@ Created 2026-10-25. Forecast ~1200 authored lines.
 - Decision: experience is credited at the end of every step from enemies seen down whose id is not yet credited (reset per floor). That one rule covers solo kills, host-applied guest claims, guest snapshots (stale snapshots that show the enemy alive again never pay twice) and collapse deaths (they count: snapshots do not say why an enemy fell, so every peer agrees). A fainted player is credited nothing, so a level-up never revives.
 - Checks: `tests/core/progression.test.ts` RED (module missing) then GREEN (13 tests); `npm test` 364 passed; `npm run build` passed.
 - Commit: `feat(core): add in-run experience and levels with co-op sharing`.
+
+### T2 (done)
+- Data `src/data/items.ts`: 12 items (rarity, `maxStacks`, per-stack stat modifiers) plus `ITEM_EFFECTS` numbers for the hook items and `ITEM_OFFER` (3 cards, rarity weights common 6 / uncommon 3 / rare 1 per item).
+- Core `src/core/items.ts`, one pipeline: `playerStats` folds level and every stack's stat modifiers (multipliers compound, `critChance`/`perfectWindowMs` add); hooks `onHitDealt` (Shell Bell), `onLethalHit` (Focus Sash), `onTick` (Leftovers, Sitrus Berry), `onContact` + `applyRecoil` (Rocky Helmet). Combat reads stats for stamina cost (moves and rolls), phase time, reach, damage (all moves, heavy slot, super effective), crits (world seeded RNG, rolled only with a Scope Lens). `PlayerState.items` (one entry per stack) and `itemUses` (reset per floor).
+- Offers: `offerItems(runSeed, floor, playerId, owned)` seeded from run seed + floor + player id; no duplicates within an offer; capped items never offered. `RunState.offer` set on every floor after the first (boss floor included, and a dev `?floor=` start); `chooseItem` picks. An unpicked offer is replaced by the next floor's.
+- Stack caps (decided per item): Choice Band 1, Focus Sash 1, Quick Claw/Sitrus/Shell Bell/Expert Belt/Bright Powder/Wide Lens 2, Leftovers/Scope Lens/Muscle Band/Rocky Helmet 3.
+- Decisions: Choice Band's stamina tax covers rolls too (fast moves cost 0, so moves alone would not be a trade-off). Focus Sash only stops attacks, not the collapse (the GDD treats rubble as ground, not an attack). Rocky Helmet triggers on melee contact that hurts or is absorbed by Disguise; a guest shows the damage at once and sends it as a hit claim. All defeats count for experience (T1).
+- Overlay `src/app/item-pick.ts` (DOM cards above the canvas, rarity colours in index.html). Solo: modal, input suspended and simulation paused (`pickPausesSimulation`, same policy as the Esc menu). Shared run: a non-modal strip at the bottom, no pause, the player keeps moving and rolling; cards are page elements so a click never reaches the canvas (no attack) and they never take keyboard focus (Space keeps rolling); 1/2/3 pick. Held items in the HUD (one line each, rarity colour) and in the Esc menu with descriptions. Picking also updates the floor-start snapshot so "Restart floor" keeps the item.
+- Checks: `tests/core/items.test.ts` (19, one behaviour test per item, offers, stacking, pipeline; written before the module, though not run RED separately), mutation check (Shell Bell and Rocky Helmet hooks disabled -> their tests fail); `tests/app/item-pick.test.ts` RED (module missing) then GREEN; scripted fighting run in `tests/core/run.test.ts` (levels > 2, 3 items, identical replay); `npm test` 389 passed; `npm run build` passed; headless Firefox screenshot `/tmp/run-progression-pick.png` shows the three cards.
+- Commit: `feat(core): add held items with seeded pick-1-of-3 offers per floor`.

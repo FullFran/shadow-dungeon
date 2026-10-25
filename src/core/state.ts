@@ -1,3 +1,4 @@
+import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
@@ -122,6 +123,10 @@ export interface PlayerState {
   level: number;
   /** Total experience gained this run. */
   xp: number;
+  /** Held items, one entry per stack, in pick order (items.ts). */
+  items: readonly ItemId[];
+  /** Per-floor item triggers used so far (Sitrus Berry, Focus Sash); reset on every floor. */
+  itemUses: Readonly<Partial<Record<ItemId, number>>>;
 }
 
 export interface EnemyState {
@@ -230,6 +235,8 @@ export type GameEvent =
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
   | { type: 'enemyDefeated'; enemyId: string }
+  /** A held item acted (Sitrus Berry heal, Focus Sash save, Rocky Helmet recoil on `enemyId`). */
+  | { type: 'itemTriggered'; item: ItemId; enemyId?: string }
   /** The local player reached `level` (progression.ts). */
   | { type: 'levelUp'; level: number }
   /** Collapsed ground hurt the player (not an attack: no dodge, no Disguise). */

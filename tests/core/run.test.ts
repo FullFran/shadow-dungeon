@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RUN, RUN_PLAN } from '../../src/data/dungeon';
 import { generateFloor } from '../../src/core/dungeon';
-import { floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
+import { chooseItem, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
 import type { PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
@@ -24,7 +24,7 @@ function descend(progress: RunProgress): RunProgress {
 describe('run structure', () => {
   it('starts on floor 1, generated from a floor seed derived from the run seed', () => {
     const { run, world } = startRun(SEED, {});
-    expect(run).toEqual({ seed: SEED, floor: 1, kind: 'normal', escape: null });
+    expect(run).toEqual({ seed: SEED, floor: 1, kind: 'normal', escape: null, offer: null });
     const floor = generateFloor(floorSeed(SEED, 1), 1);
     expect(world.arena.tiles).toEqual(floor);
     expect(world.player.pos).toEqual(tileCenter(floor.start));
@@ -98,5 +98,35 @@ describe('run structure', () => {
     const first = script(SEED);
     expect(script(SEED)).toEqual(first);
     expect(script(SEED + 1)).not.toEqual(first);
+  });
+  it('a scripted run that fights gains levels and items, and replays identically', () => {
+    const fight = (progress: RunProgress): RunProgress => {
+      let current = progress;
+      for (const target of progress.world.enemies) {
+        // Scripted: stand on the enemy, healed, and swing until it falls (or time runs out).
+        current = { ...current, world: { ...current.world, player: { ...current.world.player, pos: target.pos, hp: current.world.player.maxHp } } };
+        for (let tick = 0; tick < 240 && current.world.enemies.find((e) => e.id === target.id)?.alive; tick++) {
+          const swing = tick % 24 === 0;
+          const playerInput = input({ aim: vec(target.pos.x + 30, target.pos.y), slots: [swing, false], slotMouse: [swing, false] });
+          current = { ...current, world: step(current.world, playerInput, FIXED_DT_MS) };
+        }
+      }
+      // Healed before the stairs too: the script tests progression, not survival.
+      return { ...current, world: { ...current.world, player: { ...current.world.player, hp: current.world.player.maxHp } } };
+    };
+    const script = (seed: number) => {
+      let progress: RunProgress = { ...startRun(seed, {}), entered: false, outcome: null };
+      for (let floor = 1; floor <= 3; floor++) {
+        progress = descend(fight(progress));
+        progress = { ...progress, ...chooseItem(progress.run, progress.world, floor % 3) };
+      }
+      return progress;
+    };
+    const first = script(SEED);
+    expect(first.run.floor).toBe(4);
+    expect(first.world.player.level).toBeGreaterThan(2);
+    expect(first.world.player.items).toHaveLength(3);
+    expect(script(SEED)).toEqual(first);
+    expect(script(SEED + 1).world.player).not.toEqual(first.world.player);
   });
 });

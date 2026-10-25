@@ -2,6 +2,7 @@ import { floatsOf, type EnemyAttackDef } from '../data/enemies';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
+import { onContact } from './items';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { add, distance, length, normalize, sub, vec, type Vec2 } from './vec';
 
@@ -65,6 +66,7 @@ export function contactPlayer(
     defenderTypes: state.player.types,
   });
   const landed = landHitOnPlayer(state, { damage }, events);
+  if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);
   const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
 }

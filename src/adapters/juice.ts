@@ -1,4 +1,5 @@
 import { COLLAPSE } from '../data/dungeon';
+import type { ItemId } from '../data/items';
 import type { GameEvent } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -35,15 +36,15 @@ export interface FloatingNumber {
   ageMs: number;
 }
 
-export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp';
+export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp' | 'item';
 
 export interface JuiceState {
   hitstopMs: number;
   shakeMs: number;
   shakePx: number;
   numbers: readonly FloatingNumber[];
-  /** `level`: the level reached, for the level-up text. */
-  flash: { kind: FlashKind; ageMs: number; level?: number } | null;
+  /** `level`: the level reached, for the level-up text; `item`: the held item that saved or healed the player. */
+  flash: { kind: FlashKind; ageMs: number; level?: number; item?: ItemId } | null;
 }
 
 export const initialJuice = (): JuiceState => ({ hitstopMs: 0, shakeMs: 0, shakePx: 0, numbers: [], flash: null });
@@ -91,6 +92,10 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         break;
       case 'perfectDodge':
         next = { ...next, flash: { kind: 'perfectDodge', ageMs: 0 } };
+        break;
+      case 'itemTriggered':
+        // Rocky Helmet shows as the enemy's damage number; the heals and the save get the flash.
+        if (event.item !== 'rocky-helmet') next = { ...next, flash: { kind: 'item', ageMs: 0, item: event.item } };
         break;
       case 'levelUp':
         next = { ...next, flash: { kind: 'levelUp', ageMs: 0, level: event.level } };
