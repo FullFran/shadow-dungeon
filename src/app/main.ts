@@ -1,4 +1,5 @@
 import type { ItemId } from '../data/items';
+import type { MusicContext } from '../data/music';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
@@ -143,14 +144,19 @@ function notice(): HTMLElement {
   return h('footer', { className: 'notice' }, [h('p', { textContent: t('notice.fanProject') }), h('p', { textContent: t('notice.sprites') })]);
 }
 
-/** Replaces the page; menu screens sit over the eclipse backdrop, the run does not. */
-function show(root: HTMLElement, children: Node[], backdrop = true): void {
+/**
+ * Replaces the page; menu screens sit over the eclipse backdrop, the run does not.
+ * Menu screens (title, settings, credits, online, lobby) keep the title music;
+ * the result screen plays its stinger instead, and the run sets its own music.
+ */
+function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title'): void {
   if (running) {
     // Stopping the game leaves its session.
     running.stop();
     running = null;
     current = null;
   }
+  if (backdrop) audio.setMusic(music);
   root.replaceChildren(...(backdrop ? [eclipseBackdrop()] : []), ...children, notice());
 }
 
@@ -364,8 +370,6 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
 
 /** The end screen: result, floor reached, seed, level and items, then retry or back. */
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean): void {
-  audio.setMusic(null);
-  audio.play(result);
   const back = () => titleScreen(root);
   const items: ListItem[] = [{ label: t('screen.menu'), onConfirm: back }];
   if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root) });
@@ -381,7 +385,7 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
       cursorList({ items, onBack: back, className: 'result-actions' }).element,
     ]),
-  ]);
+  ], true, result);
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */

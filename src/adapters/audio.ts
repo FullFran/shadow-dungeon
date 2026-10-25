@@ -1,16 +1,21 @@
 import type { FloorKind } from '../data/dungeon';
 import type { GameEvent } from '../core/state';
 import { MUSIC, type Drum, type MusicId, type MusicTrack, type Note } from '../data/audio';
+import { MUSIC_TRACKS, type LicensedTrack, type MusicContext } from '../data/music';
 import { JUICE } from './juice';
 
 /**
- * Procedural audio with Web Audio, no sound files: retro sfx synthesised from
- * oscillators, a noise buffer, envelopes and filters, plus the chiptune loops
- * of `data/audio.ts` played by a lookahead scheduler on the AudioContext clock.
- * The mapping, throttling and gain maths are pure; the Web Audio part is thin
- * and becomes a silent no-op where `AudioContext` does not exist (tests, old
- * browsers). Browsers block autoplay, so the context is created on the first
- * user gesture (`unlock`).
+ * Web Audio: retro sfx synthesised from oscillators, a noise buffer,
+ * envelopes and filters, and the licensed music of `data/music.ts`: each
+ * context's file is fetched and decoded the first time it plays (a small LRU
+ * keeps recent buffers), looped gaplessly by an AudioBufferSourceNode between
+ * its loop points, and cross-faded on context changes. When a file cannot be
+ * fetched or decoded, the context falls back to the chiptune loops of
+ * `data/audio.ts` (played by a lookahead scheduler on the AudioContext clock).
+ * The mapping, throttling, gain, loop and fade maths are pure; the Web Audio
+ * part is thin and becomes a silent no-op where `AudioContext` does not exist
+ * (tests, old browsers). Browsers block autoplay, so the context is created on
+ * the first user gesture (`unlock`).
  */
 export const SOUND_IDS = [
   'swingFast',
@@ -153,13 +158,107 @@ export function stepSeconds(bpm: number, stepsPerBar: number): number {
 
 export const midiToHz = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
 
+// ---------------------------------------------------------------------------
+// Licensed music: pure parts.
+
+/** Music of a dungeon floor: the guardian on the boss floor, the urgent track on a collapse, the Crypt loop otherwise. */
+export function floorMusic(bossFloor: boolean, kind: FloorKind): MusicContext {
+  if (bossFloor) return 'guardian';
+  return kind === 'collapse' ? 'collapse' : 'crypt';
+}
+
+export type MusicFormat = 'ogg' | 'mp3';
+
+/** Formats to try in order: Ogg Opus where the browser says it can play it (Safari before 18.4 cannot), MP3 first otherwise. */
+export function musicFormats(canPlayType: (mime: string) => string): MusicFormat[] {
+  return canPlayType('audio/ogg; codecs="opus"') ? ['ogg', 'mp3'] : ['mp3', 'ogg'];
+}
+
+export const musicUrl = (baseUrl: string, file: string, format: MusicFormat): string => `${baseUrl}music/${file}.${format}`;
+
+/**
+ * Encoder delay at the start of each format, in seconds: Opus pre-skip
+ * (312 samples at 48 kHz, libopus) and the LAME delay (1105 samples at
+ * 44.1 kHz). Decoders normally trim it; a buffer longer than the file means
+ * one did not.
+ */
+export const START_PAD_S: Record<MusicFormat, number> = { ogg: 312 / 48000, mp3: 1105 / 44100 };
+
+/** Start offset and loop points in the decoded buffer: the manifest's, shifted by the start padding when the decoder kept it. */
+export function loopWindow(track: LicensedTrack, bufferDuration: number, startPad: number): { offset: number; loopStart: number; loopEnd: number } {
+  const extra = bufferDuration - track.duration;
+  const offset = extra > 0.001 ? Math.min(startPad, extra) : 0;
+  return { offset, loopStart: track.loopStart + offset, loopEnd: Math.min(track.loopEnd + offset, bufferDuration) };
+}
+
+/** Length of a cross-fade between two contexts. */
+export const CROSSFADE_S = 1.2;
+/** How fast a loop gets out of the way of a stinger. */
+export const STINGER_FADE_S = 0.25;
+/** Decoded buffers kept (a long track decodes to tens of MB). */
+export const MUSIC_CACHE = 2;
+const CURVE_STEPS = 64;
+
+/** Gain curve from `from` to `to` on equal-power (quarter sine/cosine) shapes, so a fade-out and a fade-in sum to constant power. */
+export function fadeCurve(from: number, to: number, steps: number): Float32Array {
+  const curve = new Float32Array(steps);
+  for (let i = 0; i < steps; i++) {
+    const p = (i / (steps - 1)) * (Math.PI / 2);
+    curve[i] = from * Math.cos(p) + to * Math.sin(p);
+  }
+  curve[0] = from;
+  curve[steps - 1] = to;
+  return curve;
+}
+
+export interface Lru<K, V> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+}
+
+/** A tiny least-recently-used map: reading or writing a key makes it the newest; the oldest goes past `capacity`. */
+export function createLru<K, V>(capacity: number): Lru<K, V> {
+  const map = new Map<K, V>();
+  return {
+    get(key) {
+      if (!map.has(key)) return undefined;
+      const value = map.get(key)!;
+      map.delete(key);
+      map.set(key, value);
+      return value;
+    },
+    set(key, value) {
+      map.delete(key);
+      map.set(key, value);
+      while (map.size > capacity) map.delete(map.keys().next().value!);
+    },
+  };
+}
+
+/** What the music needs from the page; injectable for tests. A null `fetchBytes` means no network (procedural music only). */
+export interface MusicDeps {
+  fetchBytes: ((url: string) => Promise<ArrayBuffer>) | null;
+  canPlayType: (mime: string) => string;
+  /** Where `public/` is served from (Vite's base). */
+  baseUrl: string;
+}
+
+function browserMusicDeps(): MusicDeps {
+  const fetchBytes =
+    typeof fetch === 'function'
+      ? (url: string) => fetch(url).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${url} -> HTTP ${r.status}`))))
+      : null;
+  const probe = typeof document !== 'undefined' ? document.createElement('audio') : null;
+  return { fetchBytes, canPlayType: (mime) => probe?.canPlayType(mime) ?? '', baseUrl: import.meta.env.BASE_URL };
+}
+
 export interface AudioEngine {
   /** Creates or resumes the AudioContext; call from a user gesture. Idempotent. */
   unlock(): void;
   play(id: SoundId): void;
   handleEvents(events: readonly GameEvent[]): void;
-  /** Switches the loop (no-op if it is already playing); null fades the music out. */
-  setMusic(id: MusicId | null): void;
+  /** Switches the music context (no-op if it is already playing or loading); null fades the music out. Stingers play once. */
+  setMusic(context: MusicContext | null): void;
   setVolumes(levels: AudioLevels): void;
   /** Lowers the music while the Esc menu is open. */
   setDucked(ducked: boolean): void;
@@ -170,7 +269,6 @@ export interface AudioEngine {
 const GATE = { minGapMs: 40, maxVoices: 12 };
 const LOOKAHEAD_S = 0.12;
 const SCHEDULER_MS = 25;
-const FADE_S = 0.6;
 
 // ---------------------------------------------------------------------------
 // Web Audio: synthesis primitives and recipes.
@@ -393,7 +491,33 @@ interface Playback {
   step: number;
   nextTime: number;
   bus: GainNode;
-  timer: ReturnType<typeof setInterval>;
+}
+
+/** The music playing now (a file or a chiptune), on its own gain under the music bus. */
+interface MusicVoice {
+  context: MusicContext;
+  stop(fadeS: number): void;
+}
+
+/** Sets a gain along an equal-power curve; a linear ramp where curves are refused. */
+function rampGain(param: AudioParam, from: number, to: number, t: number, dur: number): void {
+  const p = param as AudioParam & { cancelAndHoldAtTime?: (t: number) => void };
+  if (typeof p.cancelAndHoldAtTime === 'function') p.cancelAndHoldAtTime(t);
+  else param.cancelScheduledValues(t);
+  try {
+    param.setValueCurveAtTime(fadeCurve(from, to, CURVE_STEPS), t, dur);
+  } catch {
+    param.setValueAtTime(from, t);
+    param.linearRampToValueAtTime(to, t + dur);
+  }
+}
+
+/** decodeAudioData with both the promise and the callback form (older Safari has only the latter). */
+function decode(ctx: AudioContext, bytes: ArrayBuffer): Promise<AudioBuffer> {
+  return new Promise((resolve, reject) => {
+    const result = ctx.decodeAudioData(bytes, resolve, reject) as Promise<AudioBuffer> | undefined;
+    if (result && typeof result.then === 'function') result.then(resolve, reject);
+  });
 }
 
 type AudioContextCtor = new () => AudioContext;
@@ -403,14 +527,20 @@ function audioContextCtor(): AudioContextCtor | null {
   return g.AudioContext ?? g.webkitAudioContext ?? null;
 }
 
-export function createAudio(initial: AudioLevels): AudioEngine {
+export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusicDeps()): AudioEngine {
   let levels = initial;
   let ducked = false;
   let ctx: AudioContext | null = null;
   let buses: { master: GainNode; music: GainNode; sfx: GainNode } | null = null;
   let noiseBuffer: AudioBuffer | null = null;
-  let wanted: MusicId | null = null;
-  let playback: Playback | null = null;
+  /** The context the game asked for, and the one playing or loading (they differ only before unlock). */
+  let wanted: MusicContext | null = null;
+  let active: MusicContext | null = null;
+  let voice: MusicVoice | null = null;
+  /** Bumped on every switch: a load that resolves for an older switch is dropped. */
+  let switchId = 0;
+  const decoded = createLru<MusicContext, { buffer: AudioBuffer; format: MusicFormat }>(MUSIC_CACHE);
+  const formats = musicFormats(deps.canPlayType);
   let rumble: { gain: GainNode } | null = null;
   const gate = createSfxGate(GATE);
 
@@ -425,9 +555,8 @@ export function createAudio(initial: AudioLevels): AudioEngine {
     buses.sfx.gain.setTargetAtTime(gains.sfx, t, 0.02);
   }
 
-  function schedule(): void {
-    if (!ctx || !playback) return;
-    const p = playback;
+  function schedule(p: Playback): void {
+    if (!ctx) return;
     const s = synth(p.bus);
     if (!s) return;
     const stepS = stepSeconds(p.track.bpm, p.track.stepsPerBar);
@@ -446,24 +575,106 @@ export function createAudio(initial: AudioLevels): AudioEngine {
     }
   }
 
-  function stopMusic(): void {
-    if (!playback || !ctx) return;
-    const { bus, timer } = playback;
-    clearInterval(timer);
-    const t = ctx.currentTime;
-    bus.gain.cancelScheduledValues(t);
-    bus.gain.setValueAtTime(bus.gain.value, t);
-    bus.gain.linearRampToValueAtTime(0, t + FADE_S);
-    setTimeout(() => bus.disconnect(), (FADE_S + 0.3) * 1000);
-    playback = null;
+  /** A fresh gain under the music bus for one voice, silent until faded in. */
+  function voiceBus(): GainNode | null {
+    if (!ctx || !buses) return null;
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0, ctx.currentTime);
+    bus.connect(buses.music);
+    return bus;
   }
 
-  function startMusic(id: MusicId): void {
-    if (!ctx || !buses) return;
-    const bus = ctx.createGain();
-    bus.connect(buses.music);
-    playback = { track: MUSIC[id], step: 0, nextTime: ctx.currentTime + 0.05, bus, timer: setInterval(schedule, SCHEDULER_MS) };
-    schedule();
+  function fadeOut(bus: GainNode, fadeS: number): void {
+    if (!ctx) return;
+    rampGain(bus.gain, bus.gain.value, 0, ctx.currentTime, fadeS);
+    setTimeout(() => bus.disconnect(), (fadeS + 0.3) * 1000);
+  }
+
+  function startProcedural(context: MusicContext, id: MusicId, fadeS: number): MusicVoice | null {
+    const bus = voiceBus();
+    if (!ctx || !bus) return null;
+    rampGain(bus.gain, 0, 1, ctx.currentTime, fadeS);
+    const p: Playback = { track: MUSIC[id], step: 0, nextTime: ctx.currentTime + 0.05, bus };
+    const timer = setInterval(() => schedule(p), SCHEDULER_MS);
+    schedule(p);
+    return {
+      context,
+      stop(f) {
+        clearInterval(timer);
+        fadeOut(bus, f);
+      },
+    };
+  }
+
+  function startFile(context: MusicContext, buffer: AudioBuffer, format: MusicFormat, fadeS: number): MusicVoice | null {
+    const bus = voiceBus();
+    if (!ctx || !bus) return null;
+    const track = MUSIC_TRACKS[context];
+    const window = loopWindow(track, buffer.duration, START_PAD_S[format]);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    if (track.loop) {
+      source.loop = true;
+      source.loopStart = window.loopStart;
+      source.loopEnd = window.loopEnd;
+    }
+    source.connect(bus);
+    const t = ctx.currentTime;
+    if (fadeS > 0) rampGain(bus.gain, 0, track.gain, t, fadeS);
+    else bus.gain.setValueAtTime(track.gain, t);
+    source.start(t, window.offset);
+    return {
+      context,
+      stop(f) {
+        if (!ctx) return;
+        fadeOut(bus, f);
+        source.stop(ctx.currentTime + f + 0.05);
+      },
+    };
+  }
+
+  /** The decoded buffer of a context: cached, or fetched and decoded trying each format in turn; null if none works. */
+  async function load(context: MusicContext): Promise<{ buffer: AudioBuffer; format: MusicFormat } | null> {
+    const cached = decoded.get(context);
+    if (cached) return cached;
+    const fetchBytes = deps.fetchBytes;
+    if (!fetchBytes) return null;
+    for (const format of formats) {
+      try {
+        const bytes = await fetchBytes(musicUrl(deps.baseUrl, MUSIC_TRACKS[context].file, format));
+        if (!ctx) return null;
+        const entry = { buffer: await decode(ctx, bytes), format };
+        decoded.set(context, entry);
+        return entry;
+      } catch {
+        // Next format; the procedural fallback when none is left.
+      }
+    }
+    return null;
+  }
+
+  /** No usable file: the context's chiptune loop, the synthesised stinger, or silence. */
+  function fallback(context: MusicContext): void {
+    const track = MUSIC_TRACKS[context];
+    if (track.fallback) voice = startProcedural(context, track.fallback, CROSSFADE_S);
+    else if (context === 'victory' || context === 'defeat') play(context);
+  }
+
+  function switchTo(next: MusicContext | null): void {
+    const id = ++switchId;
+    active = next;
+    const stinger = next !== null && !MUSIC_TRACKS[next].loop;
+    voice?.stop(stinger ? STINGER_FADE_S : CROSSFADE_S);
+    voice = null;
+    if (!next || !ctx) return;
+    const begin = (entry: { buffer: AudioBuffer; format: MusicFormat } | null) => {
+      if (id !== switchId) return;
+      if (entry) voice = startFile(next, entry.buffer, entry.format, stinger ? 0 : CROSSFADE_S);
+      else fallback(next);
+    };
+    // Without a network there is nothing to wait for: fall back now.
+    if (!deps.fetchBytes && !decoded.get(next)) begin(null);
+    else void load(next).then(begin);
   }
 
   function play(id: SoundId): void {
@@ -520,7 +731,7 @@ export function createAudio(initial: AudioLevels): AudioEngine {
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
       applyLevels();
       if (ctx.state === 'suspended') void ctx.resume();
-      if (wanted) startMusic(wanted);
+      if (wanted) switchTo(wanted);
     },
     play,
     handleEvents(events) {
@@ -529,11 +740,10 @@ export function createAudio(initial: AudioLevels): AudioEngine {
         if (id) play(id);
       }
     },
-    setMusic(id) {
-      if (id === wanted && (playback || !ctx)) return;
-      wanted = id;
-      stopMusic();
-      if (id) startMusic(id);
+    setMusic(context) {
+      if (context === wanted && (!ctx || active === context)) return;
+      wanted = context;
+      if (ctx) switchTo(context);
     },
     setVolumes(next) {
       levels = next;

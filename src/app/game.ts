@@ -11,7 +11,7 @@ import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
-import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
+import { floorEntrySounds, floorMusic, type AudioEngine } from '../adapters/audio';
 import { heldItems, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
@@ -47,7 +47,7 @@ export interface GameOptions {
   seed?: number;
   /** Development only: start on this floor of the run (`?floor=` on the dev server). */
   startFloor?: number;
-  /** Sound effects from core events and the room / boss music (ducked while the Esc menu is open). */
+  /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
   onToggleMute?(): void;
@@ -122,7 +122,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let closePick: (() => void) | null = null;
   const overlayParent = canvas.parentElement ?? document.body;
   const audio = options.audio;
-  const music = () => audio?.setMusic(isBossFloor(run) ? 'boss' : 'room');
+  // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
+  const music = () => audio?.setMusic(floorMusic(isBossFloor(run), run.kind));
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
   /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */

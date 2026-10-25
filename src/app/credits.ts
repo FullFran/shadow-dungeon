@@ -1,11 +1,12 @@
 import creditsMarkdown from '../../CREDITS.md?raw';
+import { MUSIC_TRACKS } from '../data/music';
 import { t } from '../i18n';
 import { h, mdWindow } from '../ui/window';
 
 /**
  * The Credits screen: the fan-project notice, the sprite artists read from
- * CREDITS.md (so the screen never drifts from the generated file), the font
- * and the audio.
+ * CREDITS.md (so the screen never drifts from the generated file), the font,
+ * the licensed music (from its manifest) and the synthesised audio.
  */
 export interface CreditedArtist {
   name: string;
@@ -53,6 +54,8 @@ export function creditsWindow(footer: HTMLElement): HTMLElement {
       h('p', { textContent: t('credits.sprites') }),
       h('ul', { className: 'credit-list' }, artists),
       h('p', { textContent: t('credits.font') }),
+      h('p', { textContent: t('credits.music') }),
+      h('ul', { className: 'credit-list' }, Object.values(MUSIC_TRACKS).map((track) => h('li', {}, [h('a', { href: track.sourceUrl, target: '_blank', rel: 'noopener noreferrer', textContent: track.attribution })]))),
       h('p', { textContent: t('credits.audio') }),
     ]),
     footer,

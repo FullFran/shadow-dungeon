@@ -1,6 +1,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GameEvent } from '../../src/core/state';
-import { busGains, MENU_DUCK, createAudio, createSfxGate, soundFor, SOUND_IDS, stepSeconds } from '../../src/adapters/audio';
+import {
+  busGains,
+  CROSSFADE_S,
+  MENU_DUCK,
+  createAudio,
+  createLru,
+  createSfxGate,
+  fadeCurve,
+  floorMusic,
+  loopWindow,
+  musicFormats,
+  musicUrl,
+  soundFor,
+  SOUND_IDS,
+  START_PAD_S,
+  stepSeconds,
+  type MusicDeps,
+} from '../../src/adapters/audio';
+import { MUSIC_TRACKS, type MusicContext } from '../../src/data/music';
 
 describe('event -> sound mapping', () => {
   const cases: [GameEvent, string | null][] = [
@@ -101,12 +119,32 @@ describe('engine without Web Audio', () => {
       audio.unlock();
       audio.play('hit');
       audio.handleEvents([{ type: 'rollStarted' }]);
-      audio.setMusic('room');
+      audio.setMusic('crypt');
+      audio.setMusic('victory');
       audio.setMusic(null);
       audio.setVolumes({ masterVolume: 0, musicVolume: 0, sfxVolume: 0, muted: true });
     }).not.toThrow();
   });
 });
+
+interface FakeSource {
+  buffer: unknown;
+  loop: boolean;
+  loopStart: number;
+  loopEnd: number;
+  startedAt: number | null;
+  offset: number;
+  stoppedAt: number | null;
+  connect: (n: unknown) => unknown;
+  disconnect: () => void;
+  start: (t: number, offset?: number) => void;
+  stop: (t: number) => void;
+}
+
+interface FakeGain {
+  gain: { value: number; curves: { from: number; to: number; t: number; dur: number }[] };
+  disconnected: boolean;
+}
 
 /** Just enough of Web Audio to run the synthesis; it throws where real browsers do. */
 class FakeAudioContext {
@@ -115,10 +153,19 @@ class FakeAudioContext {
   sampleRate = 64;
   destination = {};
   started = 0;
+  sources: FakeSource[] = [];
+  gains: FakeGain[] = [];
   private param() {
-    return {
+    const param = {
       value: 1,
-      setValueAtTime: () => undefined,
+      curves: [] as { from: number; to: number; t: number; dur: number }[],
+      setValueCurveAtTime: (curve: Float32Array, t: number, dur: number) => {
+        param.curves.push({ from: curve[0]!, to: curve[curve.length - 1]!, t, dur });
+        param.value = curve[curve.length - 1]!;
+      },
+      setValueAtTime: (v: number) => {
+        param.value = v;
+      },
       linearRampToValueAtTime: () => undefined,
       setTargetAtTime: () => undefined,
       cancelScheduledValues: () => undefined,
@@ -126,12 +173,18 @@ class FakeAudioContext {
         if (!(v > 0)) throw new RangeError('exponential ramp to a non-positive value');
       },
     };
+    return param;
   }
   private node() {
     return { connect: (n: unknown) => n, disconnect: () => undefined };
   }
   createGain() {
-    return { ...this.node(), gain: this.param() };
+    const gain = { ...this.node(), gain: this.param(), disconnected: false };
+    gain.disconnect = () => {
+      gain.disconnected = true;
+    };
+    this.gains.push(gain);
+    return gain;
   }
   createOscillator() {
     return { ...this.node(), type: 'sine', frequency: this.param(), start: () => this.started++, stop: () => undefined };
@@ -140,15 +193,36 @@ class FakeAudioContext {
     return { ...this.node(), type: 'lowpass', Q: this.param(), frequency: this.param() };
   }
   createBufferSource() {
-    return {
+    const source: FakeSource = {
       ...this.node(),
       buffer: null,
-      start: (_t: number, offset = 0) => {
+      loop: false,
+      loopStart: 0,
+      loopEnd: 0,
+      startedAt: null,
+      offset: 0,
+      stoppedAt: null,
+      start: (t: number, offset = 0) => {
         if (offset < 0) throw new RangeError('negative offset');
+        source.startedAt = t;
+        source.offset = offset;
         this.started++;
       },
-      stop: () => undefined,
+      stop: (t: number) => {
+        source.stoppedAt = t;
+      },
     };
+    this.sources.push(source);
+    return source;
+  }
+  /** "Decodes" the bytes from fakeFetch: the file name, or a rejection for names in `undecodable`. */
+  undecodable = new Set<string>();
+  decodeAudioData(bytes: ArrayBuffer) {
+    const url = new TextDecoder().decode(bytes);
+    const file = url.split('/').pop()!;
+    if (this.undecodable.has(file)) return Promise.reject(new Error('EncodingError'));
+    const track = Object.values(MUSIC_TRACKS).find((t) => file.startsWith(`${t.file}.`))!;
+    return Promise.resolve({ duration: track.duration, url, getChannelData: () => new Float32Array(0) });
   }
   createBuffer(_channels: number, length: number) {
     return { duration: 1, getChannelData: () => new Float32Array(length) };
@@ -157,6 +231,234 @@ class FakeAudioContext {
     return Promise.resolve();
   }
 }
+
+const LEVELS = { masterVolume: 1, musicVolume: 1, sfxVolume: 1, muted: false };
+const offline: MusicDeps = { fetchBytes: null, canPlayType: () => 'probably', baseUrl: './' };
+const flush = async () => {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+};
+
+/** A fake AudioContext global and a fetch that serves every music file by name (and counts requests). */
+function setup(options: { canPlay?: string; missing?: string[] } = {}) {
+  let ctx: FakeAudioContext | null = null;
+  vi.stubGlobal(
+    'AudioContext',
+    class extends FakeAudioContext {
+      constructor() {
+        super();
+        ctx = this;
+      }
+    },
+  );
+  const fetched: string[] = [];
+  const deps: MusicDeps = {
+    baseUrl: './',
+    canPlayType: () => options.canPlay ?? 'probably',
+    fetchBytes: (url) => {
+      fetched.push(url);
+      if (options.missing?.some((m) => url.endsWith(m))) return Promise.reject(new Error('404'));
+      return Promise.resolve(new TextEncoder().encode(url).buffer as ArrayBuffer);
+    },
+  };
+  const audio = createAudio(LEVELS, deps);
+  audio.unlock();
+  return { audio, fetched, fake: ctx as unknown as FakeAudioContext };
+}
+
+const fileSources = (fake: FakeAudioContext) => fake.sources.filter((s) => (s.buffer as { url?: string } | null)?.url);
+const urlOf = (s: FakeSource) => (s.buffer as { url: string }).url;
+
+describe('music: pure parts', () => {
+  it('maps floors to music contexts', () => {
+    expect(floorMusic(false, 'normal')).toBe('crypt');
+    expect(floorMusic(false, 'collapse')).toBe('collapse');
+    expect(floorMusic(true, 'normal')).toBe('guardian');
+    expect(floorMusic(true, 'collapse')).toBe('guardian');
+  });
+
+  it('prefers Ogg Opus where the browser can play it, MP3 first otherwise', () => {
+    expect(musicFormats(() => 'probably')).toEqual(['ogg', 'mp3']);
+    expect(musicFormats(() => 'maybe')).toEqual(['ogg', 'mp3']);
+    expect(musicFormats(() => '')).toEqual(['mp3', 'ogg']);
+    expect(musicUrl('./', 'lonely-village', 'ogg')).toBe('./music/lonely-village.ogg');
+    expect(musicUrl('/game/', 'the-fallen', 'mp3')).toBe('/game/music/the-fallen.mp3');
+  });
+
+  it('keeps the loop points when the decoder trimmed the codec padding', () => {
+    const track = MUSIC_TRACKS.guardian;
+    expect(loopWindow(track, track.duration, START_PAD_S.mp3)).toEqual({ offset: 0, loopStart: track.loopStart, loopEnd: track.loopEnd });
+    // A sub-millisecond difference is rounding, not padding.
+    expect(loopWindow(track, track.duration + 0.0005, START_PAD_S.mp3).offset).toBe(0);
+  });
+
+  it('shifts the loop points by the start padding when the decoder kept it', () => {
+    const track = MUSIC_TRACKS.collapse;
+    const w = loopWindow(track, track.duration + 0.05, START_PAD_S.mp3);
+    expect(w.offset).toBeCloseTo(START_PAD_S.mp3, 9);
+    expect(w.loopStart).toBeCloseTo(track.loopStart + START_PAD_S.mp3, 9);
+    expect(w.loopEnd).toBeCloseTo(track.loopEnd + START_PAD_S.mp3, 9);
+    // Never past the end of the buffer, never more than the extra length.
+    const tight = loopWindow(track, track.duration + 0.003, START_PAD_S.mp3);
+    expect(tight.offset).toBeCloseTo(0.003, 9);
+    expect(tight.loopEnd).toBeLessThanOrEqual(track.duration + 0.003);
+  });
+
+  it('builds equal-power fade curves that cross at constant power', () => {
+    const out = fadeCurve(1, 0, 33);
+    const into = fadeCurve(0, 1, 33);
+    expect([out[0], out[32], into[0], into[32]]).toEqual([1, 0, 0, 1]);
+    for (let i = 0; i < 33; i++) expect(out[i]! ** 2 + into[i]! ** 2).toBeCloseTo(1, 6);
+    const scaled = fadeCurve(0, 0.5, 9);
+    expect(scaled[8]).toBe(0.5);
+    for (let i = 1; i < 9; i++) expect(scaled[i]!).toBeGreaterThan(scaled[i - 1]!);
+  });
+
+  it('keeps the most recently used entries of a small LRU', () => {
+    const lru = createLru<string, number>(2);
+    lru.set('a', 1);
+    lru.set('b', 2);
+    expect(lru.get('a')).toBe(1); // a is now the most recent
+    lru.set('c', 3); // evicts b
+    expect(lru.get('b')).toBeUndefined();
+    expect(lru.get('a')).toBe(1);
+    expect(lru.get('c')).toBe(3);
+    lru.set('a', 9);
+    lru.set('d', 4); // evicts c
+    expect([lru.get('a'), lru.get('c'), lru.get('d')]).toEqual([9, undefined, 4]);
+  });
+});
+
+describe('music: licensed tracks on a fake AudioContext', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('loads nothing until there is an AudioContext, then plays the wanted loop gaplessly', async () => {
+    const fetchBytes = vi.fn();
+    vi.stubGlobal('AudioContext', undefined);
+    const silent = createAudio(LEVELS, { ...offline, fetchBytes });
+    silent.setMusic('title');
+    silent.unlock();
+    await flush();
+    expect(fetchBytes).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+
+    const { audio, fetched, fake } = setup();
+    audio.setMusic('title');
+    await flush();
+    expect(fetched).toEqual(['./music/lonely-village.ogg']);
+    const [source] = fileSources(fake);
+    expect(source).toMatchObject({ loop: true, loopStart: MUSIC_TRACKS.title.loopStart, loopEnd: MUSIC_TRACKS.title.loopEnd, offset: 0 });
+    // Asking again for the playing context changes nothing.
+    audio.setMusic('title');
+    await flush();
+    expect(fileSources(fake)).toHaveLength(1);
+  });
+
+  it('cross-fades between contexts and reuses decoded buffers', async () => {
+    const { audio, fetched, fake } = setup();
+    audio.setMusic('title');
+    await flush();
+    fake.currentTime = 10;
+    audio.setMusic('crypt');
+    await flush();
+    const [title, crypt] = fileSources(fake);
+    expect(urlOf(crypt!)).toBe('./music/dungeon-ambience.ogg');
+    expect(title!.stoppedAt).toBeGreaterThanOrEqual(10 + CROSSFADE_S);
+    expect(CROSSFADE_S).toBeGreaterThanOrEqual(1);
+    expect(CROSSFADE_S).toBeLessThanOrEqual(1.5);
+    const buses = fake.gains.filter((g) => g.gain.curves.length > 0);
+    const fadeOut = buses.flatMap((g) => g.gain.curves).find((c) => c.to === 0 && c.t === 10)!;
+    const fadeIn = buses.flatMap((g) => g.gain.curves).find((c) => c.from === 0 && c.t === 10)!;
+    expect(fadeOut.dur).toBe(CROSSFADE_S);
+    expect(fadeIn).toMatchObject({ dur: CROSSFADE_S, to: MUSIC_TRACKS.crypt.gain });
+    // Back to the title: decoded already, no new request.
+    audio.setMusic('title');
+    await flush();
+    expect(fetched).toEqual(['./music/lonely-village.ogg', './music/dungeon-ambience.ogg']);
+    expect(fileSources(fake)).toHaveLength(3);
+  });
+
+  it('evicts the least recently used buffer beyond the cache size', async () => {
+    const { audio, fetched } = setup();
+    for (const context of ['title', 'crypt', 'collapse', 'title'] as MusicContext[]) {
+      audio.setMusic(context);
+      await flush();
+    }
+    expect(fetched.filter((u) => u.endsWith('lonely-village.ogg'))).toHaveLength(2);
+  });
+
+  it('drops a load that finished after the context changed', async () => {
+    const { audio, fake } = setup();
+    audio.setMusic('crypt');
+    audio.setMusic('guardian');
+    await flush();
+    expect(fileSources(fake).map(urlOf)).toEqual(['./music/boss-battle-2.ogg']);
+    expect(fileSources(fake)[0]).toMatchObject({ loopStart: MUSIC_TRACKS.guardian.loopStart, loopEnd: MUSIC_TRACKS.guardian.loopEnd });
+  });
+
+  it('falls back to the MP3 when Ogg does not decode, and asks for MP3 first where Ogg is unsupported', async () => {
+    const first = setup();
+    first.fake.undecodable.add('out-of-time.ogg');
+    first.audio.setMusic('collapse');
+    await flush();
+    expect(first.fetched).toEqual(['./music/out-of-time.ogg', './music/out-of-time.mp3']);
+    expect(fileSources(first.fake).map(urlOf)).toEqual(['./music/out-of-time.mp3']);
+    vi.unstubAllGlobals();
+    const safari = setup({ canPlay: '' });
+    safari.audio.setMusic('collapse');
+    await flush();
+    expect(safari.fetched).toEqual(['./music/out-of-time.mp3']);
+  });
+
+  it('plays stingers once, stopping the loop quickly', async () => {
+    const { audio, fake } = setup();
+    audio.setMusic('guardian');
+    await flush();
+    fake.currentTime = 50;
+    audio.setMusic('victory');
+    await flush();
+    const [boss, fanfare] = fileSources(fake);
+    expect(fanfare).toMatchObject({ loop: false, startedAt: 50 });
+    expect(boss!.stoppedAt).toBeLessThan(50 + CROSSFADE_S);
+  });
+
+  it('falls back to the procedural loop, or the synthesised stinger, when a file is missing', async () => {
+    vi.useFakeTimers();
+    const { audio, fake } = setup({ missing: ['dungeon-ambience.ogg', 'dungeon-ambience.mp3', 'the-fallen.ogg', 'the-fallen.mp3'] });
+    audio.setMusic('crypt');
+    await flush();
+    expect(fileSources(fake)).toHaveLength(0);
+    const before = fake.started;
+    const tick = (ms: number) => {
+      for (let i = 0; i < ms / 25; i++) {
+        fake.currentTime += 0.025;
+        vi.advanceTimersByTime(25);
+      }
+    };
+    tick(2000);
+    expect(fake.started).toBeGreaterThan(before); // chiptune notes keep being scheduled
+    audio.setMusic('defeat');
+    await flush();
+    const afterStinger = fake.started;
+    // The chiptune stopped: no more notes.
+    tick(2000);
+    expect(fake.started).toBe(afterStinger);
+    // The synthesised defeat stinger played instead of the file.
+    const defeatOnly = setup({ missing: ['.ogg', '.mp3'] });
+    defeatOnly.audio.setMusic('defeat');
+    await flush();
+    expect(defeatOnly.fake.started).toBeGreaterThan(0);
+  });
+
+  it('keeps the title silent when its file is missing (no procedural title loop)', async () => {
+    const { audio, fake } = setup({ missing: ['.ogg', '.mp3'] });
+    audio.setMusic('title');
+    await flush();
+    expect(fake.started).toBe(0);
+  });
+});
 
 describe('engine with a fake AudioContext', () => {
   afterEach(() => {
@@ -176,8 +478,9 @@ describe('engine with a fake AudioContext', () => {
         }
       },
     );
-    const audio = createAudio({ masterVolume: 1, musicVolume: 1, sfxVolume: 1, muted: false });
-    audio.setMusic('room');
+    // No files: every loop falls back to the procedural chiptune, synchronously.
+    const audio = createAudio({ masterVolume: 1, musicVolume: 1, sfxVolume: 1, muted: false }, { ...offline, fetchBytes: null });
+    audio.setMusic('crypt');
     expect(ctx).toBeNull();
     audio.unlock();
     expect(ctx).not.toBeNull();
@@ -188,7 +491,7 @@ describe('engine with a fake AudioContext', () => {
       fake.currentTime += 1;
       audio.play(id);
     }
-    for (const track of ['room', 'boss'] as const) {
+    for (const track of ['crypt', 'guardian'] as const) {
       audio.setMusic(track);
       for (let i = 0; i < 200; i++) {
         fake.currentTime += 0.025;

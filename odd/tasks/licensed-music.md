@@ -20,7 +20,7 @@ Out of scope: prologue cinematic, hub town, new dungeons, auditioning by ear (th
 
 ## Tasks
 - [x] T1 Fetch, verify licenses, convert, normalise and check loop seams; asset manifest with license data; CREDITS.md and generator fix (route: delegated writer; trigger: assets, tools, data, docs)
-- [ ] T2 Audio adapter streaming playback with gapless loops, crossfades and fallback; wire contexts in the app (route: same writer)
+- [x] T2 Audio adapter streaming playback with gapless loops, crossfades and fallback; wire contexts in the app (route: same writer)
 - [ ] T3 Deploy (route: parent; standing OK)
 
 ## Acceptance criteria
@@ -75,3 +75,12 @@ Loop decisions (seam metric: |first loop sample - linear prediction from the las
 
 CREDITS.md: Music and Audio sections added; `tools/fetch-sprites.mjs` now regenerates only the sprite section (`creditsMarkdown` and `mergeCredits` moved to `tools/sprite-lib.mjs`, tested, and a no-op on the current file).
 Checks: `npm test` 50 files / 459 tests green; typecheck green.
+
+### T2 (done)
+Route: same delegated writer. Test-first: new pure-part and fake-AudioContext tests observed RED (15 failing) before the adapter change, then GREEN.
+- `src/adapters/audio.ts`: `setMusic(context)` now takes a `MusicContext`. Pure, tested: `floorMusic`, `musicFormats` (Ogg Opus first if `canPlayType` says so, else MP3 first), `musicUrl`, `loopWindow` (shifts loop points by the known start padding only when a decoder returns a longer buffer), `fadeCurve` (equal power), `createLru` (2 decoded buffers; decoded PCM is large: Dungeon Ambience is about 76 MB at 48 kHz stereo float).
+- Playback: lazy fetch + decodeAudioData (promise and callback forms), one `AudioBufferSourceNode` per voice with `loop`/`loopStart`/`loopEnd`, its own gain under the music bus (so volume, mute and the Esc-menu duck apply), 1.2 s equal-power cross-fade, stale loads dropped, stingers one-shot after a 0.25 s fade of the loop. Fallbacks: no AudioContext = silent no-op; fetch/decode failure in both formats = procedural `room` (Crypt, collapse) or `boss` (guardian) loop, synthesised `victory`/`defeat` sfx for the stingers, silence for the title.
+- Wiring: `show()` in `main.ts` sets the title music for every backdrop screen (title, loadout, settings, credits, online, lobby, waits) and the result screen passes its stinger; `game.ts` uses `floorMusic(isBossFloor(run), run.kind)`; shared runs: each peer plays per its own floor, nothing networked. Credits screen lists the music attributions from the manifest (new i18n key `credits.music`, ES + EN; `credits.audio` reworded).
+- README: Music section with the licenses summary.
+Checks: `npm test` 50 files / 473 tests green; `npm run build` green (dist 12.9 MB, of which music 11.6 MB).
+Not verified: no browser available here (Playwright Chrome not installed), so real decodeAudioData trimming, the seam by ear and Safari's MP3 path are unverified. Nobody has listened to any track.

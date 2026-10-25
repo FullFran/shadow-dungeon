@@ -54,7 +54,13 @@ Open the game with `?net=local` in two or more windows of the same browser (up t
 
 ## Sound
 
-All audio is procedural Web Audio (`src/adapters/audio.ts`), with no sound files: short retro effects synthesised from oscillators, noise and filters, mapped from the core's `GameEvent`s (a pure `soundFor(event)`), throttled per sound and capped in simultaneous voices. The music is an original looping chiptune in A minor (square lead, triangle bass, noise drums; patterns in `src/data/audio.ts`) played by a lookahead scheduler on the AudioContext clock; the boss room switches to a faster, busier variant and the music fades out on the end screens. Sound starts on the first click or key press, since browsers block autoplay. The menu has master, music and effects volume sliders and a mute checkbox (remembered with the other settings); `M` toggles mute in game.
+Sound effects are procedural Web Audio (`src/adapters/audio.ts`), with no sound files: short retro effects synthesised from oscillators, noise and filters, mapped from the core's `GameEvent`s (a pure `soundFor(event)`), throttled per sound and capped in simultaneous voices. Sound starts on the first click or key press, since browsers block autoplay. The menu has master, music and effects volume sliders and a mute checkbox (remembered with the other settings); `M` toggles mute in game; the Esc menu lowers the music.
+
+### Music
+
+Each context has a licensed track (manifest with loop points, licenses and change notes in `src/data/music.ts`; files in `public/music/`): the title, menus and lobby play *Lonely Village*, generated Crypt floors *Dungeon Ambience*, the collapse floor *Out Of Time*, the guardian *Boss Battle #2 [Symphonic Metal]*, and the end screens a one-shot stinger (*Fanfares: VICTORY*, *The Fallen*). A track is fetched and decoded the first time its context plays (a two-entry LRU keeps recent buffers), loops gaplessly between sample-accurate loop points (`AudioBufferSourceNode` `loopStart`/`loopEnd`) and cross-fades over 1.2 s on context changes; stingers stop the loop quickly and play once. Files are Ogg Opus with an MP3 for browsers without Ogg (Safari before 18.4), loudness-normalised to -18 LUFS (stingers -16). If a file cannot be fetched or decoded, the floor music falls back to the original procedural chiptune (A minor, `src/data/audio.ts`; faster on the boss floor) and the stingers to synthesised ones. In a shared run each player hears the music of their own state; nothing goes over the network.
+
+Licenses: three CC0 1.0 tracks (Eldritch Grim, yd, nene) and three CC BY ones (Jonathan Shaw, CC BY 3.0, two tracks; Spring Spring, CC BY 4.0), credited with their changes in `CREDITS.md` and `public/music/LICENSES.md`. Credit lines must stay in any redistribution; when a stream VOD is re-uploaded, put the CC BY credits in its description.
 
 ## Layout
 
