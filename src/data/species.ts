@@ -49,6 +49,27 @@ export type SpeciesId =
   | 'skrelp'
   | 'salazzle'
   | 'nihilego'
+  // Evolved forms of the regulars (data/enemies.ts EVOLVED_ENEMIES).
+  | 'mightyena'
+  | 'haunter'
+  | 'gengar'
+  | 'dusclops'
+  | 'bisharp'
+  | 'breloom'
+  | 'drifblim'
+  | 'morgrem'
+  | 'noctowl'
+  | 'ariados'
+  | 'golbat'
+  | 'kingler'
+  | 'octillery'
+  | 'crawdaunt'
+  | 'arbok'
+  | 'skuntank'
+  | 'weezing'
+  | 'muk'
+  | 'toxicroak'
+  | 'houndoom'
   // The Sima del Eclipse's own (data/sima.ts): a monster nest and the hunter floor's pursuer.
   | 'eclipse-nest'
   | 'eclipse-hunter'
@@ -199,6 +220,27 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   skrelp: { id: 'skrelp', types: ['poison', 'water'], maxHp: 60, radius: 10, sprite: 'skrelp', movepool: [], defaultLoadout: [] },
   salazzle: { id: 'salazzle', types: ['poison', 'fire'], maxHp: 520, radius: 14, sprite: 'salazzle', movepool: [], defaultLoadout: [] },
   nihilego: { id: 'nihilego', types: ['rock', 'poison'], maxHp: 980, radius: 17, sprite: 'nihilego', movepool: [], defaultLoadout: [] },
+  // Evolved forms (data/enemies.ts EVOLVED_ENEMIES): about 1.6 times their base form's HP; provisional.
+  mightyena: { id: 'mightyena', types: ['dark'], maxHp: 110, radius: 12, sprite: 'mightyena', movepool: [], defaultLoadout: [] },
+  haunter: { id: 'haunter', types: ['ghost', 'poison'], maxHp: 80, radius: 12, sprite: 'haunter', movepool: [], defaultLoadout: [] },
+  gengar: { id: 'gengar', types: ['ghost', 'poison'], maxHp: 120, radius: 13, sprite: 'gengar', movepool: [], defaultLoadout: [] },
+  dusclops: { id: 'dusclops', types: ['ghost'], maxHp: 115, radius: 13, sprite: 'dusclops', movepool: [], defaultLoadout: [] },
+  bisharp: { id: 'bisharp', types: ['dark', 'steel'], maxHp: 75, radius: 12, sprite: 'bisharp', movepool: [], defaultLoadout: [] },
+  breloom: { id: 'breloom', types: ['grass', 'fighting'], maxHp: 95, radius: 11, sprite: 'breloom', movepool: [], defaultLoadout: [] },
+  drifblim: { id: 'drifblim', types: ['ghost', 'flying'], maxHp: 95, radius: 14, sprite: 'drifblim', movepool: [], defaultLoadout: [] },
+  morgrem: { id: 'morgrem', types: ['dark', 'fairy'], maxHp: 80, radius: 11, sprite: 'morgrem', movepool: [], defaultLoadout: [] },
+  noctowl: { id: 'noctowl', types: ['normal', 'flying'], maxHp: 90, radius: 12, sprite: 'noctowl', movepool: [], defaultLoadout: [] },
+  ariados: { id: 'ariados', types: ['bug', 'poison'], maxHp: 80, radius: 11, sprite: 'ariados', movepool: [], defaultLoadout: [] },
+  golbat: { id: 'golbat', types: ['poison', 'flying'], maxHp: 65, radius: 11, sprite: 'golbat', movepool: [], defaultLoadout: [] },
+  kingler: { id: 'kingler', types: ['water'], maxHp: 90, radius: 12, sprite: 'kingler', movepool: [], defaultLoadout: [] },
+  octillery: { id: 'octillery', types: ['water'], maxHp: 85, radius: 11, sprite: 'octillery', movepool: [], defaultLoadout: [] },
+  crawdaunt: { id: 'crawdaunt', types: ['water', 'dark'], maxHp: 120, radius: 12, sprite: 'crawdaunt', movepool: [], defaultLoadout: [] },
+  arbok: { id: 'arbok', types: ['poison'], maxHp: 105, radius: 12, sprite: 'arbok', movepool: [], defaultLoadout: [] },
+  skuntank: { id: 'skuntank', types: ['poison', 'dark'], maxHp: 85, radius: 12, sprite: 'skuntank', movepool: [], defaultLoadout: [] },
+  weezing: { id: 'weezing', types: ['poison'], maxHp: 110, radius: 13, sprite: 'weezing', movepool: [], defaultLoadout: [] },
+  muk: { id: 'muk', types: ['poison'], maxHp: 180, radius: 14, sprite: 'muk', movepool: [], defaultLoadout: [] },
+  toxicroak: { id: 'toxicroak', types: ['poison', 'fighting'], maxHp: 135, radius: 12, sprite: 'toxicroak', movepool: [], defaultLoadout: [] },
+  houndoom: { id: 'houndoom', types: ['dark', 'fire'], maxHp: 110, radius: 12, sprite: 'houndoom', movepool: [], defaultLoadout: [] },
   // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },

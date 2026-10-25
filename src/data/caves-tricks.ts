@@ -1,5 +1,6 @@
 import { BUBBLE, DHELMISE, DHELMISE_PATTERNS, LANTURN_PATTERNS } from './enemies';
 import type { Trick } from './forest-tricks';
+import { CRAWDAUNT } from './evolved-enemies';
 import type { SpeciesId } from './species';
 
 /**
@@ -17,6 +18,9 @@ export const CAVES_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   remoraid: [{ minDifficulty: 'hard', patch: { burst: { shots: 5, gapMs: 120 }, castMs: 560 } }],
   // The landing splashes droplets around it.
   shellos: [{ minDifficulty: 'hard', patch: { splash: { count: 6, projectile: { power: 14, type: 'water', speed: 110, radius: 5, lifetimeMs: 1400 } } } }],
+  // Evolved forms (data/evolved-enemies.ts): the jet a third time; a third pincer.
+  crawdaunt: [{ minDifficulty: 'hard', patch: { repeat: { ...CRAWDAUNT.repeat!, times: 2 } } }],
+  kingler: [{ minDifficulty: 'hard', patch: { thirdCut: { minDifficulty: 'hard', telegraphMs: 400, lungeMs: 200, lungeDistance: 110 } } }],
   lanturn: [
     {
       minDifficulty: 'hard',

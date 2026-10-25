@@ -157,6 +157,12 @@ export const FOREST: DungeonDef = {
       { species: 'shroomish', weights: [1, 1, 1, 1, 2, 2, 2], pack: 2, escort: { species: 'foongus', count: 1 } },
       { species: 'drifloon', weights: [0, 1, 1, 1, 2, 2, 2] },
       { species: 'impidimp', weights: [0, 0, 1, 1, 2, 2, 2], escort: { species: 'pumpkaboo-small', count: 2 } },
+      // Evolved forms after the hollow (data/evolutions.ts); Morgrem brings an Impidimp.
+      { species: 'breloom', weights: [0, 0, 0, 0, 1, 1, 2] },
+      { species: 'drifblim', weights: [0, 0, 0, 0, 1, 1, 1] },
+      { species: 'morgrem', weights: [0, 0, 0, 0, 1, 1, 2], escort: { species: 'impidimp', count: 1 } },
+      { species: 'noctowl', weights: [0, 0, 0, 0, 1, 2, 2] },
+      { species: 'ariados', weights: [0, 0, 0, 0, 1, 1, 2] },
     ],
   },
   urgent: [
@@ -233,6 +239,11 @@ export const CAVES: DungeonDef = {
       { species: 'chinchou', weights: [0, 0, 1, 1, 1, 2, 2, 2, 2] },
       { species: 'wooper', weights: [0, 0, 1, 1, 1, 1, 2, 2, 2] },
       { species: 'clauncher', weights: [0, 0, 0, 0, 0, 1, 1, 2, 2] },
+      // Evolved forms after the grotto (data/evolutions.ts); Golbat leads two Zubat.
+      { species: 'golbat', weights: [0, 0, 0, 0, 0, 1, 1, 2, 2], escort: { species: 'zubat', count: 2 } },
+      { species: 'kingler', weights: [0, 0, 0, 0, 0, 1, 1, 2, 2] },
+      { species: 'octillery', weights: [0, 0, 0, 0, 0, 1, 1, 1, 2] },
+      { species: 'crawdaunt', weights: [0, 0, 0, 0, 0, 1, 1, 1, 2] },
     ],
   },
   urgent: [
@@ -309,6 +320,12 @@ export const SWAMP: DungeonDef = {
       { species: 'koffing', weights: [0, 1, 1, 1, 0, 2, 2, 2, 2] },
       { species: 'grimer', weights: [0, 0, 1, 1, 0, 1, 2, 2, 2] },
       { species: 'croagunk', weights: [0, 0, 0, 1, 0, 1, 1, 2, 2] },
+      // Evolved forms after the den (data/evolutions.ts); Skuntank brings a Stunky.
+      { species: 'arbok', weights: [0, 0, 0, 0, 0, 1, 1, 2, 2] },
+      { species: 'skuntank', weights: [0, 0, 0, 0, 0, 1, 1, 1, 1], escort: { species: 'stunky', count: 1 } },
+      { species: 'weezing', weights: [0, 0, 0, 0, 0, 1, 1, 1, 2] },
+      { species: 'muk', weights: [0, 0, 0, 0, 0, 1, 1, 1, 2] },
+      { species: 'toxicroak', weights: [0, 0, 0, 0, 0, 0, 1, 1, 2] },
     ],
   },
   urgent: [

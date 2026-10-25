@@ -89,13 +89,65 @@ export const SPECIES_ROLE: Readonly<Partial<Record<SpeciesId, EnemyRole>>> = {
   litleo: 'ranged',
   houndour: 'controller',
   slugma: 'ranged',
+  // Evolved forms (data/evolutions.ts): their line's role, except the swarm's evolutions, which fight alone.
+  mightyena: 'skirmisher',
+  haunter: 'ranged',
+  gengar: 'ranged',
+  dusclops: 'ranged',
+  bisharp: 'skirmisher',
+  breloom: 'brute',
+  drifblim: 'ranged',
+  morgrem: 'skirmisher',
+  noctowl: 'skirmisher',
+  ariados: 'ranged',
+  golbat: 'skirmisher',
+  kingler: 'brute',
+  octillery: 'ranged',
+  crawdaunt: 'ranged',
+  arbok: 'skirmisher',
+  skuntank: 'brute',
+  weezing: 'controller',
+  muk: 'controller',
+  toxicroak: 'brute',
+  houndoom: 'controller',
+};
+
+/**
+ * Threat of a species when its role's cost does not tell it: an evolution
+ * costs its role's plus one, so a deep room buys fewer, tougher bodies (it
+ * replaces basics in the budget instead of joining them), and as the
+ * highest threat of its room it is the one crowned when its group gets a
+ * leader (core/leaders.ts). Kept at most 5 so the Sima's small budgets can
+ * still afford one on the floors it joins.
+ */
+export const SPECIES_THREAT: Readonly<Partial<Record<SpeciesId, number>>> = {
+  mightyena: 3,
+  haunter: 4,
+  gengar: 4,
+  dusclops: 4,
+  bisharp: 3,
+  breloom: 4,
+  drifblim: 4,
+  morgrem: 3,
+  noctowl: 3,
+  ariados: 4,
+  golbat: 3,
+  kingler: 4,
+  octillery: 4,
+  crawdaunt: 4,
+  arbok: 3,
+  skuntank: 4,
+  weezing: 5,
+  muk: 5,
+  toxicroak: 4,
+  houndoom: 5,
 };
 
 /** The role of a species (a species without one counts as a skirmisher: cheap, never blocks a room). */
 export const roleOf = (species: SpeciesId): EnemyRole => SPECIES_ROLE[species] ?? 'skirmisher';
 
 /** Threat cost of one enemy of a species. */
-export const threatOf = (species: SpeciesId): number => ROLE_COST[roleOf(species)];
+export const threatOf = (species: SpeciesId): number => SPECIES_THREAT[species] ?? ROLE_COST[roleOf(species)];
 
 /**
  * A dungeon's per-room threat budget (data/dungeon.ts `SpawnTuning.budget`):

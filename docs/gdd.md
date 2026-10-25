@@ -429,6 +429,37 @@ Catorce enemigos nuevos para probar en la Sima del Eclipse antes de darles mazmo
 | Croagunk (Veneno/Lucha) | Se pone en guardia: si le pegas, para el golpe y contraataca rápido y fuerte (Lucha); si no, acaba con un Puya Nociva más lenta | No pegarle en guardia; esperar al Puya Nociva, esquivarlo y castigar | 5 |
 
 Litwick absorbe los golpes de Fuego de Litleo, Houndour y Slugma (Absorbe Fuego). En el servidor de desarrollo, `?spawn=koffing,grimer` abre una sala de pruebas con esos enemigos despiertos delante del jugador (hasta 12; vale cualquier especie con comportamiento).
+
+### Evoluciones *(provisional)*
+
+Hasta ahora todo enemigo era una primera fase; bajar solo traía más de lo mismo. Veinte formas evolucionadas de enemigos que ya existen aparecen en la segunda mitad de las plantas generadas de su mazmorra y en la Sima desde las plantas tardías del estrato de esa mazmorra (Cripta 6-9, Bosque 16-18, Cuevas 26-28, Pantano 36-38). Cada una juega con la máquina de estados de su forma base, la misma seña, pero sube un escalón: un patrón más largo o más ancho, un movimiento más (un segundo golpe reapuntado, un anillo, un charco, un truco que la base guarda para Difícil y aquí sale desde Fácil) y más aplomo (le cuesta más trastabillar). Todo ataque nuevo respeta el contrato de siempre: aviso que enseña el golpe, ventana para esquivar, recuperación para castigar, y los suelos de aviso por nivel.
+
+Cuestan una amenaza más que su línea (`SPECIES_THREAT` en `src/data/encounters.ts`): una sala profunda compra menos cuerpos y más duros, en lugar de sumar. Por ser la amenaza más alta de su sala, cuando el grupo tiene líder, el líder es la evolución (la regla de siempre, sin código nuevo). Seis llegan con un miembro de su línea al lado (Poochyena con Mightyena, Pawniard con Bisharp, Gastly con Gengar, Impidimp con Morgrem, dos Zubat con Golbat, Stunky con Skuntank). Datos: `src/data/evolutions.ts` (quién evoluciona de quién y su mazmorra) y `src/data/evolved-enemies.ts` (comportamientos).
+
+| Evolución (de) | Mazmorra · plantas | Papel | Qué añade | Truco en Difícil+ |
+|---|---|---|---|---|
+| Mightyena (Poochyena) | Cripta 4-5 · Sima 6+ | Escaramuzador | Embestida más larga y un segundo mordisco reapuntado | Aullido de manada (como Poochyena) |
+| Haunter (Gastly) | Cripta 4-5 · Sima 7+ | A distancia | Dos bolas por lanzamiento en todos los niveles | Abanico de tres |
+| Gengar (Haunter) | Cripta 5 · Sima 9+ | A distancia | Un anillo de diez bolas (una a ti) y otra bola apuntada | — |
+| Dusclops (Duskull) | Cripta 4-5 · Sima 7+ | A distancia | Dos fuegos fatuos que te persiguen desde los lados | Tres fuegos |
+| Bisharp (Pawniard) | Cripta 4-5 · Sima 8+ | Escaramuzador | Los tres cortes desde Fácil | — |
+| Breloom (Shroomish) | Bosque 5-7 · Sima 16+ | Bruto | Salto más largo; al caer suelta un anillo de esporas | — |
+| Drifblim (Drifloon) | Bosque 5-7 · Sima 17+ | A distancia | Dos anillos de diez por lanzamiento, el segundo girado | Un tercer anillo |
+| Morgrem (Impidimp) | Bosque 5-7 · Sima 18+ | Escaramuzador | Dos amagos antes de la embestida de verdad | — |
+| Noctowl (Hoothoot) | Bosque 5-7 · Sima 16+ | Escaramuzador | Picado más largo y un segundo picado reapuntado | Un tercer picado |
+| Ariados (Spinarak) | Bosque 5-7 · Sima 17+ | A distancia | Cinco hilos en abanico y uno más apuntado | — |
+| Golbat (Zubat) | Cuevas 6-9 · Sima 26+ | Escaramuzador | Segundo picado en todos los niveles; drena al acertar | — |
+| Kingler (Krabby) | Cuevas 6-9 · Sima 26+ | Bruto | Martillazo más fuerte y la segunda pinza siempre | Una tercera pinza |
+| Octillery (Remoraid) | Cuevas 6-9 · Sima 27+ | A distancia | Ráfaga de cinco por el carril fijado | El primero, abanico de tres |
+| Crawdaunt (Corphish) | Cuevas 6-9 · Sima 28+ | A distancia | Caparazón más ancho y el chorro dos veces | Tres chorros |
+| Arbok (Ekans) | Pantano 6-9 · Sima 36+ | Escaramuzador | Embestida más larga; charco de veneno al final siempre | Segunda embestida |
+| Skuntank (Stunky) | Pantano 6-9 · Sima 36+ | Bruto | Rociada más ancha y nube mayor; la cola te sigue desde Normal | — |
+| Weezing (Koffing) | Pantano 6-9 · Sima 37+ | Controlador | Nubes más grandes; explosión más ancha con mecha más larga | — |
+| Muk (Grimer) | Pantano 6-9 · Sima 37+ | Controlador | Golpe más ancho y un charco de lodo donde golpea | Anillo de lodo |
+| Toxicroak (Croagunk) | Pantano 7-9 · Sima 38+ | Bruto | Contraataque más duro; Puya Nociva encadenada una vez | Una tercera Puya |
+| Houndoom (Houndour) | Solo la Sima, 18+ | Controlador | Lanzallamas más largo que te sigue en todos los niveles; deja brasas | Gira más rápido |
+
+Fuera por hojas incompletas en SpriteCollab: Golurk y Grimmsnarl (su "Shoot" es copia de otra hoja). Lanturn y Salazzle ya son jefes.
 ### El mundo *(provisional)*
 
 Fuera de las mazmorras hay un mundo pequeño que se recorre andando, siempre al anochecer del eclipse y sin combate (`src/data/world.ts`). Son mapas unidos por sus bordes: al salir por uno, un fundido corto lleva al siguiente y su nombre aparece arriba.

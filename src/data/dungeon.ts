@@ -84,6 +84,13 @@ export const CRYPT_SPAWNS: SpawnTuning = {
     { species: 'duskull', weights: [0, 1, 1, 2, 2] },
     { species: 'pawniard', weights: [0, 1, 1, 2, 2], pack: 2 },
     { species: 'golett', weights: [0, 0, 0, 1, 2] },
+    // Evolved forms on the floors after the vault (data/evolutions.ts): Mightyena with a Poochyena at its
+    // side, Bisharp with a Pawniard, Gengar (floor 5) with a Gastly; each the room's leader when it has one.
+    { species: 'mightyena', weights: [0, 0, 0, 1, 2], escort: { species: 'poochyena', count: 1 } },
+    { species: 'haunter', weights: [0, 0, 0, 1, 1] },
+    { species: 'dusclops', weights: [0, 0, 0, 1, 1] },
+    { species: 'bisharp', weights: [0, 0, 0, 1, 2], escort: { species: 'pawniard', count: 1 } },
+    { species: 'gengar', weights: [0, 0, 0, 0, 1], escort: { species: 'gastly', count: 1 } },
   ],
 };
 

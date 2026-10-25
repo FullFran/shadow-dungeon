@@ -73,6 +73,29 @@ export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   { species: 'venipede', minDepth: 9, weight: 1, pack: 2, perDepth: 0.02 },
   { species: 'salandit', minDepth: 10, weight: 1, perDepth: 0.06 },
   { species: 'skrelp', minDepth: 11, weight: 1, perDepth: 0.05 },
+  // Evolved forms (data/evolutions.ts) from the late floors of their dungeon's stratum (data/sima.ts
+  // SIMA_BANDS: I Crypt 1-10, II Forest 11-20, III Caves 21-30, IV Swamp 31-40); Houndoom, the Sima's
+  // own, late in stratum II. One at a time: the Sima's budget is small and they cost one more than their line.
+  { species: 'mightyena', minDepth: 6, weight: 1, perDepth: 0.04 },
+  { species: 'haunter', minDepth: 7, weight: 1, perDepth: 0.04 },
+  { species: 'dusclops', minDepth: 7, weight: 1, perDepth: 0.04 },
+  { species: 'bisharp', minDepth: 8, weight: 1, perDepth: 0.04 },
+  { species: 'gengar', minDepth: 9, weight: 1, perDepth: 0.04 },
+  { species: 'breloom', minDepth: 16, weight: 1, perDepth: 0.04 },
+  { species: 'noctowl', minDepth: 16, weight: 1, perDepth: 0.04 },
+  { species: 'drifblim', minDepth: 17, weight: 1, perDepth: 0.04 },
+  { species: 'ariados', minDepth: 17, weight: 1, perDepth: 0.04 },
+  { species: 'morgrem', minDepth: 18, weight: 1, perDepth: 0.04 },
+  { species: 'houndoom', minDepth: 18, weight: 1, perDepth: 0.04 },
+  { species: 'golbat', minDepth: 26, weight: 1, perDepth: 0.04 },
+  { species: 'kingler', minDepth: 26, weight: 1, perDepth: 0.04 },
+  { species: 'octillery', minDepth: 27, weight: 1, perDepth: 0.04 },
+  { species: 'crawdaunt', minDepth: 28, weight: 1, perDepth: 0.04 },
+  { species: 'arbok', minDepth: 36, weight: 1, perDepth: 0.04 },
+  { species: 'skuntank', minDepth: 36, weight: 1, perDepth: 0.04 },
+  { species: 'weezing', minDepth: 37, weight: 1, perDepth: 0.04 },
+  { species: 'muk', minDepth: 37, weight: 1, perDepth: 0.04 },
+  { species: 'toxicroak', minDepth: 38, weight: 1, perDepth: 0.04 },
 ];
 
 /** A guardian echo: the arena of a guardian (or mid-boss) and the track it fights to. */

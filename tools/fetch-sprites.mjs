@@ -91,6 +91,28 @@ const TARGETS = [
   { dex: '0690', form: '0000', species: 'skrelp', formName: 'base' },
   { dex: '0758', form: '0000', species: 'salazzle', formName: 'base' },
   { dex: '0793', form: '0000', species: 'nihilego', formName: 'base' },
+  // Evolved forms of the regulars (AnimData.xml 2026-10-26: all have native Idle, Walk, Attack, Shoot, Charge and Hurt;
+  // Golurk and Grimmsnarl left out, their Shoot is a copy of another sheet).
+  { dex: '0262', form: '0000', species: 'mightyena', formName: 'base' },
+  { dex: '0093', form: '0000', species: 'haunter', formName: 'base' },
+  { dex: '0094', form: '0000', species: 'gengar', formName: 'base' },
+  { dex: '0356', form: '0000', species: 'dusclops', formName: 'base' },
+  { dex: '0625', form: '0000', species: 'bisharp', formName: 'base' },
+  { dex: '0286', form: '0000', species: 'breloom', formName: 'base' },
+  { dex: '0426', form: '0000', species: 'drifblim', formName: 'base' },
+  { dex: '0860', form: '0000', species: 'morgrem', formName: 'base' },
+  { dex: '0164', form: '0000', species: 'noctowl', formName: 'base' },
+  { dex: '0168', form: '0000', species: 'ariados', formName: 'base' },
+  { dex: '0042', form: '0000', species: 'golbat', formName: 'base' },
+  { dex: '0099', form: '0000', species: 'kingler', formName: 'base' },
+  { dex: '0224', form: '0000', species: 'octillery', formName: 'base' },
+  { dex: '0342', form: '0000', species: 'crawdaunt', formName: 'base' },
+  { dex: '0024', form: '0000', species: 'arbok', formName: 'base' },
+  { dex: '0435', form: '0000', species: 'skuntank', formName: 'base' },
+  { dex: '0110', form: '0000', species: 'weezing', formName: 'base' },
+  { dex: '0089', form: '0000', species: 'muk', formName: 'base' },
+  { dex: '0454', form: '0000', species: 'toxicroak', formName: 'base' },
+  { dex: '0229', form: '0000', species: 'houndoom', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.
