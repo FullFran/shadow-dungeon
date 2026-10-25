@@ -35,7 +35,7 @@ Out of scope: dungeon generation, co-op/netcode, gacha, meta, backend, deploy.
 
 ## Tasks
 - [x] T1 Scaffold: Vite + TS strict + Vitest, folder layout (`src/core`, `src/adapters`, `src/data`, `src/app`), i18n skeleton (es/en + missing-key test), fan-project notice, npm scripts (`dev`, `build`, `test`, `typecheck`). Route: delegated (writer batch 1).
-- [ ] T2 Sprite pipeline: `tools/fetch-sprites` downloads species 778, 261, 92, 681 (+ form 0681/0001 if it is Blade) from SpriteCollab, converts AnimData.xml to JSON meta (frame size, durations, anchors, 8 directions), writes `CREDITS.md`. Route: delegated (batch 1).
+- [x] T2 Sprite pipeline: `tools/fetch-sprites` downloads species 778, 261, 92, 681 (+ form 0681/0001 if it is Blade) from SpriteCollab, converts AnimData.xml to JSON meta (frame size, durations, anchors, 8 directions), writes `CREDITS.md`. Route: delegated (batch 1).
 - [ ] T3 Core simulation: fixed-timestep loop, movement, roll with i-frames, stamina, perfect-dodge detection. TDD. Route: delegated (batch 1).
 - [ ] T4 Moves as data + combat resolution: slot model (data-driven count), wind-up/active/recovery, charge levels, hitboxes, damage, type chart, Disfraz. TDD. Route: delegated (batch 1).
 - [ ] T5 Lock-on rules (pure). TDD. Route: delegated (batch 1).
@@ -56,7 +56,16 @@ Route trigger evidence: every task touches 2+ non-trivial files (writer trigger)
 `npm test`, `npm run typecheck`; plus `npm run build` from T1 on.
 
 ## Progress / evidence
-(none yet)
+- T1 `5a61920` feat(app): scaffold. `npm test`: 2 files, 8 tests passed. `npm run typecheck`: clean (app + DOM-free core config; a probe using `window` in `src/core` failed typecheck as intended). `npm run build`: built. `npm run dev` served `index.html`.
+- T2 (commit recorded with T3) feat(tools): sprite pipeline. `node tools/fetch-sprites.mjs`: 5 sprite folders (52 sheets, 1.1 MB), 6 artists. `npm test`: 3 files, 13 tests passed. `npm run typecheck`: clean. `npm run build`: built.
+
+## Decisions taken by the writer
+- Core purity is enforced twice: `tsconfig.core.json` compiles `src/core` + `src/data` without DOM lib, and `tests/architecture.test.ts` rejects imports of adapters/app/i18n/node built-ins or bare packages from those layers.
+- Commit hashes for task N are recorded in the feature document by the commit of task N+1 (a commit cannot contain its own hash).
+- Sprite form 0681/0001 is Aegislash **Blade** form (SpriteCollab `tracker.json`: subgroup `0001` name "Blade"; the base folder is the Shield form). Both are fetched.
+- Missing sheets use fallbacks recorded as `source` in the meta: Faint falls back to Hurt for Mimikyu, Gastly and Aegislash (only Poochyena has a real Faint). Extra sheets fetched: Strike, Swing, Double, Hop, Rotate where present. Aegislash `Special0` is listed in credits but has no AnimData entry, so it is skipped.
+- Ground anchor per animation = centroid of the opaque pixels of the first frame ("down" row) of its `-Shadow.png`, decoded by a minimal PNG reader in `tools/sprite-lib.mjs` (no image dependency).
+- `CREDITS.md` credits every author in each folder's `credits.txt` (current and former, `CUR`/`OLD`), mapped through `credit_names.txt`.
 
 ## Next step
 Launch writer batch 1 (T1-T5).
