@@ -55,6 +55,13 @@ export interface PoochyenaDef {
    * wind-up and lunge, so rolling into it on the first one gets punished.
    */
   followUp?: { telegraphMs: number; lungeMs: number; lungeDistance: number };
+  /**
+   * A fake-out (Impidimp): the first wind-up (`telegraphMs`, lane and all) is
+   * a feint; it then sidesteps across the line to the player, harmless, and
+   * winds up the real lunge (`telegraphMs` here, re-aimed) from the side.
+   * `count` feints before the real one (default 1).
+   */
+  feint?: { telegraphMs: number; sidestepMs: number; sidestepDistance: number; count?: number };
 }
 
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
@@ -82,6 +89,13 @@ export interface GastlyDef {
   recoverMs: number;
   cooldownMs: number;
   projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+  /**
+   * Throws a whole ring instead of a ball or a fan (Drifloon): `count` shots
+   * evenly around it, one aimed at the player; every other cast turns the
+   * ring by half a step, so the gaps move. `waves` rings per cast,
+   * `waveGapMs` apart, each turned half a step from the last (default 1).
+   */
+  ring?: { count: number; waves?: number; waveGapMs?: number };
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -300,6 +314,13 @@ export interface SlammerDef {
    * and the aim is fixed when the wind-up starts (step around it).
    */
   arcDegrees?: number;
+  /**
+   * A leap instead of a stomp (Shroomish): the wind-up marks the landing spot
+   * (towards the player, at most `distance` away), which stops following
+   * `lockMs` before take-off; it flies there for `airMs` (harmless) and the
+   * slam hits around the landing spot.
+   */
+  leap?: { distance: number; airMs: number; lockMs: number };
 }
 
 /** A lingering ground hazard: a still projectile that hits whoever walks in, once, and fades after `lifetimeMs`. */
@@ -988,6 +1009,60 @@ export const SABLEYE: ThiefDef = {
   stealMs: 9000,
 };
 
+/*
+ * Misty Forest remaster (docs/gdd.md, Bosque Brumoso): three more species,
+ * each with its own trick. Impidimp feints a lunge and strikes from the side;
+ * Shroomish leaps onto a marked spot; Drifloon lets go of rings of
+ * will-o-wisps whose gaps turn between casts. Values are provisional.
+ */
+export const IMPIDIMP: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.1, knockbackScale: 1.2 },
+  aggroRange: 600,
+  walkSpeed: 88,
+  stalkRange: 120,
+  lungeRange: 120,
+  telegraphMs: 560,
+  lungeMs: 200,
+  lungeDistance: 130,
+  attack: { power: 26, type: 'dark' },
+  hitRecoverMs: 500,
+  missRecoverMs: 1000,
+  cooldownMs: 1600,
+  feint: { telegraphMs: 420, sidestepMs: 260, sidestepDistance: 70 },
+};
+
+export const SHROOMISH: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.9, knockbackScale: 0.8 },
+  aggroRange: 520,
+  walkSpeed: 48,
+  slamRange: 170,
+  telegraphMs: 700,
+  slamMs: 140,
+  radius: 34,
+  attack: { power: 30, type: 'grass' },
+  recoverMs: 1000,
+  cooldownMs: 1600,
+  leap: { distance: 160, airMs: 420, lockMs: 250 },
+};
+
+export const DRIFLOON: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.3 },
+  floats: true,
+  aggroRange: 600,
+  speed: 40,
+  minDistance: 90,
+  maxDistance: 180,
+  telegraphMs: 800,
+  castMs: 300,
+  recoverMs: 700,
+  cooldownMs: 2400,
+  projectile: { power: 22, type: 'fire', speed: 60, radius: 7, lifetimeMs: 5000 },
+  ring: { count: 8 },
+};
+
 export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
@@ -1021,6 +1096,9 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   golett: GOLETT,
   pawniard: PAWNIARD,
   sableye: SABLEYE,
+  impidimp: IMPIDIMP,
+  shroomish: SHROOMISH,
+  drifloon: DRIFLOON,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */

@@ -409,6 +409,8 @@ export interface WorldState {
   fog?: FogState;
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
+  /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */
+  wisp?: { cache: Vec2 };
   events: GameEvent[];
 }
 

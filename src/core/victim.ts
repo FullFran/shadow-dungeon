@@ -64,6 +64,9 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     const def = ENEMY_BEHAVIOUR[enemy.species];
     if (!def || def.kind === 'caster' || def.kind === 'spore') continue;
     let hit;
+    // Impidimp's sidestep and Shroomish in the air never touch.
+    if (def.kind === 'lunger' && enemy.ai.attack === 'sidestep') continue;
+    if (def.kind === 'slammer' && def.leap && enemy.ai.modeMs < def.leap.airMs) continue;
     if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
     else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slammerTouches(enemy, current.player.pos, def), events);
     else if (def.kind === 'thief') {

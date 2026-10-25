@@ -16,6 +16,7 @@ import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from 
 import { bossBar } from '../core/boss';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
+import { WISP_BERRY } from '../core/wisp';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -249,6 +250,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /** The spirit light's cache was reached on this floor (its line shows once). */
+  let wispFound = false;
   function announceFloor(descended: boolean): void {
     const lore = dungeonOf(run).lore;
     // The floor's own lore line, when the dungeon has one (the Crypt).
@@ -261,6 +264,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       card = null;
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
+    // The Forest's spirit light (core/wisp.ts).
+    wispFound = false;
+    if (world.wisp) say(t('forest.wisp.appear'), 'info');
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
@@ -505,6 +511,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       for (const event of events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
+        if (event.type === 'berryEaten' && event.berryId.includes(WISP_BERRY) && !wispFound) {
+          wispFound = true;
+          say(t('forest.wisp.found'), 'good');
+        }
       }
       const progress = progressRun(run, world);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).

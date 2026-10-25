@@ -1,7 +1,8 @@
 /**
  * Lore of each dungeon as data (i18n keys): its name, a subtitle for the
- * title card and a few lines of legend. Not shown anywhere yet; the plan is
- * an intro card on entering the dungeon. Provisional, see docs/gdd.md §3.
+ * title card, a few lines of legend (the first one shows in the dungeon
+ * select) and, for the Crypt and the Forest, a line per floor for the floor
+ * card. Provisional, see docs/gdd.md §3.
  */
 export interface DungeonLore {
   id: string;
@@ -25,6 +26,7 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     nameKey: 'dungeon.forest.name',
     subtitleKey: 'dungeon.forest.subtitle',
     loreKeys: ['dungeon.forest.lore.1', 'dungeon.forest.lore.2'],
+    floorKeys: [1, 2, 3, 4, 5, 6, 7, 8].map((floor) => `dungeon.forest.floor.${floor}`),
   },
   {
     id: 'eclipse-chasm',

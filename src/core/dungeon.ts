@@ -207,6 +207,11 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
       const size = Math.max(1, entry.pack ?? 1);
       for (const tile of tiles.slice(i, i + size)) spawns.push({ species: entry.species, tile, room: index });
       i += size;
+      // A mixed pack (the forest's trickster and its pumpkins): the escorts take the next tiles, no extra draw.
+      if (entry.escort) {
+        for (const tile of tiles.slice(i, i + entry.escort.count)) spawns.push({ species: entry.escort.species, tile, room: index });
+        i += entry.escort.count;
+      }
     }
   });
 
