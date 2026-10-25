@@ -44,7 +44,8 @@ CC0 works need no credit and are credited anyway.
 - Guardian (Aegislash): "16-bit - Battle Theme I" by HydroGene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/16-bit-battle-theme-i)).
 - Victory: "Victory" by Umplix, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/victory-4)).
 - Defeat: "Game Over Theme II" by Cleyton Kauffman (CleytonKauffman), [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/game-over-theme-ii)).
-- Reserved for a future guardian (shipped, not played yet): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
+- Misty Forest floors (muffled on fog floors): "Cathedral in the forest" by congusbongus, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop)).
+- Guardian of the Misty Forest (Decidueye): "Boss Battle #2 [Symphonic Metal]" by nene, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) ([source](https://opengameart.org/content/boss-battle-2-symphonic-metal)).
 
 ## Audio
 

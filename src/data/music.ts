@@ -9,10 +9,10 @@ import type { MusicId } from './audio';
  * The audio adapter loads a track the first time its context plays and falls
  * back to the procedural chiptune (`fallback`) when the file cannot be used.
  */
-export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat';
+export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat' | 'forest' | 'forest-fog' | 'forest-guardian';
 
 /** Contexts with a planned track but no file yet (later milestones). */
-export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma' | 'forest' | 'caves' | 'swamp';
+export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma' | 'caves' | 'swamp';
 
 export type MusicLicense = 'CC0 1.0' | 'CC BY 3.0' | 'CC BY 4.0';
 
@@ -41,6 +41,10 @@ export interface LicensedTrack {
   attribution: string;
   /** What was done to the original file. */
   changes: string;
+  /** A variant of another context's track: same file, played through a filter (no file of its own). */
+  variantOf?: MusicContext;
+  /** Low-pass cutoff the adapter puts on this context (the muffled fog version of the forest track). */
+  lowpassHz?: number;
 }
 
 /** A shipped track kept for a later context (`reservedFor`), not played yet. */
@@ -173,18 +177,47 @@ export const MUSIC_TRACKS: Record<MusicContext, LicensedTrack> = {
     attribution: '"Game Over Theme II" by Cleyton Kauffman (CleytonKauffman) (CC0)',
     changes: `Version 3 of the three in the ZIP; loudness-normalised to -16 LUFS; played once on the defeat screen. ${COMMON}`,
   },
-};
-
-export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
-
-/**
- * Tracks that ship in `public/music/` (licensed, credited, loop-checked) but are
- * not wired to any context yet. Boss Battle #2 played the Aegislash guardian
- * until 2026-10-25 and is kept for a future boss.
- */
-export const RESERVED_MUSIC: readonly ReservedTrack[] = [
-  {
-    reservedFor: 'future-guardian',
+  forest: {
+    context: 'forest',
+    file: 'cathedral-forest',
+    duration: 138.974331,
+    loop: true,
+    // The master (6040568 samples) loops whole; the file carries its first 2 s again so the seam sits inside the codec stream.
+    loopStart: 1,
+    loopEnd: 137.974331,
+    gain: 1,
+    lufs: -18,
+    fallback: 'room',
+    title: 'Cathedral in the forest (ambient loop)',
+    artist: 'congusbongus',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/cathedral-in-the-forest-ambient-loop',
+    attribution: '"Cathedral in the forest" by congusbongus (CC0)',
+    changes: `The whole file loops (seam ratio 0.12/0.07 on the master); its first 2.0 s appended once more and the loop set to 1.0-137.974 s (a rotation of the same loop) so the codecs do not smear the seam; loudness-normalised to -18 LUFS (-4.0 dB linear gain). ${COMMON}`,
+  },
+  'forest-fog': {
+    context: 'forest-fog',
+    file: 'cathedral-forest',
+    duration: 138.974331,
+    loop: true,
+    loopStart: 1,
+    loopEnd: 137.974331,
+    gain: 0.8,
+    lufs: -18,
+    fallback: 'room',
+    title: 'Cathedral in the forest (ambient loop)',
+    artist: 'congusbongus',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/cathedral-in-the-forest-ambient-loop',
+    attribution: '"Cathedral in the forest" by congusbongus (CC0)',
+    changes: 'Same file as the forest floors, played through a 700 Hz low-pass and a little quieter on fog floors (the fog muffles it).',
+    variantOf: 'forest',
+    lowpassHz: 700,
+  },
+  'forest-guardian': {
+    context: 'forest-guardian',
     file: 'boss-battle-2',
     duration: 66.206803,
     loop: true,
@@ -202,7 +235,16 @@ export const RESERVED_MUSIC: readonly ReservedTrack[] = [
     attribution: '"Boss Battle #2 [Symphonic Metal]" by nene (CC0)',
     changes: `Opening and loop joined in one file (the ZIP names are swapped, as the page says), with a 10 ms cross-fade from the opening into the loop's own tail; loudness-normalised to -18 LUFS. ${COMMON}`,
   },
-];
+};
+
+export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
+
+/**
+ * Tracks that ship in `public/music/` (licensed, credited, loop-checked) but are
+ * not wired to any context yet. Boss Battle #2 waited here from 2026-10-25
+ * until it became Decidueye's track (`forest-guardian`); none is reserved now.
+ */
+export const RESERVED_MUSIC: readonly ReservedTrack[] = [];
 
 /** Picks for later contexts, from docs/music-shortlist.md; nothing downloaded yet, licenses to re-check on download. */
 export const PLANNED_MUSIC: readonly PlannedTrack[] = [
@@ -229,14 +271,6 @@ export const PLANNED_MUSIC: readonly PlannedTrack[] = [
     license: 'CC0 1.0',
     sourceUrl: 'https://opengameart.org/content/boss-battle-music',
     notes: 'In-fight loop; "Final Battle of the Dark Wizards" (Kevin MacLeod, CC BY 4.0) for phase 1 or a cutscene.',
-  },
-  {
-    context: 'forest',
-    title: 'Cathedral in the forest (ambient loop)',
-    artist: 'congusbongus',
-    license: 'CC0 1.0',
-    sourceUrl: 'https://opengameart.org/content/cathedral-in-the-forest-ambient-loop',
-    notes: 'Author says seamless loop.',
   },
   {
     context: 'caves',

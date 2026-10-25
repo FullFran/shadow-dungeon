@@ -359,5 +359,10 @@
   "spell.decidueye.volley": "Shadow Sign \"Thicket That Stitches Shadows\"",
   "spell.decidueye.fan": "Fog Sign \"Requiem of Keen Leaves\"",
   "spell.decidueye.dive": "Owl Sign \"Dive of the Hollow Moon\"",
-  "town.board.bestIn": "Best floor in the {dungeon}: {floor}"
+  "town.board.bestIn": "Best floor in the {dungeon}: {floor}",
+  "guardian.decidueye.title": "The Archer of the Fog",
+  "guardian.decidueye.pre.1": "The fog has led you to the clearing. Here the paths end.",
+  "guardian.decidueye.pre.2": "I have watched this door since the sun went out. No one crosses while I have an arrow left.",
+  "guardian.decidueye.post.1": "My oath was a drawn bowstring. At last it rests.",
+  "guardian.decidueye.post.2": "Beneath the roots, something still drinks the light. I hear it breathing in the fog."
 }

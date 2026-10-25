@@ -9,11 +9,12 @@ const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
 describe('licensed music manifest', () => {
   it('has one track per used context', () => {
-    expect([...MUSIC_CONTEXTS].sort()).toEqual(['collapse', 'crypt', 'defeat', 'guardian', 'title', 'victory']);
+    expect([...MUSIC_CONTEXTS].sort()).toEqual(['collapse', 'crypt', 'defeat', 'forest', 'forest-fog', 'forest-guardian', 'guardian', 'title', 'victory']);
     for (const context of MUSIC_CONTEXTS) expect(MUSIC_TRACKS[context].context).toBe(context);
   });
 
-  const shipped = [...Object.values(MUSIC_TRACKS), ...RESERVED_MUSIC];
+  // Variants (the fog version of the forest track) reuse their track's file.
+  const shipped = [...Object.values(MUSIC_TRACKS).filter((t) => !t.variantOf), ...RESERVED_MUSIC];
 
   for (const track of shipped) {
     describe(track.file, () => {
@@ -64,18 +65,28 @@ describe('licensed music manifest', () => {
       expect(MUSIC_TRACKS[context].duration, context).toBeGreaterThanOrEqual(3);
       expect(MUSIC_TRACKS[context].duration, context).toBeLessThanOrEqual(10);
     }
-    for (const context of ['crypt', 'collapse'] as const) {
+    for (const context of ['crypt', 'collapse', 'forest'] as const) {
       const length = MUSIC_TRACKS[context].loopEnd - MUSIC_TRACKS[context].loopStart;
       expect(length, context).toBeGreaterThanOrEqual(60);
       expect(length, context).toBeLessThanOrEqual(180);
     }
   });
 
-  it('keeps Boss Battle #2 shipped and credited but reserved for a future guardian, not the Aegislash slot', () => {
-    expect(RESERVED_MUSIC.map((t) => [t.reservedFor, t.file])).toEqual([['future-guardian', 'boss-battle-2']]);
+  it('plays Boss Battle #2 for Decidueye (no longer reserved), keeps Aegislash on its own track, one file per track', () => {
+    expect(RESERVED_MUSIC).toEqual([]);
+    expect(MUSIC_TRACKS['forest-guardian'].file).toBe('boss-battle-2');
     expect(MUSIC_TRACKS.guardian.file).not.toBe('boss-battle-2');
     const files = new Set(shipped.map((t) => t.file));
     expect(files.size, 'one file per track').toBe(shipped.length);
+  });
+
+  it('muffles the forest track on fog floors instead of shipping another file', () => {
+    const fog = MUSIC_TRACKS['forest-fog'];
+    expect(fog.variantOf).toBe('forest');
+    expect(fog.file).toBe(MUSIC_TRACKS.forest.file);
+    expect([fog.loopStart, fog.loopEnd]).toEqual([MUSIC_TRACKS.forest.loopStart, MUSIC_TRACKS.forest.loopEnd]);
+    expect(fog.lowpassHz).toBeGreaterThan(200);
+    expect(fog.lowpassHz).toBeLessThan(2000);
   });
 
   it('ships no file that the manifest does not list', () => {
@@ -85,6 +96,6 @@ describe('licensed music manifest', () => {
   });
 
   it('records a planned pick for every later context', () => {
-    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['caves', 'forest', 'hub', 'necrozma', 'prologue', 'swamp']);
+    expect(PLANNED_MUSIC.map((p) => p.context).sort()).toEqual(['caves', 'hub', 'necrozma', 'prologue', 'swamp']);
   });
 });

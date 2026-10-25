@@ -125,7 +125,7 @@ export const FOREST: DungeonDef = {
     { kind: 'fog', chance: [0, 0.3, 0.35, 0, 0.4, 0.45, 0.5] },
     { kind: 'collapse', chance: [0, 0, 0.1, 0, 0.1, 0.15, 0.15] },
   ],
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest-fog' }, midboss: 'guardian', guardian: 'forest-guardian' },
   palette: {
     tileFloorA: '#2c3b2d',
     tileFloorB: '#304131',

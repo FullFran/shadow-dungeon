@@ -30,11 +30,14 @@ export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[
   const choices = dungeonChoices(options.cleared);
   const subtitle = h('p', { className: 'dim' });
   const best = h('p');
+  const legend = h('p', { className: 'dim' });
   const describe = (index: number) => {
     const choice = choices[index];
     if (!choice) return;
     subtitle.textContent = choice.unlocked ? t(choice.dungeon.lore.subtitleKey) : lockedHint(choice.dungeon);
     best.textContent = choice.unlocked ? bestFloorText(options.records, choice.dungeon) : '';
+    // The first line of its legend, once it is open.
+    legend.textContent = choice.unlocked ? t(choice.dungeon.lore.loreKeys[0] ?? '') : '';
   };
   const items: ListItem[] = choices.map((choice) => ({
     label: choice.unlocked ? t(choice.dungeon.lore.nameKey) : '???',
@@ -47,7 +50,7 @@ export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[
     h('h1', { className: 'screen-title', textContent: t('select.title') }),
     h('div', { className: 'screen-row' }, [
       mdWindow({ title: t('select.title'), className: 'dungeons' }, [list.element]),
-      mdWindow({ title: t('select.about'), className: 'dungeon-about' }, [subtitle, best]),
+      mdWindow({ title: t('select.about'), className: 'dungeon-about' }, [subtitle, legend, best]),
     ]),
   ];
 }

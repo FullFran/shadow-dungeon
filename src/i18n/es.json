@@ -359,5 +359,10 @@
   "spell.decidueye.volley": "Signo Sombra «Matorral que Cose Sombras»",
   "spell.decidueye.fan": "Signo Niebla «Réquiem de Hojas Afiladas»",
   "spell.decidueye.dive": "Signo Búho «Picado de la Luna Hueca»",
-  "town.board.bestIn": "Mejor planta en {dungeon}: {floor}"
+  "town.board.bestIn": "Mejor planta en {dungeon}: {floor}",
+  "guardian.decidueye.title": "El Arquero de la Niebla",
+  "guardian.decidueye.pre.1": "La niebla te ha traído hasta el claro. Aquí acaban los caminos.",
+  "guardian.decidueye.pre.2": "Velo esta puerta desde que el sol se apagó. Nadie la cruza mientras me quede una flecha.",
+  "guardian.decidueye.post.1": "Mi juramento era una cuerda tensa. Al fin descansa.",
+  "guardian.decidueye.post.2": "Bajo las raíces algo sigue bebiendo la luz. Lo oigo respirar en la niebla."
 }
