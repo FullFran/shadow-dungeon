@@ -18,7 +18,7 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { heldItems } from './item-pick';
 import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
-import { defaultSettings, loadSettings, saveSettings, type Settings } from './settings';
+import { defaultSettings, loadSettings, saveSettings, withSpecies, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 
 /**
@@ -189,14 +189,21 @@ function titleScreen(root: HTMLElement, initial = 0): void {
   ]);
 }
 
-function loadout(root: HTMLElement): void {
+/** The picker: species first, then its moves (Back from moves returns to the species list). */
+function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species'): void {
   show(root, [
     ...loadoutScreen({
+      stage,
+      species: settings.species,
       loadout: settings.loadout,
       sheets: sheetsReady(),
+      onSpecies: (species) => {
+        update(withSpecies(settings, species));
+        loadout(root, 'moves');
+      },
       onChange: (next) => update({ loadout: next }),
       onStart: () => void play(root),
-      onBack: () => titleScreen(root, 0),
+      onBack: () => (stage === 'moves' ? loadout(root, 'species') : titleScreen(root, 0)),
     }),
   ]);
 }

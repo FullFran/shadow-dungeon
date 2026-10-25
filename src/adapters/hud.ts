@@ -1,12 +1,13 @@
 import { ITEMS, type ItemId, type Rarity } from '../data/items';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
+import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { bossBar } from '../core/boss';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
-import type { Rect, WorldState } from '../core/state';
+import type { PlayerState, Rect, WorldState } from '../core/state';
 import { drawBar, drawPanel, noLigatures, pixelText } from '../ui/canvas';
 import { canvasFont, PALETTE, RARITY } from '../ui/tokens';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
@@ -100,7 +101,25 @@ function drawBadge(ctx: CanvasRenderingContext2D, badge: Badge, ox: number, oy: 
   ctx.fillText(noLigatures(badge.text), x + 4, y + 10);
 }
 
-/** The top-left window: floor / level / HP line, HP, stamina and XP bars, Disguise, held items. */
+/**
+ * The passive line of the status window: Disguise and Illusion are intact or
+ * broken for the room, Flash Fire is waiting or has powered up the next heavy
+ * move, Battle Armor is always ready (it acts during heavy wind-ups).
+ */
+export function passiveStatus(player: Pick<PlayerState, 'species' | 'disguiseBroken' | 'illusionBroken' | 'flashFire'>): { text: string; ready: boolean } {
+  const passive = SPECIES[player.species].passive ?? 'disguise';
+  const [ready, key] =
+    passive === 'disguise'
+      ? [!player.disguiseBroken, player.disguiseBroken ? 'hud.disguise.broken' : 'hud.disguise.intact']
+      : passive === 'illusion'
+        ? [!player.illusionBroken, player.illusionBroken ? 'hud.illusion.broken' : 'hud.illusion.intact']
+        : passive === 'flash-fire'
+          ? [player.flashFire, player.flashFire ? 'hud.passive.boosted' : 'hud.passive.waiting']
+          : [true, 'hud.passive.ready'];
+  return { text: `${t(`passive.${passive}`)}: ${t(key)}`, ready };
+}
+
+/** The top-left window: floor / level / HP line, HP, stamina and XP bars, passive, held items. */
 function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number): void {
   const { player } = state;
   const x = 6;
@@ -118,15 +137,15 @@ function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: nu
   drawBar(ctx, x + PAD, y + 31, inner, 3, barFill(player.stamina, TUNING.stamina.max), PALETTE.stamina);
   drawBar(ctx, x + PAD, y + 38, inner, 2, levelProgress(player.xp).fill, PALETTE.xp);
 
-  const intact = !player.disguiseBroken;
-  // Disguise: a small mask icon, bright while intact.
+  const { text: passiveText, ready: intact } = passiveStatus(player);
+  // The passive: a small mask icon, bright while ready.
   ctx.fillStyle = intact ? PALETTE.cursor : PALETTE.disabled;
   ctx.fillRect(x + PAD, y + 45, 7, 6);
   ctx.fillRect(x + PAD + 1, y + 51, 5, 1);
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(x + PAD + 1, y + 47, 2, 1);
   ctx.fillRect(x + PAD + 4, y + 47, 2, 1);
-  pixelText(ctx, `${t('passive.disguise')}: ${t(intact ? 'hud.disguise.intact' : 'hud.disguise.broken')}`, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
+  pixelText(ctx, passiveText, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
   for (const badge of items) drawBadge(ctx, badge, x + PAD, y + 58);
 }
 

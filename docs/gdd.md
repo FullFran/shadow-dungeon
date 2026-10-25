@@ -189,6 +189,15 @@ Repertorio de Mimikyu en el M0:
 | Rápida | Sombra Vil | Pequeño avance con golpe; sirve para cerrar distancia |
 | Fuerte | Carantoña | Golpe cuerpo a cuerpo fuerte, se carga |
 | Fuerte | Bola Sombra | Proyectil lento a distancia; cargado, más grande y más rápido |
+Iniciales (aprobados el 2026-10-25; se eligen en la pantalla de equipo antes de la partida, junto a Mimikyu):
+
+| Pokémon | Estilo | Rápida | Fuerte | Pasiva |
+|---|---|---|---|---|
+| Zorua (Siniestro) | Cuerpo a cuerpo rápido, poca vida | Golpes Furia (cinco arañazos, Normal), Finta (avance) | Pulso Noche (onda alrededor), Juego Sucio (embestida; más daño si el enemigo está atacando) | Ilusión: los enemigos dormidos solo te notan si los tocas; el primer golpe es crítico; vuelve en cada sala |
+| Litwick (Fantasma/Fuego) | A distancia, frágil | Ascuas (llama rápida), Impresionar (susto a bocajarro que aturde) | Infortunio (daño doble a un enemigo aturdido), Infierno (bola lenta y fuerte) | Absorbe Fuego: los golpes de Fuego curan un poco y potencian el siguiente movimiento fuerte |
+| Cubone (Tierra) | Aguante, lento, mucha vida | Hueso Palo (golpe que aturde), Ataque Óseo (tres golpes avanzando) | Huesomerang (va y vuelve, golpea dos veces), Pataleta (pisotón; doble si el golpe anterior falló) | Armadura Batalla: mientras cargas o preparas un movimiento fuerte, los golpes de frente hacen la mitad |
+
+Sin estados alterados todavía: lo que en el juego original depende de la quemadura aquí depende del aturdimiento. Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego no se nota hasta que lleguen enemigos de Fuego.
 - La efectividad de tipos se aplica a E (y a las debilidades de los jefes).
 - Los kits son datos: un movimiento es una entrada de tabla con daño, arranque, fotogramas activos, recuperación, coste de estamina, forma del golpe y niveles de carga.
 

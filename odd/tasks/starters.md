@@ -25,7 +25,7 @@ Out of scope: status conditions (Burn), the gacha, alternates (Absol, Misdreavus
 ## Tasks
 - [x] T1 Sprites: fetch the three species and Mimikyu Busted; credits regenerated with Font/Music kept (route: inline single writer)
 - [x] T2 Kits: species data, moves, passives in core with tests, types fire/ground, species setting, net species (route: inline single writer)
-- [ ] T3 Picker: species step then moves, persisted; HUD/log species names; docs (route: inline single writer)
+- [x] T3 Picker: species step then moves, persisted; HUD/log species names; docs (route: inline single writer)
 
 Route note: this whole feature runs inside one delegated bounded writer (the parent delegated it); tasks run inline within that writer.
 
@@ -72,4 +72,17 @@ Decisions:
 
 TDD: RED observed for the starter core tests (missing exports), the log lines, the settings species and the protocol `hidden` flag (reverted the protocol change to watch it fail). The lobby/loopback species tests passed on first run because the protocol already carried species; the presentation sprite tests were written after the adapter change.
 
-Checks: `npm test` 50 files / 473 tests passed; `tsc` (both configs) clean.
+Checks: `npm test` 50 files / 475 tests passed; `tsc` (both configs) clean.
+
+### T3 Picker (inline)
+- Loadout screen in two steps: species (cursor list with name and type badges; the info window previews the species under the cursor: idle sprite, types, passive) then its moves; Back from moves returns to species. Title "Prepara a {name}".
+- `withSpecies` (settings.ts): another species comes with its default loadout, the same one keeps the moves; the pick is saved like every setting and feeds solo, `?net=local` and room-code runs.
+- HUD passive line is species-aware (`passiveStatus`): Disguise/Illusion intact or broken, Flash Fire waiting or powered up, Battle Armor ready. Level-up and log lines already used the species name; tests cover "¡Zorua subió al nivel 3!".
+- Fire and Ground badge fills come from `TYPE_BADGE_FILLS` (src/ui/tokens.ts) as inline style, because index.html (where the other type colours live) was outside this writer's edit surface.
+- Illusion is drawn as a half see-through shimmer of the local player.
+- README and GDD §4 updated.
+- TDD: RED observed for `withSpecies` and `passiveStatus`; the DOM picker itself has no automated test (Vitest runs in node).
+- Checks: `npm test` 50 files / 477 tests passed; `npm run build` passed; headless Firefox screenshot `/tmp/starters/picker.png` (species step renders with Fire/Ground badges). In-game screenshots per starter not taken (the Playwright MCP has no browser installed; Firefox `--screenshot` cannot drive input).
+
+## Next step
+Parent: review, decide PR slicing (T2 is ~900 authored lines), and playtest each starter (feel, balance, Illusion shimmer, Mimikyu Busted swap).

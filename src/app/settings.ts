@@ -40,6 +40,11 @@ export function slotOptions(kind: SlotKind, species: SpeciesId = 'mimikyu'): Mov
   return SPECIES[species].movepool.filter((id) => MOVES[id].slot === kind);
 }
 
+/** The settings with `species` picked: another species comes with its default loadout, the same one keeps the current moves. */
+export function withSpecies(settings: Settings, species: SpeciesId): Settings {
+  return species === settings.species ? settings : { ...settings, species, loadout: SPECIES[species].defaultLoadout };
+}
+
 /**
  * Reads settings, keeping each stored field only if it is valid. Unknown fields
  * are dropped; fields added later (sound) take the fallback. The old `lockMode`

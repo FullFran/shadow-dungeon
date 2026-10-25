@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { hudLine } from '../../src/adapters/hud';
+import { hudLine, passiveStatus } from '../../src/adapters/hud';
+import { createWorld } from '../../src/core/world';
+import { vec } from '../../src/core/vec';
 import { emptyLog, eventMessages, LOG, logAlpha, pruneLog, pushMessage, visibleMessages } from '../../src/adapters/message-log';
 import { setLanguage } from '../../src/i18n';
 
@@ -84,5 +86,19 @@ describe('HUD line', () => {
     expect(hudLine(2, 5, 51.2, 100)).toBe('Planta 2 · Nv. 5 · PS 52/100');
     setLanguage('en');
     expect(hudLine(3, 1, 0, 110)).toBe('Floor 3 · Lv. 1 · HP 0/110');
+  });
+});
+
+describe('HUD passive line', () => {
+  afterEach(() => setLanguage('es'));
+  const player = (species: 'mimikyu' | 'zorua' | 'litwick' | 'cubone') => createWorld({ seed: 1, arena: { width: 100, height: 100 }, playerPos: vec(50, 50), species }).player;
+
+  it('shows the passive of the species being played', () => {
+    setLanguage('es');
+    expect(passiveStatus(player('mimikyu'))).toEqual({ text: 'Disfraz: intacto', ready: true });
+    expect(passiveStatus({ ...player('zorua'), illusionBroken: true })).toEqual({ text: 'Ilusión: rota', ready: false });
+    expect(passiveStatus({ ...player('litwick'), flashFire: true })).toEqual({ text: 'Absorbe Fuego: potenciado', ready: true });
+    expect(passiveStatus(player('litwick'))).toEqual({ text: 'Absorbe Fuego: en espera', ready: false });
+    expect(passiveStatus(player('cubone'))).toEqual({ text: 'Armadura Batalla: lista', ready: true });
   });
 });

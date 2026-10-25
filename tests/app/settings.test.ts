@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browserStore, memoryStore, type KeyValueStore } from '../../src/adapters/storage';
-import { defaultSettings, loadSettings, saveSettings, slotOptions } from '../../src/app/settings';
+import { defaultSettings, loadSettings, saveSettings, slotOptions, withSpecies } from '../../src/app/settings';
 
 describe('storage port', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -74,6 +74,12 @@ describe('settings', () => {
     const store = memoryStore();
     saveSettings(store, { ...defaultSettings('es'), species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
     expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
+  });
+
+  it('picking another species equips its default moves; picking the same one keeps the loadout', () => {
+    const tuned = { ...defaultSettings('es'), loadout: ['shadow-sneak', 'shadow-ball'] as const };
+    expect(withSpecies(tuned, 'litwick')).toMatchObject({ species: 'litwick', loadout: ['ember', 'hex'] });
+    expect(withSpecies(tuned, 'mimikyu')).toEqual(tuned);
   });
 
   it('gives a stored species its default loadout when the stored moves are not its own, and drops unknown species', () => {
