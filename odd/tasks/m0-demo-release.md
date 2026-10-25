@@ -21,7 +21,7 @@ Out of scope: sound and music, procedural dungeons (M2), accounts and saves.
 ## Tasks
 - [x] T1 Lock-on rework (route: delegated writer; trigger: 4+ non-trivial files across core, adapters, app, i18n, tests). Commit `6462946`.
 - [x] T2 GitHub Pages workflow and README (route: same writer). Commit `511eee3`.
-- [ ] T3 Create remote, push, deploy (route: parent; blocked on user authorization)
+- [ ] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25)
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
