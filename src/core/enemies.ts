@@ -13,7 +13,7 @@ import { isSwampDef, updateSwamp } from './swamp-brains';
 import { updateEclipse } from './eclipse-echo';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { partySizeOf } from './party';
-import { lungeTouches, slammerTouches } from './victim';
+import { lungeTouches, pierceZone, slammerTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -374,7 +374,7 @@ function interrupted(enemy: EnemyState): EnemyState {
 
 /** Runs every enemy's behaviour for one step at the enemy time scale, each going for its nearest present player. */
 export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
-  const ms = dtMs * enemyTimeScale(state);
+  const clockScale = enemyTimeScale(state);
   // Harder tiers: shorter telegraphs (never below the readable floor) and shorter cooldowns (core/difficulty.ts).
   const tier = worldDifficulty(state);
   let current = state;
@@ -390,9 +390,12 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       continue;
     }
     // Elites: swift ones always act faster, enraged ones once hurt (on top of the tier's clocks).
-    const ems = ms * eliteTimeScale(enemy);
+    const pace = clockScale * eliteTimeScale(enemy);
+    const ems = dtMs * clockScale * eliteTimeScale(enemy);
+    // The telegraph floor is applied after every speed-up (core/difficulty.ts `effectiveTelegraphMs`); positional wind-ups keep the longer one.
+    const positional = enemy.ai.mode === 'telegraph' && pierceZone(enemy, tier, current.arena) !== null;
     // In a party a boss keeps one target and turns to another now and then (core/aggro.ts); otherwise the nearest player.
-    const aimed = aggroTarget(current, { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite) }, ems, events);
+    const aimed = aggroTarget(current, { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite, { pace, positional }) }, ems, events);
     const ticked = aimed.enemy;
     const target = aimed.target.pos;
     if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);

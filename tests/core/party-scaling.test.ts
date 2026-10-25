@@ -127,17 +127,18 @@ describe('boss damage (victim side)', () => {
     const w = spawnEnemy({ ...base, ...(party > 1 ? { party } : {}), player: { ...base.player, maxHp: 1000, hp: 1000, disguiseBroken: true } }, 'aegislash', vec(800, 800), { dormant: true });
     return bossAlive ? w : { ...w, enemies: w.enemies.map((e) => ({ ...e, alive: false })) };
   };
-  const taken = (w: WorldState) => 1000 - landHitOnPlayer(w, { damage: 100 }, [] as GameEvent[]).state.player.hp;
+  // A small hit: the one-hit cap (core/fairness.ts) stays out of the way.
+  const taken = (w: WorldState) => 1000 - landHitOnPlayer(w, { damage: 20 }, [] as GameEvent[]).state.player.hp;
 
   it('rises ×1.1 with 3 players and ×1.15 with 4 while a boss stands, not with 2', () => {
-    expect(taken(withBoss(1))).toBe(100);
-    expect(taken(withBoss(2))).toBe(100);
-    expect(taken(withBoss(3))).toBe(110);
-    expect(taken(withBoss(4))).toBe(115);
+    expect(taken(withBoss(1))).toBe(20);
+    expect(taken(withBoss(2))).toBe(20);
+    expect(taken(withBoss(3))).toBe(22);
+    expect(taken(withBoss(4))).toBe(23);
   });
 
   it('does not apply once the boss has fallen', () => {
-    expect(taken(withBoss(4, false))).toBe(100);
+    expect(taken(withBoss(4, false))).toBe(20);
   });
 });
 

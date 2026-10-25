@@ -1,4 +1,4 @@
-import type { Difficulty } from '../data/difficulty';
+import { MAX_HIT_SHARE, TELEGRAPH_FLOOR, type Difficulty } from '../data/difficulty';
 import { dungeonById, type DungeonId } from '../data/dungeons';
 import { TUNING } from '../data/tuning';
 import type { FloorResult, RunResult } from './runner';
@@ -51,9 +51,9 @@ const TICK_MS = 1000 / TUNING.ticksPerSecond;
 
 /** The numbers. Telegraph floors allow one tick of measuring slack (events land on ticks). */
 export const BANDS = {
-  maxHitShare: 0.35,
-  telegraphFloorMs: 280,
-  choiceTelegraphFloorMs: 400,
+  maxHitShare: MAX_HIT_SHARE,
+  telegraphFloorMs: TELEGRAPH_FLOOR.minMs,
+  choiceTelegraphFloorMs: TELEGRAPH_FLOOR.choiceMinMs,
   simultaneous: { default: 2, nightmare: 3 } as const,
   unseenAtOnce: 1,
   blindHits: 0,
@@ -93,8 +93,6 @@ const SIMULTANEOUS = 'every awake enemy of a floor winds up at the player at onc
 const UNSEEN = 'awake walkers and casters start wind-ups off screen (no off-screen limit yet, P5.1)';
 export const KNOWN_VIOLATIONS: readonly KnownViolation[] = [
   { band: 'simultaneous-telegraphs', dungeon: 'crypt-of-the-sword-king', reason: SIMULTANEOUS },
-  { band: 'max-hit', dungeon: 'crypt-of-the-sword-king', reason: 'Aegislash on nightmare in a 3–4 party (boss damage ×1.1–1.15, data/party-scaling.ts) hits a level-1 starter for 36 %: no hit cap yet (P5.6)' },
-  { band: 'max-hit', dungeon: 'misty-forest', reason: 'Trevenant on nightmare in a 3–4 party (boss damage ×1.1–1.15) hits a level-1 starter for 40 %: no hit cap yet (P5.6)' },
   { band: 'unseen-threats', dungeon: 'crypt-of-the-sword-king', reason: UNSEEN },
   { band: 'simultaneous-telegraphs', dungeon: 'misty-forest', reason: `${SIMULTANEOUS}; worst on fog floors (up to 8)` },
   { band: 'unseen-threats', dungeon: 'misty-forest', reason: UNSEEN },
@@ -102,15 +100,12 @@ export const KNOWN_VIOLATIONS: readonly KnownViolation[] = [
   { band: 'simultaneous-telegraphs', dungeon: 'flooded-caves', reason: `${SIMULTANEOUS}; worst on flood floors (up to 7)` },
   { band: 'unseen-threats', dungeon: 'flooded-caves', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'flooded-caves', reason: 'hits with under 280 ms of on-screen warning on generated floors (to inspect: shots entering the screen late)' },
-  { band: 'max-hit', dungeon: 'flooded-caves', reason: 'Dhelmise on nightmare hits a level-1 starter (100 HP, isolated arena) for 36 %: no cap on tier-scaled damage yet (P5.6)' },
   { band: 'simultaneous-telegraphs', dungeon: 'toxic-swamp', reason: `${SIMULTANEOUS}; worst on gas floors` },
   { band: 'unseen-threats', dungeon: 'toxic-swamp', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'toxic-swamp', reason: 'one hit with under 280 ms of warning in the Nihilego arena on normal' },
   { band: 'simultaneous-telegraphs', dungeon: 'eclipse-chasm', reason: `${SIMULTANEOUS}; mixed squads` },
   { band: 'unseen-threats', dungeon: 'eclipse-chasm', reason: UNSEEN },
   { band: 'blind-hits', dungeon: 'eclipse-chasm', reason: 'hits with under 280 ms of warning on deep generated floors (F9)' },
-  { band: 'telegraph-floor', dungeon: 'eclipse-chasm', reason: 'wind-ups of 200–217 ms from normal up: suspected Sima elites whose pace (swift, enrage) runs the AI clock past the telegraph floor' },
-  { band: 'max-hit', dungeon: 'eclipse-chasm', reason: 'the floor-5 Aegislash echo on nightmare hits a level-1 starter for 36 %: depth × tier damage has no hit cap yet (P5.6)' },
 ];
 
 interface Where {
@@ -172,7 +167,7 @@ export function evaluate(sweep: SweepResults, known: readonly KnownViolation[] =
       return out;
     };
     const hit = worst((f) => f.maxHitShare, (a, b) => a > b);
-    push('max-hit', scope, dungeon, !hit || hit.v <= BANDS.maxHitShare, hit ? `${pct(hit.v)} (${hit.at.label})` : 'no hits', `≤ ${pct(BANDS.maxHitShare)} of max HP`);
+    push('max-hit', scope, dungeon, !hit || hit.v <= BANDS.maxHitShare, hit ? `${pct(hit.v)} (${hit.at.label})` : 'no hits', `≤ ${pct(BANDS.maxHitShare)} of reference max HP`);
     const tel = worst((f) => (f.telegraphMs.length ? Math.min(...f.telegraphMs) : null), (a, b) => a < b);
     push('telegraph-floor', scope, dungeon, !tel || tel.v >= BANDS.telegraphFloorMs - TICK_MS, tel ? `${tel.v.toFixed(0)} ms (${tel.at.label})` : 'none', `≥ ${BANDS.telegraphFloorMs} ms`);
     const choice = worst((f) => (f.choiceTelegraphMs.length ? Math.min(...f.choiceTelegraphMs) : null), (a, b) => a < b);

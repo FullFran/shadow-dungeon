@@ -1,5 +1,5 @@
 import type { SpawnTuning } from '../data/dungeon';
-import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
+import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
@@ -73,15 +73,45 @@ export function eliteTimeScale(enemy: Pick<EnemyState, 'elite' | 'hp' | 'maxHp'>
 }
 
 /**
- * One step of an enemy's AI clocks at tier `d`: a telegraph runs through its
- * planned length faster (so it lasts `scaledTelegraphMs`, never below the
- * floor), and cooldowns run out faster with the tier's aggression (and a
- * frenzied elite's). Easy is the plain clock.
+ * The one place a wind-up's real length is decided (P5): `baseMs` scaled by
+ * the tier (`scaledTelegraphMs`), then sped up by `pace` (how much faster
+ * than real time the enemy's clock runs: elite pace, enrage, a Sima pact's
+ * curse; under 1 in slow-mo), and only then floored at `TELEGRAPH_FLOOR.minMs`
+ * (`choiceMinMs` for a positional, `pierceRoll` one). The floor only undoes
+ * what the modifiers cut: an authored base already under it stays as is.
  */
-export function tickAiAt(ai: AiState, ms: number, d: Difficulty, elite?: EnemyState['elite']): AiState {
+export function effectiveTelegraphMs(baseMs: number, d: Difficulty, pace = 1, positional = false): number {
+  const paced = scaledTelegraphMs(baseMs, d) / pace;
+  const floor = Math.min(baseMs, positional ? TELEGRAPH_FLOOR.choiceMinMs : TELEGRAPH_FLOOR.minMs);
+  return Math.max(floor, paced);
+}
+
+/** What else runs an enemy's clock in `tickAiAt`: `pace` (the factor `ms` already carries over real time) and whether the wind-up is positional. */
+export interface AiClock {
+  pace?: number;
+  positional?: boolean;
+}
+
+/**
+ * One step of an enemy's AI clocks at tier `d`: a telegraph runs through its
+ * planned length so that it lasts `effectiveTelegraphMs` in real time (never
+ * below the floor, whatever sped the clock up), and cooldowns run out faster
+ * with the tier's aggression (and a frenzied elite's). `ms` is the enemy's
+ * step (real ms × `clock.pace`). Easy at pace 1 is the plain clock.
+ */
+export function tickAiAt(ai: AiState, ms: number, d: Difficulty, elite?: EnemyState['elite'], clock: AiClock = {}): AiState {
   const tier = TIERS[d];
+  const pace = clock.pace ?? 1;
   const cooldownShare = tier.cooldown * (elite ? ELITE_TRAIT_DEFS[elite].cooldown : 1);
-  const telegraphRate = ai.mode === 'telegraph' && ai.modeDurationMs > 0 && tier.telegraph !== 1 ? ai.modeDurationMs / scaledTelegraphMs(ai.modeDurationMs, d) : 1;
+  let telegraphRate = 1;
+  if (ai.mode === 'telegraph' && ai.modeDurationMs > 0) {
+    const base = ai.modeDurationMs;
+    const scaled = scaledTelegraphMs(base, d);
+    const real = effectiveTelegraphMs(base, d, pace, clock.positional);
+    // The floor binds: slow the clock so the wind-up lasts `real` real ms. Otherwise the tier's own rate (exactly 1 on easy).
+    if (real > scaled / pace) telegraphRate = base / (real * pace);
+    else if (tier.telegraph !== 1) telegraphRate = base / scaled;
+  }
   return {
     ...ai,
     modeMs: ai.modeMs + (telegraphRate === 1 ? ms : ms * telegraphRate),

@@ -1,6 +1,7 @@
 import { TELEGRAPH_FLOOR } from '../data/difficulty';
 import { TUNING } from '../data/tuning';
 import type { WorldState } from '../core/state';
+import { speciesMaxHpAt } from '../core/fairness';
 import { distance } from '../core/vec';
 import { cameraRect, onScreen } from './observe';
 
@@ -27,7 +28,7 @@ export interface FloorMetrics {
   hits: number;
   /** Of those, positional (`pierceRoll`) ones: rolling could not stop them. */
   hitsPierce: number;
-  /** The biggest single hit as a share of max HP. */
+  /** The biggest single hit as a share of the reference max HP (core/fairness.ts: the species at the floor's expected level), not the bot's own. */
   maxHitShare: number;
   kills: number;
   /** Per enemy killed: ms from waking (or the floor start for a fixed room) to falling. */
@@ -192,7 +193,7 @@ export class FloorRecorder {
         this.m.damage += ev.damage;
         this.m.hits += 1;
         if (ev.pierceRoll) this.m.hitsPierce += 1;
-        this.m.maxHitShare = Math.max(this.m.maxHitShare, ev.damage / after.player.maxHp);
+        this.m.maxHitShare = Math.max(this.m.maxHitShare, ev.damage / speciesMaxHpAt(after.player.species, after.referenceLevel ?? 1));
       } else if (ev.type === 'collapseHurt') this.m.damage += ev.damage;
       else if (ev.type === 'enemyTelegraph') {
         const enemy = after.enemies.find((e) => e.id === ev.enemyId);

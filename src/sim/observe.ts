@@ -1,7 +1,6 @@
-import { scaledTelegraphMs } from '../data/difficulty';
 import { TUNING } from '../data/tuning';
 import { bossBar } from '../core/boss';
-import { eliteTimeScale, worldDifficulty } from '../core/difficulty';
+import { effectiveTelegraphMs, eliteTimeScale, worldDifficulty } from '../core/difficulty';
 import { insideRect } from '../core/geometry';
 import type { AiMode, Arena, Rect, WorldState } from '../core/state';
 import { enemyTimeScale } from '../core/time';
@@ -88,16 +87,15 @@ export interface Observation {
   cleared: boolean;
 }
 
-/** Real ms left of an enemy's wind-up, from its AI clock (enemy time runs at tier, elite and slow-mo rates). */
+/** Real ms left of an enemy's wind-up, from its AI clock (the game's own rule: core/difficulty.ts `effectiveTelegraphMs`). */
 function windupOf(state: WorldState, e: WorldState['enemies'][number]): SeenWindup | null {
   const ai = e.ai;
   if (ai.mode !== 'telegraph' || ai.modeDurationMs <= 0) return null;
   const d = worldDifficulty(state);
-  const scaled = scaledTelegraphMs(ai.modeDurationMs, d);
-  const tierRate = ai.modeDurationMs / scaled;
-  const clock = tierRate * eliteTimeScale(e) * enemyTimeScale(state);
-  const remainingMs = Math.max(0, (ai.modeDurationMs - ai.modeMs) / clock);
-  return { remainingMs, totalMs: scaled / (eliteTimeScale(e) * enemyTimeScale(state)) };
+  const pace = enemyTimeScale(state) * eliteTimeScale(e);
+  const totalMs = effectiveTelegraphMs(ai.modeDurationMs, d, pace, pierceZone(e, d, state.arena) !== null);
+  const remainingMs = Math.max(0, ((ai.modeDurationMs - ai.modeMs) / ai.modeDurationMs) * totalMs);
+  return { remainingMs, totalMs };
 }
 
 /** The screen of the world's local player. */
