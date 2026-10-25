@@ -92,6 +92,13 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
     }
     case 'thief':
       return enemy.boss?.stance === 'gems' ? def.gems.gem.type : def.blink.attack.type;
+    case 'treant': {
+      const card = enemy.boss?.stance;
+      if (card === 'roots') return def.roots.spike.type;
+      if (card === 'spiral' || card === 'grove') return def.spiral.leaf.type;
+      if (card === 'curse') return def.curse.shot.type;
+      return def.slam.attack.type;
+    }
     case 'lunger':
     case 'slammer':
       return def.attack.type;
@@ -209,12 +216,14 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
  * streaks in their type colours; anything else (Gastly's Poison ball) keeps
  * the orb of `drawProjectileVfx` (null).
  */
-export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cloud'; puff: string; speck: string; edge: string };
+export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cloud'; puff: string; speck: string; edge: string } | { kind: 'root' };
 
 const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying', 'steel'];
 
 export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemyShotLook | null {
   if (p.vel.x === 0 && p.vel.y === 0) {
+    // Still Grass shots are Trevenant's roots bursting from the ground.
+    if (p.type === 'grass') return { kind: 'root' };
     // Poison keeps Foongus' spore look; other still shots are puddles in their type colours (lava, mud, water).
     if (p.type === 'poison') return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
     const c = TYPE_COLORS[p.type];
@@ -225,6 +234,31 @@ export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemySh
 
 /** Draws an enemy shot with its look (lifted off the ground; the shadow is the renderer's). */
 export function drawEnemyShotVfx(ctx: CanvasRenderingContext2D, look: EnemyShotLook, p: Pick<ProjectileState, 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): void {
+  if (look.kind === 'root') {
+    // Thorny roots out of the ground: they rise fast and sink as they fade.
+    const rise = Math.min(1, p.remainingMs / 150);
+    const r = p.radius;
+    for (let i = 0; i < 3; i++) {
+      const x = pos.x + (i - 1) * r * 0.55;
+      const h = r * (1.1 + 0.35 * ((i + 1) % 2)) * rise;
+      ctx.fillStyle = i === 1 ? '#5b3f26' : '#4a3320';
+      ctx.beginPath();
+      ctx.moveTo(x - r * 0.28, pos.y + 4);
+      ctx.lineTo(x + Math.sin(i * 2 + pos.y) * 3, pos.y + 4 - h);
+      ctx.lineTo(x + r * 0.28, pos.y + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = TYPE_COLORS.grass.glow;
+      ctx.fillRect(Math.round(x - 1), Math.round(pos.y + 4 - h * 0.6), 2, 2);
+    }
+    ctx.strokeStyle = withAlpha(TYPE_COLORS.grass.edge, 0.6);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y + 4, r * 0.9, r * 0.35, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    void timeMs;
+    return;
+  }
   if (look.kind === 'cloud') {
     const fade = Math.min(1, p.remainingMs / 600);
     for (let i = 0; i < 5; i++) {

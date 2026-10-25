@@ -165,7 +165,7 @@ describe('forest enemies', () => {
   it('Trevenant slams with a ring of leaves and shows a boss bar', () => {
     const state = arena('trevenant', vec(450, 300));
     const slam = stepUntil(state, (s) => s.projectiles.length > 0, ticksFor(6000));
-    expect(slam.state.projectiles).toHaveLength(TREVENANT.ring!.count);
+    expect(slam.state.projectiles).toHaveLength(TREVENANT.slam.ring.count);
   });
 });
 

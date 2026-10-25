@@ -75,7 +75,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       hit = contactPlayer(current, enemy, def.blink.attack, thiefTouches(enemy, current.player.pos, def), events);
       if (hit.contact === 'hit') hit = { ...hit, state: { ...hit.state, player: stealItem(hit.state.player, enemy.id, def.stealMs, events) } };
     }
-    else if (def.kind === 'archer') {
+    else if (def.kind === 'treant') {
+      // Only the slam touches; roots, leaves and curses are projectiles.
+      if (enemy.boss?.stance !== 'slam') continue;
+      hit = contactPlayer(current, enemy, def.slam.attack, slamTouches(enemy, current.player.pos, def.slam.radius), events);
+    } else if (def.kind === 'archer') {
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);

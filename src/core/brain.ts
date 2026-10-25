@@ -58,6 +58,7 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     knockback: 0,
     hitIds: [],
     ...(shot.steer ? { steer: shot.steer } : {}),
+    ...(shot.pierceRoll ? { pierceRoll: true as const } : {}),
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }

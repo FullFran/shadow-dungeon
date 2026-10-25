@@ -12,6 +12,13 @@ import type { PokemonType } from './types';
 export interface EnemyAttackDef {
   power: number;
   type: PokemonType;
+  /**
+   * A positional attack that the roll's i-frames do not protect against:
+   * the only answer is to be somewhere else (Trevenant's roots, Decidueye's
+   * arrow rain). The core rule and its distinct telegraph come with the
+   * difficulty framework; until then it is a plain hit.
+   */
+  pierceRoll?: true;
 }
 
 /** How an enemy reacts to the player's hits. */
@@ -458,20 +465,77 @@ export const FOONGUS: SporeDef = {
   cooldownMs: 2600,
 };
 
-export const TREVENANT: SlammerDef = {
-  kind: 'slammer',
+/** Trevenant's spell cards (Misty Forest mid-boss); `grove` is only dealt on hard and up (T4). */
+export type TreantCard = 'roots' | 'spiral' | 'curse' | 'grove';
+
+/**
+ * Trevenant, the hollow's mid-boss: it walks in and slams (a ring around it
+ * and a ring of leaves), then plays its next spell card, then slams again.
+ * Roots: the hollow is split into lanes; every other lane is marked, then
+ * roots burst from it (positional: a roll does not save you, `pierceRoll`),
+ * then the other lanes. Spiral: arms of leaves wind out of it, every shot of
+ * an arm far enough from the next to slip between. Curse: a ring of curses
+ * is marked around the player, a gap left open on the side away from the
+ * tree; the ring closes in to its centre, twice. Grove (hard and up): two
+ * spirals winding opposite ways.
+ */
+export interface TreantDef {
+  kind: 'treant';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  cards: readonly TreantCard[];
+  cardNames: Readonly<Record<TreantCard, string>>;
+  slam: {
+    range: number;
+    /** It slams anyway once it has walked this long. */
+    approachMs: number;
+    telegraphMs: number;
+    slamMs: number;
+    radius: number;
+    attack: EnemyAttackDef;
+    recoverMs: number;
+    ring: { count: number; projectile: ShotDef };
+  };
+  /** `waveGapMs`: the wind-up of each later wave, marked once the last roots are gone. */
+  roots: { telegraphMs: number; waveGapMs: number; waves: number; laneWidth: number; spacing: number; spike: HazardDef; recoverMs: number };
+  spiral: { telegraphMs: number; arms: number; turnDegrees: number; everyMs: number; bursts: number; leaf: ShotDef; recoverMs: number };
+  curse: { telegraphMs: number; lockMs: number; radius: number; count: number; gap: number; rings: number; ringGapMs: number; shot: ShotDef; recoverMs: number };
+  /** The double spiral: as `spiral`, with this many arms each way. */
+  grove: { arms: number; turnDegrees: number };
+}
+
+export const TREVENANT: TreantDef = {
+  kind: 'treant',
   poise: { hitstunScale: 0, knockbackScale: 0.1 },
   bar: true,
   aggroRange: 900,
   walkSpeed: 44,
-  slamRange: 95,
-  telegraphMs: 1000,
-  slamMs: 200,
-  radius: 85,
-  attack: { power: 38, type: 'ghost' },
-  recoverMs: 1400,
-  cooldownMs: 1100,
-  ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+  cards: ['roots', 'spiral', 'curse'],
+  cardNames: { roots: 'spell.trevenant.roots', spiral: 'spell.trevenant.spiral', curse: 'spell.trevenant.curse', grove: 'spell.trevenant.grove' },
+  slam: {
+    range: 95,
+    approachMs: 3500,
+    telegraphMs: 1000,
+    slamMs: 200,
+    radius: 85,
+    attack: { power: 38, type: 'ghost' },
+    recoverMs: 1400,
+    ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+  },
+  roots: {
+    telegraphMs: 1100,
+    waveGapMs: 700,
+    waves: 2,
+    laneWidth: 100,
+    spacing: 36,
+    spike: { power: 30, type: 'grass', radius: 24, lifetimeMs: 500, pierceRoll: true },
+    recoverMs: 1300,
+  },
+  spiral: { telegraphMs: 900, arms: 4, turnDegrees: 18, everyMs: 200, bursts: 14, leaf: { power: 18, type: 'grass', speed: 95, radius: 6, lifetimeMs: 5000 }, recoverMs: 1300 },
+  curse: { telegraphMs: 1000, lockMs: 300, radius: 160, count: 20, gap: 4, rings: 2, ringGapMs: 800, shot: { power: 22, type: 'ghost', speed: 80, radius: 7, lifetimeMs: 2000 }, recoverMs: 1400 },
+  grove: { arms: 3, turnDegrees: 22 },
 };
 
 export const DECIDUEYE: ArcherDef = {
@@ -1063,7 +1127,7 @@ export const DRIFLOON: GastlyDef = {
   ring: { count: 8 },
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1101,7 +1165,7 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   drifloon: DRIFLOON,
 };
 
-/** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
+/** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */
 export function spellCardKey(species: SpeciesId, stance: string | null | undefined): string | null {
   const def = ENEMY_BEHAVIOUR[species];
   if (!def || !stance || !('cardNames' in def)) return null;

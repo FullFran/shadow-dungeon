@@ -1,5 +1,5 @@
 import type { Difficulty } from '../data/difficulty';
-import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
@@ -190,7 +190,7 @@ export interface EnemyState {
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard;
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | 'slam';
 
 export interface BossState {
   stance: BossStance;
@@ -273,6 +273,8 @@ export interface ProjectileState {
   moveId?: MoveId;
   /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */
   steer?: SteerDef;
+  /** Positional enemy attack that the roll's i-frames do not stop (data `pierceRoll`; the rule itself comes with the difficulty framework). */
+  pierceRoll?: true;
 }
 
 export interface Arena {

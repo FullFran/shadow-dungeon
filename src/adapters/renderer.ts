@@ -1,4 +1,6 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type TreantDef } from '../data/enemies';
+import { rootLanes } from '../core/treant';
+import { TYPE_COLORS } from '../ui/tokens';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS } from '../core/archer';
@@ -22,7 +24,7 @@ import { drawMessageLog, visibleMessages, type MessageLog } from './message-log'
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
-import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
+import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
@@ -628,6 +630,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       }
       if (stance === 'unsheathe' || stance === 'midnight' || stance === 'oaths') return;
     }
+    if (def?.kind === 'treant' && enemy.boss) {
+      treantTelegraph(enemy, def, pos, progress, winding, striking);
+      return;
+    }
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
     const fill = telegraphFill(enemyAttackType(enemy), winding);
@@ -713,6 +719,65 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     } else if (enemy.boss?.stance === 'blade') {
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
       groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
+    }
+  }
+
+  /** Trevenant: its slam ring, the lanes about to burst with roots, the spiral's arms, the curse ring and its gap. */
+  function treantTelegraph(enemy: EnemyState, def: TreantDef, pos: Vec2, progress: number, winding: boolean, striking: boolean): void {
+    const card = enemy.boss!.stance;
+    const fill = telegraphFill(enemyAttackType(enemy), winding);
+    if (card === 'slam') {
+      if (winding || striking) groundCircle(pos, def.slam.radius, fill, winding ? progress : 1);
+      return;
+    }
+    if (!winding || !currentArena) return;
+    const { width, height } = currentArena;
+    if (card === 'roots') {
+      // The lanes about to burst: filling as the wind-up runs, red edges along both sides.
+      for (const lane of rootLanes(enemy, width, def)) {
+        const x = lane * def.roots.laneWidth;
+        ctx.fillStyle = telegraphFill(def.roots.spike.type, true);
+        ctx.fillRect(x, height * (1 - progress), def.roots.laneWidth, height * progress);
+        ctx.fillStyle = 'rgba(90, 60, 30, 0.18)';
+        ctx.fillRect(x, 0, def.roots.laneWidth, height);
+        ctx.fillStyle = COLORS.telegraphEdge;
+        ctx.fillRect(x, 0, 2, height);
+        ctx.fillRect(x + def.roots.laneWidth - 2, 0, 2, height);
+      }
+      return;
+    }
+    if (card === 'curse' && enemy.ai.aimPoint) {
+      const c = enemy.ai.aimPoint;
+      const gap = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+      const half = (def.curse.gap * Math.PI) / def.curse.count;
+      ctx.strokeStyle = COLORS.telegraphEdge;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, gap + half, gap + Math.PI * 2 - half);
+      ctx.stroke();
+      ctx.fillStyle = withAlpha(TYPE_COLORS.ghost.glow, 0.12 + 0.12 * progress);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, 0, Math.PI * 2);
+      ctx.fill();
+      // The way out, bright.
+      ctx.strokeStyle = 'rgba(255, 230, 160, 0.9)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, def.curse.radius, gap - half, gap + half);
+      ctx.stroke();
+      return;
+    }
+    // Spiral (and grove): a ring closing on the tree and the arms' first lanes.
+    ctx.strokeStyle = COLORS.telegraphEdge;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, enemy.radius + 8 + 40 * (1 - progress), 0, Math.PI * 2);
+    ctx.stroke();
+    const arms = card === 'grove' ? def.grove.arms : def.spiral.arms;
+    const base = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+    for (let i = 0; i < arms; i++) {
+      const a = base + (i * 2 * Math.PI) / arms;
+      groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 90, 4, fill, progress);
     }
   }
 
