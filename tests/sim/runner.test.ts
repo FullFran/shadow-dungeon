@@ -84,13 +84,17 @@ describe('balance metrics', () => {
 });
 
 describe('party adapter', () => {
-  it('solo is the world unchanged; a party splits enemy HP between its members (the game has no party scaling yet)', () => {
-    expect(partyScaling(3)).toEqual({ enemyHp: 1, bossHp: 1, damage: 1 });
+  it('solo is the world unchanged; a party plays at the game party size and splits enemy HP between its members', () => {
+    expect(partyScaling(1)).toMatchObject({ players: 1, bossHp: 1, enemyHp: 1 });
     const { world } = startRun(5, {}, 6, CRYPT);
     expect(applyParty(world, 1)).toBe(world);
     const four = applyParty(world, 4);
-    expect(four.enemies[0]!.maxHp).toBeCloseTo(world.enemies[0]!.maxHp / 4);
-    expect(four.enemies[0]!.hp).toBeCloseTo(world.enemies[0]!.hp / 4);
-    expect(four.enemyScale).toBe(world.enemyScale);
+    const boss = partyScaling(4).bossHp;
+    expect(four.party).toBe(4);
+    expect(four.enemies[0]!.maxHp).toBeCloseTo((world.enemies[0]!.maxHp * boss) / 4);
+    // A floor the game already spawned at the party size is only split.
+    const native = startRun(5, { party: 4 }, 6, CRYPT).world;
+    expect(native.enemies[0]!.maxHp).toBeCloseTo(world.enemies[0]!.maxHp * boss);
+    expect(applyParty(native, 4).enemies[0]!.maxHp).toBeCloseTo(four.enemies[0]!.maxHp);
   });
 });

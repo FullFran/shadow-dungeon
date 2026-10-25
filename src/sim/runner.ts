@@ -89,7 +89,8 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const endless = dungeonById(s.dungeon).endless !== undefined;
   const timeout = options.floorTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const bot = createBot(s.bot, botSeed(s));
-  const started = startRun(s.seed, { difficulty: s.tier }, startFloor, s.dungeon);
+  // Floor 1 starts at the party size like a co-op room (`WorldOptions.party`); later floors go through `applyParty`.
+  const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}) }, startFloor, s.dungeon);
   let run = started.run;
   let world = applyParty(started.world, s.party);
   const floors: FloorResult[] = [];

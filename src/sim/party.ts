@@ -1,50 +1,44 @@
+import { partyScaling as gamePartyScaling, type PartyScaling } from '../data/party-scaling';
+import { isBossClass, partyField, partySizeOf } from '../core/party';
 import type { WorldState } from '../core/state';
 
 /**
  * Party size in the balance harness: the ONE place the harness touches co-op
- * scaling, so wiring the core's party helper in is a change to
- * `partyScaling` alone.
+ * scaling (the game's: `data/party-scaling.ts`, `core/party.ts`).
  *
  * Model: a party of `size` is the bot plus `size - 1` teammates that deal the
- * same damage, so every enemy's HP is divided by `size` on top of the game's
- * party HP scaling, and enemy damage takes the game's party damage factor.
- * The enemies still go for the bot alone (attention is not shared): a
- * pessimistic stand-in for real co-op until the harness simulates several
- * peers. Enemies that join later (wave rooms, Sima events) keep the game's own
- * scaling only.
+ * same damage. Each floor is played at the game's party size (`world.party`:
+ * enemy HP at spawn, boss damage and stagger, boss aggro and 3+-player cards),
+ * and every enemy's HP is then divided by `size` for the teammates' share of
+ * the damage. The enemies still go for the bot alone (no teammate draws
+ * aggro): a pessimistic stand-in until the harness simulates several peers.
+ * Enemies that join later (wave rooms, Sima events) spawn with the game's
+ * party HP but without the teammate split.
  */
 export const PARTY_SIZES = [1, 2, 3, 4] as const;
 
-export interface PartyScaling {
-  /** Enemy HP factor of an ordinary enemy for this party size (the game's, before the harness's teammate split). */
-  enemyHp: number;
-  /** Enemy HP factor of a boss or mid-boss. */
-  bossHp: number;
-  /** Enemy damage factor. */
-  damage: number;
-}
+export type { PartyScaling };
+
+/** The game's party scaling row for `size` players (clamped to 1–4). */
+export const partyScaling = (size: number): PartyScaling => gamePartyScaling(size);
 
 /**
- * The game's party scaling for `size` players. The game has none yet
- * (docs/souls-difficulty-research.md §0), so it is identity: replace this body
- * with a call to the core's party helper once it lands.
+ * A party of `size` on a freshly loaded floor. The game freezes a floor's
+ * party from the players present on entry, and the harness has no remote
+ * peers, so a floor after the first comes in solo: its enemies are rescaled
+ * to the party's spawn HP and `world.party` is set. Solo is unchanged.
  */
-export function partyScaling(size: number): PartyScaling {
-  void size;
-  return { enemyHp: 1, bossHp: 1, damage: 1 };
-}
-
-/** A party of `size` (1 to 4) on a freshly loaded floor: enemy HP and damage as the model above says. Solo is unchanged. */
 export function applyParty(world: WorldState, size: number): WorldState {
-  const n = Math.min(4, Math.max(1, Math.floor(size)));
-  if (n === 1 && isIdentity(partyScaling(1))) return world;
-  const s = partyScaling(n);
+  const n = partyScaling(size).players;
+  const have = partySizeOf(world);
+  if (n === 1 && have === 1) return world;
+  const from = partyScaling(have);
+  const to = partyScaling(n);
   const enemies = world.enemies.map((e) => {
-    const share = (e.boss ? s.bossHp : s.enemyHp) / n;
-    return { ...e, hp: e.hp * share, maxHp: e.maxHp * share };
+    const boss = isBossClass(e.species);
+    const rescale = (boss ? to.bossHp / from.bossHp : to.enemyHp / from.enemyHp) / n;
+    return { ...e, hp: e.hp * rescale, maxHp: e.maxHp * rescale };
   });
-  const enemyScale = s.damage === 1 ? world.enemyScale : { hp: world.enemyScale?.hp ?? 1, ...world.enemyScale, damage: (world.enemyScale?.damage ?? 1) * s.damage };
-  return { ...world, enemies, ...(enemyScale ? { enemyScale } : {}) };
+  const { party: _old, ...rest } = world;
+  return { ...rest, ...partyField(n), enemies };
 }
-
-const isIdentity = (s: PartyScaling): boolean => s.enemyHp === 1 && s.bossHp === 1 && s.damage === 1;
