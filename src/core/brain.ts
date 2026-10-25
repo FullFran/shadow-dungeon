@@ -58,6 +58,7 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     knockback: 0,
     hitIds: [],
     ...(shot.steer ? { steer: shot.steer } : {}),
+    ...(shot.pierceRoll ? { pierceRoll: true } : {}),
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }
@@ -105,15 +106,15 @@ export function contactPlayer(
     attackerTypes: enemy.types,
     defenderTypes: state.player.types,
   });
-  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos }, events);
+  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(attack.pierceRoll ? { pierceRoll: true } : {}) }, events);
   if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);
   const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
 }
 
 /** Starts a wind-up named `attack` (its telegraph event), aimed along `dir`. */
-export function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[]): EnemyState {
-  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs });
+export function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[], pierceRoll = false): EnemyState {
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs, ...(pierceRoll ? { pierceRoll: true as const } : {}) });
   return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir, attack } };
 }
 

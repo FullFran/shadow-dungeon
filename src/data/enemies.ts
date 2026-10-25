@@ -12,6 +12,14 @@ import type { PokemonType } from './types';
 export interface EnemyAttackDef {
   power: number;
   type: PokemonType;
+  /**
+   * A positional attack (a ground zone, a closing wall, a sweeping lane, a
+   * pull): the roll's i-frames do not protect against it and it never counts
+   * as a perfect dodge, so you walk or roll OUT of its area, not through it.
+   * Drawn with its own telegraph (white and violet double border, a "!") and
+   * warning sound; give it enough wind-up to reposition (core/hits.ts).
+   */
+  pierceRoll?: boolean;
 }
 
 /** How an enemy reacts to the player's hits. */

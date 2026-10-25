@@ -3,7 +3,9 @@
  * The pay grows with what the run actually played (floors, enemies, minutes),
  * so a short easy run is never the best way to farm (GDD §9).
  */
-export type Difficulty = 'easy' | 'normal' | 'hard' | 'nightmare';
+import { DIFFICULTIES, TIERS, type Difficulty } from './difficulty';
+
+export type { Difficulty };
 
 export const COINS = {
   /** Per floor cleared, times its depth (floor 1 pays 6, floor 3 pays 18). */
@@ -25,6 +27,6 @@ export const COINS = {
   perMinute: 2,
   /** Share kept on defeat (lo que llevas ganado se queda, con un recorte). */
   defeatShare: 0.75,
-  /** Whole-run multiplier by difficulty (GDD §9); the game runs on normal until difficulty is selectable. */
-  difficulty: { easy: 0.5, normal: 1, hard: 2.5, nightmare: 5 } as Record<Difficulty, number>,
+  /** Whole-run multiplier by difficulty tier (GDD §9, data/difficulty.ts `TIERS`): easy pays as the game always did. */
+  difficulty: Object.fromEntries(DIFFICULTIES.map((d) => [d, TIERS[d].coins])) as Record<Difficulty, number>,
 } as const;

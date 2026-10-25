@@ -1,5 +1,6 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
+import { tickAiAt, worldDifficulty } from './difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
@@ -247,15 +248,12 @@ function interrupted(enemy: EnemyState): EnemyState {
   return { ...enemy, ai: enterMode(ai, mode) };
 }
 
-const tickAi = (ai: AiState, ms: number): AiState => ({
-  ...ai,
-  modeMs: ai.modeMs + ms,
-  cooldownMs: Math.max(0, ai.cooldownMs - ms),
-});
 
 /** Runs every enemy's behaviour for one step at the enemy time scale, each going for its nearest present player. */
 export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   const ms = dtMs * enemyTimeScale(state);
+  // Harder tiers: shorter telegraphs (never below the readable floor) and shorter cooldowns (core/difficulty.ts).
+  const tier = worldDifficulty(state);
   let current = state;
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
@@ -266,7 +264,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       current = replaceEnemy(current, interrupted(enemy));
       continue;
     }
-    const ticked = { ...enemy, ai: tickAi(enemy.ai, ms) };
+    const ticked = { ...enemy, ai: tickAiAt(enemy.ai, ms, tier, enemy.elite) };
     const target = targetOf(current, enemy).pos;
     if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
     else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);

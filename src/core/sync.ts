@@ -70,6 +70,8 @@ export interface ProjectileSnapshot {
   vel: Vec2;
   radius: number;
   remainingMs: number;
+  /** Enemy shots only: positional (rolling through it does not help). */
+  pierceRoll?: boolean;
 }
 
 export interface HostSnapshot {
@@ -81,7 +83,7 @@ export interface HostSnapshot {
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
-  return { id: p.id, type: p.type, attackerTypes: p.attackerTypes, power: p.power, pos: p.pos, vel: p.vel, radius: p.radius, remainingMs: p.remainingMs };
+  return { id: p.id, type: p.type, attackerTypes: p.attackerTypes, power: p.power, pos: p.pos, vel: p.vel, radius: p.radius, remainingMs: p.remainingMs, ...(p.pierceRoll ? { pierceRoll: true } : {}) };
 }
 
 export function playerSnapshot(state: WorldState): PlayerSnapshot {

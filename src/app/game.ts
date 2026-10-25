@@ -6,6 +6,8 @@ import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
 import { runUpgrades, scaleCoins } from '../core/endless';
+import { restartsLeft, worldDifficulty } from '../core/difficulty';
+import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 import { tickDue, type RunClock } from '../adapters/clock-hud';
 import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -69,6 +71,8 @@ export interface RunSummary {
   coins: CoinBreakdown;
   /** Endless dungeon: the clock left when the run ended (the score's tie-break). */
   clockMs?: number;
+  /** The run's tier (the host's in a shared run). */
+  difficulty: Difficulty;
 }
 
 export interface GameOptions {
@@ -82,6 +86,8 @@ export interface GameOptions {
   seed?: number;
   /** The dungeon to run (the Crypt by default); a shared run uses the host's. */
   dungeon?: DungeonId;
+  /** The run's tier (easy by default); a shared run uses the host's. */
+  difficulty?: Difficulty;
   /** Development only: start on this floor of the run (`?floor=` on the dev server). */
   startFloor?: number;
   /** Development only: the endless clock starts at this many ms (`?clock=` on the dev server). */
@@ -180,6 +186,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
       ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
       ...(net ? { localId: net.localId, role: net.role } : {}),
+      ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
     },
     options.startFloor,
     options.dungeon,
@@ -195,6 +202,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Pokémonedas tally of the run, and as the current floor was entered ("Restart floor" must not pay twice). */
   let tally: CoinTally = emptyTally();
   let floorStartTally = tally;
+  /** The run's tier, and the solo "Restart floor" uses spent on this floor (limited on hard and nightmare). */
+  const difficulty = worldDifficulty(world);
+  let restartsUsed = 0;
   let prev = world;
   let accumulator = 0;
   let juice = initialJuice();
@@ -314,8 +324,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   function restartFloor(): void {
     hideMenu();
-    // A shared run cannot rewind one peer.
-    if (net) return;
+    // A shared run cannot rewind one peer; harder tiers allow fewer restarts per floor.
+    if (net || restartsLeft(difficulty, restartsUsed) === 0) return;
+    restartsUsed += 1;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     tally = floorStartTally;
     prev = world;
@@ -337,6 +348,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       {
         resume: hideMenu,
         restart: restartFloor,
+        ...(net ? {} : { restartsLeft: restartsLeft(difficulty, restartsUsed) }),
         quit: () => {
           hideMenu();
           net?.session.leave();
@@ -412,7 +424,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ended = true;
     hidePick();
     audio?.setMusic(null);
-    const coins = scaleCoins(coinBreakdown(tally, result), dungeonOf(run).endless?.coinScale ?? 1);
+    const coins = scaleCoins(coinBreakdown(tally, result, difficulty), dungeonOf(run).endless?.coinScale ?? 1);
     const finish = () =>
       options.onEnd(result, {
         dungeon: run.dungeon,
@@ -421,6 +433,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         level: world.player.level,
         items: world.player.items,
         coins,
+        difficulty,
         ...(run.clockMs !== undefined ? { clockMs: run.clockMs } : {}),
       });
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
@@ -437,6 +450,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     run = next.run;
     world = next.world;
     floorStart = world;
+    restartsUsed = 0;
     prev = world;
     camera = world.player.pos;
     defeatedAt.clear();
@@ -578,7 +592,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
-      coins: scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total,
+      coins: scaleCoins(coinBreakdown(tally, null, difficulty), dungeonOf(run).endless?.coinScale ?? 1).total,
       palette: dungeonOf(run).palette,
       decor: dungeonOf(run).decor ?? null,
       intro,

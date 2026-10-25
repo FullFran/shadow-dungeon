@@ -1,5 +1,6 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
+import { tierOf } from './difficulty';
 import { onLethalHit } from './items';
 import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
@@ -24,8 +25,9 @@ export function landHitOnPlayer(
   events: GameEvent[],
 ): { state: WorldState; outcome: LandedOutcome } {
   const { player } = state;
-  // The endless dungeon's deeper floors hit harder (state.enemyScale).
-  if (state.enemyScale && state.enemyScale.damage !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * state.enemyScale.damage)) };
+  // The endless dungeon's deeper floors hit harder (state.enemyScale), and so do harder tiers (victim side: every peer applies its own).
+  const harder = (state.enemyScale?.damage ?? 1) * tierOf(state).damage;
+  if (harder !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * harder)) };
   const outcome = classifyHit(player, hit);
   if (outcome === 'dodged') {
     events.push({ type: 'hitDodged' });

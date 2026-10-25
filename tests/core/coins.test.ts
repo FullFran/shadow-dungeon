@@ -77,10 +77,12 @@ describe('coin breakdown', () => {
 
   it('multiplies by the difficulty', () => {
     const t = tally([[1, null], [2, null]], [1, 2], 3 * MINUTE);
-    const normal = coinBreakdown(t, 'victory', 'normal');
+    // Easy is the balance the game shipped with: it pays ×1, as the default always did.
+    const easy = coinBreakdown(t, 'victory', 'easy');
     const hard = coinBreakdown(t, 'victory', 'hard');
-    expect(normal.multiplier).toBe(1);
-    expect(hard.total).toBe(Math.floor(normal.subtotal * COINS.difficulty.hard));
+    expect(easy.multiplier).toBe(1);
+    expect(coinBreakdown(t, 'victory')).toEqual(easy);
+    expect(hard.total).toBe(Math.floor(easy.subtotal * COINS.difficulty.hard));
   });
 
   it('is deterministic: the same tally gives the same breakdown', () => {

@@ -6,6 +6,7 @@ import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { generateFloor } from './dungeon';
+import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { partyDefeated } from './party';
@@ -110,7 +111,8 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const deeper: WorldState = { ...world, depth: run.floor, enemyScale };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
-  const floor = generateFloor(seed, run.floor, endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns);
+  // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
+  const floor = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, worldDifficulty(world)));
   return { ...loadFloor(deeper, floor, run.kind), berries: placeBerries(floor, seed, run.floor) };
 }
 

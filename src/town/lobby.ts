@@ -1,5 +1,6 @@
 import type { Vec2 } from '../core/vec';
 import type { EntranceState } from './overworld';
+import { stepDifficulty, type Difficulty } from '../data/difficulty';
 
 /**
  * The online lobby is the town: the room walks it together. Pure rules:
@@ -60,6 +61,34 @@ export interface TownLobby {
    * absent: a single Enter row.
    */
   variants?(dungeon: string): readonly { label: string; value: string }[] | null;
+  /** The room's difficulty tier (docs/gdd.md §9): the host's pick, shown to everyone in the room window. */
+  difficulty?(): Difficulty;
+  /** Host: picks the tier for the whole group (the guests see it at once). */
+  setDifficulty?(next: Difficulty): void;
+}
+
+/** A tier row for a town window: label, value, ◀ ▶ steps and a confirm cycles. */
+export interface TierRow {
+  label: string;
+  value: string;
+  className: string;
+  onAdjust(delta: -1 | 1): void;
+  onConfirm(): void;
+}
+
+/**
+ * The host's tier row in the entrance and waystone windows (null for a guest
+ * or outside a room: solo picks the tier on the loadout screen). `name` turns
+ * a tier into its label; `changed` redraws the window after a change.
+ */
+export function tierRow(lobby: Pick<TownLobby, 'isHost' | 'difficulty' | 'setDifficulty'> | null | undefined, label: string, name: (d: Difficulty) => string, changed: () => void): TierRow | null {
+  if (!lobby?.isHost || !lobby.difficulty || !lobby.setDifficulty) return null;
+  const current = lobby.difficulty();
+  const set = (next: Difficulty) => {
+    lobby.setDifficulty!(next);
+    changed();
+  };
+  return { label, value: name(current), className: `difficulty-row tier-${current}`, onAdjust: (delta) => set(stepDifficulty(current, delta)), onConfirm: () => set(stepDifficulty(current, 1, true)) };
 }
 
 /** The Enter rows for a dungeon: one per variant (`Enter · Daily challenge`), else the plain one. */

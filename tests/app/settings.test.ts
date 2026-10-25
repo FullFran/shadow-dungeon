@@ -48,7 +48,7 @@ describe('settings', () => {
     expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
   });
 
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '' };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: 'easy' };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
@@ -71,9 +71,18 @@ describe('settings', () => {
       autoAim: false,
       haptics: false,
       nickname: 'Fran',
+      difficulty: 'hard' as const,
     };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
+  });
+
+  it('remembers the last difficulty tier, and reads anything unknown as easy', () => {
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ difficulty: 'nightmare' }));
+    expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('nightmare');
+    store.set('mazmorra-sombria.settings', JSON.stringify({ difficulty: 'legendary' }));
+    expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('easy');
   });
 
   it('keeps a stored nickname only after sanitising it', () => {

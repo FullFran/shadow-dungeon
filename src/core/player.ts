@@ -10,7 +10,7 @@ const ROLL_SPEED = ROLL.distance / ROLL.durationMs; // px per ms
 
 export function isInvulnerable(player: PlayerState): boolean {
   const elapsed = player.roll?.elapsedMs;
-  return elapsed !== undefined && elapsed >= ROLL.iframesStartMs && elapsed < ROLL.iframesEndMs;
+  return elapsed !== undefined && elapsed >= ROLL.iframesStartMs && elapsed < (player.rollTier?.iframesEndMs ?? ROLL.iframesEndMs);
 }
 
 /** Spends stamina and restarts the regen delay. Callers check affordability first. */
@@ -30,7 +30,7 @@ const confine = (pos: Vec2, arena: Arena): Vec2 => confineCircle(arena, pos, PLA
 
 function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): PlayerState {
   if (player.roll || player.action) return player;
-  const cost = ROLL.staminaCost * playerStats(player).staminaCost;
+  const cost = ROLL.staminaCost * playerStats(player).staminaCost * (player.rollTier?.staminaCost ?? 1);
   if (player.stamina < cost) {
     events.push({ type: 'rollDenied' });
     return player;
@@ -87,8 +87,9 @@ export function updatePlayer(
 export type HitOutcome = 'hurt' | 'dodged' | 'perfectDodge';
 
 /** Decides what a hit landing now does to the player. Damage itself is applied by the caller. */
-export function classifyHit(player: PlayerState, _hit: IncomingHit): HitOutcome {
-  if (!isInvulnerable(player)) return 'hurt';
+export function classifyHit(player: PlayerState, hit: IncomingHit): HitOutcome {
+  // A positional attack (`pierceRoll`) goes through the i-frames: only being out of its area avoids it.
+  if (hit.pierceRoll || !isInvulnerable(player)) return 'hurt';
   const sinceIframes = (player.roll?.elapsedMs ?? 0) - ROLL.iframesStartMs;
   return sinceIframes <= playerStats(player).perfectWindowMs ? 'perfectDodge' : 'dodged';
 }

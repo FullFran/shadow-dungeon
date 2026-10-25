@@ -3,6 +3,8 @@ import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import type { UpgradeLevels } from '../data/upgrades';
+import type { Difficulty, EliteTrait } from '../data/difficulty';
+import { eliteHp, rollTierOf, tierOf } from './difficulty';
 import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
 import { hasBossState, initialBoss } from './boss';
@@ -29,6 +31,8 @@ export interface WorldOptions {
   role?: PeerRole;
   /** Permanent upgrade levels of the local player (default none). */
   upgrades?: UpgradeLevels;
+  /** The run's tier, the host's for every peer (absent = easy, data/difficulty.ts). */
+  difficulty?: Difficulty;
 }
 
 export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels): PlayerState {
@@ -63,6 +67,12 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
   };
 }
 
+/** Harder tiers: a shorter i-frame window and a dearer roll (data/difficulty.ts `TierDef.roll`). */
+function withRollTier(player: PlayerState, difficulty: Difficulty | undefined): PlayerState {
+  const rollTier = difficulty ? rollTierOf(difficulty) : null;
+  return rollTier ? { ...player, rollTier } : player;
+}
+
 export function createWorld({
   seed,
   arena,
@@ -74,9 +84,11 @@ export function createWorld({
   localId = 'p1',
   role = 'host',
   upgrades,
+  difficulty,
 }: WorldOptions): WorldState {
   return {
     tick: 0,
+    ...(difficulty ? { difficulty } : {}),
     localId,
     role,
     remotes: [],
@@ -87,7 +99,7 @@ export function createWorld({
     rng: seedRng(seed),
     nextId: 1,
     arena,
-    player: createPlayer(playerPos, species, loadout, upgrades),
+    player: withRollTier(createPlayer(playerPos, species, loadout, upgrades), difficulty),
     enemies: [],
     projectiles: [],
     berries: [],
@@ -102,13 +114,15 @@ export interface SpawnOptions {
   dormant?: boolean;
   /** Floor enemies: asleep until the player enters this room or comes close in sight (activation.ts). */
   sleepIn?: Rect;
+  /** Harder tiers: an elite of a generated floor (core/difficulty.ts `eliteFor`). */
+  elite?: EliteTrait;
 }
 
 /** Adds an enemy with a deterministic id ("e<n>"). */
 export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, options: SpawnOptions = {}): WorldState {
   const species = SPECIES[speciesId];
-  // The endless dungeon's deeper floors spawn tougher enemies.
-  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1);
+  // The endless dungeon's deeper floors spawn tougher enemies, and so do harder tiers (a tough elite more so).
+  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite);
   const enemy: EnemyState = {
     id: `e${state.nextId}`,
     species: speciesId,
@@ -124,6 +138,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     ai: options.sleepIn ? { ...initialAi(), mode: 'asleep' } : initialAi(options.dormant),
     ...(options.sleepIn ? { wakeRoom: options.sleepIn } : {}),
     ...(hasBossState(speciesId) ? { boss: initialBoss(speciesId) } : {}),
+    ...(options.elite ? { elite: options.elite } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }

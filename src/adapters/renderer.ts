@@ -1,4 +1,5 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
+import { ELITE_TRAIT_DEFS } from '../data/difficulty';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS } from '../core/archer';
@@ -177,6 +178,25 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       meta.frameHeight,
     );
     ctx.globalAlpha = 1;
+  }
+
+  /** Harder tiers: an elite glows in its trait's colour (a pulsing ring and a wash over its body), readable at a glance. */
+  function eliteAura(enemy: EnemyState, pos: Vec2, timeMs: number): void {
+    const tint = ELITE_TRAIT_DEFS[enemy.elite!].tint;
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 220);
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.35 * pulse;
+    ctx.strokeStyle = tint;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(Math.round(pos.x), Math.round(pos.y), enemy.radius + 4, (enemy.radius + 4) * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 0.18 + 0.12 * pulse;
+    ctx.fillStyle = tint;
+    ctx.beginPath();
+    ctx.arc(Math.round(pos.x), Math.round(pos.y - enemy.radius * 0.6), enemy.radius + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function shadow(pos: Vec2, radius: number): void {
@@ -849,6 +869,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         y: pos.y,
         draw: () => {
           shadow(pos, enemy.radius);
+          if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;

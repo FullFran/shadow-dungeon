@@ -7,6 +7,7 @@ import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { stepDifficulty, type Difficulty } from '../data/difficulty';
 import { h, mdWindow } from '../ui/window';
 import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
@@ -29,6 +30,19 @@ export interface LoadoutOptions {
   onChange(loadout: (MoveId | null)[]): void;
   onStart(): void;
   onBack(): void;
+  /** The tier row above Start (solo): the current pick and where a change goes (settings, persisted). */
+  difficulty?: { value: Difficulty; onChange(next: Difficulty): void };
+}
+
+/** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
+export function difficultyRow(value: Difficulty, onChange: (next: Difficulty) => void): ListItem {
+  return {
+    label: t('difficulty.label'),
+    value: t(`difficulty.${value}`),
+    className: `difficulty-row tier-${value}`,
+    onAdjust: (delta) => onChange(stepDifficulty(value, delta)),
+    onConfirm: () => onChange(stepDifficulty(value, 1, true)),
+  };
 }
 
 const SCALE = 3;
@@ -138,6 +152,8 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
 
 function movesStep(options: LoadoutOptions): HTMLElement[] {
   let loadout = [...options.loadout];
+  let tier = options.difficulty?.value;
+  const hint = h('p', { className: 'dim difficulty-hint', textContent: tier ? t(`difficulty.${tier}.hint`) : '' });
   const species = SPECIES[options.species];
 
   const items = (): ListItem[] => {
@@ -157,6 +173,17 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
         });
       }
     });
+    if (tier && options.difficulty) {
+      const pick = options.difficulty;
+      out.push(
+        difficultyRow(tier, (next) => {
+          tier = next;
+          pick.onChange(next);
+          hint.textContent = t(`difficulty.${next}.hint`);
+          list.setItems(items());
+        }),
+      );
+    }
     out.push({ label: t('menu.start'), className: 'start-row', onConfirm: options.onStart });
     out.push({ label: t('menu.back'), onConfirm: options.onBack });
     return out;
@@ -167,7 +194,7 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 
   const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id));
   const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
-  return [h('h1', { className: 'screen-title', textContent: title }), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element])])];
+  return [h('h1', { className: 'screen-title', textContent: title }), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : [])])])];
 }
 
 export function loadoutScreen(options: LoadoutOptions): HTMLElement[] {

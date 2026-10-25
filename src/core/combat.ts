@@ -434,7 +434,7 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
         multiplier: moved.damageMultiplier,
       });
       const from = sub(moved.pos, scale(normalize(moved.vel), moved.radius + PLAYER.radius));
-      const landed = landHitOnPlayer(current, { damage, type: moved.type, from }, events);
+      const landed = landHitOnPlayer(current, { damage, type: moved.type, from, ...(moved.pierceRoll ? { pierceRoll: true } : {}) }, events);
       current = landed.state;
       // Rolled through: the projectile keeps flying; otherwise it is spent.
       const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';

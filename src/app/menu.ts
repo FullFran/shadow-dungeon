@@ -21,6 +21,14 @@ export interface MenuActions {
   resume(): void;
   restart(): void;
   quit(): void;
+  /** Solo restarts of this floor still allowed by the tier (data/difficulty.ts); null or absent = unlimited. */
+  restartsLeft?: number | null;
+}
+
+/** The Esc menu's restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
+export function restartLabel(restartsLeft: number | null | undefined, tr: (key: string) => string): string {
+  if (restartsLeft === null || restartsLeft === undefined) return tr('pause.restart');
+  return restartsLeft > 0 ? `${tr('pause.restart')} (${restartsLeft})` : tr('pause.restartNone');
 }
 
 export type MenuSettings = SettingsAccess;
@@ -70,7 +78,10 @@ export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actio
     };
     const main: ListItem[] = [
       { label: t('pause.resume'), onConfirm: actions.resume },
-      { label: t('pause.restart'), onConfirm: actions.restart },
+      // Harder tiers limit "Restart floor" per floor (docs/gdd.md §9); with none left the row stays, dimmed and inert.
+      actions.restartsLeft === 0
+        ? { label: restartLabel(0, t), className: 'dim', onConfirm: () => undefined }
+        : { label: restartLabel(actions.restartsLeft, t), onConfirm: actions.restart },
       {
         label: t('pause.settings'),
         onConfirm: () => {

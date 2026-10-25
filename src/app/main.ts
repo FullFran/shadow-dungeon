@@ -49,6 +49,7 @@ import { endActions, returnPlace, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
+import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -139,6 +140,8 @@ interface NetJoin {
   floor: number;
   /** The host's dungeon id as received (validated when the run starts). */
   dungeon?: string;
+  /** The host's tier (absent = easy). */
+  difficulty?: Difficulty;
   /** A room-code run (no "Try again": the room is gone after the run). */
   online: boolean;
 }
@@ -178,6 +181,7 @@ async function connectLocal(root: HTMLElement, seed: number, floor: number, dung
     seed,
     floor,
     dungeon,
+    difficulty: settings.difficulty,
     species: settings.species,
     loadout: settings.loadout,
     forceHost: params.get('host') === '1',
@@ -386,6 +390,8 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
         loadout(root, 'moves', dungeon);
       },
       onChange: (next) => update({ loadout: next }),
+      // Solo: the tier for the run (remembered); a room's is the host's, picked in the town.
+      difficulty: { value: settings.difficulty, onChange: (next) => update({ difficulty: next }) },
       onStart: () => (dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'moves', dungeon)) : chooseDungeon(root, () => loadout(root, 'moves'))),
       onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : titleScreen(root, 0)),
     }),
@@ -547,14 +553,14 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (current === session) messageScreen(root, t('lobby.full'));
   });
   session.onStart((start) => {
-    if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), online: true });
+    if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), ...(start.difficulty ? { difficulty: start.difficulty } : {}), online: true });
   });
   // The host brought the room back to the town after a run: follow it there (unless already walking it).
   session.onLobby(() => {
     if (current === session && !root.querySelector('canvas.town')) townLobby(root);
   });
   const name = sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() });
-  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name });
+  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty });
   else session.join(settings.species, settings.loadout, name);
   townLobby(root);
 }
@@ -597,6 +603,12 @@ function townLobby(root: HTMLElement): void {
       { label: t('lobby.leave'), onConfirm: leave },
     ],
     // The host's call for the group: the Sima del Eclipse is entered as the daily challenge or a free run (its seed goes in `start`).
+    // The room's tier: the host picks it (remembered as its own last choice), the guests see the host's.
+    difficulty: () => session.difficulty(),
+    setDifficulty: (next) => {
+      session.setDifficulty(next);
+      update({ difficulty: next });
+    },
     variants: (id) => (dungeonById(id).id === id && dungeonById(id).endless ? ENDLESS_MODES.map((m) => ({ label: t(`endless.mode.${m}`), value: m })) : null),
   };
   const depart = (id: string, variant?: string) => {
@@ -604,7 +616,7 @@ function townLobby(root: HTMLElement): void {
     const def = dungeonById(id);
     const runSeed = def.endless ? endlessSeed(variant === 'free' ? 'free' : 'daily', today(), r.seed) : r.seed;
     session.begin(def.id, runSeed);
-    void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, online: true });
+    void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
   void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, lobby });
@@ -708,7 +720,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns() };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: settings.difficulty };
   if (!join && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
@@ -717,7 +729,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     if (join.online && current !== join.session) return;
     current = join.session;
     // A guest plays the host's dungeon (an unknown id plays the first one).
-    shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
+    // ...and the host's tier (an older host sends none: easy).
+    shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, difficulty: join.difficulty ?? DEFAULT_DIFFICULTY, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
   }
   const online = join?.online ?? false;
   const canvas = h('canvas', { className: 'game' });
@@ -770,7 +783,7 @@ function devScreen(root: HTMLElement): boolean {
   if (!import.meta.env.DEV) return false;
   const screen = new URLSearchParams(window.location.search).get('screen');
   const coins = { floors: 36, enemies: 41, escapes: 12, guardian: 50, time: 18, subtotal: 157, share: 1, multiplier: 1, total: 157 };
-  const summary: RunSummary = { dungeon: devDungeon(), floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'], coins };
+  const summary: RunSummary = { dungeon: devDungeon(), floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'], coins, difficulty: settings.difficulty };
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
     dungeons: () => chooseDungeon(root, () => titleScreen(root)),

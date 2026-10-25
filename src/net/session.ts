@@ -1,3 +1,4 @@
+import { DEFAULT_DIFFICULTY, toDifficulty, type Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { GameEvent, HitClaim, WorldState } from '../core/state';
@@ -55,6 +56,8 @@ export interface StartInfo {
   floor: number;
   /** The host's dungeon id as sent (validated by the run: an unknown id plays the first dungeon). */
   dungeon?: string;
+  /** The host's tier; absent = easy (an easy host, or an older one, sends none). */
+  difficulty?: Difficulty;
   localId: string;
 }
 
@@ -73,7 +76,11 @@ export interface NetSession {
   peerId(): string;
   roster(): readonly RosterEntry[];
   /** This tab runs the run: player p1. */
-  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string; name?: string }): void;
+  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string; name?: string; difficulty?: Difficulty }): void;
+  /** Host: picks the room's tier (sent to the guests at once while in the lobby, and with every `start`). */
+  setDifficulty(difficulty: Difficulty): void;
+  /** The room's tier: the host's own choice, or as a guest the latest the host sent (easy before any). */
+  difficulty(): Difficulty;
   /** Host: true while waiting in the lobby for `begin`. */
   inLobby(): boolean;
   /** Host: leaves the lobby and starts every admitted player with its seed (or `runSeed`: the endless dungeon's mode picks it at Start) and `dungeon`, if given. */
@@ -178,6 +185,8 @@ export function createSession(options: SessionOptions): NetSession {
   let hostFloor = 1;
   /** Host: the dungeon sent with every `start`. */
   let dungeon: string | undefined;
+  /** The room's tier: the host's pick, or the latest a guest heard. */
+  let tier: Difficulty = DEFAULT_DIFFICULTY;
   let started = false;
   let ticks = 0;
   let left = false;
@@ -264,7 +273,10 @@ export function createSession(options: SessionOptions): NetSession {
     if (role === 'host') send({ t: 'leave', id: entry.id }, true);
   }
 
-  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), players: roster });
+  /** The tier goes on the wire only when it is not the default (absent reads as easy, as for an older host). */
+  const tierField = (): { difficulty?: Difficulty } => (tier === DEFAULT_DIFFICULTY ? {} : { difficulty: tier });
+  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), ...tierField(), players: roster });
+  const lobbyMessage = (): NetMessage => ({ t: 'lobby', players: roster, ...tierField() });
 
   transport.onMessage((from, wire) => {
     tracker.received(wire.length, scheduler.now());
@@ -278,13 +290,14 @@ export function createSession(options: SessionOptions): NetSession {
           return;
         }
         if (!admit(from, message.species, name)) send({ t: 'full', peer: from }, true);
-        else if (lobby) send({ t: 'lobby', players: roster }, true);
+        else if (lobby) send(lobbyMessage(), true);
         else send(startMessage(), true);
         return;
       }
       case 'lobby':
         if (role === 'host') return;
         pending.delete(from);
+        tier = toDifficulty(message.difficulty);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         if (started && roster.some((r) => r.peer === transport.selfId)) {
           // The host brought the room back to the town after a run: wait for its next start.
@@ -319,7 +332,8 @@ export function createSession(options: SessionOptions): NetSession {
         role = 'guest';
         localId = me.id;
         seed = message.seed;
-        for (const handler of startHandlers) handler({ seed, floor: message.floor, ...(typeof message.dungeon === 'string' ? { dungeon: message.dungeon } : {}), localId: me.id });
+        tier = toDifficulty(message.difficulty);
+        for (const handler of startHandlers) handler({ seed, floor: message.floor, ...(typeof message.dungeon === 'string' ? { dungeon: message.dungeon } : {}), ...tierField(), localId: me.id });
         return;
       }
       case 'state': {
@@ -399,6 +413,7 @@ export function createSession(options: SessionOptions): NetSession {
       seed = runSeed;
       hostFloor = floor;
       dungeon = hostOptions?.dungeon;
+      tier = hostOptions?.difficulty ?? DEFAULT_DIFFICULTY;
       lobby = hostOptions?.lobby ?? false;
       const name = sanitizeNickname(hostOptions?.name);
       setRoster([{ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }]);
@@ -406,10 +421,16 @@ export function createSession(options: SessionOptions): NetSession {
       for (const [peer, theirs] of pending) admit(peer, theirs.species, theirs.name);
       pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
-      if (lobby) send({ t: 'lobby', players: roster }, true);
+      if (lobby) send(lobbyMessage(), true);
       else if (roster.length > 1) send(startMessage(), true);
     },
     inLobby: () => role === 'host' && lobby,
+    setDifficulty(next) {
+      if (role !== 'host' || next === tier) return;
+      tier = next;
+      if (lobby) send(lobbyMessage(), true);
+    },
+    difficulty: () => tier,
     begin(chosen, runSeed) {
       if (role !== 'host' || !lobby) return;
       lobby = false;
@@ -429,7 +450,7 @@ export function createSession(options: SessionOptions): NetSession {
       seed = nextSeed;
       hostFloor = 1;
       resetRun();
-      send({ t: 'lobby', players: roster }, true);
+      send(lobbyMessage(), true);
     },
     onLobby: (handler) => void lobbyHandlers.push(handler),
     sendPresence(presence) {

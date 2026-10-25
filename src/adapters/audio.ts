@@ -38,6 +38,7 @@ export const SOUND_IDS = [
   'lock',
   'unlock',
   'telegraph',
+  'zoneWarning',
   'enemyAttack',
   'stance',
   'click',
@@ -97,7 +98,8 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'lockReleased':
       return 'unlock';
     case 'enemyTelegraph':
-      return 'telegraph';
+      // A positional attack (pierceRoll) has its own warning: walk out of it, rolling will not help.
+      return event.pierceRoll ? 'zoneWarning' : 'telegraph';
     case 'enemyAttack':
       return 'enemyAttack';
     case 'bossStance':
@@ -452,6 +454,14 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     play: (s, t) => {
       tone(s, t, { type: 'triangle', from: 880, dur: 0.05, gain: 0.05 });
       tone(s, t + 0.07, { type: 'triangle', from: 880, dur: 0.05, gain: 0.05 });
+    },
+  },
+  /** A positional attack winding up: a low, rising two-tone siren, unlike any other cue. */
+  zoneWarning: {
+    ms: 420,
+    play: (s, t) => {
+      tone(s, t, { type: 'square', from: 330, to: 440, dur: 0.16, gain: 0.07 });
+      tone(s, t + 0.2, { type: 'square', from: 330, to: 523, dur: 0.18, gain: 0.07 });
     },
   },
   enemyAttack: { ms: 110, play: (s, t, v) => noise(s, t, { filter: 'bandpass', from: 1300 * v, to: 400, dur: 0.1, gain: 0.16, q: 1.5 }) },
