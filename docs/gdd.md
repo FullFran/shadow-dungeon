@@ -119,6 +119,21 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
 - Débiles a tipos concretos; el final se conoce de antemano.
 - Cómo escalan con el número de jugadores: sección 8.
 
+### Prólogo y trasfondo *(provisional)*
+
+El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde el menú principal (entrada Prólogo).
+
+Lo que cuenta:
+
+1. Hubo una edad de luz en la que los Pokémon vivían bajo un sol que no conocía la sombra.
+2. Algo despertó bajo la tierra con hambre de luz y se la fue bebiendo al sol hasta dejarlo hueco.
+3. Llegó el Eclipse Carmesí: un anillo rojo sobre negro, quieto desde entonces (es la imagen del juego y el fondo de los menús).
+4. Con él se abrieron las Mazmorras Sombrías. Los Pokémon que entran y vuelven ya no son ellos, solo su sombra (por eso los enemigos son versiones sombrías).
+5. En lo más hondo de la primera cripta, Aegislash (el Rey de las Espadas) guarda una puerta sellada, y nadie sabe si protege al mundo de lo que hay detrás o al revés.
+6. Negro, y una voz: "…¿Me oyes? ¿Puedes oírme?" (un guiño a Mundo Misterioso). De ahí se pasa al test de personalidad.
+
+Lo que hay bajo la tierra es Necrozma, el jefe final, pero el prólogo no lo enseña ni lo nombra: solo una luz que se hunde en la oscuridad y el destello de un cristal. Todo este trasfondo es un primer borrador y puede cambiar.
+
 ## 4. Combate
 
 ### Controles (teclado y ratón)
