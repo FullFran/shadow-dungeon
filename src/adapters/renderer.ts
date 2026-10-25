@@ -4,12 +4,13 @@ import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
+import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawHud } from './hud';
 import { JUICE, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
-import { interpolatedPositions } from './view';
+import { interpolatedPositions, visibleTiles } from './view';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -49,6 +50,15 @@ const COLORS = {
   hover: 'rgba(255, 107, 154, 0.45)',
   slowMo: 'rgba(110, 80, 200, 0.18)',
   exitClosed: '#3a3350',
+  tileFloorA: '#2b2533',
+  tileFloorB: '#2f2938',
+  tileWallTop: '#16121d',
+  tileWallFace: '#433a57',
+  tileWallLip: '#5a4f73',
+  tileShadow: 'rgba(0, 0, 0, 0.35)',
+  stairsPit: '#0b0910',
+  stairsStep: '#8f84b0',
+  stairsGlow: 'rgba(170, 140, 255, 0.35)',
   exitOpen: 'rgba(170, 120, 255, 0.55)',
 };
 
@@ -108,7 +118,64 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fill();
   }
 
-  function floor(state: WorldState): void {
+  /**
+   * Generated floors, visible tiles only: floor checker, wall tops, a lit
+   * front face on walls above floor (so walls read as raised) and a soft
+   * shadow on the floor right under a wall.
+   */
+  function tiles(grid: TileGrid, view: Rect): void {
+    const { x0, y0, x1, y1 } = visibleTiles(view, grid);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        const x = tx * TILE;
+        const y = ty * TILE;
+        if (isWall(grid, tx, ty)) {
+          ctx.fillStyle = COLORS.tileWallTop;
+          ctx.fillRect(x, y, TILE, TILE);
+          if (!isWall(grid, tx, ty + 1)) {
+            ctx.fillStyle = COLORS.tileWallFace;
+            ctx.fillRect(x, y + TILE - 12, TILE, 12);
+            ctx.fillStyle = COLORS.tileWallLip;
+            ctx.fillRect(x, y + TILE - 12, TILE, 2);
+          }
+          ctx.fillStyle = COLORS.tileWallLip;
+          if (!isWall(grid, tx - 1, ty)) ctx.fillRect(x, y, 1, TILE);
+          if (!isWall(grid, tx + 1, ty)) ctx.fillRect(x + TILE - 1, y, 1, TILE);
+          if (!isWall(grid, tx, ty - 1)) ctx.fillRect(x, y, TILE, 1);
+        } else {
+          ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.tileFloorA : COLORS.tileFloorB;
+          ctx.fillRect(x, y, TILE, TILE);
+          if (isWall(grid, tx, ty - 1)) {
+            ctx.fillStyle = COLORS.tileShadow;
+            ctx.fillRect(x, y, TILE, 6);
+          }
+        }
+      }
+    }
+  }
+
+  /** Stairs down: a dark pit with steps fading into it and a soft pulse so it is easy to spot. */
+  function stairsTile(rect: Rect, timeMs: number): void {
+    const pulse = 0.5 + 0.5 * Math.sin(timeMs / 260);
+    ctx.fillStyle = COLORS.stairsGlow;
+    ctx.globalAlpha = 0.4 + 0.6 * pulse;
+    ctx.fillRect(rect.x - 3, rect.y - 3, rect.width + 6, rect.height + 6);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = COLORS.stairsPit;
+    ctx.fillRect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4);
+    for (let i = 0; i < 4; i++) {
+      ctx.globalAlpha = 1 - i * 0.22;
+      ctx.fillStyle = COLORS.stairsStep;
+      ctx.fillRect(rect.x + 4 + i * 2, rect.y + 5 + i * 6, rect.width - 8 - i * 4, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function floor(state: WorldState, view: Rect): void {
+    if (state.arena.tiles) {
+      tiles(state.arena.tiles, view);
+      return;
+    }
     const { width, height } = state.arena;
     ctx.fillStyle = COLORS.wall;
     ctx.fillRect(-200, -200, width + 400, height + 400);
@@ -310,7 +377,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current);
+    floor(current, view);
+    if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);

@@ -1,6 +1,7 @@
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
+import type { TileGrid } from './tiles';
 import type { Vec2 } from './vec';
 
 /** One tick of player intent, produced by the input adapter. */
@@ -132,6 +133,8 @@ export interface EnemyState {
   ai: AiState;
   /** Boss-only state (boss.ts). */
   boss?: BossState;
+  /** Room of a sleeping floor enemy: the player entering it wakes the enemy. */
+  wakeRoom?: Rect;
 }
 
 export type BossStance = 'shield' | 'blade';
@@ -152,9 +155,10 @@ export interface BossState {
  * Enemy behaviour modes. Not every species uses every mode: Poochyena goes
  * idle -> approach -> telegraph -> attack -> recover; Gastly uses reposition
  * instead of approach; Aegislash adds transform (stance change). A dormant
- * enemy never acts (training dummy).
+ * enemy never acts (training dummy); an asleep one waits until woken
+ * (activation.ts) and then hunts for good.
  */
-export type AiMode = 'dormant' | 'idle' | 'approach' | 'reposition' | 'telegraph' | 'attack' | 'recover' | 'transform';
+export type AiMode = 'dormant' | 'asleep' | 'idle' | 'approach' | 'reposition' | 'telegraph' | 'attack' | 'recover' | 'transform';
 
 export interface AiState {
   mode: AiMode;
@@ -196,6 +200,10 @@ export interface Arena {
   height: number;
   /** Solid blocks for walkers; floaters and projectiles ignore them. */
   obstacles?: readonly Rect[];
+  /** Generated floors: wall tiles block walkers and stop projectiles; floaters pass them. */
+  tiles?: TileGrid;
+  /** Generated floors: stepping here goes down to the next floor. */
+  stairs?: Rect;
 }
 
 /** Things that happened during the last step, for renderer juice and audio. Cleared every step. */

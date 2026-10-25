@@ -1,4 +1,5 @@
 import type { Arena, Rect, WorldState } from '../core/state';
+import { TILE, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 
 /**
@@ -36,6 +37,30 @@ export function cameraView(focus: Vec2, viewWidth: number, viewHeight: number, a
     y: axis(focus.y, viewHeight, arena.height),
     width: viewWidth,
     height: viewHeight,
+  };
+}
+
+export const CAMERA = {
+  /** Time for the camera to close half the distance to the player. */
+  halfLifeMs: 70,
+  /** Farther than this the camera snaps (floor change, restart). */
+  snapDistance: 600,
+};
+
+/** Smooth follow: exponential ease towards `target`, independent of how frame time is split; snaps on big jumps. */
+export function followCamera(camera: Vec2, target: Vec2, frameMs: number): Vec2 {
+  if (Math.hypot(target.x - camera.x, target.y - camera.y) > CAMERA.snapDistance) return target;
+  const keep = 0.5 ** (frameMs / CAMERA.halfLifeMs);
+  return { x: target.x + (camera.x - target.x) * keep, y: target.y + (camera.y - target.y) * keep };
+}
+
+/** Inclusive tile range covered by the view, clamped to the grid (the renderer draws only these). */
+export function visibleTiles(view: Rect, grid: TileGrid): { x0: number; y0: number; x1: number; y1: number } {
+  return {
+    x0: Math.max(0, Math.floor(view.x / TILE)),
+    y0: Math.max(0, Math.floor(view.y / TILE)),
+    x1: Math.min(grid.cols - 1, Math.floor((view.x + view.width) / TILE)),
+    y1: Math.min(grid.rows - 1, Math.floor((view.y + view.height) / TILE)),
   };
 }
 

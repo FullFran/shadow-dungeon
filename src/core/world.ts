@@ -7,7 +7,7 @@ import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { initialBoss } from './boss';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
-import type { Arena, EnemyState, LockType, PlayerState, WorldState } from './state';
+import type { Arena, EnemyState, LockType, PlayerState, Rect, WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 
 export interface WorldOptions {
@@ -65,6 +65,8 @@ export function createWorld({ seed, arena, playerPos, species, loadout, clickToL
 export interface SpawnOptions {
   /** A dormant enemy never acts: a training dummy (and a fixture for tests of other systems). */
   dormant?: boolean;
+  /** Floor enemies: asleep until the player enters this room or comes close in sight (activation.ts). */
+  sleepIn?: Rect;
 }
 
 /** Adds an enemy with a deterministic id ("e<n>"). */
@@ -82,7 +84,8 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     alive: true,
     hitstunMs: 0,
     knockback: vec(0, 0),
-    ai: initialAi(options.dormant),
+    ai: options.sleepIn ? { ...initialAi(), mode: 'asleep' } : initialAi(options.dormant),
+    ...(options.sleepIn ? { wakeRoom: options.sleepIn } : {}),
     ...(ENEMY_BEHAVIOUR[speciesId]?.kind === 'boss' ? { boss: initialBoss() } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };

@@ -4,6 +4,7 @@ import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged } from './boss';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
+import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
@@ -261,8 +262,13 @@ function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number,
   return { ...current, player: { ...current.player, slotsHeld } };
 }
 
+/** Inside the map and, on tiled floors, not in a wall: projectiles die on walls. */
 const insideArena = (state: WorldState, pos: Vec2) =>
-  pos.x >= 0 && pos.y >= 0 && pos.x <= state.arena.width && pos.y <= state.arena.height;
+  pos.x >= 0 &&
+  pos.y >= 0 &&
+  pos.x <= state.arena.width &&
+  pos.y <= state.arena.height &&
+  !(state.arena.tiles && wallAt(state.arena.tiles, pos));
 
 /** Moves projectiles (enemy ones at the slow-mo time scale), resolves hits and expiry. */
 function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {

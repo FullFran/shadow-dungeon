@@ -31,3 +31,13 @@ export const wallAt = (grid: TileGrid, pos: Vec2): boolean => {
   const { x, y } = tileOf(pos);
   return isWall(grid, x, y);
 };
+
+/** True when the segment a-b crosses no wall tile (sampled every quarter tile). */
+export function lineOfSight(grid: TileGrid, a: Vec2, b: Vec2): boolean {
+  const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (TILE / 4)));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    if (wallAt(grid, vec(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t))) return false;
+  }
+  return true;
+}

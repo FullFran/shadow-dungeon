@@ -1,5 +1,7 @@
 import type { MoveId } from '../data/moves';
 import { ROOMS, type RoomId } from '../data/rooms';
+import { generateFloor } from '../core/dungeon';
+import { loadFloor, onStairs } from '../core/floor';
 import { atExit, loadRoom, roomCleared } from '../core/rooms';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { LockType, PlayerInput, WorldState } from '../core/state';
@@ -12,7 +14,7 @@ import type { AudioEngine } from '../adapters/audio';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
-import { cameraView, lerpVec, pixelScaleFor } from '../adapters/view';
+import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
 import { simulationPaused, type MenuActions } from './menu';
 
 /** World pixels shown on screen; the canvas is this times an integer scale. */
@@ -45,7 +47,7 @@ export interface RunningGame {
 
 /**
  * The play session: fixed-step simulation, interpolated rendering, juice and
- * the room flow (sandbox -> exit -> boss room; death or the boss falling ends it),
+ * the floor flow (generated floor -> stairs -> boss room; death or the boss falling ends it),
  * with sound driven by the same events and the music following the room.
  * Esc opens the menu: game input is cut off and, per the pause policy in
  * `menu.ts`, the simulation stands still until it closes.
@@ -53,9 +55,11 @@ export interface RunningGame {
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
   const renderer = createRenderer(canvas, sheets);
-  let roomId: RoomId = 'sandbox';
+  /** Null while on a generated floor; a fixed room id otherwise. */
+  let roomId: RoomId | null = null;
+  const seed = options.seed ?? 1;
   const base = createWorld({
-    seed: options.seed ?? 1,
+    seed,
     arena: { width: 1, height: 1 },
     playerPos: vec(0, 0),
     loadout: options.loadout,
@@ -63,7 +67,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     clickToLock: options.clickToLock,
   });
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
-  let world: WorldState = loadRoom(base, roomId);
+  let world: WorldState = loadFloor(base, generateFloor(seed, 1));
   /** World as the current room was entered, for "Restart room". */
   let roomStart = world;
   let prev = world;
@@ -78,9 +82,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let pixelScale = 1;
   let ended = false;
   let raf = 0;
+  /** Smoothed camera focus; the visible rect it gives is also the lock-on view. */
+  let camera = world.player.pos;
+  let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
   let closeMenu: (() => void) | null = null;
   const audio = options.audio;
-  const music = (id: RoomId) => audio?.setMusic(id === 'boss' ? 'boss' : 'room');
+  const music = (id: RoomId | null) => audio?.setMusic(id === 'boss' ? 'boss' : 'room');
 
   function hideMenu(): void {
     if (!closeMenu) return;
@@ -99,6 +106,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     lastHurtAt = Number.NEGATIVE_INFINITY;
     defeatedAt.clear();
     lastInput = null;
+    camera = world.player.pos;
   }
 
   function showMenu(): void {
@@ -147,7 +155,6 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const clock = advanceClock(accumulator, frameMs);
     accumulator = clock.accumulatorMs;
     for (let i = 0; i < clock.steps; i++) {
-      const view = cameraView(world.player.pos, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
       const playerInput = toPlayerInput(input.take(), view, pixelScale);
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
@@ -161,11 +168,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       if (world.player.hp <= 0) end('defeat');
       else if (roomId === 'boss' && roomCleared(world)) end('victory');
-      else if (atExit(world, roomId) && ROOMS[roomId].next) {
-        roomId = ROOMS[roomId].next!;
+      else if (roomId === null ? onStairs(world) : atExit(world, roomId) && ROOMS[roomId].next) {
+        roomId = roomId === null ? 'boss' : ROOMS[roomId].next!;
         world = loadRoom(world, roomId);
         roomStart = world;
         prev = world;
+        camera = world.player.pos;
         defeatedAt.clear();
         music(roomId);
       }
@@ -189,8 +197,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
 
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
-    const focus = lerpVec(prev.player.pos, world.player.pos, alpha);
-    const exit = ROOMS[roomId].exit;
+    camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
+    view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+    const exit = roomId === null ? null : ROOMS[roomId].exit;
     // Click-to-lock hover: the enemy a click would lock (same rule as the core).
     const hovered =
       clickLockActive(world.lock) && !closeMenu && lastInput
@@ -201,7 +210,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       current: world,
       alpha,
       juice,
-      view: cameraView(focus, VIEW_WIDTH, VIEW_HEIGHT, world.arena),
+      view,
       pixelScale,
       exit,
       exitOpen: exit !== null && roomCleared(world),

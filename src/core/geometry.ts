@@ -1,4 +1,5 @@
 import type { Arena, Rect } from './state';
+import { isWall, TILE } from './tiles';
 import { clamp, vec, type Vec2 } from './vec';
 
 export function insideRect(pos: Vec2, rect: Rect): boolean {
@@ -23,12 +24,32 @@ function pushOutOfRect(pos: Vec2, radius: number, rect: Rect): Vec2 {
   return exits.reduce((best, exit) => (exit.d < best.d ? exit : best)).p;
 }
 
+/** Pushes a circle out of the wall tiles it overlaps (two passes settle corners). */
+function pushOutOfTiles(pos: Vec2, radius: number, arena: Arena): Vec2 {
+  const grid = arena.tiles!;
+  let next = pos;
+  for (let pass = 0; pass < 2; pass++) {
+    const x0 = Math.floor((next.x - radius) / TILE);
+    const x1 = Math.floor((next.x + radius) / TILE);
+    const y0 = Math.floor((next.y - radius) / TILE);
+    const y1 = Math.floor((next.y + radius) / TILE);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (isWall(grid, tx, ty)) next = pushOutOfRect(next, radius, { x: tx * TILE, y: ty * TILE, width: TILE, height: TILE });
+      }
+    }
+  }
+  return next;
+}
+
 /**
  * Keeps a circle inside the arena and, for walkers (`solid`), outside its
- * obstacles. Floaters (Gastly) pass `solid = false` and only meet the walls.
+ * obstacles and wall tiles. Floaters (Gastly) pass `solid = false` and only
+ * meet the outer bounds of the map.
  */
 export function confineCircle(arena: Arena, pos: Vec2, radius: number, solid = true): Vec2 {
   let next = pos;
   if (solid) for (const rect of arena.obstacles ?? []) next = pushOutOfRect(next, radius, rect);
+  if (solid && arena.tiles) next = pushOutOfTiles(next, radius, arena);
   return vec(clamp(next.x, radius, arena.width - radius), clamp(next.y, radius, arena.height - radius));
 }

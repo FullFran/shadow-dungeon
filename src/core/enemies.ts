@@ -172,7 +172,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
   for (const { id } of state.enemies) {
     const enemy = current.enemies.find((e) => e.id === id);
     const def = enemy && ENEMY_BEHAVIOUR[enemy.species];
-    if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant') continue;
+    if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
     if (enemy.hitstunMs > 0) {
       current = replaceEnemy(current, interrupted(enemy));
       continue;
