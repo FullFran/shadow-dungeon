@@ -28,7 +28,7 @@ const DEG = Math.PI / 180;
 export function initialBoss(species?: SpeciesId): BossState {
   const def = species ? ENEMY_BEHAVIOUR[species] : undefined;
   const stance: BossStance =
-    def?.kind === 'archer' || def?.kind === 'thief' || def?.kind === 'danmaku' || def?.kind === 'queen'
+    def?.kind === 'archer' || def?.kind === 'thief' || def?.kind === 'danmaku' || def?.kind === 'queen' || def?.kind === 'eclipse'
       ? def.cards[0]!
       : def?.kind === 'ultra'
         ? def.phase1[0]!
@@ -41,7 +41,7 @@ export function initialBoss(species?: SpeciesId): BossState {
 /** Enemies that carry boss state (stances, spell cards). */
 export const hasBossState = (species: SpeciesId): boolean => {
   const kind = ENEMY_BEHAVIOUR[species]?.kind;
-  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra';
+  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra' || kind === 'eclipse';
 };
 
 /** Angle in radians between two non-zero directions, in [0, π]. */

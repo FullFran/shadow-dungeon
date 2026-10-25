@@ -2,6 +2,8 @@ import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
+import { eliteRuleAt, simaSquads } from './sima';
+import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent } from './sima-events';
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
@@ -46,6 +48,10 @@ export interface RunState {
   clockMs?: number;
   /** Endless dungeon only: this floor's echo already paid its time bonus. */
   echoPaid?: boolean;
+  /** Sima: this floor's event already paid its time (the crystal, a cleared wave room). */
+  eventPaid?: boolean;
+  /** Endless: breathing room left on this floor before the clock runs again (ms). */
+  graceMs?: number;
 }
 
 /** `eclipse`: the endless dungeon's clock ran out (a score end, not a defeat). */
@@ -111,21 +117,29 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
   const enemyScale = endless ? depthScale(endless.scaling, run.floor, plan.kind === 'room' && plan.role === 'echo') : undefined;
-  const deeper: WorldState = { ...world, depth: run.floor, enemyScale };
+  // A Sima event belongs to its floor (the pact outlasts it).
+  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, simaEvent: undefined };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
-  const floor = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, worldDifficulty(world)));
+  const tier = worldDifficulty(world);
+  const drawn = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, tier));
+  // The Sima: some rooms hold mixed squads (tougher, not more).
+  const floor = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
   const berries = placeBerries(floor, seed, run.floor);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
-  const loaded = loadFloor(deeper, floor, run.kind);
+  // Elites: one system; the Sima's rule joins its depth ramp to the tier's chance (core/sima.ts `eliteRuleAt`), elsewhere the tier's.
+  const loaded = loadFloor(deeper, floor, run.kind, endless?.elites ? eliteRuleAt(endless.elites, run.floor, tier) : undefined);
   // The caves lay shallow pools over their floors (seeded by the floor, the same on every peer).
   const water = dungeonOf(run).water;
   const arena = water ? { ...loaded.arena, water: shallowWater(floor, water) } : loaded.arena;
   const placed = wisp ? { ...loaded, arena, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, arena, berries };
   // The Toxic Swamp's pools come from the floor seed too, so every peer places the same ones.
-  return dungeonOf(run).toxicPools ? { ...placed, pools: placePools(floor, seed) } : placed;
+  const pooled = dungeonOf(run).toxicPools ? { ...placed, pools: placePools(floor, seed) } : placed;
+  // The Sima's floor event, if this floor has one (sima-events.ts).
+  const event = endless?.events ? chooseSimaEvent(seed, run.floor, floor, run.kind, endless.events, tier) : null;
+  return event && endless?.events ? placeSimaEvent(pooled, event, floor, seed, run.floor, endless.events, endlessSpawns(endless, run.floor).pool, tier) : pooled;
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */
@@ -152,7 +166,7 @@ export function startRun(
     kind: floorKind(seed, start, def),
     escape: null,
     offer: offerFor({ seed, floor: start }, base),
-    ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false } : {}),
+    ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false, ...(def.endless.clock.graceMs ? { graceMs: def.endless.clock.graceMs } : {}) } : {}),
   };
   return { run, world: enterFloor(base, run) };
 }
@@ -175,13 +189,20 @@ function goDown(run: RunState, world: WorldState, floor: number): { run: RunStat
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
   const endless = dungeonOf(run).endless;
   const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;
-  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false } : {};
+  const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
+  const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items), ...clock };
-  return { run: next, world: enterFloor(heal(world), next), bonusMs };
+  return { run: next, world: enterFloor(descendPact(heal(world)), next), bonusMs };
 }
 
 /** The run clock after `dtMs` more of play (the endless dungeon only; other runs have none). */
-export const tickRunClock = (run: RunState, dtMs: number): RunState => (run.clockMs === undefined ? run : { ...run, clockMs: tickClock(run.clockMs, dtMs) });
+export function tickRunClock(run: RunState, dtMs: number): RunState {
+  if (run.clockMs === undefined) return run;
+  // A new floor's breathing room goes first.
+  const grace = run.graceMs ?? 0;
+  if (grace <= 0) return { ...run, clockMs: tickClock(run.clockMs, dtMs) };
+  return { ...run, graceMs: Math.max(0, grace - dtMs), clockMs: tickClock(run.clockMs, Math.max(0, dtMs - grace)) };
+}
 
 /** Guest: the host's clock as received (never below 0). */
 export const setClock = (run: RunState, ms: number): RunState => ({ ...run, clockMs: Math.max(0, ms) });
@@ -195,6 +216,15 @@ function payEcho(run: RunState, world: WorldState): { run: RunState; bonusMs: nu
   return { run: { ...run, clockMs, echoPaid: true }, bonusMs: clockMs - run.clockMs };
 }
 
+/** Sima: a floor event that pays time (the crystal touched, a wave room cleared) pays it once (the host's clock). */
+function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: number } {
+  const events = dungeonOf(run).endless?.events;
+  const due = events ? eventBonusMs(world.simaEvent, events) : 0;
+  if (due <= 0 || run.eventPaid || run.clockMs === undefined) return { run, bonusMs: 0 };
+  const clockMs = addTime(run.clockMs, due);
+  return { run: { ...run, clockMs, eventPaid: true }, bonusMs: clockMs - run.clockMs };
+}
+
 /**
  * After a step: defeat (every player down), victory (last floor cleared),
  * stairs (or a fixed room's exit) to the next floor, or nothing. In a shared
@@ -205,7 +235,9 @@ export function progressRun(current: RunState, world: WorldState): RunProgress {
   if (partyDefeated(world)) return { run: current, world, entered: false, outcome: 'defeat' };
   // Endless: the eclipse swallows the floor when the host's clock runs out (a guest ends on the host's word).
   if (current.clockMs !== undefined && current.clockMs <= 0 && world.role !== 'guest') return { run: current, world, entered: false, outcome: 'eclipse' };
-  const paid = payEcho(current, world);
+  const echoPaid = payEcho(current, world);
+  const eventPaid = payEvent(echoPaid.run, world);
+  const paid = { run: eventPaid.run, bonusMs: echoPaid.bonusMs + eventPaid.bonusMs };
   const run = paid.run;
   const last = run.floor >= floorCount(run);
   if (last && floorPlanOf(run).kind === 'room' && roomCleared(world)) return { run, world, entered: false, outcome: 'victory' };

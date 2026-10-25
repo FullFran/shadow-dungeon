@@ -1,7 +1,10 @@
+import { UNKILLABLE } from '../data/sima';
+import { applySimaSync, simaSync, type SimaSync } from './sima-events';
 import type { MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
+import type { EliteTrait } from '../data/difficulty';
 import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import { answerGuardedHit } from './roster';
@@ -58,6 +61,10 @@ export interface EnemySnapshot {
   boss?: { stance: BossStance; comboIndex: number };
   /** Fell by its own hand: the guest credits it nothing either. */
   spent?: boolean;
+  /** Elite trait (the one table, data/difficulty.ts), whether its armor still holds, and whether it strikes positionally. */
+  elite?: EliteTrait;
+  armor?: true;
+  pierceRoll?: true;
 }
 
 /** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
@@ -80,6 +87,8 @@ export interface HostSnapshot {
   berries: readonly string[];
   enemies: readonly EnemySnapshot[];
   projectiles: readonly ProjectileSnapshot[];
+  /** Sima: the floor event's progress and the pact in force (absent elsewhere). */
+  sima?: SimaSync;
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
@@ -160,8 +169,12 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       },
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
       ...(e.spent ? { spent: true } : {}),
+      ...(e.elite ? { elite: e.elite } : {}),
+      ...(e.armor ? { armor: true as const } : {}),
+      ...(e.pierceRoll ? { pierceRoll: true as const } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
+    ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
   };
 }
 
@@ -225,6 +238,9 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       ai: { ...withoutNamedAttack(base.ai), ...s.ai, contact },
       ...(s.boss ? { boss: { ...(base.boss ?? initialBoss()), ...s.boss } } : {}),
       ...(s.spent ? { spent: true } : {}),
+      elite: s.elite,
+      armor: s.armor,
+      pierceRoll: s.pierceRoll,
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');
@@ -241,7 +257,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
   });
   // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
   const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
-  return { ...state, enemies, projectiles: [...own, ...theirs], berries };
+  return applySimaSync({ ...state, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima);
 }
 
 /** How many applied claim ids the host remembers (claims older than this are long settled). */
@@ -260,13 +276,13 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
     if (applied.includes(claim.id)) continue;
     applied = [...applied, claim.id];
     const enemy = enemies.find((e) => e.id === claim.enemyId);
-    if (!enemy || !enemy.alive) continue;
+    if (!enemy || !enemy.alive || UNKILLABLE.includes(enemy.species)) continue;
     let struck: EnemyState;
     if (claim.blocked) {
       events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
-      // Croagunk's stance answers whoever struck it.
+      // Croagunk's stance answers whoever struck it; a Sima elite's armor is spent.
       const striker = state.remotes.find((r) => r.id === claim.playerId)?.player.pos ?? state.player.pos;
-      struck = answerGuardedHit({ ...enemy, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
+      struck = answerGuardedHit({ ...enemy, armor: undefined, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
     } else {
       const hp = Math.max(0, enemy.hp - claim.damage);
       struck = {

@@ -48,7 +48,12 @@ export type SpeciesId =
   | 'salandit'
   | 'skrelp'
   | 'salazzle'
-  | 'nihilego';
+  | 'nihilego'
+  // The Sima del Eclipse's own (data/sima.ts): a monster nest and the hunter floor's pursuer.
+  | 'eclipse-nest'
+  | 'eclipse-hunter'
+  // Its own boss, a corrupted shadow of Mimikyu (the busted form's full sheet set, tinted in the eclipse's colours).
+  | 'eclipse-echo';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -192,6 +197,10 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   skrelp: { id: 'skrelp', types: ['poison', 'water'], maxHp: 60, radius: 10, sprite: 'skrelp', movepool: [], defaultLoadout: [] },
   salazzle: { id: 'salazzle', types: ['poison', 'fire'], maxHp: 520, radius: 14, sprite: 'salazzle', movepool: [], defaultLoadout: [] },
   nihilego: { id: 'nihilego', types: ['rock', 'poison'], maxHp: 980, radius: 17, sprite: 'nihilego', movepool: [], defaultLoadout: [] },
+  // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
+  'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
+  'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
+  'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

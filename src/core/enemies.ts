@@ -1,6 +1,6 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
-import { tickAiAt, worldDifficulty } from './difficulty';
+import { eliteTimeScale, tickAiAt, worldDifficulty } from './difficulty';
 import { atLeast } from '../data/difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
@@ -9,6 +9,7 @@ import { updateTreant } from './treant';
 import { behaviourFor } from './tricks';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
+import { updateEclipse } from './eclipse-echo';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -386,19 +387,22 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       current = replaceEnemy(current, interrupted(enemy));
       continue;
     }
-    const ticked = { ...enemy, ai: tickAiAt(enemy.ai, ms, tier, enemy.elite) };
+    // Elites: swift ones always act faster, enraged ones once hurt (on top of the tier's clocks).
+    const ems = ms * eliteTimeScale(enemy);
+    const ticked = { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite) };
     const target = targetOf(current, enemy).pos;
-    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ms, events);
-    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ms, events);
-    else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ms, events);
+    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);
+    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ems, events);
+    else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ems, events);
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
-    else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
-    else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
-    else if (def.kind === 'treant') current = updateTreant(current, ticked, def, target, ms, events);
-    else if (def.kind === 'danmaku') current = updateDanmaku(current, ticked, def, target, ms, events);
-    else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
-    else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ms, events);
-    else current = updateRoster(current, ticked, def, target, ms, events);
+    else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ems, events);
+    else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ems, events);
+    else if (def.kind === 'treant') current = updateTreant(current, ticked, def, target, ems, events);
+    else if (def.kind === 'danmaku') current = updateDanmaku(current, ticked, def, target, ems, events);
+    else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ems, events);
+    else if (def.kind === 'eclipse') current = updateEclipse(current, ticked, def, target, ems, events);
+    else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ems, events);
+    else current = updateRoster(current, ticked, def, target, ems, events);
   }
   return current;
 }

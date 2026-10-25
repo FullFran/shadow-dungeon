@@ -55,6 +55,9 @@ export const PROGRESSION = {
     skrelp: 12,
     salazzle: 55,
     nihilego: 110,
+    'eclipse-nest': 12,
+    'eclipse-hunter': 0,
+    'eclipse-echo': 60,
   } as Record<SpeciesId, number>,
   /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
   xpPerDepth: 0.5,

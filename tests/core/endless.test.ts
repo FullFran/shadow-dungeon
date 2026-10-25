@@ -50,11 +50,12 @@ describe('the Sima del Eclipse (data)', () => {
     expect(dungeonById(ECL)).toBe(ECLIPSE);
   });
 
-  it('puts a guardian echo on every 5th floor, rotating Aegislash, Trevenant and Decidueye', () => {
+  it('puts an echo on every 5th floor: the Eclipse Echo on every 10th, the guardians (Aegislash, Trevenant, Decidueye) in turn between', () => {
     expect([1, 2, 3, 4, 5, 6, 9, 10, 15, 20].map((f) => isEchoFloor(ENDLESS, f))).toEqual([false, false, false, false, true, false, false, true, true, true]);
-    expect([5, 10, 15, 20].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'hollow', 'roost', 'boss']);
+    expect([5, 10, 15, 20, 25, 35].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'boss']);
     expect(planAt(ECLIPSE, 7)).toEqual({ kind: 'generated' });
-    expect(planAt(ECLIPSE, 55)).toEqual({ kind: 'room', room: 'hollow', role: 'echo' });
+    expect(planAt(ECLIPSE, 55)).toEqual({ kind: 'room', room: 'roost', role: 'echo' });
+    expect(planAt(ECLIPSE, 50)).toEqual({ kind: 'room', room: 'eclipse', role: 'echo' });
   });
 
   it('the pool is one appendable list: an entry shows up from its min depth with its weight', () => {
@@ -73,7 +74,8 @@ describe('the Sima del Eclipse (data)', () => {
     for (const roster of EXPERIMENTAL_ENEMIES) {
       const entry = ENDLESS_POOL.find((e) => e.species === roster.species);
       expect(entry, roster.species).toBeDefined();
-      expect(entry!.minDepth, roster.species).toBeGreaterThanOrEqual(roster.minDepth);
+      // Tougher, not more (2026-10-25): the tough ones may come up to two floors earlier than suggested.
+      expect(entry!.minDepth, roster.species).toBeGreaterThanOrEqual(roster.minDepth - 2);
       expect(entry!.weight, roster.species).toBeGreaterThan(0);
       if (roster.pack) expect(entry!.pack, roster.species).toBe(roster.pack);
       expect(endlessSpawns(ENDLESS, entry!.minDepth - 1).pool.map((e) => e.species)).not.toContain(roster.species);
@@ -82,15 +84,15 @@ describe('the Sima del Eclipse (data)', () => {
     expect(ENDLESS_POOL.find((e) => e.species === 'stunky')?.pack).toBe(2);
   });
 
-  it("holds the Crypt's new enemies from the floors they first walk there: Duskull and a Pawniard pair from 2, Golett from 4", () => {
+  it("holds the Crypt's new enemies: Duskull and a Pawniard pair from 2 as in the Crypt, Golett a floor earlier (tougher, not more)", () => {
     const entry = (species: string) => ENDLESS_POOL.find((e) => e.species === species);
     expect(entry('duskull')).toMatchObject({ minDepth: 2 });
     expect(entry('pawniard')).toMatchObject({ minDepth: 2, pack: 2 });
-    expect(entry('golett')).toMatchObject({ minDepth: 4 });
+    expect(entry('golett')).toMatchObject({ minDepth: 3 });
     for (const species of ['duskull', 'pawniard', 'golett']) {
       const first = entry(species)!.minDepth;
       const cryptFirst = CRYPT.spawns.pool.find((p) => p.species === species)!.weights.findIndex((w) => w > 0) + 1;
-      expect(first, species).toBe(cryptFirst);
+      expect(first, species).toBe(species === 'golett' ? cryptFirst - 1 : cryptFirst);
       expect(entry(species)!.weight, species).toBeGreaterThan(0);
       expect(endlessSpawns(ENDLESS, first - 1).pool.map((e) => e.species)).not.toContain(species);
       expect(endlessSpawns(ENDLESS, first).pool.map((e) => e.species)).toContain(species);
@@ -161,7 +163,7 @@ describe('the Sima del Eclipse (data)', () => {
   it('rotates the floor tracks by depth band; echoes play their guardian track', () => {
     const music = (floor: number) => musicFor(ECLIPSE, planAt(ECLIPSE, floor)!, 'normal', floor);
     expect([1, 4, 6, 9, 11].map(music)).toEqual(['crypt', 'crypt', 'forest', 'forest', 'crypt']);
-    expect([5, 15].map(music)).toEqual(['guardian', 'forest-guardian']);
+    expect([5, 10, 15, 25].map(music)).toEqual(['guardian', 'guardian', 'guardian', 'forest-guardian']);
     // The other dungeons are untouched.
     expect(musicFor(FOREST, FOREST.plan[0]!, 'normal')).toBe('forest');
   });
@@ -215,7 +217,8 @@ describe('endless run', () => {
       p = down(p);
       expect(p.outcome).toBeNull();
       expect(p.run.floor).toBe(floor);
-      if (planAt(ECLIPSE, floor)!.kind === 'generated') expect(p.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)));
+      // The map is the generator's; the Sima may swap a room's enemies for a squad, so only the grid is compared.
+      if (planAt(ECLIPSE, floor)!.kind === 'generated') expect(p.world.arena.tiles!.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).tiles);
     }
   });
 
@@ -231,11 +234,14 @@ describe('endless run', () => {
   });
 });
 
+/** The run without its floor's breathing room (sima-pacing.test.ts covers the grace itself). */
+const noGrace = <T extends { graceMs?: number }>(run: T): T => ({ ...run, graceMs: 0 });
+
 describe('the run clock', () => {
   it('starts at 8:00 and counts down, never below 0', () => {
     const { run } = startRun(SEED, {}, 1, ECL);
     expect(run.clockMs).toBe(480_000);
-    expect(tickRunClock(run, 1000).clockMs).toBe(479_000);
+    expect(tickRunClock(noGrace(run), 1000).clockMs).toBe(479_000);
     expect(tickClock(500, 2000)).toBe(0);
     expect(tickClock(500, -100)).toBe(500);
     expect(startRun(SEED, {}).run.clockMs).toBeUndefined();
@@ -250,7 +256,7 @@ describe('the run clock', () => {
     expect(addTime(0, 5000)).toBe(0);
     expect(addTime(1000, -5000)).toBe(1000);
     const start = startRun(SEED, {}, 1, ECL);
-    const p = progressRun(tickRunClock(start.run, 10_000), toStairs(start.world));
+    const p = progressRun(tickRunClock(noGrace(start.run), 10_000), toStairs(start.world));
     expect(p.run.clockMs).toBe(480_000 - 10_000 + 40_000);
     expect(p.bonusMs).toBe(40_000);
   });
@@ -269,7 +275,7 @@ describe('the run clock', () => {
 
   it('at 0 the eclipse swallows the floor: an eclipse end, not a defeat; a guest waits for the host', () => {
     const { run, world } = startRun(SEED, {}, 1, ECL);
-    const out = tickRunClock(run, 480_000);
+    const out = tickRunClock(noGrace(run), 480_000);
     expect(progressRun(out, world).outcome).toBe('eclipse');
     expect(progressRun(out, { ...world, role: 'guest' }).outcome).toBeNull();
     expect(setClock(run, 0).clockMs).toBe(0);

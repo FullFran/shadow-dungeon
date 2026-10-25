@@ -1,3 +1,4 @@
+import { coronaPockets, eclipseCentre, eclipseZoneContact, nooseRadius } from './eclipse-echo';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type SlammerDef, type ThiefDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
@@ -68,14 +69,17 @@ export type PierceZone =
   | { kind: 'lanes' }
   /** A marked circle away from the enemy (Dhelmise's riptide: where it will surface; Nihilego's wormhole mouth). */
   | { kind: 'mark'; center: Vec2; radius: number }
-  /** The whole arena but a few safe pockets (Salazzle's haze, Nihilego's flood): the edges mark the pockets to walk into. */
-  | { kind: 'pockets'; centers: readonly Vec2[]; radius: number };
+  /** The whole arena but a few safe pockets (Salazzle's haze, Nihilego's flood, the Eclipse Echo's corona): the edges mark the pockets to walk into. */
+  | { kind: 'pockets'; centers: readonly Vec2[]; radius: number }
+  /** A ring band `width` thick at `radius` around `center` (the Eclipse Echo's noose, closing): its edges mark the band to stay off. */
+  | { kind: 'ring'; center: Vec2; radius: number; width: number };
 
 /**
  * The positional attack this enemy is winding up (or throwing) at tier `d`,
  * if any: Aegislash's Shadow and Judgement walls and (hard+) Midnight,
- * Sableye's gem burst, Trevenant's roots and Decidueye's arrow rain, and any
- * other enemy whose attack data says `pierceRoll`.
+ * Sableye's gem burst, Trevenant's roots and Decidueye's arrow rain, the
+ * Eclipse Echo's corona and noose, a deep Sima elite marked `pierceRoll`, and
+ * any other enemy whose attack data says `pierceRoll`.
  */
 export function pierceZone(enemy: EnemyState, d: Difficulty, arena: Pick<Arena, 'width' | 'height'> = { width: 0, height: 0 }): PierceZone | null {
   const def = ENEMY_BEHAVIOUR[enemy.species];
@@ -104,6 +108,18 @@ export function pierceZone(enemy: EnemyState, d: Difficulty, arena: Pick<Arena, 
     if (stance === 'wormhole' && def.wormhole.attack.pierceRoll) return { kind: 'mark', center: enemy.ai.mode === 'telegraph' ? (enemy.ai.aimPoint ?? enemy.pos) : enemy.pos, radius: def.wormhole.radius };
     return null;
   }
+  // The Eclipse Echo: the corona burns all but its pockets, the noose closes in (both positional on every tier).
+  if (def.kind === 'eclipse') {
+    const centre = eclipseCentre({ arena });
+    if (stance === 'corona' && def.corona.attack.pierceRoll) return { kind: 'pockets', centers: coronaPockets(def.corona, centre, enemy.ai.aimPoint ?? centre), radius: def.corona.pocketRadius };
+    if (stance === 'noose' && def.noose.attack.pierceRoll) {
+      const radius = enemy.ai.mode === 'attack' ? nooseRadius(def.noose, enemy.ai.modeMs) : def.noose.fromRadius;
+      return { kind: 'ring', center: centre, radius, width: def.noose.width };
+    }
+    return null;
+  }
+  // A deep Sima elite that strikes positionally: every attack of its own is, around its body.
+  if (enemy.pierceRoll) return { kind: 'shape' };
   if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
   if (def.kind === 'slammer') return def.attack.pierceRoll ? { kind: 'circle', radius: def.radius } : null;
   if (def.kind === 'lunger') return def.attack.pierceRoll ? { kind: 'shape' } : null;
@@ -159,6 +175,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (def.kind === 'eclipse') {
+      // The Eclipse Echo's corona and noose (its other cards are projectiles).
+      const zone = eclipseZoneContact(current, enemy, def, current.player.pos);
+      if (!zone) continue;
+      hit = contactPlayer(current, enemy, zone.attack, zone.touches, events);
     } else if (enemy.boss?.stance === 'midnight') {
       hit = contactPlayer(current, enemy, midnightAttack(def, worldDifficulty(current)), slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
     } else if (enemy.boss && enemy.boss.stance !== 'shield' && enemy.boss.stance !== 'blade') {

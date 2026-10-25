@@ -5,6 +5,8 @@ import { pierceZone, type PierceZone } from '../core/victim';
 import { behaviourFor } from '../core/tricks';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
+import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
+import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS, rainSafeLane, stitchSources } from '../core/archer';
@@ -44,6 +46,7 @@ import { arenaFireflies, drawForestAir, drawForestArena, drawForestFloorDecor, d
 import { tileDistances } from '../core/dungeon';
 import { cacheLeft } from '../core/wisp';
 import { drawDeadTree, drawGas, drawPool, drawReeds, drawSpores, drawSwampArena, drawSwampBlock, drawToxicMist, swampDecor, type SwampDecor } from './swamp-decor';
+import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilter, type SimaLook } from './sima-backdrop';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -94,6 +97,8 @@ export interface RenderFrame {
   spell?: SpellBanner | null;
   /** The endless dungeon's run clock (absent elsewhere). */
   clock?: RunClock | null;
+  /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
+  sima?: SimaLook | null;
 }
 
 const COLORS = {
@@ -154,6 +159,9 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   hurt: '#ff5a5a',
   heal: '#6ee07a',
 };
+
+/** The Sima's hunter: Houndour's sheets in the eclipse's shadow. */
+const HUNTER_FILTER = 'brightness(0.35) sepia(1) hue-rotate(-50deg) saturate(4) drop-shadow(0 0 2px #ff2a3a)';
 
 const TILE = 32;
 const DEG = Math.PI / 180;
@@ -265,14 +273,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number): void {
+  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number, abyss = false): void {
     const { x0, y0, x1, y1 } = visibleTiles(view, grid);
     const front = collapse ? collapseFront(collapse) : 0;
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         const x = tx * TILE;
         const y = ty * TILE;
-        if (isWall(grid, tx, ty)) {
+        if (isWall(grid, tx, ty) && abyss) {
+          // The Sima's abyss: no wall, only the void and the underside of the island above.
+          abyssWallTile(ctx, grid, tx, ty);
+        } else if (isWall(grid, tx, ty)) {
           ctx.fillStyle = COLORS.tileWallTop;
           ctx.fillRect(x, y, TILE, TILE);
           // Staggered stone blocks on the wall tops.
@@ -298,7 +309,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           }
           ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.tileFloorA : COLORS.tileFloorB;
           ctx.fillRect(x, y, TILE, TILE);
-          if (isWall(grid, tx, ty - 1)) {
+          if (abyss) abyssRim(ctx, grid, tx, ty, COLORS.tileWallLip);
+          else if (isWall(grid, tx, ty - 1)) {
             ctx.fillStyle = COLORS.tileShadow;
             ctx.fillRect(x, y, TILE, 6);
           }
@@ -445,12 +457,15 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const t of decor.trees) if (visible(t.x, t.y)) drawDeadTree(ctx, t.x * TILE, t.y * TILE, decorHash(t.x, t.y, 22), timeMs);
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor): void {
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor, sima: SimaLook | null = null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
-      ctx.fillStyle = COLORS.mapVoid;
-      ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
-      tiles(grid, view, state.collapse, timeMs);
+      // The Sima draws its eclipse backdrop where the void would be.
+      if (!sima) {
+        ctx.fillStyle = COLORS.mapVoid;
+        ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
+      }
+      tiles(grid, view, state.collapse, timeMs, sima?.abyss === true);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       if (decor === 'forest') drawForestFloorDecor(ctx, forestFloor(state), view, timeMs, fallenAt(state));
       if (decor === 'caves') caveFloorDecor(state, view, timeMs);
@@ -462,8 +477,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       return;
     }
     const { width, height } = state.arena;
-    ctx.fillStyle = COLORS.wall;
-    ctx.fillRect(-200, -200, width + 400, height + 400);
+    if (!sima) {
+      ctx.fillStyle = COLORS.wall;
+      ctx.fillRect(-200, -200, width + 400, height + 400);
+    }
     for (let y = 0; y < height; y += TILE) {
       for (let x = 0; x < width; x += TILE) {
         ctx.fillStyle = ((x + y) / TILE) % 2 === 0 ? COLORS.floorA : COLORS.floorB;
@@ -664,6 +681,21 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         ctx.strokeStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
         ctx.beginPath();
         ctx.arc(at.x, at.y, zone.radius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    if (zone.kind === 'ring') {
+      // A closing ring (the noose): both edges of its band get the double border.
+      for (const r of [zone.radius - zone.width / 2, zone.radius + zone.width / 2]) {
+        if (r <= 0) continue;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.4 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(zone.center.x, zone.center.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
+        ctx.beginPath();
+        ctx.arc(zone.center.x, zone.center.y, r + (r === zone.radius - zone.width / 2 ? -4 : 4), 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -1192,6 +1224,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillStyle = COLORS.wall;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    if (frame.sima) drawSimaBackdrop(ctx, view, pixelScale, frame.sima, timeMs);
     const event = shakeOffset(juice, random);
     const rumble = rumbleOffset(frame.rumble, random);
     const shake = { x: event.x + rumble.x, y: event.y + rumble.y };
@@ -1199,18 +1232,23 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view, timeMs, frame.decor ?? null);
+    floor(current, view, timeMs, frame.decor ?? null, frame.sima ?? null);
+    if (frame.sima?.abyss) drawFallingLight(ctx, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     // Inundación: the rising water lies over the floor, under everyone.
     if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
     for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
+    // The Sima's floor event: its object (chest, altar, crystal, merchant), sealed doors, an ambush's tell.
+    if (current.simaEvent) drawSimaEvent(ctx, current.simaEvent, timeMs, current.arena.tiles?.cols ?? 0);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
     const posOf = (id: string, fallback: Vec2) => positions.get(id) ?? fallback;
 
     // Ground layer: telegraphs and shadows under everything.
+    // The Eclipse Echo's halo and the marks of its cards (corona, noose, lanes), under the pierce marks drawn next.
+    for (const enemy of current.enemies) if (enemy.species === 'eclipse-echo') drawEclipseZones(ctx, current, enemy, posOf(enemy.id, enemy.pos), timeMs);
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs);
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
@@ -1236,7 +1274,18 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           const wormhole = kind === 'ultra' && enemy.ai.mode === 'telegraph' && enemy.boss?.stance === 'wormhole';
           const vanishing = enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || sinking || wormhole);
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
+          // A Sima nest is drawn in code; it glows harder as its next hatching nears.
+          if (enemy.species === 'eclipse-nest') {
+            const nest = current.simaEvent?.kind === 'nest' && current.simaEvent.woke ? (current.simaEvent.remainingMs ?? null) : null;
+            drawNest(ctx, pos, enemy.hp / enemy.maxHp, nest, fade, timeMs);
+            return;
+          }
+          // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
+          if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(ELITE_TRAIT_DEFS[enemy.elite].tint);
+          if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
+          if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
+          ctx.filter = 'none';
         },
       });
       // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
@@ -1315,6 +1364,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
+    if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
   }
 
   return { draw };

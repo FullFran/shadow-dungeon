@@ -81,17 +81,34 @@ export function scaledTelegraphMs(baseMs: number, d: Difficulty): number {
 
 /**
  * Elite traits (Enter the Gungeon's Jammed, softened): an elite is drawn
- * tinted in its trait's colour and has exactly one trait. Data-driven: a new
- * trait is a row here (the core reads only these fields). `tough`: more HP.
- * `frenzied`: its cooldowns run out faster.
+ * tinted in its trait's colour and has exactly one trait. One table for the
+ * whole game: the tiers' elites on every dungeon and the Sima's depth elites
+ * (data/sima.ts `SIMA_ELITES`) draw from it; a new trait is a row here (the
+ * core reads only these fields).
+ * - `tough`: more HP.
+ * - `frenzied`: its cooldowns run out faster.
+ * - `swift`: its whole AI clock runs faster (`pace`).
+ * - `volley` (casters only): two more shots beside each one.
+ * - `armored`: shrugs off the first hit.
+ * - `enrage`: its AI clock runs faster once hurt below a share of its HP.
  */
-export type EliteTrait = 'tough' | 'frenzied';
+export type EliteTrait = 'tough' | 'frenzied' | 'swift' | 'volley' | 'armored' | 'enrage';
 
 export interface EliteTraitDef {
   /** Max HP share at spawn. */
   hp: number;
   /** Its cooldowns last this share (on top of the tier's). */
   cooldown: number;
+  /** Its AI clock (moves, wind-ups, cooldowns) runs this much faster, always. */
+  pace?: number;
+  /** Its AI clock runs `pace` times faster once its HP is under `below` of its max. */
+  enrage?: { below: number; pace: number };
+  /** Two extra shots beside each one, this many degrees to each side. */
+  volley?: { degrees: number };
+  /** Only enemies of this behaviour kind may draw the trait (the others would never use it). */
+  onlyKind?: 'caster';
+  /** Spawns armored: the next hit is shrugged off (then the armor is gone). */
+  armor?: true;
   /** Tint and aura colour (presentation). */
   tint: string;
   /** i18n key of the trait's name. */
@@ -101,7 +118,30 @@ export interface EliteTraitDef {
 export const ELITE_TRAIT_DEFS: Readonly<Record<EliteTrait, EliteTraitDef>> = {
   tough: { hp: 1.5, cooldown: 1, tint: '#d9a441', nameKey: 'elite.tough' },
   frenzied: { hp: 1, cooldown: 0.65, tint: '#e0503c', nameKey: 'elite.frenzied' },
+  swift: { hp: 1, cooldown: 1, pace: 1.3, tint: '#7fe3ff', nameKey: 'elite.swift' },
+  volley: { hp: 1, cooldown: 1, volley: { degrees: 16 }, onlyKind: 'caster', tint: '#d68cff', nameKey: 'elite.volley' },
+  armored: { hp: 1, cooldown: 1, armor: true, tint: '#c9d2e0', nameKey: 'elite.armored' },
+  enrage: { hp: 1, cooldown: 1, enrage: { below: 0.4, pace: 1.5 }, tint: '#ff5a3a', nameKey: 'elite.enrage' },
 };
 
-/** The traits an elite may draw, in draw order. */
+/** Every trait, in table order (the wire accepts these). */
+export const ALL_ELITE_TRAITS = Object.keys(ELITE_TRAIT_DEFS) as readonly EliteTrait[];
+
+export const isEliteTrait = (value: unknown): value is EliteTrait => ALL_ELITE_TRAITS.some((t) => t === value);
+
+/** The traits a tier's elite may draw on the regular dungeons, in draw order (the Sima draws from its own list). */
 export const ELITE_TRAITS: readonly EliteTrait[] = ['tough', 'frenzied'];
+
+/**
+ * How a floor makes its elites (core/difficulty.ts `drawElite`): the chance
+ * per floor enemy, the traits it may draw, an HP share for every elite on top
+ * of its trait's, and the chance that an elite strikes positionally
+ * (`pierceRoll`: its attacks ignore roll i-frames; 0 = never).
+ */
+export interface EliteRule {
+  chance: number;
+  traits: readonly EliteTrait[];
+  hpScale: number;
+  pierceRollChance: number;
+}
+

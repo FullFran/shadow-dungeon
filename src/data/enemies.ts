@@ -1498,9 +1498,109 @@ export const DHELMISE: DanmakuDef = {
 };
 
 
-export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef;
+export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef;
 /** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
 export type SwampDef = RollerDef | DasherDef | SniperDef | QueenDef | UltraDef;
+/**
+ * The Sima's hunter (data/sima.ts, hunter floors): it cannot be felled and it
+ * keeps coming, but it walks slower than the player and far slower than a
+ * roll, and its lunge winds up long and plainly. The stairs are the answer.
+ */
+export const ECLIPSE_HUNTER: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 0, knockbackScale: 0.2 },
+  aggroRange: 5000,
+  walkSpeed: 100,
+  stalkRange: 120,
+  lungeRange: 120,
+  telegraphMs: 800,
+  lungeMs: 260,
+  lungeDistance: 140,
+  attack: { power: 34, type: 'dark' },
+  hitRecoverMs: 700,
+  missRecoverMs: 1200,
+  cooldownMs: 1200,
+};
+
+/** The Eclipse Echo's spell cards (data/sima.ts, every 10th Sima floor), in the order they join. */
+export type EclipseCard = 'ring' | 'spiral' | 'corona' | 'lanes' | 'mirror' | 'noose';
+
+/**
+ * "Eco del Eclipse", the Sima's own boss: a corrupted shadow of Mimikyu that
+ * floats at the top of an open arena and plays bullet-hell spell cards. Every
+ * volley leaves a way through: rings carry a gap that turns a little each
+ * wave, spirals and mirrored spirals keep wide angles between their arms,
+ * lanes sweep down with a gap that never jumps further than a player can
+ * walk. The corona burns the arena outside three pockets and the noose is a
+ * closing ring with one gap: both ignore rolls (`pierceRoll`), position is
+ * the answer. The first cards come on floor 10, one more each 10 floors (one
+ * more from hard, data/sima-tricks.ts), at most all six. Enemy shots never pass `maxShots`.
+ */
+export interface EclipseEchoDef {
+  kind: 'eclipse';
+  poise: PoiseDef;
+  bar: true;
+  floats: true;
+  aggroRange: number;
+  /** It drifts to this point of the arena (shares of width and height) between cards. */
+  hover: { x: number; y: number };
+  driftSpeed: number;
+  restMs: number;
+  telegraphMs: number;
+  recoverMs: number;
+  cards: readonly EclipseCard[];
+  cardNames: Readonly<Record<EclipseCard, string>>;
+  /** Cards on its first floor; one more per further eclipse floor; `extraCards` more (0 here: data/sima-tricks.ts adds one from hard). */
+  baseCards: number;
+  extraCards: number;
+  /** Its own cap of enemy shots in the air (under the global `ENEMY_SHOT_CAP`). */
+  maxShots: number;
+  shot: ShotDef;
+  /** Rings of `count` with a gap of `gap` shots, turning `turn` shots each wave. */
+  ring: { waves: number; count: number; gap: number; turn: number; intervalMs: number };
+  /** `arms` arms turning `turnDeg` per emission. */
+  spiral: { arms: number; emissions: number; intervalMs: number; turnDeg: number };
+  /** Two spirals turning opposite ways. */
+  mirror: { arms: number; emissions: number; intervalMs: number; turnDeg: number };
+  /** Walls from the top edge, `spacing` px apart, with a gap `gapWidth` wide moving at most `maxShift` per wave. */
+  lanes: { waves: number; intervalMs: number; spacing: number; gapWidth: number; maxShift: number; speed: number };
+  /** The arena burns outside `pockets` safe circles (shown for `telegraphMs`); the flash lasts `flashMs`. */
+  corona: { telegraphMs: number; flashMs: number; pockets: number; pocketRadius: number; ring: number; attack: EnemyAttackDef };
+  /** A ring closing from `fromRadius` to `toRadius` around the arena's centre in `closeMs`, `width` thick, with a gap of `gapDegrees`. */
+  noose: { telegraphMs: number; closeMs: number; fromRadius: number; toRadius: number; width: number; gapDegrees: number; attack: EnemyAttackDef };
+}
+
+export const ECLIPSE_ECHO: EclipseEchoDef = {
+  kind: 'eclipse',
+  poise: { hitstunScale: 0, knockbackScale: 0 },
+  bar: true,
+  floats: true,
+  aggroRange: 900,
+  hover: { x: 0.5, y: 0.36 },
+  driftSpeed: 60,
+  restMs: 1500,
+  telegraphMs: 900,
+  recoverMs: 1300,
+  cards: ['ring', 'spiral', 'corona', 'lanes', 'mirror', 'noose'],
+  cardNames: {
+    ring: 'spell.eclipse.ring',
+    spiral: 'spell.eclipse.spiral',
+    corona: 'spell.eclipse.corona',
+    lanes: 'spell.eclipse.lanes',
+    mirror: 'spell.eclipse.mirror',
+    noose: 'spell.eclipse.noose',
+  },
+  baseCards: 2,
+  extraCards: 0,
+  maxShots: 110,
+  shot: { power: 16, type: 'dark', speed: 95, radius: 5, lifetimeMs: 7000 },
+  ring: { waves: 4, count: 24, gap: 4, turn: 2, intervalMs: 900 },
+  spiral: { arms: 3, emissions: 30, intervalMs: 120, turnDeg: 11 },
+  mirror: { arms: 2, emissions: 26, intervalMs: 140, turnDeg: 13 },
+  lanes: { waves: 4, intervalMs: 1100, spacing: 24, gapWidth: 84, maxShift: 100, speed: 85 },
+  corona: { telegraphMs: 1500, flashMs: 300, pockets: 3, pocketRadius: 40, ring: 150, attack: { power: 30, type: 'dark', pierceRoll: true } },
+  noose: { telegraphMs: 1100, closeMs: 2600, fromRadius: 380, toRadius: 50, width: 16, gapDegrees: 50, attack: { power: 26, type: 'dark', pierceRoll: true } },
+};
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1546,6 +1646,8 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   skrelp: SKRELP,
   salazzle: SALAZZLE,
   nihilego: NIHILEGO,
+  'eclipse-hunter': ECLIPSE_HUNTER,
+  'eclipse-echo': ECLIPSE_ECHO,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */

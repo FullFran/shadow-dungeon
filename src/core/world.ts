@@ -3,7 +3,7 @@ import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import type { UpgradeLevels } from '../data/upgrades';
-import type { Difficulty, EliteTrait } from '../data/difficulty';
+import { ELITE_TRAIT_DEFS, type Difficulty, type EliteTrait } from '../data/difficulty';
 import { eliteHp, rollTierOf, tierOf } from './difficulty';
 import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
@@ -114,15 +114,19 @@ export interface SpawnOptions {
   dormant?: boolean;
   /** Floor enemies: asleep until the player enters this room or comes close in sight (activation.ts). */
   sleepIn?: Rect;
-  /** Harder tiers: an elite of a generated floor (core/difficulty.ts `eliteFor`). */
+  /** An elite of a generated floor (core/difficulty.ts `drawElite`): its trait (armored spawns with its armor). */
   elite?: EliteTrait;
+  /** An elite's HP share on top of its trait's (the Sima's elites: data/sima.ts `hpScale`). */
+  eliteHp?: number;
+  /** A deep Sima elite: its attacks ignore roll i-frames. */
+  pierceRoll?: true;
 }
 
 /** Adds an enemy with a deterministic id ("e<n>"). */
 export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, options: SpawnOptions = {}): WorldState {
   const species = SPECIES[speciesId];
   // The endless dungeon's deeper floors spawn tougher enemies, and so do harder tiers (a tough elite more so).
-  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite);
+  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite) * (options.elite ? (options.eliteHp ?? 1) : 1);
   const enemy: EnemyState = {
     id: `e${state.nextId}`,
     species: speciesId,
@@ -138,7 +142,8 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     ai: options.sleepIn ? { ...initialAi(), mode: 'asleep' } : initialAi(options.dormant),
     ...(options.sleepIn ? { wakeRoom: options.sleepIn } : {}),
     ...(hasBossState(speciesId) ? { boss: initialBoss(speciesId) } : {}),
-    ...(options.elite ? { elite: options.elite } : {}),
+    ...(options.elite ? { elite: options.elite, ...(ELITE_TRAIT_DEFS[options.elite].armor ? { armor: true as const } : {}) } : {}),
+    ...(options.pierceRoll ? { pierceRoll: true as const } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }

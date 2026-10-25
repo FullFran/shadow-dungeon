@@ -1,3 +1,5 @@
+import type { SimaSync } from '../core/sima-events';
+import { isEliteTrait } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
@@ -115,17 +117,20 @@ function encodeEnemy(e: EnemySnapshot): unknown[] {
     r3(e.ai.attackDir.x),
     r3(e.ai.attackDir.y),
   ];
-  const named = e.ai.attack !== undefined || e.ai.aimPoint !== undefined || e.spent === true;
+  const elite = e.elite !== undefined;
+  const named = e.ai.attack !== undefined || e.ai.aimPoint !== undefined || e.spent === true || elite;
   if (e.boss || named) out.push(e.boss?.stance ?? null, e.boss?.comboIndex ?? null);
   // Optional named attack and landing point (experimental roster), after the boss slots.
   if (named) out.push(e.ai.attack ?? null, e.ai.aimPoint ? [r1(e.ai.aimPoint.x), r1(e.ai.aimPoint.y)] : null);
-  // Optional spent flag (fell by its own blast), last.
-  if (e.spent) out.push(1);
+  // Optional spent flag (fell by its own blast).
+  if (e.spent || elite) out.push(e.spent ? 1 : 0);
+  // Optional elite trait (any of data/difficulty.ts `ELITE_TRAIT_DEFS`), "*" while its armor holds, "!" if it strikes positionally, last.
+  if (elite) out.push(`${e.elite}${e.armor ? '*' : ''}${e.pierceRoll ? '!' : ''}`);
   return out;
 }
 
 function decodeEnemy(w: unknown[]): EnemySnapshot {
-  const [id, species, x, y, fx, fy, hp, alive, hitstunMs, mode, modeMs, modeDurationMs, ax, ay, stance, comboIndex, attack, aim, spent] = w as [
+  const [id, species, x, y, fx, fy, hp, alive, hitstunMs, mode, modeMs, modeDurationMs, ax, ay, stance, comboIndex, attack, aim, spent, elite] = w as [
     string,
     SpeciesId,
     number,
@@ -145,7 +150,9 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
     string | null | undefined,
     [number, number] | null | undefined,
     number | undefined,
+    string | undefined,
   ];
+  const trait = typeof elite === 'string' ? elite.replace(/[*!]/g, '') : '';
   return {
     id,
     species,
@@ -164,8 +171,10 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
     },
     ...(stance ? { boss: { stance, comboIndex: comboIndex ?? 0 } } : {}),
     ...(spent === 1 ? { spent: true } : {}),
+    ...(isEliteTrait(trait) ? { elite: trait, ...(elite!.includes('*') ? { armor: true as const } : {}), ...(elite!.includes('!') ? { pierceRoll: true as const } : {}) } : {}),
   };
 }
+
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
@@ -206,6 +215,7 @@ export function encodeMessage(message: NetMessage): string {
         b: message.s.berries,
         e: message.s.enemies.map(encodeEnemy),
         p: message.s.projectiles.map(encodeProjectile),
+        ...(message.s.sima ? { v: message.s.sima } : {}),
       };
       break;
     case 'town':
@@ -250,6 +260,7 @@ export function decodeMessage(text: string): NetMessage | null {
         berries: Array.isArray(wire.b) ? (wire.b as string[]) : [],
         enemies: (wire.e as unknown[][]).map(decodeEnemy),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
+        ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
       },
     };
   }

@@ -1,5 +1,5 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
-import type { AegislashCard, ArcherCard, DanmakuCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { QueenCard, UltraCard } from '../data/swamp-enemies';
 import type { ItemId } from '../data/items';
@@ -12,6 +12,7 @@ import type { FloodState } from './flood';
 import type { GasState } from './gas';
 import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
+import type { SimaEventState, SimaPactState } from './sima-events';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -195,12 +196,16 @@ export interface EnemyState {
   wakeRoom?: Rect;
   /** Fell by its own hand (Koffing's blast): no experience, no Pokémonedas. */
   spent?: boolean;
-  /** Harder tiers: an elite (drawn tinted) and its one extra trait (data/difficulty.ts); derived from the floor seed on every peer. */
+  /** An elite (drawn tinted) and its one extra trait (data/difficulty.ts `ELITE_TRAIT_DEFS`: the tiers' and the Sima's); drawn from the floor seed on every peer, and sent with the host snapshot. */
   elite?: EliteTrait;
+  /** Armored elite: the next hit is shrugged off (then it is gone). */
+  armor?: true;
+  /** Deep Sima elite: its attacks ignore roll i-frames (positional, docs/gdd.md §9). */
+  pierceRoll?: true;
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | 'slam';
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam';
 
 export interface BossState {
   stance: BossStance;
@@ -434,6 +439,10 @@ export interface WorldState {
   enemyScale?: EnemyScale;
   /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */
   wisp?: { cache: Vec2 };
+  /** Sima del Eclipse: this floor's event (sima-events.ts); the host runs it, guests follow its snapshot. */
+  simaEvent?: SimaEventState;
+  /** Sima del Eclipse: the shrine's pact in force (it outlasts the floor). */
+  simaPact?: SimaPactState;
   events: GameEvent[];
 }
 

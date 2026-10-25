@@ -1,5 +1,7 @@
 import type { SpawnTuning } from '../data/dungeon';
-import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TIERS, type Difficulty, type EliteTrait, type TierDef } from '../data/difficulty';
+import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
+import { ENEMY_BEHAVIOUR } from '../data/enemies';
+import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { deriveSeed, nextRandom } from './rng';
 import type { AiState, EnemyState, WorldState } from './state';
@@ -24,15 +26,51 @@ const ELITE_SALT = 0xe117e;
  * shared run makes the same elites without sending anything.
  */
 export function eliteFor(floorSeed: number, index: number, d: Difficulty): EliteTrait | null {
-  const chance = TIERS[d].eliteChance;
-  if (chance <= 0) return null;
+  return drawElite(floorSeed, index, tierEliteRule(d))?.trait ?? null;
+}
+
+/** The elites of a regular dungeon's floor at tier `d`: the tier's chance, the tier's traits, no HP bonus beyond the trait's. */
+export const tierEliteRule = (d: Difficulty): EliteRule => ({ chance: TIERS[d].eliteChance, traits: ELITE_TRAITS, hpScale: 1, pierceRollChance: 0 });
+
+/** The traits of `traits` an enemy of `species` may draw (volley only for casters). */
+export function fittingTraits(traits: readonly EliteTrait[], species?: SpeciesId): readonly EliteTrait[] {
+  const kind = species ? ENEMY_BEHAVIOUR[species]?.kind : undefined;
+  return traits.filter((t) => {
+    const only = ELITE_TRAIT_DEFS[t].onlyKind;
+    return !only || only === kind;
+  });
+}
+
+/**
+ * The one elite draw of the game (tiers and the Sima alike): whether spawn
+ * `index` of the floor generated from `floorSeed` is an elite under `rule`,
+ * its trait (one that fits its species) and whether it strikes positionally.
+ * A pure draw from the seed (no world RNG), so every peer of a shared run
+ * makes the same elites.
+ */
+export function drawElite(floorSeed: number, index: number, rule: EliteRule, species?: SpeciesId): { trait: EliteTrait; pierceRoll: boolean } | null {
+  if (rule.chance <= 0) return null;
   const roll = nextRandom(deriveSeed(floorSeed, ELITE_SALT + index));
-  if (roll.value >= chance) return null;
-  return ELITE_TRAITS[Math.floor(nextRandom(roll.state).value * ELITE_TRAITS.length)]!;
+  if (roll.value >= rule.chance) return null;
+  const fits = fittingTraits(rule.traits, species);
+  if (fits.length === 0) return null;
+  const pick = nextRandom(roll.state);
+  const trait = fits[Math.min(fits.length - 1, Math.floor(pick.value * fits.length))]!;
+  const pierceRoll = rule.pierceRollChance > 0 && nextRandom(pick.state).value < rule.pierceRollChance;
+  return { trait, pierceRoll };
 }
 
 /** Max HP share of an elite trait (1 for none). */
 export const eliteHp = (trait: EliteTrait | undefined): number => (trait ? ELITE_TRAIT_DEFS[trait].hp : 1);
+
+/** How much faster an elite's AI clock runs now: a swift one always, an enraged one once hurt below its threshold; 1 otherwise. */
+export function eliteTimeScale(enemy: Pick<EnemyState, 'elite' | 'hp' | 'maxHp'>): number {
+  if (!enemy.elite) return 1;
+  const def = ELITE_TRAIT_DEFS[enemy.elite];
+  if (def.pace) return def.pace;
+  if (def.enrage && enemy.hp < enemy.maxHp * def.enrage.below) return def.enrage.pace;
+  return 1;
+}
 
 /**
  * One step of an enemy's AI clocks at tier `d`: a telegraph runs through its

@@ -28,6 +28,8 @@ export function landHitOnPlayer(
   // The endless dungeon's deeper floors hit harder (state.enemyScale), and so do harder tiers (victim side: every peer applies its own).
   const harder = (state.enemyScale?.damage ?? 1) * tierOf(state).damage;
   if (harder !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * harder)) };
+  // A Sima pact's curse may make them hit harder.
+  if (state.simaPact && state.simaPact.enemyDamage !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * state.simaPact.enemyDamage)) };
   const outcome = classifyHit(player, hit);
   if (outcome === 'dodged') {
     events.push({ type: 'hitDodged' });

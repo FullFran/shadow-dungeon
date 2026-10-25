@@ -1,5 +1,6 @@
 import { ENEMY_SHOT_CAP, floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
 import { wadeFactor } from './water';
+import { ELITE_TRAIT_DEFS } from '../data/difficulty';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
@@ -46,6 +47,13 @@ export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifeti
 export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot, dir: Vec2, at?: Vec2): WorldState {
   // Performance cap: past it new enemy shots are not thrown (a pattern only gets sparser).
   if (state.projectiles.length >= ENEMY_SHOT_CAP && state.projectiles.filter((p) => p.owner === 'enemy').length >= ENEMY_SHOT_CAP) return state;
+  // A volley elite throws two more beside each shot.
+  const volley = enemy.elite ? ELITE_TRAIT_DEFS[enemy.elite].volley : undefined;
+  if (volley && shot.speed > 0) {
+    const plain = { ...enemy, elite: undefined };
+    const spread = volley.degrees;
+    return [-spread, spread].reduce((s, deg) => spawnShot(s, plain, shot, rotate(dir, deg), at), spawnShot(state, plain, shot, dir, at));
+  }
   const projectile: ProjectileState = {
     id: `p${state.nextId}`,
     owner: 'enemy',
@@ -61,7 +69,8 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     knockback: 0,
     hitIds: [],
     ...(shot.steer ? { steer: shot.steer } : {}),
-    ...(shot.pierceRoll ? { pierceRoll: true } : {}),
+    // Positional shots, and every shot of a deep Sima elite that strikes positionally.
+    ...(shot.pierceRoll || enemy.pierceRoll ? { pierceRoll: true } : {}),
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }
@@ -111,7 +120,7 @@ export function contactPlayer(
     attackerTypes: enemy.types,
     defenderTypes: state.player.types,
   });
-  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(attack.pierceRoll ? { pierceRoll: true } : {}) }, events);
+  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(attack.pierceRoll || enemy.pierceRoll ? { pierceRoll: true } : {}) }, events);
   if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);
   const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
@@ -119,7 +128,8 @@ export function contactPlayer(
 
 /** Starts a wind-up named `attack` (its telegraph event), aimed along `dir`. */
 export function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[], pierceRoll = false): EnemyState {
-  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs, ...(pierceRoll ? { pierceRoll: true as const } : {}) });
+  // A deep Sima elite's every wind-up is positional (its warning sound plays too).
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs, ...(pierceRoll || enemy.pierceRoll ? { pierceRoll: true as const } : {}) });
   return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir, attack } };
 }
 

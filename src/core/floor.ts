@@ -1,6 +1,7 @@
 import type { FloorKind } from '../data/dungeon';
 import { startCollapse } from './collapse';
-import { eliteFor, worldDifficulty } from './difficulty';
+import { drawElite, tierEliteRule, worldDifficulty } from './difficulty';
+import type { EliteRule } from '../data/difficulty';
 import { startFog } from './fog';
 import { startFlood } from './flood';
 import { startGas } from './gas';
@@ -26,7 +27,7 @@ export function floorArena(floor: Floor): Arena {
  * Enters a generated floor: resets per-floor state (Disguise), puts the player on the start tile, spawns sleeping enemies,
  * and on a collapse floor starts the collapse clock.
  */
-export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'normal'): WorldState {
+export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'normal', elites?: EliteRule): WorldState {
   const entered = enterRoom(state);
   let next: WorldState = {
     ...entered,
@@ -37,11 +38,12 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
     ...(kind === 'flood' ? { flood: startFlood() } : {}),
     ...(kind === 'gas' ? { gas: startGas(floor) } : {}),
   };
-  // Harder tiers: some floor enemies are elites, drawn from the floor seed (the same on every peer).
-  const tier = worldDifficulty(state);
+  // Elites: some floor enemies are elites, drawn from the floor seed (the same on every peer), by the tier's rule or the dungeon's (the Sima's).
+  const rule = elites ?? tierEliteRule(worldDifficulty(state));
   floor.spawns.forEach((spawn, index) => {
-    const elite = eliteFor(floor.seed, index, tier);
-    next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!), ...(elite ? { elite } : {}) });
+    const elite = drawElite(floor.seed, index, rule, spawn.species);
+    const drawn = elite ? { elite: elite.trait, eliteHp: rule.hpScale, ...(elite.pierceRoll ? { pierceRoll: true as const } : {}) } : {};
+    next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!), ...drawn });
   });
   return next;
 }
