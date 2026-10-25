@@ -1,7 +1,11 @@
 import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
+  creditsMarkdown,
   decodePng,
+  mergeCredits,
   parseAnimData,
   parseCreditNames,
   parseCredits,
@@ -85,6 +89,42 @@ describe('credits', () => {
     expect(resolveAuthor(names, credit!.author)).toEqual({ name: 'Audino', contact: 'https://github.com/audinowho' });
     expect(resolveAuthor(names, 'CHUNSOFT').name).toBe('CHUNSOFT');
     expect(resolveAuthor(names, '<@!999>').name).toBe('<@!999>');
+  });
+});
+
+describe('CREDITS.md regeneration', () => {
+  const perArtist = new Map([
+    ['Zed', { contact: '', sprites: new Set(['gastly (0092)']) }],
+    ['amy', { contact: 'https://a.example', sprites: new Set(['mimikyu (0778)']) }],
+  ]);
+  const generated = creditsMarkdown(perArtist);
+
+  it('writes the sprite table sorted by artist, "-" for a missing contact', () => {
+    expect(generated).toContain('| amy | https://a.example | mimikyu (0778) |\n| Zed | - | gastly (0092) |');
+    expect(generated.startsWith('# Credits\n')).toBe(true);
+  });
+
+  it('keeps every hand-written section (Font, Music, Audio...) and replaces only the sprites', () => {
+    const existing = `${creditsMarkdown(new Map([['Old', { contact: '', sprites: new Set(['x (0001)']) }]]))}\n## Music\n\nTrack by someone.\n\n## Font\n\nPixel font.\n`;
+    const merged = mergeCredits(existing, generated);
+    expect(merged).not.toContain('| Old |');
+    expect(merged).toContain('| Zed | - | gastly (0092) |');
+    expect(merged.indexOf('## Music')).toBeGreaterThan(merged.indexOf('## Sprites'));
+    expect(merged).toContain('## Music\n\nTrack by someone.\n');
+    expect(merged).toContain('## Font\n\nPixel font.\n');
+    expect(merged.indexOf('## Music')).toBeLessThan(merged.indexOf('## Font'));
+    expect(mergeCredits(merged, generated)).toBe(merged);
+  });
+
+  it('is just the generated file when there is nothing to keep', () => {
+    expect(mergeCredits(null, generated)).toBe(generated);
+    expect(mergeCredits(generated, generated)).toBe(generated);
+  });
+
+  it('round-trips the real CREDITS.md: regenerating keeps its Font and Music sections', () => {
+    const real = readFileSync(join(__dirname, '..', 'CREDITS.md'), 'utf8');
+    const merged = mergeCredits(real, generated);
+    for (const heading of ['## Sprites', '## Music', '## Font']) expect(merged, heading).toContain(heading);
   });
 });
 
