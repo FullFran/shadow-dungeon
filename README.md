@@ -23,7 +23,7 @@ Deploy: `.github/workflows/deploy.yml` runs the tests, builds `dist/` and publis
 
 ## How to play (M0)
 
-Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy moves, the language and whether click-to-lock is on in the menu (remembered in `localStorage`), then press Start. A run is three procedurally generated floors (rooms and corridors, sleeping Poochyena and Gastly that wake when you come into their room or into sight) and a fourth floor against Aegislash; step on the stairs to go down, no need to clear the floor. HP carries over (each new floor heals 25%), Disguise comes back on every floor. Losing all HP shows the defeat screen; beating Aegislash shows the victory screen; both show the floor reached and the run seed. Add `?seed=123` to the URL to replay a seed.
+Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy moves, the language and whether click-to-lock is on in the menu (remembered in `localStorage`), then press Start. A run is three procedurally generated floors (rooms and corridors, sleeping Poochyena and Gastly that wake when you come into their room or into sight) and a fourth floor against Aegislash; step on the stairs to go down, no need to clear the floor. HP carries over (each new floor heals 25%), Disguise comes back on every floor. Floors 2 and 3 may be **collapse floors** (25% and 40%): after a short grace the ceiling falls from the entrance towards the stairs along the walking distance, rubble hurts and pushes you, and escaping shows your time on the next floor's card. Every floor opens with a title card ("Floor 2"), and a Mystery Dungeon-style minimap (top right, Tab to hide) reveals rooms and corridors as you see them; awake enemies chase you around walls. Losing all HP shows the defeat screen; beating Aegislash shows the victory screen; both show the floor reached and the run seed. Add `?seed=123` to the URL to replay a seed (the same seed gives the same floors and the same collapses); on the dev server `?floor=2` also starts on that floor.
 
 | Input | Action |
 |---|---|
@@ -35,6 +35,7 @@ Open the play link (or `npm run dev` locally), pick Mimikyu's fast and heavy mov
 | Shift / middle mouse button | Lock-on on the enemy nearest the cursor. Lock type (menu): *press to lock or release* (default), *hold to lock*, *click only* (Shift and middle mouse do nothing) or *off* |
 | Left click on an enemy | Click-to-lock (on by default, toggle in the menu; with *click only* it is always on, with *off* never): locks onto that enemy, or switches to it, and still attacks; a faint ring marks the enemy under the cursor. Clicking the ground keeps the current lock (with *click only* it releases it) |
 | Mouse wheel | Switch locked target clockwise / counter-clockwise |
+| Tab | Show or hide the minimap |
 | M | Mute or unmute sound |
 | Esc | Menu: resume, quick settings (lock type, click-to-lock, volume, mute, language), restart floor, quit to the main menu. The solo demo pauses while it is open |
 

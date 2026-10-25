@@ -14,6 +14,7 @@ export function floorArena(floor: Floor): Arena {
     height: floor.rows * TILE,
     tiles: floor,
     stairs: { x: floor.stairs.x * TILE, y: floor.stairs.y * TILE, width: TILE, height: TILE },
+    rooms: floor.rooms,
   };
 }
 

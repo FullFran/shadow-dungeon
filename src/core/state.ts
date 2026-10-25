@@ -2,6 +2,7 @@ import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
+import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
 import type { Vec2 } from './vec';
@@ -206,6 +207,8 @@ export interface Arena {
   tiles?: TileGrid;
   /** Generated floors: stepping here goes down to the next floor. */
   stairs?: Rect;
+  /** Generated floors: the rooms, in tiles (the minimap reveals a whole room on entering it). */
+  rooms?: readonly TileRect[];
 }
 
 /** Things that happened during the last step, for renderer juice and audio. Cleared every step. */

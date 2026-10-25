@@ -35,6 +35,8 @@ export const SOUND_IDS = [
   'victory',
   'defeat',
   'collapse',
+  'stairs',
+  'floorCard',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -90,9 +92,13 @@ export function soundFor(event: GameEvent): SoundId | null {
   }
 }
 
-/** Sounds on entering a floor (not a core event: the run loads the floor between steps). */
-export function floorEntrySounds(kind: FloorKind): SoundId[] {
-  return kind === 'collapse' ? ['collapse'] : [];
+/**
+ * Sounds on entering a floor (not a core event: the run loads the floor
+ * between steps): footsteps down when it was reached by the stairs, the
+ * title card chime, and the crash that announces a collapse.
+ */
+export function floorEntrySounds(kind: FloorKind, descended: boolean): SoundId[] {
+  return [...(descended ? (['stairs'] as const) : []), 'floorCard', ...(kind === 'collapse' ? (['collapse'] as const) : [])];
 }
 
 /** Peak gain of the collapse rumble loop on the sfx bus. */
@@ -312,6 +318,24 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
   click: { ms: 30, play: (s, t) => tone(s, t, { type: 'square', from: 1000, dur: 0.025, gain: 0.05, attack: 0.002 }) },
   victory: { ms: 900, play: (s, t) => arpeggio(s, t, 'square', [440, 523, 659, 880], 0.12, 0.55, 0.09) },
   defeat: { ms: 1300, play: (s, t) => arpeggio(s, t, 'triangle', [330, 262, 220, 165], 0.22, 0.7, 0.16) },
+  stairs: {
+    ms: 520,
+    play: (s, t) => {
+      // Four footsteps going down, each a little lower and softer.
+      for (let i = 0; i < 4; i++) {
+        noise(s, t + i * 0.11, { filter: 'bandpass', from: 900 - i * 140, to: 300, dur: 0.07, gain: 0.22 - i * 0.03, q: 2 });
+        tone(s, t + i * 0.11, { type: 'triangle', from: 260 - i * 30, to: 120, dur: 0.06, gain: 0.07 });
+      }
+    },
+  },
+  floorCard: {
+    ms: 900,
+    play: (s, t) => {
+      // A soft, slightly ominous chime under the floor title (A minor, like the music).
+      arpeggio(s, t + 0.35, 'triangle', [440, 659, 880], 0.14, 0.5, 0.09);
+      tone(s, t + 0.35, { type: 'sine', from: 220, dur: 0.6, gain: 0.08, attack: 0.03 });
+    },
+  },
   collapse: {
     ms: 1400,
     play: (s, t) => {

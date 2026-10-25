@@ -77,5 +77,6 @@
   "screen.floorReached": "Planta alcanzada",
   "screen.seed": "Semilla",
   "card.collapse": "¡La planta se derrumba!",
-  "card.escaped": "Escapaste del derrumbe en {time}"
+  "card.escaped": "Escapaste del derrumbe en {time}",
+  "menu.controls.minimap": "Tab: mostrar u ocultar el minimapa"
 }

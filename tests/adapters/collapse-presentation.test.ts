@@ -58,9 +58,11 @@ describe('collapse rumble and sounds', () => {
   });
 
   it('crashes on entering a collapse floor and hurts on rubble without hitstop', () => {
-    expect(floorEntrySounds('collapse')).toContain('collapse');
-    expect(floorEntrySounds('normal')).not.toContain('collapse');
-    for (const id of floorEntrySounds('collapse')) expect(SOUND_IDS).toContain(id);
+    expect(floorEntrySounds('collapse', true)).toEqual(['stairs', 'floorCard', 'collapse']);
+    expect(floorEntrySounds('normal', true)).toEqual(['stairs', 'floorCard']);
+    // The first floor and "Restart floor" show the card without walking down any stairs.
+    expect(floorEntrySounds('normal', false)).toEqual(['floorCard']);
+    for (const id of floorEntrySounds('collapse', true)) expect(SOUND_IDS).toContain(id);
     expect(soundFor({ type: 'collapseHurt', damage: 6 })).toBe('hurt');
     const juice = applyEvents(initialJuice(), [{ type: 'collapseHurt', damage: 6 }], { x: 0, y: 0 });
     expect(juice.hitstopMs).toBe(0);

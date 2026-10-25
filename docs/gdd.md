@@ -58,6 +58,9 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 - Las escaleras se pueden usar en cuanto las encuentras, sin limpiar la planta (como en Mundo Misterioso).
 - La vida se arrastra de una planta a otra y cada planta nueva cura un 25 % de la vida máxima *(provisional)*. El Disfraz se recupera en cada planta.
 - Cada partida tiene una semilla (al azar, o fija con `?seed=` en la dirección) y se enseña al final, así que una partida buena se puede repetir.
+- Cada planta empieza con una tarjeta ("Mazmorra Sombría", "Planta 2") que aparece y se va en un par de segundos sin parar el juego.
+- Minimapa arriba a la derecha, como en Mundo Misterioso: se descubre lo que ves (la sala entera al entrar, los pasillos a tu alrededor), las escaleras salen cuando las has visto y los enemigos solo si están en pantalla. Tab lo muestra u oculta.
+- Los enemigos despiertos te persiguen rodeando paredes (siguen el camino andando hacia ti cuando no te ven).
 - Sin reloj. Solo un aviso suave si el grupo se queda muchísimo tiempo (la idea del viento de Mundo Misterioso), para cortar el quedarse farmeando, nunca para castigar a quien juega normal.
 
 ### Plantas con prisa
@@ -72,6 +75,16 @@ Plantas que salen de vez en cuando y te obligan a encontrar las escaleras rápid
 | Cazador | Un Pokémon que no se puede matar te persigue por la planta | El que más juego da en directo: correr, esconderse, que un compañero lo distraiga. *Me encanta, pero no entra en el MVP; queda para después.* |
 
 Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta mejor), así que la prisa también es una oportunidad.
+
+**El derrumbe en el MVP** *(valores provisionales)*:
+
+- Sale en las plantas generadas con un 25 % de probabilidad en la planta 2 y un 40 % en la 3; nunca en la 1 ni en las de jefe. Se decide con la semilla de la partida, así que la misma semilla repite los mismos derrumbes.
+- Al entrar sale la tarjeta de la planta con el aviso "¡La planta se derrumba!" y un estruendo.
+- Tras 5 segundos de gracia, el frente avanza desde la entrada a 1,5 casillas por segundo siguiendo la distancia andando (no en línea recta), así que siempre llega a las escaleras lo último. Llega como pronto 1,8 veces más tarde de lo que tardarías andando derecho a ellas (con estos valores, unas 2,9 veces); lo comprueban los tests con cientos de semillas.
+- Pisar escombro quita un 6 % de la vida máxima cada medio segundo y te empuja hacia el suelo que sigue en pie. La invulnerabilidad de la rueda se salta un golpe, pero el Disfraz no lo para: el suelo no es un ataque.
+- Los enemigos que andan y se quedan en el escombro caen; Gastly flota y sigue.
+- Cerca del frente hay un rumor grave que sube de volumen y la pantalla tiembla un poco; el suelo a punto de caer se agrieta.
+- Escapar enseña en la tarjeta de la planta siguiente cuánto has tardado ("Escapaste del derrumbe en 0:42"). Todavía no da Pokémonedas, solo la línea.
 
 ### Jefes
 
@@ -93,6 +106,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 | Shift o clic central | Fijar objetivo: una pulsación fija y otra lo suelta (mantener Shift resultó incómodo en la primera prueba). El tipo de fijado se elige en ajustes |
 | Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |
+| Tab | Mostrar u ocultar el minimapa |
 | Esc | Menú: continuar, ajustes rápidos, reiniciar la planta (vuelve a como entraste) y salir al menú principal |
 
 Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al derecho, esquiva al Espacio), así que le resulta natural a cualquiera que haya jugado algo parecido. Todas las teclas se pueden cambiar.

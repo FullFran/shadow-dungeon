@@ -77,5 +77,6 @@
   "screen.floorReached": "Floor reached",
   "screen.seed": "Seed",
   "card.collapse": "The floor is collapsing!",
-  "card.escaped": "You escaped the collapse in {time}"
+  "card.escaped": "You escaped the collapse in {time}",
+  "menu.controls.minimap": "Tab: show or hide the minimap"
 }

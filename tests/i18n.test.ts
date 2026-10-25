@@ -60,6 +60,16 @@ describe('run strings', () => {
   });
 });
 
+describe('dungeon presentation strings', () => {
+  const keys = ['menu.controls.minimap', 'card.collapse', 'card.escaped'];
+  for (const language of LANGUAGES) {
+    it(`"${language}" names the minimap key and the collapse card lines`, () => {
+      expect(keys.filter((key) => !(key in catalog(language)))).toEqual([]);
+      expect(catalog(language)['card.escaped']).toContain('{time}');
+    });
+  }
+});
+
 describe('detectLanguage', () => {
   it('picks English only for English browser languages', () => {
     expect(detectLanguage('en-GB')).toBe('en');

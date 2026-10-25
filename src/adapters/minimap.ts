@@ -1,0 +1,109 @@
+import type { TileRect } from '../core/dungeon';
+import { collapseFront } from '../core/collapse';
+import type { Rect, WorldState } from '../core/state';
+import { isWall, TILE, tileOf, type TileGrid, type TilePoint } from '../core/tiles';
+import type { Vec2 } from '../core/vec';
+import { insideRect } from '../core/geometry';
+
+/**
+ * Mystery Dungeon-style minimap with fog of war. The memory of seen tiles is
+ * presentation state kept by the game loop per floor: entering a room reveals
+ * all of it (walls included), corridors reveal a small square around the
+ * player. The stairs show once their tile has been seen; enemies only while
+ * they are on screen.
+ */
+export const MINIMAP = {
+  /** Corridor reveal: tiles in every direction around the player. */
+  revealRadius: 3,
+  /** Size of one map tile on the minimap, in view pixels. */
+  tilePx: 3,
+  /** Gap to the top-right corner of the view (below the floor label). */
+  margin: 8,
+  top: 20,
+} as const;
+
+export interface MinimapMemory {
+  cols: number;
+  rows: number;
+  /** 1 where the tile has been seen. */
+  seen: Uint8Array;
+}
+
+export const createMemory = (grid: TileGrid): MinimapMemory => ({ cols: grid.cols, rows: grid.rows, seen: new Uint8Array(grid.cols * grid.rows) });
+
+export const isSeen = (memory: MinimapMemory, x: number, y: number): boolean =>
+  x >= 0 && y >= 0 && x < memory.cols && y < memory.rows && memory.seen[y * memory.cols + x] === 1;
+
+function markRect(memory: MinimapMemory, x0: number, y0: number, x1: number, y1: number): void {
+  for (let y = Math.max(0, y0); y <= Math.min(memory.rows - 1, y1); y++) {
+    for (let x = Math.max(0, x0); x <= Math.min(memory.cols - 1, x1); x++) memory.seen[y * memory.cols + x] = 1;
+  }
+}
+
+/** Marks what the player at `at` sees: its whole room (and walls) or a square around it. Mutates `memory`. */
+export function revealAround(memory: MinimapMemory, grid: TileGrid, rooms: readonly TileRect[], at: TilePoint): void {
+  const room = isWall(grid, at.x, at.y) ? undefined : rooms.find((r) => at.x >= r.x && at.x < r.x + r.width && at.y >= r.y && at.y < r.y + r.height);
+  if (room) markRect(memory, room.x - 1, room.y - 1, room.x + room.width, room.y + room.height);
+  const r = MINIMAP.revealRadius;
+  markRect(memory, at.x - r, at.y - r, at.x + r, at.y + r);
+}
+
+export interface MinimapMarks {
+  /** Positions in tile units (fractional). */
+  player: Vec2;
+  stairs: TilePoint | null;
+  enemies: Vec2[];
+}
+
+export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rect): MinimapMarks {
+  const stairsRect = state.arena.stairs;
+  const stairs = stairsRect ? tileOf({ x: stairsRect.x + 1, y: stairsRect.y + 1 }) : null;
+  return {
+    player: { x: state.player.pos.x / TILE, y: state.player.pos.y / TILE },
+    stairs: stairs && isSeen(memory, stairs.x, stairs.y) ? stairs : null,
+    enemies: state.enemies.filter((e) => e.alive && insideRect(e.pos, view)).map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
+  };
+}
+
+const COLORS = {
+  back: 'rgba(6, 5, 10, 0.45)',
+  floor: 'rgba(150, 170, 235, 0.55)',
+  rubble: 'rgba(200, 70, 50, 0.55)',
+  player: '#ffe066',
+  stairs: '#7fd8ff',
+  enemy: '#ff5a5a',
+};
+
+/** Draws the minimap at the top right of the view (view units; the caller has applied the pixel scale). */
+export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, memory: MinimapMemory, view: Rect, timeMs: number): void {
+  const grid = state.arena.tiles;
+  if (!grid) return;
+  const px = MINIMAP.tilePx;
+  const x0 = view.width - MINIMAP.margin - grid.cols * px;
+  const y0 = MINIMAP.top;
+  ctx.fillStyle = COLORS.back;
+  ctx.fillRect(x0 - 2, y0 - 2, grid.cols * px + 4, grid.rows * px + 4);
+  const collapse = state.collapse;
+  const front = collapse ? collapseFront(collapse) : 0;
+  for (let y = 0; y < grid.rows; y++) {
+    for (let x = 0; x < grid.cols; x++) {
+      // Floor only, Mystery Dungeon style: rooms and corridors read as shapes on the dark panel.
+      if (!isSeen(memory, x, y) || isWall(grid, x, y)) continue;
+      const d = collapse ? (collapse.dist[y * grid.cols + x] ?? -1) : -1;
+      ctx.fillStyle = front > 0 && d >= 0 && d < front ? COLORS.rubble : COLORS.floor;
+      ctx.fillRect(x0 + x * px, y0 + y * px, px, px);
+    }
+  }
+  const marks = minimapMarks(state, memory, view);
+  if (marks.stairs) {
+    ctx.fillStyle = COLORS.stairs;
+    ctx.fillRect(x0 + marks.stairs.x * px - 1, y0 + marks.stairs.y * px - 1, px + 2, px + 2);
+  }
+  ctx.fillStyle = COLORS.enemy;
+  for (const e of marks.enemies) ctx.fillRect(Math.round(x0 + e.x * px - 1), Math.round(y0 + e.y * px - 1), 2, 2);
+  // The player blinks slowly so it is easy to find.
+  ctx.globalAlpha = 0.65 + 0.35 * Math.sin(timeMs / 160);
+  ctx.fillStyle = COLORS.player;
+  ctx.fillRect(Math.round(x0 + marks.player.x * px - 1.5), Math.round(y0 + marks.player.y * px - 1.5), 3, 3);
+  ctx.globalAlpha = 1;
+}

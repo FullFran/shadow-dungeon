@@ -9,6 +9,7 @@ import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
+import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
@@ -39,6 +40,8 @@ export interface RenderFrame {
   card: FloorCard | null;
   /** Collapse rumble level 0..1 (`rumbleLevel`), a light continuous screen shake. */
   rumble: number;
+  /** Seen tiles of the current floor; null hides the minimap (Tab, or no tile map). */
+  minimap: MinimapMemory | null;
 }
 
 const COLORS = {
@@ -60,7 +63,11 @@ const COLORS = {
   exitClosed: '#3a3350',
   tileFloorA: '#2b2533',
   tileFloorB: '#2f2938',
-  tileWallTop: '#16121d',
+  /** Wall tops are lighter than the void outside the map and carry a block pattern, so the two never blur together. */
+  tileWallTop: '#1a1523',
+  tileWallBlock: '#211b2c',
+  mapVoid: '#000000',
+  mapRim: '#4b4163',
   tileWallFace: '#433a57',
   tileWallLip: '#5a4f73',
   tileShadow: 'rgba(0, 0, 0, 0.35)',
@@ -188,6 +195,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         if (isWall(grid, tx, ty)) {
           ctx.fillStyle = COLORS.tileWallTop;
           ctx.fillRect(x, y, TILE, TILE);
+          // Staggered stone blocks on the wall tops.
+          ctx.fillStyle = COLORS.tileWallBlock;
+          const shift = ty % 2 === 0 ? 0 : 8;
+          ctx.fillRect(x + 2 + shift, y + 3, 12, 10);
+          ctx.fillRect(x + 18 - shift, y + 19, 12, 10);
           if (!isWall(grid, tx, ty + 1)) {
             ctx.fillStyle = COLORS.tileWallFace;
             ctx.fillRect(x, y + TILE - 12, TILE, 12);
@@ -235,7 +247,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function floor(state: WorldState, view: Rect, timeMs: number): void {
     if (state.arena.tiles) {
-      tiles(state.arena.tiles, view, state.collapse, timeMs);
+      const grid = state.arena.tiles;
+      ctx.fillStyle = COLORS.mapVoid;
+      ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
+      tiles(grid, view, state.collapse, timeMs);
+      // A thin rim marks where the map ends and the void begins.
+      ctx.strokeStyle = COLORS.mapRim;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-0.5, -0.5, grid.cols * TILE + 1, grid.rows * TILE + 1);
       return;
     }
     const { width, height } = state.arena;
@@ -493,6 +512,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawHud(ctx, current, juice, view, frame.floor);
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
   }
 

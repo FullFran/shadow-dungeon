@@ -7,10 +7,12 @@ import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon
 import type { LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
+import { tileOf } from '../core/tiles';
 import { length } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
 import type { FloorCard } from '../adapters/card';
+import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
@@ -97,9 +99,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const music = () => audio?.setMusic(isBossFloor(run) ? 'boss' : 'room');
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
-  function announceFloor(): void {
+  /** Fog-of-war memory of the current floor's minimap (presentation state; reset on each floor and on restart). */
+  let minimap: MinimapMemory | null = null;
+  let showMinimap = true;
+  function announceFloor(descended: boolean): void {
     card = { floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
-    for (const id of floorEntrySounds(run.kind)) audio?.play(id);
+    for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
+    minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
   }
 
   function hideMenu(): void {
@@ -120,7 +126,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     lastInput = null;
     camera = world.player.pos;
-    announceFloor();
+    announceFloor(false);
   }
 
   function showMenu(): void {
@@ -145,6 +151,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (closeMenu) hideMenu();
       else showMenu();
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
+    else if (e.code === 'Tab' && !closeMenu) {
+      // Tab would move the page focus; here it shows or hides the minimap.
+      e.preventDefault();
+      showMinimap = !showMinimap;
+    }
   };
 
   function resize(): void {
@@ -190,7 +201,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         camera = world.player.pos;
         defeatedAt.clear();
         music();
-        announceFloor();
+        announceFloor(true);
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -214,6 +225,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+    if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos));
     // The rumble stops while paused or after the run ends.
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
     audio?.setRumble(rumble);
@@ -241,13 +253,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       hoverId: hovered && hovered.id !== world.lock.targetId ? hovered.id : null,
       card,
       rumble,
+      minimap: showMinimap ? minimap : null,
     });
     raf = requestAnimationFrame(frame);
   }
 
   resize();
   music();
-  announceFloor();
+  announceFloor(false);
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
