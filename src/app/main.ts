@@ -27,7 +27,9 @@ import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen } from './adventure-route';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
-import { openTown } from '../town/scene';
+import { openTown, type TownOptions } from '../town/scene';
+import type { TownLobby } from '../town/lobby';
+import { displayName, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, guardianOf, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
@@ -43,8 +45,8 @@ import { coinLines } from './coin-lines';
 import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
-import { endActions, returnPlace, type ReturnPlace } from './after-run';
-import { clockText, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
+import { endActions, returnPlace, townOf, type ReturnPlace } from './after-run';
+import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
 
@@ -83,6 +85,11 @@ let running: RunningGame | null = null;
 let current: NetSession | null = null;
 /** Streamer option in the lobby: the room code stays hidden (kept for the page's lifetime). */
 let hideCode = false;
+/**
+ * The online room this tab is in, kept across its runs: the room walks the
+ * town between runs (`townLobby`), and the session outlives each run.
+ */
+let room: { session: NetSession; code: string; asHost: boolean; seed: number } | null = null;
 
 /** Run seed from `?seed=` (any integer), else a fresh random one per run. */
 function runSeed(): number {
@@ -155,7 +162,9 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
 
 function leaveNet(): void {
   current?.leave();
+  if (room && room.session !== current) room.session.leave();
   current = null;
+  room = null;
 }
 
 async function connectLocal(root: HTMLElement, seed: number, floor: number, dungeon: DungeonId): Promise<NetJoin> {
@@ -212,10 +221,10 @@ function notice(): HTMLElement {
  */
 function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title'): void {
   if (running) {
-    // Stopping the game leaves its session.
+    // Stopping the game leaves its session, unless it is the room's (back to the town together).
     running.stop();
     running = null;
-    current = null;
+    if (current !== room?.session) current = null;
   }
   if (backdrop) audio.setMusic(music);
   root.replaceChildren(...(backdrop ? [eclipseBackdrop()] : []), ...children, notice());
@@ -395,7 +404,8 @@ function settingsScreen(root: HTMLElement): void {
   };
   const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
   const retake = () => quiz(root, () => titleScreen(root, 0), () => settingsScreen(root));
-  const refresh = () => list.setItems([...settingItems(access, refresh), { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
+  const nickname = nicknameRow();
+  const refresh = () => list.setItems([...settingItems(access, refresh), nickname, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
   refresh();
   show(root, [
     h('h1', { className: 'screen-title', textContent: t('title.settings') }),
@@ -413,14 +423,16 @@ function settingsScreen(root: HTMLElement): void {
  * (`setMusic` with the context already playing does nothing); the planned
  * dry "hub" version in src/data/music.ts is not shipped yet.
  */
-function townScreen(root: HTMLElement): void {
+function townScreen(root: HTMLElement, at?: TownPlace): void {
+  // The hub is walked alone: a room (or a local tab session) left behind is left here, the one way back for solo play.
+  leaveNet();
   waitScreen(root, t('app.loading'));
   const showTown = (nodes: Node[]) => {
     show(root, nodes, false);
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, ...at });
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -477,17 +489,44 @@ function onlineScreen(root: HTMLElement): void {
     items: [
       { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true) },
       { label: t('lobby.joinCode'), value: code, className: 'join-row', onConfirm: join },
+      nicknameRow(),
       { label: t('menu.back'), onConfirm: back },
     ],
   });
   show(root, [mdWindow({ title: t('lobby.online'), className: 'online' }, [list.element, error])]);
 }
 
+/** A settings row with a text field for the nickname (Settings and the online screen); saved sanitised on change. */
+function nicknameRow(): ListItem {
+  const input = h('input', { type: 'text', className: 'code-input nickname-input', placeholder: t('nickname.placeholder'), value: settings.nickname });
+  // The room-code field's look, without its capitals: a nickname keeps its case.
+  Object.assign(input.style, { textTransform: 'none', letterSpacing: 'normal' });
+  input.maxLength = 32;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.enterKeyHint = 'done';
+  input.setAttribute('aria-label', t('settings.nickname'));
+  const save = () => {
+    const clean = sanitizeNickname(input.value);
+    input.value = clean;
+    if (clean !== settings.nickname) update({ nickname: clean });
+  };
+  input.addEventListener('change', save);
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+  });
+  return { label: t('settings.nickname'), value: input, className: 'join-row nickname-row', onConfirm: () => input.focus() };
+}
+
+/** A player's name in a room: its nickname, else "Jugador-XYZ" from its peer id. */
+const nameOf = (entry: { name?: string; peer: string }): string => displayName(entry.name, t('nickname.default'), entry.peer);
+
 /**
- * The room-code lobby: the host shows the code (copy, or hide it for
- * streamers) and the players in the room, and presses Start; guests wait for
- * it and start with the host's seed. The transport is Trystero, loaded only
- * now; the development preview passes a tab-local one.
+ * The room-code lobby is the town: the room is created or joined (Trystero,
+ * loaded only now; the development preview passes a tab-local transport),
+ * then everyone walks the town together (`townLobby`). The host leads the
+ * group into a dungeon; guests start with the host's seed.
  */
 async function openLobby(root: HTMLElement, code: string, asHost: boolean, transport?: () => Transport<string>): Promise<void> {
   leaveNet();
@@ -501,125 +540,84 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     return;
   }
   current = session;
-  // Load the sprites while waiting, so Start does not wait for them.
+  room = { session, code, asHost, seed: runSeed() };
+  // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
-
-  const codeText = h('div', { className: 'room-code' });
-  const renderCode = () => (codeText.textContent = hideCode ? '•'.repeat(code.length) : code);
-  renderCode();
-  let copied = false;
-
-  const players = h('ul', { className: 'roster' });
-  const status = h('p', { className: 'dim', textContent: asHost ? t('lobby.hint') : t('lobby.connecting') });
-  const self = session.peerId();
-  const renderRoster = (roster: ReturnType<NetSession['roster']>) => {
-    players.replaceChildren(
-      ...roster.map((r) => {
-        const tags = [r.id === 'p1' ? t('lobby.host') : null, r.peer === self ? t('lobby.you') : null].filter(Boolean);
-        return h('li', {}, [h('span', { className: 'roster-id', textContent: r.id.toUpperCase() }), tags.length > 0 ? h('span', { className: 'dim', textContent: tags.join(' · ') }) : null]);
-      }),
-    );
-    if (!asHost && roster.some((r) => r.peer === self)) status.textContent = t('lobby.waitingHost');
-  };
-  session.onRoster((roster) => {
-    if (current === session) renderRoster(roster);
-  });
   session.onFull(() => {
     if (current === session) messageScreen(root, t('lobby.full'));
   });
   session.onStart((start) => {
     if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), online: true });
   });
+  // The host brought the room back to the town after a run: follow it there (unless already walking it).
+  session.onLobby(() => {
+    if (current === session && !root.querySelector('canvas.town')) townLobby(root);
+  });
+  const name = sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() });
+  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name });
+  else session.join(settings.species, settings.loadout, name);
+  townLobby(root);
+}
 
-  const seed = runSeed();
+/**
+ * The single way into the room's town (after creating or joining it, and
+ * after every shared run): the town with the other players walking it, the
+ * room window in a corner, Esc for the room menu (copy or hide the code,
+ * leave). The host leads the group by walking into a dungeon or with the
+ * waystone; that begins the run for everyone.
+ */
+function townLobby(root: HTMLElement): void {
+  const r = room;
+  if (!r || current !== r.session) {
+    titleScreen(root);
+    return;
+  }
+  const { session } = r;
+  const showTown = (nodes: Node[]) => {
+    show(root, nodes, false);
+    audio.setMusic('title');
+  };
   const leave = () => titleScreen(root, 1);
-  // The host picks the dungeon among the open ones (the row only shows when there is a choice).
-  const open = unlockedDungeons(cleared());
-  let pick = 0;
-  /** The Sima del Eclipse: daily challenge or free run, the host's call (its seed goes in `start`). */
-  let mode: EndlessMode = 'daily';
-  const items = (): ListItem[] => [
-    ...(asHost
-      ? [
-          {
-            label: t('lobby.start'),
-            className: 'start-row',
-            onConfirm: () => {
-              const dungeon = open[pick]!.id;
-              const runSeed = open[pick]!.endless ? endlessSeed(mode, today(), seed) : seed;
-              session.begin(dungeon, runSeed);
-              void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon, online: true });
-            },
-          },
-          ...(open.length > 1
-            ? [
-                {
-                  label: t('select.title'),
-                  value: t(open[pick]!.lore.nameKey),
-                  onAdjust: (delta: -1 | 1) => {
-                    pick = (pick + delta + open.length) % open.length;
-                    list.setItems(items());
-                  },
-                  onConfirm: () => {
-                    pick = (pick + 1) % open.length;
-                    list.setItems(items());
-                  },
-                },
-              ]
-            : []),
-          // The Sima del Eclipse: the host picks the daily challenge or a free run for everyone.
-          ...(open[pick]?.endless
-            ? [
-                {
-                  label: t('endless.entry.mode'),
-                  value: t(`endless.mode.${mode}`),
-                  onAdjust: () => {
-                    mode = mode === 'daily' ? 'free' : 'daily';
-                    list.setItems(items());
-                  },
-                  onConfirm: () => {
-                    mode = mode === 'daily' ? 'free' : 'daily';
-                    list.setItems(items());
-                  },
-                },
-              ]
-            : []),
-        ]
-      : []),
-    {
-      label: t(copied ? 'lobby.copied' : 'lobby.copy'),
-      onConfirm: () => {
-        navigator.clipboard
-          ?.writeText(code)
-          .then(() => {
-            copied = true;
-            list.setItems(items());
-          })
-          .catch(() => {});
+  const lobby: TownLobby = {
+    isHost: r.asHost,
+    selfName: sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() }),
+    code: () => (hideCode ? '•'.repeat(r.code.length) : r.code),
+    players: () => session.roster().map((e) => ({ name: nameOf(e), host: e.id === 'p1', self: e.peer === session.peerId() })),
+    walkers: () => session.townWalkers().map((w) => ({ id: w.id, name: nameOf(w), species: w.species, map: w.map, pos: w.pos, facing: w.facing, moving: w.moving })),
+    sendPresence: (presence) => session.sendPresence(presence),
+    menu: (close) => [
+      { label: t('lobby.copy'), onConfirm: () => void navigator.clipboard?.writeText(r.code).then(close, close) },
+      {
+        label: t(hideCode ? 'lobby.show' : 'lobby.hide'),
+        onConfirm: () => {
+          hideCode = !hideCode;
+          close();
+        },
       },
-    },
-    {
-      label: t(hideCode ? 'lobby.show' : 'lobby.hide'),
-      onConfirm: () => {
-        hideCode = !hideCode;
-        renderCode();
-        list.setItems(items());
-      },
-    },
-    { label: t('lobby.leave'), onConfirm: leave },
-  ];
-  const list = cursorList({ items: items(), onBack: leave, label: t('lobby.room') });
+      { label: t('lobby.leave'), onConfirm: leave },
+    ],
+    // The host's call for the group: the Sima del Eclipse is entered as the daily challenge or a free run (its seed goes in `start`).
+    variants: (id) => (dungeonById(id).id === id && dungeonById(id).endless ? ENDLESS_MODES.map((m) => ({ label: t(`endless.mode.${m}`), value: m })) : null),
+  };
+  const depart = (id: string, variant?: string) => {
+    if (!session.canLead()) return;
+    const def = dungeonById(id);
+    const runSeed = def.endless ? endlessSeed(variant === 'free' ? 'free' : 'daily', today(), r.seed) : r.seed;
+    session.begin(def.id, runSeed);
+    void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, online: true });
+  };
+  const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, lobby });
+}
 
-  show(root, [
-    h('h1', { className: 'screen-title', textContent: t('lobby.online') }),
-    h('div', { className: 'screen-row' }, [
-      mdWindow({ title: t('lobby.room'), className: 'lobby' }, [codeText, status, list.element]),
-      mdWindow({ title: t('lobby.players'), className: 'players' }, [players]),
-    ]),
-  ]);
-  if (asHost) session.host(seed, 1, settings.species, { lobby: true });
-  else session.join(settings.species, settings.loadout);
-  renderRoster(session.roster());
+/** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
+function backToRoom(root: HTMLElement): void {
+  if (!room || current !== room.session) return titleScreen(root);
+  if (room.asHost) {
+    room.seed = runSeed();
+    room.session.reopenLobby(room.seed);
+  }
+  townLobby(root);
 }
 
 /** The end screen: result, floor reached, seed, level and items, the Pokémonedas earned and the new balance, then retry or back. */
@@ -658,11 +656,15 @@ function scoreColumn(score: EndScore): HTMLElement {
 }
 
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore): void {
-  // The town is the hub every run comes back to (after-run.ts).
-  const back = () => townScreen(root);
+  // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
+  const inRoom = online && room !== null && current === room.session;
+  const party = inRoom ? room!.session.roster().map(nameOf) : null;
+  const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => townScreen(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
-  const items: ListItem[] = endActions({ online }).map((action) => (action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t('screen.town'), onConfirm: back }));
+  const items: ListItem[] = endActions({ online }).map((action) =>
+    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : 'screen.town'), onConfirm: back },
+  );
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
     mdWindow({ className: `result ${result}` }, [
@@ -677,6 +679,7 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
           statLine(t('screen.level'), String(summary.level)),
           statLine(t('screen.seed'), String(summary.seed)),
           statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
+          ...(party ? [statLine(t('screen.party'), party.join(', '))] : []),
         ]),
         h('div', { className: 'coin-lines' }, [
           h('h3', { className: 'dim', textContent: t('screen.coins') }),
@@ -714,7 +717,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     if (join.online && current !== join.session) return;
     current = join.session;
     // A guest plays the host's dungeon (an unknown id plays the first one).
-    shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, net: { session: join.session, role: join.role, localId: join.localId } };
+    shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
   }
   const online = join?.online ?? false;
   const canvas = h('canvas', { className: 'game' });
@@ -747,6 +750,17 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   });
 }
 
+/** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
+type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
+
+/** Development server only: the `map` and `tile` query of `?screen=town`. */
+function devTownPlace(): TownPlace {
+  const params = new URLSearchParams(window.location.search);
+  const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
+  const at = (params.get('map') ?? undefined) as TownOptions['at'];
+  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}) };
+}
+
 /**
  * Development server only: `?screen=` opens one screen straight away, for
  * screenshots (loadout, settings, credits, online, lobby, victory, defeat,
@@ -770,10 +784,12 @@ function devScreen(root: HTMLElement): boolean {
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
-    town: () => townScreen(root),
+    // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
+    town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),
     online: () => onlineScreen(root),
-    lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
+    // `&guest=1`: join the preview room instead of creating it (two windows walk the town together).
+    lobby: () => void openLobby(root, 'K7M2Q', new URLSearchParams(window.location.search).get('guest') !== '1', () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
     endless: () => enterDungeon(root, 'eclipse-chasm', () => titleScreen(root)),
     // The Sima's end screen with a sample score (recorded on this device's board, like a real one).

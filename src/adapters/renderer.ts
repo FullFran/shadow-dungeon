@@ -69,6 +69,8 @@ export interface RenderFrame {
   nowPlaying?: NowPlaying | null;
   /** On-screen touch controls are up: HUD notes keep clear of the action buttons. */
   touchUi?: boolean;
+  /** Shared runs: player id -> nickname for the tags over remote players (their id when absent). */
+  names?: ReadonlyMap<string, string>;
   /** The boss spell card just announced, while it shows. */
   spell?: SpellBanner | null;
   /** The endless dungeon's run clock (absent elsewhere). */
@@ -771,15 +773,16 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.stroke();
   }
 
-  /** Over a remote player: its tag ("P2"), a small HP bar, and "fainted" once down. */
-  function nameTag(id: string, hp: number, maxHp: number, pos: Vec2): void {
+  /** Over a remote player: its nickname (else its id, "P2"), a small HP bar, and "fainted" once down; outlined so it reads on any floor. */
+  function nameTag(id: string, hp: number, maxHp: number, pos: Vec2, names?: ReadonlyMap<string, string>): void {
     const x = Math.round(pos.x);
     const y = Math.round(pos.y - 30);
     ctx.textAlign = 'center';
     ctx.font = canvasFont(FONT.hudPx, true);
-    const text = hp > 0 ? id.toUpperCase() : `${id.toUpperCase()} ${t('net.fainted')}`;
+    const name = names?.get(id) ?? id.toUpperCase();
+    const text = hp > 0 ? name : `${name} ${t('net.fainted')}`;
     ctx.fillStyle = '#000000';
-    ctx.fillText(text, x + 1, y + 1);
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]] as const) ctx.fillText(text, x + dx, y + dy);
     ctx.fillStyle = hp > 0 ? '#9fd8ff' : '#9aa0a6';
     ctx.fillText(text, x, y);
     ctx.fillStyle = '#000000';
@@ -877,7 +880,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           shadow(pos, TUNING.player.radius);
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
           drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, remote.player.hp > 0 ? 1 : 0.7);
-          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos);
+          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names);
         },
       });
     }

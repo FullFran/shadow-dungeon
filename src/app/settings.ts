@@ -1,3 +1,4 @@
+import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
 import { M0_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { isPlayable, SPECIES, type SpeciesId } from '../data/species';
@@ -31,12 +32,14 @@ export interface Settings {
   autoAim: boolean;
   /** Touch only: short vibrations on a hit taken and on a perfect dodge. */
   haptics: boolean;
+  /** Shown over this player in online rooms (src/net/nickname.ts); empty uses "Jugador-XYZ". */
+  nickname: string;
 }
 
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '' };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -98,6 +101,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
     touchMode: TOUCH_MODES.find((m) => m === stored.touchMode) ?? fallback.touchMode,
     autoAim: typeof stored.autoAim === 'boolean' ? stored.autoAim : fallback.autoAim,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : fallback.haptics,
+    nickname: typeof stored.nickname === 'string' ? sanitizeNickname(stored.nickname) : fallback.nickname,
   };
 }
 

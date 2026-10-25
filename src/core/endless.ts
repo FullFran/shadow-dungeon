@@ -68,6 +68,9 @@ export function dailySeed(dateKey: string): number {
 /** The two ways into the endless dungeon: the daily challenge (everyone gets the day's layout) or a free run. */
 export type EndlessMode = 'daily' | 'free';
 
+/** The modes in the order the entry card and the host's Enter rows show them. */
+export const ENDLESS_MODES: readonly EndlessMode[] = ['daily', 'free'];
+
 /** The run seed of a mode: the UTC day's for the daily challenge, `randomSeed` for a free run. */
 export const endlessSeed = (mode: EndlessMode, dateKey: string, randomSeed: number): number => (mode === 'daily' ? dailySeed(dateKey) : randomSeed);
 

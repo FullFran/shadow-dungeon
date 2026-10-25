@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { endActions, returnPlace } from '../../src/app/after-run';
+import { endActions, returnPlace, townOf } from '../../src/app/after-run';
 
 describe('after a run', () => {
   it('a solo or local run offers a retry, then the way back to the town', () => {
     expect(endActions({ online: false })).toEqual(['retry', 'town']);
   });
 
-  it('an online run (host or guest) only goes back to the town: the room is gone', () => {
+  it('an online run (host or guest) only goes back to the town', () => {
     expect(endActions({ online: true })).toEqual(['town']);
   });
 
@@ -18,5 +18,10 @@ describe('after a run', () => {
 
   it('leaving a lobby before any run still goes back to the title', () => {
     expect(returnPlace('lobby')).toBe('title');
+  });
+
+  it("a room's run brings everyone back to the room's town; any other run comes back to the hub", () => {
+    expect(townOf({ inRoom: true })).toBe('room');
+    expect(townOf({ inRoom: false })).toBe('hub');
   });
 });

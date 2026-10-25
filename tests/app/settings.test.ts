@@ -48,7 +48,7 @@ describe('settings', () => {
     expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
   });
 
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '' };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
@@ -70,9 +70,18 @@ describe('settings', () => {
       touchMode: 'on' as const,
       autoAim: false,
       haptics: false,
+      nickname: 'Fran',
     };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
+  });
+
+  it('keeps a stored nickname only after sanitising it', () => {
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ nickname: '  Ana\u0000\u202E la Grande del Eclipse  ' }));
+    expect(loadSettings(store, defaultSettings('es')).nickname).toBe('Ana la Grande de');
+    store.set('mazmorra-sombria.settings', JSON.stringify({ nickname: 42 }));
+    expect(loadSettings(store, defaultSettings('es')).nickname).toBe('');
   });
 
   it('remembers the picked species with a loadout of its own moves', () => {

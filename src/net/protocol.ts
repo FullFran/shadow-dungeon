@@ -7,7 +7,10 @@ import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } 
 /**
  * Netcode spike protocol (docs/gdd.md §12). Reliable: hello, start, lobby,
  * full, ping, pong, claim, pick, berry, floor, clock, leave. Unreliable at ~20 Hz: state (every peer, its own player) and
- * snap (host: enemies and enemy projectiles). `at` is the sender's clock
+ * snap (host: enemies and enemy projectiles). Unreliable at ~10 Hz while
+ * the room walks the town: town (every peer, where its walker is). Names
+ * and `town` are optional additions: a peer that does not send them still
+ * plays, and an older peer drops `town` as an unknown message. `at` is the sender's clock
  * (ms), for the receiver's interpolation timeline; `floor` is the epoch that
  * separates floors. Compact JSON: the two frequent messages travel as
  * arrays with rounded numbers (0.1 px, 0.001 directions, whole ms).
@@ -18,11 +21,22 @@ export interface RosterEntry {
   /** Player id assigned by the host ("p1".."p4"). */
   id: string;
   species: SpeciesId;
+  /** The player's nickname as sent in its hello (sanitised by the host); absent from older peers. */
+  name?: string;
+}
+
+/** Where a peer's walker is in the town (lobby). */
+export interface TownPresence {
+  /** Overworld map id (src/data/world.ts), passed through as text. */
+  map: string;
+  pos: { x: number; y: number };
+  facing: { x: number; y: number };
+  moving: boolean;
 }
 
 export type NetMessage =
   /** A tab joining the session announces its player; the host answers with `start`. */
-  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[] }
+  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }
   /** Host: the run seed, the current floor, the dungeon id (absent = the first dungeon) and who is who (sent again whenever someone joins). */
   | { t: 'start'; seed: number; floor: number; dungeon?: string; players: readonly RosterEntry[] }
   /** Host, before the run starts: who is in the room so far (sent again on every change). */
@@ -43,7 +57,9 @@ export type NetMessage =
   | { t: 'floor'; floor: number }
   /** Host, endless dungeon: its run clock (ms left) on `floor`, about once a second and on every floor change. */
   | { t: 'clock'; ms: number; floor: number }
-  | { t: 'leave'; id: string };
+  | { t: 'leave'; id: string }
+  /** This peer's walker in the town lobby (unreliable, ~10 Hz). */
+  | ({ t: 'town'; at: number } & TownPresence);
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
@@ -185,13 +201,26 @@ export function encodeMessage(message: NetMessage): string {
         p: message.s.projectiles.map(encodeProjectile),
       };
       break;
+    case 'town':
+      wire = { t: 'town', at: r1(message.at), m: message.map, p: [r1(message.pos.x), r1(message.pos.y), r3(message.facing.x), r3(message.facing.y), message.moving ? 1 : 0] };
+      break;
     default:
       wire = message as unknown as Wire;
   }
   return JSON.stringify(wire);
 }
 
-const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'clock', 'leave']);
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/** A town presence from the wire, or null when any field is off (it comes from any peer). */
+function decodeTown(wire: Wire): NetMessage | null {
+  const p = wire.p;
+  if (!finite(wire.at) || typeof wire.m !== 'string' || wire.m.length > 24 || !Array.isArray(p) || p.length !== 5 || !p.every(finite)) return null;
+  const [x, y, fx, fy, moving] = p as number[];
+  return { t: 'town', at: wire.at, map: wire.m, pos: { x: x!, y: y! }, facing: { x: fx!, y: fy! }, moving: moving === 1 };
+}
+
+const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'clock', 'leave', 'town']);
 
 /** Parses a wire message; null for anything that is not one (the spike trusts the content otherwise). */
 export function decodeMessage(text: string): NetMessage | null {
@@ -202,6 +231,7 @@ export function decodeMessage(text: string): NetMessage | null {
     return null;
   }
   if (!wire || typeof wire !== 'object' || !KNOWN.has(wire.t)) return null;
+  if (wire.t === 'town') return decodeTown(wire);
   if (wire.t === 'state') return { t: 'state', at: wire.at as number, floor: wire.f as number, p: decodePlayer(wire.p as unknown[]) };
   if (wire.t === 'snap') {
     return {

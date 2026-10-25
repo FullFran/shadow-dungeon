@@ -224,8 +224,8 @@ Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los cam
 - **Modos**: "Reto diario" usa una semilla sacada de la fecha UTC, así todo el chat juega el mismo mapa ese día; "Libre" usa una semilla al azar. La tarjeta de entrada enseña la semilla del día.
 - **Pokémonedas**: las reglas de siempre por la mitad (la línea "Tarifa de la sima ×0.5"), para que no sea la mejor forma de farmear.
 - **Música**: rota los temas de planta por tramos de cinco (Cripta, Bosque); cada eco lleva el tema de su guardián.
-- **Cooperativo**: el anfitrión elige el modo en la sala (su semilla viaja en `start`); el reloj es suyo y lo manda cada segundo y en cada cambio de planta, los invitados lo enseñan y acaban cuando el suyo llega a 0. Cada jugador guarda su marca.
-- **Al acabar**: como todas las partidas, la pantalla final lleva de vuelta al pueblo.
+- **Cooperativo**: el anfitrión elige el modo al entrar desde el pueblo de la sala (en la boca del cráter o en el poste: «Entrar · Reto diario» o «Entrar · Libre»; su semilla viaja en `start`); el reloj es suyo y lo manda cada segundo y en cada cambio de planta, los invitados lo enseñan y acaban cuando el suyo llega a 0. Cada jugador guarda su marca.
+- **Al acabar**: como todas las partidas, la pantalla final lleva de vuelta al pueblo (jugando solo, al Refugio; en una sala, al pueblo de la sala con todo el grupo).
 
 ### Plantel experimental *(provisional)*
 
@@ -249,6 +249,17 @@ Catorce enemigos nuevos para probar en la Sima del Eclipse antes de darles mazmo
 | Croagunk (Veneno/Lucha) | Se pone en guardia: si le pegas, para el golpe y contraataca rápido y fuerte (Lucha); si no, acaba con un Puya Nociva más lenta | No pegarle en guardia; esperar al Puya Nociva, esquivarlo y castigar | 5 |
 
 Litwick absorbe los golpes de Fuego de Litleo, Houndour y Slugma (Absorbe Fuego). En el servidor de desarrollo, `?spawn=koffing,grimer` abre una sala de pruebas con esos enemigos despiertos delante del jugador (hasta 12; vale cualquier especie con comportamiento).
+### El mundo *(provisional)*
+
+Fuera de las mazmorras hay un mundo pequeño que se recorre andando, siempre al anochecer del eclipse y sin combate (`src/data/world.ts`). Son mapas unidos por sus bordes: al salir por uno, un fundido corto lleva al siguiente y su nombre aparece arriba.
+
+- **Refugio del Ocaso**: el pueblo de siempre (Mimikyu, Poochyena, Gastly y el tablón). Un poste junto al camino del este abre la lista de mazmorras abiertas, para no tener que andar (atajo pensado para los directos).
+- **Camino de las Ruinas**: tumbas y columnas rotas; la boca de la **Cripta del Rey de las Espadas** es una casa de piedra hundida al norte del camino. Una estatua sin rostro y un poste del camino.
+- **Paso del Mirador**: una grieta parte el paso y solo queda un puente. Desde aquí el eclipse se ve enorme (estatua del mirador, atalaya). Al sur, en la linde, junto a un tronco hueco, entra el **Bosque Brumoso**; al norte sube el camino al cráter.
+- **Cráter del Eclipse**: ceniza y roca alrededor de un pozo justo debajo del eclipse. En su borde está la boca de la **Sima del Eclipse**, abierta desde el principio; una estatua quemada mira al fondo.
+- **Aldea del Lago Negro**: el segundo pueblo, de pescadores, junto a un lago que ya no refleja el cielo. Cubone pesca en el embarcadero, Litwick guarda la llama que guía a los perdidos y cuenta una cosa cada vez, y Phantump, junto a un puesto vacío, ve lo que vendrá (el gacha sigue «Próximamente»). Un ídolo de rana recibe ofrendas.
+
+Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún está sellada, una línea dice qué guardián hay que vencer; si no existe todavía, que algo allí abajo no ha terminado de despertar. Las estatuas, el poste y el ídolo dicen una línea más al vencer al guardián de cada mazmorra (récords de este dispositivo). Por el mundo pasean Pokémon inofensivos (Pumpkaboo, Hoothoot, Foongus, Spinarak) con los sprites que ya tiene el juego. Cada mapa tiene su luz (más roja en el cráter, más fría en el lago), niebla, hojas que caen, pájaros que cruzan el cielo y agua con reflejos rojos. Suena el mismo tema del título (Lonely Village) en todo el mundo.
 
 ## 4. Combate
 
@@ -378,6 +389,8 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 
 - De 1 a 4 jugadores en todo el juego, cada uno desde su navegador.
 - Se entra igual que en PokéSurvivor (sala con código). Gran parte de su interfaz de menús y salas se puede aprovechar. Su código está bajo PolyForm Noncommercial 1.0.0 (antes de su commit `b297089`, MIT): se puede reutilizar sin ánimo de lucro manteniendo su aviso de licencia, y por cortesía conviene escribirle al autor.
+- La sala es el pueblo: al crearla o entrar, todos aparecen andando juntos por el mundo (§3, «El mundo»), cada uno con su apodo encima de la cabeza; en una esquina, el código de la sala (oculto si se ha pedido para el directo) y quién está. Solo el anfitrión lleva al grupo a una mazmorra, entrando por su boca o desde el poste del camino; al acabar la partida, «Volver al pueblo» devuelve a toda la sala al pueblo para la siguiente.
+- Apodo: se elige en Ajustes o en la pantalla de jugar en línea; sin apodo se usa «Jugador-XYZ». Como mucho 16 caracteres, sin caracteres de control ni invisibles. Sale sobre cada jugador en el pueblo y en la mazmorra y en la pantalla final.
 - La dificultad la elige el anfitrión para todo el grupo.
 - Botín y reclutas: un premio por jugador, para que nadie del chat sienta que ha ido de relleno.
 
@@ -496,7 +509,7 @@ Este juego tiene que dejar piezas que se puedan reutilizar:
 - El modelo de datos de especies, kits y tipos.
 - El sistema de idiomas.
 
-Lo que podría venir después: más mazmorras y biomas, un mundo o un pueblo base, historia, reclutamiento y equipos más profundos, más tipos de planta y más jefes.
+Lo que podría venir después: más mazmorras y biomas, un mundo más grande que el de §3 (más pueblos y caminos), historia, reclutamiento y equipos más profundos, más tipos de planta y más jefes.
 
 ## 16. Referencias
 
