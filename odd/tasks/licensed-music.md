@@ -22,6 +22,7 @@ Out of scope: prologue cinematic, hub town, new dungeons, auditioning by ear (th
 - [x] T1 Fetch, verify licenses, convert, normalise and check loop seams; asset manifest with license data; CREDITS.md and generator fix (route: delegated writer; trigger: assets, tools, data, docs)
 - [x] T2 Audio adapter streaming playback with gapless loops, crossfades and fallback; wire contexts in the app (route: same writer)
 - [x] T3 Deploy (route: parent; standing OK).
+- [x] T4 PMD-feel swap: replace Crypt, collapse, guardian, victory and defeat tracks with picks closer to Pokémon Mystery Dungeon's style; keep Lonely Village; keep Boss Battle #2 shipped but reserved (route: delegated writer; trigger: assets, data, tests, docs)
 
 ## Acceptance criteria
 - Every shipped track has a verified license, a source URL and a credit line.
@@ -84,3 +85,44 @@ Route: same delegated writer. Test-first: new pure-part and fake-AudioContext te
 - README: Music section with the licenses summary.
 Checks: `npm test` 50 files / 473 tests green; `npm run build` green (dist 12.9 MB, of which music 11.6 MB).
 Not verified: no browser available here (Playwright Chrome not installed), so real decodeAudioData trimming, the seam by ear and Safari's MP3 path are unverified. Nobody has listened to any track.
+
+### T4 PMD-feel swap (done)
+Route: delegated writer (assets, data, tests, docs), branch `feat/music-pmd-feel`.
+Request (2026-10-25): "La música del inicio me gusta, y la de Aegislash también, pero hazlo más inspirado en Pokémon Mundo Misterioso." Keep Lonely Village; replace Crypt (too ambient), collapse, victory (too cheerful) and defeat (77 s, too long). Scope addition the same day: replace the Aegislash track too with a more PMD-like boss theme, and keep Boss Battle #2 shipped and credited but reserved for a future boss (`RESERVED_MUSIC`, `reservedFor: 'future-guardian'`), not wired to any context.
+Rules applied: melodic lead over a steady groove, JRPG synth-orchestral/SNES instrumentation, loopable; no Nintendo/Chunsoft remixes, covers or track-specific imitations (none of the shortlisted pages mention Pokémon, PMD or a remix); CC0 first, then low-risk CC BY; no Scott Buckley, Pixabay or extra-EULA works (so the Jonathan Shaw EULA question is gone).
+
+Search and licenses: OpenGameArt advanced search (music; keywords dungeon, jrpg, boss battle, fanfare, victory, game over, jingle, defeat, mystery dungeon, 16-bit snes); each candidate's file page fetched and its License(s) field read before downloading (WebFetch re-read for Underworld, Determined Pursuit, Battle Theme I and Victory). Downloads in `/tmp/pmd-music/dl/<slug>/` (one empty dir each); ZIPs listed first, only audio (and Junkala's INFO.txt / Cleyton's Readme.txt, read as text) extracted. Shortlist with 2-3 per slot: `docs/music-shortlist.md` section 9 (it also corrects the old "Determined Pursuit is GPL 3.0" note: the page shows only CC0).
+
+Objective analysis (nobody listened). Mono 22.05 kHz, 2048/512 STFT: tempo = beat lag of the autocorrelation of the spectral-flux onset envelope (70-190 bpm, mild preference for 120); pulse = autocorrelation value at that lag (steady-groove measure); flatness = median spectral flatness of active frames (lower = more tonal); pc-prom = median prominence of the dominant pitch class in 200-2000 Hz per 0.23 s block; pc-motion = dominant pitch-class changes per second. Calibration: the estimator gives 107.7 bpm for Underworld (author: 108) and 92.3 for Fairy Boss Battles (author: 185, so half-time); the old Dungeon Ambience scores pulse 0.03, The Fallen 0.03, Out Of Time 0.32.
+
+| Slot | Pick | Author | License | Tempo | Pulse | Flatness | pc-prom | Why |
+|---|---|---|---|---|---|---|---|---|
+| Crypt | RPG - Underworld Theme - Loop | jocolloman (Joseph Collard) | CC BY 4.0 | 107.7 | 0.83 | 0.065 | 6.64 | Written as RPG underworld/dungeon exploration music; A minor, brass quartet + percussion, "soft, creepy"; strongest groove and tonality of all crypt candidates. CC0 alternate (JRPG End Dungeon) is a final-dungeon mood with a weaker pulse (0.43). |
+| Collapse | Determined Pursuit (epic orchestra loop) | Emma_MA | CC0 | 161.5 | 0.73 | 0.380 | 2.81 | "Frantic strings, determined horns and busy drums", written for "a hectic race against the clock"; 1.5x the crypt tempo. |
+| Guardian | 16-bit - Battle Theme I | HydroGene | CC0 | 143.6 | 0.64 | 0.287 | 4.00 | SNES-style JRPG battle theme with an intro and a seamless loop; the most direct match to "melodic, driving, synth-orchestral JRPG boss". |
+| Victory | Victory | Umplix | CC0 | - | 0.02 | 0.102 | 8.31 | Short tonal fanfare (about 5 s of content, decayed below -30 dB at 6.7 s), the only non-chiptune fanfare that fits 3-8 s without cutting music. |
+| Defeat | Game Over Theme II (v3) | CleytonKauffman | CC0 | - | 0.18 | 0.183 | 5.13 | JRPG "game over" (tags sad, minor, retro, 16bit), 8.57 s with a natural decay; v3 is the most tonal/melodic of the three versions (pc-prom 5.13 vs 4.40/4.49). |
+
+Processing (same pipeline as T1): 44.1 kHz float masters built in numpy, linear gain to the target loudness (every pick needed attenuation, so no limiter), Ogg Opus 96 kb/s 48 kHz (libopus) and MP3 LAME V5 44.1 kHz, metadata stripped. Edits:
+- Underworld: 108 bpm is exactly 24500 samples a beat and the file is 56 bars (5488000 samples). The whole-file wrap seam is 3.18/0.68, and bars 49-56 restate bars 1-8 (envelope repeat 106.67 s = 48 bars, corr 0.83), so the loop is bars 9-56 (784000-5488000 samples) with the last 50 ms cross-faded (equal power) into the 50 ms before bar 9: the seam then equals the natural bar 8 to bar 9 step.
+- Determined Pursuit: whole file loops (master seam 0.26/0.07); unchanged apart from gain.
+- Battle Theme I: the ZIP's full file is a separate render (197 samples longer, not sample-identical to intro + loop), so intro (72253 samples) + loop (2609775) are joined with the T1 Boss Battle trick: the intro's last 10 ms cross-fade into the loop's own last 10 ms, so the junction equals the loop seam (junction 0.27/0.46; plain junction would be 1.37/0.19).
+- Victory: 24-bit source; the 0.25 s of leading silence dropped (kept 10 ms before onset), cut at 8.0 s with a 1.5 s equal-power fade over the tail.
+- Game Over II v3: unchanged apart from gain.
+
+Loudness and loops (ebur128 on the shipped files; seam ratio as in T1, master / Opus / MP3, L/R):
+
+| File | Duration s | Loop s | I LUFS | TP dBTP (Opus/MP3) | LRA | Seam master | Seam Opus | Seam MP3 | Opus bytes | MP3 bytes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| underworld-theme | 124.444444 | 17.777778-124.444444 | -17.9 | -3.1/-3.0 | 6.5 | 0.09/0.11 | 1.56/0.86 | 0.54/2.55 | 1761935 | 1807469 |
+| determined-pursuit | 108.000000 | 0-108.0 | -18.0 | -6.4/-6.1 | 4.1 | 0.26/0.07 | 0.38/0.13 | 0.06/0.04 | 1216189 | 1774979 |
+| battle-theme-i | 60.816961 | 1.638390-60.816961 | -18.0 | -5.7/-5.5 | 0.8 | 0.27/0.46 | 0.10/0.53 | 0.05/0.00 | 724104 | 831136 |
+| victory-umplix | 8.000000 | one-shot | -15.9 | -5.8/-5.9 | 11.5 | - | - | - | 109269 | 112210 |
+| game-over-ii | 8.571429 | one-shot | -15.9 | -5.3/-5.7 | 10.2 | - | - | - | 116876 | 135986 |
+
+Gains: Underworld -1.82 dB, Determined Pursuit -5.23, Battle Theme I -2.85, Victory -4.99, Game Over II -2.40. Decoded lengths: ffmpeg returns the master length for every MP3 and for the Opus files of Underworld, Determined Pursuit and Victory; Battle Theme I and Game Over II Opus decode 1 sample longer (resampling rounding 48 to 44.1 kHz), below the adapter's sub-millisecond rounding tolerance.
+
+Removed from `public/music/` and the manifest: dungeon-ambience, out-of-time, victory-fanfare, the-fallen (both formats). Kept: lonely-village (title), boss-battle-2 (reserved). `public/music/` now 11.2 MB (Opus 5.1 MB + MP3 6.2 MB); licenses: 6 CC0 + 1 CC BY 4.0.
+
+Tests (test-first): `tests/data/music.test.ts` gained checks for stinger length (3-10 s), floor loop length (60-180 s), the reserved Boss Battle #2 entry (not the guardian), one file per track, no unlisted file in `public/music/`, and no "Pokémon/Mystery Dungeon/remix/cover" in titles or change notes; RED observed (RESERVED_MUSIC missing) before the manifest change, then GREEN. `tests/adapters/audio.test.ts` now derives file names from the manifest instead of hardcoding them.
+Not verified: nobody has listened (moods from descriptions plus the numbers above); the Victory page gives no instrument notes; Content ID absence is not provable; browser playback not run here.

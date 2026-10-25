@@ -43,6 +43,11 @@ export interface LicensedTrack {
   changes: string;
 }
 
+/** A shipped track kept for a later context (`reservedFor`), not played yet. */
+export interface ReservedTrack extends Omit<LicensedTrack, 'context'> {
+  reservedFor: 'future-guardian';
+}
+
 export interface PlannedTrack {
   context: PlannedMusicContext;
   title: string;
@@ -53,7 +58,6 @@ export interface PlannedTrack {
 }
 
 const CC0 = 'https://creativecommons.org/publicdomain/zero/1.0/';
-const BY3 = 'https://creativecommons.org/licenses/by/3.0/';
 const BY4 = 'https://creativecommons.org/licenses/by/4.0/';
 const COMMON = 'Converted to Ogg Opus 96 kb/s and MP3 (LAME V5); metadata stripped.';
 
@@ -78,43 +82,109 @@ export const MUSIC_TRACKS: Record<MusicContext, LicensedTrack> = {
   },
   crypt: {
     context: 'crypt',
-    file: 'dungeon-ambience',
-    duration: 199,
+    file: 'underworld-theme',
+    duration: 124.444444,
     loop: true,
-    loopStart: 7,
-    loopEnd: 199,
+    // 108 bpm = 24500 samples a beat: the loop is bars 9-56 (784000 to 5488000 samples).
+    loopStart: 17.777778,
+    loopEnd: 124.444444,
     gain: 1,
     lufs: -18,
     fallback: 'room',
-    title: 'Dungeon Ambience',
-    artist: 'yd',
-    license: 'CC0 1.0',
-    licenseUrl: CC0,
-    sourceUrl: 'https://opengameart.org/content/dungeon-ambience',
-    attribution: '"Dungeon Ambience" by yd (CC0)',
-    changes: `Cut at 199.0 s, before the closing fade; the last 3 s cross-fade (equal power) into 4.0-7.0 s so the loop 7.0-199.0 s is seamless; +21.7 dB linear gain to -18 LUFS with a peak limiter. ${COMMON}`,
+    title: 'RPG - Underworld Theme - Loop',
+    artist: 'jocolloman',
+    license: 'CC BY 4.0',
+    licenseUrl: BY4,
+    sourceUrl: 'https://opengameart.org/content/rpg-underworld-theme-loop',
+    attribution: '"RPG - Underworld Theme - Loop" by jocolloman (Joseph Collard), CC BY 4.0',
+    changes: `Loop moved to bars 9-56 (17.778-124.444 s; bars 49-56 restate bars 1-8), with the last 50 ms cross-faded (equal power) into the 50 ms before bar 9 so the seam is continuous; loudness-normalised to -18 LUFS (-1.8 dB linear gain). ${COMMON}`,
   },
   collapse: {
     context: 'collapse',
-    file: 'out-of-time',
-    duration: 77.199342,
+    file: 'determined-pursuit',
+    duration: 108,
     loop: true,
-    loopStart: 8,
-    // 8 s + one period of the piece (3051691 samples = 69.199342 s, found by cross-correlation).
-    loopEnd: 77.199342,
+    // The whole file loops as the page says (seam ratio 0.26/0.07 on the master).
+    loopStart: 0,
+    loopEnd: 108,
     gain: 1,
     lufs: -18,
     fallback: 'room',
-    title: 'Out Of Time (RPG Orchestral Essentials)',
-    artist: 'Jonathan Shaw',
-    license: 'CC BY 3.0',
-    licenseUrl: BY3,
-    sourceUrl: 'https://opengameart.org/content/out-of-time-rpg-orchestral-essentials-danger-music',
-    attribution: '"Out Of Time" Composed by Jonathan Shaw (www.jshaw.co.uk), CC BY 3.0',
-    changes: `Decoded from the MP3; cut at 77.199 s (the repeat point after 8 s), dropping the second pass and the reverb tail; loudness-normalised to -18 LUFS. ${COMMON}`,
+    title: 'Determined Pursuit (epic orchestra loop)',
+    artist: 'Emma_MA',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/determined-pursuit-epic-orchestra-loop',
+    attribution: '"Determined Pursuit" by Emma_MA (CC0)',
+    changes: `Loudness-normalised to -18 LUFS (-5.2 dB linear gain); otherwise unchanged. ${COMMON}`,
   },
   guardian: {
     context: 'guardian',
+    file: 'battle-theme-i',
+    duration: 60.816961,
+    loop: true,
+    // The intro file is 72253 samples; the author's loop file follows it.
+    loopStart: 1.63839,
+    loopEnd: 60.816961,
+    gain: 1,
+    lufs: -18,
+    fallback: 'boss',
+    title: '16-bit - Battle Theme I',
+    artist: 'HydroGene',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/16-bit-battle-theme-i',
+    attribution: '"16-bit - Battle Theme I" by HydroGene (CC0)',
+    changes: `Intro and loop files joined in one file, with a 10 ms cross-fade (equal power) from the intro's tail into the loop's own tail so the junction matches the loop seam; loudness-normalised to -18 LUFS (-2.9 dB linear gain). ${COMMON}`,
+  },
+  victory: {
+    context: 'victory',
+    file: 'victory-umplix',
+    duration: 8,
+    loop: false,
+    loopStart: 0,
+    loopEnd: 8,
+    gain: 1,
+    lufs: -16,
+    fallback: null,
+    title: 'Victory',
+    artist: 'Umplix',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/victory-4',
+    attribution: '"Victory" by Umplix (CC0)',
+    changes: `Leading 0.25 s of silence removed; cut at 8.0 s with a 1.5 s fade-out over the decay tail (already below -30 dB); 24-bit source; loudness-normalised to -16 LUFS. ${COMMON}`,
+  },
+  defeat: {
+    context: 'defeat',
+    file: 'game-over-ii',
+    duration: 8.571429,
+    loop: false,
+    loopStart: 0,
+    loopEnd: 8.571429,
+    gain: 1,
+    lufs: -16,
+    fallback: null,
+    title: 'Game Over Theme II (v3)',
+    artist: 'CleytonKauffman',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/game-over-theme-ii',
+    attribution: '"Game Over Theme II" by Cleyton Kauffman (CleytonKauffman) (CC0)',
+    changes: `Version 3 of the three in the ZIP; loudness-normalised to -16 LUFS; played once on the defeat screen. ${COMMON}`,
+  },
+};
+
+export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
+
+/**
+ * Tracks that ship in `public/music/` (licensed, credited, loop-checked) but are
+ * not wired to any context yet. Boss Battle #2 played the Aegislash guardian
+ * until 2026-10-25 and is kept for a future boss.
+ */
+export const RESERVED_MUSIC: readonly ReservedTrack[] = [
+  {
+    reservedFor: 'future-guardian',
     file: 'boss-battle-2',
     duration: 66.206803,
     loop: true,
@@ -132,45 +202,7 @@ export const MUSIC_TRACKS: Record<MusicContext, LicensedTrack> = {
     attribution: '"Boss Battle #2 [Symphonic Metal]" by nene (CC0)',
     changes: `Opening and loop joined in one file (the ZIP names are swapped, as the page says), with a 10 ms cross-fade from the opening into the loop's own tail; loudness-normalised to -18 LUFS. ${COMMON}`,
   },
-  victory: {
-    context: 'victory',
-    file: 'victory-fanfare',
-    duration: 3.91839,
-    loop: false,
-    loopStart: 0,
-    loopEnd: 3.91839,
-    gain: 1,
-    lufs: -16,
-    fallback: null,
-    title: 'Fanfares: VICTORY',
-    artist: 'Spring Spring',
-    license: 'CC BY 4.0',
-    licenseUrl: BY4,
-    sourceUrl: 'https://opengameart.org/content/fanfares',
-    attribution: '"Fanfares" (VICTORY) by Spring Spring (Spring/Spring Enterprises), CC BY 4.0',
-    changes: `Resampled from 48 kHz to 44.1 kHz; loudness-normalised to -16 LUFS. ${COMMON}`,
-  },
-  defeat: {
-    context: 'defeat',
-    file: 'the-fallen',
-    duration: 77.139592,
-    loop: false,
-    loopStart: 0,
-    loopEnd: 77.139592,
-    gain: 1,
-    lufs: -16,
-    fallback: null,
-    title: 'The Fallen (RPG Orchestral Essentials)',
-    artist: 'Jonathan Shaw',
-    license: 'CC BY 3.0',
-    licenseUrl: BY3,
-    sourceUrl: 'https://opengameart.org/content/the-fallen-rpg-orchestral-essentials-defeated-music',
-    attribution: '"The Fallen" Composed by Jonathan Shaw (www.jshaw.co.uk), CC BY 3.0',
-    changes: `Decoded from the MP3; loudness-normalised to -16 LUFS; played once on the defeat screen. ${COMMON}`,
-  },
-};
-
-export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
+];
 
 /** Picks for later contexts, from docs/music-shortlist.md; nothing downloaded yet, licenses to re-check on download. */
 export const PLANNED_MUSIC: readonly PlannedTrack[] = [
