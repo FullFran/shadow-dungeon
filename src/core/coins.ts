@@ -21,6 +21,8 @@ export interface CoinTally {
   midbosses: number;
   /** Simulated play time (pauses excluded). */
   playedMs: number;
+  /** Pokémonedas this player earned capturing spell cards (core/cards.ts), paid with the guardian line; absent = none. */
+  captures?: number;
 }
 
 export const emptyTally = (): CoinTally => ({ floors: [], enemies: [], escapes: [], midbosses: 0, playedMs: 0 });
@@ -42,11 +44,14 @@ export function tallyFloor(tally: CoinTally, depth: number, escapeMs: number | n
   };
 }
 
+/** This player captured a card worth `coins`. */
+export const tallyCapture = (tally: CoinTally, coins: number): CoinTally => (coins > 0 ? { ...tally, captures: (tally.captures ?? 0) + coins } : tally);
+
 export interface CoinBreakdown {
   floors: number;
   enemies: number;
   escapes: number;
-  /** The guardian on victory plus `COINS.midboss` per mid-boss beaten. */
+  /** The guardian on victory plus `COINS.midboss` per mid-boss beaten, plus spell cards captured. */
   guardian: number;
   time: number;
   /** Sum of the lines above. */
@@ -65,7 +70,7 @@ export function coinBreakdown(tally: CoinTally, outcome: 'victory' | 'defeat' | 
   const floors = COINS.perFloor * tally.floors.reduce((sum, depth) => sum + depth, 0);
   const enemies = Math.floor(tally.enemies.reduce((sum, depth) => sum + COINS.perEnemy * (1 + COINS.perEnemyDepth * Math.max(0, depth - 1)), 0));
   const escapes = tally.escapes.reduce((sum, ms) => sum + escapeCoins(ms), 0);
-  const guardian = (outcome === 'victory' ? COINS.guardian : 0) + COINS.midboss * tally.midbosses;
+  const guardian = (outcome === 'victory' ? COINS.guardian : 0) + COINS.midboss * tally.midbosses + (tally.captures ?? 0);
   const time = COINS.perMinute * Math.floor(tally.playedMs / 60_000);
   const subtotal = floors + enemies + escapes + guardian + time;
   const share = outcome === 'defeat' ? COINS.defeatShare : 1;

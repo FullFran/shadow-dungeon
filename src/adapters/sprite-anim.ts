@@ -1,3 +1,4 @@
+import { heraldWear } from '../core/herald/generate';
 import { MOVES, type MoveId } from '../data/moves';
 import { SPECIES } from '../data/species';
 import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
@@ -188,6 +189,8 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
 
 /** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation). */
 export function enemySprite(enemy: EnemyState): SpriteKey {
+  // A herald wears its generated sheets (the generator's first draw, the same on every peer).
+  if (enemy.herald) return (SPRITE_KEYS as Record<string, SpriteKey>)[heraldWear(enemy.herald.seed).sprite] ?? SPRITE_KEYS.gastly;
   if (enemy.species !== 'aegislash') return SPRITE_KEYS[SPECIES[enemy.species].sprite];
   const stance = enemy.boss?.stance ?? 'shield';
   const transforming = enemy.ai.mode === 'transform' && enemy.ai.modeMs >= enemy.ai.modeDurationMs / 2;
@@ -248,6 +251,7 @@ const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   'eclipse-nest': 'Idle',
   'eclipse-hunter': 'Attack',
   'eclipse-echo': 'Shoot',
+  'sima-herald': 'Shoot',
 };
 
 export interface EnemyAnimContext {

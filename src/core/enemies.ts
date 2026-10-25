@@ -10,6 +10,7 @@ import { behaviourFor } from './tricks';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
 import { updateEclipse } from './eclipse-echo';
+import { updateHerald } from './herald/brain';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -401,6 +402,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'danmaku') current = updateDanmaku(current, ticked, def, target, ems, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ems, events);
     else if (def.kind === 'eclipse') current = updateEclipse(current, ticked, def, target, ems, events);
+    else if (def.kind === 'herald') current = updateHerald(current, ticked, def, target, ems, events);
     else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ems, events);
     else current = updateRoster(current, ticked, def, target, ems, events);
   }

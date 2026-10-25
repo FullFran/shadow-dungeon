@@ -58,6 +58,7 @@ export const PROGRESSION = {
     'eclipse-nest': 12,
     'eclipse-hunter': 0,
     'eclipse-echo': 60,
+    'sima-herald': 90,
   } as Record<SpeciesId, number>,
   /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
   xpPerDepth: 0.5,

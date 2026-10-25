@@ -780,6 +780,7 @@
   "sima.merchant.leave": "Seguir",
   "sima.merchant.leaveText": "El eco te ve marchar sin decir nada.",
   "species.eclipse-echo": "Eco del Eclipse",
+  "species.sima-herald": "Heraldo del Eclipse",
   "sima.echo.subtitle": "Planta {floor} · La sombra que bajó contigo",
   "spell.eclipse.ring": "Signo Eclipse «Anillo sin Cierre»",
   "spell.eclipse.spiral": "Signo Sombra «Espiral del Último Rayo»",
@@ -833,5 +834,10 @@
   "sima.band.swamp.lore.1": "El agua no refleja este cielo. Refleja el otro.",
   "sima.band.swamp.lore.2": "La niebla huele dulce. No respires hondo.",
   "sima.band.swamp.lore.3": "Los árboles muertos crecen hacia abajo, hacia el eclipse.",
-  "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella."
+  "sima.band.swamp.lore.4": "Una grieta en el cielo gotea aquí. Algo mira a través de ella.",
+  "sima.herald.subtitle": "Heraldo del Eclipse · Planta {floor}",
+  "sima.herald.capture": "¡Carta capturada! +{coins} Pokémonedas",
+  "sima.herald.timeout": "Se agotó el tiempo de la carta",
+  "sima.herald.awaken": "El heraldo despierta",
+  "town.board.heralds": "Heraldos del Eclipse vistos: {count}"
 }

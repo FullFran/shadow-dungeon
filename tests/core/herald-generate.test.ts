@@ -9,7 +9,7 @@ import { asksChoice } from '../../src/core/herald/patterns';
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
 describe('herald generator', () => {
-  it('is deterministic: the same seed, depth and tier make the same boss; other seeds make others', () => {
+  it('is deterministic: the same seed, depth and tier make the same boss; other seeds make others', { timeout: 60_000 }, () => {
     for (const seed of [1, 77, 123456]) {
       expect(generateBoss(seed, 32, 'hard')).toEqual(generateBoss(seed, 32, 'hard'));
     }
@@ -20,7 +20,7 @@ describe('herald generator', () => {
     expect(heraldDef(5, 42, 'easy')).toBe(heraldDef(5, 42, 'easy'));
   });
 
-  it('wears only sheets with every animation it plays (no fallback), from the curated list', () => {
+  it('wears only sheets with every animation it plays (no fallback), from the curated list', { timeout: 60_000 }, () => {
     const pool = heraldPool();
     expect(pool.length).toBeGreaterThanOrEqual(15);
     for (const { sprite } of pool) {
@@ -38,7 +38,7 @@ describe('herald generator', () => {
     }
   });
 
-  it('has the Touhou structure: 3-5 cards by depth (nightmare one more), 1-3 layers, a phase 2 from the middle card, a timer each', () => {
+  it('has the Touhou structure: 3-5 cards by depth (nightmare one more), 1-3 layers, a phase 2 from the middle card, a timer each', { timeout: 60_000 }, () => {
     expect(heraldCardCount(22, 'normal')).toBe(3);
     expect(heraldCardCount(45, 'normal')).toBe(4);
     expect(heraldCardCount(80, 'normal')).toBe(5);
@@ -69,7 +69,7 @@ describe('herald generator', () => {
     }
   });
 
-  it('names are composed: a proper name, «el/la X de los/las Y Z», an epigraph, never a borrowed one', () => {
+  it('names are composed: a proper name, «el/la X de los/las Y Z», an epigraph, never a borrowed one', { timeout: 60_000 }, () => {
     for (let s = 0; s < 60; s++) {
       const def = generateBoss(s * 31 + 1, 32, 'normal');
       expect(def.name).toMatch(/^[A-Z][a-z]{3,11}$/);

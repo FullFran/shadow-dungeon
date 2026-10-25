@@ -87,6 +87,13 @@ export interface EndlessDef {
   /** Every `eclipseEvery`th floor (a multiple of `echoEvery`) holds the dungeon's own boss instead of a guardian echo. */
   eclipseEvery?: number;
   eclipseEcho?: EchoDef;
+  /**
+   * The Heralds of the Eclipse (data/herald.ts): from floor `from` on, every
+   * floor that leaves `offset` over a multiple of `every` holds a generated
+   * herald in `echo`'s arena (an echo-like boss floor: its time bonus, its
+   * way on at the top).
+   */
+  heralds?: { from: number; every: number; offset: number; echo: EchoDef };
   /** The way on that opens at the top centre of an echo's arena once it falls (px). */
   echoExit: { width: number; height: number };
   pool: readonly EndlessPoolEntry[];
@@ -139,6 +146,8 @@ export const ENDLESS: EndlessDef = {
   // The Sima's own boss on 10, 20, 30...; the guardian echoes keep 5, 15, 25... in turn.
   eclipseEvery: 10,
   eclipseEcho: { room: 'eclipse', music: 'guardian' },
+  // Generated heralds after the first strata (user feedback 2026-10-25): 22, 32, 42..., among the later echoes.
+  heralds: { from: 22, every: 10, offset: 2, echo: { room: 'abyss', music: 'guardian' } },
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
   spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3 },
@@ -158,15 +167,23 @@ export const ENDLESS: EndlessDef = {
   events: SIMA_EVENTS,
 };
 
-/** True on the floors that hold a guardian echo (5, 10, 15...). */
-export const isEchoFloor = (endless: Pick<EndlessDef, 'echoEvery'>, floor: number): boolean => floor > 0 && floor % endless.echoEvery === 0;
+/** True on the Sima's herald floors (22, 32, 42...). */
+export const isHeraldFloor = (endless: Pick<EndlessDef, 'heralds'>, floor: number): boolean => {
+  const h = endless.heralds;
+  return h !== undefined && floor >= h.from && floor % h.every === h.offset;
+};
+
+/** True on the floors that hold a guardian echo (5, 10, 15...), the Eclipse Echo, or a herald. */
+export const isEchoFloor = (endless: Pick<EndlessDef, 'echoEvery'> & Partial<Pick<EndlessDef, 'heralds'>>, floor: number): boolean =>
+  (floor > 0 && floor % endless.echoEvery === 0) || isHeraldFloor(endless, floor);
 
 /**
  * The echo of an echo floor: the Eclipse Echo on every `eclipseEvery`th floor
  * (when the dungeon has one), otherwise the guardian echoes in turn (the first
  * on floor 5, the next on the next guardian echo floor, and round again).
  */
-export function echoAt(endless: Pick<EndlessDef, 'echoEvery' | 'echoes' | 'eclipseEvery' | 'eclipseEcho'>, floor: number): EchoDef {
+export function echoAt(endless: Pick<EndlessDef, 'echoEvery' | 'echoes' | 'eclipseEvery' | 'eclipseEcho'> & Partial<Pick<EndlessDef, 'heralds'>>, floor: number): EchoDef {
+  if (endless.heralds && isHeraldFloor(endless, floor)) return endless.heralds.echo;
   const { eclipseEvery, eclipseEcho } = endless;
   if (eclipseEvery && eclipseEcho && floor > 0 && floor % eclipseEvery === 0) return eclipseEcho;
   const echoes = Math.floor(floor / endless.echoEvery);

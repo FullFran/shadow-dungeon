@@ -1,3 +1,4 @@
+import { recordHerald } from '../town/bestiary';
 import { simaEventLines } from './sima-summary';
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
@@ -768,6 +769,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
     onQuit: () => townScreen(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
+    onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });

@@ -1,3 +1,4 @@
+import { HERALD_BASE, type HeraldBaseDef } from './herald';
 import type { Difficulty } from './difficulty';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
@@ -1498,7 +1499,7 @@ export const DHELMISE: DanmakuDef = {
 };
 
 
-export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef;
+export type EnemyDef = HeraldBaseDef | DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef;
 /** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
 export type SwampDef = RollerDef | DasherDef | SniperDef | QueenDef | UltraDef;
 /**
@@ -1648,6 +1649,7 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   nihilego: NIHILEGO,
   'eclipse-hunter': ECLIPSE_HUNTER,
   'eclipse-echo': ECLIPSE_ECHO,
+  'sima-herald': HERALD_BASE,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Trevenant, Aegislash's phase 2), if `stance` is one. */

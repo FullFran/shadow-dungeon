@@ -780,6 +780,7 @@
   "sima.merchant.leave": "Move on",
   "sima.merchant.leaveText": "The echo watches you go without a word.",
   "species.eclipse-echo": "Eclipse Echo",
+  "species.sima-herald": "Herald of the Eclipse",
   "sima.echo.subtitle": "Floor {floor} · The shadow that came down with you",
   "spell.eclipse.ring": "Eclipse Sign \"Ring Without a Clasp\"",
   "spell.eclipse.spiral": "Shadow Sign \"Spiral of the Last Ray\"",
@@ -833,5 +834,10 @@
   "sima.band.swamp.lore.1": "The water does not reflect this sky. It reflects the other one.",
   "sima.band.swamp.lore.2": "The mist smells sweet. Do not breathe deep.",
   "sima.band.swamp.lore.3": "Dead trees grow downwards, towards the eclipse.",
-  "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it."
+  "sima.band.swamp.lore.4": "A tear in the sky drips here. Something is watching through it.",
+  "sima.herald.subtitle": "Herald of the Eclipse · Floor {floor}",
+  "sima.herald.capture": "Card captured! +{coins} Poké Coins",
+  "sima.herald.timeout": "The card ran out of time",
+  "sima.herald.awaken": "The herald awakens",
+  "town.board.heralds": "Heralds of the Eclipse met: {count}"
 }

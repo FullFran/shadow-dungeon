@@ -1,3 +1,4 @@
+import { heraldCardName, heraldHere, heraldIntro, newCaptureJudge, watchCapture } from './herald-run';
 import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
 import { addTime } from '../core/endless';
 import { addItem } from '../core/items';
@@ -29,7 +30,7 @@ import { WISP_BERRY } from '../core/wisp';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
-import { coinBreakdown, emptyTally, tallyFloor, tallyStep, type CoinBreakdown, type CoinTally } from '../core/coins';
+import { coinBreakdown, emptyTally, tallyCapture, tallyFloor, tallyStep, type CoinBreakdown, type CoinTally } from '../core/coins';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
@@ -122,6 +123,8 @@ export interface GameOptions {
    * canvas instead and never pause.
    */
   playCinematic?(request: { species: SpeciesId; phase: CinematicPhase }, onDone: () => void): (() => void) | null;
+  /** A herald was met on this floor (the local bestiary, town/bestiary.ts). */
+  onHeraldMet?(seed: number, name: string): void;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
@@ -246,6 +249,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let intro: DungeonIntro | null = null;
   let nowPlaying: NowPlaying | null = null;
   let playing: MusicContext | null = null;
+  /** This player's capture judge for a herald's cards (app/herald-run.ts). */
+  let heraldJudge = newCaptureJudge();
   /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
   let spell: SpellBanner | null = null;
   let lastCard: string | null = null;
@@ -325,7 +330,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
-    if (echo) {
+    const herald = heraldHere(world);
+    if (herald) {
+      // A herald: its own name, epithet and epigraph (core/herald); remembered on this device.
+      intro = { ...heraldIntro(herald.def), shownAtMs: realMs };
+      card = null;
+      heraldJudge = newCaptureJudge();
+      options.onHeraldMet?.(herald.def.seed, herald.def.name);
+    } else if (echo) {
       // The echo's name card replaces the floor card (they would overlap).
       // The Sima's own boss has its own line under its name.
       const subtitle = echo.species === 'eclipse-echo' ? 'sima.echo.subtitle' : 'endless.echo';
@@ -709,6 +721,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       watchClock(clockBefore);
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
+      // A herald's cards: this player's captures pay (each peer judges its own player).
+      const judged = watchCapture(heraldJudge, world, world.events, tally.playedMs);
+      heraldJudge = judged.tracker;
+      if (judged.news?.outcome === 'captured') {
+        tally = tallyCapture(tally, judged.news.coins);
+        say(t('sima.herald.capture').replace('{coins}', String(judged.news.coins)), 'good');
+      } else if (judged.news?.outcome === 'timeout') say(t('sima.herald.timeout'), 'info');
       net?.session.afterStep(world, run.floor);
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       juice = applyEvents(juice, events, world.player.pos);
@@ -770,7 +789,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
     const bar = bossBar(world);
     // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
-    const cardKey = bar ? spellCardKey(bar.species, bar.stance) : null;
+    const cardKey = bar ? (heraldCardName(world, bar.enemyId, bar.stance) ?? spellCardKey(bar.species, bar.stance)) : null;
     const cardNow = cardKey && world.enemies.some((e) => e.id === bar!.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar!.stance : null;
     if (cardNow && cardKey && cardNow !== lastCard) spell = { name: t(cardKey), shownAtMs: realMs };
     if (cardNow) lastCard = cardNow;

@@ -1,3 +1,4 @@
+import { bestiaryLines } from './bestiary';
 import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
@@ -138,6 +139,8 @@ const readBoard = (difficulty: Difficulty): string[] => {
       tier,
     ),
     ...leaderboardLines(readScores(browserStore()), (key) => t(key), 5, tier),
+    // The heralds met on this device (count only).
+    ...bestiaryLines(browserStore(), (key) => t(key)),
   ];
 };
 

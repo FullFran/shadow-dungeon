@@ -55,6 +55,9 @@ const TIER_KNOBS: Readonly<Record<Difficulty, { density: number; speed: number; 
   nightmare: { density: 1.3, speed: 1.12, extraCards: 1 },
 };
 
+/** HP multiplier of a herald with `count` cards (each card is a segment of the bar). */
+export const heraldHpScale = (count: number): number => 0.8 + 0.12 * count;
+
 /** Cards by depth: 3 until floor 40, 4 until 70, then 5 (nightmare one more), at most 5. */
 export const heraldCardCount = (depth: number, tier: Difficulty): number => Math.min(5, (depth < 40 ? 3 : depth < 70 ? 4 : 5) + TIER_KNOBS[tier].extraCards);
 
@@ -344,7 +347,7 @@ export function generateBoss(seed: number, depth: number, tier: Difficulty, stat
     arrival: ARRIVAL[move],
     anchors: anchors.map((a) => ({ x: a.x, y: a.y })),
     moveSpeed: move === 'dash' ? 380 : move === 'drift' ? 70 : 90,
-    hpScale: 0.8 + 0.12 * count,
+    hpScale: heraldHpScale(count),
     cards,
     phase2: { rule, fromCard, transformMs: 1400, cards: phase2Cards, move: rule === 'blink' ? 'teleport' : move },
     maxShots: g.maxShots,

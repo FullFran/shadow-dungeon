@@ -10,6 +10,8 @@ import { stealItem } from './stolen';
 import { burstActive, burstTouches } from './thief';
 import { cardDef, danmakuMelee } from './danmaku';
 import { behaviourFor } from './tricks';
+import { heraldCard, heraldContact, heraldOf } from './herald/brain';
+import { heraldDef } from './herald/generate';
 import { isSwampDef, swampAttack } from './swamp-brains';
 import { floodPockets, hazePockets } from './swamp-bosses';
 import type { Arena, EnemyState, GameEvent, WorldState } from './state';
@@ -118,6 +120,12 @@ export function pierceZone(enemy: EnemyState, d: Difficulty, arena: Pick<Arena, 
     }
     return null;
   }
+  // A herald's burning pockets (its other layers are projectiles).
+  if (def.kind === 'herald') {
+    const herald = enemy.herald ? heraldDef(enemy.herald.seed, enemy.herald.depth, d) : null;
+    const pockets = herald ? heraldCard(herald, stance)?.layers.find((l) => l.kind === 'pockets') : undefined;
+    return pockets?.kind === 'pockets' ? { kind: 'pockets', centers: pockets.pockets.map((p) => ({ x: p.x, y: p.y })), radius: pockets.radius } : null;
+  }
   // A deep Sima elite that strikes positionally: every attack of its own is, around its body.
   if (enemy.pierceRoll) return { kind: 'shape' };
   if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
@@ -175,6 +183,12 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (def.kind === 'herald') {
+      // A herald's burning pockets (its shots are projectiles).
+      const herald = heraldOf(current, enemy);
+      const zone = herald ? heraldContact(herald, enemy, current.player.pos) : null;
+      if (!zone) continue;
+      hit = contactPlayer(current, enemy, zone.attack, zone.touches, events);
     } else if (def.kind === 'eclipse') {
       // The Eclipse Echo's corona and noose (its other cards are projectiles).
       const zone = eclipseZoneContact(current, enemy, def, current.player.pos);

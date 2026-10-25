@@ -32,6 +32,8 @@ export function initialBoss(species?: SpeciesId): BossState {
       ? def.cards[0]!
       : def?.kind === 'ultra'
         ? def.phase1[0]!
+        : def?.kind === 'herald'
+          ? 'herald0'
         : def?.kind === 'treant'
           ? 'slam'
           : 'shield';
@@ -41,7 +43,7 @@ export function initialBoss(species?: SpeciesId): BossState {
 /** Enemies that carry boss state (stances, spell cards). */
 export const hasBossState = (species: SpeciesId): boolean => {
   const kind = ENEMY_BEHAVIOUR[species]?.kind;
-  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra' || kind === 'eclipse';
+  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku' || kind === 'queen' || kind === 'ultra' || kind === 'eclipse' || kind === 'herald';
 };
 
 /** Angle in radians between two non-zero directions, in [0, π]. */

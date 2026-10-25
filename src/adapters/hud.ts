@@ -1,3 +1,4 @@
+import { heraldBarText } from './herald-vfx';
 import type { ItemId, Rarity } from '../data/items';
 import { M0_SLOT_LAYOUT } from '../data/slots';
 import { MOVES } from '../data/moves';
@@ -165,8 +166,15 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const y = box.y + HUD_BOX.bossNameHeight;
     const name = t(`species.${boss.species}`);
     ctx.font = canvasFont();
-    pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
-    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
+    const herald = heraldBarText(state, boss.enemyId);
+    if (herald) pixelText(ctx, herald.label, screen.width / 2, y - 5, PALETTE.text, 'center');
+    else pixelText(ctx, boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
+    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), herald ? herald.colour : boss.stance === 'shield' ? '#8fb3ff' : PALETTE.eclipse);
+    // A herald's bar shows its cards' segments.
+    if (herald) for (let i = 1; i < herald.cards; i++) {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(Math.round(x + (w * i) / herald.cards), y, 1, 6);
+    }
   }
 
   if (juice.flash) {

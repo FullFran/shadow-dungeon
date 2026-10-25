@@ -202,10 +202,15 @@ export interface EnemyState {
   armor?: true;
   /** Deep Sima elite: its attacks ignore roll i-frames (positional, docs/gdd.md §9). */
   pierceRoll?: true;
+  /** A Herald of the Eclipse (core/herald): the seed and depth its whole def is regenerated from on every peer (with the run's tier). */
+  herald?: { seed: number; depth: number };
 }
 
+/** A herald's spell card in play: `herald<i>`, and `herald<i>x` for its phase-2 version (data/herald.ts). */
+export type HeraldStance = `herald${number}` | `herald${number}x`;
+
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam';
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | QueenCard | UltraCard | EclipseCard | 'slam' | HeraldStance;
 
 export interface BossState {
   stance: BossStance;
@@ -344,6 +349,8 @@ export type GameEvent =
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
+  /** A herald blinked from one anchor to the next (teleporting movement), for its flash. */
+  | { type: 'heraldBlink'; enemyId: string; from: Vec2; to: Vec2 }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
