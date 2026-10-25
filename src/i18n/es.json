@@ -628,5 +628,19 @@
   "sima.merchant.berryText": "Recupera el {n} % de los PS.",
   "sima.merchant.soldOut": "Agotado",
   "sima.merchant.leave": "Seguir",
-  "sima.merchant.leaveText": "El eco te ve marchar sin decir nada."
+  "sima.merchant.leaveText": "El eco te ve marchar sin decir nada.",
+  "species.eclipse-echo": "Eco del Eclipse",
+  "sima.echo.subtitle": "Planta {floor} · La sombra que bajó contigo",
+  "spell.eclipse.ring": "Signo Eclipse «Anillo sin Cierre»",
+  "spell.eclipse.spiral": "Signo Sombra «Espiral del Último Rayo»",
+  "spell.eclipse.corona": "Signo Corona «Tres Refugios bajo el Sol Negro»",
+  "spell.eclipse.lanes": "Signo Caída «Lluvia de Luz Roja»",
+  "spell.eclipse.mirror": "Signo Reflejo «Dos Sombras, Un Eco»",
+  "spell.eclipse.noose": "Signo Lazo «El Anillo se Cierra»",
+  "boss.stance.ring": "Anillo",
+  "boss.stance.spiral": "Espiral",
+  "boss.stance.corona": "Corona",
+  "boss.stance.lanes": "Lluvia",
+  "boss.stance.mirror": "Reflejo",
+  "boss.stance.noose": "Lazo"
 }

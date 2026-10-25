@@ -122,7 +122,7 @@ function encodeEnemy(e: EnemySnapshot): unknown[] {
   // Optional spent flag (fell by its own blast).
   if (e.spent || elite) out.push(e.spent ? 1 : 0);
   // Optional Sima elite trait, "*" while its armor holds, last.
-  if (elite) out.push(`${e.elite}${e.armor ? '*' : ''}`);
+  if (elite) out.push(`${e.elite}${e.armor ? '*' : ''}${e.pierceRoll ? '!' : ''}`);
   return out;
 }
 
@@ -149,7 +149,7 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
     number | undefined,
     string | undefined,
   ];
-  const trait = typeof elite === 'string' ? elite.replace('*', '') : '';
+  const trait = typeof elite === 'string' ? elite.replace(/[*!]/g, '') : '';
   return {
     id,
     species,
@@ -168,7 +168,7 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
     },
     ...(stance ? { boss: { stance, comboIndex: comboIndex ?? 0 } } : {}),
     ...(spent === 1 ? { spent: true } : {}),
-    ...(isEliteTrait(trait) ? { elite: trait, ...(elite!.endsWith('*') ? { armor: true as const } : {}) } : {}),
+    ...(isEliteTrait(trait) ? { elite: trait, ...(elite!.includes('*') ? { armor: true as const } : {}), ...(elite!.includes('!') ? { pierceRoll: true as const } : {}) } : {}),
   };
 }
 

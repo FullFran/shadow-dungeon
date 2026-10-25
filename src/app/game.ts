@@ -310,7 +310,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
     if (echo) {
       // The echo's name card replaces the floor card (they would overlap).
-      intro = { name: t(`species.${echo.species}`), subtitle: t('endless.echo').replace('{floor}', String(run.floor)), shownAtMs: realMs };
+      // The Sima's own boss has its own line under its name.
+      const subtitle = echo.species === 'eclipse-echo' ? 'sima.echo.subtitle' : 'endless.echo';
+      intro = { name: t(`species.${echo.species}`), subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
       card = null;
     }
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);

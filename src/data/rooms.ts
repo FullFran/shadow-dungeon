@@ -23,7 +23,7 @@ export interface RoomDef {
   next: RoomId | null;
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'eclipse';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -45,6 +45,22 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     ],
     exit: { x: 900, y: 280, width: 60, height: 80 },
     next: 'boss',
+  },
+  /**
+   * The Sima's own arena (every 10th floor): an open floor with nothing to
+   * hide behind, for the Eclipse Echo's spell cards; the way on opens at the
+   * top once it falls (an echo's exit).
+   */
+  eclipse: {
+    id: 'eclipse',
+    // Small enough that the view keeps the Echo on screen from anywhere in it.
+    width: 640,
+    height: 400,
+    obstacles: [],
+    playerStart: { x: 320, y: 340 },
+    spawns: [{ species: 'eclipse-echo', x: 320, y: 144 }],
+    exit: null,
+    next: null,
   },
   /** The throne room: four pillars with braziers, cover from Aegislash's thrown blades and shadow swords. */
   boss: {

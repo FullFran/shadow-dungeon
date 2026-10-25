@@ -1,3 +1,4 @@
+import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
 import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
 import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { FOG } from '../data/dungeon';
@@ -857,6 +858,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
     // Ground layer: telegraphs and shadows under everything.
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos));
+    // The Eclipse Echo's halo and the marks of its cards (corona, noose, lanes).
+    for (const enemy of current.enemies) if (enemy.species === 'eclipse-echo') drawEclipseZones(ctx, current, enemy, posOf(enemy.id, enemy.pos), timeMs);
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
@@ -885,6 +888,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
           if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(SIMA_ELITES.tints[enemy.elite]);
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
+          if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
           ctx.filter = 'none';
         },

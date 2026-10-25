@@ -50,11 +50,12 @@ describe('the Sima del Eclipse (data)', () => {
     expect(dungeonById(ECL)).toBe(ECLIPSE);
   });
 
-  it('puts a guardian echo on every 5th floor, rotating Aegislash, Trevenant and Decidueye', () => {
+  it('puts an echo on every 5th floor: the Eclipse Echo on every 10th, the guardians (Aegislash, Trevenant, Decidueye) in turn between', () => {
     expect([1, 2, 3, 4, 5, 6, 9, 10, 15, 20].map((f) => isEchoFloor(ENDLESS, f))).toEqual([false, false, false, false, true, false, false, true, true, true]);
-    expect([5, 10, 15, 20].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'hollow', 'roost', 'boss']);
+    expect([5, 10, 15, 20, 25, 35].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'boss']);
     expect(planAt(ECLIPSE, 7)).toEqual({ kind: 'generated' });
-    expect(planAt(ECLIPSE, 55)).toEqual({ kind: 'room', room: 'hollow', role: 'echo' });
+    expect(planAt(ECLIPSE, 55)).toEqual({ kind: 'room', room: 'roost', role: 'echo' });
+    expect(planAt(ECLIPSE, 50)).toEqual({ kind: 'room', room: 'eclipse', role: 'echo' });
   });
 
   it('the pool is one appendable list: an entry shows up from its min depth with its weight', () => {
@@ -162,7 +163,7 @@ describe('the Sima del Eclipse (data)', () => {
   it('rotates the floor tracks by depth band; echoes play their guardian track', () => {
     const music = (floor: number) => musicFor(ECLIPSE, planAt(ECLIPSE, floor)!, 'normal', floor);
     expect([1, 4, 6, 9, 11].map(music)).toEqual(['crypt', 'crypt', 'forest', 'forest', 'crypt']);
-    expect([5, 15].map(music)).toEqual(['guardian', 'forest-guardian']);
+    expect([5, 10, 15, 25].map(music)).toEqual(['guardian', 'guardian', 'guardian', 'forest-guardian']);
     // The other dungeons are untouched.
     expect(musicFor(FOREST, FOREST.plan[0]!, 'normal')).toBe('forest');
   });

@@ -73,6 +73,9 @@ export interface EndlessDef {
   /** Every `echoEvery`th floor is a guardian echo; the echoes rotate in this order. */
   echoEvery: number;
   echoes: readonly EchoDef[];
+  /** Every `eclipseEvery`th floor (a multiple of `echoEvery`) holds the dungeon's own boss instead of a guardian echo. */
+  eclipseEvery?: number;
+  eclipseEcho?: EchoDef;
   /** The way on that opens at the top centre of an echo's arena once it falls (px). */
   echoExit: { width: number; height: number };
   pool: readonly EndlessPoolEntry[];
@@ -117,6 +120,9 @@ export const ENDLESS: EndlessDef = {
     { room: 'hollow', music: 'guardian' },
     { room: 'roost', music: 'forest-guardian' },
   ],
+  // The Sima's own boss on 10, 20, 30...; the guardian echoes keep 5, 15, 25... in turn.
+  eclipseEvery: 10,
+  eclipseEcho: { room: 'eclipse', music: 'guardian' },
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
   spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3 },
@@ -139,6 +145,15 @@ export const ENDLESS: EndlessDef = {
 /** True on the floors that hold a guardian echo (5, 10, 15...). */
 export const isEchoFloor = (endless: Pick<EndlessDef, 'echoEvery'>, floor: number): boolean => floor > 0 && floor % endless.echoEvery === 0;
 
-/** The echo of an echo floor: the first on floor 5, the next on floor 10, and round again. */
-export const echoAt = (endless: Pick<EndlessDef, 'echoEvery' | 'echoes'>, floor: number): EchoDef =>
-  endless.echoes[(Math.floor(floor / endless.echoEvery) - 1 + endless.echoes.length * 1000) % endless.echoes.length]!;
+/**
+ * The echo of an echo floor: the Eclipse Echo on every `eclipseEvery`th floor
+ * (when the dungeon has one), otherwise the guardian echoes in turn (the first
+ * on floor 5, the next on the next guardian echo floor, and round again).
+ */
+export function echoAt(endless: Pick<EndlessDef, 'echoEvery' | 'echoes' | 'eclipseEvery' | 'eclipseEcho'>, floor: number): EchoDef {
+  const { eclipseEvery, eclipseEcho } = endless;
+  if (eclipseEvery && eclipseEcho && floor > 0 && floor % eclipseEvery === 0) return eclipseEcho;
+  const echoes = Math.floor(floor / endless.echoEvery);
+  const eclipses = eclipseEvery && eclipseEcho ? Math.floor(floor / eclipseEvery) : 0;
+  return endless.echoes[(echoes - eclipses - 1 + endless.echoes.length * 1000) % endless.echoes.length]!;
+}

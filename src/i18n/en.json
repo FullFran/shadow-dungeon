@@ -628,5 +628,19 @@
   "sima.merchant.berryText": "Restores {n}% of HP.",
   "sima.merchant.soldOut": "Sold out",
   "sima.merchant.leave": "Move on",
-  "sima.merchant.leaveText": "The echo watches you go without a word."
+  "sima.merchant.leaveText": "The echo watches you go without a word.",
+  "species.eclipse-echo": "Eclipse Echo",
+  "sima.echo.subtitle": "Floor {floor} · The shadow that came down with you",
+  "spell.eclipse.ring": "Eclipse Sign \"Ring Without a Clasp\"",
+  "spell.eclipse.spiral": "Shadow Sign \"Spiral of the Last Ray\"",
+  "spell.eclipse.corona": "Corona Sign \"Three Shelters under the Black Sun\"",
+  "spell.eclipse.lanes": "Fall Sign \"Rain of Red Light\"",
+  "spell.eclipse.mirror": "Mirror Sign \"Two Shadows, One Echo\"",
+  "spell.eclipse.noose": "Noose Sign \"The Ring Closes\"",
+  "boss.stance.ring": "Ring",
+  "boss.stance.spiral": "Spiral",
+  "boss.stance.corona": "Corona",
+  "boss.stance.lanes": "Rain",
+  "boss.stance.mirror": "Mirror",
+  "boss.stance.noose": "Noose"
 }

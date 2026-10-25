@@ -78,6 +78,12 @@ export interface SimaElites {
   /** Volley: the two extra shots fly this many degrees to each side. */
   volleyDegrees: number;
   traits: readonly EliteTrait[];
+  /**
+   * Deep elites (from `pierceRoll.fromFloor`) sometimes strike positionally:
+   * their attacks ignore roll i-frames (`EnemyState.pierceRoll`; the core rule
+   * comes with the difficulty tiers).
+   */
+  pierceRoll: { fromFloor: number; chance: number };
   /** Presentation: the glow of each trait. */
   tints: Readonly<Record<EliteTrait, string>>;
 }
@@ -93,6 +99,7 @@ export const SIMA_ELITES: SimaElites = {
   enrageBelow: 0.4,
   volleyDegrees: 16,
   traits: ['swift', 'volley', 'armored', 'enrage'],
+  pierceRoll: { fromFloor: 21, chance: 0.3 },
   tints: { swift: '#7fe3ff', volley: '#d68cff', armored: '#c9d2e0', enrage: '#ff5a3a' },
 };
 

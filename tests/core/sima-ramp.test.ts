@@ -85,6 +85,20 @@ describe('Sima ramp: tougher, not more', () => {
     expect(eliteTraitFor('poochyena', 0.99)).not.toBe('volley');
   });
 
+  it('deep elites (the abyss) sometimes strike positionally (pierceRoll), never before', () => {
+    let deep = 0;
+    for (const seed of SEEDS) {
+      for (const floor of [12, 18]) for (const e of startRun(seed, {}, floor, ECL).world.enemies) expect(e.pierceRoll).toBeUndefined();
+      for (const floor of [23, 27, 33, 37]) deep += startRun(seed, {}, floor, ECL).world.enemies.filter((e) => e.pierceRoll && e.elite).length;
+    }
+    expect(SIMA_ELITES.pierceRoll.fromFloor).toBe(21);
+    expect(deep).toBeGreaterThan(0);
+    const host = { ...spawnEnemy(createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(400, 300) }), 'golett', vec(430, 300)) };
+    const marked = { ...host, enemies: host.enemies.map((e) => ({ ...e, elite: 'swift' as const, pierceRoll: true as const })) };
+    const wire = decodeMessage(encodeMessage({ t: 'snap', at: 0, floor: 23, s: hostSnapshot(marked) }));
+    expect(wire && wire.t === 'snap' ? wire.s.enemies[0] : null).toMatchObject({ elite: 'swift', pierceRoll: true });
+  });
+
   it('swift elites act faster, enraged ones only once hurt', () => {
     const base = { hp: 100, maxHp: 100 } as EnemyState;
     expect(eliteTimeScale(base)).toBe(1);

@@ -64,6 +64,7 @@ export interface EnemySnapshot {
   /** Sima elite trait, and whether its armor still holds. */
   elite?: EliteTrait;
   armor?: true;
+  pierceRoll?: true;
 }
 
 /** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
@@ -168,6 +169,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       ...(e.spent ? { spent: true } : {}),
       ...(e.elite ? { elite: e.elite } : {}),
       ...(e.armor ? { armor: true as const } : {}),
+      ...(e.pierceRoll ? { pierceRoll: true as const } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
     ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
@@ -236,6 +238,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       ...(s.spent ? { spent: true } : {}),
       elite: s.elite,
       armor: s.armor,
+      pierceRoll: s.pierceRoll,
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');

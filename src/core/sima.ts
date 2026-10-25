@@ -79,10 +79,12 @@ export function rollElites(world: WorldState, seed: number, floor: number, elite
   const enemies = world.enemies.map((enemy): EnemyState => {
     const roll = draw();
     const pick = draw();
+    const pierce = draw();
     if (roll >= chance) return enemy;
     const trait = eliteTraitFor(enemy.species, pick, elites);
     const maxHp = enemy.maxHp * elites.hpScale;
-    return { ...enemy, maxHp, hp: maxHp, elite: trait, ...(trait === 'armored' ? { armor: true as const } : {}) };
+    const positional = floor >= elites.pierceRoll.fromFloor && pierce < elites.pierceRoll.chance;
+    return { ...enemy, maxHp, hp: maxHp, elite: trait, ...(trait === 'armored' ? { armor: true as const } : {}), ...(positional ? { pierceRoll: true as const } : {}) };
   });
   return { ...world, enemies };
 }

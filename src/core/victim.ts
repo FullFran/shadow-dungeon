@@ -1,3 +1,4 @@
+import { eclipseZoneContact } from './eclipse-echo';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type SlammerDef, type ThiefDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
@@ -80,6 +81,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (def.kind === 'eclipse') {
+      // The Eclipse Echo's corona and noose (its other cards are projectiles).
+      const zone = eclipseZoneContact(current, enemy, def, current.player.pos);
+      if (!zone) continue;
+      hit = contactPlayer(current, enemy, zone.attack, zone.touches, events);
     } else if (enemy.boss?.stance === 'midnight') {
       hit = contactPlayer(current, enemy, def.phase2.midnight.attack, slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
     } else if (enemy.boss && enemy.boss.stance !== 'shield' && enemy.boss.stance !== 'blade') {

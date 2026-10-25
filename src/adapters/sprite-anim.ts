@@ -234,6 +234,7 @@ const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   sableye: 'Attack',
   'eclipse-nest': 'Idle',
   'eclipse-hunter': 'Attack',
+  'eclipse-echo': 'Shoot',
 };
 
 export interface EnemyAnimContext {
