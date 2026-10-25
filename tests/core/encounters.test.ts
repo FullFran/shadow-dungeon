@@ -9,7 +9,7 @@ import { DIFFICULTIES } from '../../src/data/difficulty';
 import { tieredSpawns } from '../../src/core/difficulty';
 import { generateFloor, roomBudget, tileDistances } from '../../src/core/dungeon';
 import { endlessSpawns } from '../../src/core/endless';
-import { xpFor } from '../../src/core/progression';
+import { enemyXp } from '../../src/core/progression';
 import { startRun } from '../../src/core/run';
 
 const SEEDS = Array.from({ length: 150 }, (_, i) => i * 7919 + 13);
@@ -28,7 +28,7 @@ function floorAverages(d: DungeonDef): { enemies: number; xp: number } {
       const { world } = startRun(seed, { difficulty: 'easy' }, floor, d.id);
       const real = world.enemies.filter((e) => e.species !== 'eclipse-hunter' && e.species !== 'eclipse-nest');
       enemies += real.length / SEEDS.length;
-      xp += real.reduce((sum, e) => sum + xpFor(e.species, floor), 0) / SEEDS.length;
+      xp += real.reduce((sum, e) => sum + enemyXp(e, floor), 0) / SEEDS.length;
     }
   }
   return { enemies: enemies / floors.length, xp: xp / floors.length };

@@ -77,7 +77,7 @@ export const CRYPT_SPAWNS: SpawnTuning = {
   perDepth: 0.5,
   jitter: 1,
   maxPerRoom: 4,
-  budget: { base: 2, perDepth: 1, jitter: 1, maxEnemies: 3, rest: [0.3, 0.25, 0.25, 0.2, 0.2], repeatWeight: 0.4 },
+  budget: { base: 2, perDepth: 1, jitter: 1, maxEnemies: 3, rest: [0.15, 0.25, 0.25, 0.2, 0.2], repeatWeight: 0.4, leaders: { fromFloor: 2, start: 0.3, perFloor: 0.1, max: 0.6 } },
   pool: [
     { species: 'poochyena', weights: [3, 3, 2, 2, 2] },
     { species: 'gastly', weights: [2, 2, 2, 2, 2] },

@@ -116,6 +116,8 @@ export interface EncounterBudget {
   repeatWeight: number;
   /** Roles per room (set from the run's tier by core/difficulty.ts `tieredSpawns`; `ROLES_PER_ROOM.easy` when absent). */
   maxRoles?: number;
+  /** Groups that follow a leader, by depth (absent: none). */
+  leaders?: LeaderChance;
 }
 
 /** Roles one room may mix, by tier (research P2: two up to Normal, three from Hard). */
@@ -126,15 +128,16 @@ export const ROLES_PER_ROOM: Readonly<Record<Difficulty, number>> = { easy: 2, n
  * (data/progression.ts): with about 40 % fewer enemies, each one pays more so
  * a player who kills what is there earns about as much per floor as before.
  * Guardians, mid-bosses and echoes have no role and pay as they always did.
- * Tuned against the pre-change average per dungeon (tests/core/encounters.test.ts).
+ * Tuned with the leaders' bonus (`LEADER.xp`) against the pre-change average
+ * per dungeon (tests/core/encounters.test.ts).
  */
 export const ROLE_XP_SCALE: Readonly<Record<EnemyRole, number>> = {
-  brute: 1.45,
-  skirmisher: 1.75,
-  ranged: 1.6,
-  swarm: 2.2,
-  controller: 1.5,
-  support: 1.5,
+  brute: 1.2,
+  skirmisher: 1.45,
+  ranged: 1.3,
+  swarm: 1.85,
+  controller: 1.25,
+  support: 1.25,
 };
 
 /** Experience scale of a defeated species: its role's, or 1 for guardians and anything without a role. */
@@ -142,3 +145,48 @@ export const xpScaleOf = (species: SpeciesId): number => {
   const role = SPECIES_ROLE[species];
   return role ? ROLE_XP_SCALE[role] : 1;
 };
+
+// Leaders (docs/gdd.md §3 "Encuentros con sentido"): some groups follow one.
+
+/**
+ * What a group does when its leader falls, one readable rule per role:
+ * - `stagger`: it reels (hitstun) for a moment: a free opening.
+ * - `slow`: it loses heart: its whole clock runs slower for a while.
+ * - `unbuff`: it only loses the leader's pace (the controllers keep their ground).
+ */
+export type BreakRule = 'stagger' | 'slow' | 'unbuff';
+
+export const BREAK_RULE: Readonly<Record<EnemyRole, BreakRule>> = {
+  brute: 'stagger',
+  skirmisher: 'slow',
+  ranged: 'slow',
+  swarm: 'stagger',
+  controller: 'unbuff',
+  support: 'stagger',
+};
+
+/** Chance that a group (a room with two or more enemies) follows a leader: `start` from `fromFloor`, + `perFloor`, at most `max`. */
+export interface LeaderChance {
+  fromFloor: number;
+  start: number;
+  perFloor: number;
+  max: number;
+}
+
+export const LEADER = {
+  /** A leader spawns with this much more HP. */
+  hp: 1.6,
+  /** A leader pays this many times its own experience (the bonus for felling it). */
+  xp: 2,
+  /** Followers keep the leader's pace while it stands: their clock runs this much faster. */
+  inspiredPace: 1.1,
+  /**
+   * The leader's signature move, the rally cry (Grito de mando): awake and
+   * with a follower left, it winds up for `telegraphMs` (its aura swells),
+   * then every follower within `radius` heals `heal` of its max HP and may
+   * attack again at once. First cry `firstMs` after waking, then every `everyMs`.
+   */
+  rally: { firstMs: 2500, everyMs: 7500, telegraphMs: 900, radius: 192, heal: 0.15 },
+  /** The break: how long a stagger and a slow last, and how slow. */
+  break: { staggerMs: 1500, slowMs: 6000, slowPace: 0.6 },
+} as const;

@@ -100,7 +100,8 @@ describe('one elite system', () => {
     for (const e of nightmare) expect(SIMA_ELITES.traits).toContain(e.elite);
     // HP: species x depth x tier x trait x the Sima's elite bonus.
     const world = startRun(4242, { difficulty: 'nightmare' }, 27, ECL).world;
-    const elite = world.enemies.find((e) => e.elite)!;
+    // A leader spawns tougher still (core/leaders.ts): take an elite that leads nobody.
+    const elite = world.enemies.find((e) => e.elite && !e.leader)!;
     expect(elite).toBeDefined();
     expect(elite.maxHp).toBeCloseTo(SPECIES[elite.species].maxHp * world.enemyScale!.hp * TIERS.nightmare.hp * ELITE_TRAIT_DEFS[elite.elite!].hp * SIMA_ELITES.hpScale);
   });

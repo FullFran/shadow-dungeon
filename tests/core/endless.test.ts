@@ -184,7 +184,8 @@ describe('depth scaling', () => {
 
   it('enemies of a deep floor spawn with more HP and hit harder; other dungeons are unscaled', () => {
     const deep = startRun(SEED, {}, 12, ECL).world;
-    const enemy = deep.enemies[0]!;
+    // A group's leader spawns tougher still (core/leaders.ts): take a follower or a loner.
+    const enemy = deep.enemies.find((e) => !e.leader)!;
     const scale = depthScale(ENDLESS.scaling, 12);
     expect(enemy.maxHp).toBeCloseTo(SPECIES[enemy.species].maxHp * scale.hp);
     expect(enemy.hp).toBe(enemy.maxHp);

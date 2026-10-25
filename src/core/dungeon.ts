@@ -25,6 +25,8 @@ export interface FloorSpawn {
   tile: TilePoint;
   /** Index into `rooms`. */
   room: number;
+  /** Its group's leader (core/leaders.ts `assignLeaders`). */
+  leader?: true;
 }
 
 export interface Floor extends TileGrid {

@@ -1,6 +1,7 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
 import { eliteTimeScale, tickAiAt, worldDifficulty } from './difficulty';
+import { bandTimeScale } from './leaders';
 import { atLeast } from '../data/difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
@@ -390,7 +391,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       continue;
     }
     // Elites: swift ones always act faster, enraged ones once hurt (on top of the tier's clocks).
-    const ems = ms * eliteTimeScale(enemy);
+    // A leader's followers keep its pace; broken ones lose heart (core/leaders.ts).
+    const ems = ms * eliteTimeScale(enemy) * bandTimeScale(enemy);
     // In a party a boss keeps one target and turns to another now and then (core/aggro.ts); otherwise the nearest player.
     const aimed = aggroTarget(current, { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite) }, ems, events);
     const ticked = aimed.enemy;

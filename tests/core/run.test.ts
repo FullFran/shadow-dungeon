@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RUN, RUN_PLAN } from '../../src/data/dungeon';
-import { generateFloor } from '../../src/core/dungeon';
+import { generateFloor, type Floor } from '../../src/core/dungeon';
 import { chooseItem, floorPlanOf, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
 import { ROOMS } from '../../src/data/rooms';
 import type { PlayerInput, WorldState } from '../../src/core/state';
@@ -59,7 +59,12 @@ describe('run structure', () => {
         const exit = ROOMS.vault.exit!;
         const standing = { ...progress.world, player: { ...progress.world.player, pos: vec(exit.x + exit.width / 2, exit.y + exit.height / 2) } };
         expect(progressRun(progress.run, standing).entered).toBe(false);
-      } else expect(progress.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor));
+      } else {
+        // The floor as generated; its groups' leaders are crowned afterwards (core/leaders.ts), so compare the map, not the spawn list.
+        const { spawns: _crowned, ...map } = progress.world.arena.tiles as Floor;
+        const { spawns: _drawn, ...generated } = generateFloor(floorSeed(SEED, floor), floor);
+        expect(map).toEqual(generated);
+      }
     }
     progress = descend(progress);
     expect(progress.run.floor).toBe(6);

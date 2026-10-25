@@ -24,7 +24,7 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 
 ## Tasks
 - [x] T1 Roles + threat budget + XP/coin parity (route: inline in this writer; RED: 4 existing tests pinned the old counts/XP/digest and failed, updated on purpose; new tests/core/encounters.test.ts)
-- [ ] T2 Leaders and break rules (route: inline)
+- [x] T2 Leaders and break rules (route: inline; RED: 3 existing tests broke where a leader's extra HP or crowned spawns showed (fixed to pick non-leaders), new tests/core/leaders.test.ts written with the code)
 - [ ] T3 Floor gates (route: inline)
 - [ ] T4 Tuning, docs, screenshots (route: inline)
 
@@ -48,10 +48,15 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 ## After T1 (Easy, 150 seeds, enemies / XP per generated floor; ratio vs baseline)
 - Crypt 5.42 / 232 (0.60 / 0.98); Forest 6.80 / 320 (0.62 / 1.05); Caves 7.38 / 442 (0.63 / 0.96); Swamp 6.67 / 424 (0.61 / 0.97); Sima 5.93 / 895 (0.63 / 0.97).
 
+## After T2 (XP includes the leader bonus)
+- Crypt 5.58 / 237 (0.62 / 1.00); Forest 6.80 / 315 (0.62 / 1.03); Caves 7.38 / 431 (0.63 / 0.94); Swamp 6.67 / 416 (0.61 / 0.95); Sima 5.93 / 879 (0.63 / 0.95).
+- Floor 1 pays less than before (Crypt 51 vs 66) and deep floors more; the average holds.
+
 ## Decisions
 - Roles live in `src/data/encounters.ts` (`SPECIES_ROLE`); no species is a natural support, the leader's rally cry plays that part.
 - Budget per room = base + perDepth × (depth − 1) + int jitter; max 3 bodies; roles per room by tier (2 up to Normal, 3 from Hard), the tier never adds bodies.
 - XP parity through a per-role XP scale (`ROLE_XP_SCALE`) applied in `xpFor`; guardians and mid-bosses have no role and pay as before. Pokémonedas per enemy 1 → 1.65.
+- Leaders: one per group of 2+, the highest-threat enemy, chance rising with depth (never on floor 1); ×1.6 HP, ×2 XP, crown and gold ring; signature move = rally cry (0.9 s wind-up, heals followers in 192 px by 15 % and resets their cooldowns, every 7.5 s). Followers run 1.1× while it stands. Break rule per role: brute/swarm/support stagger 1.5 s, skirmisher/ranged slow (0.6× clock) 6 s, controller only loses the pace. Seeded on every peer (no wire change); host runs cries, every peer breaks bands when the leader is seen down.
 - Easy golden digest re-recorded on purpose ('bebcc214' → new value per task).
 
 ## Progress

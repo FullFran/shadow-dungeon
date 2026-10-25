@@ -1,5 +1,6 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
 import { ELITE_TRAIT_DEFS, type Difficulty } from '../data/difficulty';
+import { LEADER } from '../data/encounters';
 import { worldDifficulty } from '../core/difficulty';
 import { pierceZone, type PierceZone } from '../core/victim';
 import { behaviourFor } from '../core/tricks';
@@ -129,6 +130,10 @@ const COLORS = {
   tileWallFace: '#433a57',
   tileWallLip: '#5a4f73',
   tileShadow: 'rgba(0, 0, 0, 0.35)',
+  /** A group's leader: its crown and ring; a slowed follower's drop. */
+  leader: '#f2c44c',
+  leaderGem: '#d0402c',
+  broken: '#7fb2ff',
   stairsPit: '#0b0910',
   stairsStep: '#8f84b0',
   stairsGlow: 'rgba(170, 140, 255, 0.35)',
@@ -229,6 +234,46 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.beginPath();
     ctx.arc(Math.round(pos.x), Math.round(pos.y - enemy.radius * 0.6), enemy.radius + 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * Meaningful encounters (core/leaders.ts): a leader wears a gold crown and
+   * a gold ring that swells while it winds up its rally cry; a follower whose
+   * leader fell shows its break (stars for a stagger, a blue drop for a slow).
+   */
+  function leaderMarks(enemy: EnemyState, pos: Vec2, timeMs: number): void {
+    const x = Math.round(pos.x);
+    const top = Math.round(pos.y - enemy.radius * 2 - 6);
+    ctx.save();
+    if (enemy.leader) {
+      const calling = enemy.leader.rallying;
+      const pulse = 0.5 + 0.5 * Math.sin(timeMs / 260);
+      const swell = calling === undefined ? 0 : Math.min(1, calling / LEADER.rally.telegraphMs);
+      ctx.globalAlpha = calling === undefined ? 0.35 + 0.25 * pulse : 0.5 + 0.5 * swell;
+      ctx.strokeStyle = COLORS.leader;
+      ctx.lineWidth = calling === undefined ? 2 : 3;
+      ctx.beginPath();
+      const r = enemy.radius + 7 + (calling === undefined ? 0 : swell * (LEADER.rally.radius - enemy.radius - 7));
+      ctx.ellipse(x, Math.round(pos.y), r, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // The crown: three points over a band.
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = COLORS.leader;
+      ctx.fillRect(x - 6, top, 12, 3);
+      for (const dx of [-6, -1, 4]) ctx.fillRect(x + dx, top - 3 - (dx === -1 ? 2 : 0), 2, 3 + (dx === -1 ? 2 : 0));
+      ctx.fillStyle = COLORS.leaderGem;
+      ctx.fillRect(x - 1, top + 1, 2, 1);
+    } else if (enemy.broken?.rule === 'stagger') {
+      ctx.fillStyle = COLORS.leader;
+      for (let i = 0; i < 3; i++) {
+        const a = timeMs / 180 + (i * Math.PI * 2) / 3;
+        ctx.fillRect(Math.round(x + Math.cos(a) * 8) - 1, Math.round(top + 2 + Math.sin(a) * 3) - 1, 2, 2);
+      }
+    } else if (enemy.broken?.rule === 'slow') {
+      ctx.fillStyle = COLORS.broken;
+      ctx.fillRect(x - 1, top + ((timeMs / 60) % 6), 2, 3);
+    }
     ctx.restore();
   }
 
@@ -1306,6 +1351,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
           ctx.filter = 'none';
+          if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
         },
       });
       // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.

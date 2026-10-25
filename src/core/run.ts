@@ -10,6 +10,7 @@ import { placeBerries } from './berries';
 import { shallowWater } from './water';
 import { placePools } from './toxic';
 import { generateFloor } from './dungeon';
+import { assignLeaders } from './leaders';
 import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
@@ -131,7 +132,9 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const tier = worldDifficulty(world);
   const drawn = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, tier));
   // The Sima: some rooms hold mixed squads (tougher, not more).
-  const floor = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
+  const squads = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
+  // Some groups follow a leader, more of them deeper (core/leaders.ts).
+  const floor = assignLeaders(squads, seed, run.floor, (endless ? endless.spawns : dungeonOf(run).spawns).budget?.leaders);
   const berries = placeBerries(floor, seed, run.floor);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);

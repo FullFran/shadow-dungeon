@@ -142,7 +142,7 @@ export const ENDLESS: EndlessDef = {
   eclipseEcho: { room: 'eclipse', music: 'guardian' },
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
-  spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3, budget: { base: 2, perDepth: 0.2, jitter: 1, maxEnemies: 3, rest: [0.2], repeatWeight: 0.4 } },
+  spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3, budget: { base: 2, perDepth: 0.2, jitter: 1, maxEnemies: 3, rest: [0.2], repeatWeight: 0.4, leaders: { fromFloor: 3, start: 0.15, perFloor: 0.02, max: 0.6 } } },
   scaling: { hpPerFloor: 0.05, damagePerFloor: 0.035, maxHp: 3, maxDamage: 2.5, echoHp: 0.6 },
   urgent: [
     { kind: 'collapse', fromFloor: 2, start: 0.08, perFloor: 0.01, max: 0.22 },

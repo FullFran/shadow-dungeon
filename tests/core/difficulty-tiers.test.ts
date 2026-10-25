@@ -65,7 +65,7 @@ function fnv(text: string): string {
  * which deliberately changes Easy floors. A change to the simulation changes
  * it: re-record it only on purpose.
  */
-const PRE_TIER_DIGEST = '8aaae98e';
+const PRE_TIER_DIGEST = '83b19334';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {

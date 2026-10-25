@@ -2,7 +2,8 @@ import { xpScaleOf } from '../data/encounters';
 import { PROGRESSION } from '../data/progression';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
-import type { GameEvent, PlayerState, WorldState } from './state';
+import { leaderXp } from './leaders';
+import type { EnemyState, GameEvent, PlayerState, WorldState } from './state';
 import { upgradeBonuses } from './upgrades';
 
 /**
@@ -17,6 +18,9 @@ export function xpFor(species: SpeciesId, depth: number): number {
   // Fewer enemies that matter (data/encounters.ts): a floor enemy pays its role's scale on top of its species' experience.
   return PROGRESSION.xpBySpecies[species] * xpScaleOf(species) * (1 + PROGRESSION.xpPerDepth * Math.max(0, depth - 1));
 }
+
+/** Experience of one defeated enemy at a depth: its species' (and role's), times a leader's bonus (core/leaders.ts). */
+export const enemyXp = (enemy: Pick<EnemyState, 'species' | 'leader'>, depth: number): number => xpFor(enemy.species, depth) * leaderXp(enemy);
 
 const LEVELS = PROGRESSION.levelXp;
 export const MAX_LEVEL = LEVELS.length;
@@ -64,6 +68,6 @@ export function creditDefeats(state: WorldState, events: GameEvent[]): WorldStat
   const credited = [...state.credited, ...fresh.map((e) => e.id)];
   if (state.player.hp <= 0) return { ...state, credited };
   // The Insight upgrade scales every defeat's experience.
-  const amount = fresh.reduce((sum, e) => sum + xpFor(e.species, state.depth), 0) * upgradeBonuses(state.player.upgrades).xpGain;
+  const amount = fresh.reduce((sum, e) => sum + enemyXp(e, state.depth), 0) * upgradeBonuses(state.player.upgrades).xpGain;
   return { ...state, credited, player: gainXp(state.player, amount, events) };
 }
