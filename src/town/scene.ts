@@ -12,7 +12,8 @@ import { h, mdWindow } from '../ui/window';
 import { advanceDialog, lineDone, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { inExit, nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid } from './map';
-import { readRecords } from './records';
+import { DUNGEON_LORE } from '../data/dungeon-lore';
+import { boardLines, readRecords } from './records';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
 
 /**
@@ -94,14 +95,8 @@ function townCamera(focus: Vec2, map: TownMap) {
   return { ...view, y: view.y - SKY_BAND };
 }
 
-/** The notice board's lines: the local records, if there are any. */
-function boardLines(): string[] {
-  const records = readRecords(browserStore());
-  if (records.bestFloor === null && records.runs === null) return [t('town.board.title'), t('town.board.none')];
-  const best = t('town.board.best').replace('{floor}', records.bestFloor === null ? '-' : String(records.bestFloor));
-  const runs = t('town.board.runs').replace('{runs}', records.runs === null ? '-' : String(records.runs));
-  return [`${t('town.board.title')} ${best} · ${runs}`];
-}
+/** The notice board's lines: the local records of the first dungeon, if there are any. */
+const readBoard = (): string[] => boardLines(readRecords(browserStore()), DUNGEON_LORE[0]!.id, (key) => t(key));
 
 export interface TownHandle {
   stop(): void;
@@ -171,7 +166,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     held.clear();
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(boardLines()) }
+        ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
         : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(target.npc.lines.map((key) => t(key))) };
   }
 

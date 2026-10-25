@@ -28,6 +28,8 @@ import { nextAdventureScreen } from './adventure-route';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown } from '../town/scene';
+import { saveRun } from '../town/records';
+import { DUNGEON_LORE } from '../data/dungeon-lore';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -479,7 +481,11 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     onQuit: () => titleScreen(root),
-    onEnd: (result, summary) => resultScreen(root, result, summary, online),
+    onEnd: (result, summary) => {
+      // Solo and hosted runs count for the notice board; a guest's run is the host's.
+      if (shared.net?.role !== 'guest') saveRun(store, { dungeon: DUNGEON_LORE[0]!.id, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
+      resultScreen(root, result, summary, online);
+    },
   });
 }
 
