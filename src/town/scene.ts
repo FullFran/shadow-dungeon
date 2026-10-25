@@ -199,10 +199,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const parent = canvas.parentElement;
     if (!options.openShop || !parent) return;
     held.clear();
+    // The joystick and "Hablar" step aside while the shop window takes the taps.
+    touch.setSuspended(true);
     closeShop = options.openShop(parent, () => {
       closeShop?.();
       closeShop = null;
       held.clear();
+      touch.setSuspended(false);
       last = performance.now();
     });
   }

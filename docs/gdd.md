@@ -170,7 +170,7 @@ Se activan solos al primer toque (ajuste «Controles táctiles»: Automático, S
 | Tocar un enemigo | Lo fija si el fijado por clic está activado (no ataca) |
 | Pausa / Mapa | El menú de Esc y el minimapa |
 
-Sin objetivo fijado los movimientos van hacia donde miras, como Q y E; con «Apuntado automático» (activado por defecto) van al enemigo más cercano dentro de un cono delante de ti. «Vibración» da un pulso corto al recibir un golpe y en la esquiva perfecta. En los menús todo se toca y un botón «Atrás» hace de Esc; en el pueblo hay joystick y un botón «Hablar».
+Sin objetivo fijado los movimientos van hacia donde miras, como Q y E; con «Apuntado automático» (activado por defecto) van al enemigo más cercano dentro de un cono delante de ti. «Vibración» da un pulso corto al recibir un golpe y en la esquiva perfecta. En los menús todo se toca y un botón «Atrás» hace de Esc; en el pueblo hay joystick y un botón «Hablar». En la tienda, un toque sobre una mejora muestra su efecto y un segundo toque la compra, para que un toque perdido no gaste Pokémonedas.
 
 ### Estamina
 

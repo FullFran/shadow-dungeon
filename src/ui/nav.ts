@@ -63,3 +63,28 @@ export function navAction(code: string, layout: NavLayout = 'vertical'): NavActi
   if (layout === 'horizontal' && action === 'right') return 'next';
   return action;
 }
+
+export interface TapContext {
+  /** The row asks for two taps on touch (a shop purchase). */
+  tapToSelect: boolean;
+  /** The cursor was already on the row. */
+  wasActive: boolean;
+  /** Pointer type pressed down on this very row; null when none was. */
+  pressedBy: string | null;
+  /** A real pointer click (false: the keyboard confirm clicking the row). */
+  pointerClick: boolean;
+}
+
+/**
+ * What a click on a row does. A `tapToSelect` row touched while the cursor is
+ * elsewhere only takes the cursor, so its description can be read before a
+ * second tap confirms. A pointer click that was not pressed on the row (the
+ * click a touch browser fires after the tap that opened the window under the
+ * finger) only selects too, so it never buys. Mouse, pen, the keyboard and
+ * ordinary rows confirm at once.
+ */
+export function tapAction(tap: TapContext): 'select' | 'confirm' {
+  if (!tap.tapToSelect || !tap.pointerClick) return 'confirm';
+  if (tap.pressedBy === null) return 'select';
+  return tap.pressedBy === 'touch' && !tap.wasActive ? 'select' : 'confirm';
+}

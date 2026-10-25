@@ -1,4 +1,4 @@
-import { moveCursor, navAction, restoreCursor, selectable, type NavItem, type NavLayout } from './nav';
+import { moveCursor, navAction, restoreCursor, selectable, tapAction, type NavItem, type NavLayout } from './nav';
 import { h, type Child } from './window';
 
 /**
@@ -19,6 +19,8 @@ export interface ListItem extends NavItem {
   onAdjust?(delta: -1 | 1): void;
   onConfirm?(): void;
   className?: string;
+  /** Touch: the first tap only moves the cursor here, a second tap confirms (see `tapAction`). */
+  tapToSelect?: boolean;
 }
 
 export interface CursorListOptions {
@@ -138,12 +140,24 @@ export function cursorList(options: CursorListOptions): CursorList {
     row.tabIndex = -1;
     row.setAttribute('role', 'menuitem');
     if (item.disabled) row.setAttribute('aria-disabled', 'true');
-    row.addEventListener('pointerenter', () => {
+    // The pointer pressed on this row for the coming click (null: a keyboard confirm, or a click pressed elsewhere).
+    let pressedBy: string | null = null;
+    row.addEventListener('pointerdown', (e) => {
+      pressedBy = e.pointerType;
+    });
+    row.addEventListener('pointerenter', (e) => {
+      // A finger "enters" right before it taps: let the click decide for tap-to-select rows.
+      if (item.tapToSelect && e.pointerType === 'touch') return;
       if (selectable(item)) setIndex(i, false);
     });
-    row.addEventListener('click', () => {
+    row.addEventListener('click', (e) => {
+      const by = pressedBy;
+      pressedBy = null;
       if (!selectable(item)) return;
+      const wasActive = index === i;
       setIndex(i, false);
+      // detail 0: the keyboard confirm's row.click(); otherwise a real pointer click.
+      if (tapAction({ tapToSelect: item.tapToSelect ?? false, wasActive, pressedBy: by, pointerClick: e.detail > 0 }) === 'select') return;
       if (item.onConfirm) item.onConfirm();
       else adjust(item, 1);
     });

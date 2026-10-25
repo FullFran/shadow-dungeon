@@ -2,6 +2,7 @@ import { UPGRADES, type UpgradeId } from '../data/upgrades';
 import { buyUpgrade, SHOP_ORDER, upgradeCost, upgradeLevel } from '../core/upgrades';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
+import { isTouchUi } from '../adapters/touch-mode';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
@@ -13,7 +14,8 @@ import { loadSave, writeSave, type SaveData } from './save';
  * the effect text of the row under the cursor. Enter buys the next level;
  * rows the balance cannot pay (or maxed) show disabled and only play the
  * denied sound, but the cursor still stops on them so their effect can be
- * read. Opened from the town stall and from the title menu.
+ * read. On touch a row takes two taps: the first shows its effect, the
+ * second buys. Opened from the town stall and from the title menu.
  */
 export interface ShopRow {
   id: UpgradeId;
@@ -69,7 +71,7 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
 
   const describe = (index: number) => {
     const row = rows[index];
-    effect.textContent = row ? row.effect : t('shop.hint');
+    effect.textContent = row ? row.effect : t(isTouchUi() ? 'shop.hint.touch' : 'shop.hint');
   };
 
   const items = (): ListItem[] => [
@@ -78,6 +80,8 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
         label: `${row.name} ${t('shop.level').replace('{level}', String(row.level)).replace('{max}', String(row.max))}`,
         value: row.cost === null ? t('shop.max') : coinText(row.cost, (key) => t(key)),
         className: row.affordable ? 'shop-row' : 'shop-row is-disabled',
+        // Touch: tap once to read the effect, again to buy (no purchase by a stray tap).
+        tapToSelect: true,
         onConfirm: () => {
           const bought = purchase(options.store, row.id);
           if (!bought) {

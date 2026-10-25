@@ -351,6 +351,7 @@
   "shop.max": "MAX",
   "shop.now": "Now: {bonus}.",
   "shop.hint": "Pick an upgrade and press Enter to buy it.",
+  "shop.hint.touch": "Tap an upgrade to see it, and again to buy it.",
   "upgrade.vitality": "Vitality",
   "upgrade.vitality.effect": "Max HP {per} per level.",
   "upgrade.stamina": "Second Wind",

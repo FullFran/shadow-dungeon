@@ -351,6 +351,7 @@
   "shop.max": "MÁX.",
   "shop.now": "Ahora: {bonus}.",
   "shop.hint": "Elige una mejora y pulsa Enter para comprarla.",
+  "shop.hint.touch": "Toca una mejora para verla y otra vez para comprarla.",
   "upgrade.vitality": "Vitalidad",
   "upgrade.vitality.effect": "PS máximos {per} por nivel.",
   "upgrade.stamina": "Aliento",

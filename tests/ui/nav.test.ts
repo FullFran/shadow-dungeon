@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstSelectable, moveCursor, navAction, restoreCursor, selectable } from '../../src/ui/nav';
+import { firstSelectable, moveCursor, navAction, restoreCursor, selectable, tapAction } from '../../src/ui/nav';
 
 const items = (...flags: ('ok' | 'off' | 'head')[]) => flags.map((f) => ({ disabled: f === 'off', header: f === 'head' }));
 
@@ -60,5 +60,27 @@ describe('menu keys', () => {
       'prev',
       'next',
     ]);
+  });
+});
+
+describe('tap to select (shop rows on touch)', () => {
+  const tap = (tapToSelect: boolean, wasActive: boolean, pressedBy: string | null, pointerClick = true) => tapAction({ tapToSelect, wasActive, pressedBy, pointerClick });
+
+  it('a finger on a row that is not under the cursor only selects it; a second tap confirms', () => {
+    expect(tap(true, false, 'touch')).toBe('select');
+    expect(tap(true, true, 'touch')).toBe('confirm');
+  });
+
+  it('a click pressed elsewhere (the tap that opened the window, landing on a row) never confirms', () => {
+    expect(tap(true, false, null)).toBe('select');
+    expect(tap(true, true, null)).toBe('select');
+  });
+
+  it('mouse, pen, the keyboard confirm and ordinary rows confirm at once', () => {
+    expect(tap(true, false, 'mouse')).toBe('confirm');
+    expect(tap(true, false, 'pen')).toBe('confirm');
+    expect(tap(true, false, null, false)).toBe('confirm');
+    expect(tap(false, false, 'touch')).toBe('confirm');
+    expect(tap(false, false, null)).toBe('confirm');
   });
 });
