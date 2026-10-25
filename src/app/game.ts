@@ -24,6 +24,9 @@ import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
 import { isTouchUi } from '../adapters/touch-mode';
 import { holdWakeLock } from '../adapters/wake-lock';
+import { mergeInputs, touchToPlayerInput } from '../adapters/touch';
+import { hapticPulse, vibrate } from '../adapters/haptics';
+import { createTouchControls } from '../ui/touch-controls';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
@@ -64,6 +67,8 @@ export interface GameOptions {
   onEnd(result: GameResult, summary: RunSummary): void;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string };
+  /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
+  touch?: { autoAim(): boolean; haptics(): boolean };
 }
 
 /** What a fainted player sends in a shared run: nothing (no revive in the spike). */
@@ -88,7 +93,32 @@ export interface RunningGame {
  * and only clicks on the cards or 1/2/3 pick.
  */
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
-  const input = attachInput(canvas);
+  const keyboard = attachInput(canvas);
+  /** On-screen controls (hidden by CSS unless html.touch); Pause stands in for Esc. */
+  const touch = createTouchControls({
+    tapTarget: canvas,
+    buttons: [
+      { id: 'pause', label: t('touch.pause'), className: 'top', onPress: () => showMenu() },
+      { id: 'map', label: t('touch.map'), className: 'top', onPress: () => (showMinimap = !showMinimap) },
+      { id: 'lock', label: t('touch.lock'), swipe: true },
+      { id: 'roll', label: t('touch.roll') },
+      { id: 'heavy', label: t('touch.heavy'), className: 'big' },
+      { id: 'fast', label: t('touch.fast'), className: 'big' },
+    ],
+  });
+  (canvas.parentElement ?? document.body).append(touch.element);
+  /** Keyboard + mouse and touch, suspended and disposed together. */
+  const input = {
+    take: () => keyboard.take(),
+    setSuspended(suspended: boolean) {
+      keyboard.setSuspended(suspended);
+      touch.setSuspended(suspended);
+    },
+    dispose() {
+      keyboard.dispose();
+      touch.dispose();
+    },
+  };
   // Touch devices: keep the screen awake while the run lasts.
   const releaseWakeLock = isTouchUi() ? holdWakeLock() : () => {};
   const renderer = createRenderer(canvas, sheets);
@@ -271,7 +301,18 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const clock = advanceClock(accumulator, frameMs);
     accumulator = clock.accumulatorMs;
     for (let i = 0; i < clock.steps; i++) {
-      const raw = toPlayerInput(input.take(), view, pixelScale);
+      const keys = toPlayerInput(input.take(), view, pixelScale);
+      const touchInput = touchToPlayerInput(touch.take(), {
+        view,
+        pixelScale,
+        playerPos: world.player.pos,
+        facing: world.player.facing,
+        enemies: world.enemies,
+        lockType: world.lock.lockType,
+        locked: world.lock.targetId !== null,
+        autoAim: options.touch?.autoAim() ?? true,
+      });
+      const raw = mergeInputs(keys, touchInput);
       const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
@@ -287,6 +328,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       juice = applyEvents(juice, events, world.player.pos);
       audio?.handleEvents(events);
+      if (isTouchUi() && options.touch?.haptics()) {
+        const pulse = hapticPulse(events);
+        if (pulse !== null) vibrate(pulse);
+      }
       for (const line of eventMessages(events, (id) => world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
       for (const event of events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;

@@ -20,7 +20,7 @@ The game is keyboard + mouse only: menus need Esc, the run needs WASD/mouse, the
 
 ## Tasks
 - [x] T1 Layout, detection, settings, menus by tap (route: inline, single writer; pure parts test-first). RED observed for `fitCanvas`/`touchActive`/touch settings, then GREEN; full suite green; title/loadout screenshots at 844x390 and 390x844 checked (title switched to a row layout in low landscape, notice moved into the flow on touch).
-- [ ] T2 In-run touch controls (route: inline; mapping/joystick/aim/swipe test-first)
+- [x] T2 In-run touch controls (route: inline; mapping/joystick/aim/swipe test-first). RED (missing modules) then GREEN for joystick dead zone, swipe steps, auto-aim cone, touch->PlayerInput, keyboard merge, haptics; screenshots show joystick moving the player (two fingers at once) and Pausa opening/closing the menu. Decision: Lock tap = press edge under `toggle`, button level under `hold` (keeps the lock-type setting meaningful).
 - [ ] T3 Town, online, prologue by touch (route: inline)
 - [ ] T4 PWA manifest, service worker, install invitation (route: inline; manifest/precache/banner logic test-first)
 

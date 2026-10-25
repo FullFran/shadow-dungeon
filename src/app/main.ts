@@ -500,6 +500,7 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
     ...shared,
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
+    touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     onQuit: () => titleScreen(root),
     onEnd: (result, summary) => {

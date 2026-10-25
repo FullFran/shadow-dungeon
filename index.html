@@ -215,6 +215,8 @@
       @media (orientation: portrait) {
         html.touch .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
           color: var(--md-cursor); background: rgba(5, 6, 13, 0.85); border: 2px solid var(--md-border-shade); border-radius: 8px; pointer-events: none; }
+        /* In a run the canvas sits in the middle: the hint goes in the empty band above it, clear of the buttons. */
+        html.touch #app:has(canvas.game) ~ .rotate-hint { bottom: auto; top: 22%; }
       }
       html.touch #app { justify-content: safe center; }
       html.touch .hint { display: none; }
@@ -228,6 +230,31 @@
         html.touch .title-menu .md-item { min-height: 40px; }
         html.touch .notice { font-size: 11px; }
       }
+      /* ---- Touch controls (src/ui/touch-controls.ts): floating joystick left, actions right ---- */
+      .touch-layer { display: none; }
+      html.touch .touch-layer { display: block; position: fixed; inset: 0; z-index: 4; pointer-events: none; touch-action: none; }
+      .touch-zone { position: absolute; top: 0; bottom: 0; width: 50%; pointer-events: auto; touch-action: none; }
+      .touch-zone-left { left: 0; }
+      .touch-zone-right { right: 0; }
+      .touch-stick { position: absolute; width: 112px; height: 112px; margin: -59px 0 0 -59px; border-radius: 50%; border: 3px solid rgba(245, 247, 255, 0.35); background: rgba(5, 6, 13, 0.3); display: none; pointer-events: none; }
+      .touch-stick.is-visible { display: block; }
+      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 212, 71, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
+      .touch-cluster { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: 190px; height: 170px; pointer-events: none; }
+      .touch-corner { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+      .touch-button { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box; width: 60px; height: 60px; padding: 0; border-radius: 50%; font: inherit; font-size: 14px; line-height: 1; color: var(--md-text);
+        background: rgba(15, 26, 69, 0.38); border: 3px solid rgba(245, 247, 255, 0.7); box-shadow: 0 0 0 2px rgba(5, 6, 13, 0.8); -webkit-user-select: none; user-select: none; }
+      .touch-button[hidden] { display: none; }
+      .touch-button.big { width: 76px; height: 76px; font-size: 16px; }
+      .touch-button.is-pressed { background: rgba(255, 212, 71, 0.85); color: var(--md-ink); transform: scale(0.94); }
+      .touch-button.top { position: static; width: 72px; height: 44px; padding: 0 6px; border-radius: 9px; background: rgba(15, 26, 69, 0.7); }
+      .touch-fast { right: 0; bottom: 0; }
+      .touch-heavy { right: 92px; bottom: 0; }
+      .touch-roll { right: 8px; bottom: 92px; }
+      .touch-lock { right: 100px; bottom: 96px; }
+      .touch-lock::before, .touch-lock::after { position: absolute; top: 50%; margin-top: -0.5em; font-size: 10px; opacity: 0.7; }
+      .touch-lock::before { content: '◀'; left: -14px; }
+      .touch-lock::after { content: '▶'; right: -14px; }
+      .touch-talk { right: 0; bottom: 0; }
     </style>
   </head>
   <body>
