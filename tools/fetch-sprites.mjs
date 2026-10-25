@@ -8,7 +8,7 @@
 // SpriteCollab layout: sprite/<dex4>/ is the base form, sprite/<dex4>/<form4>/
 // an alternate form. Sheets have one column per frame and one row per
 // direction (see DIRECTIONS). Frame durations are in 1/60 s ticks.
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -18,6 +18,7 @@ import {
   parseCreditNames,
   parseCredits,
   pickAnim,
+  preservedSections,
   resolveAuthor,
   shadowAnchor,
 } from './sprite-lib.mjs';
@@ -29,9 +30,14 @@ const OUT_META = join(ROOT, 'src', 'data', 'sprite-meta.json');
 const OUT_CREDITS = join(ROOT, 'CREDITS.md');
 
 // Form names verified against SpriteCollab's tracker.json
-// (0681 subgroup 0001 is named "Blade"; the base folder is the Shield form).
+// (0681 subgroup 0001 is named "Blade"; the base folder is the Shield form;
+// 0778 subgroup 0001 is Mimikyu's Busted form).
 const TARGETS = [
   { dex: '0778', form: '0000', species: 'mimikyu', formName: 'disguised' },
+  { dex: '0778', form: '0001', species: 'mimikyu', formName: 'busted' },
+  { dex: '0570', form: '0000', species: 'zorua', formName: 'base' },
+  { dex: '0607', form: '0000', species: 'litwick', formName: 'base' },
+  { dex: '0104', form: '0000', species: 'cubone', formName: 'base' },
   { dex: '0261', form: '0000', species: 'poochyena', formName: 'base' },
   { dex: '0092', form: '0000', species: 'gastly', formName: 'base' },
   { dex: '0681', form: '0000', species: 'aegislash', formName: 'shield' },
@@ -52,6 +58,7 @@ const WANTED = {
   Double: [],
   Hop: [],
   Rotate: [],
+  SpAttack: [],
 };
 
 async function fetchBuffer(url) {
@@ -136,7 +143,7 @@ async function collectCredits(targets, names) {
   return perArtist;
 }
 
-function creditsMarkdown(perArtist) {
+function creditsMarkdown(perArtist, kept) {
   const rows = [...perArtist.entries()]
     .sort(([a], [b]) => a.localeCompare(b, 'en', { sensitivity: 'base' }))
     .map(([name, { contact, sprites }]) => `| ${name} | ${contact || '-'} | ${[...sprites].join(', ')} |`);
@@ -158,6 +165,7 @@ function creditsMarkdown(perArtist) {
     '|---|---|---|',
     ...rows,
     '',
+    ...(kept ? [kept.trimEnd(), ''] : []),
   ].join('\n');
 }
 
@@ -170,7 +178,9 @@ async function main() {
 
   const names = parseCreditNames(await fetchText(`${RAW}/credit_names.txt`));
   const perArtist = await collectCredits(TARGETS, names);
-  await writeFile(OUT_CREDITS, creditsMarkdown(perArtist));
+  // Hand-written sections (Font, Music) after the sprite table are kept as they are.
+  const existing = await readFile(OUT_CREDITS, 'utf8').catch(() => null);
+  await writeFile(OUT_CREDITS, creditsMarkdown(perArtist, preservedSections(existing)));
   console.log(`meta -> src/data/sprite-meta.json, ${perArtist.size} artists -> CREDITS.md`);
 }
 

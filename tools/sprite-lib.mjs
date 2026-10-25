@@ -101,6 +101,19 @@ export function resolveAuthor(names, author) {
   return names.get(author) ?? { name: author, contact: '' };
 }
 
+/**
+ * The hand-written part of an existing CREDITS.md: every `## ` section after
+ * the generated `## Sprites` one (Font, Music...), so regenerating the sprite
+ * table never drops them. Empty when there is no file or nothing to keep.
+ */
+export function preservedSections(markdown) {
+  if (!markdown) return '';
+  const lines = markdown.split('\n');
+  const sprites = lines.findIndex((line) => line.trim() === '## Sprites');
+  const start = lines.findIndex((line, i) => i > sprites && line.startsWith('## '));
+  return sprites < 0 || start < 0 ? '' : lines.slice(start).join('\n');
+}
+
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 /** Decodes an 8-bit, non-interlaced PNG (grey, RGB, palette, grey+alpha, RGBA) to RGBA pixels. */

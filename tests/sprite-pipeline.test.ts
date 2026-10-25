@@ -6,6 +6,7 @@ import {
   parseCreditNames,
   parseCredits,
   pickAnim,
+  preservedSections,
   resolveAuthor,
   shadowAnchor,
 } from '../tools/sprite-lib.mjs';
@@ -88,6 +89,18 @@ describe('credits', () => {
   });
 });
 
+describe('credits regeneration', () => {
+  it('keeps every hand-written section after the generated Sprites section', () => {
+    const md = ['# Credits', '', 'intro', '', '## Sprites', '', '| a | b |', '', '## Font', '', 'Pixelify', '', '## Music', '', '- track', ''].join('\n');
+    expect(preservedSections(md)).toBe(['## Font', '', 'Pixelify', '', '## Music', '', '- track', ''].join('\n'));
+  });
+
+  it('keeps nothing when there is no file or no extra section', () => {
+    expect(preservedSections(null)).toBe('');
+    expect(preservedSections('# Credits\n\n## Sprites\n\n| a |\n')).toBe('');
+  });
+});
+
 describe('PNG decoding and shadow anchor', () => {
   it('decodes filtered RGBA rows and finds the opaque centroid of the first frame', () => {
     const image = decodePng(tinyPng());
@@ -99,7 +112,7 @@ describe('PNG decoding and shadow anchor', () => {
 });
 
 describe('generated sprite meta', () => {
-  it('covers every M0 sprite with the seven core animations in 8 directions', () => {
+  it('covers every sprite with the seven core animations in 8 directions', () => {
     expect(SPRITES.directions).toHaveLength(8);
     for (const key of Object.values(SPRITE_KEYS)) {
       const sprite = SPRITES.sprites[key];

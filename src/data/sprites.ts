@@ -38,6 +38,11 @@ export const SPRITES: SpriteCatalog = spriteMeta;
 /** Sprite key "<dex4>/<form4>", also the folder under public/sprites. */
 export const SPRITE_KEYS = {
   mimikyu: '0778/0000',
+  /** Mimikyu with its Disguise broken (drawn once the free hit of the room is spent). */
+  mimikyuBusted: '0778/0001',
+  zorua: '0570/0000',
+  litwick: '0607/0000',
+  cubone: '0104/0000',
   poochyena: '0261/0000',
   gastly: '0092/0000',
   aegislashShield: '0681/0000',
