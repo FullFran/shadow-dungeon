@@ -75,5 +75,7 @@
   "screen.menu": "Volver al menú",
   "hud.floor": "Planta",
   "screen.floorReached": "Planta alcanzada",
-  "screen.seed": "Semilla"
+  "screen.seed": "Semilla",
+  "card.collapse": "¡La planta se derrumba!",
+  "card.escaped": "Escapaste del derrumbe en {time}"
 }

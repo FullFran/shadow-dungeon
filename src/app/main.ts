@@ -32,6 +32,13 @@ function runSeed(): number {
   return Number.isFinite(fixed) ? fixed | 0 : (Math.random() * 2 ** 31) | 0;
 }
 
+/** Development server only: `?floor=N` starts the run on floor N (to look at a floor without playing down to it). */
+function devStartFloor(): number | undefined {
+  if (!import.meta.env.DEV) return undefined;
+  const floor = Number.parseInt(new URLSearchParams(window.location.search).get('floor') ?? '', 10);
+  return Number.isFinite(floor) ? floor : undefined;
+}
+
 function applyLanguage(language: Language): void {
   setLanguage(language);
   document.documentElement.lang = language;
@@ -136,6 +143,7 @@ async function play(root: HTMLElement): Promise<void> {
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
     seed: runSeed(),
+    startFloor: devStartFloor(),
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions),

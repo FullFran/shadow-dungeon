@@ -1,3 +1,4 @@
+import type { FloorKind } from '../data/dungeon';
 import type { GameEvent } from '../core/state';
 import { MUSIC, type Drum, type MusicId, type MusicTrack, type Note } from '../data/audio';
 import { JUICE } from './juice';
@@ -33,6 +34,7 @@ export const SOUND_IDS = [
   'click',
   'victory',
   'defeat',
+  'collapse',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -57,6 +59,7 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'enemyDefeated':
       return 'defeated';
     case 'playerHurt':
+    case 'collapseHurt':
       return 'hurt';
     case 'disguiseBroken':
       return 'disguiseBroken';
@@ -86,6 +89,17 @@ export function soundFor(event: GameEvent): SoundId | null {
       return null;
   }
 }
+
+/** Sounds on entering a floor (not a core event: the run loads the floor between steps). */
+export function floorEntrySounds(kind: FloorKind): SoundId[] {
+  return kind === 'collapse' ? ['collapse'] : [];
+}
+
+/** Peak gain of the collapse rumble loop on the sfx bus. */
+export const RUMBLE_GAIN = 0.45;
+
+/** Gain of the rumble loop for a rumble level (0..1); squared so it swells near the front. */
+export const rumbleGain = (level: number): number => RUMBLE_GAIN * Math.min(1, Math.max(0, level)) ** 2;
 
 export interface SfxGate {
   /** True if a sound may start now; it then counts against the throttle and the voice cap until it ends. */
@@ -134,6 +148,8 @@ export interface AudioEngine {
   setVolumes(levels: AudioLevels): void;
   /** Lowers the music while the Esc menu is open. */
   setDucked(ducked: boolean): void;
+  /** Collapse rumble loop level, 0..1 (0 keeps it silent). */
+  setRumble(level: number): void;
 }
 
 const GATE = { minGapMs: 40, maxVoices: 12 };
@@ -296,6 +312,17 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
   click: { ms: 30, play: (s, t) => tone(s, t, { type: 'square', from: 1000, dur: 0.025, gain: 0.05, attack: 0.002 }) },
   victory: { ms: 900, play: (s, t) => arpeggio(s, t, 'square', [440, 523, 659, 880], 0.12, 0.55, 0.09) },
   defeat: { ms: 1300, play: (s, t) => arpeggio(s, t, 'triangle', [330, 262, 220, 165], 0.22, 0.7, 0.16) },
+  collapse: {
+    ms: 1400,
+    play: (s, t) => {
+      // A deep boom, then rocks crashing down and settling.
+      tone(s, t, { type: 'sine', from: 90, to: 28, dur: 1.1, gain: 0.55 });
+      // Noise bursts stay under the 1 s noise buffer.
+      noise(s, t, { filter: 'lowpass', from: 1800, to: 90, dur: 0.9, gain: 0.55 });
+      noise(s, t + 0.18, { filter: 'bandpass', from: 700, to: 160, dur: 0.6, gain: 0.3, q: 0.8 });
+      noise(s, t + 0.45, { filter: 'bandpass', from: 500, to: 120, dur: 0.5, gain: 0.22, q: 0.8 });
+    },
+  },
 };
 
 function playDrum(s: Synth, t: number, drum: Drum): void {
@@ -333,6 +360,7 @@ export function createAudio(initial: AudioLevels): AudioEngine {
   let noiseBuffer: AudioBuffer | null = null;
   let wanted: MusicId | null = null;
   let playback: Playback | null = null;
+  let rumble: { gain: GainNode } | null = null;
   const gate = createSfxGate(GATE);
 
   const synth = (out: AudioNode): Synth | null => (ctx && noiseBuffer ? { ctx, out, noise: noiseBuffer } : null);
@@ -395,6 +423,27 @@ export function createAudio(initial: AudioLevels): AudioEngine {
     recipe.play(s, ctx.currentTime, 0.92 + Math.random() * 0.16);
   }
 
+  /** The rumble: looping noise through two low-pass filters, started on first use and kept running at a variable gain. */
+  function rumbleNode(): { gain: GainNode } | null {
+    if (rumble) return rumble;
+    if (!ctx || !buses || !noiseBuffer) return null;
+    const source = ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+    source.loop = true;
+    const low = ctx.createBiquadFilter();
+    low.type = 'lowpass';
+    low.frequency.value = 140;
+    const lower = ctx.createBiquadFilter();
+    lower.type = 'lowpass';
+    lower.frequency.value = 90;
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    source.connect(low).connect(lower).connect(gain).connect(buses.sfx);
+    source.start();
+    rumble = { gain };
+    return rumble;
+  }
+
   return {
     unlock() {
       if (ctx) {
@@ -442,6 +491,13 @@ export function createAudio(initial: AudioLevels): AudioEngine {
     setDucked(next) {
       ducked = next;
       applyLevels();
+    },
+    setRumble(level) {
+      const target = rumbleGain(level);
+      if (target === 0 && !rumble) return;
+      const node = rumbleNode();
+      if (!node || !ctx) return;
+      node.gain.gain.setTargetAtTime(target, ctx.currentTime, 0.15);
     },
   };
 }

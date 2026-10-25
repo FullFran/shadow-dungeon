@@ -99,5 +99,6 @@ export function enterRoom(state: WorldState): WorldState {
     projectiles: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
     player: { ...state.player, disguiseBroken: false, action: null },
+    collapse: undefined,
   };
 }

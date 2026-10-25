@@ -1,6 +1,7 @@
 import type { MoveId } from '../data/moves';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
+import { collapseProximity } from '../core/collapse';
 import { floorPlanOf, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { LockType, PlayerInput, WorldState } from '../core/state';
@@ -8,9 +9,10 @@ import { step } from '../core/step';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { length } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
-import type { AudioEngine } from '../adapters/audio';
+import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
+import type { FloorCard } from '../adapters/card';
 import { attachInput, toPlayerInput } from '../adapters/input';
-import { applyEvents, initialJuice, tickJuice } from '../adapters/juice';
+import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec, pixelScaleFor } from '../adapters/view';
 import { simulationPaused, type MenuActions } from './menu';
@@ -32,8 +34,10 @@ export interface GameOptions {
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
+  /** Development only: start on this floor of the run (`?floor=` on the dev server). */
+  startFloor?: number;
   /** Sound effects from core events and the room / boss music (ducked while the Esc menu is open). */
-  audio?: Pick<AudioEngine, 'handleEvents' | 'setMusic' | 'setDucked'>;
+  audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
   onToggleMute?(): void;
   /** Esc: shows the menu overlay and returns a function that removes it. */
@@ -59,11 +63,15 @@ export interface RunningGame {
 export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options: GameOptions): RunningGame {
   const input = attachInput(canvas);
   const renderer = createRenderer(canvas, sheets);
-  const started = startRun(options.seed ?? 1, {
-    loadout: options.loadout,
-    lockType: options.lockType,
-    clickToLock: options.clickToLock,
-  });
+  const started = startRun(
+    options.seed ?? 1,
+    {
+      loadout: options.loadout,
+      lockType: options.lockType,
+      clickToLock: options.clickToLock,
+    },
+    options.startFloor,
+  );
   let run: RunState = started.run;
   let world: WorldState = started.world;
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
@@ -87,6 +95,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let closeMenu: (() => void) | null = null;
   const audio = options.audio;
   const music = () => audio?.setMusic(isBossFloor(run) ? 'boss' : 'room');
+  /** Title card of the current floor; game input keeps working while it shows. */
+  let card: FloorCard | null = null;
+  function announceFloor(): void {
+    card = { floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    for (const id of floorEntrySounds(run.kind)) audio?.play(id);
+  }
 
   function hideMenu(): void {
     if (!closeMenu) return;
@@ -106,6 +120,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     lastInput = null;
     camera = world.player.pos;
+    announceFloor();
   }
 
   function showMenu(): void {
@@ -162,7 +177,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       juice = applyEvents(juice, world.events, world.player.pos);
       audio?.handleEvents(world.events);
       for (const event of world.events) {
-        if (event.type === 'playerHurt' || event.type === 'disguiseBroken') lastHurtAt = realMs;
+        if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
       }
       const progress = progressRun(run, world);
@@ -175,6 +190,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         camera = world.player.pos;
         defeatedAt.clear();
         music();
+        announceFloor();
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -198,6 +214,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+    // The rumble stops while paused or after the run ends.
+    const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
+    audio?.setRumble(rumble);
     const plan = floorPlanOf(run);
     const exit = plan.kind === 'room' ? ROOMS[plan.room].exit : null;
     // Click-to-lock hover: the enemy a click would lock (same rule as the core).
@@ -220,12 +239,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       defeatedAt,
       moving,
       hoverId: hovered && hovered.id !== world.lock.targetId ? hovered.id : null,
+      card,
+      rumble,
     });
     raf = requestAnimationFrame(frame);
   }
 
   resize();
   music();
+  announceFloor();
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
@@ -237,6 +259,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       closeMenu?.();
       closeMenu = null;
       audio?.setDucked(false);
+      audio?.setRumble(0);
       cancelAnimationFrame(raf);
       input.dispose();
       window.removeEventListener('keydown', onKeyDown);

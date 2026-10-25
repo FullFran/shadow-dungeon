@@ -1,7 +1,7 @@
-import { RUN, RUN_PLAN } from '../data/dungeon';
+import { RUN, RUN_PLAN, URGENT, type FloorKind } from '../data/dungeon';
 import { generateFloor } from './dungeon';
 import { loadFloor, onStairs } from './floor';
-import { deriveSeed } from './rng';
+import { deriveSeed, nextRandom } from './rng';
 import { atExit, loadRoom, roomCleared } from './rooms';
 import type { WorldState } from './state';
 import { vec } from './vec';
@@ -11,12 +11,17 @@ import { createWorld, type WorldOptions } from './world';
  * A run (docs/gdd.md §3): the floors of `RUN_PLAN` in order, generated ones
  * from seeds derived from the run seed, so a run seed replays the same
  * dungeon. HP carries over between floors with a small heal on each new one;
- * Disguise resets per floor.
+ * Disguise resets per floor. Generated floors may be urgent (a collapse),
+ * chosen by depth weights from the run seed too.
  */
 export interface RunState {
   seed: number;
   /** Current floor, 1-based. */
   floor: number;
+  /** Kind of the current floor (fixed rooms are always normal). */
+  kind: FloorKind;
+  /** Set on entering the floor right after a collapse floor: how long the escape took, for its title card. */
+  escape: { floor: number; ms: number } | null;
 }
 
 export type RunOutcome = 'defeat' | 'victory';
@@ -32,7 +37,18 @@ export interface RunProgress {
 /** Seed of one generated floor of a run. */
 export const floorSeed = (runSeed: number, floor: number): number => deriveSeed(runSeed, floor);
 
-export const floorPlanOf = (run: RunState) => RUN_PLAN[run.floor - 1]!;
+export const floorPlanOf = (run: Pick<RunState, 'floor'>) => RUN_PLAN[run.floor - 1]!;
+
+/** Salt that keeps the urgent-floor draw independent of the floor generator's seed. */
+const URGENT_SALT = 0x51ab;
+
+/** Kind of a floor of a run: generated floors draw against the depth weights (never floor 1); fixed rooms are normal. */
+export function floorKind(runSeed: number, floor: number): FloorKind {
+  if (RUN_PLAN[floor - 1]?.kind !== 'generated') return 'normal';
+  const table = URGENT.collapseChance;
+  const chance = table[Math.min(floor, table.length) - 1] ?? 0;
+  return nextRandom(deriveSeed(runSeed, floor + URGENT_SALT)).value < chance ? 'collapse' : 'normal';
+}
 
 export const isBossFloor = (run: RunState): boolean => {
   const plan = floorPlanOf(run);
@@ -42,11 +58,13 @@ export const isBossFloor = (run: RunState): boolean => {
 /** Loads the run's current floor into the world (the heal is the caller's: none on floor 1). */
 function enterFloor(world: WorldState, run: RunState): WorldState {
   const plan = floorPlanOf(run);
-  return plan.kind === 'generated' ? loadFloor(world, generateFloor(floorSeed(run.seed, run.floor), run.floor)) : loadRoom(world, plan.room);
+  return plan.kind === 'generated' ? loadFloor(world, generateFloor(floorSeed(run.seed, run.floor), run.floor), run.kind) : loadRoom(world, plan.room);
 }
 
-export function startRun(seed: number, options: Omit<WorldOptions, 'seed' | 'arena' | 'playerPos'>): { run: RunState; world: WorldState } {
-  const run = { seed, floor: 1 };
+/** Starts a run on floor 1 (or `floor`, for development: the same floor that seed would reach). */
+export function startRun(seed: number, options: Omit<WorldOptions, 'seed' | 'arena' | 'playerPos'>, floor = 1): { run: RunState; world: WorldState } {
+  const start = Math.min(Math.max(1, Math.floor(floor)), RUN_PLAN.length);
+  const run: RunState = { seed, floor: start, kind: floorKind(seed, start), escape: null };
   const base = createWorld({ ...options, seed, arena: { width: 1, height: 1 }, playerPos: vec(0, 0) });
   return { run, world: enterFloor(base, run) };
 }
@@ -64,6 +82,8 @@ export function progressRun(run: RunState, world: WorldState): RunProgress {
   const plan = floorPlanOf(run);
   const leaving = plan.kind === 'generated' ? onStairs(world) : atExit(world, plan.room);
   if (last || !leaving) return { run, world, entered: false, outcome: null };
-  const next = { ...run, floor: run.floor + 1 };
+  const floor = run.floor + 1;
+  const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
+  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor), escape };
   return { run: next, world: enterFloor(heal(world), next), entered: true, outcome: null };
 }

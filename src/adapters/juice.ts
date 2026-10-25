@@ -1,3 +1,4 @@
+import { COLLAPSE } from '../data/dungeon';
 import type { GameEvent } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -19,6 +20,8 @@ export const JUICE = {
   /** Pixels a damage number rises over its life. */
   numberRisePx: 22,
   flashMs: 900,
+  /** Peak screen rumble next to (or on) the collapse front; it fades out `COLLAPSE.rumbleTiles` away. */
+  rumblePx: 1.5,
 } as const;
 
 export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hurt';
@@ -78,6 +81,10 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         next = shake({ ...next, hitstopMs: Math.max(next.hitstopMs, JUICE.hurtHitstopMs) }, JUICE.shakePx + 2);
         next = { ...next, numbers: [...next.numbers, { pos: playerPos, value: event.damage, style: 'hurt', big: true, ageMs: 0 }] };
         break;
+      case 'collapseHurt':
+        // The ground, not a blow: a number and a light shake, no hitstop.
+        next = shake({ ...next, numbers: [...next.numbers, { pos: playerPos, value: event.damage, style: 'hurt', big: false, ageMs: 0 }] }, 2);
+        break;
       case 'disguiseBroken':
         next = shake({ ...next, hitstopMs: Math.max(next.hitstopMs, JUICE.hurtHitstopMs), flash: { kind: 'disguiseBroken', ageMs: 0 } }, JUICE.shakePx);
         break;
@@ -101,6 +108,24 @@ export function tickJuice(juice: JuiceState, frameMs: number): JuiceState {
     numbers: juice.numbers.map((n) => ({ ...n, ageMs: n.ageMs + frameMs })).filter((n) => n.ageMs < JUICE.numberLifeMs),
     flash,
   };
+}
+
+/**
+ * Strength (0..1) of the collapse rumble from the player's distance to the
+ * front in tiles (`collapseProximity`): full on rubble or at the front, none
+ * `COLLAPSE.rumbleTiles` ahead or when no front is moving. Drives both the
+ * rumble loop's volume and the screen rumble.
+ */
+export function rumbleLevel(proximityTiles: number | null): number {
+  if (proximityTiles === null) return 0;
+  return Math.min(1, Math.max(0, 1 - proximityTiles / COLLAPSE.rumbleTiles));
+}
+
+/** Small continuous camera offset for the rumble, on top of the event shake. */
+export function rumbleOffset(level: number, random: () => number): Vec2 {
+  if (level <= 0) return { x: 0, y: 0 };
+  const strength = JUICE.rumblePx * level;
+  return { x: (random() * 2 - 1) * strength, y: (random() * 2 - 1) * strength };
 }
 
 /** Camera offset for the current shake, decaying with its remaining time. `random` returns [0, 1). */

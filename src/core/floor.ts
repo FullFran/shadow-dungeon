@@ -1,3 +1,5 @@
+import type { FloorKind } from '../data/dungeon';
+import { startCollapse } from './collapse';
 import { roomRect, type Floor } from './dungeon';
 import { insideRect } from './geometry';
 import type { Arena, WorldState } from './state';
@@ -15,13 +17,17 @@ export function floorArena(floor: Floor): Arena {
   };
 }
 
-/** Enters a generated floor: resets per-floor state (Disguise), puts the player on the start tile, spawns sleeping enemies. */
-export function loadFloor(state: WorldState, floor: Floor): WorldState {
+/**
+ * Enters a generated floor: resets per-floor state (Disguise), puts the player on the start tile, spawns sleeping enemies,
+ * and on a collapse floor starts the collapse clock.
+ */
+export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'normal'): WorldState {
   const entered = enterRoom(state);
   let next: WorldState = {
     ...entered,
     arena: floorArena(floor),
     player: { ...entered.player, pos: tileCenter(floor.start), roll: null, facing: vec(0, 1) },
+    ...(kind === 'collapse' ? { collapse: startCollapse(floor) } : {}),
   };
   for (const spawn of floor.spawns) {
     next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!) });

@@ -1,4 +1,5 @@
 import { wakeEnemies } from './activation';
+import { updateCollapse } from './collapse';
 import { updateCombat } from './combat';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
@@ -19,7 +20,11 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const player = updatePlayer(state.player, input, dtMs, state.arena, events);
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
-  const fought = updateEnemies(updateFlow(wakeEnemies(updateCombat({ ...state, player, lock }, input, dtMs, events))), dtMs, events);
+  const fought = updateCollapse(
+    updateEnemies(updateFlow(wakeEnemies(updateCombat({ ...state, player, lock }, input, dtMs, events))), dtMs, events),
+    dtMs,
+    events,
+  );
   return {
     ...fought,
     tick: state.tick + 1,

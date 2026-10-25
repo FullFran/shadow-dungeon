@@ -3,12 +3,14 @@ import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
+import { collapseFront, type CollapseState } from '../core/collapse';
 import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
 import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
+import { drawFloorCard, type FloorCard } from './card';
 import { drawHud } from './hud';
-import { JUICE, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
+import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { interpolatedPositions, visibleTiles } from './view';
 
@@ -33,6 +35,10 @@ export interface RenderFrame {
   moving: boolean;
   /** Enemy under the cursor that a click would lock (click-to-lock on, not the current target). */
   hoverId: string | null;
+  /** Floor title card, while it shows. */
+  card: FloorCard | null;
+  /** Collapse rumble level 0..1 (`rumbleLevel`), a light continuous screen shake. */
+  rumble: number;
 }
 
 const COLORS = {
@@ -62,7 +68,24 @@ const COLORS = {
   stairsStep: '#8f84b0',
   stairsGlow: 'rgba(170, 140, 255, 0.35)',
   exitOpen: 'rgba(170, 120, 255, 0.55)',
+  voidFloor: '#040306',
+  rubbleA: '#2a2431',
+  rubbleB: '#3d3546',
+  crack: '#0a080d',
+  dust: '#9a8fae',
 };
+
+/** Rubble tiles fade into the void over this many tiles behind the front. */
+const RUBBLE_FADE_TILES = 2;
+/** Cracks and dust show on standing tiles this close ahead of the front. */
+const CRACK_TILES = 1.5;
+
+/** Small deterministic per-tile hash in [0, 1), so rubble does not flicker between frames. */
+function tileHash(x: number, y: number, salt = 0): number {
+  let h = Math.imul(x * 374761393 + y * 668265263 + salt * 2246822519, 3266489917);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   super: '#ffb347',
@@ -125,8 +148,39 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
    * front face on walls above floor (so walls read as raised) and a soft
    * shadow on the floor right under a wall.
    */
-  function tiles(grid: TileGrid, view: Rect): void {
+  /** A collapsed tile: void with scattered rubble that thins out further behind the front. */
+  function rubbleTile(x: number, y: number, tx: number, ty: number, behind: number): void {
+    ctx.fillStyle = COLORS.voidFloor;
+    ctx.fillRect(x, y, TILE, TILE);
+    const keep = Math.max(0.25, 1 - behind / RUBBLE_FADE_TILES);
+    for (let i = 0; i < 5; i++) {
+      if (tileHash(tx, ty, i + 10) > keep) continue;
+      const size = 3 + Math.floor(tileHash(tx, ty, i) * 6);
+      ctx.fillStyle = i % 2 === 0 ? COLORS.rubbleA : COLORS.rubbleB;
+      ctx.fillRect(x + Math.floor(tileHash(tx, ty, i + 20) * (TILE - size)), y + Math.floor(tileHash(tx, ty, i + 30) * (TILE - size)), size, size - 1);
+    }
+  }
+
+  /** Standing ground about to go: dark cracks that deepen and dust motes that jitter as the front nears. */
+  function crackedTile(x: number, y: number, tx: number, ty: number, ahead: number, timeMs: number): void {
+    const near = 1 - ahead / CRACK_TILES;
+    ctx.fillStyle = COLORS.crack;
+    ctx.globalAlpha = 0.35 + 0.6 * near;
+    const cx = x + 6 + Math.floor(tileHash(tx, ty, 1) * 20);
+    ctx.fillRect(cx, y + 4, 1, 10 + Math.floor(near * 14));
+    ctx.fillRect(cx - 5, y + 12 + Math.floor(tileHash(tx, ty, 2) * 10), 11, 1);
+    ctx.globalAlpha = near;
+    ctx.fillStyle = COLORS.dust;
+    for (let i = 0; i < 3; i++) {
+      const wobble = Math.sin(timeMs / 90 + i * 2 + tx) * 2;
+      ctx.fillRect(x + Math.floor(tileHash(tx, ty, i + 40) * TILE), y + Math.floor(tileHash(tx, ty, i + 50) * TILE + wobble), 1, 1);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number): void {
     const { x0, y0, x1, y1 } = visibleTiles(view, grid);
+    const front = collapse ? collapseFront(collapse) : 0;
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         const x = tx * TILE;
@@ -145,12 +199,18 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (!isWall(grid, tx + 1, ty)) ctx.fillRect(x + TILE - 1, y, 1, TILE);
           if (!isWall(grid, tx, ty - 1)) ctx.fillRect(x, y, TILE, 1);
         } else {
+          const d = collapse ? (collapse.dist[ty * grid.cols + tx] ?? -1) : -1;
+          if (front > 0 && d >= 0 && d < front) {
+            rubbleTile(x, y, tx, ty, front - d);
+            continue;
+          }
           ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.tileFloorA : COLORS.tileFloorB;
           ctx.fillRect(x, y, TILE, TILE);
           if (isWall(grid, tx, ty - 1)) {
             ctx.fillStyle = COLORS.tileShadow;
             ctx.fillRect(x, y, TILE, 6);
           }
+          if (front > 0 && d >= 0 && d - front < CRACK_TILES) crackedTile(x, y, tx, ty, d - front, timeMs);
         }
       }
     }
@@ -173,9 +233,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function floor(state: WorldState, view: Rect): void {
+  function floor(state: WorldState, view: Rect, timeMs: number): void {
     if (state.arena.tiles) {
-      tiles(state.arena.tiles, view);
+      tiles(state.arena.tiles, view, state.collapse, timeMs);
       return;
     }
     const { width, height } = state.arena;
@@ -374,12 +434,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillStyle = COLORS.wall;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const shake = shakeOffset(juice, random);
+    const event = shakeOffset(juice, random);
+    const rumble = rumbleOffset(frame.rumble, random);
+    const shake = { x: event.x + rumble.x, y: event.y + rumble.y };
     const ox = Math.round((view.x + shake.x) * pixelScale);
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view);
+    floor(current, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
 
@@ -431,6 +493,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawHud(ctx, current, juice, view, frame.floor);
+    if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
   }
 
   return { draw };

@@ -75,5 +75,7 @@
   "screen.menu": "Back to menu",
   "hud.floor": "Floor",
   "screen.floorReached": "Floor reached",
-  "screen.seed": "Seed"
+  "screen.seed": "Seed",
+  "card.collapse": "The floor is collapsing!",
+  "card.escaped": "You escaped the collapse in {time}"
 }

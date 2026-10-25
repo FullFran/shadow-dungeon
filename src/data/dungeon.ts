@@ -50,3 +50,40 @@ export const RUN = {
   /** Fraction of max HP healed on entering each floor after the first. */
   floorHeal: 0.25,
 } as const;
+
+/** A generated floor is normal or urgent (docs/gdd.md §3 "Plantas con prisa"); the MVP has the collapse only. */
+export type FloorKind = 'normal' | 'collapse';
+
+/**
+ * Urgent floor weights by depth. Index 0 is floor 1 (never urgent); deeper
+ * floors than the table use its last entry. Provisional.
+ */
+export const URGENT = {
+  collapseChance: [0, 0.25, 0.4] as readonly number[],
+} as const;
+
+/**
+ * The collapse (docs/gdd.md §3): the ceiling falls from the start along the
+ * walking distance field towards the stairs. Provisional values.
+ */
+export const COLLAPSE = {
+  /** Time after entering before the front starts moving. */
+  graceMs: 5000,
+  /** Front speed along the walking distance field. */
+  frontTilesPerSecond: 1.5,
+  /**
+   * The front must reach the stairs no sooner than this many times the
+   * straight walking time to them (after the grace delay); asserted by tests.
+   */
+  safetyFactor: 1.8,
+  /** Standing on collapsed ground hurts once per interval (roll i-frames skip a tick). */
+  damageIntervalMs: 500,
+  /** Damage per tick as a fraction of max HP. */
+  damageFraction: 0.06,
+  /** Collapsed ground pushes the player towards the nearest standing ground (px/s). */
+  pushSpeed: 110,
+  /** The push aims this many tiles past the front, so it does not drop the player right where the next tiles fall. */
+  pushMarginTiles: 1.5,
+  /** The rumble (sound and screen shake) is felt within this many tiles of the front. */
+  rumbleTiles: 6,
+} as const;

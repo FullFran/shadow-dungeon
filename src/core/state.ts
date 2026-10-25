@@ -1,6 +1,7 @@
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
+import type { CollapseState } from './collapse';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
 import type { Vec2 } from './vec';
@@ -220,6 +221,8 @@ export type GameEvent =
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
   | { type: 'enemyDefeated'; enemyId: string }
+  /** Collapsed ground hurt the player (not an attack: no dodge, no Disguise). */
+  | { type: 'collapseHurt'; damage: number }
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
@@ -244,6 +247,8 @@ export interface WorldState {
   slowMoMs: number;
   /** Generated floors: walking distances to the player's tile, for walkers out of sight (flow.ts). */
   flow?: FlowField;
+  /** Collapse urgent floors: the advancing front (collapse.ts). */
+  collapse?: CollapseState;
   events: GameEvent[];
 }
 
