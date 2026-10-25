@@ -1,6 +1,7 @@
 import { COLLAPSE } from '../data/dungeon';
 import type { ItemId } from '../data/items';
 import { MOVES } from '../data/moves';
+import type { PassiveId } from '../data/species';
 import type { GameEvent } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -37,15 +38,15 @@ export interface FloatingNumber {
   ageMs: number;
 }
 
-export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp' | 'item';
+export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp' | 'item' | 'passive';
 
 export interface JuiceState {
   hitstopMs: number;
   shakeMs: number;
   shakePx: number;
   numbers: readonly FloatingNumber[];
-  /** `level`: the level reached, for the level-up text; `item`: the held item that saved or healed the player. */
-  flash: { kind: FlashKind; ageMs: number; level?: number; item?: ItemId } | null;
+  /** `level`: the level reached, for the level-up text; `item`: the held item that saved or healed the player; `passive`: the starter passive that acted. */
+  flash: { kind: FlashKind; ageMs: number; level?: number; item?: ItemId; passive?: PassiveId } | null;
 }
 
 export const initialJuice = (): JuiceState => ({ hitstopMs: 0, shakeMs: 0, shakePx: 0, numbers: [], flash: null });
@@ -103,6 +104,10 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         break;
       case 'perfectDodge':
         next = { ...next, flash: { kind: 'perfectDodge', ageMs: 0 } };
+        break;
+      case 'passiveTriggered':
+        // Illusion, Flash Fire, Battle Armor: a flash naming it and a light shake (Disguise has its own case).
+        next = shake({ ...next, flash: { kind: 'passive', ageMs: 0, passive: event.passive } }, 2);
         break;
       case 'itemTriggered':
         // Rocky Helmet shows as the enemy's damage number; the heals and the save get the flash.

@@ -27,6 +27,9 @@ export const SOUND_IDS = [
   'defeated',
   'hurt',
   'disguiseBroken',
+  'illusion',
+  'flashFire',
+  'battleArmor',
   'blocked',
   'dodge',
   'perfectDodge',
@@ -75,6 +78,8 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'hurt';
     case 'disguiseBroken':
       return 'disguiseBroken';
+    case 'passiveTriggered':
+      return event.passive === 'illusion' ? 'illusion' : event.passive === 'flash-fire' ? 'flashFire' : event.passive === 'battle-armor' ? 'battleArmor' : null;
     case 'hitBlocked':
       return 'blocked';
     case 'hitDodged':
@@ -398,6 +403,32 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
       noise(s, t, { filter: 'highpass', from: 4500, dur: 0.045, gain: 0.5 });
       noise(s, t + 0.04, { filter: 'bandpass', from: 3000, to: 700, dur: 0.22, gain: 0.32, q: 3 });
       tone(s, t + 0.04, { type: 'square', from: 950, to: 260, dur: 0.14, gain: 0.08 });
+    },
+  },
+  illusion: {
+    ms: 360,
+    play: (s, t) => {
+      // A shimmer that slides down and dissolves: the disguise melting away.
+      arpeggio(s, t, 'triangle', [1760, 1397, 1047, 784], 0.045, 0.2, 0.07);
+      noise(s, t + 0.05, { filter: 'bandpass', from: 5000, to: 1200, dur: 0.28, gain: 0.12, q: 4 });
+    },
+  },
+  flashFire: {
+    ms: 420,
+    play: (s, t) => {
+      // A whoosh of flame catching, then a rising crackle.
+      noise(s, t, { filter: 'lowpass', from: 600, to: 4200, dur: 0.32, gain: 0.32 });
+      tone(s, t, { type: 'sawtooth', from: 180, to: 520, dur: 0.3, gain: 0.07 });
+      noise(s, t + 0.18, { filter: 'highpass', from: 3500, dur: 0.06, gain: 0.18 });
+    },
+  },
+  battleArmor: {
+    ms: 260,
+    play: (s, t) => {
+      // A dull, solid thud on bone: lower and drier than a block.
+      tone(s, t, { type: 'square', from: 180, to: 90, dur: 0.12, gain: 0.14 });
+      tone(s, t, { type: 'triangle', from: 640, to: 520, dur: 0.16, gain: 0.08 });
+      noise(s, t, { filter: 'lowpass', from: 1200, to: 300, dur: 0.1, gain: 0.35 });
     },
   },
   blocked: {

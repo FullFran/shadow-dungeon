@@ -8,7 +8,7 @@ import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
-import { bonusMultiplier, breakIllusion, illusionActive } from './passives';
+import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -193,7 +193,7 @@ function strikeEnemy(
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
-    player: { ...onHitDealt(breakIllusion(state.player, events), damage), nextHitBuff: null },
+    player: { ...onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
 }
@@ -375,6 +375,12 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       moved = { ...rest, vel: scale(moved.vel, -1), hitIds: [] };
     }
     const returning = Boolean(moved.pierce) && moved.returnAtMs === undefined;
+    if (returning && moved.owner === 'player') {
+      // On the way home a boomerang steers to where the player is now, and is caught on reaching them.
+      const home = sub(current.player.pos, moved.pos);
+      if (length(home) <= PLAYER.radius + moved.radius) continue;
+      moved = { ...moved, vel: scale(normalize(home), length(moved.vel)) };
+    }
 
     if (moved.owner === 'player') {
       const target = current.enemies.find(

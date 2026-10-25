@@ -63,6 +63,8 @@ export const TUNING = {
     /** Flash Fire: share of an absorbed Fire hit's damage that heals, and the next heavy move's damage multiplier. */
     flashFireHeal: 0.25,
     flashFireBoost: 1.5,
+    /** Flash Fire: Litwick's own Fire hits that stoke the flame (power up the next heavy move), for floors without Fire enemies. */
+    flashFireKindle: 4,
     /** Battle Armor: damage multiplier of frontal hits while charging or winding up a heavy move. */
     battleArmorFactor: 0.5,
   },

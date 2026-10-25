@@ -7,7 +7,7 @@ import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { SPECIES } from '../../src/data/species';
 import { POKEMON_TYPES } from '../../src/data/types';
-import { soundFor } from '../../src/adapters/audio';
+import { SOUND_IDS, soundFor } from '../../src/adapters/audio';
 import { applyEvents, initialJuice, isHeavyHit, JUICE } from '../../src/adapters/juice';
 import { enemyAttackType, playerVfx } from '../../src/adapters/move-vfx';
 import { TYPE_COLORS } from '../../src/ui/tokens';
@@ -118,5 +118,23 @@ describe('player move VFX', () => {
     expect((dash[0] as { length: number }).length).toBeGreaterThan(0);
     const swipes = playerVfx(acting('fury-swipes', 'active', 90, { hitWindow: 2 })).filter((v) => v.kind === 'swipe');
     expect(swipes).toHaveLength(3);
+  });
+});
+
+describe('passive feedback', () => {
+  const passives = ['illusion', 'flash-fire', 'battle-armor'] as const;
+
+  it('flashes the passive that acted', () => {
+    for (const passive of passives) {
+      const juice = applyEvents(initialJuice(), [{ type: 'passiveTriggered', passive }], vec(0, 0));
+      expect(juice.flash).toMatchObject({ kind: 'passive', passive });
+    }
+  });
+
+  it('gives each starter passive its own sound', () => {
+    const sounds = passives.map((passive) => soundFor({ type: 'passiveTriggered', passive }));
+    for (const sound of sounds) expect(SOUND_IDS).toContain(sound);
+    expect(new Set(sounds).size).toBe(passives.length);
+    expect(sounds).not.toContain('disguiseBroken');
   });
 });

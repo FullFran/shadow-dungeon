@@ -22,7 +22,7 @@ export const floorLabel = (floor: number): string => `${t('hud.floor')} ${floor}
 export const levelUpText = (species: string, level: number): string =>
   t('hud.levelUp').replace('{name}', t(`species.${species}`)).replace('{level}', String(level));
 
-const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#c9b8ff', disguiseBroken: PALETTE.cursor, levelUp: PALETTE.xp, item: PALETTE.good };
+const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#c9b8ff', disguiseBroken: PALETTE.cursor, levelUp: PALETTE.xp, item: PALETTE.good, passive: PALETTE.eclipseGlow };
 
 /** Rarity colours from the design tokens, shared by the HUD badges and the pick cards. */
 export const RARITY_COLORS: Record<Rarity, string> = RARITY;
@@ -52,6 +52,7 @@ export function heldItems(items: readonly ItemId[]): HeldItem[] {
 function flashText(flash: NonNullable<JuiceState['flash']>, species: string): string {
   if (flash.kind === 'levelUp') return levelUpText(species, flash.level ?? 1);
   if (flash.kind === 'item') return t('hud.itemTriggered').replace('{item}', t(`item.${flash.item ?? ''}`));
+  if (flash.kind === 'passive') return t('hud.passiveTriggered').replace('{passive}', t(`passive.${flash.passive ?? ''}`));
   return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
 }
 

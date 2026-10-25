@@ -55,7 +55,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   litwick: {
     id: 'litwick',
     types: ['ghost', 'fire'],
-    maxHp: 85,
+    maxHp: 95,
     radius: 10,
     sprite: 'litwick',
     speedScale: 0.95,

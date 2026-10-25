@@ -34,6 +34,19 @@ export function touchesUnderIllusion(enemy: Pick<EnemyState, 'radius'>, distance
 /** Flash Fire takes this hit: a Fire attack on Litwick. */
 export const absorbsFire = (player: PlayerState, hit: IncomingHit): boolean => passiveOf(player) === 'flash-fire' && hit.type === 'fire';
 
+/**
+ * Flash Fire also feeds on Litwick's own flames: every Fire hit it lands
+ * counts, and the `flashFireKindle`-th powers up the next heavy move (the
+ * Crypt has no Fire attacks to absorb). No-op while already powered up.
+ */
+export function stokeFlashFire(player: PlayerState, moveType: IncomingHit['type'], events: GameEvent[]): PlayerState {
+  if (passiveOf(player) !== 'flash-fire' || moveType !== 'fire' || player.flashFire) return player;
+  const kindling = (player.kindling ?? 0) + 1;
+  if (kindling < TUNING.passives.flashFireKindle) return { ...player, kindling };
+  events.push({ type: 'passiveTriggered', passive: 'flash-fire', kindled: true });
+  return { ...player, kindling: 0, flashFire: true };
+}
+
 /** Battle Armor covers this hit: a heavy move is charging or winding up and the attack comes from the front half. */
 export function armorCovers(player: PlayerState, hit: IncomingHit): boolean {
   const action = player.action;

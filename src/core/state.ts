@@ -130,6 +130,8 @@ export interface PlayerState {
   illusionBroken: boolean;
   /** Flash Fire passive: a Fire hit was absorbed and the next heavy move is powered up. */
   flashFire: boolean;
+  /** Flash Fire: own Fire hits landed towards the next stoke (`TUNING.passives.flashFireKindle`); absent = 0. */
+  kindling?: number;
   /** The last finished melee move struck nothing (Stomping Tantrum). */
   lastMoveMissed: boolean;
   /** In-run level (progression.ts), 1 at the run start. */
@@ -261,7 +263,8 @@ export type GameEvent =
   | { type: 'playerHurt'; damage: number }
   | { type: 'disguiseBroken' }
   /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
-  | { type: 'passiveTriggered'; passive: PassiveId }
+  /** `kindled`: Flash Fire was stoked by the player's own Fire hits rather than an absorbed attack. */
+  | { type: 'passiveTriggered'; passive: PassiveId; kindled?: boolean }
   | { type: 'moveStarted'; moveId: MoveId; slotIndex: number }
   | { type: 'moveDenied'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
