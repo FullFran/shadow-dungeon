@@ -1,6 +1,8 @@
 import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnTuning } from './dungeon';
 import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
 import type { MusicContext } from './music';
+import { ROOMS } from './rooms';
+import type { SpeciesId } from './species';
 
 /**
  * Every dungeon as data (docs/gdd.md §3): its name and lore, its floors
@@ -159,4 +161,10 @@ export const chanceAt = (table: readonly number[], floor: number): number => tab
 export function musicFor(dungeon: DungeonDef, plan: FloorPlan, kind: FloorKind): MusicContext {
   if (plan.kind === 'room') return plan.role === 'midboss' ? dungeon.music.midboss : dungeon.music.guardian;
   return kind === 'normal' ? dungeon.music.floor : dungeon.music.urgent[kind];
+}
+
+/** The guardian of a dungeon: the first spawn of its last fixed arena that is not a mid-boss (end screen text). */
+export function guardianOf(dungeon: DungeonDef): SpeciesId | null {
+  const arena = [...dungeon.plan].reverse().find((plan) => plan.kind === 'room' && plan.role !== 'midboss');
+  return arena?.kind === 'room' ? (ROOMS[arena.room].spawns[0]?.species ?? null) : null;
 }

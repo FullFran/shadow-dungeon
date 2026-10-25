@@ -9,7 +9,7 @@ import { SPECIES } from '../../src/data/species';
 import { POKEMON_TYPES } from '../../src/data/types';
 import { SOUND_IDS, soundFor } from '../../src/adapters/audio';
 import { applyEvents, initialJuice, isHeavyHit, JUICE } from '../../src/adapters/juice';
-import { enemyAttackType, playerVfx } from '../../src/adapters/move-vfx';
+import { enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha } from '../../src/adapters/move-vfx';
 import { TYPE_COLORS } from '../../src/ui/tokens';
 import { IDLE } from '../core/helpers';
 
@@ -85,6 +85,41 @@ describe('type colours', () => {
     expect(enemyAttackType(gastly!)).toBe('poison');
     expect(enemyAttackType(boss!)).toBe('steel');
     expect(enemyAttackType({ ...boss!, boss: { ...boss!.boss!, stance: 'blade' } })).toBe('ghost');
+  });
+
+  it('names the type of the Misty Forest attacks from their behaviour, not the species type', () => {
+    let state = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(100, 100) });
+    for (const [i, species] of (['spinarak', 'hoothoot', 'foongus', 'phantump', 'pumpkaboo-super', 'trevenant', 'decidueye'] as const).entries()) {
+      state = spawnEnemy(state, species, vec(150 + i * 80, 300));
+    }
+    const [spinarak, hoothoot, foongus, phantump, pumpkaboo, trevenant, decidueye] = state.enemies;
+    expect(enemyAttackType(spinarak!)).toBe('bug');
+    // Hoothoot is Normal/Flying; its dive is a Flying attack.
+    expect(enemyAttackType(hoothoot!)).toBe('flying');
+    // Foongus is Grass/Poison; its spore cloud is Poison.
+    expect(enemyAttackType(foongus!)).toBe('poison');
+    expect(enemyAttackType(phantump!)).toBe('ghost');
+    expect(enemyAttackType(pumpkaboo!)).toBe('ghost');
+    expect(enemyAttackType(trevenant!)).toBe('ghost');
+    const card = (stance: 'volley' | 'fan' | 'dive') => enemyAttackType({ ...decidueye!, boss: { ...(decidueye!.boss ?? { stanceMs: 0, stanceDamage: 0, comboIndex: 0, combos: 0 }), stance } as NonNullable<typeof decidueye>['boss'] });
+    expect(card('volley')).toBe('ghost');
+    expect(card('fan')).toBe('grass');
+    expect(card('dive')).toBe('flying');
+  });
+
+  it('tints telegraphs from the shared type table', () => {
+    expect(telegraphFill('bug', true)).toBe(withAlpha(TYPE_COLORS.bug.glow, 0.24));
+    expect(telegraphFill('flying', false)).toBe(withAlpha(TYPE_COLORS.flying.core, 0.5));
+  });
+
+  it('draws the forest shots in their type colours: threads, arrows and leaves as streaks, spores as a Grass/Poison cloud', () => {
+    const shot = (type: 'bug' | 'ghost' | 'grass' | 'poison', moving = true) => ({ type, radius: 5, vel: moving ? vec(100, 0) : vec(0, 0), remainingMs: 1000 });
+    expect(enemyShotLook(shot('bug'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.bug });
+    expect(enemyShotLook(shot('ghost'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.ghost });
+    expect(enemyShotLook(shot('grass'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.grass });
+    expect(enemyShotLook(shot('poison', false))).toEqual({ kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge });
+    // Gastly's moving Poison ball keeps the orb look.
+    expect(enemyShotLook(shot('poison'))).toBeNull();
   });
 });
 

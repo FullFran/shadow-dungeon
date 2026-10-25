@@ -16,11 +16,11 @@ import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, t
 import { CRYPT, type TilePalette } from '../data/dungeons';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
-import { drawMessageLog, type MessageLog } from './message-log';
+import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
-import { drawPlayerVfx, drawProjectileVfx, enemyAttackType, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
+import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 
@@ -61,6 +61,8 @@ export interface RenderFrame {
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
   nowPlaying?: NowPlaying | null;
+  /** On-screen touch controls are up: HUD notes keep clear of the action buttons. */
+  touchUi?: boolean;
   /** The boss spell card just announced, while it shows. */
   spell?: SpellBanner | null;
 }
@@ -451,42 +453,16 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fill();
   }
 
-  /** Enemy shots by type: spore clouds (still), leaves, threads, arrows; anything else the old ball. */
+  /** Enemy shots in their type colours (move-vfx.ts): spore clouds, leaves, threads, arrows; anything else the projectile orb. */
   function enemyShot(p: Pick<ProjectileState, 'type' | 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): Drawable | null {
-    const still = p.vel.x === 0 && p.vel.y === 0;
-    if (still) {
-      return {
-        y: pos.y - 40,
-        draw: () => {
-          ctx.globalAlpha = Math.min(1, p.remainingMs / 600) * 0.55;
-          ctx.fillStyle = '#b48ad8';
-          for (let i = 0; i < 5; i++) {
-            const a = timeMs / 700 + i * 1.3;
-            ctx.beginPath();
-            ctx.arc(pos.x + Math.cos(a) * p.radius * 0.35, pos.y + Math.sin(a) * p.radius * 0.25, p.radius * 0.7, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.globalAlpha = 1;
-        },
-      };
-    }
-    const color = p.type === 'grass' ? '#8fe36a' : p.type === 'bug' ? '#f0eedc' : p.type === 'ghost' ? '#b9a2ff' : null;
-    if (!color) return null;
-    const angle = Math.atan2(p.vel.y, p.vel.x);
+    const look = enemyShotLook(p);
+    if (!look) return null;
+    if (look.kind === 'cloud') return { y: pos.y - 40, draw: () => drawEnemyShotVfx(ctx, look, p, pos, timeMs) };
     return {
       y: pos.y,
       draw: () => {
         shadow({ x: pos.x, y: pos.y + 8 }, p.radius * 0.7);
-        ctx.save();
-        ctx.translate(pos.x, pos.y - 6);
-        ctx.rotate(angle);
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.radius * 1.8, p.radius * 0.8, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-        ctx.fillRect(-p.radius * 1.4, -0.5, p.radius * 2.8, 1);
-        ctx.restore();
+        drawEnemyShotVfx(ctx, look, p, pos, timeMs);
       },
     };
   }
@@ -572,7 +548,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const life = n.ageMs / JUICE.numberLifeMs;
       ctx.globalAlpha = 1 - life * life;
       ctx.font = canvasFont(n.big ? 16 : FONT.hudPx, true);
-      const text = n.style === 'blocked' ? t('hud.blocked') : String(n.value);
+      // Fraction-of-max-HP hazards (collapse, fog chill) are not whole numbers: show them rounded.
+      const text = n.style === 'blocked' ? t('hud.blocked') : String(Math.round(n.value));
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
       ctx.fillStyle = '#000000';
@@ -682,7 +659,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, view.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, view.width, view.height);
     if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, view.width, view.height);
-    if (frame.nowPlaying) drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height);
+    if (frame.nowPlaying) {
+      // Touch: above the message log, clear of the action buttons in the bottom-right corner.
+      const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
+      const at = frame.touchUi ? { x: 8, y: view.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
+      drawNowPlaying(ctx, frame.nowPlaying, timeMs, view.width, view.height, at);
+    }
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, view.width);
   }
 

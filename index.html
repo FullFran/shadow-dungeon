@@ -253,6 +253,11 @@
         /* Seven (eight with "Instalar juego") title entries: two columns, DOM order kept so keys and indices are unchanged. */
         html.touch .title-menu .md-list { display: grid; grid-template-columns: auto auto; gap: 4px 12px; }
         html.touch .title-menu .md-item { min-height: 44px; }
+        /* Dungeon select: the list and its description side by side under no heading (the window title says it), clear of "Atrás". */
+        html.touch #app:has(.dungeons) { padding-left: max(96px, env(safe-area-inset-left)); padding-right: max(96px, env(safe-area-inset-right)); }
+        html.touch #app:has(.dungeons) > .screen-title { display: none; }
+        html.touch #app:has(.dungeons) .screen-row { flex-wrap: nowrap; gap: 16px; align-items: stretch; }
+        html.touch .dungeon-about { flex: 1 1 18rem; min-width: 0; font-size: 15px; }
         /* Shop: description on the left, the rows (and Volver) on the right, so nothing scrolls off a phone in landscape. */
         html.touch .shop { width: min(52rem, 100%); max-width: 100%; padding-top: 18px; padding-bottom: 12px; }
         /* Keep the window clear of the fixed "Atrás" button in the top-left corner (centred: same room on the right). */

@@ -1,10 +1,10 @@
-import { AEGISLASH, GASTLY, POOCHYENA } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { MOVES, type MoveId } from '../data/moves';
 import type { PokemonType } from '../data/types';
 import { playerStats } from '../core/items';
 import type { EnemyState, PlayerState, ProjectileState } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import { TYPE_COLORS } from '../ui/tokens';
+import { TYPE_COLORS, type TypeColors } from '../ui/tokens';
 
 /**
  * Visual effects of attacks, coloured by move type (`TYPE_COLORS`): what the
@@ -66,15 +66,36 @@ export function playerVfx(player: Pick<PlayerState, 'action' | 'items' | 'upgrad
   return out;
 }
 
-/** Type of the attack an enemy is winding up or throwing, for its telegraph tint. */
+/**
+ * Type of the attack an enemy is winding up or throwing, for its telegraph
+ * tint: read from its behaviour (Hoothoot is Normal/Flying but dives as
+ * Flying; Foongus is Grass/Poison but its cloud is Poison), Decidueye's from
+ * the spell card it is playing; species without a behaviour use their first type.
+ */
 export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'boss'>): PokemonType {
-  if (enemy.boss) {
-    const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
-    return enemy.boss.stance === 'blade' ? blow.attack.type : AEGISLASH.shield.bash.type;
+  const def = ENEMY_BEHAVIOUR[enemy.species];
+  switch (def?.kind) {
+    case 'boss': {
+      if (enemy.boss?.stance !== 'blade') return AEGISLASH.shield.bash.type;
+      const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
+      return blow.attack.type;
+    }
+    case 'archer': {
+      const card = enemy.boss?.stance;
+      if (card === 'fan') return def.fan.leaf.type;
+      if (card === 'dive') return def.dive.attack.type;
+      return def.volley.arrow.type;
+    }
+    case 'lunger':
+    case 'slammer':
+      return def.attack.type;
+    case 'caster':
+      return def.projectile.type;
+    case 'spore':
+      return def.cloud.type;
+    default:
+      return enemy.types[0] ?? 'normal';
   }
-  if (enemy.species === 'poochyena') return POOCHYENA.attack.type;
-  if (enemy.species === 'gastly') return GASTLY.projectile.type;
-  return enemy.types[0] ?? 'normal';
 }
 
 /** Ground fill of an enemy telegraph (winding) or strike, tinted by its attack type; the red warning edge is drawn on top by the renderer. */
@@ -164,6 +185,62 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
     }
   }
   void timeMs;
+}
+
+/**
+ * Look of an enemy shot: a still shot is a spore cloud (Poison puffs with
+ * Grass specks, Foongus), Bug threads, Ghost arrows and Grass leaves are
+ * streaks in their type colours; anything else (Gastly's Poison ball) keeps
+ * the orb of `drawProjectileVfx` (null).
+ */
+export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cloud'; puff: string; speck: string; edge: string };
+
+const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying'];
+
+export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemyShotLook | null {
+  if (p.vel.x === 0 && p.vel.y === 0) return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
+  return STREAK_TYPES.includes(p.type) ? { kind: 'streak', colors: TYPE_COLORS[p.type] } : null;
+}
+
+/** Draws an enemy shot with its look (lifted off the ground; the shadow is the renderer's). */
+export function drawEnemyShotVfx(ctx: CanvasRenderingContext2D, look: EnemyShotLook, p: Pick<ProjectileState, 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): void {
+  if (look.kind === 'cloud') {
+    const fade = Math.min(1, p.remainingMs / 600);
+    for (let i = 0; i < 5; i++) {
+      const a = timeMs / 700 + i * 1.3;
+      const at = { x: pos.x + Math.cos(a) * p.radius * 0.35, y: pos.y + Math.sin(a) * p.radius * 0.25 };
+      ctx.fillStyle = withAlpha(look.puff, 0.45 * fade);
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, p.radius * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = withAlpha(look.speck, 0.7 * fade);
+      ctx.fillRect(Math.round(at.x + Math.sin(a * 2) * p.radius * 0.4), Math.round(at.y - p.radius * 0.3), 2, 2);
+    }
+    ctx.strokeStyle = withAlpha(look.edge, 0.5 * fade);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, p.radius, p.radius * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+  const c = look.colors;
+  ctx.save();
+  ctx.translate(pos.x, pos.y - 6);
+  ctx.rotate(Math.atan2(p.vel.y, p.vel.x));
+  ctx.fillStyle = withAlpha(c.glow, 0.4);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, p.radius * 2.3, p.radius * 1.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = c.core;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, p.radius * 1.8, p.radius * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = c.edge;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = withAlpha(c.edge, 0.6);
+  ctx.fillRect(-p.radius * 1.4, -0.5, p.radius * 2.8, 1);
+  ctx.restore();
 }
 
 /** Fields a projectile needs to be drawn (remote ones carry no type: they fall back to Ghost). */

@@ -378,7 +378,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
-    tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null);
+    const left = floorPlanOf(run);
+    tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null, left.kind === 'room' && left.role === 'midboss');
     floorStartTally = tally;
     run = next.run;
     world = next.world;
@@ -506,6 +507,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro,
       nowPlaying,
       spell,
+      touchUi: isTouchUi(),
     });
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);

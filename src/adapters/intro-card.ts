@@ -95,11 +95,13 @@ export function drawSpellBanner(ctx: CanvasRenderingContext2D, spell: SpellBanne
 }
 
 /** Draws "♪ title" at the top right, under the minimap's corner. */
-export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, nowMs: number, width: number, height: number): void {
+export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, nowMs: number, width: number, height: number, at?: { x: number; y: number }): void {
   const alpha = noteAlpha(note, nowMs);
   if (alpha <= 0) return;
   ctx.globalAlpha = alpha;
   ctx.font = canvasFont();
-  pixelText(ctx, note.title, width - 8, height - 46, PALETTE.textDim, 'right');
+  // `at`: left-aligned there (touch: the bottom-right corner belongs to the action buttons).
+  if (at) pixelText(ctx, note.title, at.x, at.y, PALETTE.textDim, 'left');
+  else pixelText(ctx, note.title, width - 8, height - 46, PALETTE.textDim, 'right');
   ctx.globalAlpha = 1;
 }

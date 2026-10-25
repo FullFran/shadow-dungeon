@@ -19,6 +19,8 @@ export const COINS = {
   escapeSlow: 6,
   /** Beating the floor's guardian (the run's victory). */
   guardian: 50,
+  /** Beating a mid-boss (Trevenant in the Misty Forest): half a guardian, kept even if the run is lost later. */
+  midboss: 25,
   /** Per full minute of simulated play (pauses do not count). */
   perMinute: 2,
   /** Share kept on defeat (lo que llevas ganado se queda, con un recorte). */

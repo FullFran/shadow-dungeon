@@ -358,11 +358,12 @@ Cada jugador suma lo suyo en su propio ordenador (también los invitados de una 
 | Enemigo derrotado | 1 × (1 + 0,5 (profundidad − 1)) |
 | Huir de un derrumbe | 20 en menos de 30 s, 12 en menos de 60 s, si no 6 |
 | Derrotar al guardián | 50 |
+| Derrotar a un jefe intermedio (Trevenant en el Bosque Brumoso) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
 | Minuto jugado | 2 por minuto completo (las pausas no cuentan) |
 | Si caes | Te quedas el 75 % de lo ganado |
 | Dificultad | Todo × la fila de la sección 9 (de momento se juega en Normal, × 1) |
 
-Una victoria completa da unas 165 Pokémonedas. El pago sube con lo que juegas (plantas, enemigos y minutos), no solo por terminar la partida, como pide la sección 9. "Reintentar planta" vuelve al recuento con que entraste en ella (no se cobra dos veces) y salir desde el menú de pausa no paga nada.
+Una victoria completa en la Cripta da unas 165 Pokémonedas; el Bosque Brumoso paga con las mismas reglas por planta, enemigo y minuto, así que sus ocho plantas pagan más. El pago sube con lo que juegas (plantas, enemigos y minutos), no solo por terminar la partida, como pide la sección 9. "Reintentar planta" vuelve al recuento con que entraste en ella (no se cobra dos veces) y salir desde el menú de pausa no paga nada.
 
 ### Mejoras permanentes *(provisional)*
 

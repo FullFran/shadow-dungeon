@@ -87,4 +87,22 @@ describe('coin breakdown', () => {
     const t = tally([[1, 20_000], [2, null]], [1, 1, 2], 7 * MINUTE);
     expect(coinBreakdown(t, 'defeat')).toEqual(coinBreakdown(t, 'defeat'));
   });
+
+  it('pays half a guardian for a mid-boss floor cleared (Trevenant), kept on defeat with the share', () => {
+    let t = tallyFloor(emptyTally(), 3, null);
+    t = tallyFloor(t, 4, null, true);
+    expect(t.midbosses).toBe(1);
+    expect(COINS.midboss).toBe(COINS.guardian / 2);
+    expect(coinBreakdown(t, null).guardian).toBe(COINS.midboss);
+    expect(coinBreakdown(t, 'victory').guardian).toBe(COINS.guardian + COINS.midboss);
+    const lost = coinBreakdown(t, 'defeat');
+    expect(lost.guardian).toBe(COINS.midboss);
+    expect(lost.total).toBe(Math.floor(lost.subtotal * COINS.defeatShare));
+  });
+
+  it('pays no mid-boss bonus for ordinary floors', () => {
+    const t = tallyFloor(tallyFloor(emptyTally(), 1, null), 2, null, false);
+    expect(t.midbosses).toBe(0);
+    expect(coinBreakdown(t, 'defeat').guardian).toBe(0);
+  });
 });

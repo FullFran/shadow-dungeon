@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type SpawnTuning } from '../../src/data/dungeon';
-import { CRYPT, DUNGEONS, dungeonById, musicFor, type DungeonDef } from '../../src/data/dungeons';
+import { CRYPT, DUNGEONS, dungeonById, guardianOf, musicFor, type DungeonDef } from '../../src/data/dungeons';
 import { generateFloor, spawnsPerRoom } from '../../src/core/dungeon';
 import { dungeonChoices, isUnlocked, needsDungeonSelect, unlockedDungeons } from '../../src/core/dungeon-select';
 import { deriveSeed, nextRandom } from '../../src/core/rng';
@@ -116,5 +116,12 @@ describe('dungeon unlocks', () => {
   it('only asks for a dungeon when more than one is open', () => {
     expect(needsDungeonSelect(new Set(), all)).toBe(false);
     expect(needsDungeonSelect(new Set(['crypt-of-the-sword-king']), all)).toBe(true);
+  });
+});
+
+describe('guardian of a dungeon (end screen text)', () => {
+  it('is the species in the last arena: Aegislash for the Crypt, Decidueye for the forest', () => {
+    expect(guardianOf(CRYPT)).toBe('aegislash');
+    expect(guardianOf(dungeonById('misty-forest'))).toBe('decidueye');
   });
 });

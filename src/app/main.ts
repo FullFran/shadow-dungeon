@@ -29,7 +29,7 @@ import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, 
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown } from '../town/scene';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, type DungeonId } from '../data/dungeons';
+import { dungeonById, guardianOf, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -570,7 +570,8 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   show(root, [
     mdWindow({ className: `result ${result}` }, [
       h('h1', { textContent: t(`screen.${result}.title`) }),
-      h('p', { textContent: t(`screen.${result}.text`) }),
+      // Victory names the dungeon's guardian, defeat the player's Pokémon.
+      h('p', { textContent: t(`screen.${result}.text`).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) }),
       // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
       h('div', { className: 'result-columns' }, [
         h('div', {}, [
