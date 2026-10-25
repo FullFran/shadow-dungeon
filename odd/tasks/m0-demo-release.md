@@ -21,7 +21,8 @@ Out of scope: sound and music, procedural dungeons (M2), accounts and saves.
 ## Tasks
 - [x] T1 Lock-on rework (route: delegated writer; trigger: 4+ non-trivial files across core, adapters, app, i18n, tests). Commit `6462946`.
 - [x] T2 GitHub Pages workflow and README (route: same writer). Commit `511eee3`.
-- [ ] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25)
+- [x] T3 Create remote `FullFran/shadow-dungeon` (public), push, deploy (route: parent; authorized by the user 2026-10-25). Commits `7e2e740`, `815b307`.
+- [ ] T4 Without a lock, Q/E attack towards the facing (last WASD direction) and LMB/RMB towards the cursor (route: delegated writer; trigger: input adapter, core state, combat and tests)
 
 ## Acceptance criteria
 - Tapping Shift or middle mouse locks the enemy nearest the cursor; tapping again releases.
@@ -54,5 +55,10 @@ Created. Delivery strategy: ask-on-risk; forecast ~300 authored lines.
 - README: demo description, credits pointer, play URL placeholder, updated controls table, deploy note.
 - `npm test` 134/134 passed; `npm run build` passed. The workflow itself has not run yet (needs a remote, T3).
 
+### T3 evidence
+- `gh repo create FullFran/shadow-dungeon --public`; pushed `main` (fast-forward of `feat/m0-combat-prototype`) and the branch; Pages enabled with `build_type=workflow`; Pages URL is the user's custom domain `https://www.fullfran.com/shadow-dungeon/`.
+- The push did not trigger a run (Pages was enabled after the push); `workflow_dispatch` run 40192170885: build success, deploy success.
+- `curl` live page 200 and `sprites/0681/0001/Idle-Anim.png` 200.
+
 ## Next step
-T3: user authorizes the GitHub destination and credentials; create the remote, push, enable Pages (source "GitHub Actions"), then fill the play URL in README.
+T4 (playtest request): keyboard attacks use the facing when nothing is locked.
