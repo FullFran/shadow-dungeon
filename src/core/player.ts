@@ -4,6 +4,7 @@ import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './
 import { confineCircle } from './geometry';
 import { playerStats } from './items';
 import { add, length, normalize, scale, type Vec2 } from './vec';
+import { buffSpeed } from './boosts';
 
 const { roll: ROLL, stamina: STAMINA, player: PLAYER, combat: COMBAT } = TUNING;
 const ROLL_SPEED = ROLL.distance / ROLL.durationMs; // px per ms
@@ -78,7 +79,8 @@ export function updatePlayer(
     const pos = confine(add(next.pos, scale(next.roll.dir, ROLL_SPEED * rollMs)), arena);
     next = { ...next, pos, roll: elapsedMs >= ROLL.durationMs ? null : { ...next.roll, elapsedMs } };
   } else if (length(moveDir) > 0 && walkFactor(next) > 0) {
-    const speed = PLAYER.moveSpeed * (SPECIES[next.species].speedScale ?? 1) * walkFactor(next) * wade;
+    // A haste buff (Nasty Plot) speeds up the walk.
+    const speed = PLAYER.moveSpeed * (SPECIES[next.species].speedScale ?? 1) * walkFactor(next) * wade * buffSpeed(next);
     const pos = confine(add(next.pos, scale(moveDir, (speed * dtMs) / 1000)), arena);
     next = { ...next, pos, facing: moveDir };
   }

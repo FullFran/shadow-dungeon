@@ -165,6 +165,17 @@ export interface PlayerState {
   stolen?: StolenItem;
   /** Poisoned by a Toxic Swamp pool (toxic.ts); absent = not poisoned. */
   poison?: PoisonState;
+  /** Boost and area moves on cooldown: ms left per move (core/boosts.ts); absent = none running. */
+  cooldowns?: Readonly<Partial<Record<MoveId, number>>>;
+  /** The boost move's buff running now (core/boosts.ts); absent = none. */
+  buff?: ActiveBuff;
+}
+
+/** A running boost buff: its move (whose `MoveDef.buff` says what it does), time left and, for `power`, hits left. */
+export interface ActiveBuff {
+  moveId: MoveId;
+  remainingMs: number;
+  hitsLeft?: number;
 }
 
 export interface StolenItem {
@@ -328,6 +339,8 @@ export type GameEvent =
   | { type: 'passiveTriggered'; passive: PassiveId; kindled?: boolean }
   | { type: 'moveStarted'; moveId: MoveId; slotIndex: number }
   | { type: 'moveDenied'; moveId: MoveId }
+  /** A boost move took hold on the local player (its aura and sound). */
+  | { type: 'buffStarted'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean }

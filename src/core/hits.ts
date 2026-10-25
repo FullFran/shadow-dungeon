@@ -6,6 +6,7 @@ import { partyDamageScale } from './party';
 import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
+import { buffDamageTaken } from './boosts';
 
 const PERFECT = TUNING.perfectDodge;
 const PASSIVES = TUNING.passives;
@@ -61,7 +62,10 @@ export function landHitOnPlayer(
   }
   const armored = armorCovers(player, hit);
   if (armored) events.push({ type: 'passiveTriggered', passive: 'battle-armor' });
-  const damage = armored ? Math.round(hit.damage * PASSIVES.battleArmorFactor) : hit.damage;
+  const armoredDamage = armored ? Math.round(hit.damage * PASSIVES.battleArmorFactor) : hit.damage;
+  // A guard buff (Bulk Up) takes the edge off (never below 1).
+  const guard = buffDamageTaken(player);
+  const damage = guard === 1 || armoredDamage <= 0 ? armoredDamage : Math.max(1, Math.round(armoredDamage * guard));
   // `pierceRoll` names a positional hit for the balance harness (src/sim); nothing in the game reads it.
   events.push({ type: 'playerHurt', damage, ...(hit.pierceRoll ? { pierceRoll: true as const } : {}) });
   const hurt = breakIllusion(player, events);

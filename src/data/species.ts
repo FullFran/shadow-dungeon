@@ -88,8 +88,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'mimikyu',
     spentSprite: 'mimikyuBusted',
-    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball'],
-    defaultLoadout: ['shadow-claw', 'play-rough', null, null],
+    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball', 'swords-dance'],
+    defaultLoadout: ['shadow-claw', 'play-rough', 'swords-dance', null],
     passive: 'disguise',
   },
   zorua: {
@@ -99,8 +99,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'zorua',
     speedScale: 1.12,
-    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play'],
-    defaultLoadout: ['feint-attack', 'night-daze', null, null],
+    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play', 'nasty-plot'],
+    defaultLoadout: ['feint-attack', 'night-daze', 'nasty-plot', null],
     passive: 'illusion',
   },
   litwick: {
@@ -110,8 +110,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'litwick',
     speedScale: 0.95,
-    movepool: ['ember', 'astonish', 'hex', 'inferno'],
-    defaultLoadout: ['ember', 'hex', null, null],
+    movepool: ['ember', 'astonish', 'hex', 'inferno', 'will-o-wisp'],
+    defaultLoadout: ['ember', 'hex', 'will-o-wisp', null],
     passive: 'flash-fire',
   },
   cubone: {
@@ -121,8 +121,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'cubone',
     speedScale: 0.92,
-    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum'],
-    defaultLoadout: ['bone-club', 'bonemerang', null, null],
+    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum', 'bulk-up'],
+    defaultLoadout: ['bone-club', 'bonemerang', 'bulk-up', null],
     passive: 'battle-armor',
   },
   poochyena: {

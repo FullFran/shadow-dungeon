@@ -23,7 +23,7 @@ More attack choices per starter without trivialising the souls feel: boost and a
 
 ## Tasks
 - [x] T1 Model + input + touch + HUD layout (route: inline in this bounded writer; trigger evidence: one writer owns the whole feature).
-- [ ] T2 Boost moves + buffs + cooldowns + HUD cooldown + sound/VFX.
+- [x] T2 Boost moves + buffs + cooldowns + HUD cooldown + sound/VFX.
 - [ ] T3 Area moves + VFX + loadout UI (4 slots).
 - [ ] T4 Bots use boost/area, balance before/after, GDD §4, README, screenshots.
 
@@ -41,6 +41,8 @@ npm test, npm run build, npm run balance -- --quick.
 
 - T1: RED observed (tests/core/four-slots.test.ts, tests/adapters/four-slots-input.test.ts: 12 failures, missing layout/keys/buttons/compact slots), then GREEN. `PLAYER_SLOT_LAYOUT` = [fast, heavy, boost, area]; `padLoadout` fills a two-move save or an older peer's hello with the species defaults (createPlayer and loadSettings). Keys: boost R / Digit1, area F / Digit2 (keys only; mouse unchanged: middle stays the lock). Touch: `small` 52 px Boost/Area buttons left of Heavy (cluster 232x170), hidden while their slot is empty. HUD: more than two slots are 88 px compact, one row when clear of the message log (desktop), else 2x2 (touch 512x320). HUD keeps the two-window M0 look while boost/area are empty. Golden digest: unchanged (bebcc214) with the two new loadout/held entries projected out (`twoSlots` in tests/core/difficulty-tiers.test.ts).
 - T1 checks: npm test 148 files / 1403 tests passed; typecheck clean.
+- T2: RED observed (tests/core/boost-moves.test.ts: 12 of 13 failed), then GREEN. New `self` hitbox, `MoveDef.cooldownMs` + `buff` (power / haste / guard / kindle), core/boosts.ts (cooldowns and buff live on the player only while running; ticked on the player clock). Moves: Mimikyu Danza Espada (next 3 hits x1.5, 9 s, CD 15 s), Zorua Maquinación (walk x1.3 + 35% crit, 5 s, CD 14 s), Litwick Fuego Fatuo (Flash Fire lit at once, CD 16 s), Cubone Corpulencia (damage taken x0.6, 6 s, CD 16 s); no stamina; equipped by default in slot 3. VFX: type-coloured burst on cast + pulsing aura while the buff runs (blinks the last 1.2 s); sound `buff` on buffStarted; HUD slot shows seconds left + emptying bar, border in the type colour while the buff runs; loadout card shows the cooldown and no power for boosts.
+- T2 checks: npm test 150 files / 1425 tests passed; typecheck clean; golden digest unchanged (projection).
 
 ## Next step
-T2.
+T3.

@@ -4,6 +4,7 @@ import { MUSIC, type Drum, type MusicId, type MusicTrack, type Note } from '../d
 import { MUSIC_TRACKS, type LicensedTrack, type MusicContext } from '../data/music';
 import { eventsBetween, type CueMusic, type ScoreEvent } from '../data/prologue-music';
 import { isHeavyHit } from './juice';
+import { MOVES } from '../data/moves';
 
 /**
  * Web Audio: retro sfx synthesised from oscillators, a noise buffer,
@@ -22,6 +23,8 @@ export const SOUND_IDS = [
   'swingFast',
   'swingHeavy',
   'release',
+  'buff',
+  'area',
   'hit',
   'hitHeavy',
   'defeated',
@@ -66,8 +69,13 @@ export interface AudioLevels {
 /** Which sound a core event makes, if any. */
 export function soundFor(event: GameEvent): SoundId | null {
   switch (event.type) {
-    case 'moveStarted':
-      return event.slotIndex === 0 ? 'swingFast' : 'swingHeavy';
+    case 'moveStarted': {
+      // By slot kind: a boost is heard when it takes hold (buffStarted), an area move with its own whoosh.
+      const kind = MOVES[event.moveId]?.slot ?? (event.slotIndex === 0 ? 'fast' : 'heavy');
+      return kind === 'fast' ? 'swingFast' : kind === 'heavy' ? 'swingHeavy' : kind === 'area' ? 'area' : null;
+    }
+    case 'buffStarted':
+      return 'buff';
     case 'moveReleased':
       return 'release';
     case 'enemyHit':
@@ -498,6 +506,22 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     ms: 700,
     // A bright rising fanfare, Mystery Dungeon style.
     play: (s, t) => arpeggio(s, t, 'square', [523, 659, 784, 1047], 0.08, 0.4, 0.08),
+  },
+  buff: {
+    ms: 520,
+    // A boost taking hold: a rising shimmer over a soft swell.
+    play: (s, t, v) => {
+      arpeggio(s, t, 'triangle', [392 * v, 523 * v, 659 * v, 880 * v], 0.06, 0.26, 0.07);
+      noise(s, t, { filter: 'highpass', from: 2500, dur: 0.4, gain: 0.08 });
+    },
+  },
+  area: {
+    ms: 360,
+    // An area move: a deep, wide whoosh with a low thump.
+    play: (s, t, v) => {
+      noise(s, t, { filter: 'lowpass', from: 1800 * v, to: 160, dur: 0.34, gain: 0.38 });
+      tone(s, t, { type: 'sine', from: 130 * v, to: 45, dur: 0.3, gain: 0.2 });
+    },
   },
   item: {
     ms: 260,

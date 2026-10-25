@@ -1,6 +1,7 @@
 import type { ItemId, Rarity } from '../data/items';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
-import { MOVES } from '../data/moves';
+import { MOVES, type MoveId } from '../data/moves';
+import { cooldownLeft } from '../core/boosts';
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
@@ -10,7 +11,7 @@ import { levelProgress } from '../core/progression';
 import type { PlayerState, Rect, WorldState } from '../core/state';
 import { drawBar, drawPanel, pixelText } from '../ui/canvas';
 import { bossRect, HUD_BOX, slotRect, statusRect } from '../ui/hud-layout';
-import { canvasFont, PALETTE, RARITY } from '../ui/tokens';
+import { canvasFont, PALETTE, RARITY, TYPE_COLORS } from '../ui/tokens';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
 /** Fraction of a bar to fill, clamped to [0, 1]. */
@@ -122,6 +123,14 @@ function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: nu
   if (chip) pixelText(ctx, chip, x + PAD, y + 63, PALETTE.textDim);
 }
 
+/** A slot's cooldown for the HUD: seconds left ("3 s", rounded up) and the share still to run; null when ready. */
+export function slotCooldown(player: Pick<PlayerState, 'cooldowns'>, moveId: MoveId): { label: string; fill: number } | null {
+  const left = cooldownLeft(player, moveId);
+  const total = MOVES[moveId].cooldownMs ?? 0;
+  if (left <= 0 || total <= 0) return null;
+  return { label: t('hud.cooldown').replace('{s}', String(Math.ceil(left / 1000))), fill: barFill(left, total) };
+}
+
 /** How many slot windows the HUD lays out: two while the boost and area slots are empty (the M0 look), else four. */
 export const slotCount = (loadout: readonly (string | null)[]): number => (loadout.slice(2).some((m) => m !== null) ? PLAYER_SLOT_LAYOUT.length : 2);
 
@@ -136,10 +145,18 @@ function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: Hud
     const { x, y, width: w } = slotRect(screen, index, count);
     const busy = player.action?.slotIndex === index;
     const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
-    drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : PALETTE.border });
+    const cooling = slotCooldown(player, moveId);
+    // A boost whose buff is running glows in its type colour.
+    const glowing = player.buff?.moveId === moveId;
+    drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : glowing ? TYPE_COLORS[move.type].core : PALETTE.border });
     ctx.font = canvasFont();
     pixelText(ctx, t(SLOT_KEYS[index] ?? ''), x + 6, y + 12, PALETTE.textDim);
-    pixelText(ctx, t(`move.${moveId}`), x + 6, y + 24, affordable ? PALETTE.text : PALETTE.danger);
+    pixelText(ctx, t(`move.${moveId}`), x + 6, y + 24, cooling ? PALETTE.disabled : affordable ? PALETTE.text : PALETTE.danger);
+    if (cooling) {
+      // The cooldown: seconds left top right and a bar that empties as it runs out.
+      pixelText(ctx, cooling.label, x + w - 6, y + 12, PALETTE.cursor, 'right');
+      drawBar(ctx, x + 4, y + 30 - 4, w - 8, 2, cooling.fill, PALETTE.textDim);
+    }
     const action = player.action;
     if (busy && action?.phase === 'charging' && move.charge) {
       const maxHold = move.charge.at(-1)?.holdMs ?? 1;

@@ -101,7 +101,8 @@ function moveCard(id: MoveId, equipped: boolean): HTMLElement {
       typeBadge(move.type),
       equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
     ]),
-    h('div', { className: 'move-desc' }, [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`]),
+    // A boost deals no damage: no power line, just its stats.
+    h('div', { className: 'move-desc' }, move.power > 0 ? [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`] : [stats]),
     h('div', { className: 'move-desc' }, [t(`move.${id}.description`)]),
     h('div', { className: 'move-desc move-matchup' }, [matchup]),
   ]);

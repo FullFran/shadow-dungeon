@@ -22,7 +22,22 @@ export type PlayerVfx =
   | { kind: 'arc'; type: PokemonType; dir: Vec2; radius: number; arcDegrees: number; alpha: number }
   | { kind: 'ring'; type: PokemonType; radius: number; alpha: number }
   | { kind: 'trail'; type: PokemonType; dir: Vec2; length: number; width: number; alpha: number }
-  | { kind: 'swipe'; type: PokemonType; dir: Vec2; reach: number; index: number; alpha: number };
+  | { kind: 'swipe'; type: PokemonType; dir: Vec2; reach: number; index: number; alpha: number }
+  /** A boost move taking hold: a ring bursting out of the user. */
+  | { kind: 'burst'; type: PokemonType; radius: number; alpha: number }
+  /** A boost buff running: a pulsing aura at the feet with rising sparks (`fading` near its end). */
+  | { kind: 'aura'; type: PokemonType; radius: number; alpha: number; fading: boolean };
+
+/** Last part of a buff that blinks (its aura fades) before it ends. */
+export const AURA_FADE_MS = 1200;
+
+/** The aura of the player's running boost buff, if any. */
+export function buffAura(player: Partial<Pick<PlayerState, 'buff'>>): PlayerVfx[] {
+  const buff = player.buff;
+  if (!buff) return [];
+  const fading = buff.remainingMs < AURA_FADE_MS;
+  return [{ kind: 'aura', type: MOVES[buff.moveId].type, radius: 15, alpha: fading ? 0.35 + 0.35 * (buff.remainingMs / AURA_FADE_MS) : 0.75, fading }];
+}
 
 /** `#rrggbb` with an alpha, as a canvas colour. */
 export function withAlpha(hex: string, alpha: number): string {
@@ -35,22 +50,29 @@ export function withAlpha(hex: string, alpha: number): string {
  * active window; during it and for `VFX_TAIL_MS` after, an arc, a ring, a
  * dash trail and one swipe mark per multi-hit part so far, fading out.
  */
-export function playerVfx(player: Pick<PlayerState, 'action' | 'items' | 'upgrades' | 'level'>): PlayerVfx[] {
+export function playerVfx(player: Pick<PlayerState, 'action' | 'items' | 'upgrades' | 'level'> & Partial<Pick<PlayerState, 'buff'>>): PlayerVfx[] {
+  const aura = buffAura(player);
   const action = player.action;
-  if (!action || (action.phase !== 'active' && action.phase !== 'recovery')) return [];
+  if (!action || (action.phase !== 'active' && action.phase !== 'recovery')) return aura;
   const move = MOVES[action.moveId];
   const stats = playerStats(player);
   const activeMs = move.activeMs * stats.actionTime;
   const progress = action.phase === 'active' ? Math.min(1, action.phaseMs / Math.max(1, activeMs)) : 1;
   const tail = action.phase === 'recovery' ? action.phaseMs / VFX_TAIL_MS : 0;
-  if (tail >= 1) return [];
+  if (tail >= 1) return aura;
   // Full while active, then fades over the tail.
   const alpha = action.phase === 'active' ? 1 - 0.3 * progress : 0.7 * (1 - tail);
   const size = (move.charge?.[action.chargeLevel]?.sizeMultiplier ?? 1) * stats.reach;
   const { type } = move;
   const dir = action.aimDir;
-  const out: PlayerVfx[] = [];
+  const out: PlayerVfx[] = [...aura];
   const hitbox = move.hitbox;
+  if (hitbox.kind === 'self') {
+    // Bursts out over the active window and its tail.
+    const grow = action.phase === 'active' ? 0.5 * progress : 0.5 + 0.5 * tail;
+    out.push({ kind: 'burst', type, radius: 8 + 26 * grow, alpha });
+    return out;
+  }
   if (hitbox.kind === 'arc' && hitbox.arcDegrees >= 360) {
     // The ring sweeps out to its reach during the active window.
     out.push({ kind: 'ring', type, radius: hitbox.range * size * (0.35 + 0.65 * progress), alpha });
@@ -170,6 +192,40 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
       ctx.beginPath();
       ctx.ellipse(pos.x, pos.y, v.radius + 2, v.radius * 0.6 + 2, 0, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (v.kind === 'burst') {
+      ctx.strokeStyle = withAlpha(c.glow, 0.9 * v.alpha);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y - 8, v.radius, v.radius * 0.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = withAlpha(c.core, v.alpha);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y - 8, v.radius * 0.7, v.radius * 0.56, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // Four sparks flying out along the diagonals.
+      ctx.fillStyle = withAlpha(c.edge, v.alpha);
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + (i * Math.PI) / 2;
+        ctx.fillRect(Math.round(pos.x + Math.cos(a) * v.radius) - 1, Math.round(pos.y - 8 + Math.sin(a) * v.radius * 0.8) - 1, 3, 3);
+      }
+    } else if (v.kind === 'aura') {
+      // A slow pulse; near the end it blinks so the player sees it running out.
+      const pulse = 0.5 + 0.5 * Math.sin(timeMs / (v.fading ? 60 : 220));
+      ctx.fillStyle = withAlpha(c.glow, (0.12 + 0.1 * pulse) * v.alpha);
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y, v.radius + 2 * pulse, (v.radius + 2 * pulse) * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(c.core, (0.5 + 0.4 * pulse) * v.alpha);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Sparks rising around the body, on a loop.
+      ctx.fillStyle = withAlpha(c.edge, 0.9 * v.alpha);
+      for (let i = 0; i < 3; i++) {
+        const t = ((timeMs / 700 + i / 3) % 1 + 1) % 1;
+        const x = pos.x + Math.cos(i * 2.1 + timeMs / 400) * (v.radius - 4);
+        ctx.fillRect(Math.round(x), Math.round(pos.y - 4 - t * 22), 2, 2);
+      }
     } else if (v.kind === 'trail') {
       // Afterimages fading towards where the dash started.
       const steps = 6;
@@ -210,7 +266,6 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
       ctx.stroke();
     }
   }
-  void timeMs;
 }
 
 /**

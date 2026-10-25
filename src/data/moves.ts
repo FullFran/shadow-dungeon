@@ -17,7 +17,12 @@ export type MoveId =
   | 'bone-club'
   | 'bone-rush'
   | 'bonemerang'
-  | 'stomping-tantrum';
+  | 'stomping-tantrum'
+  // Boost slot (four-slots): self-buffs on a cooldown.
+  | 'swords-dance'
+  | 'nasty-plot'
+  | 'will-o-wisp'
+  | 'bulk-up';
 
 /** Hit shape of a move, relative to the attacker and its aim direction. */
 export type HitboxDef =
@@ -25,6 +30,8 @@ export type HitboxDef =
   | { kind: 'arc'; range: number; arcDegrees: number }
   /** The attacker lunges `distance` along the aim during the active phase, hitting what it touches. */
   | { kind: 'dash'; distance: number; radius: number }
+  /** No hitbox: a boost move acts on the user at the start of its active phase (`MoveDef.buff`). */
+  | { kind: 'self' }
   /** Spawns a projectile at the start of the active phase. */
   | { kind: 'projectile'; speed: number; radius: number; lifetimeMs: number; boomerang?: boolean };
 
@@ -37,6 +44,19 @@ export interface MoveBonus {
   when: 'attacking' | 'staggered' | 'afterMiss';
   multiplier: number;
 }
+
+/**
+ * What a boost move does to its user (core/boosts.ts), for `durationMs`:
+ * `power` multiplies the damage of the next `hits` hits (Swords Dance),
+ * `haste` speeds up walking and adds crit chance (Nasty Plot), `guard`
+ * scales the damage taken (Bulk Up); `kindle` lights Flash Fire at once
+ * (Will-O-Wisp: the next heavy move is powered up).
+ */
+export type BuffDef =
+  | { kind: 'power'; multiplier: number; hits: number; durationMs: number }
+  | { kind: 'haste'; speed: number; critChance: number; durationMs: number }
+  | { kind: 'guard'; damageTaken: number; durationMs: number }
+  | { kind: 'kindle' };
 
 /** One charge level, reached after holding the button for `holdMs`. Level 0 is a tap. */
 export interface ChargeLevel {
@@ -73,6 +93,10 @@ export interface MoveDef {
    * multi-hit move feel heavy.
    */
   juice?: 'heavy';
+  /** Boost and area moves: time before the move can be used again, from its press (not scaled by Quick Claw). */
+  cooldownMs?: number;
+  /** Boost moves: the effect on the user (with a `self` hitbox). */
+  buff?: BuffDef;
 }
 
 const HEAVY_CHARGE: readonly ChargeLevel[] = [
@@ -316,5 +340,66 @@ export const MOVES: Record<MoveId, MoveDef> = {
     charge: HEAVY_CHARGE,
     bonus: { when: 'afterMiss', multiplier: 2 },
     juice: 'heavy',
+  },
+  // Boost slot: no damage, no stamina; a short cast that roots the user, then a long cooldown.
+  'swords-dance': {
+    id: 'swords-dance',
+    slot: 'boost',
+    type: 'normal',
+    power: 0,
+    windupMs: 160,
+    activeMs: 60,
+    recoveryMs: 220,
+    staminaCost: 0,
+    hitbox: { kind: 'self' },
+    hitstunMs: 0,
+    knockback: 0,
+    cooldownMs: 15000,
+    buff: { kind: 'power', multiplier: 1.5, hits: 3, durationMs: 9000 },
+  },
+  'nasty-plot': {
+    id: 'nasty-plot',
+    slot: 'boost',
+    type: 'dark',
+    power: 0,
+    windupMs: 140,
+    activeMs: 60,
+    recoveryMs: 200,
+    staminaCost: 0,
+    hitbox: { kind: 'self' },
+    hitstunMs: 0,
+    knockback: 0,
+    cooldownMs: 14000,
+    buff: { kind: 'haste', speed: 1.3, critChance: 0.35, durationMs: 5000 },
+  },
+  'will-o-wisp': {
+    id: 'will-o-wisp',
+    slot: 'boost',
+    type: 'fire',
+    power: 0,
+    windupMs: 180,
+    activeMs: 60,
+    recoveryMs: 240,
+    staminaCost: 0,
+    hitbox: { kind: 'self' },
+    hitstunMs: 0,
+    knockback: 0,
+    cooldownMs: 16000,
+    buff: { kind: 'kindle' },
+  },
+  'bulk-up': {
+    id: 'bulk-up',
+    slot: 'boost',
+    type: 'fighting',
+    power: 0,
+    windupMs: 200,
+    activeMs: 60,
+    recoveryMs: 240,
+    staminaCost: 0,
+    hitbox: { kind: 'self' },
+    hitstunMs: 0,
+    knockback: 0,
+    cooldownMs: 16000,
+    buff: { kind: 'guard', damageTaken: 0.6, durationMs: 6000 },
   },
 };
