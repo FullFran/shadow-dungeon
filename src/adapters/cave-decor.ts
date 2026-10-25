@@ -17,8 +17,8 @@ export interface CaveDecor {
   drips: readonly TilePoint[];
 }
 
-const CRYSTAL_SHARE = 0.16;
-const DRIP_SHARE = 0.09;
+const CRYSTAL_SHARE = 0.24;
+const DRIP_SHARE = 0.14;
 const TILE = 32;
 
 export function caveDecor(grid: TileGrid): CaveDecor {

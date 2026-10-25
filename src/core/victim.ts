@@ -3,6 +3,9 @@ import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
 import { isRosterDef, rosterAttack } from './roster';
 import { stealItem } from './stolen';
+import { danmakuMelee } from './danmaku';
+import { worldDifficulty } from './difficulty';
+import { trickedDef } from './tricks';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
@@ -76,6 +79,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
+    } else if (def.kind === 'danmaku') {
+      // Only the anchor sweep and the bursting zones touch; bubbles, sparks and kelp are projectiles.
+      const active = danmakuMelee(enemy, trickedDef(def, worldDifficulty(current)) as typeof def, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (isRosterDef(def)) {
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;

@@ -18,6 +18,7 @@ import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
 import { floodLevel } from '../core/flood';
+import { danmakuSinking, drawDanmaku } from './danmaku-vfx';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
@@ -153,6 +154,8 @@ export interface Renderer {
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
   /** The arena of the frame being drawn (the shadow-sword wall spans it). */
   let currentArena: { width: number; height: number } | null = null;
+  /** Real time of the frame being drawn (looping telegraph animations). */
+  let currentTimeMs = 0;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -554,6 +557,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.stroke();
     }
     const def = ENEMY_BEHAVIOUR[enemy.species];
+    if (def?.kind === 'danmaku') {
+      if (currentArena) drawDanmaku(ctx, enemy, def, pos, currentArena, currentTimeMs);
+      return;
+    }
     if (ai.mode === 'transform' && def?.kind === 'boss') {
       // The unsheathing (phase 2) is a bigger, double ring.
       const big = enemy.boss?.stance === 'unsheathe';
@@ -844,6 +851,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
     currentArena = current.arena;
+    currentTimeMs = timeMs;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -887,7 +895,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
           // (Sableye blinking out works the same way.)
-          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
+          const danmaku = ENEMY_BEHAVIOUR[enemy.species];
+          const sinking = danmaku?.kind === 'danmaku' && danmakuSinking(enemy, danmaku);
+          const vanishing = enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || sinking);
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },

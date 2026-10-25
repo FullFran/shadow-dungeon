@@ -13,6 +13,12 @@ import type { PokemonType } from './types';
 export interface EnemyAttackDef {
   power: number;
   type: PokemonType;
+  /**
+   * A positional attack: roll i-frames do not protect against it, only being
+   * outside its area does (the core rule and its own telegraph come with the
+   * difficulty work). Its telegraph must leave time to walk out.
+   */
+  pierceRoll?: true;
 }
 
 /**
@@ -1066,7 +1072,148 @@ export const SHELLOS: MortarDef = {
   tricks: [{ minDifficulty: 'hard', set: { splash: { count: 6, projectile: { power: 14, type: 'water', speed: 110, radius: 5, lifetimeMs: 1400 } } } }],
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+/**
+ * Spell cards of the bullet-hell bosses of the caves (Lanturn, Dhelmise) and
+ * the phase-2 awakening. Each is one data pattern (core/danmaku.ts).
+ */
+export type DanmakuCard = 'bubbles' | 'lure' | 'surge' | 'deep' | 'undertow' | 'whirlpool' | 'kelp' | 'riptide' | 'bell' | 'maelstrom' | 'awaken';
+
+export type DanmakuShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+
+/**
+ * One spell card's pattern. Every bullet pattern leaves a way through:
+ * rings miss `gap` bullets (the first gap faces the player, the next ones
+ * turn by `gapTurnDeg`), spiral arms leave the space between them, lane walls
+ * leave a lane `gapWidth` wide (shifting by `shiftPx` every other wave);
+ * sweeps leave the sector behind their start; zones end at their edge.
+ */
+export type DanmakuPattern =
+  | { kind: 'rings'; rings: number; perRing: number; gap: number; gapTurnDeg: number; gapMs: number; shot: DanmakuShot }
+  | { kind: 'spiral'; arms: number; everyMs: number; durationMs: number; turnDegPerShot: number; shot: DanmakuShot }
+  | { kind: 'lanes'; waves: number; gapMs: number; spacing: number; gapWidth: number; shiftPx: number; shot: DanmakuShot }
+  /** An anchor or chain swung around the body: `sweepDeg` of a turn over `sweepMs`, hitting within `radius` near the arm. */
+  | { kind: 'sweep'; radius: number; sweepDeg: number; sweepMs: number; armDeg: number; attack: EnemyAttackDef }
+  /**
+   * A marked circle that bursts: around the boss (`at: 'self'`) or where the
+   * player stood (`at: 'target'`: the mark follows them until `lockMs` before
+   * the end, the boss sinks and surfaces there); `ring` bullets fly out after.
+   */
+  | { kind: 'zone'; at: 'self' | 'target'; radius: number; lockMs: number; impactMs: number; attack: EnemyAttackDef; ring?: { count: number; gap: number; shot: DanmakuShot } };
+
+export interface DanmakuCardDef {
+  telegraphMs: number;
+  recoverMs: number;
+  pattern: DanmakuPattern;
+}
+
+/**
+ * Bullet-hell bosses (docs/gdd.md, Cuevas Inundadas): spell cards in a fixed
+ * order, each announced by name, telegraphed and followed by an opening; a
+ * phase 2 below `phase2.belowHp` (once, never mid-card) changes the order and
+ * the rest. Enemy shots never go over `maxShots` at once.
+ */
+export interface DanmakuDef {
+  kind: 'danmaku';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  keepDistance: number;
+  restMs: number;
+  cards: readonly DanmakuCard[];
+  cardNames: Readonly<Partial<Record<DanmakuCard, string>>>;
+  patterns: Readonly<Partial<Record<DanmakuCard, DanmakuCardDef>>>;
+  phase2?: { belowHp: number; transformMs: number; cards: readonly DanmakuCard[]; restMs: number };
+  maxShots: number;
+  tricks?: readonly DifficultyTrick<DanmakuDef>[];
+}
+
+const BUBBLE = (power: number, speed: number, radius = 7): DanmakuShot => ({ power, type: 'water', speed, radius, lifetimeMs: 6000 });
+
+const LANTURN_PATTERNS: Partial<Record<DanmakuCard, DanmakuCardDef>> = {
+  bubbles: { telegraphMs: 800, recoverMs: 1300, pattern: { kind: 'rings', rings: 4, perRing: 20, gap: 3, gapTurnDeg: 40, gapMs: 700, shot: BUBBLE(18, 95) } },
+  lure: { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'spiral', arms: 2, everyMs: 110, durationMs: 2600, turnDegPerShot: 13, shot: { power: 16, type: 'electric', speed: 120, radius: 5, lifetimeMs: 4500 } } },
+  surge: { telegraphMs: 1300, recoverMs: 1600, pattern: { kind: 'zone', at: 'self', radius: 150, lockMs: 0, impactMs: 220, attack: { power: 34, type: 'electric', pierceRoll: true } } },
+  deep: { telegraphMs: 900, recoverMs: 1500, pattern: { kind: 'rings', rings: 6, perRing: 28, gap: 4, gapTurnDeg: 25, gapMs: 520, shot: BUBBLE(16, 100, 6) } },
+};
+
+/**
+ * Lanturn, "el farol del abismo" (caves mid-boss): bubble rings, a spiral of
+ * sparks from its lure, and a discharge around its body that a roll does not
+ * escape (walk out of the circle). Hard: three spiral arms; nightmare: an
+ * extra card, a sea of lanterns (six denser rings).
+ */
+export const LANTURN: DanmakuDef = {
+  kind: 'danmaku',
+  poise: { hitstunScale: 0, knockbackScale: 0.15 },
+  bar: true,
+  aggroRange: 900,
+  walkSpeed: 60,
+  keepDistance: 130,
+  restMs: 1300,
+  cards: ['bubbles', 'lure', 'surge'],
+  cardNames: { bubbles: 'spell.lanturn.bubbles', lure: 'spell.lanturn.lure', surge: 'spell.lanturn.surge', deep: 'spell.lanturn.deep' },
+  patterns: LANTURN_PATTERNS,
+  maxShots: 90,
+  tricks: [
+    { minDifficulty: 'hard', set: { patterns: { ...LANTURN_PATTERNS, lure: { ...LANTURN_PATTERNS.lure!, pattern: { kind: 'spiral', arms: 3, everyMs: 120, durationMs: 2600, turnDegPerShot: 13, shot: { power: 16, type: 'electric', speed: 120, radius: 5, lifetimeMs: 4500 } } } } } },
+    { minDifficulty: 'nightmare', set: { cards: ['bubbles', 'lure', 'surge', 'deep'] } },
+  ],
+};
+
+const KELP = { power: 20, type: 'grass', speed: 150, radius: 8, lifetimeMs: 7000 } as const;
+
+const DHELMISE_PATTERNS: Partial<Record<DanmakuCard, DanmakuCardDef>> = {
+  undertow: { telegraphMs: 1000, recoverMs: 1300, pattern: { kind: 'sweep', radius: 150, sweepDeg: 270, sweepMs: 900, armDeg: 26, attack: { power: 38, type: 'steel', pierceRoll: true } } },
+  whirlpool: { telegraphMs: 900, recoverMs: 1300, pattern: { kind: 'spiral', arms: 2, everyMs: 120, durationMs: 3000, turnDegPerShot: 11, shot: BUBBLE(16, 110, 6) } },
+  kelp: { telegraphMs: 1100, recoverMs: 1300, pattern: { kind: 'lanes', waves: 3, gapMs: 1100, spacing: 30, gapWidth: 96, shiftPx: 120, shot: KELP } },
+  riptide: {
+    telegraphMs: 1200,
+    recoverMs: 1500,
+    pattern: { kind: 'zone', at: 'target', radius: 72, lockMs: 400, impactMs: 220, attack: { power: 40, type: 'ghost', pierceRoll: true }, ring: { count: 16, gap: 3, shot: BUBBLE(16, 105, 6) } },
+  },
+  bell: { telegraphMs: 900, recoverMs: 1300, pattern: { kind: 'rings', rings: 5, perRing: 24, gap: 4, gapTurnDeg: 35, gapMs: 600, shot: { power: 18, type: 'ghost', speed: 100, radius: 7, lifetimeMs: 6000 } } },
+  maelstrom: { telegraphMs: 1000, recoverMs: 1500, pattern: { kind: 'spiral', arms: 4, everyMs: 140, durationMs: 3200, turnDegPerShot: -9, shot: BUBBLE(15, 100, 6) } },
+};
+
+/**
+ * Dhelmise, «el Ancla de los Juramentos Hundidos» (caves guardian): an
+ * anchor swung around it (a positional sweep: step out of its reach or into
+ * the open quarter behind it), a whirlpool spiral and kelp walls with a safe
+ * lane. At half HP "El ancla despierta": it sinks and surfaces under you
+ * (Riptide, positional), tolls the drowned bell (rings) and keeps the kelp
+ * and the anchor. The hull and rocks of the wreck stop bubbles and kelp.
+ * Hard: three whirlpool arms; nightmare: an extra phase-2 card, the
+ * maelstrom (four arms turning the other way).
+ */
+export const DHELMISE: DanmakuDef = {
+  kind: 'danmaku',
+  poise: { hitstunScale: 0, knockbackScale: 0.05 },
+  bar: true,
+  aggroRange: 1000,
+  walkSpeed: 55,
+  keepDistance: 140,
+  restMs: 1400,
+  cards: ['undertow', 'whirlpool', 'kelp'],
+  cardNames: {
+    undertow: 'spell.dhelmise.undertow',
+    whirlpool: 'spell.dhelmise.whirlpool',
+    kelp: 'spell.dhelmise.kelp',
+    riptide: 'spell.dhelmise.riptide',
+    bell: 'spell.dhelmise.bell',
+    maelstrom: 'spell.dhelmise.maelstrom',
+    awaken: 'spell.dhelmise.awaken',
+  },
+  patterns: DHELMISE_PATTERNS,
+  phase2: { belowHp: 0.5, transformMs: 1600, cards: ['riptide', 'kelp', 'bell', 'undertow'], restMs: 1100 },
+  maxShots: 110,
+  tricks: [
+    { minDifficulty: 'hard', set: { patterns: { ...DHELMISE_PATTERNS, whirlpool: { ...DHELMISE_PATTERNS.whirlpool!, pattern: { kind: 'spiral', arms: 3, everyMs: 130, durationMs: 3000, turnDegPerShot: 11, shot: BUBBLE(16, 110, 6) } } } } },
+    { minDifficulty: 'nightmare', set: { phase2: { belowHp: 0.5, transformMs: 1600, cards: ['riptide', 'kelp', 'bell', 'undertow', 'maelstrom'], restMs: 1100 } } },
+  ],
+};
+
+export type EnemyDef = DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -1102,6 +1249,8 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   krabby: KRABBY,
   remoraid: REMORAID,
   shellos: SHELLOS,
+  lanturn: LANTURN,
+  dhelmise: DHELMISE,
 };
 
 /** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
