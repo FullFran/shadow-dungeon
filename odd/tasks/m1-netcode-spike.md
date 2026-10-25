@@ -28,7 +28,7 @@ Out of scope: difficulty selection, enemy scaling by n, revive, anti-cheat, reco
 - [x] T2 Net protocol and sync: message types, snapshot/state encoding, interpolation buffer, lag simulator, BroadcastChannel transport, two-tab local play via `?net=local` (route: writer A)
 - [x] T3 Trystero transport, room-code lobby (create/join, up to 4), net stats overlay (route: delegated writer B; trigger: new dependency, adapters, app UI)
 - [ ] T4 Manual latency playtest with the user, findings and go/no-go recorded in the GDD (route: parent + user)
-- [ ] T5 Deploy (route: parent, needs user OK)
+- [x] T5 Deploy (route: parent; user OK 2026-10-25). Run 40200316070 success on `3a2772f`; live bundle `index-BGxI57LC.js` matches the local build.
 
 ## Acceptance criteria
 - Two local tabs with `?net=local` play the same floor together; enemies chase and hit both; both can kill enemies; stairs move both to the next floor.
