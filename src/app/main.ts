@@ -36,6 +36,7 @@ import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinem
 import { drawGuardianScene } from '../adapters/guardian-scenes';
 import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
 import type { SpeciesId } from '../data/species';
+import { parseSpawnList } from '../core/test-floor';
 import { earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
 import { coinLines } from './coin-lines';
@@ -101,6 +102,13 @@ function devStartClock(): number | undefined {
   if (!import.meta.env.DEV) return undefined;
   const ms = Number.parseInt(new URLSearchParams(window.location.search).get('clock') ?? '', 10);
   return Number.isFinite(ms) ? ms : undefined;
+}
+
+/** Development server only: `?spawn=koffing,grimer` starts solo on a test arena with those enemies (any species with a behaviour). */
+function devSpawns(): SpeciesId[] | undefined {
+  if (!import.meta.env.DEV) return undefined;
+  const species = parseSpawnList(new URLSearchParams(window.location.search).get('spawn'));
+  return species.length > 0 ? species : undefined;
 }
 
 /** Development server only: `?dungeon=<id>` runs that dungeon without the select (to look at it without unlocking it). */
@@ -697,7 +705,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns() };
   if (!join && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);

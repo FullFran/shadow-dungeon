@@ -7,6 +7,7 @@ import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { tickDue, type RunClock } from '../adapters/clock-hud';
+import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
 import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
@@ -83,6 +84,8 @@ export interface GameOptions {
   startFloor?: number;
   /** Development only: the endless clock starts at this many ms (`?clock=` on the dev server). */
   startClockMs?: number;
+  /** Development only, solo: replace the first floor with the test arena and these enemies (`?spawn=` on the dev server). */
+  testSpawns?: readonly SpeciesId[];
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
@@ -175,7 +178,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     options.dungeon,
   );
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
-  let world: WorldState = started.world;
+  let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;

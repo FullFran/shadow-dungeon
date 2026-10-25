@@ -72,7 +72,7 @@ export function playerVfx(player: Pick<PlayerState, 'action' | 'items' | 'upgrad
  * Flying; Foongus is Grass/Poison but its cloud is Poison), Decidueye's from
  * the spell card it is playing; species without a behaviour use their first type.
  */
-export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'boss'>): PokemonType {
+export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'boss'> & { ai?: Pick<EnemyState['ai'], 'attack'> }): PokemonType {
   const def = ENEMY_BEHAVIOUR[enemy.species];
   switch (def?.kind) {
     case 'boss': {
@@ -93,6 +93,15 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
       return def.projectile.type;
     case 'spore':
       return def.cloud.type;
+    case 'beam':
+    case 'pulse':
+    case 'cone':
+    case 'mortar':
+      return def.attack.type;
+    case 'bomber':
+      return enemy.ai?.attack === 'explode' ? def.explode.attack.type : def.cloud.type;
+    case 'counter':
+      return enemy.ai?.attack === 'jab' ? def.jab.attack.type : def.counter.attack.type;
     default:
       return enemy.types[0] ?? 'normal';
   }
@@ -189,7 +198,8 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
 
 /**
  * Look of an enemy shot: a still shot is a spore cloud (Poison puffs with
- * Grass specks, Foongus), Bug threads, Ghost arrows and Grass leaves are
+ * Grass specks: Foongus, Koffing, Grimer's sludge) or a puddle in its type
+ * colours (Slugma's lava, Wooper's mud), Bug threads, Ghost arrows and Grass leaves are
  * streaks in their type colours; anything else (Gastly's Poison ball) keeps
  * the orb of `drawProjectileVfx` (null).
  */
@@ -198,7 +208,12 @@ export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cl
 const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying'];
 
 export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemyShotLook | null {
-  if (p.vel.x === 0 && p.vel.y === 0) return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
+  if (p.vel.x === 0 && p.vel.y === 0) {
+    // Poison keeps Foongus' spore look; other still shots are puddles in their type colours (lava, mud, water).
+    if (p.type === 'poison') return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
+    const c = TYPE_COLORS[p.type];
+    return { kind: 'cloud', puff: c.core, speck: c.glow, edge: c.edge };
+  }
   return STREAK_TYPES.includes(p.type) ? { kind: 'streak', colors: TYPE_COLORS[p.type] } : null;
 }
 

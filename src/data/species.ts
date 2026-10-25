@@ -17,7 +17,21 @@ export type SpeciesId =
   | 'spinarak'
   | 'hoothoot'
   | 'trevenant'
-  | 'decidueye';
+  | 'decidueye'
+  | 'zubat'
+  | 'tentacool'
+  | 'chinchou'
+  | 'corphish'
+  | 'clauncher'
+  | 'wooper'
+  | 'grimer'
+  | 'koffing'
+  | 'ekans'
+  | 'croagunk'
+  | 'stunky'
+  | 'houndour'
+  | 'slugma'
+  | 'litleo';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -125,6 +139,21 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   hoothoot: { id: 'hoothoot', types: ['normal', 'flying'], maxHp: 55, radius: 11, sprite: 'hoothoot', movepool: [], defaultLoadout: [] },
   trevenant: { id: 'trevenant', types: ['ghost', 'grass'], maxHp: 520, radius: 18, sprite: 'trevenant', movepool: [], defaultLoadout: [] },
   decidueye: { id: 'decidueye', types: ['grass', 'ghost'], maxHp: 780, radius: 15, sprite: 'decidueye', movepool: [], defaultLoadout: [] },
+  // Experimental roster (EXPERIMENTAL_ENEMIES in enemies.ts): Flooded Caves, Toxic Swamp and Fire species; HP provisional.
+  zubat: { id: 'zubat', types: ['poison', 'flying'], maxHp: 34, radius: 9, sprite: 'zubat', movepool: [], defaultLoadout: [] },
+  tentacool: { id: 'tentacool', types: ['water', 'poison'], maxHp: 70, radius: 11, sprite: 'tentacool', movepool: [], defaultLoadout: [] },
+  chinchou: { id: 'chinchou', types: ['water', 'electric'], maxHp: 60, radius: 11, sprite: 'chinchou', movepool: [], defaultLoadout: [] },
+  corphish: { id: 'corphish', types: ['water'], maxHp: 80, radius: 11, sprite: 'corphish', movepool: [], defaultLoadout: [] },
+  clauncher: { id: 'clauncher', types: ['water'], maxHp: 65, radius: 11, sprite: 'clauncher', movepool: [], defaultLoadout: [] },
+  wooper: { id: 'wooper', types: ['water', 'ground'], maxHp: 110, radius: 12, sprite: 'wooper', movepool: [], defaultLoadout: [] },
+  grimer: { id: 'grimer', types: ['poison'], maxHp: 120, radius: 12, sprite: 'grimer', movepool: [], defaultLoadout: [] },
+  koffing: { id: 'koffing', types: ['poison'], maxHp: 70, radius: 12, sprite: 'koffing', movepool: [], defaultLoadout: [] },
+  ekans: { id: 'ekans', types: ['poison'], maxHp: 65, radius: 11, sprite: 'ekans', movepool: [], defaultLoadout: [] },
+  croagunk: { id: 'croagunk', types: ['poison', 'fighting'], maxHp: 90, radius: 11, sprite: 'croagunk', movepool: [], defaultLoadout: [] },
+  stunky: { id: 'stunky', types: ['poison', 'dark'], maxHp: 45, radius: 10, sprite: 'stunky', movepool: [], defaultLoadout: [] },
+  houndour: { id: 'houndour', types: ['dark', 'fire'], maxHp: 70, radius: 11, sprite: 'houndour', movepool: [], defaultLoadout: [] },
+  slugma: { id: 'slugma', types: ['fire'], maxHp: 85, radius: 11, sprite: 'slugma', movepool: [], defaultLoadout: [] },
+  litleo: { id: 'litleo', types: ['fire', 'normal'], maxHp: 60, radius: 10, sprite: 'litleo', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

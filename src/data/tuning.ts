@@ -69,6 +69,12 @@ export const TUNING = {
     battleArmorFactor: 0.5,
   },
 
+  /** Experimental roster budget (tests/core/roster-balance.test.ts): the most one hit may take of a starter's HP, and the shortest damaging wind-up. */
+  roster: {
+    maxHitShare: 0.35,
+    minTelegraphMs: 300,
+  },
+
   lockOn: {
     /** Max player-to-target distance to acquire or keep a lock. */
     range: 340,

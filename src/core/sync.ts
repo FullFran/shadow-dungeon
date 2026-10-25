@@ -4,6 +4,7 @@ import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
 import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
+import { answerGuardedHit } from './roster';
 import type {
   ActionPhase,
   AiMode,
@@ -53,7 +54,7 @@ export interface EnemySnapshot {
   alive: boolean;
   hitstunMs: number;
   /** Behaviour, for animation, telegraphs and the guest's victim-side melee check. */
-  ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2 };
+  ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2; attack?: string; aimPoint?: Vec2 };
   boss?: { stance: BossStance; comboIndex: number };
 }
 
@@ -145,7 +146,14 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       hp: e.hp,
       alive: e.alive,
       hitstunMs: e.hitstunMs,
-      ai: { mode: e.ai.mode, modeMs: e.ai.modeMs, modeDurationMs: e.ai.modeDurationMs, attackDir: e.ai.attackDir },
+      ai: {
+        mode: e.ai.mode,
+        modeMs: e.ai.modeMs,
+        modeDurationMs: e.ai.modeDurationMs,
+        attackDir: e.ai.attackDir,
+        ...(e.ai.attack !== undefined ? { attack: e.ai.attack } : {}),
+        ...(e.ai.aimPoint ? { aimPoint: e.ai.aimPoint } : {}),
+      },
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
@@ -185,6 +193,12 @@ function sameAttack(local: EnemyState, snapshot: EnemySnapshot): boolean {
   );
 }
 
+/** The optional attack fields come only from the latest snapshot (absent there = none). */
+function withoutNamedAttack(ai: EnemyState['ai']): EnemyState['ai'] {
+  const { attack: _attack, aimPoint: _aimPoint, ...rest } = ai;
+  return rest;
+}
+
 /**
  * Guest: takes the host's enemies and enemy projectiles as they are (host ids
  * win), drops the berries the host no longer has, keeping only the guest's own per-attack contact records and its own
@@ -203,7 +217,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       alive: s.alive,
       hitstunMs: s.hitstunMs,
       knockback: vec(0, 0),
-      ai: { ...base.ai, ...s.ai, contact },
+      ai: { ...withoutNamedAttack(base.ai), ...s.ai, contact },
       ...(s.boss ? { boss: { ...(base.boss ?? initialBoss()), ...s.boss } } : {}),
     };
   });
@@ -244,7 +258,9 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
     let struck: EnemyState;
     if (claim.blocked) {
       events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
-      struck = { ...enemy, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp };
+      // Croagunk's stance answers whoever struck it.
+      const striker = state.remotes.find((r) => r.id === claim.playerId)?.player.pos ?? state.player.pos;
+      struck = answerGuardedHit({ ...enemy, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
     } else {
       const hp = Math.max(0, enemy.hp - claim.damage);
       struck = {

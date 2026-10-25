@@ -22,6 +22,7 @@ import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
+import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 
@@ -410,11 +411,56 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.stroke();
       return;
     }
+    if (def?.kind === 'beam' && def.guard && ai.mode !== 'recover') {
+      // The crab's shell: hits from this side are blocked (it opens while recovering).
+      ctx.strokeStyle = COLORS.guard;
+      ctx.lineWidth = 3;
+      const angle = Math.atan2(enemy.facing.y, enemy.facing.x);
+      const half = (def.guard.arcDegrees * DEG) / 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, enemy.radius + 5, angle - half, angle + half);
+      ctx.stroke();
+    }
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
     const fill = telegraphFill(enemyAttackType(enemy), winding);
+    const lockedFor = (lockMs: number | undefined) => winding && lockMs !== undefined && ai.modeDurationMs - ai.modeMs <= lockMs;
     if (def?.kind === 'lunger') {
-      groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, fill, winding ? progress : 1);
+      // Ekans' coil: the lane turns solid once the aim is locked.
+      const locked = lockedFor(def.lockMs) || (striking && def.lockMs !== undefined);
+      groundLane(pos, ai.attackDir, def.lungeDistance, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'beam') {
+      const locked = lockedFor(def.lockMs) || striking;
+      groundLane(pos, ai.attackDir, def.length, def.width, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'pulse') {
+      if (winding) groundCircle(pos, def.radius, fill, progress);
+      else {
+        ctx.strokeStyle = COLORS.telegraphEdge;
+        ctx.lineWidth = def.width;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, ringRadius(enemy, def), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (def?.kind === 'cone') {
+      groundArc(pos, ai.attackDir, def.reach, def.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
+    } else if (def?.kind === 'mortar' && ai.aimPoint) {
+      // The landing circle: it follows the player during the wind-up and fills up during the flight.
+      groundCircle(ai.aimPoint, def.radius, fill, striking ? progress : 0.15);
+    } else if (def?.kind === 'bomber') {
+      if (ai.attack === 'explode') groundCircle(pos, def.explode.radius, fill, striking ? 1 : progress);
+      else if (winding) groundCircle(pos, def.cloud.radius, fill, progress);
+    } else if (def?.kind === 'counter') {
+      if (winding && ai.attack === 'stance') {
+        // The stance: a guard ring all around (hitting it now is answered).
+        ctx.strokeStyle = COLORS.guard;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + 6 + 2 * Math.sin(ai.modeMs / 90), 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const blow = ai.attack === 'counter' ? def.counter : def.jab;
+        groundLane(pos, ai.attackDir, blow.lungeDistance, enemy.radius * 2, ai.attack === 'counter' ? COLORS.strike : fill, winding ? progress : 1);
+      }
     } else if (def?.kind === 'caster' && winding) {
       ctx.strokeStyle = COLORS.telegraphEdge;
       ctx.lineWidth = 2;

@@ -465,5 +465,22 @@
   "guardian.aegislash.pre.1": "I am the first of those who keep watch. No shadow passes this door.",
   "guardian.aegislash.pre.2": "Draw, little one. Let steel say who goes on.",
   "guardian.aegislash.post.1": "The oath breaks… but this was not the only door.",
-  "guardian.aegislash.post.2": "Beyond, other guardians wait. And deeper still, the light keeps falling."
+  "guardian.aegislash.post.2": "Beyond, other guardians wait. And deeper still, the light keeps falling.",
+  "species.zubat": "Zubat",
+  "species.tentacool": "Tentacool",
+  "species.chinchou": "Chinchou",
+  "species.corphish": "Corphish",
+  "species.clauncher": "Clauncher",
+  "species.wooper": "Wooper",
+  "species.grimer": "Grimer",
+  "species.koffing": "Koffing",
+  "species.ekans": "Ekans",
+  "species.croagunk": "Croagunk",
+  "species.stunky": "Stunky",
+  "species.houndour": "Houndour",
+  "species.slugma": "Slugma",
+  "species.litleo": "Litleo",
+  "type.water": "Water",
+  "type.electric": "Electric",
+  "type.fighting": "Fighting"
 }

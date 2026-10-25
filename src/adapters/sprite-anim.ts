@@ -211,6 +211,20 @@ const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
   hoothoot: 'Attack',
   trevenant: 'Attack',
   decidueye: 'Shoot',
+  zubat: 'Attack',
+  tentacool: 'Attack',
+  chinchou: 'Shoot',
+  corphish: 'Shoot',
+  clauncher: 'Shoot',
+  wooper: 'Attack',
+  grimer: 'Attack',
+  koffing: 'Shoot',
+  ekans: 'Attack',
+  croagunk: 'Attack',
+  stunky: 'Shoot',
+  houndour: 'Shoot',
+  slugma: 'Shoot',
+  litleo: 'Shoot',
 };
 
 export interface EnemyAnimContext {

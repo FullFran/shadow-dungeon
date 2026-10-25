@@ -209,6 +209,10 @@ export interface AiState {
   cooldownMs: number;
   /** Strafing side while circling or keeping distance. */
   strafeSign: 1 | -1;
+  /** Named attack being telegraphed or thrown, for species with several (Koffing's puff or fuse, Croagunk's stance, counter or jab). */
+  attack?: string;
+  /** Ground point an attack lands on (Slugma's lava blob), fixed when it is thrown. */
+  aimPoint?: Vec2;
 }
 
 /** An Oran Berry lying on the floor (berries.ts). */

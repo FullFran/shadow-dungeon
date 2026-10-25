@@ -53,6 +53,22 @@ const TARGETS = [
   { dex: '0163', form: '0000', species: 'hoothoot', formName: 'base' },
   { dex: '0709', form: '0000', species: 'trevenant', formName: 'base' },
   { dex: '0724', form: '0000', species: 'decidueye', formName: 'base' },
+  // Experimental roster (docs/species-candidates.md §2 Flooded Caves and Toxic Swamp, plus three Fire
+  // species; tracker.json 2026-10-25: all have Idle, Walk, Attack, Shoot, Charge and Hurt).
+  { dex: '0041', form: '0000', species: 'zubat', formName: 'base' },
+  { dex: '0072', form: '0000', species: 'tentacool', formName: 'base' },
+  { dex: '0170', form: '0000', species: 'chinchou', formName: 'base' },
+  { dex: '0341', form: '0000', species: 'corphish', formName: 'base' },
+  { dex: '0692', form: '0000', species: 'clauncher', formName: 'base' },
+  { dex: '0194', form: '0000', species: 'wooper', formName: 'base' },
+  { dex: '0088', form: '0000', species: 'grimer', formName: 'base' },
+  { dex: '0109', form: '0000', species: 'koffing', formName: 'base' },
+  { dex: '0023', form: '0000', species: 'ekans', formName: 'base' },
+  { dex: '0453', form: '0000', species: 'croagunk', formName: 'base' },
+  { dex: '0434', form: '0000', species: 'stunky', formName: 'base' },
+  { dex: '0228', form: '0000', species: 'houndour', formName: 'base' },
+  { dex: '0218', form: '0000', species: 'slugma', formName: 'base' },
+  { dex: '0667', form: '0000', species: 'litleo', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

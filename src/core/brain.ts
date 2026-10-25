@@ -2,7 +2,9 @@ import { floatsOf, type EnemyAttackDef } from '../data/enemies';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
+import { flowStep } from './flow';
 import { onContact } from './items';
+import { lineOfSight, tileCenter, tileOf } from './tiles';
 import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
 import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
@@ -108,3 +110,24 @@ export function contactPlayer(
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
 }
 
+/** Starts a wind-up named `attack` (its telegraph event), aimed along `dir`. */
+export function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[]): EnemyState {
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs });
+  return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir, attack } };
+}
+
+/**
+ * Where a walker heads to reach its target: straight at it with a clear line
+ * of sight (or on arenas without tiles), otherwise towards the next tile
+ * downhill on the shared flow field (towards the nearest player). Null when it sees the target.
+ */
+export function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2, floats = false): Vec2 | null {
+  const grid = state.arena.tiles;
+  // Fliers and phasers go straight over the walls.
+  if (floats) return null;
+  if (!grid || !state.flow || lineOfSight(grid, enemy.pos, target)) return null;
+  const next = flowStep(grid, state.flow, tileOf(enemy.pos));
+  if (!next) return null;
+  const dir = normalize(sub(tileCenter(next), enemy.pos));
+  return length(dir) > 0 ? dir : null;
+}

@@ -191,6 +191,29 @@ Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los cam
 - **Cooperativo**: el anfitrión elige el modo en la sala (su semilla viaja en `start`); el reloj es suyo y lo manda cada segundo y en cada cambio de planta, los invitados lo enseñan y acaban cuando el suyo llega a 0. Cada jugador guarda su marca.
 - **Al acabar**: como todas las partidas, la pantalla final lleva de vuelta al pueblo.
 
+### Plantel experimental *(provisional)*
+
+Catorce enemigos nuevos para probar en la Sima del Eclipse antes de darles mazmorra propia (Cuevas Inundadas, Pantano Tóxico) o tirarlos. La lista vive en `EXPERIMENTAL_ENEMIES` (`src/data/enemies.ts`) con la planta mínima sugerida, el peso, el tamaño de grupo, las Pokémonedas sugeridas y la mazmorra futura; ninguna mazmorra los saca todavía. Todos siguen el mismo contrato souls: un aviso que enseña dónde va a caer el golpe, un hueco para esquivar (el aviso, o su último trozo cuando fija la puntería) y un rato abierto después. Ningún golpe quita más del 35 % de la vida de un inicial ni avisa menos de 0,3 s (lo comprueba un test). Tipos nuevos: Agua, Eléctrico y Lucha.
+
+| Enemigo (tipo) | Cómo juega | Cómo se esquiva | Planta mínima |
+|---|---|---|---|
+| Zubat (Veneno/Volador) | En grupos de tres; vuela por encima de las paredes haciendo eses y se lanza en picado | Rodar o apartarse cuando cae; se queda abierto si falla | 1 |
+| Stunky (Veneno/Siniestro) | En parejas; se da la vuelta y rocía un cono corto que deja una nube | Salir del cono durante el aviso | 1 |
+| Ekans (Veneno) | Se enrosca y embiste muy lejos en línea recta; la línea deja de seguirte en el último tercio del aviso (se vuelve sólida) | Apartarse de lado cuando la línea se fija; si falla, se queda mucho rato abierto | 2 |
+| Litleo (Fuego/Normal) | Guarda la distancia y lanza bolas de fuego rápidas | Moverse de lado o rodar | 2 |
+| Tentacool (Agua/Veneno) | Flota despacio, azota a su alrededor y deja un charco de veneno | Salir del círculo; no pisar el charco | 2 |
+| Corphish (Agua) | Cangrejo con caparazón: los golpes de frente rebotan (solo arañan); dispara un chorro de agua por un carril que fija antes de disparar | Rodearlo (gira despacio) o pegarle cuando se recupera, que abre el caparazón | 3 |
+| Chinchou (Agua/Eléctrico) | Su farol brilla y suelta un anillo eléctrico que se abre hasta un radio marcado | Salir del círculo durante el brillo o rodar a través del anillo | 3 |
+| Houndour (Siniestro/Fuego) | Lanzallamas en un cono que te sigue hasta que empieza a soplar | Salir del alcance o del cono durante el aviso | 3 |
+| Koffing (Veneno) | Flota cerca y suelta nubes de gas; con poca vida se hincha (anillo grande, 1,5 s) y explota; el golpe no lo para | Alejarse del anillo o rematarlo antes; si explota, se acaba | 3 |
+| Grimer (Veneno) | Tanque lento que deja un rastro de lodo y golpea el suelo | No seguir su rastro; salir del círculo | 4 |
+| Wooper (Agua/Tierra) | Tanque lento; golpe de suelo grande que deja barro | Salir del círculo | 4 |
+| Slugma (Fuego) | Lanza lava a donde estás: el círculo te sigue durante el aviso y se queda quieto mientras la lava vuela; deja un charco de lava | Salir del círculo marcado mientras vuela | 4 |
+| Clauncher (Agua) | Francotirador: aviso largo y un chorro muy largo y estrecho; caparazón de frente | Apartarse cuando el carril se fija | 5 |
+| Croagunk (Veneno/Lucha) | Se pone en guardia: si le pegas, para el golpe y contraataca rápido y fuerte (Lucha); si no, acaba con un Puya Nociva más lenta | No pegarle en guardia; esperar al Puya Nociva, esquivarlo y castigar | 5 |
+
+Litwick absorbe los golpes de Fuego de Litleo, Houndour y Slugma (Absorbe Fuego). En el servidor de desarrollo, `?spawn=koffing,grimer` abre una sala de pruebas con esos enemigos despiertos delante del jugador (hasta 12; vale cualquier especie con comportamiento).
+
 ## 4. Combate
 
 ### Controles (teclado y ratón)
