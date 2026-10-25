@@ -42,6 +42,7 @@ import { coinLines } from './coin-lines';
 import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
+import { endActions, returnPlace, type ReturnPlace } from './after-run';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -127,9 +128,9 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
   const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
-  // The host left: the run (or lobby) ends with a notice and the way back to the menu.
+  // The host left: the run ends with a notice and the way back to the town (a lobby: to the menu).
   session.onHostLeft(() => {
-    if (current === session) messageScreen(root, t('net.hostLeft'));
+    if (current === session) messageScreen(root, t('net.hostLeft'), returnPlace(running ? 'hostLeft' : 'lobby'));
   });
   return session;
 }
@@ -207,10 +208,11 @@ function single(label: string, action: () => void): HTMLElement {
   return cursorList({ items: [{ label, onConfirm: action }], onBack: action }).element;
 }
 
-/** A short message (room full, host left, no connection) and the way back to the menu. */
-function messageScreen(root: HTMLElement, text: string): void {
+/** A short message (room full, host left, no connection) and the way back to the menu, or to the town after a run. */
+function messageScreen(root: HTMLElement, text: string, place: ReturnPlace = 'title'): void {
   leaveNet();
-  show(root, [mdWindow({ className: 'narrow' }, [h('p', { textContent: text }), single(t('screen.menu'), () => titleScreen(root))])]);
+  const back = place === 'town' ? single(t('screen.town'), () => townScreen(root)) : single(t('screen.menu'), () => titleScreen(root));
+  show(root, [mdWindow({ className: 'narrow' }, [h('p', { textContent: text }), back])]);
 }
 
 /** Loading or connecting: a window with the text only. */
@@ -563,9 +565,11 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
 
 /** The end screen: result, floor reached, seed, level and items, the Pokémonedas earned and the new balance, then retry or back. */
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number): void {
-  const back = () => titleScreen(root);
-  const items: ListItem[] = [{ label: t('screen.menu'), onConfirm: back }];
-  if (!online) items.unshift({ label: t('screen.retry'), onConfirm: () => void play(root, undefined, summary.dungeon) });
+  // The town is the hub every run comes back to (after-run.ts).
+  const back = () => townScreen(root);
+  const items: ListItem[] = endActions({ online }).map((action) =>
+    action === 'retry' ? { label: t('screen.retry'), onConfirm: () => void play(root, undefined, summary.dungeon) } : { label: t('screen.town'), onConfirm: back },
+  );
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
     mdWindow({ className: `result ${result}` }, [
@@ -625,7 +629,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
-    onQuit: () => titleScreen(root),
+    // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
+    onQuit: () => townScreen(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.

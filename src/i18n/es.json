@@ -347,6 +347,7 @@
   "town.exit.text": "El camino sale del pueblo hacia las mazmorras.",
   "town.exit.crypt": "Cripta del Rey de las Espadas",
   "town.exit.stay": "Quedarse en el pueblo",
+  "screen.town": "Volver al pueblo",
   "hud.coins": "{coins} P",
   "screen.coins": "Pokémonedas",
   "screen.coins.floors": "Plantas superadas",
