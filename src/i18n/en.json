@@ -192,7 +192,11 @@
   "prologue.dungeons.2": "mouths of stone that were not there the day before.",
   "prologue.shadows.1": "Many went in to find what had been lost.",
   "prologue.shadows.2": "Those who came back were no longer themselves. Only their shadows.",
-  "prologue.king.1": "In the depths of the crypt, the Sword King guards a sealed door.",
-  "prologue.king.2": "No one knows whether he shields the world from what lies behind it, or what lies behind it from the world.",
-  "prologue.voice.1": "…Do you hear me? Can you hear me?"
+  "prologue.guardians.1": "Every dungeon has its guardian, bound by an oath that no one remembers.",
+  "prologue.guardians.2": "And deeper than them all, something is still devouring the light.",
+  "prologue.voice.1": "…Do you hear me? Can you hear me?",
+  "dungeon.crypt.name": "Crypt of the Sword King",
+  "dungeon.crypt.subtitle": "Where steel still awaits its orders",
+  "dungeon.crypt.lore.1": "In the depths of the crypt, the Sword King guards a sealed door.",
+  "dungeon.crypt.lore.2": "No one knows whether he shields the world from what lies behind it, or what lies behind it from the world."
 }

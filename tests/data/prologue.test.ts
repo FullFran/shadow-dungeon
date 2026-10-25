@@ -19,7 +19,7 @@ describe('the prologue', () => {
     expect(scenes[0]).toBe('light');
     expect(scenes.at(-1)).toBe('voice');
     expect(scenes).toContain('eclipse');
-    expect(scenes).toContain('king');
+    expect(scenes).toContain('guardians');
     const reveal = eclipseRevealAtMs();
     expect(reveal).toBeGreaterThan(totalMs(PROLOGUE) * 0.25);
     expect(reveal).toBeLessThan(totalMs(PROLOGUE) * 0.6);

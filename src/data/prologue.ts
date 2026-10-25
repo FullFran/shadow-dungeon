@@ -28,7 +28,7 @@ export interface CinematicPanel<S extends string = string> {
   camera: { from: Shot; to: Shot };
 }
 
-export type PrologueScene = 'light' | 'hunger' | 'dimming' | 'eclipse' | 'dungeons' | 'shadows' | 'king' | 'voice';
+export type PrologueScene = 'light' | 'hunger' | 'dimming' | 'eclipse' | 'dungeons' | 'shadows' | 'guardians' | 'voice';
 
 /** Into the eclipse panel: black, then the ring appears with a timpani hit. */
 export const ECLIPSE_REVEAL_MS = 1400;
@@ -56,7 +56,7 @@ export const PROLOGUE: readonly CinematicPanel<PrologueScene>[] = [
   },
   { id: 'dungeons', scene: 'dungeons', durationMs: 8500, ...FADE, lines: lines('dungeons', 2), ...TEXT, camera: { from: { x: 0.42, y: 0.55, zoom: 1.1 }, to: { x: 0.58, y: 0.55, zoom: 1.1 } } },
   { id: 'shadows', scene: 'shadows', durationMs: 9000, ...FADE, lines: lines('shadows', 2), ...TEXT, camera: { from: WIDE, to: { x: 0.5, y: 0.52, zoom: 1.15 } } },
-  { id: 'king', scene: 'king', durationMs: 13000, ...FADE, fadeOutMs: 2000, lines: lines('king', 2), ...TEXT, camera: { from: { x: 0.5, y: 0.45, zoom: 1.0 }, to: { x: 0.5, y: 0.5, zoom: 1.22 } } },
+  { id: 'guardians', scene: 'guardians', durationMs: 12000, ...FADE, fadeOutMs: 2000, lines: lines('guardians', 2), ...TEXT, camera: { from: { x: 0.5, y: 0.42, zoom: 1.05 }, to: { x: 0.5, y: 0.5, zoom: 1.15 } } },
   { id: 'voice', scene: 'voice', durationMs: 6500, fadeInMs: 0, fadeOutMs: 1400, lines: lines('voice', 1), textStartMs: 1500, charsPerSecond: 14, lineGapMs: 0, camera: { from: WIDE, to: WIDE } },
 ];
 

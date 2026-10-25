@@ -192,7 +192,11 @@
   "prologue.dungeons.2": "bocas de piedra que la víspera no estaban allí.",
   "prologue.shadows.1": "Muchos entraron a buscar lo que se había perdido.",
   "prologue.shadows.2": "Los que volvieron ya no eran ellos. Solo su sombra.",
-  "prologue.king.1": "En lo más hondo de la cripta, el Rey de las Espadas guarda una puerta sellada.",
-  "prologue.king.2": "Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo.",
-  "prologue.voice.1": "…¿Me oyes? ¿Puedes oírme?"
+  "prologue.guardians.1": "Cada mazmorra tiene su guardián, atado a un juramento que ya nadie recuerda.",
+  "prologue.guardians.2": "Y más hondo que todas ellas, algo sigue devorando la luz.",
+  "prologue.voice.1": "…¿Me oyes? ¿Puedes oírme?",
+  "dungeon.crypt.name": "Cripta del Rey de las Espadas",
+  "dungeon.crypt.subtitle": "Donde el acero aún espera órdenes",
+  "dungeon.crypt.lore.1": "En lo más hondo de la cripta, el Rey de las Espadas guarda una puerta sellada.",
+  "dungeon.crypt.lore.2": "Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo."
 }

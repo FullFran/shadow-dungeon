@@ -351,82 +351,97 @@ function shadows(ctx: CanvasRenderingContext2D, t: SceneTime): void {
   embers(ctx, t.localMs, 25, 0.6);
 }
 
-/** The Sword King before the sealed door, deep in the crypt. */
-function king(ctx: CanvasRenderingContext2D, t: SceneTime): void {
-  fillAll(ctx, '#07050a');
-  // Back wall of stone blocks.
-  for (let row = 0; row < 12; row++) {
-    const y = -BLEED + row * 12;
+/** Unknown guardians, each on its pedestal before its own sealed door; under them the light keeps sinking. */
+interface Guardian {
+  x: number;
+  /** Outline relative to the top of the pedestal, or null for a sprite. */
+  shape: readonly (readonly [number, number])[] | null;
+  /** Eye pixels relative to the top of the pedestal. */
+  eyes: readonly (readonly [number, number])[];
+}
+
+const PEDESTAL_TOP = 100;
+const GUARDIANS: readonly Guardian[] = [
+  { x: 40, shape: [[-7, 0], [-8, -30], [-4, -40], [0, -44], [4, -40], [8, -30], [7, 0]], eyes: [[-2, -36], [2, -36]] },
+  { x: 100, shape: [[-14, 0], [-15, -12], [-11, -21], [-12, -27], [-7, -24], [-2, -27], [6, -25], [12, -17], [15, 0]], eyes: [[-6, -21]] },
+  { x: 160, shape: [[-12, 0], [-11, -20], [-16, -34], [-9, -28], [-5, -35], [0, -37], [5, -35], [9, -28], [16, -34], [11, -20], [12, 0]], eyes: [[-3, -29], [3, -29]] },
+  { x: 220, shape: null, eyes: [[1, -21]] },
+  { x: 280, shape: [[-5, 0], [-6, -20], [-12, -27], [-6, -28], [-4, -38], [0, -46], [4, -38], [6, -28], [12, -27], [6, -20], [5, 0]], eyes: [[0, -40]] },
+];
+
+function polygon(ctx: CanvasRenderingContext2D, x: number, y: number, points: readonly (readonly [number, number])[], color: string): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  points.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py)));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function guardians(ctx: CanvasRenderingContext2D, t: SceneTime): void {
+  fillAll(ctx, gradient(ctx, -BLEED, H + BLEED, [[0, '#07050b'], [0.55, '#0b0710'], [1, '#000000']]));
+  // Far wall: faint courses of stone.
+  for (let row = 0; row < 10; row++) {
     for (let col = -1; col < 16; col++) {
-      const x = col * 24 + (row % 2 ? 12 : 0);
-      ctx.fillStyle = hash01(row * 31 + col) > 0.5 ? '#0e0b12' : '#110d16';
-      ctx.fillRect(x + 1, y + 1, 22, 10);
+      ctx.fillStyle = hash01(row * 17 + col) > 0.5 ? '#0c0911' : '#0e0a13';
+      ctx.fillRect(col * 24 + (row % 2 ? 12 : 0) + 1, -BLEED + row * 12 + 1, 22, 10);
     }
   }
-  ctx.fillStyle = gradient(ctx, 142, H + BLEED, [[0, '#0b080d'], [1, '#020102']]);
-  ctx.fillRect(-BLEED, 142, W + BLEED * 2, H);
-  // Pillars.
-  for (const x of [34, 286]) {
-    ctx.fillStyle = '#050407';
-    ctx.fillRect(x - 12, -BLEED, 24, H + BLEED);
-    ctx.fillStyle = 'rgba(232, 40, 58, 0.25)';
-    ctx.fillRect(x + (x < W / 2 ? 11 : -12), -BLEED, 1, H + BLEED);
+  const y = PEDESTAL_TOP;
+  GUARDIANS.forEach((g, i) => {
+    const seal = 0.5 + 0.5 * Math.sin(t.localMs / 1300 + i * 1.9);
+    // The door behind, with its seal.
+    glow(ctx, g.x, 52, 34, 'rgba(180, 20, 36, 0.8)', 0.12 + 0.12 * seal);
+    ctx.fillStyle = '#17111b';
+    ctx.fillRect(g.x - 18, 26, 36, y - 26);
+    ctx.fillStyle = '#09070c';
+    ctx.fillRect(g.x - 15, 29, 14, y - 29);
+    ctx.fillRect(g.x + 1, 29, 14, y - 29);
+    ctx.strokeStyle = `rgba(255, 70, 80, ${0.25 + 0.35 * seal})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(g.x, 46, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    // Pedestal.
+    ctx.fillStyle = '#1a141d';
+    ctx.fillRect(g.x - 15, y, 30, 8);
+    ctx.fillStyle = '#120d15';
+    ctx.fillRect(g.x - 19, y + 8, 38, 5);
+    ctx.fillStyle = '#2a2230';
+    ctx.fillRect(g.x - 15, y, 30, 1);
+    // The guardian: a dark shape, a faint red rim, eyes that catch the light now and then.
+    if (g.shape) {
+      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1]] as const) polygon(ctx, g.x + ox, y + oy, g.shape, 'rgba(150, 30, 44, 0.55)');
+      polygon(ctx, g.x, y, g.shape, '#040205');
+    } else {
+      silhouette(ctx, t.sheets, t.localMs, { sprite: SPRITE_KEYS.aegislashShield, anim: 'Idle', row: 0, x: g.x, y, scale: 1, fill: '#040205', rim: 'rgba(150, 30, 44, 0.55)' });
+    }
+    const blink = Math.sin(t.localMs / 2300 + i * 2.7);
+    const eye = blink > 0.92 ? 0 : 0.35 + 0.45 * Math.max(0, Math.sin(t.localMs / 900 + i * 1.3));
+    ctx.fillStyle = `rgba(255, 90, 80, ${eye})`;
+    for (const [ex, ey] of g.eyes) ctx.fillRect(g.x + ex, y + ey, 1, 1);
+  });
+  // The floor gives way to a drop; the light falls into it and is gone.
+  ctx.fillStyle = gradient(ctx, y + 13, H + BLEED, [[0, '#0a070c'], [0.35, '#030203'], [1, '#000000']]);
+  ctx.fillRect(-BLEED, y + 13, W + BLEED * 2, H);
+  for (let i = 0; i < 70; i++) {
+    const phase = ((t.localMs / 1000) * (0.16 + hash01(i + 40) * 0.1) + hash01(i)) % 1;
+    const k = phase * phase;
+    const sx = (hash01(i + 7) - 0.1) * W * 1.2;
+    const x = sx + (W / 2 - sx) * k * 0.8;
+    const py = y + 14 + (H + 30 - y) * k;
+    ctx.globalAlpha = (1 - phase) * (0.7 - 0.4 * hash01(i + 70));
+    ctx.fillStyle = hash01(i + 3) > 0.6 ? '#fff3c8' : '#ffc860';
+    ctx.fillRect(Math.round(x), Math.round(py), 1, hash01(i + 9) > 0.5 ? 2 : 1);
   }
-  // The door: iron leaves in a stone frame, a red seal and chains across it.
-  const seal = 0.55 + 0.45 * Math.sin(t.localMs / 1300);
-  glow(ctx, W / 2, 70, 90, 'rgba(200, 24, 40, 0.8)', 0.25 + 0.2 * seal);
-  ctx.fillStyle = '#1a141d';
-  ctx.fillRect(112, 14, 96, 128);
-  ctx.fillStyle = '#0b080e';
-  ctx.fillRect(118, 20, 41, 122);
-  ctx.fillRect(161, 20, 41, 122);
-  ctx.fillStyle = '#18121c';
-  for (let y = 32; y < 140; y += 22) {
-    ctx.fillRect(118, y, 41, 2);
-    ctx.fillRect(161, y, 41, 2);
-  }
-  ctx.strokeStyle = `rgba(255, 70, 80, ${0.5 + 0.5 * seal})`;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(W / 2, 50, 18, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(W / 2, 50, 12, 0, Math.PI * 2);
-  ctx.stroke();
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + t.localMs / 9000;
-    ctx.fillStyle = `rgba(255, 120, 110, ${0.4 + 0.6 * seal})`;
-    ctx.fillRect(Math.round(W / 2 + Math.cos(a) * 15), Math.round(50 + Math.sin(a) * 15), 1, 1);
-  }
-  ctx.fillStyle = '#2a2230';
-  for (let i = 0; i <= 24; i++) {
-    const k = i / 24;
-    ctx.fillRect(Math.round(114 + 92 * k), Math.round(26 + 70 * k), 2, 2);
-    ctx.fillRect(Math.round(206 - 92 * k), Math.round(26 + 70 * k), 2, 2);
-  }
-  // A shaft of cold light from above, with dust in it.
-  ctx.fillStyle = 'rgba(190, 200, 255, 0.035)';
-  ctx.beginPath();
-  ctx.moveTo(140, -BLEED);
-  ctx.lineTo(180, -BLEED);
-  ctx.lineTo(206, 170);
-  ctx.lineTo(114, 170);
-  ctx.fill();
-  for (let i = 0; i < 30; i++) {
-    const y = ((t.localMs / 1000) * (2 + hash01(i) * 3) + hash01(i + 5) * 200) % 200 - 20;
-    ctx.fillStyle = `rgba(220, 225, 255, ${0.25 * hash01(i + 11)})`;
-    ctx.fillRect(Math.round(130 + hash01(i + 2) * 60 + (y / 200) * 10), Math.round(y), 1, 1);
-  }
-  // The king.
-  silhouette(ctx, t.sheets, t.localMs, { sprite: SPRITE_KEYS.aegislashShield, anim: 'Idle', row: 0, x: W / 2, y: 132, scale: 2, fill: '#0a0710', shade: 0.8, rim: `rgba(255, 90, 90, ${0.55 + 0.35 * seal})` });
-  embers(ctx, t.localMs, 20, 0.5);
+  ctx.globalAlpha = 1;
+  glow(ctx, W / 2, H + 20, 90, 'rgba(0, 0, 0, 1)', 0.9);
 }
 
 function voice(ctx: CanvasRenderingContext2D): void {
   fillAll(ctx, '#000000');
 }
 
-const SCENES: Record<PrologueScene, (ctx: CanvasRenderingContext2D, t: SceneTime) => void> = { light, hunger, dimming, eclipse, dungeons, shadows, king, voice };
+const SCENES: Record<PrologueScene, (ctx: CanvasRenderingContext2D, t: SceneTime) => void> = { light, hunger, dimming, eclipse, dungeons, shadows, guardians, voice };
 
 /** Darker corners, so every tableau reads as lit from the middle. */
 function vignette(ctx: CanvasRenderingContext2D): void {

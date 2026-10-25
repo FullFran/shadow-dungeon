@@ -64,3 +64,9 @@ Route: inline.
 - Adapter `src/adapters/audio.ts`: `playCue(music, offsetS)` / `stopCue()` on `AudioEngine`, sustained voices (swell envelope, detuned saws, vibrato pad, inharmonic bells, pitched timpani), lookahead scheduling like the loops, cue requested before unlock starts on unlock in sync; `setMusic(id)` stops a cue.
 - RED observed (module missing, then `playCue` missing), GREEN: 8 new tests. `npm test`: 53 files, 455 tests passed. `npm run build`: passed.
 - Not verified by ear: headless runs cannot unlock audio (needs a user gesture). Next step: listen once in a browser and tune gains.
+
+### T4 Guardians panel (user feedback)
+Accepted change: the Sword King is only the first dungeon's guardian, so panel 7 no longer centres on him.
+- Panel 7 is now `guardians` (12 s, total 73 s): five guardians on pedestals, each before its own sealed door, mostly unknown code-drawn shapes with faint eye glints (Aegislash is one, fourth from the left), light sinking into the drop below. New narration in `prologue.guardians.*` (es, en). The score's second timpani follows the panel.
+- The old panel 7 text is now the Crypt of the Sword King's lore: `src/data/dungeon-lore.ts` (id, name, subtitle "Donde el acero aún espera órdenes", two lore lines; `dungeon.crypt.*` keys in es and en), not wired to the UI yet; noted in the GDD lore section.
+- Checks: `npm test` 54 files, 458 tests passed (new dungeon-lore test; the Necrozma-name test still passes); `npm run build` passed; screenshot `/tmp/prologue/guardians.png` reviewed.

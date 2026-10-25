@@ -52,7 +52,7 @@ const PADS: Record<PrologueScene, [string, string] | null> = {
   eclipse: ['D3 F3 A3 D4', 'D3 F3 A3 D4'],
   dungeons: ['G2 D3 G3 Bb3', 'G2 D3 G3 Bb3'],
   shadows: ['Bb2 F3 Bb3', 'A2 E3 A3'],
-  king: ['D3 A3 D4', 'Bb2 F3 D4'],
+  guardians: ['D3 A3 D4', 'Bb2 F3 D4'],
   voice: null,
 };
 
@@ -96,11 +96,11 @@ export function prologueScore(): Score {
   // One last bell in the dark, under the voice.
   add({ atS: voiceAt + 1.2, voice: 'bell', midi: [noteToMidi('A4')], durS: 4.5, gain: 0.04 });
 
-  // Timpani: the reveal (boom ... boom-boom), and one for the Sword King.
+  // Timpani: the reveal (boom ... boom-boom), and one for the guardians.
   add({ atS: reveal, voice: 'timpani', midi: [noteToMidi('D2')], durS: 3, gain: 0.7 });
   add({ atS: reveal + 2.2, voice: 'timpani', midi: [noteToMidi('A1')], durS: 2, gain: 0.35 });
   add({ atS: reveal + 2.6, voice: 'timpani', midi: [noteToMidi('D2')], durS: 2.5, gain: 0.45 });
-  if (starts.king !== undefined) add({ atS: starts.king + 0.4, voice: 'timpani', midi: [noteToMidi('D2')], durS: 2.5, gain: 0.4 });
+  if (starts.guardians !== undefined) add({ atS: starts.guardians + 0.4, voice: 'timpani', midi: [noteToMidi('D2')], durS: 2.5, gain: 0.4 });
 
   events.sort((a, b) => a.atS - b.atS);
   return { durationS, events };
