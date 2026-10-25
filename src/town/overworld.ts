@@ -1,4 +1,4 @@
-import type { DungeonEntrance, MapLink, TileRect, WorldMap } from '../data/world';
+import type { DungeonEntrance, LorePoint, MapLink, TileRect, WorldMap } from '../data/world';
 import { TILE, tileOf } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 
@@ -49,6 +49,10 @@ export function entranceState(dungeon: string, unlocked: readonly string[], regi
   if (!registry.includes(dungeon)) return 'missing';
   return unlocked.includes(dungeon) ? 'open' : 'locked';
 }
+
+/** The i18n keys a lore point shows: its base lines, plus each line whose dungeon has been cleared on this device. */
+export const loreLines = (point: Pick<LorePoint, 'lines'>, cleared: ReadonlySet<string>): string[] =>
+  point.lines.filter((line) => line.after === undefined || cleared.has(line.after)).map((line) => line.key);
 
 /** Offset of `pos` along the edge of `link`, in px from the link's start (0 .. span). */
 export function offsetAlong(pos: Vec2, link: TileRect, edge: Edge): number {

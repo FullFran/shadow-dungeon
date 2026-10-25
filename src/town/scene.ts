@@ -1,6 +1,6 @@
 import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
-import { HUB, WORLD, type DungeonEntrance, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
+import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
 import { TILE } from '../core/tiles';
 import type { Arena } from '../core/state';
@@ -18,9 +18,10 @@ import { h, mdWindow } from '../ui/window';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
-import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, offsetAlong, type Fade } from './overworld';
+import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
+import { startWander, stepWander, type WanderState } from './ambience';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
-import { boardLines, readRecords } from './records';
+import { boardLines, clearedDungeons, readRecords } from './records';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
 
 /**
@@ -73,7 +74,7 @@ const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 /** Floaters bob over the ground. */
 const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
 
-type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' });
+type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'lore'; point: LorePoint });
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -130,6 +131,7 @@ function targetsOf(map: WorldMap): Target[] {
     ...map.npcs.map((npc): Target => ({ id: npc.id, kind: 'npc', npc, pos: tileCentre(npc.x, npc.y) })),
     ...(map.board ? [{ id: 'board', kind: 'board', pos: { x: map.board.x * TILE, y: map.board.y * TILE } } as Target] : []),
     ...(map.waystone ? [{ id: 'waystone', kind: 'waystone', pos: { x: map.waystone.x * TILE, y: map.waystone.y * TILE } } as Target] : []),
+    ...map.lore.map((point): Target => ({ id: point.id, kind: 'lore', point, pos: { x: point.x * TILE, y: point.y * TILE } })),
   ];
 }
 
@@ -191,6 +193,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   const sprite = playerSprite(options.species);
   let targets = targetsOf(map);
+  /** The wandering Pokémon of the current map, restarted at home on every visit. */
+  let wanderers = new Map<string, WanderState>(map.wanderers.map((w) => [w.id, startWander(w)]));
 
   /** Leave through `link` onto the paired link of the next map, keeping the offset along the edge. */
   function crossLink(link: MapLink): void {
@@ -201,6 +205,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     map = next;
     arena = arenaOf(map);
     targets = targetsOf(map);
+    wanderers = new Map(map.wanderers.map((w) => [w.id, startWander(w)]));
     walker = arrival(map, back, offset);
     camera = walker.pos;
     bannerAt = performance.now() - start;
@@ -245,6 +250,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     held.clear();
     if (target.kind === 'waystone') {
       openExitWindow();
+      return;
+    }
+    if (target.kind === 'lore') {
+      const cleared = clearedDungeons(readRecords(browserStore()));
+      dialog = { speaker: t(target.point.nameKey), state: openDialog(loreLines(target.point, cleared).map((key) => t(key))) };
       return;
     }
     dialog =
@@ -355,7 +365,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const near = Math.hypot(toPlayer.x, toPlayer.y) < TILE * 4;
       return { sprite: npcSprite(npc.species), pos, facing: near ? toPlayer : { x: 0, y: 1 }, moving: false, floats: FLOATERS.has(npc.species) };
     });
-    return [...npcs, { sprite, pos: walker.pos, facing: walker.facing, moving }];
+    const roaming = map.wanderers.flatMap((w): TownCharacter[] => {
+      const state = wanderers.get(w.id);
+      return state ? [{ sprite: npcSprite(w.species), pos: state.pos, facing: state.facing, moving: state.target !== null && state.waitMs <= 0, floats: FLOATERS.has(w.species) }] : [];
+    });
+    return [...npcs, ...roaming, { sprite, pos: walker.pos, facing: walker.facing, moving }];
   }
 
   function frame(now: number): void {
@@ -377,6 +391,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const moving = move.x !== 0 || move.y !== 0;
     walker = stepWalker(walker, move, dt, arena);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
+    for (const w of map.wanderers) {
+      const state = wanderers.get(w.id);
+      if (state) wanderers.set(w.id, stepWander(w, state, dt, arena));
+    }
     if (!fade && !exitWindow) {
       const link = linkAt(walker.pos, map.links);
       if (link) fade = { phase: 'out', ms: 0, link };

@@ -5,7 +5,7 @@ import { DUNGEONS } from '../../src/data/dungeons';
 import { isWall, TILE, tileOf } from '../../src/core/tiles';
 import { buildTownGrid, GROUND_CHARS, groundAt, propSolidTiles, reachableFrom } from '../../src/town/map';
 import { INTERACT_RANGE } from '../../src/town/interact';
-import { arrival, BANNER_MS, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
+import { arrival, BANNER_MS, bannerAlpha, entranceAt, entranceState, loreLines, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
 
 const MAPS = Object.values(WORLD);
 const ids = Object.keys(WORLD) as WorldMapId[];
@@ -87,6 +87,7 @@ describe('world maps', () => {
         }
         if (map.board) expect(reachableNear(map, map.board)).toBe(true);
         if (map.waystone) expect(reachableNear(map, map.waystone)).toBe(true);
+        for (const point of map.lore) expect(reachableNear(map, point), point.id).toBe(true);
       });
 
       it('puts each dungeon entrance on reachable floor with a reachable way back outside any trigger', () => {
@@ -98,6 +99,10 @@ describe('world maps', () => {
           expect(linkAt(back, map.links)).toBeNull();
           for (const link of map.links) expect(entranceAt(arrival(map, link, 0).pos, map.entrances)).toBeNull();
         }
+      });
+
+      it('homes every wanderer on reachable floor', () => {
+        for (const w of map.wanderers) expect(reach.has(w.y * cols + w.x), w.id).toBe(true);
       });
 
       it('spawns on floor', () => {
@@ -152,6 +157,27 @@ describe('dungeon entrances', () => {
     expect(entranceState(SIMA_DUNGEON_ID, ['crypt-of-the-sword-king', 'misty-forest'], registry)).toBe('missing');
     // Unlocked but unknown (a stale list) is still missing: never depart to a dungeon that does not exist.
     expect(entranceState(SIMA_DUNGEON_ID, [SIMA_DUNGEON_ID], registry)).toBe('missing');
+  });
+});
+
+describe('lore points', () => {
+  const points = MAPS.flatMap((m) => m.lore);
+
+  it('shows the base lines, then one more line per cleared dungeon', () => {
+    const knight = WORLD.ruinas.lore.find((p) => p.id === 'knight')!;
+    expect(loreLines(knight, new Set())).toEqual(['world.lore.knight.1']);
+    expect(loreLines(knight, new Set(['crypt-of-the-sword-king']))).toEqual(['world.lore.knight.1', 'world.lore.knight.2']);
+    expect(loreLines(knight, new Set(['crypt-of-the-sword-king', 'misty-forest']))).toEqual(['world.lore.knight.1', 'world.lore.knight.2', 'world.lore.knight.3']);
+  });
+
+  it('has a base line on every point, and ties the rest to dungeons of the registry', () => {
+    const registry = new Set<string>(DUNGEONS.map((d) => d.id));
+    for (const point of points) {
+      expect(point.lines.some((l) => l.after === undefined), point.id).toBe(true);
+      for (const line of point.lines) if (line.after !== undefined) expect(registry.has(line.after)).toBe(true);
+    }
+    expect(new Set(points.map((p) => p.id)).size).toBe(points.length);
+    expect(points.length).toBeGreaterThanOrEqual(4);
   });
 });
 

@@ -1,4 +1,4 @@
-import { TOWN, type GroundSheet, type TownNpc, type TownProp } from './town';
+import { TOWN, type GroundSheet, type NpcSpecies, type TownNpc, type TownProp } from './town';
 
 /**
  * The overworld (docs/gdd.md §11): small hand-authored maps joined at their
@@ -46,6 +46,31 @@ export interface DungeonEntrance extends TileRect {
   back: { x: number; y: number };
 }
 
+/** A line of a lore point, shown once the dungeon `after` has been cleared on this device (always when absent). */
+export interface LoreLine {
+  key: string;
+  after?: string;
+}
+
+/** Something to read in the world (a statue, a sign, an idol): its reading point in tiles and its lines. */
+export interface LorePoint {
+  id: string;
+  nameKey: string;
+  x: number;
+  y: number;
+  lines: readonly LoreLine[];
+}
+
+/** A harmless Pokémon that ambles around its home tile (no collision with the player, no combat). */
+export interface Wanderer {
+  id: string;
+  species: NpcSpecies;
+  x: number;
+  y: number;
+  /** How far from home (tiles) it picks its destinations. */
+  radius: number;
+}
+
 /** Look of a map: ground sheet, eclipse light and ambience. */
 export interface MapLook {
   ground: GroundSheet;
@@ -53,6 +78,12 @@ export interface MapLook {
   tint: readonly [string, string];
   /** Size of the eclipse in the sky band (1 = the town's). */
   eclipse: number;
+  /** Fog banks drifting over the map (0 none .. 1 thick). */
+  fog?: number;
+  /** Leaves falling from the trees. */
+  leaves?: boolean;
+  /** Birds gliding across the sky band. */
+  birds?: number;
 }
 
 export interface WorldMap {
@@ -64,6 +95,8 @@ export interface WorldMap {
   npcs: readonly TownNpc[];
   links: readonly MapLink[];
   entrances: readonly DungeonEntrance[];
+  lore: readonly LorePoint[];
+  wanderers: readonly Wanderer[];
   look: MapLook;
   /** Where a new visit starts (the hub only). */
   spawn?: { x: number; y: number };
@@ -83,7 +116,10 @@ export function paintRows(cols: number, rows: number, fill: string, strokes: rea
 }
 
 /** The town's own light: the multiply it has always used. */
-const TOWN_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'], eclipse: 1 };
+const TOWN_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'], eclipse: 1, birds: 2 };
+
+const CRYPT = 'crypt-of-the-sword-king';
+const FOREST = 'misty-forest';
 
 export const REFUGIO: WorldMap = {
   id: 'refugio',
@@ -94,6 +130,8 @@ export const REFUGIO: WorldMap = {
   npcs: TOWN.npcs,
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
   entrances: [],
+  lore: [],
+  wanderers: [],
   look: TOWN_LOOK,
   spawn: TOWN.spawn,
   board: TOWN.board,
@@ -125,6 +163,8 @@ export const RUINAS: WorldMap = {
     { kind: 'flat-rocks', x: 17, y: 8 },
     { kind: 'tree-big', x: 33, y: 2 },
     { kind: 'tree-small', x: 3, y: 13 },
+    { kind: 'statue', x: 8, y: 13 },
+    { kind: 'notice-board', x: 3, y: 8 },
     { kind: 'big-bush', x: 13, y: 14 },
     { kind: 'stump', x: 24, y: 14 },
     { kind: 'bush', x: 27, y: 16 },
@@ -134,8 +174,13 @@ export const RUINAS: WorldMap = {
     { id: 'west', x: 0, y: 10, width: 1, height: 2, to: 'refugio', toLink: 'east' },
     { id: 'east', x: 39, y: 10, width: 1, height: 2, to: 'mirador', toLink: 'west' },
   ],
-  entrances: [{ dungeon: 'crypt-of-the-sword-king', nameKey: 'world.map.ruinas', x: 19, y: 7, width: 2, height: 1, back: { x: 19, y: 9 } }],
-  look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], eclipse: 1.3 },
+  entrances: [{ dungeon: CRYPT, nameKey: 'world.map.ruinas', x: 19, y: 7, width: 2, height: 1, back: { x: 19, y: 9 } }],
+  lore: [
+    { id: 'knight', nameKey: 'world.lore.knight.name', x: 9, y: 15.5, lines: [{ key: 'world.lore.knight.1' }, { key: 'world.lore.knight.2', after: CRYPT }, { key: 'world.lore.knight.3', after: FOREST }] },
+    { id: 'road-sign', nameKey: 'world.lore.sign.name', x: 4, y: 8.5, lines: [{ key: 'world.lore.sign.1' }, { key: 'world.lore.sign.2', after: CRYPT }] },
+  ],
+  wanderers: [{ id: 'ruins-pumpkaboo', species: 'pumpkabooSmall', x: 27, y: 13, radius: 3 }],
+  look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], eclipse: 1.3, fog: 0.5, leaves: true, birds: 1 },
 };
 
 /**
@@ -181,8 +226,13 @@ export const MIRADOR: WorldMap = {
     { id: 'east', x: 43, y: 11, width: 1, height: 2, to: 'lago', toLink: 'west' },
     { id: 'north', x: 32, y: 0, width: 2, height: 1, to: 'crater', toLink: 'south' },
   ],
-  entrances: [{ dungeon: 'misty-forest', nameKey: 'world.map.mirador', x: 8, y: 18, width: 2, height: 1, back: { x: 8, y: 16 } }],
-  look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], eclipse: 2.4 },
+  entrances: [{ dungeon: FOREST, nameKey: 'world.map.mirador', x: 8, y: 18, width: 2, height: 1, back: { x: 8, y: 16 } }],
+  lore: [{ id: 'lookout', nameKey: 'world.lore.view.name', x: 17, y: 7.5, lines: [{ key: 'world.lore.view.1' }, { key: 'world.lore.view.2', after: CRYPT }, { key: 'world.lore.view.3', after: FOREST }] }],
+  wanderers: [
+    { id: 'pass-hoothoot', species: 'hoothoot', x: 29, y: 8, radius: 4 },
+    { id: 'pass-foongus', species: 'foongus', x: 14, y: 16, radius: 2 },
+  ],
+  look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], eclipse: 2.4, fog: 0.35, leaves: true, birds: 3 },
 };
 
 /** Cráter del Eclipse: ash and rock around a pit right under the eclipse; the Sima opens at its rim. */
@@ -216,7 +266,9 @@ export const CRATER: WorldMap = {
   npcs: [],
   links: [{ id: 'south', x: 15, y: 25, width: 2, height: 1, to: 'mirador', toLink: 'north' }],
   entrances: [{ dungeon: SIMA_DUNGEON_ID, nameKey: 'world.sima.name', x: 15, y: 15, width: 2, height: 1, back: { x: 15, y: 17 } }],
-  look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], eclipse: 3.4 },
+  lore: [{ id: 'burnt-statue', nameKey: 'world.lore.crater.name', x: 24, y: 13.5, lines: [{ key: 'world.lore.crater.1' }, { key: 'world.lore.crater.2', after: CRYPT }, { key: 'world.lore.crater.3', after: FOREST }] }],
+  wanderers: [],
+  look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], eclipse: 3.4, fog: 0.6 },
 };
 
 /**
@@ -250,6 +302,9 @@ export const LAGO: WorldMap = {
     { kind: 'bush', x: 25, y: 18 },
     { kind: 'tree-small', x: 30, y: 18 },
     { kind: 'stall', x: 6, y: 8 },
+    { kind: 'flat-rocks', x: 12, y: 12 },
+    { kind: 'pillar-broken', x: 10, y: 6 },
+    { kind: 'rubble', x: 15, y: 15 },
   ],
   npcs: [
     { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'] },
@@ -258,7 +313,9 @@ export const LAGO: WorldMap = {
   ],
   links: [{ id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' }],
   entrances: [],
-  look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1 },
+  lore: [{ id: 'idol', nameKey: 'world.lore.idol.name', x: 20, y: 16.5, lines: [{ key: 'world.lore.idol.1' }, { key: 'world.lore.idol.2', after: CRYPT }, { key: 'world.lore.idol.3', after: FOREST }] }],
+  wanderers: [{ id: 'lake-spinarak', species: 'spinarak', x: 27, y: 19, radius: 2 }],
+  look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1, fog: 0.8, birds: 1 },
 };
 
 export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO };

@@ -28,7 +28,7 @@ User (2026-10-25): "¿podemos poner varios pueblos y hacerlo más duro de cojone
 ## Tasks
 - [x] T1 World model + transitions: map types, links paired both ways, generalised grid/ground (water, bridge, chasm, rock), per-map ground sheet, fade transition, map banner, hub waystone quick travel, first route map, all new crops + LICENSE (route: inline, single writer of src/town)
 - [x] T2 Second town + routes + entrances: Mirador, Cráter, Lago Negro, entrance windows (registry-guarded) (route: inline)
-- [ ] T3 Ambience + lore points + wanderers: fog, leaves, birds, water shimmer, lore lines by progression, wandering Pokémon (route: inline)
+- [x] T3 Ambience + lore points + wanderers: fog, leaves, birds, water shimmer, lore lines by progression, wandering Pokémon (route: inline)
 - [ ] T4 Docs: README, docs/gdd.md, CREDITS.md (route: inline)
 - [ ] T5 Online lobby in town + nicknames (route: inline)
 
@@ -58,3 +58,10 @@ Created 2026-10-25 on branch `feat/overworld` from main 4c90a5d. Forecast ~1800 
 - Entrances: `DungeonEntrance` (trigger tiles + way back); `entranceState` = open / locked / missing against `options.dungeons` and the `DUNGEONS` registry. Open: MD window "¿Entrar en …?" (Entrar / Todavía no); locked: sealed line naming the dungeon whose guardian unlocks it; missing (Sima until the endless dungeon lands with id `sima-del-eclipse`): "not yet" line. Mouths glow red on the ground.
 - Checks: `npx vitest run` 829 passed (+8 entrance tests); typecheck ok; screenshots `/tmp/overworld/t2-*.png` (three maps, bridge, entrance window, sealed forest, missing Sima).
 - Fixed from screenshots: bridge planks left dark gaps between rows; crater pit hid under the sky band (moved 4 rows down) and read as a flat rectangle (jagged lit rim).
+
+### T3 Ambience + lore points + wanderers
+- Lore points (`LorePoint`, lines with optional `after: <dungeon id>`; pure `loreLines`): faceless knight statue and road sign (ruins), lookout statue (pass), burnt statue (crater), frog idol (lake). Lines grow after clearing the Crypt and the Misty Forest (local records via `clearedDungeons`).
+- Wanderers (pure `stepWander`, 35 % of the player's speed, rests 0.8-3 s, deterministic per id/step, gives up when snagged): Pumpkaboo (ruins), Hoothoot and Foongus (pass), Spinarak (lake). Not solid, no combat.
+- Ambience (pure positions in `src/town/ambience.ts`): fog banks with parallax (ruins, pass, crater smoke, thick on the lake), falling leaves (ruins, pass), birds in the sky band (hub, ruins, pass, lake), water shimmer, embers everywhere.
+- Checks: `npx vitest run` 843 passed (+14: lore progression, wanderers on floor within radius and moving, particles in bounds); screenshots `/tmp/overworld/t3-*.png` (lore stone dialog, pass with Hoothoot, lake fog, touch 844x390).
+- Fixed from screenshots: the lake plaza read empty (rocks, a broken pillar and rubble added).

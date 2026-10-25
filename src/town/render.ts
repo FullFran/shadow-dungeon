@@ -8,6 +8,7 @@ import { sheetKey, type SheetStore } from '../adapters/assets';
 import { directionRow, frameAtTime } from '../adapters/sprite-anim';
 import { visibleTiles } from '../adapters/view';
 import { emberAt, hash01 } from '../ui/eclipse';
+import { birdAt, fogBank, leafAt } from './ambience';
 import { drawPanel, pixelText } from '../ui/canvas';
 import { canvasFont, PALETTE } from '../ui/tokens';
 import { groundAt, isFloorGround, pathPatchCell, type MapShape } from './map';
@@ -343,6 +344,41 @@ function tint(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, colours
   ctx.fillRect(0, 0, view.width, view.height);
 }
 
+/** Fog banks drifting over the ground, pale against the red light. */
+function fog(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, density: number): void {
+  for (let i = 0; i < 7; i++) {
+    const bank = fogBank(i, timeMs, view.x, view.width, view.height);
+    const light = ctx.createRadialGradient(bank.x, bank.y, 4, bank.x, bank.y, bank.r);
+    light.addColorStop(0, `rgba(210, 180, 200, ${0.2 * density})`);
+    light.addColorStop(1, 'rgba(210, 180, 200, 0)');
+    ctx.fillStyle = light;
+    ctx.fillRect(bank.x - bank.r, bank.y - bank.r, bank.r * 2, bank.r * 2);
+  }
+}
+
+/** Leaves drifting down from the trees. */
+function leaves(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number): void {
+  for (let i = 0; i < 14; i++) {
+    const leaf = leafAt(i, timeMs, view.width, view.height);
+    if (leaf.y < SKY_BAND - 10) continue;
+    ctx.fillStyle = i % 3 === 0 ? '#8a7a32' : '#b8582e';
+    ctx.fillRect(Math.round(leaf.x), Math.round(leaf.y), leaf.flip ? 2 : 1, leaf.flip ? 1 : 2);
+  }
+}
+
+/** Birds gliding across the sky band: two pixels of wing either side of a body. */
+function birds(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, count: number): void {
+  ctx.fillStyle = '#0b0410';
+  for (let i = 0; i < count; i++) {
+    const b = birdAt(i, timeMs, view.width, SKY_BAND);
+    const x = Math.round(b.x);
+    const y = Math.round(b.y);
+    ctx.fillRect(x, y, 1, 1);
+    ctx.fillRect(x - 2, y + (b.up ? -1 : 1), 2, 1);
+    ctx.fillRect(x + 1, y + (b.up ? -1 : 1), 2, 1);
+  }
+}
+
 function embers(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number): void {
   for (let i = 0; i < EMBERS; i++) {
     const e = emberAt(i + 7, timeMs, view.width, view.height);
@@ -375,7 +411,10 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
   for (const s of sprites) s.draw();
   ctx.restore();
   tint(ctx, view, timeMs, look.tint);
+  if (look.fog) fog(ctx, view, timeMs, look.fog);
   sky(ctx, view, timeMs, look.eclipse);
+  if (look.birds) birds(ctx, view, timeMs, look.birds);
+  if (look.leaves) leaves(ctx, view, timeMs);
   embers(ctx, view, timeMs);
 }
 
