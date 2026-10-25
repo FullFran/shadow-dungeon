@@ -25,7 +25,7 @@ Out of scope: permanent currency, shop, gacha, new species, move-modifying items
 - [x] T2 Held items: data, effects in core, pick-1-of-3 overlay on floor entry, co-op behaviour (route: same writer)
 - [x] T3 Oran Berries on the floor, host-authoritative pickups in shared runs (route: same writer)
 - [x] T4 Docs: GDD (Spanish) and README (route: same writer)
-- [ ] T5 Deploy (route: parent, needs user OK)
+- [x] T5 Deploy (route: parent; user standing OK for intermediate releases). Run 40202962178 success on `8f80f75`; live bundle `index-rHj8VvMo.js` matches the local build.
 
 ## Acceptance criteria
 - Same seed gives the same offers and berry placements.
