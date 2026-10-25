@@ -38,7 +38,12 @@ export type SpeciesId =
   | 'sableye'
   | 'impidimp'
   | 'shroomish'
-  | 'drifloon';
+  | 'drifloon'
+  | 'krabby'
+  | 'shellos'
+  | 'remoraid'
+  | 'lanturn'
+  | 'dhelmise';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -170,6 +175,12 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   impidimp: { id: 'impidimp', types: ['dark', 'fairy'], maxHp: 50, radius: 10, sprite: 'impidimp', movepool: [], defaultLoadout: [] },
   shroomish: { id: 'shroomish', types: ['grass'], maxHp: 60, radius: 10, sprite: 'shroomish', movepool: [], defaultLoadout: [] },
   drifloon: { id: 'drifloon', types: ['ghost', 'flying'], maxHp: 55, radius: 11, sprite: 'drifloon', movepool: [], defaultLoadout: [] },
+  // Flooded Caves; HP provisional.
+  krabby: { id: 'krabby', types: ['water'], maxHp: 55, radius: 10, sprite: 'krabby', movepool: [], defaultLoadout: [] },
+  shellos: { id: 'shellos', types: ['water'], maxHp: 95, radius: 12, sprite: 'shellos', movepool: [], defaultLoadout: [] },
+  remoraid: { id: 'remoraid', types: ['water'], maxHp: 50, radius: 10, sprite: 'remoraid', movepool: [], defaultLoadout: [] },
+  lanturn: { id: 'lanturn', types: ['water', 'electric'], maxHp: 560, radius: 15, sprite: 'lanturn', movepool: [], defaultLoadout: [] },
+  dhelmise: { id: 'dhelmise', types: ['ghost', 'grass'], maxHp: 900, radius: 18, sprite: 'dhelmise', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

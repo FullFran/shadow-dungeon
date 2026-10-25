@@ -78,4 +78,10 @@ export const SPRITE_KEYS = {
   impidimp: '0859/0000',
   shroomish: '0285/0000',
   drifloon: '0425/0000',
+  // Flooded Caves.
+  krabby: '0098/0000',
+  shellos: '0422/0000',
+  remoraid: '0223/0000',
+  lanturn: '0171/0000',
+  dhelmise: '0781/0000',
 } as const;

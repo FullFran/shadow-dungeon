@@ -2,6 +2,7 @@ import type { FloorKind } from '../data/dungeon';
 import { startCollapse } from './collapse';
 import { eliteFor, worldDifficulty } from './difficulty';
 import { startFog } from './fog';
+import { startFlood } from './flood';
 import { roomRect, type Floor } from './dungeon';
 import { insideRect } from './geometry';
 import type { Arena, WorldState } from './state';
@@ -32,6 +33,7 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
     player: { ...entered.player, pos: tileCenter(floor.start), roll: null, facing: vec(0, 1) },
     ...(kind === 'collapse' ? { collapse: startCollapse(floor) } : {}),
     ...(kind === 'fog' ? { fog: startFog() } : {}),
+    ...(kind === 'flood' ? { flood: startFlood() } : {}),
   };
   // Harder tiers: some floor enemies are elites, drawn from the floor seed (the same on every peer).
   const tier = worldDifficulty(state);

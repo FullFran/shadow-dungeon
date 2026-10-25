@@ -1,4 +1,4 @@
-import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnTuning } from './dungeon';
+import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnTuning, type WaterTuning } from './dungeon';
 import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
 import type { MusicContext } from './music';
 import { ROOMS } from './rooms';
@@ -12,7 +12,7 @@ import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
  * music of each kind of floor, the colours of its tiles and what unlocks it.
  * The run (core/run.ts) reads everything from here.
  */
-export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm';
+export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm' | 'flooded-caves';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -61,10 +61,12 @@ export interface DungeonDef {
   unlockedBy: DungeonId | null;
   /** The endless dungeon only: no last floor, guardian echoes and the run clock (data/endless.ts); its `plan` is empty. */
   endless?: EndlessDef;
-  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers, the Forest's roots, mushrooms and mist. */
-  decor?: 'crypt' | 'forest';
+  /** Decoration drawn over its tiles and arenas (presentation only): the Crypt's candles, graves and braziers, the Forest's roots, mushrooms and mist, the caves' water and crystals. */
+  decor?: 'crypt' | 'forest' | 'caves';
   /** The Forest's event: on some generated floors a spirit light leads to a hidden berry cache (core/wisp.ts). */
   wisp?: WispDef;
+  /** Shallow water pools on its generated floors (core/water.ts): they slow non-Water walkers. */
+  water?: WaterTuning;
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -81,7 +83,7 @@ export const CRYPT: DungeonDef = {
   plan: RUN_PLAN,
   spawns: CRYPT_SPAWNS,
   urgent: [{ kind: 'collapse', chance: URGENT.collapseChance }],
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'crypt', flood: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
   // Cold grey-violet stone; the candles and braziers bring the only warm light.
   palette: {
     tileFloorA: '#2a2731',
@@ -147,7 +149,7 @@ export const FOREST: DungeonDef = {
     { kind: 'fog', chance: [0, 0.3, 0.35, 0, 0.4, 0.45, 0.5] },
     { kind: 'collapse', chance: [0, 0, 0.1, 0, 0.1, 0.15, 0.15] },
   ],
-  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest-fog' }, midboss: 'guardian', guardian: 'forest-guardian' },
+  music: { floor: 'forest', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'forest' }, midboss: 'guardian', guardian: 'forest-guardian' },
   palette: {
     tileFloorA: '#2c3b2d',
     tileFloorB: '#304131',
@@ -169,6 +171,73 @@ export const FOREST: DungeonDef = {
   wisp: { chance: [0, 0.35, 0.35, 0, 0.35, 0.4, 0.4], berries: 3 },
 };
 
+/**
+ * The Flooded Caves (Cuevas Inundadas), opened by beating the Misty Forest's
+ * guardian: ten floors (provisional), Lanturn's grotto on floor 5 and
+ * Dhelmise's wreck on floor 10. Shallow pools in many rooms slow whoever is
+ * not a Water type; its urgent floor is the flood (Inundación), with a rare
+ * cave-in deeper down. The water species of the experimental roster live
+ * here, with Krabby, Remoraid and Shellos.
+ */
+export const CAVES: DungeonDef = {
+  id: 'flooded-caves',
+  lore: loreOf('flooded-caves'),
+  plan: [
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'grotto', role: 'midboss' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'generated' },
+    { kind: 'room', room: 'wreck' },
+  ],
+  spawns: {
+    base: 1,
+    perDepth: 0.5,
+    jitter: 1,
+    maxPerRoom: 4,
+    // Weights by floor 1..9 (floor 5 is the grotto; its entry keeps the table aligned).
+    pool: [
+      { species: 'krabby', weights: [3, 3, 3, 2, 2, 2, 2, 2, 2] },
+      { species: 'zubat', weights: [2, 2, 2, 2, 2, 2, 2, 2, 2], pack: 3 },
+      { species: 'remoraid', weights: [1, 2, 2, 2, 2, 2, 2, 3, 3] },
+      { species: 'tentacool', weights: [1, 1, 2, 2, 2, 2, 2, 2, 2] },
+      { species: 'shellos', weights: [0, 1, 1, 2, 2, 2, 2, 2, 2] },
+      { species: 'corphish', weights: [0, 1, 1, 2, 2, 2, 2, 2, 2] },
+      { species: 'chinchou', weights: [0, 0, 1, 1, 1, 2, 2, 2, 2] },
+      { species: 'wooper', weights: [0, 0, 1, 1, 1, 1, 2, 2, 2] },
+      { species: 'clauncher', weights: [0, 0, 0, 0, 0, 1, 1, 2, 2] },
+    ],
+  },
+  urgent: [
+    { kind: 'flood', chance: [0, 0.25, 0.3, 0.35, 0, 0.35, 0.4, 0.45, 0.5] },
+    { kind: 'collapse', chance: [0, 0, 0, 0.08, 0, 0.1, 0.1, 0.12, 0.12] },
+  ],
+  music: { floor: 'caves', urgent: { collapse: 'collapse', fog: 'caves', flood: 'caves-flood' }, midboss: 'guardian', guardian: 'caves-guardian' },
+  // Deep blue-teal stone, wet and dark; the crystals bring the only light.
+  palette: {
+    tileFloorA: '#1f2c38',
+    tileFloorB: '#22303d',
+    tileWallTop: '#0a121a',
+    tileWallBlock: '#101b26',
+    tileWallFace: '#25414f',
+    tileWallLip: '#3a6474',
+    mapRim: '#2f5566',
+    floorA: '#16222c',
+    floorB: '#192631',
+    wall: '#04080c',
+    wallEdge: '#2a4a5a',
+    pillarTop: '#34505c',
+    pillarSide: '#1d3039',
+  },
+  unlockedBy: 'misty-forest',
+  decor: 'caves',
+  water: { poolChance: 0.55 },
+};
+
 /** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */
 const endlessUrgent = (endless: EndlessDef, floors = 40): UrgentChance[] =>
   endless.urgent.map((u) => ({
@@ -187,7 +256,7 @@ export const ECLIPSE: DungeonDef = {
   plan: [],
   spawns: { ...ENDLESS.spawns, pool: [] },
   urgent: endlessUrgent(ENDLESS),
-  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'forest-fog' }, midboss: 'guardian', guardian: 'guardian' },
+  music: { floor: 'crypt', urgent: { collapse: 'collapse', fog: 'forest-fog', flood: 'crypt' }, midboss: 'guardian', guardian: 'guardian' },
   palette: {
     tileFloorA: '#2a2030',
     tileFloorB: '#30233a',
@@ -208,7 +277,7 @@ export const ECLIPSE: DungeonDef = {
 };
 
 /** Every dungeon, in the order the dungeon select lists them. */
-export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST, ECLIPSE];
+export const DUNGEONS: readonly DungeonDef[] = [CRYPT, FOREST, CAVES, ECLIPSE];
 
 const GENERATED: FloorPlan = { kind: 'generated' };
 
@@ -252,3 +321,6 @@ export function guardianOf(dungeon: DungeonDef): SpeciesId | null {
   const arena = [...dungeon.plan].reverse().find((plan) => plan.kind === 'room' && plan.role === undefined);
   return arena?.kind === 'room' ? (ROOMS[arena.room].spawns[0]?.species ?? null) : null;
 }
+
+/** The decorations a dungeon may ask the renderer for. */
+export type DungeonDecor = NonNullable<DungeonDef['decor']>;

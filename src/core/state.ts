@@ -1,5 +1,5 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
-import type { AegislashCard, ArcherCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, DanmakuCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
@@ -7,6 +7,7 @@ import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
 import type { FogState } from './fog';
+import type { FloodState } from './flood';
 import type { EnemyScale } from './endless';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -194,7 +195,7 @@ export interface EnemyState {
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
-export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | 'slam';
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard | TreantCard | DanmakuCard | 'slam';
 
 export interface BossState {
   stance: BossStance;
@@ -292,6 +293,8 @@ export interface Arena {
   stairs?: Rect;
   /** Generated floors: the rooms, in tiles (the minimap reveals a whole room on entering it). */
   rooms?: readonly TileRect[];
+  /** Flooded Caves floors: shallow water per tile, aligned with `tiles` (1 = shallow; water.ts). */
+  water?: readonly number[];
 }
 
 /** Things that happened during the last step, for renderer juice and audio. Cleared every step. */
@@ -414,6 +417,8 @@ export interface WorldState {
   collapse?: CollapseState;
   /** Fog urgent floors (Niebla): the closing vision (fog.ts). */
   fog?: FogState;
+  /** Flood urgent floors (Inundación): the rising water (flood.ts). */
+  flood?: FloodState;
   /** Endless dungeon: this floor's enemy HP (at spawn) and damage multipliers (endless.ts); absent = 1. */
   enemyScale?: EnemyScale;
   /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */

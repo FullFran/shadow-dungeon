@@ -5,6 +5,7 @@ import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from '.
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
+import { shallowWater } from './water';
 import { generateFloor } from './dungeon';
 import { tieredSpawns, worldDifficulty } from './difficulty';
 import { addItem, offerItems, playerStats } from './items';
@@ -118,7 +119,10 @@ function enterFloor(world: WorldState, run: RunState): WorldState {
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
   const loaded = loadFloor(deeper, floor, run.kind);
-  return wisp ? { ...loaded, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, berries };
+  // The caves lay shallow pools over their floors (seeded by the floor, the same on every peer).
+  const water = dungeonOf(run).water;
+  const arena = water ? { ...loaded.arena, water: shallowWater(floor, water) } : loaded.arena;
+  return wisp ? { ...loaded, arena, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, arena, berries };
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */

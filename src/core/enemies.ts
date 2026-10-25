@@ -7,6 +7,7 @@ import { unstoppable, updateRoster } from './roster';
 import { updateThief } from './thief';
 import { updateTreant } from './treant';
 import { behaviourFor } from './tricks';
+import { updateDanmaku } from './danmaku';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slammerTouches } from './victim';
@@ -77,7 +78,9 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       // Only while recharging: with the lunge ready it closes in to lunge range (it used to hover at the stalk ring).
       const stalking = ai.cooldownMs > 0 && dist <= def.stalkRange;
       // Circle the player while the lunge recharges, otherwise close in.
-      const straight = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : toPlayer;
+      // Crabs (Krabby) close in sideways: mostly across the line to the player, a little along it.
+      const closing = def.scuttle ? normalize(add(toPlayer, scale(perpendicular(toPlayer, ai.strafeSign), def.scuttle))) : toPlayer;
+      const straight = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : closing;
       // Erratic fliers (Zubat) sway sideways on the way in.
       const sway = def.weave ? def.weave.amplitude * Math.sin((2 * Math.PI * state.timeMs) / def.weave.periodMs) : 0;
       const dir = sway === 0 ? straight : normalize(add(straight, scale(perpendicular(toPlayer, 1), sway)));
@@ -201,6 +204,14 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       // Harder tiers (Gastly): a second ball part way into the cast, aimed anew.
       const second = def.secondBall && atLeast(worldDifficulty(state), def.secondBall.minDifficulty) ? def.secondBall : null;
       if (second && ai.modeMs - ms < second.delayMs && ai.modeMs >= second.delayMs) state = spawnShot(state, enemy, def.projectile, toPlayer);
+      // A burst (Remoraid): the rest of the shots follow down the lane locked when the first one left.
+      if (def.burst) {
+        const before = ai.modeMs - ms;
+        for (let shot = 1; shot < def.burst.shots; shot++) {
+          const at = shot * def.burst.gapMs;
+          if (before < at && ai.modeMs >= at) state = spawnShot(state, enemy, def.projectile, ai.attackDir);
+        }
+      }
       if (!modeOver(ai)) break;
       // Drifloon: the next ring of the cast, turned half a step from the last.
       if (def.ring && (ai.chain ?? 1) < (def.ring.waves ?? 1)) {
@@ -383,6 +394,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
     else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
     else if (def.kind === 'treant') current = updateTreant(current, ticked, def, target, ms, events);
+    else if (def.kind === 'danmaku') current = updateDanmaku(current, ticked, def, target, ms, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
     else current = updateRoster(current, ticked, def, target, ms, events);
   }

@@ -27,14 +27,14 @@ const DEG = Math.PI / 180;
 /** A boss's starting state: Aegislash in Shield, Decidueye and Sableye on their first spell card, Trevenant walking in to slam. */
 export function initialBoss(species?: SpeciesId): BossState {
   const def = species ? ENEMY_BEHAVIOUR[species] : undefined;
-  const stance: BossStance = def?.kind === 'archer' || def?.kind === 'thief' ? def.cards[0]! : def?.kind === 'treant' ? 'slam' : 'shield';
+  const stance: BossStance = def?.kind === 'archer' || def?.kind === 'thief' || def?.kind === 'danmaku' ? def.cards[0]! : def?.kind === 'treant' ? 'slam' : 'shield';
   return { stance, stanceMs: 0, stanceDamage: 0, comboIndex: 0, combosDone: 0 };
 }
 
 /** Enemies that carry boss state (stances, spell cards). */
 export const hasBossState = (species: SpeciesId): boolean => {
   const kind = ENEMY_BEHAVIOUR[species]?.kind;
-  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant';
+  return kind === 'boss' || kind === 'archer' || kind === 'thief' || kind === 'treant' || kind === 'danmaku';
 };
 
 /** Angle in radians between two non-zero directions, in [0, π]. */

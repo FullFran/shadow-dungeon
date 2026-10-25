@@ -4,6 +4,8 @@ import { updateCombat } from './combat';
 import { updateEnemies } from './enemies';
 import { updateFlow } from './flow';
 import { updateFog } from './fog';
+import { updateFlood } from './flood';
+import { wadeFactor } from './water';
 import { landHitOnPlayer } from './hits';
 import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
@@ -29,14 +31,16 @@ export { enemyTimeScale } from './time';
  */
 export function step(state: WorldState, input: PlayerInput, dtMs: number): WorldState {
   const events: GameEvent[] = [];
-  const walked = pickUpBerries({ ...state, player: updatePlayer(state.player, input, dtMs, state.arena, events) }, events);
+  // Shallow water and the flood slow a non-Water player's walk (water.ts, flood.ts).
+  const wade = wadeFactor(state.player.types, state.arena, state.player.pos, state.flood);
+  const walked = pickUpBerries({ ...state, player: updatePlayer(state.player, input, dtMs, state.arena, events, wade) }, events);
   const { player } = walked;
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);
   const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
-  const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
+  const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateFlood(updateFog(updateCollapse(enemies, dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   return {
     ...fought,
     tick: state.tick + 1,

@@ -64,6 +64,8 @@ export function updatePlayer(
   dtMs: number,
   arena: Arena,
   events: GameEvent[],
+  /** Walking speed factor from the ground (shallow water, the flood); rolls are never slowed. */
+  wade = 1,
 ): PlayerState {
   const moveDir = normalize(input.move);
   let next = tickBuff(player, dtMs);
@@ -76,7 +78,7 @@ export function updatePlayer(
     const pos = confine(add(next.pos, scale(next.roll.dir, ROLL_SPEED * rollMs)), arena);
     next = { ...next, pos, roll: elapsedMs >= ROLL.durationMs ? null : { ...next.roll, elapsedMs } };
   } else if (length(moveDir) > 0 && walkFactor(next) > 0) {
-    const speed = PLAYER.moveSpeed * (SPECIES[next.species].speedScale ?? 1) * walkFactor(next);
+    const speed = PLAYER.moveSpeed * (SPECIES[next.species].speedScale ?? 1) * walkFactor(next) * wade;
     const pos = confine(add(next.pos, scale(moveDir, (speed * dtMs) / 1000)), arena);
     next = { ...next, pos, facing: moveDir };
   }

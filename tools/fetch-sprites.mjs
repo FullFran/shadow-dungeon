@@ -78,6 +78,13 @@ const TARGETS = [
   { dex: '0859', form: '0000', species: 'impidimp', formName: 'base' },
   { dex: '0285', form: '0000', species: 'shroomish', formName: 'base' },
   { dex: '0425', form: '0000', species: 'drifloon', formName: 'base' },
+  // Flooded Caves (tracker.json 2026-10-25: Krabby, Shellos West, Remoraid, Dhelmise phase 1 and
+  // Lanturn phase 2, all with Idle, Walk, Attack, Shoot, Charge and Hurt).
+  { dex: '0098', form: '0000', species: 'krabby', formName: 'base' },
+  { dex: '0422', form: '0000', species: 'shellos', formName: 'west' },
+  { dex: '0223', form: '0000', species: 'remoraid', formName: 'base' },
+  { dex: '0171', form: '0000', species: 'lanturn', formName: 'base' },
+  { dex: '0781', form: '0000', species: 'dhelmise', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

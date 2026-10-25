@@ -9,10 +9,10 @@ import type { MusicId } from './audio';
  * The audio adapter loads a track the first time its context plays and falls
  * back to the procedural chiptune (`fallback`) when the file cannot be used.
  */
-export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat' | 'forest' | 'forest-fog' | 'forest-guardian';
+export type MusicContext = 'title' | 'crypt' | 'collapse' | 'guardian' | 'victory' | 'defeat' | 'forest' | 'forest-fog' | 'forest-guardian' | 'caves' | 'caves-flood' | 'caves-guardian';
 
 /** Contexts with a planned track but no file yet (later milestones). */
-export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma' | 'caves' | 'swamp';
+export type PlannedMusicContext = 'prologue' | 'hub' | 'necrozma' | 'swamp';
 
 export type MusicLicense = 'CC0 1.0' | 'CC BY 3.0' | 'CC BY 4.0';
 
@@ -235,6 +235,65 @@ export const MUSIC_TRACKS: Record<MusicContext, LicensedTrack> = {
     attribution: '"Boss Battle #2 [Symphonic Metal]" by nene (CC0)',
     changes: `Opening and loop joined in one file (the ZIP names are swapped, as the page says), with a 10 ms cross-fade from the opening into the loop's own tail; loudness-normalised to -18 LUFS. ${COMMON}`,
   },
+  caves: {
+    context: 'caves',
+    file: 'underwater',
+    duration: 172.181814,
+    loop: true,
+    // The WAV (7505018 samples) does not wrap cleanly (seam 13/18), so its last 2.0 s cross-fade into 1.0-3.0 s and the
+    // loop is 3.0 s to the original end; 3.0-5.0 s follow once more so the seam sits inside the codec stream.
+    loopStart: 3,
+    loopEnd: 170.181814,
+    gain: 1,
+    lufs: -18,
+    fallback: 'room',
+    title: 'Underwater',
+    artist: 'Cleyton Kauffman',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/underwater-theme',
+    attribution: 'Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman (CC0)',
+    changes: `24-bit WAV; the last 2.0 s cross-fade (equal power) into 1.0-3.0 s so the loop 3.0-170.182 s is seamless (seam 0.01/0.04 on the master), 3.0-5.0 s appended after the loop end for the codecs; loudness-normalised to -18 LUFS (-2.5 dB linear gain). ${COMMON}`,
+  },
+  'caves-flood': {
+    context: 'caves-flood',
+    file: 'underwater',
+    duration: 172.181814,
+    loop: true,
+    loopStart: 3,
+    loopEnd: 170.181814,
+    gain: 0.85,
+    lufs: -18,
+    fallback: 'room',
+    title: 'Underwater',
+    artist: 'Cleyton Kauffman',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/underwater-theme',
+    attribution: 'Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman (CC0)',
+    changes: 'Same file as the caves floors, played through a 900 Hz low-pass and a little quieter on flood floors (heard from under the water).',
+    variantOf: 'caves',
+    lowpassHz: 900,
+  },
+  'caves-guardian': {
+    context: 'caves-guardian',
+    file: 'fairy-boss-battles',
+    duration: 105.783787,
+    loop: true,
+    // The master (4576865 samples) loops whole (seam 0.12/0.01); its first 2 s follow again and the loop is the rotation 1.0-104.784 s.
+    loopStart: 1,
+    loopEnd: 104.783787,
+    gain: 1,
+    lufs: -18,
+    fallback: 'boss',
+    title: 'Fairy Boss Battles',
+    artist: 'MintoDog',
+    license: 'CC0 1.0',
+    licenseUrl: CC0,
+    sourceUrl: 'https://opengameart.org/content/fairy-boss-battles',
+    attribution: '"Fairy Boss Battles" by MintoDog (CC0)',
+    changes: `FLAC master; the whole file loops, its first 2.0 s appended once more and the loop set to 1.0-104.784 s (a rotation of the same loop) so the codecs do not smear the seam; loudness-normalised to -18 LUFS (-7.3 dB linear gain). ${COMMON}`,
+  },
 };
 
 export const MUSIC_CONTEXTS = Object.keys(MUSIC_TRACKS) as MusicContext[];
@@ -271,14 +330,6 @@ export const PLANNED_MUSIC: readonly PlannedTrack[] = [
     license: 'CC0 1.0',
     sourceUrl: 'https://opengameart.org/content/boss-battle-music',
     notes: 'In-fight loop; "Final Battle of the Dark Wizards" (Kevin MacLeod, CC BY 4.0) for phase 1 or a cutscene.',
-  },
-  {
-    context: 'caves',
-    title: 'Underwater',
-    artist: 'Cleyton Kauffman',
-    license: 'CC0 1.0',
-    sourceUrl: 'https://opengameart.org/content/underwater-theme',
-    notes: 'Looped per the page; credit requested (Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman).',
   },
   {
     context: 'swamp',

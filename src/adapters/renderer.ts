@@ -20,7 +20,10 @@ import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
-import { CRYPT, type TilePalette } from '../data/dungeons';
+import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
+import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
+import { floodLevel } from '../core/flood';
+import { danmakuSinking, drawDanmaku } from './danmaku-vfx';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
 import { hudSpace } from '../ui/hud-layout';
@@ -73,7 +76,7 @@ export interface RenderFrame {
   coins?: number;
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
-  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure; the Forest's roots, mushrooms, trees and mist), if any. */
+  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure; the Forest's roots, mushrooms, trees and mist; the caves' water and crystals), if any. */
   decor?: Decor;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
@@ -151,7 +154,7 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
 const TILE = 32;
 const DEG = Math.PI / 180;
 
-type Decor = 'crypt' | 'forest' | null;
+type Decor = DungeonDecor | null;
 
 interface Drawable {
   y: number;
@@ -167,6 +170,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   let currentArena: { width: number; height: number } | null = null;
   /** The world being drawn's tier (positional telegraphs depend on it). */
   let currentTier: Difficulty = 'easy';
+  /** Real time of the frame being drawn (looping telegraph animations). */
+  let currentTimeMs = 0;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -429,6 +434,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       tiles(grid, view, state.collapse, timeMs);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       if (decor === 'forest') drawForestFloorDecor(ctx, forestFloor(state), view, timeMs, fallenAt(state));
+      if (decor === 'caves') caveFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -449,6 +455,34 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.strokeRect(-1, -1, width + 2, height + 2);
     if (decor === 'crypt') cryptArena(width, height, timeMs);
     if (decor === 'forest') drawForestArena(ctx, width, height, timeMs);
+    if (decor === 'caves') cavesArena(ctx, width, height, timeMs);
+  }
+
+  /** Caves decoration of a generated floor: pools (deep at the rock), crystals and drops; placement worked out once per floor. */
+  const caveDecorOf = new WeakMap<TileGrid, CaveDecor>();
+  function caveFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = caveDecorOf.get(grid);
+    if (!decor) {
+      decor = caveDecor(grid);
+      caveDecorOf.set(grid, decor);
+    }
+    const { x0, y0, x1, y1 } = visibleTiles(view, grid);
+    const water = state.arena.water;
+    const front = state.collapse ? collapseFront(state.collapse) : 0;
+    if (water) {
+      for (let ty = y0; ty <= y1; ty++) {
+        for (let tx = x0; tx <= x1; tx++) {
+          if (water[ty * grid.cols + tx] !== 1) continue;
+          const d = state.collapse ? (state.collapse.dist[ty * grid.cols + tx] ?? -1) : -1;
+          if (front > 0 && d >= 0 && d < front) continue;
+          waterTile(ctx, tx * TILE, ty * TILE, tx, ty, timeMs, deepEdge(grid, tx, ty));
+        }
+      }
+    }
+    const visible = (x: number, y: number) => x >= x0 - 1 && x <= x1 + 1 && y >= y0 - 1 && y <= y1 + 1;
+    for (const c of decor.crystals) if (visible(c.x, c.y)) crystal(ctx, c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
+    for (const d of decor.drips) if (visible(d.x, d.y)) drip(ctx, d.x * TILE, d.y * TILE, timeMs, decorHash(d.x, d.y, 6));
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -500,6 +534,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     // The forest's arenas: old trees (the roost's thick ones stop arrows).
     if (decor === 'forest') return { y: rect.y + rect.height, draw: () => drawForestTree(ctx, rect, lift, rect.cover === true) };
+    if (decor === 'caves') return { y: rect.y + rect.height, draw: () => caveCover(ctx, rect, lift, timeMs) };
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -596,16 +631,18 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   function pierceMark(enemy: EnemyState, pos: Vec2, zone: PierceZone, timeMs: number): void {
     const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
     ctx.save();
-    if (zone.kind === 'circle' || zone.kind === 'shape') {
-      const radius = zone.kind === 'circle' ? zone.radius : enemy.radius + 12;
+    if (zone.kind === 'circle' || zone.kind === 'shape' || zone.kind === 'mark') {
+      const radius = zone.kind === 'shape' ? enemy.radius + 12 : zone.radius;
+      // A mark sits away from the enemy (where the riptide surfaces); circles and shapes around it.
+      const at = zone.kind === 'mark' ? zone.center : pos;
       ctx.lineWidth = 2;
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 + 0.4 * pulse})`;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius + 1, 0, Math.PI * 2);
+      ctx.arc(at.x, at.y, radius + 1, 0, Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = `rgba(176, 96, 255, ${0.6 + 0.4 * (1 - pulse)})`;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, radius + 5, 0, Math.PI * 2);
+      ctx.arc(at.x, at.y, radius + 5, 0, Math.PI * 2);
       ctx.stroke();
     }
     // The "!" badge: a violet diamond with a white mark, over the enemy.
@@ -659,6 +696,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.stroke();
     }
     const def = ENEMY_BEHAVIOUR[enemy.species];
+    if (def?.kind === 'danmaku') {
+      if (currentArena) drawDanmaku(ctx, enemy, def, pos, currentArena, currentTimeMs);
+      return;
+    }
     if (ai.mode === 'transform' && def?.kind === 'boss') {
       // The unsheathing (phase 2) is a bigger, double ring.
       const big = enemy.boss?.stance === 'unsheathe';
@@ -1092,6 +1133,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const { current, view, pixelScale, juice, timeMs } = frame;
     currentArena = current.arena;
     currentTier = worldDifficulty(current);
+    currentTimeMs = timeMs;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -1109,6 +1151,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     floor(current, view, timeMs, frame.decor ?? null);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
+    // Inundación: the rising water lies over the floor, under everyone.
+    if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
@@ -1134,7 +1178,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
           // (Sableye blinking out works the same way.)
-          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
+          const danmaku = ENEMY_BEHAVIOUR[enemy.species];
+          const sinking = danmaku?.kind === 'danmaku' && danmakuSinking(enemy, danmaku);
+          const vanishing = enemy.alive && ((enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief')) || sinking);
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },

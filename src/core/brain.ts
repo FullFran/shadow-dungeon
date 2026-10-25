@@ -1,4 +1,5 @@
 import { ENEMY_SHOT_CAP, floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
+import { wadeFactor } from './water';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
@@ -78,6 +79,8 @@ export function spreadDirections(dir: Vec2, count: number, degrees: number, offs
  */
 export function moveEnemy(state: WorldState, enemy: EnemyState, delta: Vec2): EnemyState {
   const solid = !floatsOf(enemy.species);
+  // Walkers that are not Water types wade slower through shallow water (the caves' pools).
+  if (solid && state.arena.water) delta = scale(delta, wadeFactor(enemy.types, state.arena, enemy.pos));
   const desired = add(enemy.pos, delta);
   let pos = confineCircle(state.arena, desired, enemy.radius, solid);
   if (solid && distance(pos, desired) > 0.01 && length(delta) > 0) {

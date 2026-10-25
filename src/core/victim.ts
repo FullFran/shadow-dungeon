@@ -7,6 +7,8 @@ import { worldDifficulty } from './difficulty';
 import type { Difficulty } from '../data/difficulty';
 import { stealItem } from './stolen';
 import { burstActive, burstTouches } from './thief';
+import { cardDef, danmakuMelee } from './danmaku';
+import { behaviourFor } from './tricks';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
@@ -56,8 +58,14 @@ export function bladeTouches(enemy: EnemyState, player: Vec2): boolean {
   return reach && inArc;
 }
 
-/** Where a positional (`pierceRoll`) wind-up will land, for its own telegraph: a circle around the enemy, a sweeping wall, the attack's own shape, or the arena lanes the forest bosses mark (Trevenant's roots, Decidueye's rain). */
-export type PierceZone = { kind: 'circle'; radius: number } | { kind: 'wall' } | { kind: 'shape' } | { kind: 'lanes' };
+/** Where a positional (`pierceRoll`) wind-up will land, for its own telegraph: a circle around the enemy, a sweeping wall, the attack's own shape, the arena lanes the forest bosses mark (Trevenant's roots, Decidueye's rain), or a marked circle elsewhere (a danmaku zone `at: 'target'`). */
+export type PierceZone =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'wall' }
+  | { kind: 'shape' }
+  | { kind: 'lanes' }
+  /** A marked circle away from the enemy (Dhelmise's riptide: where it will surface). */
+  | { kind: 'mark'; center: Vec2; radius: number };
 
 /**
  * The positional attack this enemy is winding up (or throwing) at tier `d`,
@@ -78,6 +86,13 @@ export function pierceZone(enemy: EnemyState, d: Difficulty): PierceZone | null 
   if (def.kind === 'thief') return stance === 'gems' && (enemy.ai.mode === 'telegraph' || burstActive(enemy, def)) && def.gems.burst.attack.pierceRoll ? { kind: 'circle', radius: def.gems.burst.radius } : null;
   if (def.kind === 'treant') return stance === 'roots' && def.roots.spike.pierceRoll ? { kind: 'lanes' } : null;
   if (def.kind === 'archer') return stance === 'rain' && def.phase2.rain.arrow.pierceRoll ? { kind: 'lanes' } : null;
+  if (def.kind === 'danmaku') {
+    // The caves' and swamp's bullet-hell bosses: a sweep is a circle of its reach around the boss; a zone at the boss or on its mark.
+    const p = stance ? cardDef(behaviourFor(enemy.species, d) as typeof def, stance)?.pattern : undefined;
+    if (p?.kind === 'sweep') return p.attack.pierceRoll ? { kind: 'circle', radius: p.radius } : null;
+    if (p?.kind === 'zone' && p.attack.pierceRoll) return p.at === 'self' ? { kind: 'circle', radius: p.radius } : { kind: 'mark', center: enemy.ai.aimPoint ?? enemy.pos, radius: p.radius };
+    return null;
+  }
   if (isRosterDef(def)) return rosterAttack(enemy, def, enemy.pos)?.attack.pierceRoll ? { kind: 'shape' } : null;
   if (def.kind === 'slammer') return def.attack.pierceRoll ? { kind: 'circle', radius: def.radius } : null;
   if (def.kind === 'lunger') return def.attack.pierceRoll ? { kind: 'shape' } : null;
@@ -120,6 +135,11 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
+    } else if (def.kind === 'danmaku') {
+      // Only the anchor sweep and the bursting zones touch; bubbles, sparks and kelp are projectiles.
+      const active = danmakuMelee(enemy, behaviourFor(enemy.species, worldDifficulty(current)) as typeof def, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (isRosterDef(def)) {
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;

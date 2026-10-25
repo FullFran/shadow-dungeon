@@ -157,5 +157,6 @@ export function enterRoom(state: WorldState): WorldState {
     collapse: undefined,
     fog: undefined,
     wisp: undefined,
+    flood: undefined,
   };
 }
