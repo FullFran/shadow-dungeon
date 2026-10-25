@@ -26,7 +26,7 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 - [x] T1 Roles + threat budget + XP/coin parity (route: inline in this writer; RED: 4 existing tests pinned the old counts/XP/digest and failed, updated on purpose; new tests/core/encounters.test.ts)
 - [x] T2 Leaders and break rules (route: inline; RED: 3 existing tests broke where a leader's extra HP or crowned spawns showed (fixed to pick non-leaders), new tests/core/leaders.test.ts written with the code)
 - [x] T3 Floor gates (route: inline; RED: 11 existing tests failed once gates shut stairs or locked doors, fixed with a test helper `openGate` and door-aware map comparisons; new tests/core/gates.test.ts)
-- [ ] T4 Tuning, docs, screenshots (route: inline)
+- [x] T4 Tuning, docs, screenshots (route: inline; passive docs: structural readback; gate HUD line moved to the top once the floor card fades, found in the screenshots)
 
 ## Acceptance criteria
 - Every room of a generated floor holds 0 to 3 enemies, spends at most its budget, at most the tier's roles.
@@ -63,4 +63,7 @@ User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep comi
 - Easy golden digest re-recorded on purpose ('bebcc214' → new value per task).
 
 ## Progress
-- Branch `feat/meaningful-encounters` from be4e833.
+- Branch `feat/meaningful-encounters` from be4e833. T1 e8e70a2, T2 a5af1cb, T3 048aa66, T4 (this commit).
+- Verification at T4: `npm test` 144 files / 1400 tests passed; `npm run build` built.
+- Screenshots (headless Firefox over WebDriver BiDi, muted profile and settings): /tmp/encounters/leader-group.png (Sima 19, seed 2), sealed-stairs.png (Sima 4, seed 19), key-door.png (Sima 13, seed 56). Taken on the Sima with `?nearEvent=1` because the app cannot place the camera elsewhere and src/app is outside this task's edit surface.
+- Pending: Engram mirror `odd/meaningful-encounters/tasks` (written by the writer if Engram is reachable, otherwise the parent's). Not playtested by hand: leader rally timing, break readability and the 60 s safety in a real stuck case. No sounds for the new events (src/adapters/audio.ts is outside the edit surface). The floor card itself (src/adapters/card.ts, src/app/game.ts) is untouched; the gate line is drawn by the renderer under it.

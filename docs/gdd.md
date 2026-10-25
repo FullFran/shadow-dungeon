@@ -53,7 +53,7 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 ### Plantas normales
 
 - Salas y pasillos generados al azar, al estilo Mundo Misterioso, con escaleras a la siguiente planta.
-- 3 + n enemigos por sala, siendo n el número de jugadores *(provisional; en el MVP la cuenta sube con la profundidad: de 1 a 2 por sala en la planta 1 y medio más por planta, como mucho 4, tanto en la Cripta como en el Bosque)*.
+- Cada sala gasta un presupuesto de amenaza en papeles de enemigo, de 0 a 3 enemigos por sala, y el número no cambia con el número de jugadores ni con el nivel de dificultad (ver "Encuentros con sentido").
 - Los enemigos duermen hasta que entras en su sala o te ven de cerca; una vez despiertos ya no paran.
 - Las escaleras se pueden usar en cuanto las encuentras, sin limpiar la planta (como en Mundo Misterioso).
 - La vida se arrastra de una planta a otra y cada planta nueva cura un 25 % de la vida máxima *(provisional)*. El Disfraz se recupera en cada planta.
@@ -62,6 +62,34 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 - Minimapa arriba a la derecha, como en Mundo Misterioso: se descubre lo que ves (la sala entera al entrar, los pasillos a tu alrededor), las escaleras salen cuando las has visto y los enemigos solo si están en pantalla. Tab lo muestra u oculta.
 - Los enemigos despiertos te persiguen rodeando paredes (siguen el camino andando hacia ti cuando no te ven).
 - Sin reloj. Solo un aviso suave si el grupo se queda muchísimo tiempo (la idea del viento de Mundo Misterioso), para cortar el quedarse farmeando, nunca para castigar a quien juega normal.
+
+### Encuentros con sentido
+
+Decisión del 25-10-2026: muchos enemigos hacían pesado matarlos, así que se saltaban y se llegaba a los jefes con poco nivel. La experiencia tiene que seguir saliendo de matar, y a veces matar tiene que ser obligatorio. Dirección: **menos enemigos, pero que importen** (docs/souls-difficulty-research.md P1-P3). Todos los números están en `src/data/encounters.ts` y en las tablas de cada mazmorra, y son *provisionales*.
+
+**Papeles.** Cada especie que aparece en plantas generadas tiene un papel con un coste de amenaza: **bruto** (cuerpo a cuerpo lento que aguanta, 3: Golett, Pumpkaboo grande, Shroomish, Krabby, Tentacool, Wooper, Croagunk), **hostigador** (rápido, entra y sale, 2: Poochyena, Pawniard, Phantump, Hoothoot, Impidimp, Ekans, Salandit), **tirador** (a distancia, 3: Gastly, Duskull, Spinarak, Drifloon, Remoraid, Shellos, Corphish, Clauncher, Skrelp, Litleo, Slugma), **enjambre** (débil y en grupo, 1 por unidad: Pumpkaboo pequeño, Zubat, Venipede, Stunky), **controlador** (niega espacio, 4: Foongus, Chinchou, Koffing, Grimer, Houndour) y **apoyo** (mejora a los demás, 4; ninguna especie lo hace aún: lo hace el líder con su grito).
+
+**Presupuesto por sala.** Cada sala menos la de entrada recibe un presupuesto (base de la mazmorra + un tanto por planta + 0 o 1 al azar) y compra papeles de la tabla de la mazmorra hasta que no le llega para ninguno: como mucho 3 enemigos, 2 papeles distintos en Fácil y Normal y 3 desde Difícil (el nivel nunca añade enemigos). Un papel ya comprado pesa menos, así que lo normal es una combinación legible (un bruto delante de un tirador, un controlador con un hostigador) y no una fila de lo mismo. Algunas salas quedan vacías (un respiro; un 15-30 % según la planta). La primera línea (brutos, hostigadores, enjambres) se pone en la mitad de la sala más cercana a la entrada y la segunda (tiradores, controladores) en la parte del fondo.
+
+**Mismo botín por planta.** Hay entre un 35 % y un 45 % menos de enemigos por planta en todas las mazmorras, y cada uno vale más: la experiencia se multiplica por papel (bruto ×1,2, hostigador ×1,45, tirador ×1,3, enjambre ×1,85, controlador y apoyo ×1,25; los guardianes y jefes intermedios no cambian) y cada enemigo paga 1,65 Pokémonedas de base en vez de 1. Quien mata lo que hay gana más o menos la misma experiencia por planta que antes (medido con 150 semillas en Fácil; la planta 1 da algo menos y las hondas algo más).
+
+| Mazmorra | Enemigos por planta antes → ahora | Experiencia por planta antes → ahora |
+|---|---|---|
+| Cripta | 9,1 → 5,6 | 236 → 237 |
+| Bosque Brumoso | 10,9 → 6,8 | 306 → 315 |
+| Cuevas Inundadas | 11,6 → 7,4 | 459 → 431 |
+| Pantano Tóxico | 10,9 → 6,7 | 438 → 416 |
+| Sima (plantas 1-24) | 9,5 → 5,9 | 924 → 879 |
+
+**Líderes.** Algunos grupos de dos o más siguen a un líder: el enemigo de más amenaza del grupo, con corona dorada y un aro dorado a sus pies, un 60 % más de vida y el doble de experiencia. Su movimiento propio es el **grito de mando**: despierto y con algún seguidor vivo, se carga casi un segundo (el aro crece) y cura un 15 % de la vida a los seguidores cercanos, que pueden volver a atacar al momento; lo repite cada 7,5 s. Mientras el líder sigue en pie sus seguidores van un 10 % más rápidos. Si cae, el grupo se rompe según el papel de cada uno: los brutos, enjambres y apoyos **se tambalean** 1,5 s (estrellitas), los hostigadores y tiradores **se desaniman** y van más lentos 6 s (una gota azul) y los controladores solo pierden el ritmo del líder. No hay líderes en la planta 1 y salen más cuanto más hondo (en la Cripta de un 30 % de los grupos en la planta 2 a un 60 %).
+
+**Muertes obligatorias (a veces).** Como mucho una por planta, nunca en la planta 1 ni en las plantas con prisa (el reloj o el peligro ya empujan), nunca en una sala fija ni en una planta de la Sima con cazador. Se decide con la semilla y pesos por mazmorra y profundidad (entre un 30 % y un 50 % de las plantas que pueden tenerla):
+
+- **Sello de la escalera**: la escalera está sellada (un sello rojo encima, roja en el minimapa) hasta que cae el enemigo marcado, el líder de la planta si lo hay o si no un élite o el de más amenaza. Lleva un rombo rojo sobre la cabeza y el minimapa lo enseña siempre, esté donde esté.
+- **Puerta cerrada**: las entradas de la sala de la escalera tienen barrotes. La llave la lleva el enemigo marcado (una llave sobre la cabeza), que siempre está fuera de esa sala y se puede alcanzar desde la entrada; al caer la suelta donde estaba y hay que pasar por encima.
+- **Sala de oleadas** (solo la Sima): la escalera no se abre hasta superar la sala de oleadas de la planta.
+
+Una línea en pantalla dice qué cierra la escalera mientras dura. El enemigo marcado da un 50 % más de experiencia. **Seguridad**: si el enemigo marcado (o la llave caída) queda fuera del alcance de todos los jugadores durante 60 s seguidos (atrapado fuera del mapa o tras una pared), el sello se rompe solo y no da la recompensa. En cooperativo manda el anfitrión: todos colocan el mismo sello desde la semilla y la instantánea del anfitrión dice cuándo se abre, dónde cae la llave y cuándo se abren las puertas.
 
 ### Plantas con prisa
 
@@ -91,7 +119,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 
 Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sección 11. Valores *provisionales*.
 
-**Niveles.** Cada enemigo derrotado da experiencia según la especie (Poochyena 10, Gastly 12, Duskull 13, Golett 22, Pawniard 7, Sableye 50, Aegislash 60) y la profundidad (un 50 % más por cada planta por debajo de la primera). Empiezas en el nivel 1 y el tope es el 10 (hacen falta 25, 60, 110, 175... puntos en total). Cada nivel da 8 PS máximos más (que se curan al momento) y un 5 % más de daño. Al subir sale "¡Mimikyu subió al nivel N!" con una fanfarria corta; arriba a la izquierda están el nivel y la barra de experiencia. En cooperativo, como en Mundo Misterioso, cada jugador en pie gana la experiencia de cada enemigo derrotado, lo haya derrotado quien lo haya derrotado (también el derrumbe). Quien está debilitado no gana nada, para que subir de nivel no lo levante.
+**Niveles.** Cada enemigo derrotado da experiencia según la especie (Poochyena 10, Gastly 12, Duskull 13, Golett 22, Pawniard 7, Sableye 50, Aegislash 60), su papel (ver "Encuentros con sentido": un líder el doble, el enemigo de un sello un 50 % más) y la profundidad (un 50 % más por cada planta por debajo de la primera). Empiezas en el nivel 1 y el tope es el 10 (hacen falta 25, 60, 110, 175... puntos en total). Cada nivel da 8 PS máximos más (que se curan al momento) y un 5 % más de daño. Al subir sale "¡Mimikyu subió al nivel N!" con una fanfarria corta; arriba a la izquierda están el nivel y la barra de experiencia. En cooperativo, como en Mundo Misterioso, cada jugador en pie gana la experiencia de cada enemigo derrotado, lo haya derrotado quien lo haya derrotado (también el derrumbe). Quien está debilitado no gana nada, para que subir de nivel no lo levante.
 
 **Objetos equipados.** Al entrar en cada planta a partir de la segunda (la del jefe incluida), cada jugador elige uno de tres objetos. Salen según su rareza (común 6, poco común 3, rara 1 por objeto), sin repetirse en la misma oferta, y la oferta depende de la semilla de la partida, la planta y el jugador. Se acumulan durante la partida hasta un tope por objeto; uno que ya está en su tope no vuelve a salir. Se eligen con un clic en la carta o con 1, 2 o 3. En solitario el juego se para mientras eliges; en partida compartida no se para nada (las cartas salen abajo, puedes seguir andando y rodando, y el clic en una carta no ataca). Si bajas sin elegir, la oferta de la planta nueva sustituye a la anterior. Los objetos salen en el HUD y, con su descripción, en el menú de Esc.
 
@@ -187,7 +215,7 @@ La escena antes y después del combate no cambia. Música: Aegislash y Sableye u
 | 5 a 7 | Plantas normales; Niebla más a menudo y algún derrumbe |
 | 8 | Guardián: Decidueye |
 
-Las primeras plantas son más suaves que el final de la Cripta (de 1 a 2 enemigos por sala en la planta 1, medio más por planta, como mucho 4) y se endurecen al bajar.
+Las primeras plantas son más suaves que el final de la Cripta (un presupuesto de amenaza por sala que crece con la planta, ver "Encuentros con sentido") y se endurecen al bajar.
 
 | Enemigo | Cómo juega |
 |---|---|

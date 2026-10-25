@@ -22,7 +22,7 @@ import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState } from '..
 import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
-import { drawFloorCard, type FloorCard } from './card';
+import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine } from './hud';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
@@ -1512,8 +1512,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
-    // The floor's gate, while it holds: one line under the floor card's place (the card shows it too as it fades in).
-    if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, frame.card ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78, timeMs);
+    // The floor's gate, while it holds: one line under the floor card while the card shows, then at the top under the clock.
+    if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, frame.card && cardAlpha(frame.card, timeMs - frame.card.shownAtMs) > 0 ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78, timeMs);
   }
 
   return { draw };
