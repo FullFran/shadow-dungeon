@@ -22,12 +22,13 @@ import { add, clamp, distance, length, normalize, scale, sub, vec, type Vec2 } f
 const BOUNDS = TUNING.bounds;
 
 /** 4-connected floor components of a grid: label per tile (-1 on walls). Cached per grid object. */
-const componentCache = new WeakMap<TileGrid, { doors: readonly number[] | undefined; labels: Int32Array }>();
+const componentCache = new WeakMap<TileGrid, { doors: string; labels: Int32Array }>();
 
-function components(grid: TileGrid, openDoors?: readonly number[]): Int32Array {
+function components(grid: TileGrid, openDoors: readonly number[]): Int32Array {
+  const key = openDoors.join(',');
   const cached = componentCache.get(grid);
-  if (cached && cached.doors === openDoors) return cached.labels;
-  const open = new Set(openDoors ?? []);
+  if (cached && cached.doors === key) return cached.labels;
+  const open = new Set(openDoors);
   const floor = (i: number) => grid.tiles[i] === 1 || open.has(i);
   const labels = new Int32Array(grid.cols * grid.rows).fill(-1);
   let next = 0;
@@ -50,7 +51,7 @@ function components(grid: TileGrid, openDoors?: readonly number[]): Int32Array {
     }
     next++;
   }
-  componentCache.set(grid, { doors: openDoors, labels });
+  componentCache.set(grid, { doors: key, labels });
   return labels;
 }
 
@@ -121,7 +122,9 @@ export function keepEnemiesInBounds(state: WorldState, dtMs: number): WorldState
   const grid = state.arena.tiles;
   const waves = sealedWaves(state);
   // Reachability is judged with the wave room's doors open: an enemy elsewhere on the floor is not stranded by the seal.
-  const labels = grid ? components(grid, waves ? waves.doors : undefined) : null;
+  // Likewise a key gate's locked stairs room (core/gates.ts): its enemies wait behind the door, they are not stranded.
+  const lockedGate = state.gate && !state.gate.done ? state.gate.doors ?? [] : [];
+  const labels = grid ? components(grid, [...(waves?.doors ?? []), ...lockedGate]) : null;
   const playerLabels = new Set<number>();
   if (grid && labels)
     for (const p of livingPlayers(state)) {

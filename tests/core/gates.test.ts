@@ -13,6 +13,8 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { decodeMessage, encodeMessage, type NetMessage } from '../../src/net/protocol';
 import { IDLE } from './helpers';
+import { spawnEnemy } from '../../src/core/world';
+import { floatsOf } from '../../src/data/enemies';
 
 const floorsOf = (d: DungeonDef): number[] => Array.from({ length: d.endless ? 30 : d.plan.length }, (_, i) => i + 1).filter((f) => planAt(d, f)?.kind === 'generated');
 
@@ -206,5 +208,69 @@ describe('gates: shared runs', () => {
     const guest = startRun(run.seed, { role: 'guest', localId: 'p2' }, run.floor).world;
     const after = step(kill(guest, host.gate!.target!), IDLE, FIXED_DT_MS);
     expect(after.gate?.done).toBe(false);
+  });
+});
+
+/**
+ * One coherent out-of-bounds set (odd/tasks/integrate-encounters.md): the
+ * safety net (core/bounds.ts) snaps walkers back every step, so a gate's own
+ * 60 s rule only ever fires for what it cannot snap (a floater, a dropped
+ * key); a key gate's locked stairs room is not "out of reach" for the net;
+ * and the Sima's wave gate opens when the wave room's 60 s failsafe ends it.
+ */
+describe('gates with the out-of-bounds safety net', () => {
+  const play = (w: WorldState, ms: number): WorldState => {
+    let s = w;
+    for (let t = 0; t < ms; t += FIXED_DT_MS) s = step(s, IDLE, FIXED_DT_MS);
+    return s;
+  };
+
+  it('a walker in a key gate\'s locked stairs room waits there: the net does not pull it out of the room', () => {
+    const { world } = findGate(DUNGEONS[0]!, 'key');
+    const floor = world.arena.tiles as Floor;
+    const room = floor.rooms[floor.stairsRoom]!;
+    const inRoom = (e: { pos: { x: number; y: number } }) => {
+      const t = tileOf(e.pos);
+      return t.x >= room.x && t.y >= room.y && t.x < room.x + room.width && t.y < room.y + room.height;
+    };
+    const centre = tileCenter({ x: room.x + Math.floor(room.width / 2), y: room.y + Math.floor(room.height / 2) });
+    const placed = spawnEnemy(world, 'spinarak', centre, { dormant: true });
+    const waiting = placed.enemies.at(-1)!;
+    const after = play(placed, 1000);
+    expect(after.gate).toMatchObject({ kind: 'key', done: false });
+    expect(inRoom(after.enemies.find((e) => e.id === waiting.id)!)).toBe(true);
+  });
+
+  it('a walking gate target thrown off the map is snapped back by the net before the gate\'s own clock counts', () => {
+    const { world } = findGate(DUNGEONS[0]!, 'seal');
+    const id = world.gate!.target!;
+    const target = world.enemies.find((e) => e.id === id)!;
+    expect(floatsOf(target.species)).toBe(false);
+    const flowing = step(world, IDLE, FIXED_DT_MS);
+    const lost: WorldState = { ...flowing, enemies: flowing.enemies.map((e) => (e.id === id ? { ...e, pos: vec(-200, -200) } : e)) };
+    const after = play(lost, 2000);
+    expect(after.gate).toMatchObject({ done: false, stuckMs: 0 });
+    expect(reachable(after, after.enemies.find((e) => e.id === id)!.pos)).toBe(true);
+  });
+
+  it('the Sima\'s wave gate opens through the wave room\'s 60 s failsafe when its enemies are stuck out of reach', () => {
+    const { run, world } = findGate(ECLIPSE, 'waves');
+    const floor = world.arena.tiles as Floor;
+    const room = floor.rooms[world.simaEvent!.room]!;
+    const tough = { ...world, player: { ...world.player, pos: tileCenter({ x: room.x, y: room.y }), hp: 1e9, maxHp: 1e9 } };
+    let w = play(tough, 50);
+    expect(w.simaEvent).toMatchObject({ sealed: true, done: false });
+    // The first wave (it spawns away from the player, hence the corner).
+    for (let t = 0; t < 5000 && (w.simaEvent!.ids ?? []).length === 0; t += FIXED_DT_MS) w = step(w, IDLE, FIXED_DT_MS);
+    expect(w.simaEvent!.ids!.length).toBeGreaterThan(0);
+    // A stand-in for wave enemies nobody can reach: they hold still and lose no HP.
+    w = { ...w, enemies: w.enemies.map((e) => ({ ...e, ai: { ...e.ai, mode: 'dormant' as const } })) };
+    const stalled = play(w, 55_000);
+    expect(stalled.gate).toMatchObject({ kind: 'waves', done: false });
+    expect(progressRun(run, onStairs(stalled)).entered).toBe(false);
+    const ended = play(stalled, 6_000);
+    expect(ended.simaEvent).toMatchObject({ done: true });
+    expect(ended.gate).toMatchObject({ kind: 'waves', done: true, outcome: 'opened' });
+    expect(progressRun(run, onStairs(ended)).entered).toBe(true);
   });
 });
