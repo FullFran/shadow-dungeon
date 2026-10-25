@@ -19,6 +19,8 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { heldItems } from './item-pick';
 import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
+import { quizScreen } from './quiz-screen';
+import { loadStarter, playableStarter, saveStarter } from './starter-choice';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 
@@ -182,7 +184,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     initial,
     label: t('app.title'),
     items: [
-      { label: t('title.play'), onConfirm: () => loadout(root) },
+      { label: t('title.play'), onConfirm: () => newAdventure(root) },
       { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
       { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
@@ -193,6 +195,22 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
   ]);
+}
+
+/** A new adventure: the personality quiz first while no starter is chosen yet, then the loadout. */
+function newAdventure(root: HTMLElement): void {
+  if (loadStarter(store)) loadout(root);
+  else quiz(root, () => loadout(root), () => titleScreen(root, 0));
+}
+
+/** The personality quiz over a black screen; its starter becomes the run species. */
+function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
+  const onDone = (starter: Parameters<typeof saveStarter>[1]) => {
+    saveStarter(store, starter);
+    update(withSpecies(settings, playableStarter(starter)));
+    then();
+  };
+  show(root, quizScreen({ seed: runSeed(), sheets: sheetsReady(), onDone, onCancel: cancel }), false);
 }
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
@@ -225,7 +243,8 @@ function settingsScreen(root: HTMLElement): void {
     },
   };
   const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
-  const refresh = () => list.setItems([...settingItems(access, refresh), { label: t('menu.back'), onConfirm: back }]);
+  const retake = () => quiz(root, () => titleScreen(root, 0), () => settingsScreen(root));
+  const refresh = () => list.setItems([...settingItems(access, refresh), { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
   refresh();
   show(root, [
     h('h1', { className: 'screen-title', textContent: t('title.settings') }),
@@ -440,6 +459,7 @@ function devScreen(root: HTMLElement): boolean {
   const summary: RunSummary = { floor: 4, seed: runSeed(), level: 6, items: ['leftovers', 'scope-lens', 'leftovers', 'focus-sash'] };
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
+    quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
     online: () => onlineScreen(root),
