@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CRYPT, floorsOf } from '../../src/data/dungeons';
 import { SPECIES } from '../../src/data/species';
+import { COOP_REVIVE } from '../../src/data/party-scaling';
 import { isBossClass, partySizeOf } from '../../src/core/party';
 import { startRun } from '../../src/core/run';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
@@ -81,5 +82,40 @@ describe('boss aggro over the wire', () => {
     expect(aimedAtGuest).toBe(true);
     // The guest never simulates aggro: its copy of the boss has none.
     expect(loop.guestWorld.enemies[0]!.aggro).toBeUndefined();
+  });
+});
+
+describe('co-op revive over the wire', () => {
+  const pair = (guestHp: number) =>
+    coopLoop((guestId) => {
+      const host = createWorld({ seed: 5, arena: { width: 800, height: 600 }, playerPos: vec(300, 300), localId: 'p1', party: 2 });
+      const guest = createWorld({ seed: 5, arena: { width: 800, height: 600 }, playerPos: vec(325, 300), localId: guestId, role: 'guest', party: 2 });
+      return { host, guest: { ...guest, player: { ...guest.player, hp: guestHp } } };
+    });
+
+  it('the host stands by the fainted guest for 3 s; the guest gets up and the host sees it happen', () => {
+    const loop = pair(0);
+    let progressSeen = 0;
+    for (let i = 0; i < ticksOf(4500); i++) {
+      loop.tick(input(), input());
+      progressSeen = Math.max(progressSeen, loop.hostWorld.remotes[0]?.revive ?? 0);
+    }
+    expect(loop.guestEvents.filter((e) => e.type === 'revived')).toEqual([{ type: 'revived', by: 'p1' }]);
+    expect(loop.guestWorld.player.hp).toBe(Math.round(loop.guestWorld.player.maxHp * COOP_REVIVE.hpShare));
+    expect(progressSeen).toBeGreaterThan(COOP_REVIVE.holdMs / 2);
+    expect(loop.hostWorld.remotes[0]!.player.hp).toBe(loop.guestWorld.player.hp);
+    expect(loop.hostWorld.remotes[0]!.revive).toBeUndefined();
+  });
+
+  it('the helper getting hurt mid-way starts the guest count again', () => {
+    const loop = pair(0);
+    for (let i = 0; i < ticksOf(1800); i++) loop.tick(input(), input());
+    expect(loop.guestWorld.revive?.ms ?? 0).toBeGreaterThan(0);
+    loop.hostWorld = { ...loop.hostWorld, player: { ...loop.hostWorld.player, hp: loop.hostWorld.player.hp - 20 } };
+    for (let i = 0; i < ticksOf(1800); i++) loop.tick(input(), input());
+    expect(loop.guestEvents.some((e) => e.type === 'reviveInterrupted')).toBe(true);
+    expect(loop.guestWorld.player.hp).toBe(0);
+    for (let i = 0; i < ticksOf(2500); i++) loop.tick(input(), input());
+    expect(loop.guestWorld.player.hp).toBeGreaterThan(0);
   });
 });

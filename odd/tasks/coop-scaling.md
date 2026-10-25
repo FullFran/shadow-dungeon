@@ -42,7 +42,7 @@ Enemy count unchanged (design over numbers).
 ## Tasks
 - [x] T1 Scaling table + party size + HP/damage/stagger + snapshot field (route: inline in this writer; RED observed: 13 of 18 new tests failing before code)
 - [x] T2 Boss aggro switching + party area cards (route: inline; tests written alongside, mutation-checked: removing the wind-up guard or the pressure switch fails a test)
-- [ ] T3 Co-op revive
+- [x] T3 Co-op revive (route: inline; RED observed: 5 of 9 core revive tests failing before code; victim side on the fainted peer, progress sent in its player snapshot)
 - [ ] T4 Solo digest, protocol back-compat, docs
 
 ## Acceptance criteria

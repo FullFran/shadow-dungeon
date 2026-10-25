@@ -116,7 +116,8 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
  * `party`: the players present at the floor entry (core/party.ts), frozen for the floor.
  */
 function enterFloor(entering: WorldState, run: RunState, party = presentPartySize(entering)): WorldState {
-  const { party: _before, ...rest } = entering;
+  // A floor's revive uses (core/revive.ts) end with it.
+  const { party: _before, revive: _revive, ...rest } = entering;
   const world: WorldState = { ...rest, ...partyField(party) };
   const plan = floorPlanOf(run);
   const endless = dungeonOf(run).endless;

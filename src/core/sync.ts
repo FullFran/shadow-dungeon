@@ -49,6 +49,8 @@ export interface PlayerSnapshot {
   projectiles: readonly ProjectileSnapshot[];
   /** Still under Illusion (Zorua): the host's sleeping enemies only notice it by touch. */
   hidden?: boolean;
+  /** Fainted and being revived: ms an ally has stood by so far (core/revive.ts), for the others to draw. */
+  revive?: number;
 }
 
 export interface EnemySnapshot {
@@ -114,6 +116,7 @@ export function playerSnapshot(state: WorldState): PlayerSnapshot {
     action: a ? { moveId: a.moveId, phase: a.phase, phaseMs: a.phaseMs, chargeMs: a.chargeMs, chargeLevel: a.chargeLevel, aimDir: a.aimDir } : null,
     projectiles: state.projectiles.filter((p) => p.owner === 'player').map(projectileSnapshot),
     ...(illusionActive(p) ? { hidden: true } : {}),
+    ...(p.hp <= 0 && state.revive && state.revive.ms > 0 ? { revive: state.revive.ms } : {}),
   };
 }
 
@@ -142,7 +145,7 @@ export function applyRemotePlayers(state: WorldState, snapshots: readonly Player
     if (snapshot.id === state.localId) continue;
     const previous = remotes.find((r) => r.id === snapshot.id);
     const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius }));
-    const next: RemotePlayer = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player), projectiles };
+    const next: RemotePlayer = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player), projectiles, ...(snapshot.revive ? { revive: snapshot.revive } : {}) };
     remotes = previous ? remotes.map((r) => (r.id === snapshot.id ? next : r)) : [...remotes, next];
   }
   remotes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

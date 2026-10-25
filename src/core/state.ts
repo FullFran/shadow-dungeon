@@ -13,6 +13,7 @@ import type { GasState } from './gas';
 import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { SimaEventState, SimaPactState } from './sima-events';
+import type { ReviveState } from './revive';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -352,6 +353,10 @@ export type GameEvent =
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
   /** Co-op: a boss turned to another player (core/aggro.ts). */
   | { type: 'bossAggro'; enemyId: string; targetId: string }
+  /** Co-op: the local player got up, helped by `by` (core/revive.ts). */
+  | { type: 'revived'; by: string }
+  /** Co-op: the helper was hurt or stepped away; the revive count starts again. */
+  | { type: 'reviveInterrupted' }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'click' | 'range' | 'offscreen' | 'noTarget' }
@@ -372,6 +377,8 @@ export interface RemotePlayer {
   player: PlayerState;
   /** That player's own projectiles in flight, drawn only (they never hit anything on this peer). */
   projectiles: readonly RemoteProjectile[];
+  /** Co-op: fainted and being revived, ms an ally has stood by (as that player's peer reported it). */
+  revive?: number;
 }
 
 /** Enough of another player's projectile to draw it. */
@@ -453,6 +460,8 @@ export interface WorldState {
   simaEvent?: SimaEventState;
   /** Sima del Eclipse: the shrine's pact in force (it outlasts the floor). */
   simaPact?: SimaPactState;
+  /** Co-op: the local player's revive on this floor (core/revive.ts); absent solo. */
+  revive?: ReviveState;
   events: GameEvent[];
 }
 

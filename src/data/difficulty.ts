@@ -59,6 +59,8 @@ export interface TierDef {
    * the i-frames on every tier.
    */
   roll: { iframes: number; stamina: number };
+  /** Co-op revive (core/revive.ts): `false` forbids it on this tier; absent = allowed. */
+  coopRevive?: false;
 }
 
 export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
@@ -66,7 +68,7 @@ export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
   // No tier adds enemies (user feedback 2026-10-25: more enemies is not fun); tougher ones instead: elites, patterns, aggression.
   normal: { hp: 1.15, damage: 1.15, telegraph: 0.95, extraPerRoom: 0, cooldown: 0.9, eliteChance: 0.1, restartsPerFloor: null, coins: 1.3, encounters: { frequency: 1.2, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 } },
   hard: { hp: 1.3, damage: 1.3, telegraph: 0.9, extraPerRoom: 0, cooldown: 0.8, eliteChance: 0.2, restartsPerFloor: 1, coins: 1.7, encounters: { frequency: 1.5, extraWaves: 0 }, roll: { iframes: 0.9, stamina: 1.1 } },
-  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 } },
+  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false },
 };
 
 /** The readable floor of a scaled telegraph: never under this share of its base, nor under `minMs` (unless the base already was). */

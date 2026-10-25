@@ -128,7 +128,7 @@ export interface GameOptions {
   touch?: { autoAim(): boolean; haptics(): boolean };
 }
 
-/** What a fainted player sends in a shared run: nothing (no revive in the spike). */
+/** What a fainted player sends in a shared run: nothing (an ally standing by gets it up: core/revive.ts). */
 function idleInput(from: PlayerInput): PlayerInput {
   return { ...from, move: vec(0, 0), roll: false, slots: from.slots.map(() => false), slotMouse: from.slotMouse.map(() => false), click: false, lock: false, wheel: 0 };
 }

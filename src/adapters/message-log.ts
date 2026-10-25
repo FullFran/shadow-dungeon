@@ -73,6 +73,9 @@ export function eventMessages(events: readonly GameEvent[], speciesOf: (enemyId:
     else if (event.type === 'itemStolen') out.push({ text: t('log.itemStolen').replace('{thief}', t(`species.${speciesOf(event.enemyId) ?? 'sableye'}`)).replace('{item}', t(`item.${event.item}`)), tone: 'warn' });
     else if (event.type === 'itemReturned') out.push({ text: t('log.itemReturned').replace('{name}', name).replace('{item}', t(`item.${event.item}`)), tone: 'item' });
     else if (event.type === 'poisoned') out.push({ text: t('log.poisoned').replace('{name}', name), tone: 'warn' });
+    // Co-op revive (core/revive.ts).
+    else if (event.type === 'revived') out.push({ text: t('coop.revived').replace('{name}', name), tone: 'good' });
+    else if (event.type === 'reviveInterrupted') out.push({ text: t('coop.reviveInterrupted'), tone: 'warn' });
     else if (event.type === 'passiveTriggered') out.push({ text: t(`log.passive.${event.passive}${event.kindled ? '.kindled' : ''}`).replace('{name}', name), tone: event.passive === 'illusion' ? 'warn' : 'good' });
   }
   return out;
