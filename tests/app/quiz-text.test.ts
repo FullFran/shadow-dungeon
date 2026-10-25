@@ -10,6 +10,13 @@ describe('quiz strings', () => {
     ...STARTERS.map((s) => `quiz.starter.${s}`),
     'quiz.result.nature',
     'quiz.result.species',
+    'quiz.title',
+    'quiz.begin',
+    'quiz.accept',
+    'quiz.choose',
+    'quiz.chooseTitle',
+    'quiz.notPlayable',
+    'quiz.retake',
   ];
   for (const language of LANGUAGES) {
     it(`"${language}" has every question, answer, nature and starter`, () => {

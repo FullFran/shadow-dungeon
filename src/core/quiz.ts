@@ -53,6 +53,29 @@ export interface QuizResult {
   scores: Record<NatureId, number>;
 }
 
+/** A quiz in progress: the seeded questions and the answers given so far, in order. */
+export interface QuizRun {
+  questions: readonly QuizQuestion[];
+  picks: readonly number[];
+}
+
+export const startQuiz = (seed: number): QuizRun => ({ questions: pickQuestions(seed), picks: [] });
+
+export const quizDone = (run: QuizRun): boolean => run.picks.length >= run.questions.length;
+
+export const currentQuestion = (run: QuizRun): QuizQuestion | null => (quizDone(run) ? null : run.questions[run.picks.length]!);
+
+/** Answers the current question with answer `choice` (0..2). */
+export function answerQuiz(run: QuizRun, choice: number): QuizRun {
+  const question = currentQuestion(run);
+  if (!question) throw new RangeError('quiz: already answered every question');
+  if (!question.answers[choice]) throw new RangeError(`quiz: no answer ${choice} for question ${question.id}`);
+  return { ...run, picks: [...run.picks, choice] };
+}
+
+/** Takes the last answer back (nothing to undo: unchanged). */
+export const undoAnswer = (run: QuizRun): QuizRun => ({ ...run, picks: run.picks.slice(0, -1) });
+
 /** The result of answering `questions` with `picks` (answer index 0..2 per question). */
 export function quizResult(questions: readonly QuizQuestion[], picks: readonly number[]): QuizResult {
   const answers = questions.map((q, i) => {

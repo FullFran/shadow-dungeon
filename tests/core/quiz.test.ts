@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { natureOf, pickQuestions, quizResult, scoreAnswers, starterOf } from '../../src/core/quiz';
+import { answerQuiz, currentQuestion, natureOf, pickQuestions, quizDone, quizResult, scoreAnswers, startQuiz, starterOf, undoAnswer } from '../../src/core/quiz';
 import { NATURE_STARTER, NATURES, QUIZ_LENGTH, QUIZ_QUESTIONS, STARTERS, type NatureId, type QuizAnswer } from '../../src/data/quiz';
 
 const answer = (points: Partial<Record<NatureId, number>>): QuizAnswer => ({ points });
@@ -99,5 +99,33 @@ describe('quizResult', () => {
     }
     expect([...reached].sort()).toEqual([...NATURES].sort());
     expect(new Set([...reached].map(starterOf)).size).toBe(STARTERS.length);
+  });
+});
+
+describe('a quiz run', () => {
+  it('walks the seeded questions one answer at a time', () => {
+    let run = startQuiz(3);
+    expect(run.questions.map((q) => q.id)).toEqual(pickQuestions(3).map((q) => q.id));
+    expect(currentQuestion(run)).toBe(run.questions[0]);
+    run = answerQuiz(run, 2);
+    expect(run.picks).toEqual([2]);
+    expect(currentQuestion(run)).toBe(run.questions[1]);
+    run = undoAnswer(run);
+    expect(run.picks).toEqual([]);
+    expect(undoAnswer(run).picks).toEqual([]);
+  });
+
+  it('ends after the last question and refuses more answers', () => {
+    let run = startQuiz(3);
+    while (!quizDone(run)) run = answerQuiz(run, 1);
+    expect(run.picks).toHaveLength(QUIZ_LENGTH);
+    expect(currentQuestion(run)).toBeNull();
+    expect(() => answerQuiz(run, 0)).toThrow();
+    expect(quizResult(run.questions, run.picks).starter).toBeDefined();
+  });
+
+  it('rejects an answer outside 0..2', () => {
+    expect(() => answerQuiz(startQuiz(1), 3)).toThrow();
+    expect(() => answerQuiz(startQuiz(1), -1)).toThrow();
   });
 });

@@ -26,7 +26,7 @@ Out of scope: Twitch chat voting (removed by user decision 2026-10-25), the prol
 
 ## Tasks
 - [x] T1 Quiz core + data + i18n strings (route: inline in this writer; pure modules `src/data/quiz.ts`, `src/core/quiz.ts`, `src/app/quiz-text.ts`, tests first). RED observed (missing modules), then GREEN: 447/447 tests, typecheck clean.
-- [ ] T2 Quiz screen, result screen, title and settings entry points, starter hand-off (route: inline in this writer)
+- [x] T2 Quiz screen, result screen, title and settings entry points, starter hand-off (route: inline in this writer). RED observed (`startQuiz` missing, `starter-choice` missing), then GREEN: 453/453 tests, build clean. Visual check not run (no browser available in the session).
 - [x] ~~T3 Twitch chat voting~~ — removed by user decision 2026-10-25 (the streamer runs the chat dynamic herself). No ChatFeed port, no IRC adapter, no voting settings.
 
 ## Acceptance criteria
@@ -48,9 +48,17 @@ Out of scope: Twitch chat voting (removed by user decision 2026-10-25), the prol
 - Tie-break: the latest answer that scored a tied nature decides (its higher-scored tied nature; list order if equal).
 - Strings sit in one contiguous block at the top of `src/i18n/{es,en}.json` (less likely to clash with writers appending at the end).
 
+## Design (T2)
+- `src/core/quiz.ts` run stepping (`startQuiz`, `answerQuiz`, `undoAnswer`, `currentQuestion`, `quizDone`); Esc takes the last answer back.
+- `src/app/quiz-screen.ts`: black layer + fading phases (voice, question window with cursor list and "n / 6", result with idle sprite, Accept / Choose another Pokémon, manual pick list). Styles injected once through `src/ui/style.ts` (index.html is not an edit surface).
+- `src/adapters/portrait.ts`: generic idle portrait ("?" box when the sprite is not fetched yet). `loadout.ts` keeps its own Mimikyu portrait to avoid clashing with the starters writer; it can switch to `idlePortrait` later.
+- `src/app/starter-choice.ts`: starter stored under `mazmorra-sombria.starter`; `playableStarter` is the single hand-off (species with a movepool, else Mimikyu). `main.ts` uses it for the run species (`starterSpecies()`).
+- Title Play: the quiz runs while no starter is stored, then the loadout. Settings: "Repetir test" row (ends on the title menu).
+
 ## Progress
 - Feature doc created.
 - T1 done.
+- T2 done.
 
 ## Next step
-T2.
+Starters writer: make zorua/litwick/cubone playable (species data with movepool, sprite keys) and make the loadout and `startGame` use `starterSpecies()` instead of the Mimikyu default. Prologue writer: put the prologue before `quiz()` in `newAdventure`.
