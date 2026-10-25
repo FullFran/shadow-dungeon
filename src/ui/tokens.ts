@@ -1,4 +1,5 @@
 import type { Rarity } from '../data/items';
+import type { PokemonType } from '../data/types';
 
 /**
  * Design tokens of the Mystery Dungeon-inspired UI, the one place colours,
@@ -35,6 +36,29 @@ export const PALETTE = {
 } as const;
 
 export const RARITY: Record<Rarity, string> = { common: '#c9d2ee', uncommon: '#5ab0ff', rare: '#ffd447' };
+
+/** Colours of one Pokémon type on the canvas: `core` fill, `glow` halo and highlight, `edge` outline. */
+export interface TypeColors {
+  core: string;
+  glow: string;
+  edge: string;
+}
+
+/**
+ * Attack colours per move type, the one table every player and enemy
+ * attack is drawn from (projectiles, swings, rings, dash trails, enemy
+ * telegraph tints). Enemy telegraphs keep a red warning edge on top.
+ */
+export const TYPE_COLORS: Record<PokemonType, TypeColors> = {
+  normal: { core: '#f4f1ea', glow: '#ffffff', edge: '#a9a49a' },
+  ghost: { core: '#8a5cf0', glow: '#c9b0ff', edge: '#3b1f73' },
+  fairy: { core: '#ff8fc8', glow: '#ffd3ec', edge: '#b2457e' },
+  dark: { core: '#3a1d52', glow: '#7a43a8', edge: '#e0324a' },
+  poison: { core: '#9b4fc9', glow: '#a6e36a', edge: '#4a1f66' },
+  steel: { core: '#c8d2dc', glow: '#f2f6fa', edge: '#6d7a88' },
+  fire: { core: '#ff7a1f', glow: '#ffd84a', edge: '#c2361a' },
+  ground: { core: '#a87a46', glow: '#e6c48e', edge: '#5e3f1e' },
+};
 
 /**
  * Pixelify Sans (SIL OFL 1.1, public/fonts). Its pixel is about 1/11 em, so

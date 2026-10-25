@@ -3,7 +3,7 @@ import type { GameEvent } from '../core/state';
 import { MUSIC, type Drum, type MusicId, type MusicTrack, type Note } from '../data/audio';
 import { MUSIC_TRACKS, type LicensedTrack, type MusicContext } from '../data/music';
 import { eventsBetween, type CueMusic, type ScoreEvent } from '../data/prologue-music';
-import { JUICE } from './juice';
+import { isHeavyHit } from './juice';
 
 /**
  * Web Audio: retro sfx synthesised from oscillators, a noise buffer,
@@ -67,7 +67,7 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'moveReleased':
       return 'release';
     case 'enemyHit':
-      return event.damage >= JUICE.heavyDamage || event.effectiveness > 1 ? 'hitHeavy' : 'hit';
+      return isHeavyHit(event) ? 'hitHeavy' : 'hit';
     case 'enemyDefeated':
       return 'defeated';
     case 'playerHurt':

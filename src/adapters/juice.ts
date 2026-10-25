@@ -1,5 +1,6 @@
 import { COLLAPSE } from '../data/dungeon';
 import type { ItemId } from '../data/items';
+import { MOVES } from '../data/moves';
 import type { GameEvent } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -56,6 +57,16 @@ export function effectivenessStyle(effectiveness: number): NumberStyle {
   return 'normal';
 }
 
+/**
+ * Whether a landed hit gets the heavy treatment (long hitstop, shake, big
+ * number, heavy sound): strong or super-effective hits, the last part of a
+ * multi-hit move, and moves flagged `juice: 'heavy'`.
+ */
+export function isHeavyHit(event: Extract<GameEvent, { type: 'enemyHit' }>): boolean {
+  if (event.damage >= JUICE.heavyDamage || event.effectiveness > 1 || event.finisher) return true;
+  return event.moveId !== undefined && MOVES[event.moveId]?.juice === 'heavy';
+}
+
 function shake(juice: JuiceState, px: number): JuiceState {
   return { ...juice, shakeMs: JUICE.shakeMs, shakePx: Math.max(px, juice.shakeMs > 0 ? juice.shakePx : 0) };
 }
@@ -66,7 +77,7 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
   for (const event of events) {
     switch (event.type) {
       case 'enemyHit': {
-        const heavy = event.damage >= JUICE.heavyDamage || event.effectiveness > 1;
+        const heavy = isHeavyHit(event);
         next = {
           ...next,
           hitstopMs: Math.max(next.hitstopMs, heavy ? JUICE.heavyHitstopMs : JUICE.hitstopMs),

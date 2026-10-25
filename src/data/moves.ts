@@ -66,6 +66,13 @@ export interface MoveDef {
   /** Melee: the active window splits into this many equal parts, each able to hit the same target again. */
   multiHit?: number;
   bonus?: MoveBonus;
+  /**
+   * Game-feel tier of a landed hit: 'heavy' always gets the long hitstop,
+   * shake and heavy hit sound (adapters/juice.ts). Without it only strong
+   * (JUICE.heavyDamage) or super-effective hits and the last part of a
+   * multi-hit move feel heavy.
+   */
+  juice?: 'heavy';
 }
 
 const HEAVY_CHARGE: readonly ChargeLevel[] = [
@@ -160,6 +167,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitbox: { kind: 'dash', distance: 60, radius: 16 },
     hitstunMs: 220,
     knockback: 35,
+    juice: 'heavy',
   },
   'night-daze': {
     id: 'night-daze',
@@ -174,6 +182,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitstunMs: 380,
     knockback: 70,
     charge: HEAVY_CHARGE,
+    juice: 'heavy',
   },
   'foul-play': {
     id: 'foul-play',
@@ -189,6 +198,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     knockback: 80,
     charge: HEAVY_CHARGE,
     bonus: { when: 'attacking', multiplier: 1.5 },
+    juice: 'heavy',
   },
   ember: {
     id: 'ember',
@@ -215,6 +225,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitbox: { kind: 'arc', range: 30, arcDegrees: 120 },
     hitstunMs: 400,
     knockback: 70,
+    juice: 'heavy',
   },
   hex: {
     id: 'hex',
@@ -230,6 +241,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     knockback: 50,
     charge: HEAVY_CHARGE,
     bonus: { when: 'staggered', multiplier: 2 },
+    juice: 'heavy',
   },
   inferno: {
     id: 'inferno',
@@ -244,6 +256,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitstunMs: 460,
     knockback: 90,
     charge: HEAVY_CHARGE,
+    juice: 'heavy',
   },
   'bone-club': {
     id: 'bone-club',
@@ -257,6 +270,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitbox: { kind: 'arc', range: 32, arcDegrees: 100 },
     hitstunMs: 320,
     knockback: 45,
+    juice: 'heavy',
   },
   'bone-rush': {
     id: 'bone-rush',
@@ -285,6 +299,7 @@ export const MOVES: Record<MoveId, MoveDef> = {
     hitstunMs: 300,
     knockback: 40,
     charge: HEAVY_CHARGE,
+    juice: 'heavy',
   },
   'stomping-tantrum': {
     id: 'stomping-tantrum',
@@ -300,5 +315,6 @@ export const MOVES: Record<MoveId, MoveDef> = {
     knockback: 80,
     charge: HEAVY_CHARGE,
     bonus: { when: 'afterMiss', multiplier: 2 },
+    juice: 'heavy',
   },
 };

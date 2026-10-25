@@ -106,6 +106,9 @@ type StrikeHit = {
   /** Names the swing or projectile in hit claims. */
   source: string;
   bonus?: MoveBonus;
+  /** The move that landed it, and whether this is the last part of a multi-hit move (game feel only). */
+  moveId?: MoveDef['id'];
+  finisher?: boolean;
 };
 
 /**
@@ -177,7 +180,15 @@ function strikeEnemy(
     hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),
     knockback: scale(length(pushDir) > 0 ? pushDir : state.player.facing, hit.knockback * poise.knockbackScale),
   };
-  events.push({ type: 'enemyHit', enemyId: enemy.id, damage, effectiveness, pos: enemy.pos });
+  events.push({
+    type: 'enemyHit',
+    enemyId: enemy.id,
+    damage,
+    effectiveness,
+    pos: enemy.pos,
+    ...(hit.moveId ? { moveId: hit.moveId } : {}),
+    ...(hit.finisher ? { finisher: true } : {}),
+  });
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
@@ -221,6 +232,8 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
         from: origin,
         source: `m${action.startTick ?? state.tick}${action.hitWindow ? `w${action.hitWindow}` : ''}`,
         ...(move.bonus ? { bonus: move.bonus } : {}),
+        moveId: move.id,
+        ...(move.multiHit && move.multiHit > 1 && (action.hitWindow ?? 0) === move.multiHit - 1 ? { finisher: true } : {}),
       },
       events,
     );
@@ -249,6 +262,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     hitIds: [],
     ...(move.bonus ? { bonus: move.bonus } : {}),
     ...(move.hitbox.boomerang ? { returnAtMs: move.hitbox.lifetimeMs / 2, pierce: true } : {}),
+    moveId: move.id,
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }
@@ -379,6 +393,7 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             from: moved.pos,
             source: returning ? `${moved.id}r` : moved.id,
             ...(moved.bonus ? { bonus: moved.bonus } : {}),
+            ...(moved.moveId ? { moveId: moved.moveId } : {}),
           },
           events,
         );
