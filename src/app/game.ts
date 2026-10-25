@@ -4,7 +4,9 @@ import type { SpeciesId } from '../data/species';
 import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { chooseItem, dungeonOf, floorPlanOf, followToFloor, progressRun, startRun, type RunState } from '../core/run';
+import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
+import { CARD_MS } from './guardian-cinematic';
 import { musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
@@ -69,6 +71,14 @@ export interface GameOptions {
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
   onEnd(result: GameResult, summary: RunSummary): void;
+  /**
+   * Solo only: plays a guardian cinematic over the game (before the guardian
+   * fight and after it falls) and returns a function that removes it, or null
+   * when there is nothing to play; `onDone` runs when it ends or is skipped.
+   * The run stands still meanwhile. Shared runs get the name card on the
+   * canvas instead and never pause.
+   */
+  playCinematic?(request: { species: SpeciesId; phase: CinematicPhase }, onDone: () => void): (() => void) | null;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string };
 }
@@ -129,6 +139,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let pixelScale = 1;
   let ended = false;
   let raf = 0;
+  /** The guardian cinematic on screen (solo), while it plays. */
+  let closeCinematic: (() => void) | null = null;
   /** Smoothed camera focus; the visible rect it gives is also the lock-on view. */
   let camera = world.player.pos;
   let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
@@ -275,13 +287,52 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
+  /** The guardian of this floor, if it has a cinematic. */
+  const guardianHere = (): SpeciesId | null => {
+    if (!isBossFloor(run)) return null;
+    const boss = world.enemies.find((e) => GUARDIAN_CINEMATICS[e.species]);
+    return boss ? boss.species : null;
+  };
+
+  /**
+   * Before or after a guardian fight: solo plays the cinematic (the run stands
+   * still and input is cut off until it ends), a shared run shows the name
+   * card over the running game. `then` runs once it is over.
+   */
+  function guardianMoment(phase: CinematicPhase, then: () => void): void {
+    const species = guardianHere();
+    if (!species) return then();
+    if (net || !options.playCinematic) {
+      intro = { name: t(`species.${species}`), subtitle: t(`guardian.${species}.title`), shownAtMs: realMs };
+      return then();
+    }
+    input.setSuspended(true);
+    audio?.setDucked(true);
+    closeCinematic = options.playCinematic({ species, phase }, () => {
+      closeCinematic = null;
+      audio?.setDucked(false);
+      if (!closeMenu && !closePick) input.setSuspended(false);
+      lastFrame = performance.now();
+      then();
+    });
+    if (!closeCinematic) {
+      audio?.setDucked(false);
+      input.setSuspended(false);
+      then();
+    }
+  }
+
   function end(result: GameResult): void {
     if (ended) return;
     ended = true;
     hidePick();
     audio?.setMusic(null);
-    // Let the last hit land on screen before the result screen.
-    window.setTimeout(() => options.onEnd(result, { dungeon: run.dungeon, floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items }), 700);
+    const finish = () => options.onEnd(result, { dungeon: run.dungeon, floor: run.floor, seed: run.seed, level: world.player.level, items: world.player.items });
+    // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
+    window.setTimeout(() => {
+      if (result !== 'victory' || !guardianHere()) return finish();
+      guardianMoment('post', () => (net || !options.playCinematic ? window.setTimeout(finish, CARD_MS) : finish()));
+    }, 700);
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
@@ -293,7 +344,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     music();
     announceFloor(true);
-    offerPick();
+    // The guardian's floor opens with its cinematic; the held item pick waits for it.
+    guardianMoment('pre', offerPick);
   }
 
   function simulate(frameMs: number): void {
@@ -339,7 +391,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function frame(now: number): void {
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
-    const paused = simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net));
+    const paused = simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null;
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -400,8 +452,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   resize();
   music();
   announceFloor(false);
-  // Development start below floor 1 (`?floor=`): that floor's offer.
-  offerPick();
+  // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
+  guardianMoment('pre', offerPick);
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
@@ -414,6 +466,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       closeMenu = null;
       closePick?.();
       closePick = null;
+      closeCinematic?.();
+      closeCinematic = null;
       audio?.setDucked(false);
       audio?.setRumble(0);
       cancelAnimationFrame(raf);

@@ -32,6 +32,10 @@ import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
+import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
+import { drawGuardianScene } from '../adapters/guardian-scenes';
+import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
+import type { SpeciesId } from '../data/species';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -255,6 +259,35 @@ function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void
   });
   show(root, [screen], false);
   root.querySelector('.notice')?.classList.add('in-game');
+}
+
+/**
+ * A guardian cinematic over the running game (solo): in full the first time
+ * in this browser, then the short name card (`cinematicMode`). It is the
+ * prologue player with the guardian's panels and scenes, skippable the same
+ * way; it removes itself when it ends.
+ */
+function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; phase: CinematicPhase }, onDone: () => void): (() => void) | null {
+  const cinematic = GUARDIAN_CINEMATICS[request.species];
+  if (!cinematic) return null;
+  const mode = cinematicMode({ seen: hasSeen(store, request.species, request.phase), shared: false });
+  const panels = cinematicPanels(request.species, request.phase, mode);
+  if (panels.length === 0) return null;
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    panels,
+    draw: (ctx, panel, time, camera, alpha) => drawGuardianScene(ctx, cinematic, panel, time, camera, alpha),
+    label: t(`species.${request.species}`),
+    onDone: () => {
+      if (mode === 'full') markSeen(store, request.species, request.phase);
+      screen.remove();
+      onDone();
+    },
+  });
+  // Over the game canvas and its overlays.
+  screen.style.zIndex = '6';
+  root.append(screen);
+  return () => screen.remove();
 }
 
 /** The personality quiz over a black screen; its starter becomes the `species` setting. */
@@ -536,6 +569,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     onToggleMute: () => update({ muted: !settings.muted }),
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     onQuit: () => titleScreen(root),
+    playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onEnd: (result, summary) => {
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory' });
@@ -556,6 +590,13 @@ function devScreen(root: HTMLElement): boolean {
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
     dungeons: () => chooseDungeon(root, () => titleScreen(root)),
+    // `&species=decidueye&phase=post`: a guardian cinematic over the title (as the first time unless already seen).
+    guardian: () =>
+      void sheetsReady().then(() => {
+        const params = new URLSearchParams(window.location.search);
+        titleScreen(root);
+        guardianCinematic(root, { species: (params.get('species') ?? 'aegislash') as SpeciesId, phase: params.get('phase') === 'post' ? 'post' : 'pre' }, () => titleScreen(root));
+      }),
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),

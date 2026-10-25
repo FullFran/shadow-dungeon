@@ -1,6 +1,6 @@
 import type { SheetStore } from '../adapters/assets';
-import { drawPrologue, STAGE } from '../adapters/prologue-scenes';
-import { PROLOGUE } from '../data/prologue';
+import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
+import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
 import { t } from '../i18n';
 import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, skipAvailable } from '../ui/cinematic';
 import { h } from '../ui/window';
@@ -29,6 +29,11 @@ export interface PrologueOptions {
   music?: PrologueMusic;
   /** Start this far in (development screenshots). */
   startMs?: number;
+  /** Another cinematic on the same player (the guardian ones): its panels and how to draw them. Default: the prologue. */
+  panels?: readonly CinematicPanel[];
+  draw?(ctx: CanvasRenderingContext2D, panel: CinematicPanel, time: SceneTime, camera: Shot, alpha: number): void;
+  /** Accessible name of the screen (default: the Prologue title entry). */
+  label?: string;
 }
 
 /** Largest whole-number scale at which the stage fits the window. */
@@ -49,7 +54,8 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   skip.append(hold);
   const hint = h('p', { className: 'prologue-hint', textContent: t('prologue.skipHint') });
   const element = h('section', { className: 'prologue' }, [stage, skip, hint]);
-  element.setAttribute('aria-label', t('title.prologue'));
+  element.setAttribute('aria-label', options.label ?? t('title.prologue'));
+  const panels = options.panels ?? PROLOGUE;
 
   const ctx = canvas.getContext('2d');
   let started: number | null = null;
@@ -88,7 +94,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   });
 
   const renderText = (index: number, localMs: number, alpha: number) => {
-    const panel = PROLOGUE[index]!;
+    const panel = panels[index]!;
     const strings = panel.lines.map((key) => [...t(key)]);
     const counts = revealedChars(panel, localMs, strings.map((s) => s.length));
     const key = `${index}:${counts.join(',')}`;
@@ -126,7 +132,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       finish();
       return;
     }
-    const moment = panelAt(PROLOGUE, elapsed);
+    const moment = panelAt(panels, elapsed);
     if (!moment) {
       finish();
       return;
@@ -140,13 +146,10 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     }
     const alpha = panelAlpha(moment.panel, moment.localMs);
     if (ctx) {
-      drawPrologue(
-        ctx,
-        moment.panel.scene,
-        { localMs: moment.localMs, progress: moment.localMs / moment.panel.durationMs, sheets: options.sheets() },
-        cameraAt(moment.panel, moment.localMs),
-        alpha,
-      );
+      const time = { localMs: moment.localMs, progress: moment.localMs / moment.panel.durationMs, sheets: options.sheets() };
+      const camera = cameraAt(moment.panel, moment.localMs);
+      if (options.draw) options.draw(ctx, moment.panel, time, camera, alpha);
+      else drawPrologue(ctx, moment.panel.scene as PrologueScene, time, camera, alpha);
     }
     renderText(moment.index, moment.localMs, alpha);
     const canSkip = skipAvailable(elapsed);

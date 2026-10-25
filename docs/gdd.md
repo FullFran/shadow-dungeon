@@ -118,6 +118,7 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
 
 - Patrones que se aprenden y avisos claros (la animación Charge sirve como carga del golpe).
 - Débiles a tipos concretos; el final se conoce de antemano.
+- Cada guardián tiene una escena corta antes del combate (la puerta sellada, su mirada y sus palabras, y al final su figura con su nombre y su apodo, al estilo de Touhou) y otra al caer (sus últimas palabras y una pista de lo que hay más hondo). Unos 16 y 13 segundos *(provisional)*, con el motor del prólogo y saltables igual (mantener Esc o Intro, o "Saltar"). Completas la primera vez en ese navegador; después solo la tarjeta del nombre (unos 2,5 segundos). En solitario la partida se para mientras salen; en partida compartida no se para nada y solo aparece la tarjeta del nombre sobre el juego. Aegislash es "El Rey de las Espadas" y Decidueye "El Arquero de la Niebla".
 - Cómo escalan con el número de jugadores: sección 8.
 
 ### Prólogo y trasfondo *(provisional)*
