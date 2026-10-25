@@ -439,5 +439,8 @@
   "guardian.aegislash.pre.1": "Soy el primero de los que guardan. Ninguna sombra pasa de esta puerta.",
   "guardian.aegislash.pre.2": "Desenvaina, pequeño. Que el acero diga quién sigue.",
   "guardian.aegislash.post.1": "El juramento se quiebra… pero esta no era la única puerta.",
-  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo."
+  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo.",
+  "world.travel": "E / Enter: viajar",
+  "world.map.refugio": "Refugio del Ocaso",
+  "world.map.ruinas": "Camino de las Ruinas"
 }

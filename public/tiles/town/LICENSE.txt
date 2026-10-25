@@ -28,5 +28,26 @@ Files and source rectangles (x, y, width, height in source pixels):
   house-shop.png    tileset_village_abandoned.png  176, 48, 48, 48
   stall.png         tileset_village_abandoned.png  272, 0, 48, 48
 
+Overworld crops (added 2026-10-25, same two sheets, same CC0 grant;
+x, y, width, height in source pixels, then the sha256 of the cropped file):
+  ground-dark.png   tileset_floor.png              176, 112, 80, 96  65d55591280d85060591f54ad7639660cf3c376a363b559ee33ec2b012998863
+  ground-ash.png    tileset_floor.png              176, 224, 80, 96  e37e9e1680c4c792c444c5eadad22ca095aadfadc3fc3373d481fb4e246fdced
+  grave.png         tileset_village_abandoned.png  128, 0, 48, 48    33a865d8916ea8288d6647d5f63020f6378c281263238af7c3cae95ba7571074
+  statue.png        tileset_village_abandoned.png  0, 48, 32, 48     5807c130781c8e96dad693ceadc053bd8fbb594dd3c00bd2710d7c8a27cc9b31
+  pillar.png        tileset_village_abandoned.png  32, 48, 16, 48    3df67c886ba02cf0ab45acdb15d4033eff7a55193a37be22ebd0aca54d5173fd
+  pillar-broken.png tileset_village_abandoned.png  48, 48, 16, 48    8e7c600db31f106a0e1aeded217da06e8cf1943f9be1a420bb84a5cb0c53429e
+  tower.png         tileset_village_abandoned.png  224, 0, 48, 80    c3343d492736bdfe582b022d1a9de90c4584eed6631f518b5d4bdb5ccdfd1300
+  house-big.png     tileset_village_abandoned.png  192, 96, 64, 80   acc4ea902deb4575244440031c8aa8f7ae32a62c9558642eecc7ddbb979bba91
+  house-moss.png    tileset_village_abandoned.png  256, 80, 64, 80   9e72738d446c9d379956ecbf81cc7ad2412eb72e07974263811f36062f5b3ccf
+  trunk.png         tileset_village_abandoned.png  112, 128, 32, 48  ed6fdbba4b6682fc15a5d8481cee63d5903f988ba3803c4cb03636d98d8c562e
+  fence.png         tileset_village_abandoned.png  144, 144, 48, 32  05335abfd4595bc29c2f9994e1354bfd9f30c2de503d7be624712ebb9a141b60
+  wall-ruin.png     tileset_village_abandoned.png  272, 48, 48, 32   f671cc30d93e840b9f702694041909c961dc7d41f20bd1b063855c2b5cecba9e
+  frog-idol.png     tileset_village_abandoned.png  144, 80, 32, 32   b97b13bc0dcae1df4fdc29f00800d8f2cc8e14ff3e0572f71699e217c2d17c35
+  flat-rocks.png    tileset_village_abandoned.png  128, 48, 48, 32   a341ea64deb5e5a46686439c1894a4a54c9f17da4fd7f797b7b2b204f2c2ebef
+  big-bush.png      tileset_village_abandoned.png  112, 80, 32, 32   c894ed5572d87f0dedff233292cb892ec6f26f80c96e3e1bfc6aecfffdb8b050
+  rubble.png        tileset_village_abandoned.png  224, 80, 32, 16   efc023351489e4e9c5f13319f1c3734499c50ea871dbfd87aaedfd9b0d551508
+The Crypt's gate in the overworld reuses house-stone.png. Water, the bridge,
+the chasm and rock are drawn by the game's code, not taken from the pack.
+
 The game draws them at 2x and tints them red (the eclipse) at runtime; the
 files themselves are unmodified crops.

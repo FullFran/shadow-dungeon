@@ -1,17 +1,31 @@
-import { TOWN_PROPS, type TownMap, type TownProp } from '../data/town';
+import { TOWN_PROPS, type TownProp } from '../data/town';
 import type { TilePoint, TileGrid } from '../core/tiles';
 
 /**
- * Pure helpers over the hand-authored town (src/data/town.ts): the collision
- * grid in the core's TileGrid format, flood-fill reachability for the map
- * validity tests, and which cell of the 3x3 path patch a path tile uses.
+ * Pure helpers over the hand-authored town and overworld maps
+ * (src/data/town.ts, src/data/world.ts): the collision grid in the core's
+ * TileGrid format, flood-fill reachability for the map validity tests, and
+ * which cell of the 3x3 path patch a path tile uses.
  */
-export type Ground = 'sky' | 'forest' | 'grass' | 'path';
+export type Ground = 'sky' | 'forest' | 'grass' | 'path' | 'water' | 'bridge' | 'chasm' | 'rock';
 
-const GROUND: Record<string, Ground> = { S: 'sky', F: 'forest', '.': 'grass', ',': 'path' };
+const GROUND: Record<string, Ground> = { S: 'sky', F: 'forest', '.': 'grass', ',': 'path', '~': 'water', '=': 'bridge', C: 'chasm', '#': 'rock' };
+
+/** The ground characters a map row may use. */
+export const GROUND_CHARS = Object.keys(GROUND).join('');
+
+/** What every map shares: rows of ground characters, props and solid NPC spots. */
+export interface MapShape {
+  rows: readonly string[];
+  props: readonly TownProp[];
+  npcs: readonly { x: number; y: number }[];
+}
+
+/** Ground the player can stand on. */
+export const isFloorGround = (ground: Ground): boolean => ground === 'grass' || ground === 'path' || ground === 'bridge';
 
 /** Ground at a tile; outside the map counts as forest. */
-export function groundAt(map: TownMap, x: number, y: number): Ground {
+export function groundAt(map: Pick<MapShape, 'rows'>, x: number, y: number): Ground {
   const ch = map.rows[y]?.[x];
   return (ch === undefined ? undefined : GROUND[ch]) ?? 'forest';
 }
@@ -26,15 +40,14 @@ export function propSolidTiles(prop: TownProp): TilePoint[] {
   return out;
 }
 
-/** Walkable grass and path are floor (1); sky, forest, prop footprints and NPCs are wall (0). */
-export function buildTownGrid(map: TownMap): TileGrid {
+/** Walkable grass, path and bridge are floor (1); everything else, prop footprints and NPCs are wall (0). */
+export function buildTownGrid(map: MapShape): TileGrid {
   const rows = map.rows.length;
   const cols = map.rows[0]?.length ?? 0;
   const tiles: number[] = [];
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      const ground = groundAt(map, x, y);
-      tiles.push(ground === 'grass' || ground === 'path' ? 1 : 0);
+      tiles.push(isFloorGround(groundAt(map, x, y)) ? 1 : 0);
     }
   }
   const block = (t: TilePoint) => {
@@ -77,7 +90,7 @@ export function reachableFrom(grid: TileGrid, start: TilePoint): Set<number> {
  * each side where the neighbour is not path. The map edge counts as path, so
  * the road runs out of the map cleanly.
  */
-export function pathPatchCell(map: TownMap, x: number, y: number): { col: number; row: number } {
+export function pathPatchCell(map: Pick<MapShape, 'rows'>, x: number, y: number): { col: number; row: number } {
   const cols = map.rows[0]?.length ?? 0;
   const path = (px: number, py: number) => px < 0 || px >= cols || py < 0 || py >= map.rows.length || groundAt(map, px, py) === 'path';
   const axis = (before: boolean, after: boolean) => (before === after ? 1 : before ? 2 : 0);

@@ -1,0 +1,166 @@
+import { describe, expect, it } from 'vitest';
+import { TOWN_PROPS } from '../../src/data/town';
+import { HUB, paintRows, WORLD, type WorldMap, type WorldMapId } from '../../src/data/world';
+import { isWall, TILE, tileOf } from '../../src/core/tiles';
+import { buildTownGrid, GROUND_CHARS, groundAt, propSolidTiles, reachableFrom } from '../../src/town/map';
+import { INTERACT_RANGE } from '../../src/town/interact';
+import { arrival, BANNER_MS, bannerAlpha, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
+
+const MAPS = Object.values(WORLD);
+const ids = Object.keys(WORLD) as WorldMapId[];
+
+/** Floor tiles reachable from every arrival point of a map (and its spawn). */
+function reachOf(map: WorldMap): { reach: Set<number>; cols: number } {
+  const grid = buildTownGrid(map);
+  const reach = new Set<number>();
+  const starts = map.links.map((link) => tileOf(arrival(map, link, 0).pos));
+  if (map.spawn) starts.push(map.spawn);
+  for (const s of starts) for (const i of reachableFrom(grid, s)) reach.add(i);
+  return { reach, cols: grid.cols };
+}
+
+/** Some reachable tile has its centre within interaction range of `point` (tiles). */
+function reachableNear(map: WorldMap, point: { x: number; y: number }): boolean {
+  const { reach, cols } = reachOf(map);
+  for (const index of reach) {
+    const cx = ((index % cols) + 0.5) * TILE;
+    const cy = (Math.floor(index / cols) + 0.5) * TILE;
+    if (Math.hypot(cx - point.x * TILE, cy - point.y * TILE) <= INTERACT_RANGE) return true;
+  }
+  return false;
+}
+
+describe('world maps', () => {
+  it('registers each map under its own id and has the hub', () => {
+    for (const id of ids) expect(WORLD[id].id).toBe(id);
+    expect(WORLD[HUB].spawn).toBeDefined();
+  });
+
+  for (const map of MAPS) {
+    describe(map.id, () => {
+      const grid = buildTownGrid(map);
+      const { reach, cols } = reachOf(map);
+
+      it('is a rectangle of known ground characters', () => {
+        for (const row of map.rows) {
+          expect(row).toHaveLength(map.rows[0]!.length);
+          for (const ch of row) expect(GROUND_CHARS).toContain(ch);
+        }
+      });
+
+      it('keeps every prop inside the map, its solid rows off water and chasm', () => {
+        for (const prop of map.props) {
+          const spec = TOWN_PROPS[prop.kind];
+          expect(prop.x).toBeGreaterThanOrEqual(0);
+          expect(prop.y).toBeGreaterThanOrEqual(0);
+          expect(prop.x + spec.width).toBeLessThanOrEqual(grid.cols);
+          expect(prop.y + spec.height).toBeLessThanOrEqual(grid.rows);
+          for (const t of propSolidTiles(prop)) expect(['grass', 'path']).toContain(groundAt(map, t.x, t.y));
+        }
+      });
+
+      it('reaches every floor tile from its arrivals (no sealed pockets)', () => {
+        const sealed: string[] = [];
+        for (let y = 0; y < grid.rows; y++) for (let x = 0; x < grid.cols; x++) if (!isWall(grid, x, y) && !reach.has(y * cols + x)) sealed.push(`${x},${y}`);
+        expect(sealed).toEqual([]);
+      });
+
+      it('puts its links on one edge each, walkable, and lands arrivals on floor outside any link', () => {
+        for (const link of map.links) {
+          expect(linkEdge(map, link), link.id).not.toBeNull();
+          for (let y = link.y; y < link.y + link.height; y++) for (let x = link.x; x < link.x + link.width; x++) expect(isWall(grid, x, y)).toBe(false);
+          const span = (link.width + link.height - 1) * TILE;
+          for (let offset = 0; offset < span; offset += TILE / 2) {
+            const { pos } = arrival(map, link, offset);
+            const t = tileOf(pos);
+            expect(isWall(grid, t.x, t.y)).toBe(false);
+            expect(linkAt(pos, map.links)).toBeNull();
+          }
+        }
+      });
+
+      it('lets the player talk to every NPC, none standing on a wall', () => {
+        for (const npc of map.npcs) {
+          expect(['grass', 'path', 'bridge']).toContain(groundAt(map, npc.x, npc.y));
+          expect(reachableNear(map, { x: npc.x + 0.5, y: npc.y + 0.5 })).toBe(true);
+        }
+        if (map.board) expect(reachableNear(map, map.board)).toBe(true);
+        if (map.waystone) expect(reachableNear(map, map.waystone)).toBe(true);
+      });
+
+      it('spawns on floor', () => {
+        if (map.spawn) expect(isWall(grid, map.spawn.x, map.spawn.y)).toBe(false);
+      });
+    });
+  }
+
+  it('pairs every link both ways, on opposite edges with equal spans', () => {
+    for (const map of MAPS) {
+      for (const link of map.links) {
+        const other = WORLD[link.to];
+        const back = other.links.find((l) => l.id === link.toLink);
+        expect(back, `${map.id}.${link.id} -> ${link.to}.${link.toLink}`).toBeDefined();
+        expect(back!.to).toBe(map.id);
+        expect(back!.toLink).toBe(link.id);
+        expect(linkEdge(other, back!)).toBe(OPPOSITE[linkEdge(map, link)!]);
+        expect(back!.width + back!.height).toBe(link.width + link.height);
+      }
+    }
+  });
+
+  it('reaches every map from the hub through links', () => {
+    const seen = new Set<WorldMapId>([HUB]);
+    const queue: WorldMapId[] = [HUB];
+    while (queue.length > 0) for (const link of WORLD[queue.shift()!].links) if (!seen.has(link.to)) seen.add(link.to) && queue.push(link.to);
+    expect([...seen].sort()).toEqual([...ids].sort());
+  });
+});
+
+describe('links and arrivals', () => {
+  const map = { rows: paintRows(10, 8, '.', []) };
+
+  it('finds the edge a link lies on', () => {
+    expect(linkEdge(map, { x: 0, y: 3, width: 1, height: 2 })).toBe('west');
+    expect(linkEdge(map, { x: 9, y: 3, width: 1, height: 2 })).toBe('east');
+    expect(linkEdge(map, { x: 4, y: 0, width: 2, height: 1 })).toBe('north');
+    expect(linkEdge(map, { x: 4, y: 7, width: 2, height: 1 })).toBe('south');
+    expect(linkEdge(map, { x: 4, y: 4, width: 1, height: 1 })).toBeNull();
+  });
+
+  it('arrives one tile inside, keeping the offset along the edge and facing inward', () => {
+    const west = { x: 0, y: 3, width: 1, height: 2 };
+    expect(arrival(map, west, TILE * 1.2)).toEqual({ pos: { x: 1.5 * TILE, y: 4.5 * TILE }, facing: { x: 1, y: 0 } });
+    expect(arrival(map, west, -50).pos).toEqual({ x: 1.5 * TILE, y: 3.5 * TILE });
+    const north = { x: 4, y: 0, width: 2, height: 1 };
+    expect(arrival(map, north, 999)).toEqual({ pos: { x: 5.5 * TILE, y: 1.5 * TILE }, facing: { x: 0, y: 1 } });
+    const east = { x: 9, y: 3, width: 1, height: 2 };
+    expect(arrival(map, east, 0).pos).toEqual({ x: 8.5 * TILE, y: 3.5 * TILE });
+  });
+
+  it('measures the offset along the edge a walker leaves through', () => {
+    const east = { x: 9, y: 3, width: 1, height: 2 };
+    expect(offsetAlong({ x: 9.5 * TILE, y: 4.25 * TILE }, east, 'east')).toBe(1.25 * TILE);
+    expect(inRect({ x: 9.5 * TILE, y: 4.25 * TILE }, east)).toBe(true);
+    expect(inRect({ x: 8.5 * TILE, y: 4.25 * TILE }, east)).toBe(false);
+  });
+
+  it('paints strokes over a fill in order, clipped to the map', () => {
+    expect(paintRows(4, 2, '.', [['F', 0, 0, 4, 1], [',', 2, 0, 5, 5]])).toEqual(['FF,,', '..,,']);
+  });
+});
+
+describe('fade and banner', () => {
+  it('goes black over the out half and back over the in half', () => {
+    expect(fadeAlpha(null)).toBe(0);
+    expect(fadeAlpha({ phase: 'out', ms: 0 })).toBe(0);
+    expect(fadeAlpha({ phase: 'out', ms: FADE_MS })).toBe(1);
+    expect(fadeAlpha({ phase: 'in', ms: FADE_MS / 2 })).toBeCloseTo(0.5);
+    expect(fadeAlpha({ phase: 'in', ms: FADE_MS * 3 })).toBe(0);
+  });
+
+  it('shows the map name, then fades it out', () => {
+    expect(bannerAlpha(1000)).toBe(1);
+    expect(bannerAlpha(BANNER_MS - 250)).toBeCloseTo(0.5);
+    expect(bannerAlpha(BANNER_MS)).toBe(0);
+  });
+});

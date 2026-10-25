@@ -27,7 +27,7 @@ import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen } from './adventure-route';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
-import { openTown } from '../town/scene';
+import { openTown, type TownOptions } from '../town/scene';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, guardianOf, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
@@ -372,14 +372,14 @@ function settingsScreen(root: HTMLElement): void {
  * (`setMusic` with the context already playing does nothing); the planned
  * dry "hub" version in src/data/music.ts is not shipped yet.
  */
-function townScreen(root: HTMLElement): void {
+function townScreen(root: HTMLElement, at?: TownPlace): void {
   waitScreen(root, t('app.loading'));
   const showTown = (nodes: Node[]) => {
     show(root, nodes, false);
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, ...at });
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -637,6 +637,17 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   });
 }
 
+/** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
+type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
+
+/** Development server only: the `map` and `tile` query of `?screen=town`. */
+function devTownPlace(): TownPlace {
+  const params = new URLSearchParams(window.location.search);
+  const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
+  const at = (params.get('map') ?? undefined) as TownOptions['at'];
+  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}) };
+}
+
 /**
  * Development server only: `?screen=` opens one screen straight away, for
  * screenshots (loadout, settings, credits, online, lobby, victory, defeat,
@@ -660,7 +671,8 @@ function devScreen(root: HTMLElement): boolean {
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
-    town: () => townScreen(root),
+    // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
+    town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),

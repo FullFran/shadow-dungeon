@@ -1,3 +1,5 @@
+import { SPRITE_KEYS } from './sprites';
+
 /**
  * The hub town, hand-authored (docs/gdd.md §11 meta). One character per
  * 32 px tile: `S` sky (not walkable, unused by the town today), `F` forest (not
@@ -15,7 +17,23 @@ export type TownPropKind =
   | 'tree-big'
   | 'tree-small'
   | 'bush'
-  | 'stump';
+  | 'stump'
+  // Overworld props (src/data/world.ts).
+  | 'crypt-gate'
+  | 'grave'
+  | 'statue'
+  | 'pillar'
+  | 'pillar-broken'
+  | 'tower'
+  | 'house-big'
+  | 'house-moss'
+  | 'trunk'
+  | 'fence'
+  | 'wall-ruin'
+  | 'frog-idol'
+  | 'flat-rocks'
+  | 'big-bush'
+  | 'rubble';
 
 export interface TownPropSpec {
   /** Image in public/tiles/town/. */
@@ -25,6 +43,8 @@ export interface TownPropSpec {
   height: number;
   /** Solid rows counted from the bottom of the prop. */
   solidRows: number;
+  /** Flat on the ground (no solid rows): drawn under every character and prop. */
+  decal?: true;
 }
 
 export const TOWN_PROPS: Record<TownPropKind, TownPropSpec> = {
@@ -37,6 +57,54 @@ export const TOWN_PROPS: Record<TownPropKind, TownPropSpec> = {
   'tree-small': { file: 'tree-small.png', width: 2, height: 2, solidRows: 1 },
   bush: { file: 'bush.png', width: 1, height: 1, solidRows: 1 },
   stump: { file: 'stump.png', width: 1, height: 1, solidRows: 1 },
+  // The ruined stone house again: its dark doorway is the Crypt's mouth.
+  'crypt-gate': { file: 'house-stone.png', width: 4, height: 3, solidRows: 2 },
+  grave: { file: 'grave.png', width: 3, height: 3, solidRows: 2 },
+  statue: { file: 'statue.png', width: 2, height: 3, solidRows: 1 },
+  pillar: { file: 'pillar.png', width: 1, height: 3, solidRows: 1 },
+  'pillar-broken': { file: 'pillar-broken.png', width: 1, height: 3, solidRows: 1 },
+  tower: { file: 'tower.png', width: 3, height: 5, solidRows: 2 },
+  'house-big': { file: 'house-big.png', width: 4, height: 5, solidRows: 2 },
+  'house-moss': { file: 'house-moss.png', width: 4, height: 5, solidRows: 2 },
+  trunk: { file: 'trunk.png', width: 2, height: 3, solidRows: 1 },
+  fence: { file: 'fence.png', width: 3, height: 2, solidRows: 1 },
+  'wall-ruin': { file: 'wall-ruin.png', width: 3, height: 2, solidRows: 1 },
+  'frog-idol': { file: 'frog-idol.png', width: 2, height: 2, solidRows: 1 },
+  'flat-rocks': { file: 'flat-rocks.png', width: 3, height: 2, solidRows: 0, decal: true },
+  'big-bush': { file: 'big-bush.png', width: 2, height: 2, solidRows: 1 },
+  rubble: { file: 'rubble.png', width: 2, height: 1, solidRows: 1 },
+};
+
+/**
+ * Ground sheets with the layout of ground.png (path patch at 0,0, grass at
+ * 0,80, tufts as listed in TOWN_GROUND): the town's light grass, dark grass
+ * and ash.
+ */
+export const GROUND_SHEETS = { light: 'ground.png', dark: 'ground-dark.png', ash: 'ground-ash.png' } as const;
+export type GroundSheet = keyof typeof GROUND_SHEETS;
+
+/** Grass-with-tufts cells per sheet: the dark and ash crops have path and an empty cell where the light one has tufts at y 64. */
+export const GROUND_TUFTS: Record<GroundSheet, readonly { x: number; y: number }[]> = {
+  light: [
+    { x: 32, y: 64 },
+    { x: 48, y: 64 },
+    { x: 16, y: 80 },
+    { x: 32, y: 80 },
+    { x: 48, y: 80 },
+    { x: 64, y: 80 },
+  ],
+  dark: [
+    { x: 16, y: 80 },
+    { x: 32, y: 80 },
+    { x: 48, y: 80 },
+    { x: 64, y: 80 },
+  ],
+  ash: [
+    { x: 16, y: 80 },
+    { x: 32, y: 80 },
+    { x: 48, y: 80 },
+    { x: 64, y: 80 },
+  ],
 };
 
 /** Ground sheet (ground.png) cells in source pixels: a 3x3 path patch at 0,0 and grass below. */
@@ -62,13 +130,16 @@ export interface TownProp {
   y: number;
 }
 
-export type TownNpcRole = 'gacha' | 'shop' | 'storyteller';
+export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle';
+
+/** Species an NPC or a wandering Pokémon can use: any existing sprite (public/sprites). */
+export type NpcSpecies = keyof typeof SPRITE_KEYS;
 
 export interface TownNpc {
   id: string;
   role: TownNpcRole;
   /** Placeholder species from the existing sprite sheets (public/sprites); no new sprites. */
-  species: 'mimikyu' | 'poochyena' | 'gastly';
+  species: NpcSpecies;
   /** Standing tile; it is solid. */
   x: number;
   y: number;

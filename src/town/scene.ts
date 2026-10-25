@@ -1,6 +1,8 @@
 import { SPRITE_KEYS } from '../data/sprites';
-import { TOWN, TOWN_GROUND, TOWN_PROPS, type TownMap, type TownNpc } from '../data/town';
-import { TILE, tileOf } from '../core/tiles';
+import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
+import { HUB, WORLD, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
+import { TILE } from '../core/tiles';
+import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
@@ -13,19 +15,22 @@ import { cursorList } from '../ui/cursor-list';
 import { FONT } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
-import { inExit, nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
-import { buildTownGrid } from './map';
+import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
+import { buildTownGrid, type MapShape } from './map';
+import { arrival, bannerAlpha, FADE_MS, fadeAlpha, linkAt, linkEdge, offsetAlong, type Fade } from './overworld';
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, readRecords } from './records';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
 
 /**
- * The hub town scene: the player's species walks the plaza with WASD (or
- * the arrows), the camera follows, and the route exit on the east edge opens
- * a destination window that hands over to the run flow. NPCs and the notice
- * board talk through an MD-style dialog box with a typewriter (E, Enter or
- * Space). It owns its canvas and loop and stops by itself when the page
- * replaces the canvas. Esc closes the dialog, else goes back to the title.
+ * The town and the overworld around it (src/data/world.ts): the player's
+ * species walks with WASD (or the arrows, or the touch joystick), the camera
+ * follows, and walking off a map edge fades into the next map. NPCs, the
+ * notice board and the signs talk through an MD-style dialog box with a
+ * typewriter (E, Enter or Space); the hub's waystone opens the destination
+ * window that hands over to the run flow. It owns its canvas and loop and
+ * stops by itself when the page replaces the canvas. Esc closes the dialog,
+ * else goes back to the title.
  */
 export const TOWN_VIEW = { width: 512, height: 320 } as const;
 
@@ -43,6 +48,10 @@ export interface TownOptions {
   onQuit: () => void;
   /** Opens the upgrade shop window inside `parent` (Poochyena's stall); returns a function that closes it. `onClose` runs when the player leaves it. */
   openShop?: (parent: HTMLElement, onClose: () => void) => () => void;
+  /** The map to open (the hub, at its spawn, when absent). */
+  at?: WorldMapId;
+  /** The tile to start on (the map's spawn or first arrival when absent). */
+  tile?: { x: number; y: number };
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -58,13 +67,12 @@ const MOVE_KEYS: Record<string, Vec2> = {
 
 const INTERACT_KEYS = new Set(['KeyE', 'Enter', 'NumpadEnter', 'Space']);
 
-const NPC_SPRITES: Record<TownNpc['species'], string> = {
-  mimikyu: SPRITE_KEYS.mimikyu,
-  poochyena: SPRITE_KEYS.poochyena,
-  gastly: SPRITE_KEYS.gastly,
-};
+const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
-type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' });
+/** Floaters bob over the ground. */
+const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
+
+type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' });
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -78,7 +86,7 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
 /** The town tiles from public/tiles/town (missing files draw as flat colours or not at all). */
 export async function loadTownImages(): Promise<TownImages> {
   const base = `${import.meta.env.BASE_URL}tiles/town/`;
-  const files = [TOWN_GROUND.file, ...new Set(Object.values(TOWN_PROPS).map((p) => p.file))];
+  const files = [...new Set([TOWN_GROUND.file, ...Object.values(GROUND_SHEETS), ...Object.values(TOWN_PROPS).map((p) => p.file)])];
   const loaded = await Promise.all(files.map(async (file) => [file, await loadImage(base + file)] as const));
   const out = new Map<string, HTMLImageElement>();
   for (const [file, image] of loaded) if (image) out.set(file, image);
@@ -95,7 +103,7 @@ export function playerSprite(species: string): string {
  * The camera centres the player in the part of the view below the sky band,
  * and may scroll up under the band so the north edge of the town is never hidden by it.
  */
-function townCamera(focus: Vec2, map: TownMap) {
+function townCamera(focus: Vec2, map: MapShape) {
   const width = (map.rows[0]?.length ?? 0) * TILE;
   const height = map.rows.length * TILE;
   const view = cameraView({ x: focus.x, y: focus.y + SKY_BAND / 2 }, TOWN_VIEW.width, TOWN_VIEW.height, { width, height: height + SKY_BAND });
@@ -115,15 +123,37 @@ export interface TownHandle {
   stop(): void;
 }
 
+/** What can be talked to or read on a map. */
+function targetsOf(map: WorldMap): Target[] {
+  return [
+    ...map.npcs.map((npc): Target => ({ id: npc.id, kind: 'npc', npc, pos: tileCentre(npc.x, npc.y) })),
+    ...(map.board ? [{ id: 'board', kind: 'board', pos: { x: map.board.x * TILE, y: map.board.y * TILE } } as Target] : []),
+    ...(map.waystone ? [{ id: 'waystone', kind: 'waystone', pos: { x: map.waystone.x * TILE, y: map.waystone.y * TILE } } as Target] : []),
+  ];
+}
+
+/** Where a visit of `map` starts: its spawn, else one tile inside its first link. */
+function startOf(map: WorldMap): Walker {
+  if (map.spawn) return { pos: tileCentre(map.spawn.x, map.spawn.y), facing: { x: 0, y: 1 } };
+  const link = map.links[0];
+  return link ? arrival(map, link, TILE / 2) : { pos: tileCentre(1, 1), facing: { x: 0, y: 1 } };
+}
+
 export async function openTown(options: TownOptions): Promise<TownHandle> {
-  const map = TOWN;
+  let map: WorldMap = (options.at && WORLD[options.at]) || WORLD[HUB];
   const [sheets, images] = await Promise.all([
     options.sheets,
     loadTownImages(),
     // The dialog box draws in the pixel font on the canvas: it must be ready first.
     document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined),
   ]);
-  const arena = townArena(buildTownGrid(map));
+  const arenas = new Map<WorldMapId, Arena>();
+  const arenaOf = (m: WorldMap): Arena => {
+    let a = arenas.get(m.id);
+    if (!a) arenas.set(m.id, (a = townArena(buildTownGrid(m))));
+    return a;
+  };
+  let arena = arenaOf(map);
   const canvas = h('canvas', { className: 'game town' });
   canvas.style.cursor = 'default';
   options.show([canvas]);
@@ -140,7 +170,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   });
   canvas.parentElement?.append(touch.element);
 
-  let walker: Walker = { pos: tileCentre(map.spawn.x, map.spawn.y), facing: { x: 0, y: 1 } };
+  let walker: Walker = options.tile ? { pos: tileCentre(options.tile.x, options.tile.y), facing: { x: 0, y: 1 } } : startOf(map);
   let camera = walker.pos;
   let pixelScale = 1;
   let stopped = false;
@@ -150,15 +180,30 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
   let exitWindow: HTMLElement | null = null;
+  /** Changing maps: the black fade, and the link taken (switched at the fade's darkest point). */
+  let fade: (Fade & { link?: MapLink }) | null = null;
   const held = new Set<string>();
   const start = performance.now();
   let last = start;
+  /** When the current map's name banner started (view time). */
+  let bannerAt = 0;
 
   const sprite = playerSprite(options.species);
-  const targets: Target[] = [
-    ...map.npcs.map((npc): Target => ({ id: npc.id, kind: 'npc', npc, pos: tileCentre(npc.x, npc.y) })),
-    { id: 'board', kind: 'board', pos: { x: map.board.x * TILE, y: map.board.y * TILE } },
-  ];
+  let targets = targetsOf(map);
+
+  /** Leave through `link` onto the paired link of the next map, keeping the offset along the edge. */
+  function crossLink(link: MapLink): void {
+    const next = WORLD[link.to];
+    const back = next.links.find((l) => l.id === link.toLink);
+    if (!back) return;
+    const offset = offsetAlong(walker.pos, link, linkEdge(map, link) ?? 'west');
+    map = next;
+    arena = arenaOf(map);
+    targets = targetsOf(map);
+    walker = arrival(map, back, offset);
+    camera = walker.pos;
+    bannerAt = performance.now() - start;
+  }
 
   function resize(): void {
     pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
@@ -197,6 +242,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const target = nearestInteractable(walker.pos, targets);
     if (!target) return;
     held.clear();
+    if (target.kind === 'waystone') {
+      openExitWindow();
+      return;
+    }
     dialog =
       target.kind === 'board'
         ? { speaker: t('town.name.board'), state: openDialog(readBoard()) }
@@ -223,8 +272,6 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     exitWindow = null;
     held.clear();
     touch.setSuspended(false);
-    // Step back off the exit tiles, facing the town.
-    walker = { pos: tileCentre(map.exit.x - 1, tileOf(walker.pos).y), facing: { x: -1, y: 0 } };
     last = performance.now();
   }
 
@@ -277,7 +324,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const pos = tileCentre(npc.x, npc.y);
       const toPlayer = { x: walker.pos.x - pos.x, y: walker.pos.y - pos.y };
       const near = Math.hypot(toPlayer.x, toPlayer.y) < TILE * 4;
-      return { sprite: NPC_SPRITES[npc.species], pos, facing: near ? toPlayer : { x: 0, y: 1 }, moving: false, floats: npc.species === 'gastly' };
+      return { sprite: npcSprite(npc.species), pos, facing: near ? toPlayer : { x: 0, y: 1 }, moving: false, floats: FLOATERS.has(npc.species) };
     });
     return [...npcs, { sprite, pos: walker.pos, facing: walker.facing, moving }];
   }
@@ -290,26 +337,38 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     const dt = Math.min(50, now - last);
     last = now;
-    const move = dialog || exitWindow || closeShop ? { x: 0, y: 0 } : moveInput();
+    if (fade) {
+      fade = { ...fade, ms: fade.ms + dt };
+      if (fade.phase === 'out' && fade.ms >= FADE_MS) {
+        if (fade.link) crossLink(fade.link);
+        fade = { phase: 'in', ms: 0 };
+      } else if (fade.phase === 'in' && fade.ms >= FADE_MS) fade = null;
+    }
+    const move = dialog || exitWindow || closeShop || fade ? { x: 0, y: 0 } : moveInput();
     const moving = move.x !== 0 || move.y !== 0;
     walker = stepWalker(walker, move, dt, arena);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
-    if (!exitWindow && inExit(walker.pos, map.exit)) openExitWindow();
+    if (!fade && !exitWindow) {
+      const link = linkAt(walker.pos, map.links);
+      if (link) fade = { phase: 'out', ms: 0, link };
+    }
     camera = followCamera(camera, walker.pos, dt);
     resize();
     const view = townCamera(camera, map);
     const timeMs = now - start;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    drawTownWorld(ctx, images, sheets, { map, view, timeMs, characters: characters(moving) });
-    const target = exitWindow || closeShop ? null : nearestInteractable(walker.pos, targets);
+    drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving) });
+    const target = exitWindow || closeShop || fade ? null : nearestInteractable(walker.pos, targets);
     touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
-    if (target && !dialog) touch.setLabel('talk', t(target.kind === 'board' ? 'touch.read' : 'touch.talk'));
+    if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));
     drawTownOverlay(
       ctx,
       view,
       {
-        prompt: target ? { text: t(target.kind === 'board' ? 'town.read' : 'town.talk'), pos: target.pos } : null,
+        prompt: target ? { text: t(target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'), pos: target.pos } : null,
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state) } : null,
+        banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
+        fade: fadeAlpha(fade),
       },
       timeMs,
     );
