@@ -26,6 +26,12 @@ export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   // Crypt of the Sword King
   { species: 'poochyena', minDepth: 1, weight: 3 },
   { species: 'gastly', minDepth: 1, weight: 2 },
+  // The remastered Crypt's new enemies, from the floors they first walk
+  // there (CRYPT_SPAWNS): Duskull and a Pawniard pair from 2, Golett from 4.
+  // Sableye stays the Crypt's mid-boss (no vault echo).
+  { species: 'duskull', minDepth: 2, weight: 2 },
+  { species: 'pawniard', minDepth: 2, weight: 1, pack: 2 },
+  { species: 'golett', minDepth: 4, weight: 1 },
   // Misty Forest
   { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3 },
   { species: 'phantump', minDepth: 2, weight: 2 },

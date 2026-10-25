@@ -82,6 +82,45 @@ describe('the Sima del Eclipse (data)', () => {
     expect(ENDLESS_POOL.find((e) => e.species === 'stunky')?.pack).toBe(2);
   });
 
+  it("holds the Crypt's new enemies from the floors they first walk there: Duskull and a Pawniard pair from 2, Golett from 4", () => {
+    const entry = (species: string) => ENDLESS_POOL.find((e) => e.species === species);
+    expect(entry('duskull')).toMatchObject({ minDepth: 2 });
+    expect(entry('pawniard')).toMatchObject({ minDepth: 2, pack: 2 });
+    expect(entry('golett')).toMatchObject({ minDepth: 4 });
+    for (const species of ['duskull', 'pawniard', 'golett']) {
+      const first = entry(species)!.minDepth;
+      const cryptFirst = CRYPT.spawns.pool.find((p) => p.species === species)!.weights.findIndex((w) => w > 0) + 1;
+      expect(first, species).toBe(cryptFirst);
+      expect(entry(species)!.weight, species).toBeGreaterThan(0);
+      expect(endlessSpawns(ENDLESS, first - 1).pool.map((e) => e.species)).not.toContain(species);
+      expect(endlessSpawns(ENDLESS, first).pool.map((e) => e.species)).toContain(species);
+    }
+    // The mid-boss stays in its vault.
+    expect(entry('sableye')).toBeUndefined();
+  });
+
+  it("seeded floors bring the Crypt's new enemies, Pawniard two at a time, never before their min depth", () => {
+    const minDepth = new Map(ENDLESS_POOL.map((e) => [e.species, e.minDepth]));
+    const seen = new Map<string, number>();
+    let pairs = 0;
+    for (const seed of [SEED, 7, 99, 2024]) {
+      for (let floor = 1; floor <= 9; floor++) {
+        if (isEchoFloor(ENDLESS, floor)) continue;
+        const spawns = generateFloor(floorSeed(seed, floor), floor, endlessSpawns(ENDLESS, floor)).spawns;
+        expect(spawns).toEqual(generateFloor(floorSeed(seed, floor), floor, endlessSpawns(ENDLESS, floor)).spawns);
+        for (const s of spawns) {
+          expect(minDepth.get(s.species), `${s.species} on floor ${floor}`).toBeLessThanOrEqual(floor);
+          if (['duskull', 'pawniard', 'golett'].includes(s.species)) seen.set(s.species, (seen.get(s.species) ?? 0) + 1);
+        }
+        const byRoom = new Map<number, number>();
+        for (const s of spawns) if (s.species === 'pawniard') byRoom.set(s.room, (byRoom.get(s.room) ?? 0) + 1);
+        for (const n of byRoom.values()) if (n >= 2) pairs++;
+      }
+    }
+    expect([...seen.keys()].sort()).toEqual(['duskull', 'golett', 'pawniard']);
+    expect(pairs).toBeGreaterThan(0);
+  });
+
   it('mixes old and new: neither the dungeon regulars nor the roster outweighs the other twice over by floor 5', () => {
     const roster = new Set<string>(EXPERIMENTAL_ENEMIES.map((e) => e.species));
     const weight = (fresh: boolean) => endlessSpawns(ENDLESS, 5).pool.filter((e) => roster.has(e.species) === fresh).reduce((sum, e) => sum + e.weights[0]!, 0);
