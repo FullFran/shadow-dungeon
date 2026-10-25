@@ -46,6 +46,14 @@ describe('event -> sound mapping', () => {
     [{ type: 'levelUp', level: 2 }, 'levelUp'],
     [{ type: 'itemTriggered', item: 'sitrus-berry' }, 'item'],
     [{ type: 'berryEaten', berryId: 'f1b2', heal: 20 }, 'berry'],
+    // Meaningful encounters (core/leaders.ts, core/gates.ts): the wind-up is seen (the gold ring swells), the cry is heard.
+    [{ type: 'leaderRally', enemyId: 'e', phase: 'windup' }, null],
+    [{ type: 'leaderRally', enemyId: 'e', phase: 'cry' }, 'rallyCry'],
+    [{ type: 'leaderFell', enemyId: 'e', followers: 2 }, 'leaderFall'],
+    [{ type: 'gateOpened', kind: 'seal', outcome: 'opened' }, 'gateOpen'],
+    [{ type: 'gateOpened', kind: 'key', outcome: 'opened' }, 'gateOpen'],
+    [{ type: 'gateOpened', kind: 'waves', outcome: 'broken' }, 'gateOpen'],
+    [{ type: 'keyDropped', pos: { x: 0, y: 0 } }, 'keyDrop'],
   ];
   for (const [event, sound] of cases) {
     it(`${event.type} -> ${sound}`, () => expect(soundFor(event)).toBe(sound));

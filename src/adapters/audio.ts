@@ -51,6 +51,10 @@ export const SOUND_IDS = [
   'item',
   'berry',
   'coin',
+  'rallyCry',
+  'leaderFall',
+  'gateOpen',
+  'keyDrop',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -110,6 +114,15 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'item';
     case 'berryEaten':
       return 'berry';
+    // Meaningful encounters: a leader's cry (its wind-up is the swelling gold ring), its fall, a gate giving way, a key hitting the floor.
+    case 'leaderRally':
+      return event.phase === 'cry' ? 'rallyCry' : null;
+    case 'leaderFell':
+      return 'leaderFall';
+    case 'gateOpened':
+      return 'gateOpen';
+    case 'keyDropped':
+      return 'keyDrop';
     default:
       return null;
   }
@@ -518,6 +531,44 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     play: (s, t) => {
       noise(s, t, { filter: 'bandpass', from: 1800, to: 900, dur: 0.04, gain: 0.12, q: 2 });
       tone(s, t + 0.05, { type: 'sine', from: 420, to: 880, dur: 0.16, gain: 0.12 });
+    },
+  },
+  rallyCry: {
+    ms: 520,
+    play: (s, t, v) => {
+      // A short horn call, two rising blasts: the leader rallies its band.
+      tone(s, t, { type: 'sawtooth', from: 196 * v, to: 262 * v, dur: 0.18, gain: 0.1, attack: 0.02 });
+      tone(s, t + 0.2, { type: 'sawtooth', from: 262 * v, to: 330 * v, dur: 0.28, gain: 0.11, attack: 0.02 });
+      tone(s, t + 0.2, { type: 'square', from: 131 * v, dur: 0.28, gain: 0.04, attack: 0.02 });
+    },
+  },
+  leaderFall: {
+    ms: 600,
+    play: (s, t) => {
+      // A crown clattering down, then the band losing heart: a falling minor third.
+      noise(s, t, { filter: 'highpass', from: 3800, dur: 0.05, gain: 0.25 });
+      tone(s, t, { type: 'triangle', from: 1568, to: 1175, dur: 0.18, gain: 0.08 });
+      arpeggio(s, t + 0.16, 'square', [392, 330, 262], 0.11, 0.26, 0.07);
+    },
+  },
+  gateOpen: {
+    ms: 900,
+    play: (s, t) => {
+      // A heavy bolt drawn back, stone grinding, and a bright chord: the way down is open.
+      noise(s, t, { filter: 'bandpass', from: 700, to: 2200, dur: 0.08, gain: 0.3, q: 2 });
+      noise(s, t + 0.08, { filter: 'lowpass', from: 500, to: 160, dur: 0.45, gain: 0.25 });
+      tone(s, t + 0.08, { type: 'sine', from: 70, to: 52, dur: 0.45, gain: 0.25 });
+      arpeggio(s, t + 0.4, 'triangle', [523, 659, 784], 0.07, 0.4, 0.08);
+    },
+  },
+  keyDrop: {
+    ms: 380,
+    play: (s, t) => {
+      // A small metal key bouncing twice on stone.
+      tone(s, t, { type: 'triangle', from: 2349, dur: 0.12, gain: 0.08 });
+      tone(s, t, { type: 'square', from: 3520, dur: 0.06, gain: 0.03 });
+      tone(s, t + 0.14, { type: 'triangle', from: 2349, dur: 0.08, gain: 0.05 });
+      noise(s, t + 0.14, { filter: 'highpass', from: 4200, dur: 0.03, gain: 0.12 });
     },
   },
   collapse: {
