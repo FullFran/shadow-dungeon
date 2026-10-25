@@ -93,12 +93,102 @@ export const GASTLY: GastlyDef = {
   projectile: { power: 40, type: 'poison', speed: 95, radius: 7, lifetimeMs: 4500 },
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef;
+/** One blow of the Blade-stance combo. */
+export interface ComboHitDef {
+  telegraphMs: number;
+  strikeMs: number;
+  /** Forward step during the strike. */
+  lungeDistance: number;
+  /** Frontal sector hit by the blow. */
+  range: number;
+  arcDegrees: number;
+  attack: EnemyAttackDef;
+}
+
+export interface AegislashDef {
+  kind: 'boss';
+  poise: PoiseDef;
+  aggroRange: number;
+  /** Telegraphed stance change; it neither blocks nor attacks meanwhile (an opening). */
+  transformMs: number;
+  shield: {
+    walkSpeed: number;
+    /** Slow turning is what makes flanking work. */
+    turnRateDegPerSec: number;
+    /** Hits arriving from inside this frontal sector are blocked. */
+    blockArcDegrees: number;
+    /** Fraction of the damage a blocked hit still deals (0 = none). */
+    chipFactor: number;
+    bashRange: number;
+    bashTelegraphMs: number;
+    bashMs: number;
+    bashDistance: number;
+    bashRecoverMs: number;
+    bashCooldownMs: number;
+    bash: EnemyAttackDef;
+    /** Changes to Blade after this long in Shield... */
+    maxMs: number;
+    /** ...or after taking this much damage (flank hits) in Shield. */
+    damageToBreak: number;
+  };
+  blade: {
+    walkSpeed: number;
+    turnRateDegPerSec: number;
+    /** Starts a combo when the player is this close. */
+    engageRange: number;
+    combo: readonly ComboHitDef[];
+    /** Recovery after the last blow of a combo: the clear opening. */
+    recoverMs: number;
+    comboCooldownMs: number;
+    /** Back to Shield after this many combos, or after `maxMs`. */
+    combosPerStance: number;
+    maxMs: number;
+  };
+}
+
+export const AEGISLASH: AegislashDef = {
+  kind: 'boss',
+  poise: { hitstunScale: 0, knockbackScale: 0.15 },
+  aggroRange: 900,
+  transformMs: 900,
+  shield: {
+    walkSpeed: 35,
+    turnRateDegPerSec: 75,
+    blockArcDegrees: 130,
+    chipFactor: 0,
+    bashRange: 85,
+    bashTelegraphMs: 700,
+    bashMs: 220,
+    bashDistance: 110,
+    bashRecoverMs: 700,
+    bashCooldownMs: 2200,
+    bash: { power: 35, type: 'steel' },
+    maxMs: 10000,
+    damageToBreak: 120,
+  },
+  blade: {
+    walkSpeed: 100,
+    turnRateDegPerSec: 540,
+    engageRange: 90,
+    combo: [
+      { telegraphMs: 480, strikeMs: 140, lungeDistance: 40, range: 52, arcDegrees: 130, attack: { power: 22, type: 'ghost' } },
+      { telegraphMs: 260, strikeMs: 140, lungeDistance: 40, range: 52, arcDegrees: 130, attack: { power: 22, type: 'ghost' } },
+      { telegraphMs: 420, strikeMs: 180, lungeDistance: 70, range: 60, arcDegrees: 160, attack: { power: 30, type: 'ghost' } },
+    ],
+    recoverMs: 1400,
+    comboCooldownMs: 700,
+    combosPerStance: 2,
+    maxMs: 9000,
+  },
+};
+
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   poochyena: POOCHYENA,
   gastly: GASTLY,
+  aegislash: AEGISLASH,
 };
 
 const DEFAULT_POISE: PoiseDef = { hitstunScale: 1, knockbackScale: 1 };

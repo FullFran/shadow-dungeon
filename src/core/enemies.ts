@@ -1,11 +1,10 @@
-import { ENEMY_BEHAVIOUR, floatsOf, type EnemyAttackDef, type GastlyDef, type PoochyenaDef } from '../data/enemies';
+import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
-import { computeDamage } from './damage';
-import { confineCircle } from './geometry';
-import { landHitOnPlayer } from './hits';
+import { updateBoss } from './boss';
+import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardPlayer } from './brain';
 import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
-import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
+import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
 
 /**
  * Enemy behaviour as explicit state machines (docs/gdd.md §4). Each brain
@@ -24,67 +23,6 @@ export function initialAi(dormant = false): AiState {
     cooldownMs: 0,
     strafeSign: 1,
   };
-}
-
-export const enterMode = (ai: AiState, mode: AiMode, durationMs = 0): AiState => ({
-  ...ai,
-  mode,
-  modeMs: 0,
-  modeDurationMs: durationMs,
-});
-
-export const modeOver = (ai: AiState): boolean => ai.modeMs >= ai.modeDurationMs;
-
-export function replaceEnemy(state: WorldState, enemy: EnemyState): WorldState {
-  return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? enemy : e)) };
-}
-
-/** Unit vector from the enemy to the player (its facing if they overlap). */
-export function towardPlayer(state: WorldState, enemy: EnemyState): Vec2 {
-  const dir = normalize(sub(state.player.pos, enemy.pos));
-  return length(dir) > 0 ? dir : enemy.facing;
-}
-
-const perpendicular = (v: Vec2, sign: 1 | -1): Vec2 => vec(-v.y * sign, v.x * sign);
-
-/**
- * Moves an enemy by `delta`, confined to the room. Walkers that bump into an
- * obstacle slide along it (sideways by their strafe sign) instead of sticking.
- */
-export function moveEnemy(state: WorldState, enemy: EnemyState, delta: Vec2): EnemyState {
-  const solid = !floatsOf(enemy.species);
-  const desired = add(enemy.pos, delta);
-  let pos = confineCircle(state.arena, desired, enemy.radius, solid);
-  if (solid && distance(pos, desired) > 0.01 && length(delta) > 0) {
-    pos = confineCircle(state.arena, add(pos, perpendicular(delta, enemy.ai.strafeSign)), enemy.radius, solid);
-  }
-  return { ...enemy, pos };
-}
-
-/**
- * Body contact of an enemy attack with the player, once per attack. Returns
- * the world after the hit and the contact result ('dodged' when i-frames
- * absorbed it: the attack passes through and keeps going).
- */
-export function contactPlayer(
-  state: WorldState,
-  enemy: EnemyState,
-  attack: EnemyAttackDef,
-  reach: number,
-  events: GameEvent[],
-): { state: WorldState; contact: AiState['contact'] } {
-  if (enemy.ai.contact !== 'none' || distance(enemy.pos, state.player.pos) > reach) {
-    return { state, contact: enemy.ai.contact };
-  }
-  const { damage } = computeDamage({
-    power: attack.power,
-    moveType: attack.type,
-    attackerTypes: enemy.types,
-    defenderTypes: state.player.types,
-  });
-  const landed = landHitOnPlayer(state, { damage }, events);
-  const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
-  return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
 }
 
 function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[]): EnemyState {
@@ -126,7 +64,8 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, m
     case 'attack': {
       const speed = def.lungeDistance / def.lungeMs;
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, speed * ms));
-      const hit = contactPlayer(state, enemy, def.attack, enemy.radius + PLAYER_RADIUS, events);
+      const touches = distance(enemy.pos, state.player.pos) <= enemy.radius + PLAYER_RADIUS;
+      const hit = contactPlayer(state, enemy, def.attack, touches, events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
       if (hit.contact === 'hit') {
@@ -239,10 +178,9 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       continue;
     }
     const ticked = { ...enemy, ai: tickAi(enemy.ai, ms) };
-    current =
-      def.kind === 'lunger'
-        ? updateLunger(current, ticked, def, ms, events)
-        : updateCaster(current, ticked, def, ms, events);
+    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, ms, events);
+    else if (def.kind === 'caster') current = updateCaster(current, ticked, def, ms, events);
+    else current = updateBoss(current, ticked, def, ms, events);
   }
   return current;
 }

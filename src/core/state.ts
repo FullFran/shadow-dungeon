@@ -107,14 +107,31 @@ export interface EnemyState {
   knockback: Vec2;
   /** Behaviour state machine (enemies.ts). */
   ai: AiState;
+  /** Boss-only state (boss.ts). */
+  boss?: BossState;
+}
+
+export type BossStance = 'shield' | 'blade';
+
+export interface BossState {
+  stance: BossStance;
+  /** Time spent in the current stance (enemy time scale). */
+  stanceMs: number;
+  /** Damage taken since the current stance began. */
+  stanceDamage: number;
+  /** Blow of the Blade combo in progress (0-based). */
+  comboIndex: number;
+  /** Combos finished in the current Blade stance. */
+  combosDone: number;
 }
 
 /**
  * Enemy behaviour modes. Not every species uses every mode: Poochyena goes
  * idle -> approach -> telegraph -> attack -> recover; Gastly uses reposition
- * instead of approach. A dormant enemy never acts (training dummy).
+ * instead of approach; Aegislash adds transform (stance change). A dormant
+ * enemy never acts (training dummy).
  */
-export type AiMode = 'dormant' | 'idle' | 'approach' | 'reposition' | 'telegraph' | 'attack' | 'recover';
+export type AiMode = 'dormant' | 'idle' | 'approach' | 'reposition' | 'telegraph' | 'attack' | 'recover' | 'transform';
 
 export interface AiState {
   mode: AiMode;
@@ -173,6 +190,8 @@ export type GameEvent =
   | { type: 'enemyDefeated'; enemyId: string }
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
+  | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
+  | { type: 'bossStance'; enemyId: string; stance: BossStance }
   | { type: 'lockAcquired'; targetId: string }
   | { type: 'lockSwitched'; targetId: string }
   | { type: 'lockReleased'; reason: 'key' | 'range' | 'offscreen' | 'noTarget' };

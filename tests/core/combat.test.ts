@@ -109,7 +109,8 @@ describe('type effectiveness in combat', () => {
 
 describe('hit reactions', () => {
   it('staggers the enemy and pushes it away from the attacker', () => {
-    const { state } = use(arena(['shadow-claw', 'play-rough'], [['aegislash', vec(425, 300)]]), 0, FIXED_DT_MS, MOVES['shadow-claw'].windupMs + 40);
+    // A regular enemy: the boss has super armour (boss.test.ts).
+    const { state } = use(arena(['shadow-claw', 'play-rough'], [['poochyena', vec(425, 300)]]), 0, FIXED_DT_MS, MOVES['shadow-claw'].windupMs + 40);
     const enemy = state.enemies[0]!;
     expect(enemy.hitstunMs).toBeGreaterThan(0);
     expect(enemy.hp).toBeLessThan(enemy.maxHp);

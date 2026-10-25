@@ -1,6 +1,7 @@
-import { floatsOf, poiseOf } from '../data/enemies';
+import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { MOVES, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
+import { blocksHit, onBossDamaged } from './boss';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
@@ -78,14 +79,33 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   return { ...state, player: { ...player, ...paid, action } };
 }
 
+type StrikeHit = { power: number; type: MoveDef['type']; multiplier: number; hitstunMs: number; knockback: number; from: Vec2 };
+
+/** A hit stopped by a guard: chip damage at most, no stagger, and the next-hit buff is kept. */
+function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, events: GameEvent[]): WorldState {
+  const { damage } = computeDamage({
+    power: hit.power,
+    moveType: hit.type,
+    attackerTypes: state.player.types,
+    defenderTypes: enemy.types,
+    multiplier: hit.multiplier,
+  });
+  const chip = Math.round(damage * AEGISLASH.shield.chipFactor);
+  events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
+  if (chip <= 0) return state;
+  const hp = Math.max(1, enemy.hp - chip);
+  return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? { ...e, hp } : e)) };
+}
+
 /** Damages one enemy, applies stagger and knockback away from `from`, and consumes the next-hit buff. */
 function strikeEnemy(
   state: WorldState,
   enemy: EnemyState,
-  hit: { power: number; type: MoveDef['type']; multiplier: number; hitstunMs: number; knockback: number; from: Vec2 },
+  hit: StrikeHit,
   events: GameEvent[],
 ): WorldState {
   const buff = state.player.nextHitBuff;
+  if (enemy.boss && blocksHit(enemy, hit.from)) return blockedStrike(state, enemy, hit, events);
   const { damage, effectiveness } = computeDamage({
     power: hit.power,
     moveType: hit.type,
@@ -97,7 +117,7 @@ function strikeEnemy(
   const poise = poiseOf(enemy.species);
   const pushDir = normalize(sub(enemy.pos, hit.from));
   const struck: EnemyState = {
-    ...enemy,
+    ...(enemy.boss ? onBossDamaged(enemy, damage) : enemy),
     hp,
     alive: hp > 0,
     hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),

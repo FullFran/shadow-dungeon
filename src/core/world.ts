@@ -3,6 +3,8 @@ import { M0_SLOT_LAYOUT } from '../data/slots';
 import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { validateLoadout } from './loadout';
+import { ENEMY_BEHAVIOUR } from '../data/enemies';
+import { initialBoss } from './boss';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
 import type { Arena, EnemyState, LockMode, PlayerState, WorldState } from './state';
@@ -79,6 +81,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     hitstunMs: 0,
     knockback: vec(0, 0),
     ai: initialAi(options.dormant),
+    ...(ENEMY_BEHAVIOUR[speciesId]?.kind === 'boss' ? { boss: initialBoss() } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }
