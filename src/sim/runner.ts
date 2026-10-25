@@ -59,14 +59,14 @@ const botSeed = (s: Scenario): number => (s.seed * 31 + s.party * 7 + s.bot.leng
 /** Where the bot's way on is: the stairs, or a fixed room's exit (null for a guardian's last room). */
 /**
  * A floor gate still shut (core/gates.ts), as the game shows it: the marked
- * enemy is always on the minimap, a dropped key lies on the floor with its
- * HUD line. Absent once the gate is open (or on floors without one).
+ * enemy is always on the minimap (its fall opens the gate at once, a key
+ * gate's key included). Absent once the gate is open (or on floors without one).
  */
 function gateOf(world: WorldState): Pick<BotContext, 'gate'> {
   const gate = world.gate;
   if (!gate || gate.done || gate.kind === 'waves') return {};
   const marked = world.enemies.find((e) => e.id === gate.target && e.alive);
-  return { gate: { marked: marked ? marked.pos : null, key: gate.key ?? null } };
+  return { gate: { marked: marked ? marked.pos : null } };
 }
 
 function exitOf(run: RunState, world: WorldState): Rect | null {

@@ -213,10 +213,8 @@ export interface GateTuning {
 }
 
 export const GATE = {
-  /** A gate enemy (or its dropped key) out of every player's reach this long in a row breaks the gate, without its reward. */
+  /** A living gate enemy out of every player's reach this long in a row breaks the gate, without its reward. */
   unreachableMs: 60_000,
   /** The marked enemy pays this many times its experience (on top of a leader's bonus) when its gate opens by its fall. */
   xp: 1.5,
-  /** A player this close to the dropped key takes it (px). */
-  keyTouch: 28,
 } as const;

@@ -23,7 +23,7 @@ import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
-import { drawGateLine } from './hud';
+import { drawGateLine, drawGateNotice, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
 import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
@@ -196,6 +196,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   let currentTier: Difficulty = 'easy';
   /** Real time of the frame being drawn (looping telegraph animations). */
   let currentTimeMs = 0;
+  /** The floor's gate as last drawn, and the "gate opened" notice it raised (hud.ts `gateNotice`). */
+  let lastGate: WorldState['gate'];
+  let openedNotice: GateNotice | null = null;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -404,7 +407,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /**
    * The floor's gate (core/gates.ts) in the world: a red seal over shut
-   * stairs, iron bars across a locked stairs room's doorways, the dropped key.
+   * stairs, iron bars across a locked stairs room's doorways.
    */
   function gateMarks(state: WorldState, timeMs: number): void {
     const gate = state.gate;
@@ -439,10 +442,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         ctx.fillRect(x + 1, y + TILE / 2 - 2, TILE - 2, 3);
       }
     }
-    if (gate.key) keyGlyph(gate.key.x, gate.key.y - 6 - 3 * pulse);
   }
 
-  /** A small gold key (the dropped one, or over its bearer's head). */
+  /** A small gold key, over its bearer's head. */
   function keyGlyph(x: number, y: number): void {
     const rx = Math.round(x);
     const ry = Math.round(y);
@@ -1379,6 +1381,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     currentArena = current.arena;
     currentTier = worldDifficulty(current);
     currentTimeMs = timeMs;
+    // A seal or key gate that just opened (host or guest): its notice, and its doorways flashing on the minimap.
+    openedNotice = gateNotice(lastGate, current.gate, timeMs) ?? (current.gate?.done ? openedNotice : null);
+    lastGate = current.gate;
+    if (openedNotice && timeMs - openedNotice.atMs >= GATE_NOTICE_MS) openedNotice = null;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -1521,7 +1527,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
     drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false);
-    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud);
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined);
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
     if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, hud.width, hud.height);
@@ -1535,7 +1541,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
     // The floor's gate, while it holds: one line under the floor card while the card shows, then at the top under the clock.
-    if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, frame.card && cardAlpha(frame.card, timeMs - frame.card.shownAtMs) > 0 ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78, timeMs);
+    const gateY = frame.card && cardAlpha(frame.card, timeMs - frame.card.shownAtMs) > 0 ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78;
+    if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, gateY, timeMs);
+    else if (openedNotice) drawGateNotice(ctx, openedNotice, hud.width, gateY, timeMs);
   }
 
   return { draw };

@@ -54,7 +54,6 @@ export const SOUND_IDS = [
   'rallyCry',
   'leaderFall',
   'gateOpen',
-  'keyDrop',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -114,15 +113,13 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'item';
     case 'berryEaten':
       return 'berry';
-    // Meaningful encounters: a leader's cry (its wind-up is the swelling gold ring), its fall, a gate giving way, a key hitting the floor.
+    // Meaningful encounters: a leader's cry (its wind-up is the swelling gold ring), its fall, a gate giving way (a key gate's key is taken with its bearer's fall).
     case 'leaderRally':
       return event.phase === 'cry' ? 'rallyCry' : null;
     case 'leaderFell':
       return 'leaderFall';
     case 'gateOpened':
       return 'gateOpen';
-    case 'keyDropped':
-      return 'keyDrop';
     default:
       return null;
   }
@@ -559,16 +556,6 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
       noise(s, t + 0.08, { filter: 'lowpass', from: 500, to: 160, dur: 0.45, gain: 0.25 });
       tone(s, t + 0.08, { type: 'sine', from: 70, to: 52, dur: 0.45, gain: 0.25 });
       arpeggio(s, t + 0.4, 'triangle', [523, 659, 784], 0.07, 0.4, 0.08);
-    },
-  },
-  keyDrop: {
-    ms: 380,
-    play: (s, t) => {
-      // A small metal key bouncing twice on stone.
-      tone(s, t, { type: 'triangle', from: 2349, dur: 0.12, gain: 0.08 });
-      tone(s, t, { type: 'square', from: 3520, dur: 0.06, gain: 0.03 });
-      tone(s, t + 0.14, { type: 'triangle', from: 2349, dur: 0.08, gain: 0.05 });
-      noise(s, t + 0.14, { filter: 'highpass', from: 4200, dur: 0.03, gain: 0.12 });
     },
   },
   collapse: {
