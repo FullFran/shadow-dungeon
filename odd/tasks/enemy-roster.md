@@ -26,9 +26,12 @@ Slugma (0218, phase 1), Litleo (0667, phase 2); Numel (0322) also complete but n
 
 ## Tasks
 
-- [ ] T1 sprites + enemy defs + `EXPERIMENTAL_ENEMIES` (route: delegated-direct writer = this agent; inline in worktree)
-- [ ] T2 behaviours, telegraphs, VFX tint, snapshot fields, tests first
-- [ ] T3 balance pass, dev `?spawn=` test floor, docs (GDD section, README), screenshots in `/tmp/roster/`
+- [x] T1 sprites + enemy defs + `EXPERIMENTAL_ENEMIES` (route: delegated writer, this agent) — commit bdd30ca; `tests/core/roster.test.ts` 18 green; suite 800/800
+- [x] T2 behaviours, telegraphs, VFX tint, snapshot fields, tests first — commit c114b99; RED observed (31 of 35 failing before `src/core/roster.ts`), GREEN 838/838, build ok
+- [x] T3 balance pass, dev `?spawn=` test floor, docs (GDD section, README), screenshots in `/tmp/roster/` — balance
+  budget in `TUNING.roster` checked by `tests/core/roster-balance.test.ts` (shown able to fail: 5 of 14 fail at a 15 % cap);
+  `src/core/test-floor.ts` + `?spawn=`; screenshots `/tmp/roster/roster-*.png`, `/tmp/roster/contact-sheet.png`
+  (silent Firefox: user.js volume 0, settings `muted: true` before load); route: inline, same writer
 
 ## Acceptance criteria
 
@@ -44,6 +47,18 @@ Slugma (0218, phase 1), Litleo (0667, phase 2); Numel (0322) also complete but n
 
 - Sprites fetched with `node tools/fetch-sprites.mjs` (exit 0, 14 new folders).
 
+## Decisions
+
+- New behaviour kinds live in `src/core/roster.ts` (beam, pulse, cone, mortar, bomber, counter); Zubat/Ekans reuse
+  the lunger (`weave`, `lockMs`), Tentacool/Wooper/Grimer the slammer (`puddle`, `trail`, `floats`), Litleo the caster.
+- `AiState` gained optional `attack` (named attack) and `aimPoint`; host snapshots and the wire protocol carry them
+  only when present (appended after the boss slots), and a guest drops stale ones.
+- `telegraph` and `pathDirection` moved from enemies.ts to brain.ts so roster.ts does not import enemies.ts.
+- Guards: crab shell (frontal arc, chip damage, open while recovering) and Croagunk's stance (blocked, answered by a
+  counter aimed at the striker, also for guest claims on the host). Koffing's fuse ignores stagger; killing it cancels it.
+- Hazards are still enemy projectiles (speed 0, one hit each); their look is per type (Poison keeps the spore look).
+- Coins per species are a hint in `EXPERIMENTAL_ENEMIES` only (the run tally still pays a flat `COINS.perEnemy`).
+
 ## Next step
 
-T1 defs.
+Integration: the Sima del Eclipse pool appends `EXPERIMENTAL_ENEMIES`; then look at each species in game and retune.

@@ -6,6 +6,7 @@ import { ROOMS } from '../data/rooms';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, startRun, type RunState } from '../core/run';
+import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
 import { musicFor, type DungeonId } from '../data/dungeons';
@@ -74,6 +75,8 @@ export interface GameOptions {
   dungeon?: DungeonId;
   /** Development only: start on this floor of the run (`?floor=` on the dev server). */
   startFloor?: number;
+  /** Development only, solo: replace the first floor with the test arena and these enemies (`?spawn=` on the dev server). */
+  testSpawns?: readonly SpeciesId[];
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
@@ -165,7 +168,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     options.dungeon,
   );
   let run: RunState = started.run;
-  let world: WorldState = started.world;
+  let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;
