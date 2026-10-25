@@ -2,19 +2,19 @@ import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
-import { eliteRuleAt, simaSquads } from './sima';
+import { eliteRuleAt } from './sima';
 import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent } from './sima-events';
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { shallowWater } from './water';
 import { placePools } from './toxic';
-import { generateFloor, type Floor } from './dungeon';
+import type { Floor } from './dungeon';
 import { chooseGate, gateShut, placeGate } from './gates';
 import type { SimaEventKind } from '../data/sima';
-import { assignLeaders } from './leaders';
-import { tieredSpawns, worldDifficulty } from './difficulty';
+import { worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
+import { generatedFloor } from './floor-spawns';
 import { addItem, offerItems, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
@@ -135,11 +135,8 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
   const tier = worldDifficulty(world);
-  const drawn = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, tier));
-  // The Sima: some rooms hold mixed squads (tougher, not more).
-  const squads = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
-  // Some groups follow a leader, more of them deeper (core/leaders.ts).
-  const floor = assignLeaders(squads, seed, run.floor, (endless ? endless.spawns : dungeonOf(run).spawns).budget?.leaders);
+  // The generator's rooms, the Sima's squads and the leaders (core/floor-spawns.ts, shared with core/fairness.ts).
+  const floor = generatedFloor(dungeonOf(run), run.floor, seed, tier);
   const berries = placeBerries(floor, seed, run.floor);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);

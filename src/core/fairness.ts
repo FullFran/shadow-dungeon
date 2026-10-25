@@ -1,12 +1,11 @@
 import { MAX_HIT_SHARE, type Difficulty } from '../data/difficulty';
 import { dungeonById, floorsOf, planAt, type DungeonId } from '../data/dungeons';
+import { LEADER } from '../data/encounters';
 import { PROGRESSION } from '../data/progression';
 import { ROOMS } from '../data/rooms';
 import { SPECIES, type SpeciesId } from '../data/species';
-import { tieredSpawns } from './difficulty';
-import { generateFloor } from './dungeon';
-import { endlessSpawns } from './endless';
-import { levelForXp, MAX_LEVEL } from './progression';
+import { generatedFloor } from './floor-spawns';
+import { levelForXp, MAX_LEVEL, xpFor } from './progression';
 import { deriveSeed } from './rng';
 
 /**
@@ -20,13 +19,19 @@ import { deriveSeed } from './rng';
  *   every enemy of floors 1..F-1 (the player is assumed to clear each floor),
  *   without items or upgrades (no Insight).
  * - A generated floor's experience is the mean over `REFERENCE_SEEDS` seeds
- *   of its generated enemies; a fixed room's is its spawn list. Set-piece
- *   extras (Sima events, a boss's adds) are left out: the estimate errs low,
- *   so the cap errs protective.
+ *   of its generated enemies, through the run's own pipeline
+ *   (core/floor-spawns.ts: threat-budget rooms, Sima squads, leaders) and the
+ *   game's own experience rule (core/progression.ts `enemyXp`: species, role
+ *   scale, depth, leader bonus); a fixed room's is its spawn list. Set-piece
+ *   extras (Sima events, a boss's adds) and a gate's marked-kill bonus
+ *   (core/gates.ts, placed from the run seed) are left out: the estimate
+ *   errs low, so the cap errs protective.
  */
 const REFERENCE_SEEDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
-const xpOf = (species: SpeciesId, floor: number): number => (PROGRESSION.xpBySpecies[species] ?? 0) * (1 + PROGRESSION.xpPerDepth * Math.max(0, floor - 1));
+/** One defeated enemy's experience by the game's rule (core/progression.ts `xpFor`, data/encounters.ts `LEADER.xp`). */
+const xpOf = (species: SpeciesId, floor: number, leader?: true): number =>
+  PROGRESSION.xpBySpecies[species] === undefined ? 0 : xpFor(species, floor) * (leader ? LEADER.xp : 1);
 
 /** The experience of clearing floor `floor` of `dungeon` at tier `d` (mean over the reference seeds on generated floors). */
 export function expectedFloorXp(dungeon: DungeonId, floor: number, d: Difficulty): number {
@@ -34,9 +39,8 @@ export function expectedFloorXp(dungeon: DungeonId, floor: number, d: Difficulty
   const plan = planAt(def, floor);
   if (!plan) return 0;
   if (plan.kind === 'room') return ROOMS[plan.room].spawns.reduce((sum, s) => sum + xpOf(s.species, floor), 0);
-  const tuning = tieredSpawns(def.endless ? endlessSpawns(def.endless, floor) : def.spawns, d);
   let total = 0;
-  for (const seed of REFERENCE_SEEDS) total += generateFloor(deriveSeed(seed, floor), floor, tuning).spawns.reduce((sum, s) => sum + xpOf(s.species, floor), 0);
+  for (const seed of REFERENCE_SEEDS) total += generatedFloor(def, floor, deriveSeed(seed, floor), d).spawns.reduce((sum, s) => sum + xpOf(s.species, floor, s.leader), 0);
   return total / REFERENCE_SEEDS.length;
 }
 

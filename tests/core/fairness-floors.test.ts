@@ -10,11 +10,11 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { input } from './helpers';
-import { CAVES, CRYPT, DUNGEONS, ECLIPSE, floorsOf } from '../../src/data/dungeons';
+import { CAVES, CRYPT, DUNGEONS, ECLIPSE, floorsOf, planAt, type DungeonDef } from '../../src/data/dungeons';
 import { PROGRESSION } from '../../src/data/progression';
 import { SPECIES } from '../../src/data/species';
 import { expectedFloorXp, expectedLevel, hitCap, referenceMaxHp, speciesMaxHpAt } from '../../src/core/fairness';
-import { MAX_LEVEL } from '../../src/core/progression';
+import { enemyXp, levelForXp, MAX_LEVEL } from '../../src/core/progression';
 import { startRun } from '../../src/core/run';
 import { BANDS } from '../../src/sim/bands';
 
@@ -69,6 +69,43 @@ describe('reference max HP (the yardstick of the one-hit cap)', () => {
     const { world: w } = startRun(1, { difficulty: 'nightmare' }, 4, CAVES.id);
     expect(w.referenceLevel).toBe(expectedLevel(CAVES.id, 4, 'nightmare'));
   });
+});
+
+/**
+ * Meaningful encounters (odd/tasks/integrate-encounters.md) changed how many
+ * enemies a floor holds, the experience per role and the leader's bonus; the
+ * yardstick must read the same spawns and the same experience rule as a run.
+ */
+describe('reference level after meaningful encounters', () => {
+  const lastFloor = (d: DungeonDef): number => Math.min(10, floorsOf(d));
+  const generated = (d: DungeonDef, f: number): boolean => planAt(d, f)?.kind === 'generated';
+  /** Experience of every enemy a run really places on floor `f` (what clearing it pays, without gate or set pieces). */
+  const realFloorXp = (d: DungeonDef, f: number, seed: number, tier: Difficulty): number =>
+    startRun(seed, { difficulty: tier }, f, d.id).world.enemies.reduce((sum, e) => sum + enemyXp(e, f), 0);
+
+  it('a regular dungeon\'s generated floor pays exactly what the run places on its reference seeds (counts, roles, leaders)', () => {
+    for (const d of DUNGEONS.filter((x) => !x.endless))
+      for (const tier of ['easy', 'nightmare'] as const)
+        for (let f = 2; f <= lastFloor(d); f++) {
+          if (!generated(d, f)) continue;
+          const mean = [1, 2, 3, 4, 5, 6, 7, 8].reduce((sum, seed) => sum + realFloorXp(d, f, seed, tier), 0) / 8;
+          expect(expectedFloorXp(d.id, f, tier), `${d.id} F${f} ${tier}`).toBeCloseTo(mean, 6);
+        }
+  });
+
+  it('the expected level is within one level of what real run seeds reach, floor by floor, in every dungeon', () => {
+    const seeds = Array.from({ length: 16 }, (_, i) => 101 + i);
+    for (const d of DUNGEONS)
+      for (const tier of ['easy', 'nightmare'] as const) {
+        let xp = 0;
+        for (let f = 1; f <= lastFloor(d); f++) {
+          const real = levelForXp(xp);
+          expect(Math.abs(expectedLevel(d.id, f, tier) - real), `${d.id} F${f} ${tier}: expected ${expectedLevel(d.id, f, tier)} real ${real}`).toBeLessThanOrEqual(1);
+          xp += generated(d, f) ? seeds.reduce((sum, seed) => sum + realFloorXp(d, f, seed, tier), 0) / seeds.length : expectedFloorXp(d.id, f, tier);
+        }
+      }
+  });
+
 });
 
 describe('one-hit cap (P5.6)', () => {

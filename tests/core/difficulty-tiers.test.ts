@@ -62,8 +62,14 @@ function fnv(text: string): string {
  * (before any tier code) as 'bebcc214'; re-recorded on purpose by
  * meaningful encounters (feat/meaningful-encounters, 2026-10-25: fewer
  * enemies per room spent on roles, odd/tasks/meaningful-encounters.md),
- * which deliberately changes Easy floors. A change to the simulation changes
- * it: re-record it only on purpose.
+ * which deliberately changes Easy floors. Re-checked on purpose when
+ * encounters met main (odd/tasks/integrate-encounters.md): with the
+ * out-of-bounds net, the spell cards and the one-hit cap merged in, the
+ * scripted Easy Crypt still gives '530cec91'. The cap's yardstick
+ * (`referenceLevel`, now read from the new spawns and experience rule) is
+ * stripped by `plain` like the tier; the digest holding shows no scripted Easy hit
+ * changed under the cap. A
+ * change to the simulation changes it: re-record it only on purpose.
  */
 const PRE_TIER_DIGEST = '530cec91';
 
