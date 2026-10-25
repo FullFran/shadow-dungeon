@@ -1,6 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
+import { isRosterDef, rosterAttack } from './roster';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
@@ -57,6 +58,10 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;
       hit = contactPlayer(current, enemy, def.dive.attack, diveTouches(enemy, current.player.pos, def), events);
+    } else if (isRosterDef(def)) {
+      const active = rosterAttack(enemy, def, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
     } else if (enemy.boss?.stance === 'blade') {
       const blow = def.blade.combo[enemy.boss.comboIndex]!;
       hit = contactPlayer(current, enemy, blow.attack, bladeTouches(enemy, current.player.pos), events);

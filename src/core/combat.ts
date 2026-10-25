@@ -7,6 +7,7 @@ import { computeDamage, typeEffectiveness } from './damage';
 import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
+import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
@@ -125,7 +126,7 @@ function claim(state: WorldState, enemy: EnemyState, hit: StrikeHit, struck: Omi
 }
 
 /** A hit stopped by a guard: chip damage at most, no stagger, and the next-hit buff is kept. */
-function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, events: GameEvent[]): WorldState {
+function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, events: GameEvent[], chipFactor: number): WorldState {
   const { damage } = computeDamage({
     power: hit.power,
     moveType: hit.type,
@@ -133,12 +134,13 @@ function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, eve
     defenderTypes: enemy.types,
     multiplier: hit.multiplier,
   });
-  const chip = Math.round(damage * AEGISLASH.shield.chipFactor);
+  const chip = Math.round(damage * chipFactor);
   events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
   claim(state, enemy, hit, { damage: Math.max(0, chip), effectiveness: 1, hitstunMs: 0, knockback: vec(0, 0), blocked: true }, events);
-  if (chip <= 0) return state;
-  const hp = Math.max(1, enemy.hp - chip);
-  return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? { ...e, hp } : e)) };
+  const hp = chip > 0 ? Math.max(1, enemy.hp - chip) : enemy.hp;
+  // Hosts let a guard answer (Croagunk's counter); a guest leaves that to the host's claim handling.
+  const guarded = state.role === 'guest' ? { ...enemy, hp } : answerGuardedHit({ ...enemy, hp }, hit.from, events);
+  return { ...state, enemies: state.enemies.map((e) => (e.id === enemy.id ? guarded : e)) };
 }
 
 /**
@@ -155,7 +157,9 @@ function strikeEnemy(
   events: GameEvent[],
 ): WorldState {
   const buff = state.player.nextHitBuff;
-  if (enemy.boss && blocksHit(enemy, hit.from)) return blockedStrike(state, enemy, hit, events);
+  if (enemy.boss && blocksHit(enemy, hit.from)) return blockedStrike(state, enemy, hit, events, AEGISLASH.shield.chipFactor);
+  const guard = guardChip(enemy, hit.from);
+  if (guard !== null) return blockedStrike(state, enemy, hit, events, guard);
   const stats = playerStats(state.player);
   const rolled = rollCrit(state, stats.critChance);
   state = rolled.state;

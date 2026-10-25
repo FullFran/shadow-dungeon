@@ -800,7 +800,7 @@ export const EXPERIMENTAL_ENEMIES: readonly ExperimentalEnemy[] = [
   { species: 'croagunk', minDepth: 5, weight: 1, coins: 3, futureDungeon: 'toxic-swamp' },
 ];
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef;
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -815,6 +815,20 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   hoothoot: HOOTHOOT,
   trevenant: TREVENANT,
   decidueye: DECIDUEYE,
+  zubat: ZUBAT,
+  tentacool: TENTACOOL,
+  chinchou: CHINCHOU,
+  corphish: CORPHISH,
+  clauncher: CLAUNCHER,
+  wooper: WOOPER,
+  grimer: GRIMER,
+  koffing: KOFFING,
+  ekans: EKANS,
+  croagunk: CROAGUNK,
+  stunky: STUNKY,
+  houndour: HOUNDOUR,
+  slugma: SLUGMA,
+  litleo: LITLEO,
 };
 
 const DEFAULT_POISE: PoiseDef = { hitstunScale: 1, knockbackScale: 1 };

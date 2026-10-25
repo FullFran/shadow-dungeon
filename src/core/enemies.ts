@@ -1,14 +1,13 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
 import { updateBoss } from './boss';
-import { flowStep } from './flow';
-import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, spawnShot, spreadDirections, towardTarget } from './brain';
+import { unstoppable, updateRoster } from './roster';
+import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
 import { lungeTouches, slamTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
-import { lineOfSight, tileCenter, tileOf } from './tiles';
 import { enemyTimeScale } from './time';
-import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
+import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
 
 /**
  * Enemy behaviour as explicit state machines (docs/gdd.md §4). Each brain
@@ -25,27 +24,6 @@ export function initialAi(dormant = false): AiState {
     cooldownMs: 0,
     strafeSign: 1,
   };
-}
-
-function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: Vec2, events: GameEvent[]): EnemyState {
-  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack, durationMs });
-  return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir } };
-}
-
-/**
- * Where a walker heads to reach its target: straight at it with a clear line
- * of sight (or on arenas without tiles), otherwise towards the next tile
- * downhill on the shared flow field (towards the nearest player). Null when it sees the target.
- */
-function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2, floats = false): Vec2 | null {
-  const grid = state.arena.tiles;
-  // Fliers and phasers go straight over the walls.
-  if (floats) return null;
-  if (!grid || !state.flow || lineOfSight(grid, enemy.pos, target)) return null;
-  const next = flowStep(grid, state.flow, tileOf(enemy.pos));
-  if (!next) return null;
-  const dir = normalize(sub(tileCenter(next), enemy.pos));
-  return length(dir) > 0 ? dir : null;
 }
 
 /**
@@ -77,14 +55,17 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       // Only while recharging: with the lunge ready it closes in to lunge range (it used to hover at the stalk ring).
       const stalking = ai.cooldownMs > 0 && dist <= def.stalkRange;
       // Circle the player while the lunge recharges, otherwise close in.
-      const dir = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : toPlayer;
+      const straight = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : toPlayer;
+      // Erratic fliers (Zubat) sway sideways on the way in.
+      const sway = def.weave ? def.weave.amplitude * Math.sin((2 * Math.PI * state.timeMs) / def.weave.periodMs) : 0;
+      const dir = sway === 0 ? straight : normalize(add(straight, scale(perpendicular(toPlayer, 1), sway)));
       const speed = def.walkSpeed * (stalking ? 0.6 : 1);
       enemy = { ...moveEnemy(state, enemy, scale(dir, (speed * ms) / 1000)), facing: toPlayer };
       break;
     }
     case 'telegraph':
-      // Tracks the player during the wind-up; the direction is committed when it fires.
-      enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      // Tracks the player during the wind-up; the direction is committed when it fires (or `lockMs` before: Ekans' coil).
+      if (!def.lockMs || ai.modeDurationMs - ai.modeMs > def.lockMs) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'lunge' });
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.lungeMs), contact: 'none' } };
@@ -177,9 +158,16 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
         enemy = telegraph(enemy, 'slam', def.telegraphMs, toPlayer, events);
         break;
       }
-      const dir = pathDirection(state, enemy, target) ?? toPlayer;
+      const dir = pathDirection(state, enemy, target, def.floats === true) ?? toPlayer;
       // Close enough to slam: hold the ground while the slam recharges.
-      if (dist > def.slamRange * 0.6) enemy = moveEnemy(state, enemy, scale(dir, (def.walkSpeed * ms) / 1000));
+      if (dist > def.slamRange * 0.6) {
+        // Grimer: a blob of sludge where it was, every `everyMs` of walking.
+        const every = def.trail?.everyMs;
+        if (def.trail && every && Math.floor((ai.modeMs - ms) / every) < Math.floor(ai.modeMs / every)) {
+          state = spawnShot(state, enemy, { ...def.trail.puddle, speed: 0 }, dir, enemy.pos);
+        }
+        enemy = moveEnemy(state, enemy, scale(dir, (def.walkSpeed * ms) / 1000));
+      }
       enemy = { ...enemy, facing: dir };
       break;
     }
@@ -188,6 +176,7 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
         if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
+        if (def.puddle) state = spawnShot(state, enemy, { ...def.puddle, speed: 0 }, toPlayer, enemy.pos);
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.slamMs), contact: 'none' } };
       }
       break;
@@ -256,7 +245,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     const enemy = current.enemies.find((e) => e.id === id);
     const def = enemy && ENEMY_BEHAVIOUR[enemy.species];
     if (!enemy || !def || !enemy.alive || enemy.ai.mode === 'dormant' || enemy.ai.mode === 'asleep') continue;
-    if (enemy.hitstunMs > 0) {
+    // Koffing's fuse cannot be staggered out of (killing it is the answer).
+    if (enemy.hitstunMs > 0 && !unstoppable(enemy)) {
       current = replaceEnemy(current, interrupted(enemy));
       continue;
     }
@@ -267,7 +257,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ms, events);
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
     else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
-    else current = updateBoss(current, ticked, def, target, ms, events);
+    else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
+    else current = updateRoster(current, ticked, def, target, ms, events);
   }
   return current;
 }
