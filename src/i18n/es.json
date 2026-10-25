@@ -850,5 +850,9 @@
   "boss.stance.sc-aeg-hundred": "Cien Espadas",
   "boss.stance.sc-aeg-crown": "Corona de Espadas",
   "boss.stance.sc-aeg-judgement": "Juicio del Rey",
-  "boss.stance.sc-aeg-lastword": "Rey sin Reino"
+  "boss.stance.sc-aeg-lastword": "Rey sin Reino",
+  "gate.seal.hud": "Escalera sellada: derrota al enemigo marcado",
+  "gate.key.hud": "Puerta cerrada: el enemigo marcado lleva la llave",
+  "gate.key.dropped": "La llave ha caído: recógela",
+  "gate.waves.hud": "Escalera sellada: supera la sala de oleadas"
 }

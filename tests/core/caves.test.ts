@@ -19,7 +19,7 @@ import { TILE, tileCenter } from '../../src/core/tiles';
 import { distance, dot, normalize, sub, vec, type Vec2 } from '../../src/core/vec';
 import { shallowWater, wadeFactor } from '../../src/core/water';
 import { createWorld, spawnEnemy } from '../../src/core/world';
-import { IDLE, input, ticksFor } from './helpers';
+import { IDLE, input, ticksFor, openGate } from './helpers';
 
 /** A caves definition at a tier, through the shared `behaviourFor` (data/caves-tricks.ts patches). */
 const withTricks = <D extends EnemyDef>(def: D, tier: Difficulty): D =>
@@ -67,7 +67,7 @@ describe('the Flooded Caves run', () => {
 
   it('plays through to Dhelmise: stairs, the grotto exit once Lanturn falls, stairs, victory', () => {
     let progress: RunProgress = { ...startRun(21, {}, 1, 'flooded-caves'), entered: false, outcome: null };
-    const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+    const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
     const clear = (w: WorldState): WorldState => ({ ...w, enemies: w.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) });
     for (let floor = 2; floor <= 5; floor++) progress = progressRun(progress.run, toStairs(progress.world));
     expect(progress.run.floor).toBe(5);
@@ -96,7 +96,7 @@ describe('the Flooded Caves run', () => {
     const run = startRun(seed, {}, 2, 'flooded-caves');
     expect(run.run.kind).toBe('flood');
     expect(run.world.flood).toBeDefined();
-    const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+    const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
     const next = progressRun(run.run, toStairs(run.world));
     expect(next.run.floor).toBe(3);
     expect(next.world.flood).toBeUndefined();

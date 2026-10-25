@@ -1,4 +1,5 @@
 import { CRYPT_SPAWNS, DUNGEON, type SpawnEntry, type SpawnTuning } from '../data/dungeon';
+import { ROLE_LINE, roleOf, ROLES_PER_ROOM, threatOf, type EncounterBudget, type EnemyRole } from '../data/encounters';
 import type { SpeciesId } from '../data/species';
 import { deriveSeed, nextRandom } from './rng';
 import { isWall, TILE, tileCenter, type TileGrid, type TilePoint } from './tiles';
@@ -24,6 +25,8 @@ export interface FloorSpawn {
   tile: TilePoint;
   /** Index into `rooms`. */
   room: number;
+  /** Its group's leader (core/leaders.ts `assignLeaders`). */
+  leader?: true;
 }
 
 export interface Floor extends TileGrid {
@@ -199,6 +202,10 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
         candidates.push(tile);
       }
     }
+    if (spawnTuning.budget) {
+      spawns.push(...budgetedRoom(rng, spawnTuning.pool, spawnTuning.budget, depth, rng.shuffle(candidates), dist, cols, index));
+      return;
+    }
     const count = rng.int(bounds.min, bounds.max);
     const tiles = rng.shuffle(candidates).slice(0, count);
     // A pack (swarmers) fills the next free tiles with the same species; single picks draw once each, as before.
@@ -216,6 +223,70 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
   });
 
   return { seed, depth, cols, rows, tiles, rooms, startRoom, stairsRoom, start, stairs, spawns };
+}
+
+/** Threat budget of one room at a depth, before its jitter (data/encounters.ts). */
+export const roomBudget = (budget: EncounterBudget, depth: number): number => budget.base + budget.perDepth * Math.max(0, depth - 1);
+
+/** Threat cost of a pool entry as one buy: its pack (up to `room` units) and its escort. */
+function entryBuy(entry: SpawnEntry, room: number): { units: SpeciesId[]; cost: number } {
+  const pack = Math.min(Math.max(1, entry.pack ?? 1), room);
+  const units: SpeciesId[] = Array<SpeciesId>(pack).fill(entry.species);
+  if (entry.escort) units.push(...Array<SpeciesId>(Math.max(0, Math.min(entry.escort.count, room - pack))).fill(entry.escort.species));
+  return { units, cost: units.reduce((sum, s) => sum + threatOf(s), 0) };
+}
+
+/**
+ * One room of a budgeted floor (docs/gdd.md §3 "Encuentros con sentido"):
+ * maybe a breather (empty), otherwise it buys roles from the pool until
+ * nothing affordable fits, never more than `maxEnemies` bodies nor more than
+ * `maxRoles` roles, a role already bought weighing less (variety makes the
+ * combo). The front line (brutes, skirmishers, swarms) takes the tiles
+ * nearest the way in, the back line (gunners, controllers) the farthest.
+ */
+function budgetedRoom(rng: Random, pool: readonly SpawnEntry[], budget: EncounterBudget, depth: number, shuffled: readonly TilePoint[], dist: readonly number[], cols: number, room: number): FloorSpawn[] {
+  if (rng.next() < (budget.rest[Math.min(Math.max(1, depth), budget.rest.length) - 1] ?? 0)) return [];
+  const maxRoles = budget.maxRoles ?? ROLES_PER_ROOM.easy;
+  let left = roomBudget(budget, depth) + rng.int(0, budget.jitter);
+  const bought: SpeciesId[] = [];
+  const roles = new Set<EnemyRole>();
+  for (let tries = 0; tries < budget.maxEnemies; tries++) {
+    const room = Math.min(budget.maxEnemies, shuffled.length) - bought.length;
+    if (room <= 0) break;
+    const open = pool
+      .map((entry) => ({ entry, buy: entryBuy(entry, room) }))
+      .filter(({ entry, buy }) => {
+        if (weightAt(entry, depth) <= 0 || buy.cost > left) return false;
+        const fresh = new Set([...roles, ...buy.units.map(roleOf)]);
+        return fresh.size <= maxRoles;
+      });
+    if (open.length === 0) break;
+    const weightOf = ({ entry, buy }: (typeof open)[number]) => weightAt(entry, depth) * (buy.units.every((s) => roles.has(roleOf(s))) ? budget.repeatWeight : 1);
+    let roll = rng.next() * open.reduce((sum, o) => sum + weightOf(o), 0);
+    let pick = open[open.length - 1]!;
+    for (const o of open) {
+      roll -= weightOf(o);
+      if (roll < 0) {
+        pick = o;
+        break;
+      }
+    }
+    bought.push(...pick.buy.units);
+    pick.buy.units.forEach((s) => roles.add(roleOf(s)));
+    left -= pick.buy.cost;
+  }
+  // Front and back lines: the near half of the room (walking distance from the start) for the front, the far 40 % for the back, in the shuffled order.
+  const ordered = [...shuffled].sort((a, b) => dist[a.y * cols + a.x]! - dist[b.y * cols + b.x]!);
+  const rank = new Map(ordered.map((t, i) => [t, i]));
+  const n = ordered.length;
+  const fits = (t: TilePoint, line: 'front' | 'back') => (line === 'front' ? rank.get(t)! < Math.ceil(n / 2) : rank.get(t)! >= Math.floor(n * 0.6));
+  const used = new Set<TilePoint>();
+  return bought.map((species) => {
+    const line = ROLE_LINE[roleOf(species)];
+    const tile = shuffled.find((t) => !used.has(t) && fits(t, line)) ?? shuffled.find((t) => !used.has(t))!;
+    used.add(tile);
+    return { species, tile, room };
+  });
 }
 
 /** A tile rectangle in world pixels. */

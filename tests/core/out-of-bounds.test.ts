@@ -3,7 +3,7 @@ import { endlessSpawns } from '../../src/core/endless';
 import type { Floor } from '../../src/core/dungeon';
 import { confineCircle, insideRect, sweepCircle } from '../../src/core/geometry';
 import { startRun } from '../../src/core/run';
-import { doorTiles, placeSimaEvent } from '../../src/core/sima-events';
+import { doorTiles, placeSimaEvent, withDoors } from '../../src/core/sima-events';
 import type { EnemyState, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
@@ -26,9 +26,16 @@ const ECL = 'eclipse-chasm' as const;
 const FLOOR = 26;
 const NEIGHBOURS = [vec(1, 0), vec(-1, 0), vec(0, 1), vec(0, -1), vec(1, 1), vec(-1, -1), vec(1, -1), vec(-1, 1)];
 
+/**
+ * The bare floor: no event, no enemies and no floor gate (core/gates.ts). A
+ * key gate whose bearer is removed would break at once and reopen its doors,
+ * so the gate goes with the enemies and its doors are opened up front.
+ */
 const floorWorld = (seed: number): WorldState => {
   const started = startRun(seed, {}, FLOOR, ECL).world;
-  return { ...started, simaEvent: undefined, enemies: [] };
+  const doors = started.gate?.doors;
+  const tiles = doors && started.arena.tiles ? withDoors(started.arena.tiles, doors, false) : started.arena.tiles;
+  return { ...started, arena: { ...started.arena, tiles }, simaEvent: undefined, gate: undefined, enemies: [] };
 };
 
 /** The wave room's world: the event placed in the first room that is neither start nor stairs. */

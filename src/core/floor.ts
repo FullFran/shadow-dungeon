@@ -10,6 +10,7 @@ import { insideRect } from './geometry';
 import type { Arena, WorldState } from './state';
 import { TILE, tileCenter } from './tiles';
 import { vec } from './vec';
+import { joinBands } from './leaders';
 import { enterRoom, spawnEnemy } from './world';
 
 /** The world arena of a generated floor: its tile grid and the stairs tile. */
@@ -43,9 +44,10 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
   floor.spawns.forEach((spawn, index) => {
     const elite = drawElite(floor.seed, index, rule, spawn.species);
     const drawn = elite ? { elite: elite.trait, eliteHp: rule.hpScale, ...(elite.pierceRoll ? { pierceRoll: true as const } : {}) } : {};
-    next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!), ...drawn });
+    next = spawnEnemy(next, spawn.species, tileCenter(spawn.tile), { sleepIn: roomRect(floor.rooms[spawn.room]!), ...drawn, ...(spawn.leader ? { leader: true as const } : {}) });
   });
-  return next;
+  // A crowned group's followers take their leader's id (core/leaders.ts).
+  return joinBands(next, floor.spawns);
 }
 
 /** True when a player (the local one, or a remote one still standing) is on the stairs (no clear requirement, Mystery Dungeon style). */

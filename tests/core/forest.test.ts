@@ -15,7 +15,7 @@ import { distance, vec, type Vec2 } from '../../src/core/vec';
 import { guestEnemyContacts } from '../../src/core/victim';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { createMemory, revealAround } from '../../src/adapters/minimap';
-import { IDLE, input, ticksFor } from './helpers';
+import { IDLE, input, ticksFor, openGate } from './helpers';
 
 const PLAYER = vec(400, 300);
 
@@ -82,7 +82,7 @@ describe('Misty Forest run plan', () => {
 
   it('plays a whole forest run: stairs, the hollow exit after Trevenant falls, then victory when Decidueye falls', () => {
     let progress: RunProgress = { ...startRun(9, {}, 1, 'misty-forest'), entered: false, outcome: null };
-    const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+    const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
     const clear = (w: WorldState): WorldState => ({ ...w, enemies: w.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) });
     for (const floor of [2, 3, 4]) {
       progress = progressRun(progress.run, toStairs(progress.world));

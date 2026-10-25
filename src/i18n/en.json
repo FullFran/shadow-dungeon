@@ -850,5 +850,9 @@
   "boss.stance.sc-aeg-hundred": "Hundred Swords",
   "boss.stance.sc-aeg-crown": "Crown of Swords",
   "boss.stance.sc-aeg-judgement": "King's Judgement",
-  "boss.stance.sc-aeg-lastword": "King Without a Kingdom"
+  "boss.stance.sc-aeg-lastword": "King Without a Kingdom",
+  "gate.seal.hud": "Stairs sealed: defeat the marked enemy",
+  "gate.key.hud": "Door locked: the marked enemy carries the key",
+  "gate.key.dropped": "The key fell: pick it up",
+  "gate.waves.hud": "Stairs sealed: clear the wave room"
 }

@@ -9,7 +9,10 @@ import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
 import { shallowWater } from './water';
 import { placePools } from './toxic';
-import { generateFloor } from './dungeon';
+import { generateFloor, type Floor } from './dungeon';
+import { chooseGate, gateShut, placeGate } from './gates';
+import type { SimaEventKind } from '../data/sima';
+import { assignLeaders } from './leaders';
 import { tieredSpawns, worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
 import { addItem, offerItems, playerStats } from './items';
@@ -124,17 +127,19 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
   const enemyScale = endless ? depthScale(endless.scaling, run.floor, plan.kind === 'room' && plan.role === 'echo') : undefined;
-  // A Sima event belongs to its floor (the pact outlasts it).
+  // A Sima event and a gate belong to their floor (the pact outlasts it).
   // The one-hit cap's yardstick (core/fairness.ts): the level expected on this floor, the same on every peer.
   const referenceLevel = expectedLevel(run.dungeon, run.floor, worldDifficulty(world));
-  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, referenceLevel, simaEvent: undefined };
+  const deeper: WorldState = { ...world, depth: run.floor, enemyScale, referenceLevel, simaEvent: undefined, gate: undefined };
   if (plan.kind === 'room') return loadRoom(deeper, plan.room);
   const seed = floorSeed(run.seed, run.floor);
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
   const tier = worldDifficulty(world);
   const drawn = generateFloor(seed, run.floor, tieredSpawns(endless ? endlessSpawns(endless, run.floor) : dungeonOf(run).spawns, tier));
   // The Sima: some rooms hold mixed squads (tougher, not more).
-  const floor = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
+  const squads = endless?.squads ? simaSquads(drawn, seed, run.floor, endless.squads) : drawn;
+  // Some groups follow a leader, more of them deeper (core/leaders.ts).
+  const floor = assignLeaders(squads, seed, run.floor, (endless ? endless.spawns : dungeonOf(run).spawns).budget?.leaders);
   const berries = placeBerries(floor, seed, run.floor);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
@@ -146,9 +151,22 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const placed = wisp ? { ...loaded, arena, berries: [...berries, ...wisp.berries], wisp: { cache: wisp.cache } } : { ...loaded, arena, berries };
   // The Toxic Swamp's pools come from the floor seed too, so every peer places the same ones.
   const pooled = dungeonOf(run).toxicPools ? { ...placed, pools: placePools(floor, seed) } : placed;
-  // The Sima's floor event, if this floor has one (sima-events.ts).
-  const event = endless?.events ? chooseSimaEvent(seed, run.floor, floor, run.kind, endless.events, tier) : null;
-  return event && endless?.events ? placeSimaEvent(pooled, event, floor, seed, run.floor, endless.events, endlessSpawns(endless, run.floor).pool, tier) : pooled;
+  // The floor's gate, if any (core/gates.ts): at most one, never on floor 1 or an urgent floor.
+  const drawnGate = chooseGate(run.seed, run.floor, run.kind, dungeonOf(run).gates);
+  // The Sima's floor event, if this floor has one (sima-events.ts); a wave gate is its wave room.
+  const rolled = endless?.events ? chooseSimaEvent(seed, run.floor, floor, run.kind, endless.events, tier) : null;
+  const event = drawnGate === 'waves' && endless?.events ? waveRoomOf(floor, rolled) : rolled;
+  const evented = event && endless?.events ? placeSimaEvent(pooled, event, floor, seed, run.floor, endless.events, endlessSpawns(endless, run.floor).pool, tier) : pooled;
+  // The hunter already pushes (no gate then); a key gate beside a wave room becomes a seal (their doors must not mix).
+  const gate = event?.kind === 'hunter' ? null : drawnGate === 'key' && event?.kind === 'waves' ? 'seal' : drawnGate;
+  return gate ? placeGate(evented, gate, floor) : evented;
+}
+
+/** A wave gate's room: the rolled event's if it already is a wave room, else the first room that is neither the start nor the stairs. */
+function waveRoomOf(floor: Floor, rolled: { kind: SimaEventKind; room: number } | null): { kind: SimaEventKind; room: number } | null {
+  if (rolled?.kind === 'waves') return rolled;
+  const room = floor.rooms.findIndex((_, i) => i !== floor.startRoom && i !== floor.stairsRoom);
+  return room >= 0 ? { kind: 'waves', room } : rolled;
 }
 
 /** The offer of a floor for the world's local player: none on floor 1. */
@@ -255,7 +273,7 @@ export function progressRun(current: RunState, world: WorldState): RunProgress {
   const plan = floorPlanOf(run);
   const exit = roomExit(plan, dungeonOf(run));
   const leaving =
-    plan.kind === 'generated' ? onStairs(world) : plan.role === 'echo' ? exit !== null && roomCleared(world) && insideRect(world.player.pos, exit) : atExit(world, plan.room);
+    plan.kind === 'generated' ? onStairs(world) && !gateShut(world) : plan.role === 'echo' ? exit !== null && roomCleared(world) && insideRect(world.player.pos, exit) : atExit(world, plan.room);
   if (last || !leaving) return { run, world, entered: false, outcome: null, ...bonus };
   const down = goDown(run, world, run.floor + 1);
   const total = paid.bonusMs + down.bonusMs;

@@ -13,7 +13,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { distance, normalize, sub, vec, type Vec2 } from '../../src/core/vec';
 import { guestEnemyContacts } from '../../src/core/victim';
 import { createWorld, enterRoom, spawnEnemy } from '../../src/core/world';
-import { IDLE, ticksFor } from './helpers';
+import { IDLE, ticksFor, openGate } from './helpers';
 
 const PLAYER = vec(400, 300);
 
@@ -41,7 +41,7 @@ const angle = (v: Vec2) => Math.atan2(v.y, v.x);
 describe('the remastered Crypt run', () => {
   it('plays through: stairs, the vault exit once Sableye falls (a mid-boss), stairs, then victory on Aegislash', () => {
     let progress: RunProgress = { ...startRun(11, {}), entered: false, outcome: null };
-    const toStairs = (w: WorldState): WorldState => ({ ...w, player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
+    const toStairs = (w: WorldState): WorldState => ({ ...openGate(w), player: { ...w.player, pos: vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16) } });
     const clear = (w: WorldState): WorldState => ({ ...w, enemies: w.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) });
     for (const floor of [2, 3]) progress = progressRun(progress.run, toStairs(progress.world));
     expect(progress.run.floor).toBe(3);

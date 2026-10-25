@@ -1,6 +1,7 @@
 import type { SpawnTuning } from '../data/dungeon';
 import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
+import { ROLES_PER_ROOM } from '../data/encounters';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { deriveSeed, nextRandom } from './rng';
@@ -11,10 +12,15 @@ export const worldDifficulty = (state: Pick<WorldState, 'difficulty'>): Difficul
 
 export const tierOf = (state: Pick<WorldState, 'difficulty'>): TierDef => TIERS[worldDifficulty(state)];
 
-/** A dungeon's enemy table with the tier's extra enemies per room (the cap rises with them). */
+/**
+ * A dungeon's enemy table at tier `d`: the tier's extra enemies per room (the
+ * cap rises with them) and, on a budgeted table, the tier's roles per room
+ * (data/encounters.ts `ROLES_PER_ROOM`).
+ */
 export function tieredSpawns(tuning: SpawnTuning, d: Difficulty): SpawnTuning {
   const extra = TIERS[d].extraPerRoom;
-  return extra === 0 ? tuning : { ...tuning, base: tuning.base + extra, maxPerRoom: tuning.maxPerRoom + extra };
+  const counted = extra === 0 ? tuning : { ...tuning, base: tuning.base + extra, maxPerRoom: tuning.maxPerRoom + extra };
+  return counted.budget ? { ...counted, budget: { ...counted.budget, maxRoles: ROLES_PER_ROOM[d], maxEnemies: counted.budget.maxEnemies + extra } } : counted;
 }
 
 /** Salt that keeps the elite draw independent of the floor generator. */

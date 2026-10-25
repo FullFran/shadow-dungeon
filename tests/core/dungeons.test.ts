@@ -7,8 +7,6 @@ import { deriveSeed, nextRandom } from '../../src/core/rng';
 import { floorKind, floorPlanOf, isBossFloor, startRun } from '../../src/core/run';
 import { floorMusic } from '../../src/adapters/audio';
 
-/** The M2 Crypt table, before the remaster: floor 1 must still generate exactly like it. */
-const M2_SPAWNS: SpawnTuning = { base: 1, perDepth: 1, jitter: 1, maxPerRoom: 5, pool: [{ species: 'poochyena', weights: [3] }, { species: 'gastly', weights: [2] }] };
 
 describe('the Crypt as a DungeonDef', () => {
   it('runs the remastered plan: 1-2 generated, Sableye on 3, 4-5 generated, Aegislash on 6, collapse kept', () => {
@@ -27,8 +25,17 @@ describe('the Crypt as a DungeonDef', () => {
     expect(DUNGEONS[0]).toBe(CRYPT);
   });
 
-  it('keeps floor 1 exactly as the M2 Crypt generated it (gentle entry)', () => {
-    for (let seed = 1; seed <= 60; seed++) expect(generateFloor(seed, 1, CRYPT.spawns)).toEqual(generateFloor(seed, 1, M2_SPAWNS));
+  // Meaningful encounters (2026-10-25) deliberately changed floor 1: it no longer generates like the M2 table, but it stays the gentle entry.
+  it('keeps floor 1 a gentle entry: only Poochyena and Gastly, at most two per room, a breather now and then', () => {
+    let rest = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const floor = generateFloor(seed, 1, CRYPT.spawns);
+      expect(floor.spawns.filter((s) => s.species !== 'poochyena' && s.species !== 'gastly')).toEqual([]);
+      const rooms = floor.rooms.map((_, i) => floor.spawns.filter((s) => s.room === i).length);
+      expect(Math.max(...rooms)).toBeLessThanOrEqual(2);
+      rest += rooms.filter((n, i) => n === 0 && i !== floor.startRoom).length;
+    }
+    expect(rest).toBeGreaterThan(0);
   });
 
   it('ramps: deeper Crypt floors hold more enemies than floor 1', () => {

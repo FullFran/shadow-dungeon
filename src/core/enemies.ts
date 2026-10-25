@@ -1,6 +1,7 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, type SporeDef } from '../data/enemies';
 import { updateArcher } from './archer';
 import { eliteTimeScale, tickAiAt, worldDifficulty } from './difficulty';
+import { bandTimeScale } from './leaders';
 import { atLeast } from '../data/difficulty';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
@@ -390,8 +391,9 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
       continue;
     }
     // Elites: swift ones always act faster, enraged ones once hurt (on top of the tier's clocks).
-    const pace = clockScale * eliteTimeScale(enemy);
-    const ems = dtMs * clockScale * eliteTimeScale(enemy);
+    // A leader's followers keep its pace; broken ones lose heart (core/leaders.ts).
+    const pace = clockScale * eliteTimeScale(enemy) * bandTimeScale(enemy);
+    const ems = dtMs * clockScale * eliteTimeScale(enemy) * bandTimeScale(enemy);
     // The telegraph floor is applied after every speed-up (core/difficulty.ts `effectiveTelegraphMs`); positional wind-ups keep the longer one.
     const positional = enemy.ai.mode === 'telegraph' && pierceZone(enemy, tier, current.arena) !== null;
     // In a party a boss keeps one target and turns to another now and then (core/aggro.ts); otherwise the nearest player.

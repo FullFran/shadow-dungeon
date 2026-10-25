@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RUN, RUN_PLAN } from '../../src/data/dungeon';
-import { generateFloor } from '../../src/core/dungeon';
+import { generateFloor, type Floor } from '../../src/core/dungeon';
+import { withDoors } from '../../src/core/sima-events';
 import { chooseItem, floorPlanOf, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
 import { ROOMS } from '../../src/data/rooms';
 import type { PlayerInput, WorldState } from '../../src/core/state';
@@ -8,13 +9,13 @@ import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
 import { tileCenter } from '../../src/core/tiles';
 import { vec } from '../../src/core/vec';
-import { input } from './helpers';
+import { input, openGate } from './helpers';
 
 const SEED = 20261025;
 
 /** Puts the player on the stairs of the current floor. */
 const toStairs = (world: WorldState): WorldState => ({
-  ...world,
+  ...openGate(world),
   player: { ...world.player, pos: vec(world.arena.stairs!.x + 16, world.arena.stairs!.y + 16) },
 });
 
@@ -59,7 +60,15 @@ describe('run structure', () => {
         const exit = ROOMS.vault.exit!;
         const standing = { ...progress.world, player: { ...progress.world.player, pos: vec(exit.x + exit.width / 2, exit.y + exit.height / 2) } };
         expect(progressRun(progress.run, standing).entered).toBe(false);
-      } else expect(progress.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor));
+      } else {
+        // The floor as generated; its groups' leaders are crowned afterwards (core/leaders.ts), so compare the map, not the spawn list.
+        // A key gate locks the stairs room's doorways (core/gates.ts): the generated map with those tiles shut.
+        const { spawns: _crowned, ...map } = progress.world.arena.tiles as Floor;
+        const drawn = generateFloor(floorSeed(SEED, floor), floor);
+        const doors = progress.world.gate?.doors;
+        const { spawns: _drawn, ...generated } = doors ? { ...drawn, ...withDoors(drawn, doors, true) } : drawn;
+        expect(map).toEqual(generated);
+      }
     }
     progress = descend(progress);
     expect(progress.run.floor).toBe(6);

@@ -71,6 +71,21 @@ export interface MinimapMarks {
   berries: TilePoint[];
   /** The Sima's floor event, once its tile has been seen (not the hunter: it has no place). */
   event?: { tile: TilePoint; color: string; done: boolean } | null;
+  /** The floor's gate while it holds (core/gates.ts): its marked enemy (always shown, wherever it is), the dropped key, the locked doorways seen so far. */
+  gate?: { target: Vec2 | null; key: Vec2 | null; doors: TilePoint[] };
+}
+
+function gateMark(state: WorldState, memory: MinimapMemory): MinimapMarks['gate'] | undefined {
+  const gate = state.gate;
+  const grid = state.arena.tiles;
+  if (!gate || gate.done || !grid) return undefined;
+  const target = state.enemies.find((e) => e.id === gate.target && e.alive);
+  const doors = (gate.doors ?? []).map((i) => ({ x: i % grid.cols, y: Math.floor(i / grid.cols) })).filter((t) => isSeen(memory, t.x, t.y));
+  return {
+    target: target ? { x: target.pos.x / TILE, y: target.pos.y / TILE } : null,
+    key: gate.key ? { x: gate.key.x / TILE, y: gate.key.y / TILE } : null,
+    doors,
+  };
 }
 
 function eventMark(state: WorldState, memory: MinimapMemory): MinimapMarks['event'] {
@@ -92,6 +107,7 @@ export function minimapMarks(state: WorldState, memory: MinimapMemory, view: Rec
       .map((e) => ({ x: e.pos.x / TILE, y: e.pos.y / TILE })),
     berries: state.berries.map((b) => tileOf(b.pos)).filter((t) => isSeen(memory, t.x, t.y)),
     event: eventMark(state, memory),
+    ...(gateMark(state, memory) ? { gate: gateMark(state, memory)! } : {}),
   };
 }
 
@@ -102,6 +118,10 @@ const COLORS = {
   stairs: '#7fd8ff',
   enemy: '#ff5a5a',
   berry: '#5b8cff',
+  /** The floor's gate: its marked enemy and shut stairs, the locked doorways, the dropped key. */
+  gate: '#ff3b30',
+  gateDoor: '#9aa0b0',
+  key: '#f2c44c',
 };
 
 /**
@@ -131,8 +151,24 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, state: WorldState, me
   }
   const marks = minimapMarks(state, memory, view);
   if (marks.stairs) {
-    ctx.fillStyle = COLORS.stairs;
+    // Shut by the floor's gate: the stairs show in the seal's red.
+    ctx.fillStyle = marks.gate ? COLORS.gate : COLORS.stairs;
     ctx.fillRect(x0 + marks.stairs.x * px - 1, y0 + marks.stairs.y * px - 1, px + 2, px + 2);
+  }
+  if (marks.gate) {
+    ctx.fillStyle = COLORS.gateDoor;
+    for (const d of marks.gate.doors) ctx.fillRect(x0 + d.x * px, y0 + d.y * px, px, px);
+    const blink = 0.6 + 0.4 * Math.sin(timeMs / 140);
+    ctx.globalAlpha = blink;
+    if (marks.gate.target) {
+      ctx.fillStyle = COLORS.gate;
+      ctx.fillRect(Math.round(x0 + marks.gate.target.x * px - 2), Math.round(y0 + marks.gate.target.y * px - 2), 4, 4);
+    }
+    if (marks.gate.key) {
+      ctx.fillStyle = COLORS.key;
+      ctx.fillRect(Math.round(x0 + marks.gate.key.x * px - 2), Math.round(y0 + marks.gate.key.y * px - 2), 4, 4);
+    }
+    ctx.globalAlpha = 1;
   }
   ctx.fillStyle = COLORS.berry;
   for (const b of marks.berries) ctx.fillRect(x0 + b.x * px, y0 + b.y * px, px, px);

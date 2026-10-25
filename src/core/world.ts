@@ -4,6 +4,7 @@ import type { MoveId } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import type { UpgradeLevels } from '../data/upgrades';
 import { ELITE_TRAIT_DEFS, type Difficulty, type EliteTrait } from '../data/difficulty';
+import { LEADER } from '../data/encounters';
 import { eliteHp, rollTierOf, tierOf } from './difficulty';
 import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
@@ -125,13 +126,15 @@ export interface SpawnOptions {
   eliteHp?: number;
   /** A deep Sima elite: its attacks ignore roll i-frames. */
   pierceRoll?: true;
+  /** A group's leader (core/leaders.ts): more HP, a rally cry, bonus experience. */
+  leader?: true;
 }
 
 /** Adds an enemy with a deterministic id ("e<n>"). */
 export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, options: SpawnOptions = {}): WorldState {
   const species = SPECIES[speciesId];
   // The endless dungeon's deeper floors spawn tougher enemies, and so do harder tiers (a tough elite more so) and bigger parties (core/party.ts).
-  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite) * (options.elite ? (options.eliteHp ?? 1) : 1) * partyHpScale(state, speciesId);
+  const maxHp = species.maxHp * (state.enemyScale?.hp ?? 1) * tierOf(state).hp * eliteHp(options.elite) * (options.elite ? (options.eliteHp ?? 1) : 1) * partyHpScale(state, speciesId) * (options.leader ? LEADER.hp : 1);
   const enemy: EnemyState = {
     id: `e${state.nextId}`,
     species: speciesId,
@@ -149,6 +152,7 @@ export function spawnEnemy(state: WorldState, speciesId: SpeciesId, pos: Vec2, o
     ...(hasBossState(speciesId) ? { boss: initialBoss(speciesId) } : {}),
     ...(options.elite ? { elite: options.elite, ...(ELITE_TRAIT_DEFS[options.elite].armor ? { armor: true as const } : {}) } : {}),
     ...(options.pierceRoll ? { pierceRoll: true as const } : {}),
+    ...(options.leader ? { leader: { rallyMs: LEADER.rally.firstMs } } : {}),
   };
   return { ...state, nextId: state.nextId + 1, enemies: [...state.enemies, enemy] };
 }

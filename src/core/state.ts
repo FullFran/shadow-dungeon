@@ -1,4 +1,5 @@
 import type { Difficulty, EliteTrait } from '../data/difficulty';
+import type { BreakRule, GateKind } from '../data/encounters';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
 import type { CardOutcome, SpellCardId } from '../data/cards';
 import type { UpgradeLevels } from '../data/upgrades';
@@ -14,6 +15,7 @@ import type { GasState } from './gas';
 import type { PoisonState, ToxicPool } from './toxic';
 import type { EnemyScale } from './endless';
 import type { SimaEventState, SimaPactState } from './sima-events';
+import type { GateOutcome, GateState } from './gates';
 import type { ReviveState } from './revive';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
@@ -214,6 +216,16 @@ export interface EnemyState {
   strayMs?: number;
   /** Host only (core/bounds.ts): it was just brought back into its room (the renderer draws a poof while > 0). */
   warpMs?: number;
+  /**
+   * A group's leader (core/leaders.ts, data/encounters.ts `LEADER`): crowned,
+   * tougher, pays bonus experience; `rallyMs` until its next rally cry,
+   * `rallying` the ms into the cry's wind-up while it calls. Seeded on every peer.
+   */
+  leader?: { rallyMs: number; rallying?: number };
+  /** A follower: the id of the leader it follows while that one stands (it keeps its pace). */
+  band?: string;
+  /** A follower whose leader fell: its role's break rule and the ms it still lasts. */
+  broken?: { rule: BreakRule; ms: number };
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
@@ -347,6 +359,14 @@ export type GameEvent =
   /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean }
   | { type: 'enemyDefeated'; enemyId: string }
+  /** A leader winds up its rally cry (`windup`) or calls it (`cry`) (core/leaders.ts). */
+  | { type: 'leaderRally'; enemyId: string; phase: 'windup' | 'cry' }
+  /** The floor's gate opened (its enemy fell, its key was taken, its wave room cleared) or broke (out of reach too long): core/gates.ts. */
+  | { type: 'gateOpened'; kind: GateKind; outcome: GateOutcome }
+  /** The key gate's bearer fell: its key lies at `pos`. */
+  | { type: 'keyDropped'; pos: Vec2 }
+  /** A leader fell and its followers broke. */
+  | { type: 'leaderFell'; enemyId: string; followers: number }
   /** Sableye took a held item of the local player, or it came back (stolen.ts). */
   | { type: 'itemStolen'; item: ItemId; enemyId: string }
   | { type: 'itemReturned'; item: ItemId }
@@ -482,6 +502,8 @@ export interface WorldState {
   revive?: ReviveState;
   /** The spell card the local player is trying to capture (core/cards.ts `updateCapture`, every peer for itself): whether they were hit during it. */
   capture?: { enemyId: string; card: SpellCardId; hit: boolean };
+  /** Generated floors: this floor's mandatory kill, if any (core/gates.ts); the host resolves it, guests follow its snapshot. */
+  gate?: GateState;
   events: GameEvent[];
 }
 

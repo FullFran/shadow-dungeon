@@ -5,6 +5,7 @@ import { COINS } from '../../src/data/coins';
 import { ENEMY_BEHAVIOUR, POOCHYENA } from '../../src/data/enemies';
 import { eliteFor, encounterChance, encounterWaves, tickAiAt, tieredSpawns } from '../../src/core/difficulty';
 import { CRYPT_SPAWNS } from '../../src/data/dungeon';
+import { ROLES_PER_ROOM } from '../../src/data/encounters';
 import { landHitOnPlayer } from '../../src/core/hits';
 import { floorsOf } from '../../src/data/dungeons';
 import { startRun } from '../../src/core/run';
@@ -56,8 +57,15 @@ function fnv(text: string): string {
   return (h >>> 0).toString(16);
 }
 
-/** The digest the scripted runs below gave on main 043cb02 (before any tier code). A change to the simulation changes it: re-record it only on purpose. */
-const PRE_TIER_DIGEST = 'bebcc214';
+/**
+ * The digest the scripted Easy runs below give. Recorded on main 043cb02
+ * (before any tier code) as 'bebcc214'; re-recorded on purpose by
+ * meaningful encounters (feat/meaningful-encounters, 2026-10-25: fewer
+ * enemies per room spent on roles, odd/tasks/meaningful-encounters.md),
+ * which deliberately changes Easy floors. A change to the simulation changes
+ * it: re-record it only on purpose.
+ */
+const PRE_TIER_DIGEST = '530cec91';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
@@ -78,7 +86,7 @@ describe('difficulty tiers: easy is the game as it shipped', () => {
     }
   });
 
-  it('plays exactly as the game did before tiers existed (golden digest recorded on main 043cb02)', () => {
+  it('plays exactly as the recorded Easy game (golden digest, re-recorded on purpose by meaningful encounters)', () => {
     // 8 seeds x the six Crypt floors, 600 scripted steps each (the Crypt only: other dungeons' content may change on its own).
     const runs: string[] = [];
     for (const seed of [1, 7, 42, 99, 1234, -5, 2026, 31337])
@@ -151,10 +159,15 @@ describe('difficulty tiers: harder tiers', () => {
 
   it('never adds enemies: harder rooms have the same count, tougher enemies instead (user feedback 2026-10-25)', () => {
     for (const d of DIFFICULTIES) expect(TIERS[d].extraPerRoom).toBe(0);
-    expect(tieredSpawns(CRYPT_SPAWNS, 'nightmare')).toBe(CRYPT_SPAWNS);
-    expect(tieredSpawns(CRYPT_SPAWNS, 'easy')).toBe(CRYPT_SPAWNS);
-    expect(tieredSpawns({ ...CRYPT_SPAWNS }, 'hard')).toEqual(CRYPT_SPAWNS);
-    for (const seed of [1, 2, 3, 4]) expect(startRun(seed, { difficulty: 'nightmare' }, 2).world.enemies.map((e) => e.species)).toEqual(startRun(seed, {}, 2).world.enemies.map((e) => e.species));
+    // Meaningful encounters: the room cap and budget never change with the tier; harder tiers only mix more roles (research P2).
+    for (const d of DIFFICULTIES) {
+      const tiered = tieredSpawns(CRYPT_SPAWNS, d);
+      expect({ ...tiered, budget: { ...tiered.budget!, maxRoles: undefined } }).toEqual({ ...CRYPT_SPAWNS, budget: { ...CRYPT_SPAWNS.budget!, maxRoles: undefined } });
+      expect(tiered.budget!.maxRoles).toBe(ROLES_PER_ROOM[d]);
+    }
+    const count = (d: Difficulty) => [...Array(40).keys()].reduce((sum, seed) => sum + startRun(seed + 1, { difficulty: d }, 2).world.enemies.length, 0);
+    expect(count('nightmare')).toBeLessThanOrEqual(count('easy') * 1.15);
+    for (const seed of [1, 2, 3, 4]) expect(startRun(seed, { difficulty: 'normal' }, 2).world.enemies.map((e) => e.species)).toEqual(startRun(seed, {}, 2).world.enemies.map((e) => e.species));
   });
 
   it('makes elites from the floor seed only (the same on every peer), none on easy, more on nightmare', () => {

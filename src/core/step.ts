@@ -23,6 +23,8 @@ import { settleStolen } from './stolen';
 import { guestEnemyContacts } from './victim';
 import { updateSimaEvent } from './sima-events';
 import { keepEnemiesInBounds } from './bounds';
+import { breakBands, updateLeaders } from './leaders';
+import { updateGate } from './gates';
 import { endlessSpawns } from './endless';
 import { ENDLESS } from '../data/endless';
 import { SIMA_EVENTS } from '../data/sima';
@@ -51,9 +53,9 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const combat = updateCombat({ ...walked, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest'
-      ? guestEnemyContacts(combat, events)
+      ? breakBands(guestEnemyContacts(combat, events), events)
       : // The out-of-bounds safety net runs last on the host (core/bounds.ts): no enemy ends a step out of reach.
-        keepEnemiesInBounds(simaEventStep(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs), dtMs);
+        keepEnemiesInBounds(updateGate(simaEventStep(updateLeaders(updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events), dtMs, events), dtMs), dtMs, events), dtMs);
   const pulled = wormholePull(enemies, dtMs, NIHILEGO);
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFlood(updateFog(updateCollapse(pulled, dtMs, events), dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   // Co-op: a fainted local player may be got up by an ally standing by (core/revive.ts; nothing solo).

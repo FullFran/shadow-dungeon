@@ -1,0 +1,69 @@
+# Meaningful encounters
+
+## Objective
+Fewer enemies that matter: rooms spend a threat budget on roles and form a readable combo of 1 to 3 enemies; some groups have a leader whose fall breaks its followers; some floors need a kill before the stairs open. XP still comes from killing and the total per floor stays about the same.
+
+## Problem
+Too many fodder enemies make clearing tedious, so players skip them and reach the deep floors and guardians under-levelled (user feedback 2026-10-25).
+
+## Why
+User decision 2026-10-25: "menos enemigos, pero que importen"; XP must keep coming from kills, and killing must sometimes be mandatory. docs/souls-difficulty-research.md P1 (roles and threat budget), P2 (roles per room by tier), P3 (behaviour elites).
+
+## Scope
+- T1 Roles for every spawnable species (`src/data/encounters.ts`), a per-room threat budget in each dungeon's spawn data that buys roles instead of raw counts, rest rooms, front/back placement by role, about 35-45 % fewer enemies per floor in every dungeon, XP per enemy and Pokémonedas per enemy raised so XP per floor stays about equal. The Easy golden digest moves on purpose.
+- T2 Leaders: some groups get a leader (more HP, crown and aura, a rally cry that heals and hurries its followers, bonus XP); its fall breaks the followers by one rule per role; more leaders with depth.
+- T3 Mandatory kills: at most one gate per floor (sealed stairs until a marked enemy dies, a locked stairs room whose key an elite carries, or the Sima's wave room), never on floor 1 or urgent floors; host-authoritative; an unreachable gate enemy for 60 s breaks the gate without reward.
+- T4 Tuning and docs: per-dungeon numbers in data, GDD §3 "Encuentros con sentido", README; tests.
+
+## Constraints
+- Core pure and deterministic; architecture test green; `npm test` and `npm run build` green.
+- Edits scoped to spawning, encounters and progression data plus the allowed adapters; additive.
+- Protocol additions optional and back-compatible.
+- One work-unit commit per task, Conventional Commits, explicit paths, no AI attribution, no push.
+- About 400 authored lines per task is advisory only.
+
+## Tasks
+- [x] T1 Roles + threat budget + XP/coin parity (route: inline in this writer; RED: 4 existing tests pinned the old counts/XP/digest and failed, updated on purpose; new tests/core/encounters.test.ts)
+- [x] T2 Leaders and break rules (route: inline; RED: 3 existing tests broke where a leader's extra HP or crowned spawns showed (fixed to pick non-leaders), new tests/core/leaders.test.ts written with the code)
+- [x] T3 Floor gates (route: inline; RED: 11 existing tests failed once gates shut stairs or locked doors, fixed with a test helper `openGate` and door-aware map comparisons; new tests/core/gates.test.ts)
+- [x] T4 Tuning, docs, screenshots (route: inline; passive docs: structural readback; gate HUD line moved to the top once the floor card fades, found in the screenshots)
+
+## Acceptance criteria
+- Every room of a generated floor holds 0 to 3 enemies, spends at most its budget, at most the tier's roles.
+- Average enemies per generated floor 55-65 % of the pre-change average in every dungeon (pinned baseline, 150 seeds, Easy).
+- Average XP per generated floor within ±15 % of the baseline in every dungeon.
+- Leader fall applies its role's break rule; leader pays bonus XP; leader chance rises with depth.
+- Gate never on floor 1, never urgent, at most one; stairs blocked until resolved; 60 s unreachable breaks it without reward; guest follows host state.
+
+## Checks
+`npm test`, `npm run build`.
+
+## Baseline (main be4e833, Easy, 150 seeds, enemies / XP per generated floor)
+- Crypt: 9.06 / 236 (f1 6.1/66, f2 6.0/93, f4 10.1/284, f5 14.0/502)
+- Forest: 10.93 / 306
+- Caves: 11.63 / 459
+- Swamp: 10.88 / 438
+- Sima (floors 1-24): 9.48 / 924
+
+## After T1 (Easy, 150 seeds, enemies / XP per generated floor; ratio vs baseline)
+- Crypt 5.42 / 232 (0.60 / 0.98); Forest 6.80 / 320 (0.62 / 1.05); Caves 7.38 / 442 (0.63 / 0.96); Swamp 6.67 / 424 (0.61 / 0.97); Sima 5.93 / 895 (0.63 / 0.97).
+
+## After T2 (XP includes the leader bonus)
+- Crypt 5.58 / 237 (0.62 / 1.00); Forest 6.80 / 315 (0.62 / 1.03); Caves 7.38 / 431 (0.63 / 0.94); Swamp 6.67 / 416 (0.61 / 0.95); Sima 5.93 / 879 (0.63 / 0.95).
+- Floor 1 pays less than before (Crypt 51 vs 66) and deep floors more; the average holds.
+
+## Decisions
+- Roles live in `src/data/encounters.ts` (`SPECIES_ROLE`); no species is a natural support, the leader's rally cry plays that part.
+- Budget per room = base + perDepth × (depth − 1) + int jitter; max 3 bodies; roles per room by tier (2 up to Normal, 3 from Hard), the tier never adds bodies.
+- XP parity through a per-role XP scale (`ROLE_XP_SCALE`) applied in `xpFor`; guardians and mid-bosses have no role and pay as before. Pokémonedas per enemy 1 → 1.65.
+- Leaders: one per group of 2+, the highest-threat enemy, chance rising with depth (never on floor 1); ×1.6 HP, ×2 XP, crown and gold ring; signature move = rally cry (0.9 s wind-up, heals followers in 192 px by 15 % and resets their cooldowns, every 7.5 s). Followers run 1.1× while it stands. Break rule per role: brute/swarm/support stagger 1.5 s, skirmisher/ranged slow (0.6× clock) 6 s, controller only loses the pace. Seeded on every peer (no wire change); host runs cries, every peer breaks bands when the leader is seen down.
+- Gates: `chooseGate` from the run seed (salted), per-dungeon chance and kind weights by floor in `DungeonDef.gates`; never floor 1, never urgent floors, never fixed rooms, never a Sima hunter floor; a key gate beside a Sima wave room becomes a seal. Wave gate is Sima-only (it reuses the Sima's wave-room event). The marked enemy is the floor's leader, else an elite, else its highest threat; its stats are not changed (Easy keeps zero elites), it is marked by a red seal or a key over its head and on the minimap. The key drops where the bearer fell; touching it opens the doorways. Marked enemy pays ×1.5 XP unless its gate broke.
+- Out-of-bounds safety: own reachability check on the players' flow field (tile or a 4-neighbour reachable, off-map = unreachable); 60 s in a row breaks the gate (`outcome: 'broken'`), no bonus. It does not depend on the parallel out-of-bounds hotfix.
+- Co-op: every peer places the same gate from the seed; the host resolves it and sends `g: [done, outcome, keyX, keyY]` in its snapshot (optional, older peers ignore it); guests open their door tiles from it.
+- Easy golden digest re-recorded on purpose ('bebcc214' → new value per task).
+
+## Progress
+- Branch `feat/meaningful-encounters` from be4e833. T1 e8e70a2, T2 a5af1cb, T3 048aa66, T4 (this commit).
+- Verification at T4: `npm test` 144 files / 1400 tests passed; `npm run build` built.
+- Screenshots (headless Firefox over WebDriver BiDi, muted profile and settings): /tmp/encounters/leader-group.png (Sima 19, seed 2), sealed-stairs.png (Sima 4, seed 19), key-door.png (Sima 13, seed 56). Taken on the Sima with `?nearEvent=1` because the app cannot place the camera elsewhere and src/app is outside this task's edit surface.
+- Pending: Engram mirror `odd/meaningful-encounters/tasks` (written by the writer if Engram is reachable, otherwise the parent's). Not playtested by hand: leader rally timing, break readability and the 60 s safety in a real stuck case. No sounds for the new events (src/adapters/audio.ts is outside the edit surface). The floor card itself (src/adapters/card.ts, src/app/game.ts) is untouched; the gate line is drawn by the renderer under it.
