@@ -1,0 +1,22 @@
+import type { SpeciesId } from './species';
+
+/**
+ * In-run progression (docs/gdd.md §3 "Progresión dentro de la partida"):
+ * experience from defeated enemies and the level curve. Everything resets
+ * when the run ends. Values are provisional.
+ */
+export const PROGRESSION = {
+  /** Base experience per defeated enemy, by species (the player species gives none). */
+  xpBySpecies: { mimikyu: 0, poochyena: 10, gastly: 12, aegislash: 60 } as Record<SpeciesId, number>,
+  /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
+  xpPerDepth: 0.5,
+  /**
+   * Total experience needed to reach each level: index 0 is level 1 (the run
+   * start), the last entry is the level cap.
+   */
+  levelXp: [0, 25, 60, 110, 175, 255, 350, 460, 585, 725] as readonly number[],
+  /** Max HP gained per level above 1 (healed at once on level-up). */
+  hpPerLevel: 8,
+  /** Damage multiplier gained per level above 1 (additive: level 5 hits 1.2 times as hard). */
+  damagePerLevel: 0.05,
+} as const;

@@ -25,6 +25,7 @@ describe('event -> sound mapping', () => {
     [{ type: 'enemyTelegraph', enemyId: 'e', attack: 'bite', durationMs: 400 }, 'telegraph'],
     [{ type: 'enemyAttack', enemyId: 'e', attack: 'bite' }, 'enemyAttack'],
     [{ type: 'bossStance', enemyId: 'e', stance: 'blade' }, 'stance'],
+    [{ type: 'levelUp', level: 2 }, 'levelUp'],
   ];
   for (const [event, sound] of cases) {
     it(`${event.type} -> ${sound}`, () => expect(soundFor(event)).toBe(sound));

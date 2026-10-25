@@ -32,6 +32,8 @@
   "hud.blocked": "Blocked!",
   "hud.perfectDodge": "Perfect dodge!",
   "hud.disguiseBroken": "Disguise broken!",
+  "hud.level": "Lv.",
+  "hud.levelUp": "{name} grew to level {level}!",
   "hud.exitOpen": "Exit",
   "hud.key.fast": "LMB / Q",
   "hud.key.heavy": "RMB / E",

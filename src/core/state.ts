@@ -118,6 +118,10 @@ export interface PlayerState {
   action: ActionState | null;
   /** Disguise passive: true once the free hit of this room has been used. */
   disguiseBroken: boolean;
+  /** In-run level (progression.ts), 1 at the run start. */
+  level: number;
+  /** Total experience gained this run. */
+  xp: number;
 }
 
 export interface EnemyState {
@@ -226,6 +230,8 @@ export type GameEvent =
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
   | { type: 'enemyDefeated'; enemyId: string }
+  /** The local player reached `level` (progression.ts). */
+  | { type: 'levelUp'; level: number }
   /** Collapsed ground hurt the player (not an attack: no dodge, no Disguise). */
   | { type: 'collapseHurt'; damage: number }
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number }
@@ -293,6 +299,10 @@ export interface WorldState {
   appliedClaims: readonly string[];
   /** Real (unscaled) simulation time. */
   timeMs: number;
+  /** Floor of the run being played (1-based): scales the experience enemies give. */
+  depth: number;
+  /** Ids of the enemies of this floor whose defeat already gave experience (each pays once). */
+  credited: readonly string[];
   rng: number;
   /** Counter for deterministic entity ids. */
   nextId: number;

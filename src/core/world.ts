@@ -47,6 +47,8 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     slotsHeld: equipped.map(() => false),
     action: null,
     disguiseBroken: false,
+    level: 1,
+    xp: 0,
   };
 }
 
@@ -68,6 +70,8 @@ export function createWorld({
     remotes: [],
     appliedClaims: [],
     timeMs: 0,
+    depth: 1,
+    credited: [],
     rng: seedRng(seed),
     nextId: 1,
     arena,
@@ -115,6 +119,7 @@ export function enterRoom(state: WorldState): WorldState {
     ...state,
     enemies: [],
     projectiles: [],
+    credited: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
     player: { ...state.player, disguiseBroken: false, action: null },
     collapse: undefined,

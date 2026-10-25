@@ -59,7 +59,8 @@ export const isBossFloor = (run: RunState): boolean => {
 /** Loads the run's current floor into the world (the heal is the caller's: none on floor 1). */
 function enterFloor(world: WorldState, run: RunState): WorldState {
   const plan = floorPlanOf(run);
-  return plan.kind === 'generated' ? loadFloor(world, generateFloor(floorSeed(run.seed, run.floor), run.floor), run.kind) : loadRoom(world, plan.room);
+  const deeper = { ...world, depth: run.floor };
+  return plan.kind === 'generated' ? loadFloor(deeper, generateFloor(floorSeed(run.seed, run.floor), run.floor), run.kind) : loadRoom(deeper, plan.room);
 }
 
 /** Starts a run on floor 1 (or `floor`, for development: the same floor that seed would reach). */

@@ -6,6 +6,7 @@ import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
+import { levelDamage } from './progression';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -191,7 +192,7 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
       {
         power: move.power,
         type: move.type,
-        multiplier: charge.damageMultiplier,
+        multiplier: charge.damageMultiplier * levelDamage(state.player.level),
         hitstunMs: move.hitstunMs,
         knockback: move.knockback,
         from: origin,
@@ -213,7 +214,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     type: move.type,
     attackerTypes: state.player.types,
     power: move.power,
-    damageMultiplier: charge.damageMultiplier,
+    damageMultiplier: charge.damageMultiplier * levelDamage(state.player.level),
     pos: add(state.player.pos, scale(action.aimDir, PLAYER.radius + radius)),
     vel: scale(action.aimDir, move.hitbox.speed * charge.speedMultiplier),
     radius,

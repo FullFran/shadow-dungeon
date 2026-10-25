@@ -6,6 +6,7 @@ import { updateFlow } from './flow';
 import { landHitOnPlayer } from './hits';
 import { updateLock } from './lockon';
 import { updatePlayer } from './player';
+import { creditDefeats } from './progression';
 import type { GameEvent, IncomingHit, PlayerInput, WorldState } from './state';
 import { guestEnemyContacts } from './victim';
 
@@ -17,7 +18,8 @@ export { enemyTimeScale } from './time';
  * results. `dtMs` is real time; enemy-side systems use `enemyTimeScale`.
  * A host (and solo) runs the enemies against every present player; a guest
  * runs only its own player and lands the enemy attacks of the last host
- * snapshot on it (victim side, victim.ts).
+ * snapshot on it (victim side, victim.ts). Every peer then credits its own
+ * player with the enemies seen down (progression.ts).
  */
 export function step(state: WorldState, input: PlayerInput, dtMs: number): WorldState {
   const events: GameEvent[] = [];
@@ -27,7 +29,7 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const combat = updateCombat({ ...state, player, lock }, input, dtMs, events);
   const enemies =
     state.role === 'guest' ? guestEnemyContacts(combat, events) : updateEnemies(updateFlow(wakeEnemies(combat)), dtMs, events);
-  const fought = updateCollapse(enemies, dtMs, events);
+  const fought = creditDefeats(updateCollapse(enemies, dtMs, events), events);
   return {
     ...fought,
     tick: state.tick + 1,

@@ -35,14 +35,15 @@ export interface FloatingNumber {
   ageMs: number;
 }
 
-export type FlashKind = 'perfectDodge' | 'disguiseBroken';
+export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp';
 
 export interface JuiceState {
   hitstopMs: number;
   shakeMs: number;
   shakePx: number;
   numbers: readonly FloatingNumber[];
-  flash: { kind: FlashKind; ageMs: number } | null;
+  /** `level`: the level reached, for the level-up text. */
+  flash: { kind: FlashKind; ageMs: number; level?: number } | null;
 }
 
 export const initialJuice = (): JuiceState => ({ hitstopMs: 0, shakeMs: 0, shakePx: 0, numbers: [], flash: null });
@@ -90,6 +91,9 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         break;
       case 'perfectDodge':
         next = { ...next, flash: { kind: 'perfectDodge', ageMs: 0 } };
+        break;
+      case 'levelUp':
+        next = { ...next, flash: { kind: 'levelUp', ageMs: 0, level: event.level } };
         break;
       default:
         break;

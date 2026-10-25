@@ -3,14 +3,26 @@ import { MOVES } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { bossBar } from '../core/boss';
+import { levelProgress } from '../core/progression';
 import type { Rect, WorldState } from '../core/state';
-import { JUICE, type JuiceState } from './juice';
+import { JUICE, type FlashKind, type JuiceState } from './juice';
 
 /** Fraction of a bar to fill, clamped to [0, 1]. */
 export const barFill = (value: number, max: number): number => (max <= 0 ? 0 : Math.min(1, Math.max(0, value / max)));
 
 /** "Planta 2" / "Floor 2". */
 export const floorLabel = (floor: number): string => `${t('hud.floor')} ${floor}`;
+
+/** "¡Mimikyu subió al nivel 3!" / "Mimikyu grew to level 3!". */
+export const levelUpText = (species: string, level: number): string =>
+  t('hud.levelUp').replace('{name}', t(`species.${species}`)).replace('{level}', String(level));
+
+const FLASH_COLORS: Record<FlashKind, string> = { perfectDodge: '#b9a4ff', disguiseBroken: '#ffd36b', levelUp: '#7fd8ff' };
+
+function flashText(flash: NonNullable<JuiceState['flash']>, species: string): string {
+  if (flash.kind === 'levelUp') return levelUpText(species, flash.level ?? 1);
+  return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
+}
 
 /** Key hint per slot index, from i18n. */
 const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy'];
@@ -34,7 +46,7 @@ function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 
 /**
  * HUD in view units (the caller has applied the pixel scale): HP, stamina,
- * Disguise state, floor counter, move slots with the charge level, boss bar and flashes.
+ * level and XP bar, Disguise state, floor counter, move slots with the charge level, boss bar and flashes.
  */
 export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, view: Rect, floor: number): void {
   const { player } = state;
@@ -48,8 +60,12 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
   label(ctx, t('hud.stamina'), 8, 26);
   bar(ctx, 34, 21, 90, 5, barFill(player.stamina, TUNING.stamina.max), '#f2c94c');
 
+  const progress = levelProgress(player.xp);
+  label(ctx, `${t('hud.level')} ${player.level}`, 8, 38, '#7fd8ff');
+  bar(ctx, 34, 33, 90, 3, progress.fill, '#7fd8ff');
+
   const disguise = player.disguiseBroken ? t('hud.disguise.broken') : t('hud.disguise.intact');
-  label(ctx, `${t('passive.disguise')}: ${disguise}`, 8, 40, player.disguiseBroken ? '#9aa0a6' : '#ffd36b');
+  label(ctx, `${t('passive.disguise')}: ${disguise}`, 8, 50, player.disguiseBroken ? '#9aa0a6' : '#ffd36b');
 
   // Move slots, bottom left.
   M0_SLOT_LAYOUT.forEach((_, index) => {
@@ -85,8 +101,7 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const life = juice.flash.ageMs / JUICE.flashMs;
     ctx.globalAlpha = 1 - life;
     ctx.font = 'bold 14px monospace';
-    const text = juice.flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
-    label(ctx, text, view.width / 2, 60 - 8 * life, juice.flash.kind === 'perfectDodge' ? '#b9a4ff' : '#ffd36b', 'center');
+    label(ctx, flashText(juice.flash, player.species), view.width / 2, 60 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
     ctx.globalAlpha = 1;
   }
 }

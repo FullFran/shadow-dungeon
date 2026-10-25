@@ -32,6 +32,8 @@
   "hud.blocked": "¡Bloqueado!",
   "hud.perfectDodge": "¡Esquiva perfecta!",
   "hud.disguiseBroken": "¡El disfraz se ha roto!",
+  "hud.level": "Nv.",
+  "hud.levelUp": "¡{name} subió al nivel {level}!",
   "hud.exitOpen": "Salida",
   "hud.key.fast": "Clic izq. / Q",
   "hud.key.heavy": "Clic der. / E",

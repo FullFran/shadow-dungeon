@@ -9,7 +9,8 @@ import { toPlayerInput, wheelPixels, type RawInput } from '../../src/adapters/in
 import { applyEvents, initialJuice, JUICE, shakeOffset, tickJuice } from '../../src/adapters/juice';
 import { attackFrame, directionRow, enemyAnim, enemySprite, frameAtTime, playerAnim } from '../../src/adapters/sprite-anim';
 import { cameraView, interpolatedPositions, pixelScaleFor, screenToWorld } from '../../src/adapters/view';
-import { barFill } from '../../src/adapters/hud';
+import { barFill, levelUpText } from '../../src/adapters/hud';
+import { setLanguage } from '../../src/i18n';
 import { IDLE } from '../core/helpers';
 
 describe('direction rows', () => {
@@ -204,6 +205,18 @@ describe('juice', () => {
     juice = tickJuice(juice, 2000);
     expect(juice).toEqual(initialJuice());
     expect(shakeOffset(juice, () => 1)).toEqual(vec(0, 0));
+  });
+});
+
+describe('level-up feedback', () => {
+  it('flashes the level reached and names the species', () => {
+    const juice = applyEvents(initialJuice(), [{ type: 'levelUp', level: 3 }], vec(0, 0));
+    expect(juice.flash).toEqual({ kind: 'levelUp', ageMs: 0, level: 3 });
+    setLanguage('es');
+    expect(levelUpText('mimikyu', 3)).toBe('¡Mimikyu subió al nivel 3!');
+    setLanguage('en');
+    expect(levelUpText('mimikyu', 3)).toBe('Mimikyu grew to level 3!');
+    setLanguage('es');
   });
 });
 
