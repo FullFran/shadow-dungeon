@@ -7,6 +7,7 @@ import { partyDamageScale } from './party';
 import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
+import { buffDamageTaken } from './boosts';
 
 const PERFECT = TUNING.perfectDodge;
 const PASSIVES = TUNING.passives;
@@ -33,6 +34,9 @@ export function landHitOnPlayer(
   if (harder !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * harder)) };
   // A Sima pact's curse may make them hit harder.
   if (state.simaPact && state.simaPact.enemyDamage !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * state.simaPact.enemyDamage)) };
+  // A guard buff (Bulk Up, the boost slot) takes the edge off before the cap (never below 1): the cap stays the last word.
+  const guard = buffDamageTaken(player);
+  if (guard !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * guard)) };
   // The one-hit cap (P5.6), last of all the multipliers: no single hit takes more than a share of the HP a player of the
   // floor's expected level would have (core/fairness.ts). An under-levelled player can still be one-shot; a levelled one never.
   const cap = hitCap(speciesMaxHpAt(player.species, state.referenceLevel ?? 1));

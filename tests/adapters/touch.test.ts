@@ -72,25 +72,25 @@ describe('auto-aim cone', () => {
     const enemies = [enemy('a', 180, 120)];
     const on = touchToPlayerInput(frame({ fast: true }), ctx({ enemies, autoAim: true }));
     expect(on.aim).toEqual({ x: 180, y: 120 });
-    expect(on.slotMouse).toEqual([true, false]);
+    expect(on.slotMouse).toEqual([true, false, false, false]);
     const off = touchToPlayerInput(frame({ fast: true }), ctx({ enemies, autoAim: false }));
-    expect(off.slotMouse).toEqual([false, false]);
+    expect(off.slotMouse).toEqual([false, false, false, false]);
     const locked = touchToPlayerInput(frame({ heavy: true }), ctx({ enemies, autoAim: true, locked: true }));
-    expect(locked.slotMouse).toEqual([false, false]);
+    expect(locked.slotMouse).toEqual([false, false, false, false]);
   });
 });
 
 describe('touch -> PlayerInput', () => {
   it('maps an idle frame to nothing pressed', () => {
     const input = touchToPlayerInput(IDLE_TOUCH, ctx());
-    expect(input).toMatchObject({ move: { x: 0, y: 0 }, roll: false, slots: [false, false], slotMouse: [false, false], lock: false, click: false, wheel: 0, view });
+    expect(input).toMatchObject({ move: { x: 0, y: 0 }, roll: false, slots: [false, false, false, false], slotMouse: [false, false, false, false], lock: false, click: false, wheel: 0, view });
   });
 
   it('passes the analogue move, roll and the held slots', () => {
     const input = touchToPlayerInput(frame({ move: { x: 0.5, y: -0.25 }, roll: true, fast: true, heavy: true }), ctx());
     expect(input.move).toEqual({ x: 0.5, y: -0.25 });
     expect(input.roll).toBe(true);
-    expect(input.slots).toEqual([true, true]);
+    expect(input.slots).toEqual([true, true, false, false]);
   });
 
   it('without a cone target aims along the facing, so the lock picks the enemy in front', () => {
@@ -110,7 +110,7 @@ describe('touch -> PlayerInput', () => {
     const input = touchToPlayerInput(frame({ tap: { x: 200, y: 100 } }), ctx({ view: { ...view, x: 30, y: 10 } }));
     expect(input.click).toBe(true);
     expect(input.aim).toEqual({ x: 130, y: 60 });
-    expect(input.slots).toEqual([false, false]);
+    expect(input.slots).toEqual([false, false, false, false]);
   });
 });
 
@@ -127,8 +127,8 @@ describe('merging touch with keyboard and mouse', () => {
     const t = touchToPlayerInput(frame({ move: { x: 1, y: 0 }, heavy: true }), ctx({ enemies: [enemy('a', 150, 100)], autoAim: true }));
     const merged = mergeInputs(keyboard(['KeyS', 'KeyQ']), t);
     expect(merged.move).toEqual({ x: 1, y: 0 });
-    expect(merged.slots).toEqual([true, true]);
-    expect(merged.slotMouse).toEqual([false, true]);
+    expect(merged.slots).toEqual([true, true, false, false]);
+    expect(merged.slotMouse).toEqual([false, true, false, false]);
     expect(merged.aim).toEqual({ x: 150, y: 100 });
   });
 });

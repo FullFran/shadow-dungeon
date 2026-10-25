@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { validateLoadout } from '../../src/core/loadout';
-import { M0_SLOT_LAYOUT } from '../../src/data/slots';
+import { M0_SLOT_LAYOUT, PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
 import { SPECIES } from '../../src/data/species';
 
 const mimikyu = SPECIES.mimikyu;
 
 describe('loadout validation', () => {
   it('accepts the default and every fast x heavy combination of the movepool', () => {
-    expect(validateLoadout(mimikyu, M0_SLOT_LAYOUT, mimikyu.defaultLoadout)).toEqual([]);
+    expect(validateLoadout(mimikyu, PLAYER_SLOT_LAYOUT, mimikyu.defaultLoadout)).toEqual([]);
     for (const fast of ['shadow-claw', 'shadow-sneak']) {
       for (const heavy of ['play-rough', 'shadow-ball']) {
         expect(validateLoadout(mimikyu, M0_SLOT_LAYOUT, [fast, heavy])).toEqual([]);

@@ -9,7 +9,7 @@ import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, enterRoom, spawnEnemy } from '../../src/core/world';
 import { ITEM_EFFECTS } from '../../src/data/items';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { M0_SLOT_LAYOUT } from '../../src/data/slots';
+import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
 import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { ticksFor } from './helpers';
@@ -68,7 +68,7 @@ describe('starter species data', () => {
     const kinds = species.movepool.map((m) => MOVES[m].slot);
     expect(kinds.filter((k) => k === 'fast')).toHaveLength(2);
     expect(kinds.filter((k) => k === 'heavy')).toHaveLength(2);
-    expect(validateLoadout(species, M0_SLOT_LAYOUT, species.defaultLoadout)).toEqual([]);
+    expect(validateLoadout(species, PLAYER_SLOT_LAYOUT, species.defaultLoadout)).toEqual([]);
     expect(species.passive).toBeDefined();
   });
 

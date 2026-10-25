@@ -1,5 +1,5 @@
 import { MOVES, type MoveId } from '../data/moves';
-import { M0_SLOT_LAYOUT } from '../data/slots';
+import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
 import { SPRITE_KEYS, SPRITES } from '../data/sprites';
 import type { PokemonType } from '../data/types';
@@ -101,7 +101,8 @@ function moveCard(id: MoveId, equipped: boolean): HTMLElement {
       typeBadge(move.type),
       equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
     ]),
-    h('div', { className: 'move-desc' }, [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`]),
+    // A boost deals no damage: no power line, just its stats.
+    h('div', { className: 'move-desc' }, move.power > 0 ? [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`] : [stats]),
     h('div', { className: 'move-desc' }, [t(`move.${id}.description`)]),
     h('div', { className: 'move-desc move-matchup' }, [matchup]),
   ]);
@@ -158,9 +159,12 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 
   const items = (): ListItem[] => {
     const out: ListItem[] = [];
-    M0_SLOT_LAYOUT.forEach((kind, slot) => {
+    PLAYER_SLOT_LAYOUT.forEach((kind, slot) => {
+      // A slot the species has no move for (boost or area) is left out and stays empty.
+      const choices = slotOptions(kind, species.id);
+      if (choices.length === 0) return;
       out.push({ header: true, label: t(`slot.${kind}`) });
-      for (const id of slotOptions(kind, species.id)) {
+      for (const id of choices) {
         const equipped = loadout[slot] === id;
         out.push({
           label: moveCard(id, equipped),

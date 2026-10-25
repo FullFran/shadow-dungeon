@@ -71,7 +71,7 @@ export interface SpeciesDef {
   speedScale?: number;
   /** Moves the species can equip; empty for enemy-only species in M0. */
   movepool: readonly MoveId[];
-  /** Default loadout, aligned with the slot layout. */
+  /** Default loadout, aligned with the slot layout (fast, heavy, boost, area; null = empty slot). */
   defaultLoadout: readonly (MoveId | null)[];
   passive?: PassiveId;
 }
@@ -90,8 +90,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'mimikyu',
     spentSprite: 'mimikyuBusted',
-    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball'],
-    defaultLoadout: ['shadow-claw', 'play-rough'],
+    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball', 'swords-dance', 'dazzling-gleam', 'shadow-force'],
+    defaultLoadout: ['shadow-claw', 'play-rough', 'swords-dance', 'dazzling-gleam'],
     passive: 'disguise',
   },
   zorua: {
@@ -101,8 +101,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'zorua',
     speedScale: 1.12,
-    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play'],
-    defaultLoadout: ['feint-attack', 'night-daze'],
+    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play', 'nasty-plot', 'dark-pulse', 'snarl'],
+    defaultLoadout: ['feint-attack', 'night-daze', 'nasty-plot', 'dark-pulse'],
     passive: 'illusion',
   },
   litwick: {
@@ -112,8 +112,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'litwick',
     speedScale: 0.95,
-    movepool: ['ember', 'astonish', 'hex', 'inferno'],
-    defaultLoadout: ['ember', 'hex'],
+    movepool: ['ember', 'astonish', 'hex', 'inferno', 'will-o-wisp', 'flamethrower', 'heat-wave'],
+    defaultLoadout: ['ember', 'hex', 'will-o-wisp', 'flamethrower'],
     passive: 'flash-fire',
   },
   cubone: {
@@ -123,8 +123,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'cubone',
     speedScale: 0.92,
-    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum'],
-    defaultLoadout: ['bone-club', 'bonemerang'],
+    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum', 'bulk-up', 'earthquake', 'bulldoze'],
+    defaultLoadout: ['bone-club', 'bonemerang', 'bulk-up', 'earthquake'],
     passive: 'battle-armor',
   },
   poochyena: {

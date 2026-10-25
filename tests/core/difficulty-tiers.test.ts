@@ -50,6 +50,16 @@ function telegraphLength(d?: Difficulty): number {
   throw new Error('no attack');
 }
 
+/**
+ * The world as the two-slot game saw it. Four-slots added the boost and area
+ * slots (two more loadout and held entries); `play` never presses them, so
+ * with those entries projected out the digest still proves the same behaviour.
+ */
+const twoSlots = (w: Omit<WorldState, 'difficulty'>): Omit<WorldState, 'difficulty'> => ({
+  ...w,
+  player: { ...w.player, loadout: w.player.loadout.slice(0, 2), slotsHeld: w.player.slotsHeld.slice(0, 2) },
+});
+
 /** FNV-1a of a text, as hex. */
 function fnv(text: string): string {
   let h = 0x811c9dc5;
@@ -99,7 +109,7 @@ describe('difficulty tiers: easy is the game as it shipped', () => {
       for (const dungeon of [CRYPT])
         for (let floor = 1; floor <= floorsOf(dungeon); floor++) {
           const easy = startRun(seed, { difficulty: 'easy' }, floor, dungeon.id);
-          runs.push(fnv(JSON.stringify(plain(play(easy.world, 600))) + JSON.stringify(easy.run)));
+          runs.push(fnv(JSON.stringify(twoSlots(plain(play(easy.world, 600)))) + JSON.stringify(easy.run)));
         }
     expect(fnv(runs.join(','))).toBe(PRE_TIER_DIGEST);
   });

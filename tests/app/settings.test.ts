@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browserStore, memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, withSpecies, withStarter } from '../../src/app/settings';
-import { SPECIES } from '../../src/data/species';
+import { SPECIES, type SpeciesId } from '../../src/data/species';
+import type { MoveId } from '../../src/data/moves';
 
 describe('storage port', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -48,10 +49,12 @@ describe('settings', () => {
     expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
   });
 
+  /** A two-move save as it loads since four-slots: boost and area take the species defaults. */
+  const pad = (species: SpeciesId, two: readonly MoveId[]): (MoveId | null)[] => [...two, ...SPECIES[species].defaultLoadout.slice(2)];
   const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: 'easy' };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
+    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, ...SOUND });
   });
 
   it('round-trips through the store', () => {
@@ -62,7 +65,7 @@ describe('settings', () => {
       clickToLock: false,
       species: 'mimikyu' as const,
       starterChosen: true,
-      loadout: ['shadow-sneak', 'shadow-ball'] as const,
+      loadout: pad('mimikyu', ['shadow-sneak', 'shadow-ball']),
       masterVolume: 0.3,
       musicVolume: 0,
       sfxVolume: 1,
@@ -96,21 +99,21 @@ describe('settings', () => {
   it('remembers the picked species with a loadout of its own moves', () => {
     const store = memoryStore();
     saveSettings(store, { ...defaultSettings('es'), species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
-    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'zorua', loadout: pad('zorua', ['fury-swipes', 'foul-play']) });
   });
 
   it('picking another species equips its default moves; picking the same one keeps the loadout', () => {
     const tuned = { ...defaultSettings('es'), loadout: ['shadow-sneak', 'shadow-ball'] as const };
-    expect(withSpecies(tuned, 'litwick')).toMatchObject({ species: 'litwick', loadout: ['ember', 'hex'] });
+    expect(withSpecies(tuned, 'litwick')).toMatchObject({ species: 'litwick', loadout: pad('litwick', ['ember', 'hex']) });
     expect(withSpecies(tuned, 'mimikyu')).toEqual(tuned);
   });
 
   it('gives a stored species its default loadout when the stored moves are not its own, and drops unknown species', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'cubone', loadout: ['shadow-claw', 'play-rough'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'cubone', loadout: ['bone-club', 'bonemerang'] });
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'cubone', loadout: pad('cubone', ['bone-club', 'bonemerang']) });
     store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'aegislash', loadout: ['shadow-sneak', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'mimikyu', loadout: ['shadow-sneak', 'shadow-ball'] });
+    expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'mimikyu', loadout: pad('mimikyu', ['shadow-sneak', 'shadow-ball']) });
   });
 
   it('falls back field by field on missing, corrupt or invalid data', () => {
@@ -131,7 +134,7 @@ describe('settings', () => {
     for (const [lockMode, lockType] of [['hold', 'hold'], ['toggle', 'toggle'], ['weird', 'toggle']]) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
+      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-sneak', 'play-rough']), ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
   });
@@ -164,7 +167,7 @@ describe('settings', () => {
   it('loads settings saved before sound existed with the sound defaults', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-claw', 'shadow-ball']), ...SOUND });
   });
 });
 

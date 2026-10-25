@@ -133,6 +133,20 @@ export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
   'bone-rush': { attack: 'Double' },
   bonemerang: { charge: 'Charge', attack: 'Swing' },
   'stomping-tantrum': { charge: 'Charge', attack: 'SpAttack' },
+  // Boost moves (four-slots): the special pose (fallbacks when a species lacks it).
+  'swords-dance': { attack: 'SpAttack' },
+  'nasty-plot': { attack: 'SpAttack' },
+  'will-o-wisp': { attack: 'SpAttack' },
+  'bulk-up': { attack: 'SpAttack' },
+  // Area moves: the big special release (fallbacks when a species lacks the sheet).
+  'dazzling-gleam': { attack: 'SpAttack' },
+  'shadow-force': { attack: 'Strike' },
+  'dark-pulse': { attack: 'SpAttack' },
+  snarl: { attack: 'SpAttack' },
+  flamethrower: { attack: 'Shoot' },
+  'heat-wave': { attack: 'SpAttack' },
+  earthquake: { attack: 'SpAttack' },
+  bulldoze: { attack: 'Double' },
 };
 
 /** Release sheets tried, in order, when a move's own sheet is missing or only a copy of Charge. */

@@ -1,6 +1,8 @@
 import { TUNING } from '../data/tuning';
 import { bossBar } from '../core/boss';
 import { effectiveTelegraphMs, eliteTimeScale, worldDifficulty } from '../core/difficulty';
+import { cooldownLeft } from '../core/boosts';
+import type { MoveId } from '../data/moves';
 import { insideRect } from '../core/geometry';
 import { bandTimeScale } from '../core/leaders';
 import type { AiMode, Arena, Rect, WorldState } from '../core/state';
@@ -73,6 +75,12 @@ export interface SelfView {
   rolling: boolean;
   /** A move of the player is in progress (the player is rooted or committed). */
   acting: boolean;
+  /** The equipped moves (fast, heavy, boost, area; null = empty), as the HUD shows them. */
+  loadout: readonly (MoveId | null)[];
+  /** Ms of cooldown left per slot (0 = ready), as the HUD shows them. */
+  cooldowns: readonly number[];
+  /** A boost buff is running (its aura is drawn). */
+  buffed: boolean;
 }
 
 export interface Observation {
@@ -129,7 +137,18 @@ export function observe(state: WorldState): Observation {
     tick: state.tick,
     timeMs: state.timeMs,
     view,
-    self: { pos: p.pos, hp: p.hp, maxHp: p.maxHp, stamina: p.stamina, radius: TUNING.player.radius, rolling: p.roll !== null, acting: p.action !== null },
+    self: {
+      pos: p.pos,
+      hp: p.hp,
+      maxHp: p.maxHp,
+      stamina: p.stamina,
+      radius: TUNING.player.radius,
+      rolling: p.roll !== null,
+      acting: p.action !== null,
+      loadout: p.loadout,
+      cooldowns: p.loadout.map((id) => (id ? cooldownLeft(p, id) : 0)),
+      buffed: p.buff !== undefined,
+    },
     enemies,
     projectiles,
     arena: state.arena,

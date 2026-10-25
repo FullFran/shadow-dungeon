@@ -10,19 +10,23 @@ import { t } from '../i18n';
  * stamina cost, its hit shape and how its type fares against the Crypt's
  * enemies (`typeEffectiveness` of the move type on each species).
  */
-export type MoveShapeId = 'ring' | 'arc-short' | 'arc-wide' | 'dash' | 'projectile-fast' | 'projectile-slow' | 'boomerang';
+export type MoveShapeId = 'ring' | 'arc-short' | 'arc-wide' | 'dash' | 'projectile-fast' | 'projectile-slow' | 'boomerang' | 'self' | 'cone' | 'wave';
 
 /** Arcs shorter than this read as short (a jab in front), longer as wide. */
 const SHORT_ARC = 38;
+/** Arcs reaching this far read as a cone (the area moves). */
+const CONE = 56;
 /** Projectiles slower than this (px/s) read as slow. */
 const SLOW_PROJECTILE = 150;
 
 export function moveShape(move: MoveDef): { shape: MoveShapeId; hits?: number } {
   const hits = move.multiHit && move.multiHit > 1 ? { hits: move.multiHit } : {};
   const box = move.hitbox;
-  if (box.kind === 'arc') return { shape: box.arcDegrees >= 360 ? 'ring' : box.range < SHORT_ARC ? 'arc-short' : 'arc-wide', ...hits };
+  if (box.kind === 'arc') return { shape: box.arcDegrees >= 360 ? 'ring' : box.range < SHORT_ARC ? 'arc-short' : box.range >= CONE ? 'cone' : 'arc-wide', ...hits };
   if (box.kind === 'dash') return { shape: 'dash', ...hits };
+  if (box.kind === 'self') return { shape: 'self' };
   if (box.boomerang) return { shape: 'boomerang', ...hits };
+  if (box.wave) return { shape: 'wave', ...hits };
   return { shape: box.speed < SLOW_PROJECTILE ? 'projectile-slow' : 'projectile-fast', ...hits };
 }
 
@@ -50,12 +54,16 @@ export function matchup(type: PokemonType, roster: readonly SpeciesId[] = cryptR
   return { strong, weak };
 }
 
-/** Two card lines: "Stamina 30 · 360° ring · ×5" and "Effective against … · Not very effective against …". */
+/** Two card lines: "Stamina 30 · 360° ring · ×5 (· Cooldown 7 s)" and "Effective against … · Not very effective against …". */
 export function moveInfoLines(id: MoveId): [string, string] {
   const move = MOVES[id];
   const { shape, hits } = moveShape(move);
   const cost = move.staminaCost > 0 ? t('loadout.stamina').replace('{cost}', String(move.staminaCost)) : t('loadout.noCost');
-  const stats = [cost, t(`loadout.shape.${shape}`), ...(hits ? [`×${hits}`] : [])].join(' · ');
+  // Boost and area moves also show their cooldown.
+  const cooldown = move.cooldownMs ? [t('loadout.cooldown').replace('{s}', String(Math.round(move.cooldownMs / 100) / 10))] : [];
+  const stats = [cost, t(`loadout.shape.${shape}`), ...(hits ? [`×${hits}`] : []), ...cooldown].join(' · ');
+  // A boost has no target: the matchup line says what it is for instead.
+  if (move.hitbox.kind === 'self') return [stats, t('loadout.selfTarget')];
   const names = (ids: SpeciesId[]) => ids.map((s) => t(`species.${s}`)).join(', ');
   const { strong, weak } = matchup(move.type);
   const hint = [

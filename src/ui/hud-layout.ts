@@ -29,6 +29,8 @@ export const HUD_BOX = {
   /** The one-line held-items chip under the passive line. */
   chipHeight: 11,
   slotWidth: 104,
+  /** Slot windows when there are more than two (four-slots): narrower, one row when it fits, else two rows of two. */
+  compactSlotWidth: 88,
   slotHeight: 30,
   slotGap: 4,
   /** The message log (src/adapters/message-log.ts): 4 lines of 13 px plus padding, 236 wide. */
@@ -77,10 +79,37 @@ export const statusRect = (chip: boolean): HudBox => ({
   height: HUD_BOX.statusHeight + (chip ? HUD_BOX.chipHeight : 0),
 });
 
-/** Move slot `index` of `count`, right-aligned at the bottom. */
-export function slotRect(space: Pick<HudSpace, 'width' | 'height'>, index: number, count: number): HudBox {
-  const { slotWidth: w, slotGap: gap, slotHeight: h, margin } = HUD_BOX;
-  return { x: space.width - margin - (count - index) * (w + gap) + gap, y: space.height - margin - h, width: w, height: h };
+/** Where the slot windows go on touch: the bottom right belongs to the action buttons (index.html `.touch-cluster`). */
+export interface SlotPlacement {
+  touch?: boolean;
+  /** The status window carries the held-items chip (touch: the slots sit under it). */
+  chip?: boolean;
+}
+
+/**
+ * Move slot `index` of `count`. Desktop: right-aligned at the bottom; up to
+ * two slots keep the M0 width, more are compact, in one row when it clears
+ * the message log, else in rows of two (the first two at the bottom, the
+ * next above). Touch: the bottom right is the action buttons' (whatever the
+ * phone, they cover the HUD's bottom-right corner), so the compact windows go
+ * in rows of two under the status window, top left.
+ */
+export function slotRect(space: Pick<HudSpace, 'width' | 'height'>, index: number, count: number, placement: SlotPlacement = {}): HudBox {
+  const { slotGap: gap, slotHeight: h, margin } = HUD_BOX;
+  const w = count > 2 ? HUD_BOX.compactSlotWidth : HUD_BOX.slotWidth;
+  if (placement.touch) {
+    const status = statusRect(placement.chip === true);
+    const column = count > 2 ? index % 2 : index;
+    const row = count > 2 ? Math.floor(index / 2) : 0;
+    const width = count > 2 ? w : HUD_BOX.compactSlotWidth;
+    return { x: margin + column * (width + gap), y: status.y + status.height + gap + row * (h + gap), width, height: h };
+  }
+  const rowStart = space.width - margin - count * (w + gap) + gap;
+  const oneRow = count <= 2 || rowStart >= margin + HUD_BOX.logWidth + gap;
+  if (oneRow) return { x: space.width - margin - (count - index) * (w + gap) + gap, y: space.height - margin - h, width: w, height: h };
+  const column = index % 2;
+  const row = Math.floor(index / 2);
+  return { x: space.width - margin - (2 - column) * (w + gap) + gap, y: space.height - margin - h - row * (h + gap), width: w, height: h };
 }
 
 /** The minimap frame for a `cols` x `rows` grid; the map itself starts `minimapFrame` inside. */
@@ -96,10 +125,10 @@ export function bossRect(space: Pick<HudSpace, 'width' | 'height'>): HudBox {
   return { x: Math.round((space.width - width) / 2), y: barY - HUD_BOX.bossNameHeight, width, height: HUD_BOX.bossNameHeight + HUD_BOX.bossBarHeight };
 }
 
-export function hudRects(space: Pick<HudSpace, 'width' | 'height'>, options: { chip: boolean; slots: number; minimap?: { cols: number; rows: number } }): HudRects {
+export function hudRects(space: Pick<HudSpace, 'width' | 'height'>, options: { chip: boolean; slots: number; minimap?: { cols: number; rows: number }; touch?: boolean }): HudRects {
   return {
     status: statusRect(options.chip),
-    slots: Array.from({ length: options.slots }, (_, i) => slotRect(space, i, options.slots)),
+    slots: Array.from({ length: options.slots }, (_, i) => slotRect(space, i, options.slots, { touch: options.touch === true, chip: options.chip })),
     log: { x: HUD_BOX.margin, y: space.height - HUD_BOX.margin - HUD_BOX.logHeight, width: HUD_BOX.logWidth, height: HUD_BOX.logHeight },
     boss: bossRect(space),
     minimap: options.minimap ? minimapRect(space, options.minimap.cols, options.minimap.rows) : null,

@@ -14,6 +14,7 @@ import { landHitOnPlayer } from './hits';
 import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
+import { buffCrit, buffDamage, castBuff, cooldownLeft, spendBuffHit, startCooldown, tickBoosts } from './boosts';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -68,7 +69,7 @@ const NEXT_PHASE: Record<ActionPhase, ActionPhase | null> = {
   recovery: null,
 };
 
-/** Pressing a slot button starts its move if the player is free and can pay the stamina. */
+/** Pressing a slot button starts its move if the player is free, the move is off cooldown and the player can pay the stamina. */
 function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent[]): WorldState {
   const { player } = state;
   if (player.action || player.roll) return state;
@@ -76,7 +77,7 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   if (slotIndex < 0) return state;
   const move = MOVES[player.loadout[slotIndex]!];
   const cost = move.staminaCost * playerStats(player).staminaCost;
-  if (player.stamina < cost) {
+  if (player.stamina < cost || cooldownLeft(player, move.id) > 0) {
     events.push({ type: 'moveDenied', moveId: move.id });
     return state;
   }
@@ -98,7 +99,7 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     ...(boosted ? { boost: TUNING.passives.flashFireBoost } : {}),
   };
   const paid = cost > 0 ? { stamina: player.stamina - cost, staminaRegenDelayMs: TUNING.stamina.regenDelayMs } : {};
-  return { ...state, player: { ...player, ...paid, action, ...(boosted ? { flashFire: false } : {}) } };
+  return { ...state, player: startCooldown({ ...player, ...paid, action, ...(boosted ? { flashFire: false } : {}) }, move) };
 }
 
 type StrikeHit = {
@@ -172,7 +173,8 @@ function strikeEnemy(
   const guard = guardChip(enemy, hit.from);
   if (guard !== null) return blockedStrike(state, enemy, hit, events, guard);
   const stats = playerStats(state.player);
-  const rolled = rollCrit(state, stats.critChance);
+  // A haste buff (Nasty Plot) sharpens crits for a while.
+  const rolled = rollCrit(state, stats.critChance + buffCrit(state.player));
   state = rolled.state;
   const superEffective = typeEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
   const fromIllusion = illusionActive(state.player);
@@ -184,7 +186,8 @@ function strikeEnemy(
     attackerTypes: state.player.types,
     defenderTypes: enemy.types,
     // A Sima pact's blessing may sharpen the player's hits.
-    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * (state.simaPact?.playerDamage ?? 1),
+    // A power buff (Swords Dance) adds to the next hits.
+    multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * buffDamage(state.player) * (state.simaPact?.playerDamage ?? 1),
   });
   // A spell card's segment ends at its floor: the overflow of a hit is lost (core/cards.ts).
   const hp = Math.max(Math.min(cardHpFloor(enemy), enemy.hp), enemy.hp - damage);
@@ -214,7 +217,7 @@ function strikeEnemy(
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
-    player: { ...onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage), nextHitBuff: null },
+    player: { ...spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
 }
@@ -283,6 +286,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     hitIds: [],
     ...(move.bonus ? { bonus: move.bonus } : {}),
     ...(move.hitbox.boomerang ? { returnAtMs: move.hitbox.lifetimeMs / 2, pierce: true } : {}),
+    ...(move.hitbox.wave ? { pierce: true, wave: true } : {}),
     moveId: move.id,
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
@@ -313,7 +317,7 @@ function runActive(state: WorldState, move: MoveDef, active: ActionState, ms: nu
     const pos = confineToArena(current, add(current.player.pos, scale(action.aimDir, stepDistance)), PLAYER.radius);
     current = { ...current, player: { ...current.player, pos } };
   }
-  return move.hitbox.kind === 'projectile' ? current : resolveMelee(current, move, action, events);
+  return move.hitbox.kind === 'projectile' || move.hitbox.kind === 'self' ? current : resolveMelee(current, move, action, events);
 }
 
 /** Advances the current move: charge while held, then wind-up, active and recovery. */
@@ -350,12 +354,14 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
       const next: ActionPhase | null = NEXT_PHASE[action.phase];
       if (next === null) {
         // A finished melee move that struck nothing feeds Stomping Tantrum.
-        if (move.hitbox.kind !== 'projectile') current = { ...current, player: { ...current.player, lastMoveMissed: !action.landed } };
+        if (move.hitbox.kind !== 'projectile' && move.hitbox.kind !== 'self') current = { ...current, player: { ...current.player, lastMoveMissed: !action.landed } };
         action = null;
         break;
       }
       action = { ...action, phase: next, phaseMs: 0 };
       if (next === 'active') current = spawnPlayerProjectile(current, move, action);
+      // A boost move takes hold as its active phase starts.
+      if (next === 'active' && move.buff) current = { ...current, player: castBuff(current.player, move, events) };
     }
   }
   return withAction(current, action);
@@ -363,7 +369,9 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
 
 function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   const wasIdle = !state.player.action;
-  let current = tryStartAction(state, input, events);
+  // Cooldowns and boost buffs run on the player's clock (no slow-mo).
+  const ticked = tickBoosts(state.player, dtMs);
+  let current = tryStartAction(ticked === state.player ? state : { ...state, player: ticked }, input, events);
   // A move started this tick begins counting from the next tick.
   if (!(wasIdle && current.player.action)) current = advanceAction(current, input, dtMs, events);
   const slotsHeld = current.player.loadout.map((_, i) => Boolean(input.slots[i]));
@@ -410,7 +418,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       const { returnAtMs: _turned, ...rest } = moved;
       moved = { ...rest, vel: scale(moved.vel, -1), hitIds: [] };
     }
-    const returning = Boolean(moved.pierce) && moved.returnAtMs === undefined;
+    // A boomerang past its turn (a wave pierces too, but never turns).
+    const returning = Boolean(moved.pierce) && !moved.wave && moved.returnAtMs === undefined;
     if (returning && moved.owner === 'player') {
       // On the way home a boomerang steers to where the player is now, and is caught on reaching them.
       const home = sub(current.player.pos, moved.pos);

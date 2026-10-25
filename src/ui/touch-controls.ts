@@ -8,7 +8,7 @@ import { h } from './window';
  * free taps in the right half (in canvas pixels of `tapTarget`), and a
  * cluster of buttons. Pointer events with pointer capture, so several
  * fingers work at once (move + attack); buttons show a pressed state.
- * Button ids `roll`, `fast`, `heavy` and `lock` feed the `TouchFrame`
+ * Button ids `roll`, `fast`, `heavy`, `boost`, `area` and `lock` feed the `TouchFrame`
  * (src/adapters/touch.ts maps it onto PlayerInput); others only call
  * `onPress`. A button with `swipe` reports horizontal swipe steps instead of
  * a tap when dragged.
@@ -16,7 +16,7 @@ import { h } from './window';
 export interface TouchButtonSpec {
   id: string;
   label: string;
-  /** Extra classes: `big` (main actions), `top` (small corner button), `wide`. */
+  /** Extra classes: `big` (main actions), `small` (boost / area), `top` (small corner button), `wide`. */
   className?: string;
   swipe?: boolean;
   onPress?(): void;
@@ -193,7 +193,7 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     element,
     take() {
       if (suspended) return IDLE_TOUCH;
-      const frame: TouchFrame = { move, roll, fast: held.has('fast'), heavy: held.has('heavy'), lockHeld: held.has('lock'), lockTap, swipe, tap };
+      const frame: TouchFrame = { move, roll, fast: held.has('fast'), heavy: held.has('heavy'), boost: held.has('boost'), area: held.has('area'), lockHeld: held.has('lock'), lockTap, swipe, tap };
       roll = false;
       lockTap = false;
       swipe = 0;

@@ -7,6 +7,7 @@
  *   npm run balance -- --quick      the CI subset (about 15 s)
  *   npm run balance -- --seeds=1,2  other seeds
  *   npm run balance -- --dungeon=crypt-of-the-sword-king --tier=nightmare
+ *   npm run balance -- --quick --slots  the perfect/average bots also use boost and area (four-slots)
  *
  * Exits 1 when a fairness invariant fails beyond the known violations.
  */
@@ -34,6 +35,7 @@ if (tier) {
   if (!isDifficulty(tier)) throw new Error(`unknown tier ${tier}`);
   config = { ...config, tiers: [tier] };
 }
+if (args.includes('--slots')) config = { ...config, options: { ...config.options, slots: true } };
 const outDir = flag('out') ?? join('reports', 'balance');
 
 const started = performance.now();

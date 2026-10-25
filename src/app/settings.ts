@@ -1,8 +1,8 @@
 import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
-import { M0_SLOT_LAYOUT, type SlotKind } from '../data/slots';
+import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { isPlayable, SPECIES, type SpeciesId } from '../data/species';
-import { validateLoadout } from '../core/loadout';
+import { padLoadout, validateLoadout } from '../core/loadout';
 import { DEFAULT_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
@@ -85,11 +85,13 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
   const lockType = LOCK_TYPES.find((l) => l === stored.lockType) ?? (stored.lockType === undefined && 'lockMode' in raw ? legacy : fallback.lockType);
   const clickToLock = typeof stored.clickToLock === 'boolean' ? stored.clickToLock : fallback.clickToLock;
   const species = isPlayable(stored.species) ? stored.species : fallback.species;
-  const loadoutOk =
-    Array.isArray(stored.loadout) &&
-    stored.loadout.every((m) => m === null || typeof m === 'string') &&
-    validateLoadout(SPECIES[species], M0_SLOT_LAYOUT, stored.loadout as (string | null)[]).length === 0;
-  const loadout = loadoutOk ? (stored.loadout as (MoveId | null)[]) : species === fallback.species ? fallback.loadout : SPECIES[species].defaultLoadout;
+  // A save from before four-slots holds two moves: the new slots take the species defaults.
+  const storedLoadout =
+    Array.isArray(stored.loadout) && stored.loadout.every((m) => m === null || typeof m === 'string')
+      ? padLoadout(SPECIES[species], stored.loadout as (MoveId | null)[])
+      : null;
+  const loadoutOk = storedLoadout !== null && validateLoadout(SPECIES[species], PLAYER_SLOT_LAYOUT, storedLoadout).length === 0;
+  const loadout = loadoutOk ? storedLoadout : padLoadout(SPECIES[species], species === fallback.species ? fallback.loadout : SPECIES[species].defaultLoadout);
   return {
     language,
     lockType,

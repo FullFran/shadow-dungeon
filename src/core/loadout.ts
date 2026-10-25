@@ -44,3 +44,14 @@ export function validateLoadout(
   });
   return errors;
 }
+
+/**
+ * A loadout stretched to the species' default length: slots it lacks (an old
+ * two-slot save, an older peer's hello) take the species defaults; extra
+ * entries are dropped. A full loadout comes back as is.
+ */
+export function padLoadout(species: SpeciesDef, loadout: readonly (MoveId | null)[]): readonly (MoveId | null)[] {
+  const length = species.defaultLoadout.length;
+  if (loadout.length === length) return loadout;
+  return Array.from({ length }, (_, i) => (i < loadout.length ? (loadout[i] ?? null) : (species.defaultLoadout[i] ?? null)));
+}

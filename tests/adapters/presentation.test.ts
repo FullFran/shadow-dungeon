@@ -154,8 +154,8 @@ describe('input mapping', () => {
     const input = toPlayerInput(raw({ keys: new Set(['KeyD', 'KeyW', 'ShiftLeft', 'KeyE']), buttons: new Set([0]), rollPressed: true, wheel: -100, mouse: vec(20, 40) }), view, 2);
     expect(input.move).toEqual(vec(1, -1));
     expect(input.roll).toBe(true);
-    expect(input.slots).toEqual([true, true]);
-    expect(input.slotMouse).toEqual([true, false]);
+    expect(input.slots).toEqual([true, true, false, false]);
+    expect(input.slotMouse).toEqual([true, false, false, false]);
     expect(input.lock).toBe(true);
     expect(input.click).toBe(true);
     expect(input.wheel).toBe(-100);
@@ -166,8 +166,8 @@ describe('input mapping', () => {
   it('cancels opposite keys and reads the right button as the heavy slot', () => {
     const input = toPlayerInput(raw({ keys: new Set(['KeyA', 'KeyD']), buttons: new Set([2]) }), view, 1);
     expect(input.move).toEqual(vec(0, 0));
-    expect(input.slots).toEqual([false, true]);
-    expect(input.slotMouse).toEqual([false, true]);
+    expect(input.slots).toEqual([false, true, false, false]);
+    expect(input.slotMouse).toEqual([false, true, false, false]);
     expect(input.lock).toBe(false);
     expect(input.click).toBe(false);
   });
@@ -175,18 +175,18 @@ describe('input mapping', () => {
   it('reads the middle button as the lock toggle and Q as a cursor-free fast slot', () => {
     const middle = toPlayerInput(raw({ buttons: new Set([1]) }), view, 1);
     expect(middle.lock).toBe(true);
-    expect(middle.slots).toEqual([false, false]);
+    expect(middle.slots).toEqual([false, false, false, false]);
     const q = toPlayerInput(raw({ keys: new Set(['KeyQ', 'ShiftRight']) }), view, 1);
-    expect(q.slots).toEqual([true, false]);
-    expect(q.slotMouse).toEqual([false, false]);
+    expect(q.slots).toEqual([true, false, false, false]);
+    expect(q.slotMouse).toEqual([false, false, false, false]);
     expect(q.click).toBe(false);
     expect(q.lock).toBe(true);
   });
 
   it('marks a slot as mouse-triggered when its button is held, even with the key too', () => {
     const both = toPlayerInput(raw({ keys: new Set(['KeyQ', 'KeyE']), buttons: new Set([0, 2]) }), view, 1);
-    expect(both.slots).toEqual([true, true]);
-    expect(both.slotMouse).toEqual([true, true]);
+    expect(both.slots).toEqual([true, true, false, false]);
+    expect(both.slotMouse).toEqual([true, true, false, false]);
   });
 
   it('normalises wheel deltas to pixels', () => {
