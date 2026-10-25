@@ -1,4 +1,4 @@
-import type { ArcherCard } from '../data/enemies';
+import type { AegislashCard, ArcherCard, SteerDef, ThiefCard } from '../data/enemies';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { ItemId } from '../data/items';
 import type { MoveBonus, MoveId } from '../data/moves';
@@ -43,6 +43,11 @@ export interface Rect {
   y: number;
   width: number;
   height: number;
+}
+
+/** A solid block of a fixed room; `cover` ones also stop every projectile (the Aegislash arena's pillars). */
+export interface Obstacle extends Rect {
+  cover?: boolean;
 }
 
 /**
@@ -147,6 +152,16 @@ export interface PlayerState {
   itemUses: Readonly<Partial<Record<ItemId, number>>>;
   /** Permanent upgrade levels bought at the shop (upgrades.ts), fixed for the run; absent = none. */
   upgrades?: UpgradeLevels;
+  /** A held item Sableye took (stolen.ts): out of `items` until it comes back. */
+  stolen?: StolenItem;
+}
+
+export interface StolenItem {
+  item: ItemId;
+  /** The thief: hitting it gives the item back. */
+  enemyId: string;
+  /** Back by itself once this runs out. */
+  remainingMs: number;
 }
 
 export interface EnemyState {
@@ -173,8 +188,8 @@ export interface EnemyState {
   spent?: boolean;
 }
 
-/** Aegislash's two stances, or the spell card Decidueye is playing. */
-export type BossStance = 'shield' | 'blade' | ArcherCard;
+/** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */
+export type BossStance = 'shield' | 'blade' | 'unsheathe' | AegislashCard | ArcherCard | ThiefCard;
 
 export interface BossState {
   stance: BossStance;
@@ -186,6 +201,10 @@ export interface BossState {
   comboIndex: number;
   /** Combos finished in the current Blade stance; Decidueye: cards played so far. */
   combosDone: number;
+  /** Aegislash: 2 once "El Rey desenvaina" has started (host only; never goes back). */
+  phase?: 2;
+  /** Aegislash: phase-2 spell cards played so far (host only). */
+  cardsPlayed?: number;
 }
 
 /**
@@ -215,6 +234,8 @@ export interface AiState {
   attack?: string;
   /** Ground point an attack lands on (Slugma's lava blob), fixed when it is thrown. */
   aimPoint?: Vec2;
+  /** Cut of a chained lunge in progress (Pawniard: 1 on the second cut); absent = the first. */
+  chain?: number;
 }
 
 /** An Oran Berry lying on the floor (berries.ts). */
@@ -249,13 +270,15 @@ export interface ProjectileState {
   pierce?: boolean;
   /** Player projectiles: the move that fired it (its hits and its look). */
   moveId?: MoveId;
+  /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */
+  steer?: SteerDef;
 }
 
 export interface Arena {
   width: number;
   height: number;
-  /** Solid blocks for walkers; floaters and projectiles ignore them. */
-  obstacles?: readonly Rect[];
+  /** Solid blocks for walkers; floaters ignore them, and projectiles too unless the block is `cover`. */
+  obstacles?: readonly Obstacle[];
   /** Generated floors: wall tiles block walkers and stop projectiles; floaters pass them. */
   tiles?: TileGrid;
   /** Generated floors: stepping here goes down to the next floor. */
@@ -281,6 +304,9 @@ export type GameEvent =
   /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
   | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean }
   | { type: 'enemyDefeated'; enemyId: string }
+  /** Sableye took a held item of the local player, or it came back (stolen.ts). */
+  | { type: 'itemStolen'; item: ItemId; enemyId: string }
+  | { type: 'itemReturned'; item: ItemId }
   /** A held item acted (Sitrus Berry heal, Focus Sash save, Rocky Helmet recoil on `enemyId`). */
   | { type: 'itemTriggered'; item: ItemId; enemyId?: string }
   /** The local player ate an Oran Berry (solo and host at once; a guest when the host grants its claim). */

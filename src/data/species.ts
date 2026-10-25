@@ -31,7 +31,11 @@ export type SpeciesId =
   | 'stunky'
   | 'houndour'
   | 'slugma'
-  | 'litleo';
+  | 'litleo'
+  | 'duskull'
+  | 'golett'
+  | 'pawniard'
+  | 'sableye';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -154,6 +158,11 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   houndour: { id: 'houndour', types: ['dark', 'fire'], maxHp: 70, radius: 11, sprite: 'houndour', movepool: [], defaultLoadout: [] },
   slugma: { id: 'slugma', types: ['fire'], maxHp: 85, radius: 11, sprite: 'slugma', movepool: [], defaultLoadout: [] },
   litleo: { id: 'litleo', types: ['fire', 'normal'], maxHp: 60, radius: 10, sprite: 'litleo', movepool: [], defaultLoadout: [] },
+  // Crypt of the Sword King remaster; HP provisional.
+  duskull: { id: 'duskull', types: ['ghost'], maxHp: 70, radius: 11, sprite: 'duskull', movepool: [], defaultLoadout: [] },
+  golett: { id: 'golett', types: ['ground', 'ghost'], maxHp: 160, radius: 14, sprite: 'golett', movepool: [], defaultLoadout: [] },
+  pawniard: { id: 'pawniard', types: ['dark', 'steel'], maxHp: 34, radius: 9, sprite: 'pawniard', movepool: [], defaultLoadout: [] },
+  sableye: { id: 'sableye', types: ['dark', 'ghost'], maxHp: 460, radius: 13, sprite: 'sableye', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DUNGEON } from '../../src/data/dungeon';
+import { DUNGEON, CRYPT_SPAWNS } from '../../src/data/dungeon';
 import { generateFloor, spawnsPerRoom, type Floor } from '../../src/core/dungeon';
 import { isWall, TILE, tileCenter, type TilePoint } from '../../src/core/tiles';
 import { distance } from '../../src/core/vec';
@@ -92,7 +92,8 @@ describe('floor generator', () => {
           expect(spawn.room).not.toBe(floor.startRoom);
           expect(insideRoom(spawn.tile, floor.rooms[spawn.room]!)).toBe(true);
           expect(distance(tileCenter(spawn.tile), start)).toBeGreaterThan(DUNGEON.spawns.safeRadius);
-          expect(['poochyena', 'gastly']).toContain(spawn.species);
+          expect(CRYPT_SPAWNS.pool.map((e) => e.species)).toContain(spawn.species);
+          if (depth === 1) expect(['poochyena', 'gastly']).toContain(spawn.species);
           const key = `${spawn.tile.x},${spawn.tile.y}`;
           expect(used.has(key)).toBe(false);
           used.add(key);
@@ -113,9 +114,11 @@ describe('floor generator', () => {
     }
   });
 
-  it('mixes both species over many floors', () => {
-    const species = new Set(SEEDS.slice(0, 100).flatMap((seed) => generateFloor(seed, 2).spawns.map((s) => s.species)));
-    expect([...species].sort()).toEqual(['gastly', 'poochyena']);
+  it('mixes the Crypt species over many floors: only the M2 pair on floor 1, Golett from floor 4', () => {
+    const at = (depth: number) => new Set(SEEDS.slice(0, 100).flatMap((seed) => generateFloor(seed, depth).spawns.map((s) => s.species)));
+    expect([...at(1)].sort()).toEqual(['gastly', 'poochyena']);
+    expect([...at(2)].sort()).toEqual(['duskull', 'gastly', 'pawniard', 'poochyena']);
+    expect([...at(4)].sort()).toEqual(['duskull', 'gastly', 'golett', 'pawniard', 'poochyena']);
   });
 
   it('uses the shared tile size', () => {

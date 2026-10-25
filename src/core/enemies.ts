@@ -2,9 +2,10 @@ import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef, type SlammerDef, ty
 import { updateArcher } from './archer';
 import { updateBoss } from './boss';
 import { unstoppable, updateRoster } from './roster';
+import { updateThief } from './thief';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { targetOf } from './party';
-import { lungeTouches, slamTouches } from './victim';
+import { lungeTouches, slammerTouches } from './victim';
 import type { AiMode, AiState, EnemyState, GameEvent, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
@@ -27,9 +28,10 @@ export function initialAi(dormant = false): AiState {
 }
 
 /**
- * Lungers (Poochyena, Phantump, Pumpkaboo Small, Hoothoot): stalk, telegraph
- * with Charge, lunge in a straight line; a dodged lunge leaves them exposed.
- * Fliers and phasers (`floats`) cross walls; Phantump drains on a hit.
+ * Lungers (Poochyena, Phantump, Pumpkaboo Small, Hoothoot, Pawniard): stalk,
+ * telegraph with Charge, lunge in a straight line; a dodged lunge leaves them
+ * exposed. Fliers and phasers (`floats`) cross walls; Phantump drains on a
+ * hit; Pawniard chains a short, re-aimed second cut (`followUp`).
  */
 function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
@@ -67,21 +69,33 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       // Tracks the player during the wind-up; the direction is committed when it fires (or `lockMs` before: Ekans' coil).
       if (!def.lockMs || ai.modeDurationMs - ai.modeMs > def.lockMs) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
-        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'lunge' });
-        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', def.lungeMs), contact: 'none' } };
+        const second = def.followUp !== undefined && ai.chain === 1;
+        events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: second ? 'lunge2' : 'lunge' });
+        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', second ? def.followUp!.lungeMs : def.lungeMs), contact: 'none' } };
       }
       break;
     case 'attack': {
-      const speed = def.lungeDistance / def.lungeMs;
+      const second = def.followUp !== undefined && ai.chain === 1;
+      const speed = second ? def.followUp!.lungeDistance / def.followUp!.lungeMs : def.lungeDistance / def.lungeMs;
       enemy = moveEnemy(state, enemy, scale(ai.attackDir, speed * ms));
       const hit = contactPlayer(state, enemy, def.attack, lungeTouches(enemy, state.player.pos), events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
+      // Pawniard: the first cut always chains into the second (hit, dodged or missed); its end follows the rules below.
+      if (def.followUp && !second && (hit.contact === 'hit' || modeOver(ai))) {
+        const { chain: _first, ...rest } = enemy.ai;
+        enemy = telegraph({ ...enemy, ai: { ...rest, chain: 1 } }, 'lunge2', def.followUp.telegraphMs, toPlayer, events);
+        break;
+      }
+      const done = (recoverMs: number): EnemyState => {
+        const { chain: _cut, ...rest } = enemy.ai;
+        return { ...enemy, ai: { ...enterMode(rest, 'recover', recoverMs), cooldownMs: def.cooldownMs } };
+      };
       if (hit.contact === 'hit') {
         if (def.drainHp) enemy = { ...enemy, hp: Math.min(enemy.maxHp, enemy.hp + def.drainHp) };
-        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.hitRecoverMs), cooldownMs: def.cooldownMs } };
+        enemy = done(def.hitRecoverMs);
       } else if (modeOver(ai)) {
-        enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.missRecoverMs), cooldownMs: def.cooldownMs } };
+        enemy = done(def.missRecoverMs);
       }
       break;
     }
@@ -97,7 +111,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
   return replaceEnemy(state, enemy);
 }
 
-/** Casters: keep a distance band, telegraph and cast a slow ball (Gastly floats) or a fan of threads (Spinarak walks). */
+/** Casters: keep a distance band, telegraph and cast a slow ball (Gastly floats; Duskull floats and its wisp bends towards you) or a fan of threads (Spinarak walks). */
 function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
   const toPlayer = towardTarget(target, enemy);
@@ -142,7 +156,7 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
   return replaceEnemy(state, enemy);
 }
 
-/** Tanks (Pumpkaboo Super, Trevenant): walk in slowly, a long wind-up, then a ground slam around them (and a ring of leaves). */
+/** Tanks (Pumpkaboo Super, Trevenant, Golett): walk in slowly, a long wind-up, then a ground slam around them (Golett: in front, aim fixed; Trevenant: and a ring of leaves). */
 function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
   const toPlayer = towardTarget(target, enemy);
@@ -172,7 +186,8 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
       break;
     }
     case 'telegraph':
-      enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      // A frontal slam (Golett) keeps the aim it started with: step around it.
+      if (def.arcDegrees === undefined) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       if (modeOver(ai)) {
         events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: 'slam' });
         if (def.ring) for (const dir of spreadDirections(toPlayer, def.ring.count, 360 - 360 / def.ring.count)) state = spawnShot(state, enemy, def.ring.projectile, dir);
@@ -181,7 +196,7 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
       }
       break;
     case 'attack': {
-      const hit = contactPlayer(state, enemy, def.attack, slamTouches(enemy, state.player.pos, def.radius), events);
+      const hit = contactPlayer(state, enemy, def.attack, slammerTouches(enemy, state.player.pos, def), events);
       state = hit.state;
       enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
       if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', def.recoverMs), cooldownMs: def.cooldownMs } };
@@ -228,7 +243,8 @@ function interrupted(enemy: EnemyState): EnemyState {
   if (enemy.ai.mode !== 'telegraph' && enemy.ai.mode !== 'attack') return enemy;
   const def = ENEMY_BEHAVIOUR[enemy.species];
   const mode: AiMode = def?.kind === 'caster' ? 'reposition' : 'approach';
-  return { ...enemy, ai: enterMode(enemy.ai, mode) };
+  const { chain: _cut, ...ai } = enemy.ai;
+  return { ...enemy, ai: enterMode(ai, mode) };
 }
 
 const tickAi = (ai: AiState, ms: number): AiState => ({
@@ -257,6 +273,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ms, events);
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
     else if (def.kind === 'archer') current = updateArcher(current, ticked, def, target, ms, events);
+    else if (def.kind === 'thief') current = updateThief(current, ticked, def, target, ms, events);
     else if (def.kind === 'boss') current = updateBoss(current, ticked, def, target, ms, events);
     else current = updateRoster(current, ticked, def, target, ms, events);
   }

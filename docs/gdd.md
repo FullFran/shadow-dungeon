@@ -53,7 +53,7 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 ### Plantas normales
 
 - Salas y pasillos generados al azar, al estilo Mundo Misterioso, con escaleras a la siguiente planta.
-- 3 + n enemigos por sala, siendo n el número de jugadores *(provisional; en el MVP la cuenta sube con la profundidad, de 1 a 2 por sala en la planta 1 y uno más por planta)*.
+- 3 + n enemigos por sala, siendo n el número de jugadores *(provisional; en el MVP la cuenta sube con la profundidad: de 1 a 2 por sala en la planta 1 y medio más por planta, como mucho 4, tanto en la Cripta como en el Bosque)*.
 - Los enemigos duermen hasta que entras en su sala o te ven de cerca; una vez despiertos ya no paran.
 - Las escaleras se pueden usar en cuanto las encuentras, sin limpiar la planta (como en Mundo Misterioso).
 - La vida se arrastra de una planta a otra y cada planta nueva cura un 25 % de la vida máxima *(provisional)*. El Disfraz se recupera en cada planta.
@@ -79,7 +79,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 
 **El derrumbe en el MVP** *(valores provisionales)*:
 
-- Sale en las plantas generadas con un 25 % de probabilidad en la planta 2 y un 40 % en la 3; nunca en la 1 ni en las de jefe. Se decide con la semilla de la partida, así que la misma semilla repite los mismos derrumbes.
+- En la Cripta sale en las plantas generadas con un 25 % de probabilidad en la planta 2, un 35 % en la 4 y un 45 % en la 5; nunca en la 1 ni en las salas de jefe. Se decide con la semilla de la partida, así que la misma semilla repite los mismos derrumbes.
 - Al entrar sale la tarjeta de la planta con el aviso "¡La planta se derrumba!" y un estruendo.
 - Tras 5 segundos de gracia, el frente avanza desde la entrada a 1,5 casillas por segundo siguiendo la distancia andando (no en línea recta), así que siempre llega a las escaleras lo último. Llega como pronto 1,8 veces más tarde de lo que tardarías andando derecho a ellas (con estos valores, unas 2,9 veces); lo comprueban los tests con cientos de semillas.
 - Pisar escombro quita un 6 % de la vida máxima cada medio segundo y te empuja hacia el suelo que sigue en pie. La invulnerabilidad de la rueda se salta un golpe, pero el Disfraz no lo para: el suelo no es un ataque.
@@ -91,7 +91,7 @@ Superar rápido una planta con prisa da premio (más Pokémonedas o un recluta m
 
 Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sección 11. Valores *provisionales*.
 
-**Niveles.** Cada enemigo derrotado da experiencia según la especie (Poochyena 10, Gastly 12, Aegislash 60) y la profundidad (un 50 % más por cada planta por debajo de la primera). Empiezas en el nivel 1 y el tope es el 10 (hacen falta 25, 60, 110, 175... puntos en total). Cada nivel da 8 PS máximos más (que se curan al momento) y un 5 % más de daño. Al subir sale "¡Mimikyu subió al nivel N!" con una fanfarria corta; arriba a la izquierda están el nivel y la barra de experiencia. En cooperativo, como en Mundo Misterioso, cada jugador en pie gana la experiencia de cada enemigo derrotado, lo haya derrotado quien lo haya derrotado (también el derrumbe). Quien está debilitado no gana nada, para que subir de nivel no lo levante.
+**Niveles.** Cada enemigo derrotado da experiencia según la especie (Poochyena 10, Gastly 12, Duskull 13, Golett 22, Pawniard 7, Sableye 50, Aegislash 60) y la profundidad (un 50 % más por cada planta por debajo de la primera). Empiezas en el nivel 1 y el tope es el 10 (hacen falta 25, 60, 110, 175... puntos en total). Cada nivel da 8 PS máximos más (que se curan al momento) y un 5 % más de daño. Al subir sale "¡Mimikyu subió al nivel N!" con una fanfarria corta; arriba a la izquierda están el nivel y la barra de experiencia. En cooperativo, como en Mundo Misterioso, cada jugador en pie gana la experiencia de cada enemigo derrotado, lo haya derrotado quien lo haya derrotado (también el derrumbe). Quien está debilitado no gana nada, para que subir de nivel no lo levante.
 
 **Objetos equipados.** Al entrar en cada planta a partir de la segunda (la del jefe incluida), cada jugador elige uno de tres objetos. Salen según su rareza (común 6, poco común 3, rara 1 por objeto), sin repetirse en la misma oferta, y la oferta depende de la semilla de la partida, la planta y el jugador. Se acumulan durante la partida hasta un tope por objeto; uno que ya está en su tope no vuelve a salir. Se eligen con un clic en la carta o con 1, 2 o 3. En solitario el juego se para mientras eliges; en partida compartida no se para nada (las cartas salen abajo, puedes seguir andando y rodando, y el clic en una carta no ataca). Si bajas sin elegir, la oferta de la planta nueva sustituye a la anterior. Los objetos salen en el HUD y, con su descripción, en el menú de Esc.
 
@@ -141,6 +141,42 @@ Lo que hay bajo la tierra es Necrozma, el jefe final, pero el prólogo no lo ens
 ### Mazmorras *(provisional)*
 
 Cada mazmorra es un conjunto de datos (`src/data/dungeons.ts`): su nombre y su leyenda, sus plantas (generadas, o una sala fija para un jefe intermedio o para el guardián), los enemigos de sus plantas según la profundidad, sus plantas con prisa y sus pesos, su música, los colores de sus casillas y qué la abre. La primera está abierta desde el principio; cada una de las siguientes se abre al vencer al guardián de la anterior en ese dispositivo. Tras elegir el equipo, si hay más de una abierta, sale la lista de mazmorras (con su subtítulo, la primera línea de su leyenda y la mejor planta); la salida del pueblo también las lista. En partida compartida manda la mazmorra del anfitrión. Al entrar, la planta 1 enseña el nombre de la mazmorra con su subtítulo, al estilo de los títulos de fase de Touhou, y en una esquina el tema que suena ("♪ título"), que vuelve a salir cada vez que cambia la música.
+
+**Cripta del Rey de las Espadas** (primera mazmorra, remasterizada; subtítulo "Donde el acero aún espera órdenes"). Es la puerta de entrada: la planta 1 es suave (la misma que antes, solo Poochyena y Gastly, de 1 a 2 por sala), pero se endurece al bajar. Cada planta tiene una línea corta en su tarjeta, al estilo de Touhou (en la planta 1 sale bajo el título): "Los pasillos huelen a cera y a hierro viejo.", "Aquí descansan los que juraron. Algunos no descansan.", "El tesoro del rey. Algo brilla, y no es oro.", "Las espadas caídas aún se alzan cuando pasas.", "El aire tiembla. Más abajo, el acero espera.", "La sala del trono. Arrodíllate, o desenvaina." Piedra fría, velas en las paredes, losas de tumbas en el suelo, braseros en los pilares del trono y montones de oro en la cámara del tesoro, todo dibujado en el código.
+
+| Planta | Qué hay *(provisional)* |
+|---|---|
+| 1 y 2 | Plantas normales; desde la 2 puede salir un derrumbe |
+| 3 | Jefe intermedio: Sableye en la cámara del tesoro (al caer se abre el camino) |
+| 4 y 5 | Plantas normales; más derrumbes |
+| 6 | Guardián: Aegislash en la sala del trono |
+
+| Enemigo | Cómo juega |
+|---|---|
+| Poochyena | Acecha, avisa y embiste en línea recta; si la esquivas se queda vendido |
+| Gastly | Flota sobre todo y lanza una bola lenta |
+| Duskull | Lento, atraviesa las paredes para seguirte y lanza un fuego fatuo que se curva hacia ti durante un par de segundos (desde la planta 2) |
+| Pawniard | Sale en parejas; rápido y frágil, corta dos veces: tras el primer tajo apunta de nuevo y vuelve a lanzarse, así que rodar hacia él se paga (desde la planta 2) |
+| Golett | Tanque lento al que casi no se le mueve; avisa un segundo y golpea el suelo delante de sí con la puntería fijada al empezar el aviso: rodéalo (desde la planta 4) |
+
+**Sableye, el ladrón de gemas** (jefe intermedio). Dos cartas de hechizo en orden fijo, con su nombre en pantalla:
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Signo Gema «Destello del Ladrón» | Se desvanece, reaparece a tu lado con un destello (dos tercios de segundo de aviso) y cruza en un tajo recto; tres veces, cada una un tercio de vuelta más allá | Apartarse de la línea cuando brilla |
+| Signo Joya «Lluvia de Gemas Robadas» | Salta al centro de la cámara, avisa casi un segundo y lanza tres anillos de gemas; cada anillo deja los huecos en otro sitio | Buscar el hueco nuevo o rodar a través |
+
+Si un tajo te alcanza, te roba el último objeto equipado (uno cada vez; sin objetos no roba nada). No lo pierdes: vuelve en cuanto golpeas a Sableye, si cae, al salir de la sala o a los 9 segundos. En partida compartida cada jugador lo vive en su lado (no viaja nada nuevo por la red). Paga como Trevenant (25 Pokémonedas).
+
+**Aegislash, el Rey de las Espadas** (guardián). La sala del trono tiene cuatro pilares con braseros que paran cualquier disparo: sirven de cobertura. Primera fase como siempre (Escudo, que para los golpes de frente y hay que rodear, y Filo, con su combo de tres golpes). A la mitad de la vida, "El Rey desenvaina": un segundo y medio largo en el que ni para ni ataca (la ocasión), y desde ahí cambia de forma más rápido y, tras cada Filo, juega una carta de hechizo, siempre avisada y seguida de un hueco para castigar:
+
+| Carta | Qué hace | Cómo se esquiva |
+|---|---|---|
+| Filo Real «Corte de Medianoche» | Marca un círculo a su alrededor durante algo más de un segundo, gira y lanza un anillo de doce espadas | Salir del círculo y apartarse de las espadas; después se queda abierto |
+| Escudo Real «Muralla de los Juramentos» | Planta el escudo (para los golpes por todos los lados) y dispara tres abanicos de espadas hacia ti | Esconderse tras un pilar o rodar; luego baja el escudo |
+| Edicto del Eclipse «Desfile de las Cien Espadas» | Marca una franja oscura en un extremo de la sala con un hueco brillante (el carril más lejos de ti) y suelta un muro de espadas de sombra que barre toda la sala | Ponerse en el hueco o detrás de un pilar, que para las espadas de su columna |
+
+La escena antes y después del combate no cambia. Música: Aegislash y Sableye usan el tema de batalla de 16 bits.
 
 **Bosque Brumoso** (segunda mazmorra; subtítulo "Donde la niebla es el aliento de los perdidos"). Se abre al vencer a Aegislash. Leyenda: "Quien se pierde en la niebla no vuelve: echa raíces, y escucha. En el claro más hondo, un arquero sin rostro vela una puerta que nadie ha visto abrirse."
 
@@ -395,7 +431,7 @@ Cada jugador suma lo suyo en su propio ordenador (también los invitados de una 
 | Enemigo derrotado | 1 × (1 + 0,5 (profundidad − 1)) |
 | Huir de un derrumbe | 20 en menos de 30 s, 12 en menos de 60 s, si no 6 |
 | Derrotar al guardián | 50 |
-| Derrotar a un jefe intermedio (Trevenant en el Bosque Brumoso) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
+| Derrotar a un jefe intermedio (Sableye en la Cripta, Trevenant en el Bosque Brumoso) | 25, la mitad de un guardián; cuenta en la línea del guardián y se queda aunque caigas después |
 | Minuto jugado | 2 por minuto completo (las pausas no cuentan) |
 | Si caes | Te quedas el 75 % de lo ganado |
 | Dificultad | Todo × la fila de la sección 9 (de momento se juega en Normal, × 1) |

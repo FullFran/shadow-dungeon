@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COLLAPSE, RUN_PLAN, URGENT } from '../../src/data/dungeon';
+import { ROOMS } from '../../src/data/rooms';
 import { TUNING } from '../../src/data/tuning';
 import {
   advanceCollapse,
@@ -34,15 +35,14 @@ function tileAtDistance(c: CollapseState, d: number): TilePoint {
 const at = (state: WorldState, ms: number): WorldState => ({ ...state, collapse: { ...state.collapse!, elapsedMs: ms } });
 
 describe('urgent floor choice', () => {
-  it('never makes floor 1 urgent, and follows the depth weights on floors 2 and 3', () => {
-    const counts = [0, 0, 0];
+  it('never makes floor 1 urgent, and follows the depth weights on the Crypt floors 2, 4 and 5', () => {
+    const counts = [0, 0, 0, 0, 0];
     const seeds = 4000;
     for (let seed = 0; seed < seeds; seed++) {
-      for (const f of [1, 2, 3]) if (floorKind(seed, f) === 'collapse') counts[f - 1]! += 1;
+      for (const f of [1, 2, 4, 5]) if (floorKind(seed, f) === 'collapse') counts[f - 1]! += 1;
     }
     expect(counts[0]).toBe(0);
-    expect(counts[1]! / seeds).toBeCloseTo(URGENT.collapseChance[1]!, 1);
-    expect(counts[2]! / seeds).toBeCloseTo(URGENT.collapseChance[2]!, 1);
+    for (const f of [2, 4, 5]) expect(counts[f - 1]! / seeds).toBeCloseTo(URGENT.collapseChance[f - 1]!, 1);
   });
 
   it('is a pure function of the run seed and floor, and never applies to fixed rooms', () => {
@@ -182,15 +182,18 @@ describe('collapse floors in a run', () => {
     expect(escaped.run.floor).toBe(3);
     expect(escaped.run.escape).toEqual({ floor: 2, ms: 42_000 });
     expect(escaped.world.collapse === undefined).toBe(escaped.run.kind === 'normal');
-    // The escape line belongs to the card right after it only.
-    const fourth = progressRun(escaped.run, toStairs(escaped.world));
-    if (escaped.run.kind === 'normal') expect(fourth.run.escape).toBeNull();
+    // The escape line belongs to the card right after it only (floor 3 is Sableye's vault: out through its exit).
+    const exit = ROOMS.vault.exit!;
+    const beaten = { ...escaped.world, enemies: escaped.world.enemies.map((e) => ({ ...e, alive: false })), player: { ...escaped.world.player, pos: vec(exit.x + exit.width / 2, exit.y + exit.height / 2) } };
+    const fourth = progressRun(escaped.run, beaten);
+    expect(fourth.run.floor).toBe(4);
+    expect(fourth.run.escape).toBeNull();
   });
 
-  it('clears the collapse on the boss floor', () => {
+  it('clears the collapse on the fixed rooms (the mid-boss vault)', () => {
     let progress = { ...startRun(seed, {}), entered: false, outcome: null } as ReturnType<typeof progressRun>;
-    for (let i = 0; i < 3; i++) progress = progressRun(progress.run, toStairs(progress.world));
-    expect(progress.run.floor).toBe(4);
+    for (let i = 0; i < 2; i++) progress = progressRun(progress.run, toStairs(progress.world));
+    expect(progress.run.floor).toBe(3);
     expect(progress.world.collapse).toBeUndefined();
   });
 });

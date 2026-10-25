@@ -6,6 +6,8 @@ export interface RoomRect {
   y: number;
   width: number;
   height: number;
+  /** Also stops projectiles (pillars to hide behind). */
+  cover?: boolean;
 }
 
 export interface RoomDef {
@@ -21,7 +23,7 @@ export interface RoomDef {
   next: RoomId | null;
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault';
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -44,14 +46,40 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     exit: { x: 900, y: 280, width: 60, height: 80 },
     next: 'boss',
   },
+  /** The throne room: four pillars with braziers, cover from Aegislash's thrown blades and shadow swords. */
   boss: {
     id: 'boss',
     width: 800,
     height: 640,
-    obstacles: [],
+    obstacles: [
+      { x: 172, y: 150, width: 56, height: 56, cover: true },
+      { x: 572, y: 150, width: 56, height: 56, cover: true },
+      { x: 172, y: 400, width: 56, height: 56, cover: true },
+      { x: 572, y: 400, width: 56, height: 56, cover: true },
+    ],
     playerStart: { x: 400, y: 540 },
     spawns: [{ species: 'aegislash', x: 400, y: 220 }],
     exit: null,
+    next: null,
+  },
+  /**
+   * Crypt mid-boss: Sableye's vault, the king's treasury: four heaps of
+   * gold to break its lines (they do not stop shots); the stairs on open once
+   * it falls.
+   */
+  vault: {
+    id: 'vault',
+    width: 720,
+    height: 560,
+    obstacles: [
+      { x: 150, y: 140, width: 52, height: 40 },
+      { x: 518, y: 140, width: 52, height: 40 },
+      { x: 150, y: 380, width: 52, height: 40 },
+      { x: 518, y: 380, width: 52, height: 40 },
+    ],
+    playerStart: { x: 360, y: 480 },
+    spawns: [{ species: 'sableye', x: 360, y: 200 }],
+    exit: { x: 320, y: 0, width: 80, height: 50 },
     next: null,
   },
   /** Misty Forest mid-boss: Trevenant's hollow, four old trunks; the path on opens once it falls. */

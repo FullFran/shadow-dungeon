@@ -1,7 +1,6 @@
 import { typeEffectiveness } from '../core/damage';
-import { DUNGEON, RUN_PLAN } from '../data/dungeon';
+import { CRYPT, guardianOf } from '../data/dungeons';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
-import { ROOMS } from '../data/rooms';
 import { SPECIES, type SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import { t } from '../i18n';
@@ -27,14 +26,15 @@ export function moveShape(move: MoveDef): { shape: MoveShapeId; hits?: number } 
   return { shape: box.speed < SLOW_PROJECTILE ? 'projectile-slow' : 'projectile-fast', ...hits };
 }
 
-/** Enemies of the Crypt run: the regular spawns, then the bosses of its fixed rooms, without repeats. */
+/**
+ * Enemies a move card weighs against: the Crypt's floor-1 enemies (what a new
+ * player meets first), then its guardian. The deeper species and the mid-boss
+ * stay out so the card line stays short.
+ */
 export function cryptRoster(): SpeciesId[] {
-  const out: SpeciesId[] = [];
-  const add = (id: SpeciesId) => {
-    if (!out.includes(id)) out.push(id);
-  };
-  for (const spawn of DUNGEON.spawns.species) add(spawn.species);
-  for (const plan of RUN_PLAN) if (plan.kind === 'room') for (const spawn of ROOMS[plan.room].spawns) add(spawn.species);
+  const out: SpeciesId[] = CRYPT.spawns.pool.filter((entry) => (entry.weights[0] ?? 0) > 0).map((entry) => entry.species);
+  const guardian = guardianOf(CRYPT);
+  if (guardian && !out.includes(guardian)) out.push(guardian);
   return out;
 }
 

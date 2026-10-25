@@ -6,6 +6,7 @@ import type { UpgradeLevels } from '../data/upgrades';
 import { upgradeBonuses } from './upgrades';
 import { validateLoadout } from './loadout';
 import { hasBossState, initialBoss } from './boss';
+import { returnStolen } from './stolen';
 import { initialAi } from './enemies';
 import { seedRng } from './rng';
 import type { Arena, EnemyState, LockType, PeerRole, PlayerState, Rect, WorldState } from './state';
@@ -136,7 +137,8 @@ export function enterRoom(state: WorldState): WorldState {
     berries: [],
     credited: [],
     lock: { ...state.lock, targetId: null, wheelAccum: 0 },
-    player: { ...state.player, disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
+    // An item Sableye still holds comes back on leaving its room.
+    player: { ...returnStolen(state.player), disguiseBroken: false, illusionBroken: false, action: null, itemUses: {} },
     collapse: undefined,
     fog: undefined,
   };

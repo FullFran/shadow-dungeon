@@ -75,10 +75,10 @@ describe('protocol', () => {
   });
 
   it('round-trips a host snapshot within the wire rounding and reports its size', () => {
-    const { world } = startRun(7, {}, 3);
+    const { world } = startRun(7, {}, 5);
     const snapshot = hostSnapshot(world);
     expect(snapshot.enemies.length).toBeGreaterThan(5);
-    const message: NetMessage = { t: 'snap', at: 99.25, floor: 3, s: snapshot };
+    const message: NetMessage = { t: 'snap', at: 99.25, floor: 5, s: snapshot };
     const wire = encodeMessage(message);
     close(decodeMessage(wire), message);
     // Measured for the feature document: a whole generated floor (every enemy, asleep or not).

@@ -160,7 +160,7 @@ describe('depth scaling', () => {
     expect(world.enemies[0]!.maxHp).toBeCloseTo(SPECIES.aegislash.maxHp * depthScale(ENDLESS.scaling, 5, true).hp);
     // Not the guardian's own floor: no cinematic, only the echo's name card (the app reads `isBossFloor`).
     expect(isBossFloor(run)).toBe(false);
-    expect(isBossFloor(startRun(SEED, {}, 4).run)).toBe(true);
+    expect(isBossFloor(startRun(SEED, {}, CRYPT.plan.length).run)).toBe(true);
     // Standing at the top does nothing while it stands.
     expect(progressRun(run, toEchoExit(world)).entered).toBe(false);
     const next = down({ run, world, entered: false, outcome: null });

@@ -23,18 +23,8 @@ export const DUNGEON = {
   /** Extra corridors on top of the spanning tree, inclusive bounds. */
   extraLoops: { min: 1, max: 2 },
   spawns: {
-    /** Enemies per room on floor 1, plus `perDepth` per deeper floor, plus up to `jitter` more. */
-    base: 1,
-    perDepth: 1,
-    jitter: 1,
-    maxPerRoom: 5,
     /** No spawn closer than this to the start (world px). */
     safeRadius: 192,
-    /** Species weights for regular enemies. */
-    species: [
-      { species: 'poochyena', weight: 3 },
-      { species: 'gastly', weight: 2 },
-    ] as readonly { species: SpeciesId; weight: number }[],
   },
   /** Sleeping enemies wake when the player enters their room or comes this close with line of sight (world px). */
   wakeRadius: 160,
@@ -66,17 +56,40 @@ export interface SpawnTuning {
   pool: readonly SpawnEntry[];
 }
 
-/** The Crypt's enemies (the M2 table). */
+/**
+ * The Crypt's enemies (docs/gdd.md §3, Cripta), by floor 1..5 (floor 3 is
+ * Sableye's vault; its entry keeps the tables aligned). Floor 1 is the M2
+ * floor 1 exactly (Poochyena 3, Gastly 2, one or two per room; the new
+ * species weigh 0 there and come after, so the same seed draws the same
+ * enemies). Duskull and the Pawniard pairs join on floor 2, Golett on 4.
+ */
 export const CRYPT_SPAWNS: SpawnTuning = {
-  base: DUNGEON.spawns.base,
-  perDepth: DUNGEON.spawns.perDepth,
-  jitter: DUNGEON.spawns.jitter,
-  maxPerRoom: DUNGEON.spawns.maxPerRoom,
-  pool: DUNGEON.spawns.species.map((entry) => ({ species: entry.species, weights: [entry.weight] })),
+  base: 1,
+  perDepth: 0.5,
+  jitter: 1,
+  maxPerRoom: 4,
+  pool: [
+    { species: 'poochyena', weights: [3, 3, 2, 2, 2] },
+    { species: 'gastly', weights: [2, 2, 2, 2, 2] },
+    { species: 'duskull', weights: [0, 1, 1, 2, 2] },
+    { species: 'pawniard', weights: [0, 1, 1, 2, 2], pack: 2 },
+    { species: 'golett', weights: [0, 0, 0, 1, 2] },
+  ],
 };
 
-/** The Crypt run (docs/gdd.md §3): three generated floors, then the Aegislash arena. */
-export const RUN_PLAN: readonly FloorPlan[] = [{ kind: 'generated' }, { kind: 'generated' }, { kind: 'generated' }, { kind: 'room', room: 'boss' }];
+/**
+ * The Crypt run (docs/gdd.md §3, provisional): two generated floors, Sableye's
+ * vault (a mid-boss with an exit), two more generated floors, then the
+ * Aegislash arena.
+ */
+export const RUN_PLAN: readonly FloorPlan[] = [
+  { kind: 'generated' },
+  { kind: 'generated' },
+  { kind: 'room', room: 'vault', role: 'midboss' },
+  { kind: 'generated' },
+  { kind: 'generated' },
+  { kind: 'room', room: 'boss' },
+];
 
 export const RUN = {
   /** Fraction of max HP healed on entering each floor after the first. */
@@ -91,7 +104,8 @@ export type FloorKind = 'normal' | 'collapse' | 'fog';
  * floors than the table use its last entry. Provisional.
  */
 export const URGENT = {
-  collapseChance: [0, 0.25, 0.4] as readonly number[],
+  /** The Crypt's collapse by floor 1..5 (floor 3 is the vault, never urgent). */
+  collapseChance: [0, 0.25, 0, 0.35, 0.45] as readonly number[],
 } as const;
 
 /**

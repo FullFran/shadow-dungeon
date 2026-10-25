@@ -15,7 +15,7 @@ import type { MusicContext } from '../data/music';
 import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
 import { fogRadiusTiles } from '../core/fog';
-import { ENEMY_BEHAVIOUR } from '../data/enemies';
+import { spellCardKey } from '../data/enemies';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -179,6 +179,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   );
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
+  // Development server only: `?bossHp=0.4` starts the floor's enemies at that share of their HP (to look at Aegislash's phase 2).
+  const devBossHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('bossHp') ?? '') : Number.NaN;
+  if (devBossHp > 0 && devBossHp <= 1) world = { ...world, enemies: world.enemies.map((e) => ({ ...e, hp: Math.max(1, Math.round(e.maxHp * devBossHp)) })) };
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;
@@ -241,10 +244,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
   function announceFloor(descended: boolean): void {
     const lore = dungeonOf(run).lore;
-    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs };
+    // The floor's own lore line, when the dungeon has one (the Crypt).
+    const floorKey = lore.floorKeys?.[run.floor - 1];
+    const floorLore = floorKey ? { lore: t(floorKey) } : {};
+    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, ...floorLore };
     // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
     if (run.floor === 1) {
-      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs };
+      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, ...floorLore };
       card = null;
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
@@ -531,9 +537,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
     const bar = bossBar(world);
-    const def = bar ? ENEMY_BEHAVIOUR[bar.species] : undefined;
-    const cardNow = def?.kind === 'archer' && bar?.stance && world.enemies.some((e) => e.id === bar.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar.stance : null;
-    if (cardNow && cardNow !== lastCard && def?.kind === 'archer') spell = { name: t(def.cardNames[cardNow as keyof typeof def.cardNames]), shownAtMs: realMs };
+    // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
+    const cardKey = bar ? spellCardKey(bar.species, bar.stance) : null;
+    const cardNow = cardKey && world.enemies.some((e) => e.id === bar!.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar!.stance : null;
+    if (cardNow && cardKey && cardNow !== lastCard) spell = { name: t(cardKey), shownAtMs: realMs };
     if (cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
@@ -566,6 +573,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       log,
       coins: scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total,
       palette: dungeonOf(run).palette,
+      decor: dungeonOf(run).decor ?? null,
       intro,
       nowPlaying,
       spell,

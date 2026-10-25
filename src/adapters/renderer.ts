@@ -2,13 +2,14 @@ import { AEGISLASH, ENEMY_BEHAVIOUR } from '../data/enemies';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS } from '../core/archer';
+import { shadowGapX } from '../core/boss';
 import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { collapseFront, type CollapseState } from '../core/collapse';
-import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
-import { isWall, type TileGrid } from '../core/tiles';
+import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState } from '../core/state';
+import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { drawFloorCard, type FloorCard } from './card';
@@ -25,6 +26,7 @@ import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, en
 import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
+import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -59,6 +61,8 @@ export interface RenderFrame {
   coins?: number;
   /** Tile and arena colours of the dungeon (the Crypt's by default). */
   palette?: TilePalette;
+  /** The dungeon's decoration (the Crypt's candles, graves, braziers and treasure), if any. */
+  decor?: 'crypt' | null;
   /** Floor 1: the dungeon's name and subtitle, while they show. */
   intro?: DungeonIntro | null;
   /** The track that started last ("♪ title"), while it shows. */
@@ -143,6 +147,8 @@ export interface Renderer {
 }
 
 export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): Renderer {
+  /** The arena of the frame being drawn (the shadow-sword wall spans it). */
+  let currentArena: { width: number; height: number } | null = null;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
 
@@ -273,12 +279,75 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number): void {
+  /** Crypt decoration of a generated floor, worked out once per floor. */
+  const decorOf = new WeakMap<TileGrid, CryptDecor>();
+  function cryptFloorDecor(state: WorldState, view: Rect, timeMs: number): void {
+    const grid = state.arena.tiles!;
+    let decor = decorOf.get(grid);
+    if (!decor) {
+      const stairs = state.arena.stairs ? tileOf({ x: state.arena.stairs.x + 1, y: state.arena.stairs.y + 1 }) : undefined;
+      decor = cryptDecor({ ...grid, rooms: state.arena.rooms ?? [], ...(stairs ? { stairs } : {}) });
+      decorOf.set(grid, decor);
+    }
+    const front = state.collapse ? collapseFront(state.collapse) : 0;
+    const fallen = (x: number, y: number) => {
+      const d = state.collapse ? (state.collapse.dist[y * grid.cols + x] ?? -1) : -1;
+      return front > 0 && d >= 0 && d < front;
+    };
+    const visible = (x: number, y: number) => x * TILE + TILE >= view.x && x * TILE <= view.x + view.width && y * TILE + TILE >= view.y && y * TILE <= view.y + view.height + TILE;
+    for (const s of decor.slabs) if (visible(s.x, s.y) && !fallen(s.x, s.y)) graveSlab(s.x * TILE, s.y * TILE, decorHash(s.x, s.y, 3));
+    for (const c of decor.candles) if (visible(c.x, c.y)) wallCandle(c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
+  }
+
+  /** A grave slab set into the floor: a worn lid with a cross carved in it. */
+  function graveSlab(x: number, y: number, look: number): void {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(x + 5, y + 3, 23, 28);
+    ctx.fillStyle = look < 0.5 ? '#3a3645' : '#363240';
+    ctx.fillRect(x + 4, y + 2, 23, 27);
+    ctx.fillStyle = '#4a4558';
+    ctx.fillRect(x + 4, y + 2, 23, 2);
+    ctx.fillStyle = '#25222d';
+    ctx.fillRect(x + 14, y + 8, 3, 15);
+    ctx.fillRect(x + 10, y + 12, 11, 3);
+  }
+
+  /** A candle on a lit wall face, flickering, with a warm pool of light on the floor below. */
+  function wallCandle(x: number, y: number, timeMs: number, phase: number): void {
+    const flicker = 0.75 + 0.25 * Math.sin(timeMs / 90 + phase * 40) * Math.sin(timeMs / 230 + phase * 13);
+    const cx = x + 8 + Math.round(phase * 16);
+    const glow = ctx.createRadialGradient(cx, y + TILE + 6, 1, cx, y + TILE + 6, 30);
+    glow.addColorStop(0, `rgba(255, 180, 90, ${0.32 * flicker})`);
+    glow.addColorStop(1, 'rgba(255, 180, 90, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 30, y + TILE - 24, 60, 60);
+    ctx.fillStyle = '#d9d0b8';
+    ctx.fillRect(cx - 2, y + TILE - 9, 4, 7);
+    ctx.fillStyle = '#8c826a';
+    ctx.fillRect(cx - 3, y + TILE - 3, 6, 2);
+    ctx.fillStyle = `rgba(255, 210, 120, ${flicker})`;
+    ctx.fillRect(cx - 1, y + TILE - 13 + Math.round(1 - flicker), 2, 4);
+    ctx.fillStyle = 'rgba(255, 250, 220, 0.9)';
+    ctx.fillRect(cx, y + TILE - 11, 1, 2);
+  }
+
+  /** The Crypt's fixed arenas: a worn red carpet up the middle and candles along the top edge. */
+  function cryptArena(width: number, height: number, timeMs: number): void {
+    ctx.fillStyle = 'rgba(110, 24, 36, 0.55)';
+    ctx.fillRect(Math.round(width / 2 - 40), 0, 80, height);
+    ctx.fillStyle = 'rgba(200, 160, 70, 0.35)';
+    ctx.fillRect(Math.round(width / 2 - 40), 0, 2, height);
+    ctx.fillRect(Math.round(width / 2 + 38), 0, 2, height);
+    for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
+  }
+
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       ctx.fillStyle = COLORS.mapVoid;
       ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       tiles(grid, view, state.collapse, timeMs);
+      if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
       ctx.lineWidth = 1;
@@ -297,6 +366,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.strokeStyle = COLORS.wallEdge;
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
+    if (decor === 'crypt') cryptArena(width, height, timeMs);
   }
 
   /** An Oran Berry, drawn (no sprite asset): a blue berry with a leaf, bobbing a little. */
@@ -343,8 +413,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
   }
 
-  function pillar(rect: Rect): Drawable {
+  function pillar(rect: Obstacle, decor: 'crypt' | null, timeMs: number): Drawable {
     const lift = 18;
+    if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -352,6 +423,52 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         ctx.fillRect(rect.x, rect.y - lift + rect.height - 4, rect.width, lift + 4);
         ctx.fillStyle = COLORS.pillarTop;
         ctx.fillRect(rect.x, rect.y - lift, rect.width, rect.height);
+        if (decor === 'crypt') brazier(rect, lift, timeMs);
+      },
+    };
+  }
+
+  /** A brazier burning on top of a Crypt pillar. */
+  function brazier(rect: Rect, lift: number, timeMs: number): void {
+    const cx = rect.x + rect.width / 2;
+    const top = rect.y - lift + 6;
+    const flicker = 0.8 + 0.2 * Math.sin(timeMs / 80 + rect.x) * Math.sin(timeMs / 190 + rect.y);
+    const glow = ctx.createRadialGradient(cx, top, 2, cx, top, 46);
+    glow.addColorStop(0, `rgba(255, 160, 70, ${0.3 * flicker})`);
+    glow.addColorStop(1, 'rgba(255, 160, 70, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - 46, top - 46, 92, 92);
+    ctx.fillStyle = '#1f1b26';
+    ctx.fillRect(cx - 11, top, 22, 6);
+    ctx.fillStyle = '#6e5a3a';
+    ctx.fillRect(cx - 11, top, 22, 2);
+    const h = Math.round(8 + 4 * flicker);
+    ctx.fillStyle = 'rgba(255, 120, 40, 0.95)';
+    ctx.fillRect(cx - 7, top - h + 2, 14, h);
+    ctx.fillStyle = 'rgba(255, 200, 90, 0.95)';
+    ctx.fillRect(cx - 4, top - h + 4, 8, h - 3);
+    ctx.fillStyle = 'rgba(255, 245, 210, 0.9)';
+    ctx.fillRect(cx - 1, top - h + 6, 3, 3);
+  }
+
+  /** The king's treasure in Sableye's vault: a heap of gold with gems that catch the light. */
+  function treasure(rect: Rect, timeMs: number): Drawable {
+    return {
+      y: rect.y + rect.height,
+      draw: () => {
+        const { x, y, width: w, height: h } = rect;
+        ctx.fillStyle = '#5a4416';
+        ctx.fillRect(x, y + h * 0.35, w, h * 0.65);
+        ctx.fillStyle = '#a07a22';
+        ctx.fillRect(x + 4, y + h * 0.15, w - 8, h * 0.6);
+        ctx.fillStyle = '#d9a93a';
+        ctx.fillRect(x + 10, y, w - 20, h * 0.4);
+        const gems = ['#7fd4ff', '#ff6b9a', '#8cf08c'];
+        gems.forEach((colour, i) => {
+          const twinkle = Math.sin(timeMs / 300 + i * 2 + x) > 0.6;
+          ctx.fillStyle = twinkle ? '#ffffff' : colour;
+          ctx.fillRect(Math.round(x + 8 + i * ((w - 18) / 2)), Math.round(y + h * 0.3 + (i % 2) * 6), 4, 4);
+        });
       },
     };
   }
@@ -404,11 +521,18 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     const def = ENEMY_BEHAVIOUR[enemy.species];
     if (ai.mode === 'transform' && def?.kind === 'boss') {
+      // The unsheathing (phase 2) is a bigger, double ring.
+      const big = enemy.boss?.stance === 'unsheathe';
       ctx.strokeStyle = COLORS.transform;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = big ? 3 : 2;
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, enemy.radius + 6 + 30 * progress, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, enemy.radius + 6 + (big ? 70 : 30) * progress, 0, Math.PI * 2);
       ctx.stroke();
+      if (big) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + 6 + 70 * ((progress + 0.5) % 1), 0, Math.PI * 2);
+        ctx.stroke();
+      }
       return;
     }
     if (def?.kind === 'beam' && def.guard && ai.mode !== 'recover') {
@@ -420,6 +544,34 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, enemy.radius + 5, angle - half, angle + half);
       ctx.stroke();
+    }
+    if (def?.kind === 'boss' && enemy.boss) {
+      const stance = enemy.boss.stance;
+      if (stance === 'oaths' && (winding || striking)) {
+        // The planted shield guards every side.
+        ctx.strokeStyle = COLORS.guard;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (stance === 'midnight' && (winding || striking)) {
+        groundCircle(pos, def.phase2.midnight.radius, telegraphFill(enemyAttackType(enemy), winding), winding ? progress : 1);
+        return;
+      }
+      if (stance === 'oaths' && winding) {
+        const o = def.phase2.oaths;
+        for (let i = 0; i < o.perVolley; i++) {
+          const a = Math.atan2(ai.attackDir.y, ai.attackDir.x) + ((-o.spreadDegrees / 2 + (i * o.spreadDegrees) / (o.perVolley - 1)) * Math.PI) / 180;
+          groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 120, 3, telegraphFill(enemyAttackType(enemy), true), progress);
+        }
+        return;
+      }
+      if (stance === 'shadow') {
+        if (winding) shadowWall(enemy, progress);
+        return;
+      }
+      if (stance === 'unsheathe' || stance === 'midnight' || stance === 'oaths') return;
     }
     if (!winding && !striking) return;
     // Tinted by the attack's type; the red edges keep the warning readable.
@@ -468,10 +620,21 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 4 + 16 * (1 - progress), 0, Math.PI * 2);
       ctx.stroke();
       groundLane(pos, ai.attackDir, 50, def.projectile.radius * 2, fill, progress);
+    } else if (def?.kind === 'slammer' && def.arcDegrees !== undefined) {
+      // Golett: a frontal sector along the aim fixed at the start of the wind-up.
+      groundArc(pos, ai.attackDir, def.radius * (winding ? 0.35 + 0.65 * progress : 1), def.arcDegrees, fill, COLORS.telegraphEdge);
     } else if (def?.kind === 'slammer' || def?.kind === 'spore') {
       // The area that will be hit: its edge from the start, filling in as the wind-up runs.
       const radius = def.kind === 'slammer' ? def.radius : def.cloud.radius;
       if (winding || def.kind === 'slammer') groundCircle(pos, radius, fill, winding ? progress : 1);
+    } else if (def?.kind === 'thief') {
+      if (enemy.boss?.stance === 'glint') {
+        // The glint: where the slash will run, and a star twinkling on the thief.
+        groundLane(pos, ai.attackDir, def.blink.slashDistance, (enemy.radius + def.blink.reach) * 2, striking ? COLORS.strike : fill, winding ? progress : 1);
+        if (winding) glint(pos, enemy.radius, progress);
+      } else if (winding) {
+        groundCircle(pos, enemy.radius + 10 + 30 * (1 - progress), fill, progress);
+      }
     } else if (def?.kind === 'archer') {
       const card = enemy.boss?.stance;
       if (card === 'dive') {
@@ -487,6 +650,40 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
       groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
     }
+  }
+
+  /** Sableye's glint before a slash: a four-point star over its head, growing as the wind-up runs. */
+  function glint(pos: Vec2, radius: number, progress: number): void {
+    const size = 4 + 8 * progress;
+    const at = { x: pos.x + radius * 0.6, y: pos.y - radius * 2 - 6 };
+    ctx.fillStyle = 'rgba(190, 240, 255, 0.95)';
+    ctx.fillRect(Math.round(at.x - size), Math.round(at.y - 1), Math.round(size * 2), 2);
+    ctx.fillRect(Math.round(at.x - 1), Math.round(at.y - size), 2, Math.round(size * 2));
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    ctx.fillRect(Math.round(at.x - 2), Math.round(at.y - 2), 4, 4);
+  }
+
+  /** The shadow-sword wall about to sweep: a dark band along its starting end, the gap left bright, filling as the wind-up runs. */
+  function shadowWall(enemy: EnemyState, progress: number): void {
+    if (!currentArena) return;
+    const { width, height } = currentArena;
+    const shadow = AEGISLASH.phase2.shadow;
+    const gap = shadowGapX(width, enemy.boss!.comboIndex, shadow.lanes);
+    const down = enemy.ai.attackDir.y > 0;
+    const band = 22;
+    const y = down ? 0 : height - band;
+    const left = gap - shadow.gapWidth / 2;
+    const right = gap + shadow.gapWidth / 2;
+    ctx.fillStyle = `rgba(60, 20, 90, ${0.35 + 0.35 * progress})`;
+    ctx.fillRect(0, y, Math.max(0, left), band);
+    ctx.fillRect(right, y, Math.max(0, width - right), band);
+    ctx.fillStyle = COLORS.telegraphEdge;
+    const edge = down ? y + band - 2 : y;
+    ctx.fillRect(0, edge, Math.max(0, left) * progress, 2);
+    ctx.fillRect(width - Math.max(0, width - right) * progress, edge, Math.max(0, width - right) * progress, 2);
+    // The safe lane, shown down the whole room.
+    ctx.fillStyle = 'rgba(255, 230, 160, 0.08)';
+    ctx.fillRect(left, 0, shadow.gapWidth, height);
   }
 
   /** A filled ground circle with a solid edge; `progress` (0..1) fills it from the centre. */
@@ -611,6 +808,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   function draw(frame: RenderFrame): void {
     const { current, view, pixelScale, juice, timeMs } = frame;
+    currentArena = current.arena;
     // The dungeon's tile and arena colours replace the defaults for this frame.
     Object.assign(COLORS, frame.palette ?? CRYPT.palette);
     ctx.imageSmoothingEnabled = false;
@@ -625,7 +823,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view, timeMs);
+    floor(current, view, timeMs, frame.decor ?? null);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
@@ -638,7 +836,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
-    for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect));
+    for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect, frame.decor ?? null, timeMs));
     for (const enemy of current.enemies) {
       const defeated = frame.defeatedAt.get(enemy.id);
       const sinceDefeatMs = defeated === undefined ? Number.POSITIVE_INFINITY : timeMs - defeated;
@@ -650,7 +848,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           shadow(pos, enemy.radius);
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
-          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && ENEMY_BEHAVIOUR[enemy.species]?.kind === 'archer';
+          const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
+          // (Sableye blinking out works the same way.)
+          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },

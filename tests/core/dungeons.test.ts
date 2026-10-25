@@ -7,15 +7,34 @@ import { deriveSeed, nextRandom } from '../../src/core/rng';
 import { floorKind, floorPlanOf, isBossFloor, startRun } from '../../src/core/run';
 import { floorMusic } from '../../src/adapters/audio';
 
+/** The M2 Crypt table, before the remaster: floor 1 must still generate exactly like it. */
+const M2_SPAWNS: SpawnTuning = { base: 1, perDepth: 1, jitter: 1, maxPerRoom: 5, pool: [{ species: 'poochyena', weights: [3] }, { species: 'gastly', weights: [2] }] };
+
 describe('the Crypt as a DungeonDef', () => {
-  it('keeps the M2 run plan, enemy table and collapse weights', () => {
+  it('runs the remastered plan: 1-2 generated, Sableye on 3, 4-5 generated, Aegislash on 6, collapse kept', () => {
     expect(CRYPT.plan).toBe(RUN_PLAN);
-    expect(CRYPT.urgent).toEqual([{ kind: 'collapse', chance: URGENT.collapseChance }]);
-    expect(CRYPT.spawns.pool.map((e) => [e.species, e.weights])).toEqual([
-      ['poochyena', [3]],
-      ['gastly', [2]],
+    expect(CRYPT.plan.map((p) => (p.kind === 'room' ? `${p.room}${p.role ? `:${p.role}` : ''}` : 'generated'))).toEqual([
+      'generated',
+      'generated',
+      'vault:midboss',
+      'generated',
+      'generated',
+      'boss',
     ]);
+    expect(CRYPT.urgent).toEqual([{ kind: 'collapse', chance: URGENT.collapseChance }]);
+    expect(CRYPT.spawns).toBe(CRYPT_SPAWNS);
+    expect(guardianOf(CRYPT)).toBe('aegislash');
     expect(DUNGEONS[0]).toBe(CRYPT);
+  });
+
+  it('keeps floor 1 exactly as the M2 Crypt generated it (gentle entry)', () => {
+    for (let seed = 1; seed <= 60; seed++) expect(generateFloor(seed, 1, CRYPT.spawns)).toEqual(generateFloor(seed, 1, M2_SPAWNS));
+  });
+
+  it('ramps: deeper Crypt floors hold more enemies than floor 1', () => {
+    const average = (depth: number) => [...Array(60).keys()].reduce((sum, seed) => sum + generateFloor(seed + 1, depth).spawns.length, 0) / 60;
+    expect(average(2)).toBeGreaterThan(average(1));
+    expect(average(5)).toBeGreaterThan(average(2));
   });
 
   it('generates the same floors with and without the explicit dungeon table', () => {
@@ -27,8 +46,8 @@ describe('the Crypt as a DungeonDef', () => {
   it('rolls collapse floors exactly like the M2 formula (one draw against the depth chance)', () => {
     const SALT = 0x51ab;
     for (let seed = 1; seed <= 400; seed++) {
-      for (const floor of [1, 2, 3, 4]) {
-        const chance = RUN_PLAN[floor - 1]!.kind === 'generated' ? (URGENT.collapseChance[Math.min(floor, 3) - 1] ?? 0) : 0;
+      for (const floor of [1, 2, 3, 4, 5, 6]) {
+        const chance = RUN_PLAN[floor - 1]!.kind === 'generated' ? (URGENT.collapseChance[Math.min(floor, 5) - 1] ?? 0) : 0;
         const legacy = nextRandom(deriveSeed(seed, floor + SALT)).value < chance ? 'collapse' : 'normal';
         expect(floorKind(seed, floor, CRYPT)).toBe(legacy);
         expect(floorKind(seed, floor)).toBe(legacy);
@@ -43,11 +62,12 @@ describe('the Crypt as a DungeonDef', () => {
     expect(dungeonById('__proto__')).toBe(CRYPT);
   });
 
-  it('plays the same music per floor as before', () => {
+  it('plays the crypt loop on its floors, the battle theme for Sableye and Aegislash', () => {
     const run = startRun(5, {}).run;
-    for (const floor of [1, 2, 3, 4]) {
+    for (const floor of [1, 2, 3, 4, 5, 6]) {
       const at = { ...run, floor };
-      for (const kind of ['normal', 'collapse'] as const) expect(musicFor(CRYPT, floorPlanOf(at), kind)).toBe(floorMusic(isBossFloor(at), kind));
+      const fixed = floorPlanOf(at).kind === 'room';
+      for (const kind of ['normal', 'collapse'] as const) expect(musicFor(CRYPT, floorPlanOf(at), kind)).toBe(floorMusic(fixed || isBossFloor(at), kind));
     }
   });
 });

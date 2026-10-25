@@ -38,6 +38,10 @@ export const PROGRESSION = {
     houndour: 15,
     slugma: 14,
     litleo: 13,
+    duskull: 13,
+    golett: 22,
+    pawniard: 7,
+    sableye: 50,
   } as Record<SpeciesId, number>,
   /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
   xpPerDepth: 0.5,

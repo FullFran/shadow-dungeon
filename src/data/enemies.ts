@@ -50,6 +50,18 @@ export interface PoochyenaDef {
   weave?: { amplitude: number; periodMs: number };
   /** The aim stops tracking the player this long before the lunge (Ekans' coil): the locked lane is the dodge cue. */
   lockMs?: number;
+  /**
+   * A second cut right after the first lunge (Pawniard): a short, re-aimed
+   * wind-up and lunge, so rolling into it on the first one gets punished.
+   */
+  followUp?: { telegraphMs: number; lungeMs: number; lungeDistance: number };
+}
+
+/** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
+export interface SteerDef {
+  degPerSec: number;
+  /** Steering stops after this long; it then flies straight. */
+  ms: number;
 }
 
 export interface GastlyDef {
@@ -69,7 +81,7 @@ export interface GastlyDef {
   castMs: number;
   recoverMs: number;
   cooldownMs: number;
-  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -115,8 +127,42 @@ export interface ComboHitDef {
   attack: EnemyAttackDef;
 }
 
+/** Aegislash's phase-2 spell cards (docs/gdd.md, Cripta). */
+export type AegislashCard = 'midnight' | 'oaths' | 'shadow';
+
+/** An enemy shot (shape, speed, life). */
+export type ShotDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+
+/**
+ * Aegislash's second phase, "El Rey desenvaina": at half HP a long,
+ * harmless unsheathing (the opening), then faster stance swaps, and after
+ * every Blade stance one named spell card in turn. Midnight: a spin that hits
+ * a ring around it and throws a ring of blades. Oaths: planted shield that
+ * guards from every side while it fires fans of blades (hide behind a pillar),
+ * then lowers it. Shadow: a wall of shadow swords sweeps the throne room from
+ * one end to the other, with a gap away from the player; the pillars stop the
+ * swords of their column.
+ */
+export interface AegislashPhase2Def {
+  /** Fraction of max HP at or below which it starts. */
+  threshold: number;
+  unsheatheMs: number;
+  transformMs: number;
+  shieldMaxMs: number;
+  shieldDamageToBreak: number;
+  bladeMaxMs: number;
+  bladeCombosPerStance: number;
+  cards: readonly AegislashCard[];
+  midnight: { telegraphMs: number; radius: number; strikeMs: number; attack: EnemyAttackDef; blades: { count: number; shot: ShotDef }; recoverMs: number };
+  oaths: { telegraphMs: number; volleys: number; perVolley: number; spreadDegrees: number; gapMs: number; blade: ShotDef; recoverMs: number };
+  shadow: { telegraphMs: number; lanes: number; spacing: number; gapWidth: number; sword: ShotDef; sweepMs: number; recoverMs: number };
+}
+
 export interface AegislashDef {
   kind: 'boss';
+  /** i18n keys of the phase-2 spell cards and of the unsheathing, shown when they start. */
+  cardNames: Readonly<Record<AegislashCard | 'unsheathe', string>>;
+  phase2: AegislashPhase2Def;
   poise: PoiseDef;
   aggroRange: number;
   /** Telegraphed stance change; it neither blocks nor attacks meanwhile (an opening). */
@@ -158,6 +204,32 @@ export interface AegislashDef {
 
 export const AEGISLASH: AegislashDef = {
   kind: 'boss',
+  cardNames: {
+    unsheathe: 'spell.aegislash.unsheathe',
+    midnight: 'spell.aegislash.midnight',
+    oaths: 'spell.aegislash.oaths',
+    shadow: 'spell.aegislash.shadow',
+  },
+  phase2: {
+    threshold: 0.5,
+    unsheatheMs: 1600,
+    transformMs: 600,
+    shieldMaxMs: 6000,
+    shieldDamageToBreak: 80,
+    bladeMaxMs: 6000,
+    bladeCombosPerStance: 1,
+    cards: ['midnight', 'oaths', 'shadow'],
+    midnight: {
+      telegraphMs: 1100,
+      radius: 110,
+      strikeMs: 220,
+      attack: { power: 34, type: 'ghost' },
+      blades: { count: 12, shot: { power: 18, type: 'steel', speed: 120, radius: 7, lifetimeMs: 4000 } },
+      recoverMs: 1500,
+    },
+    oaths: { telegraphMs: 800, volleys: 3, perVolley: 5, spreadDegrees: 60, gapMs: 750, blade: { power: 15, type: 'steel', speed: 150, radius: 6, lifetimeMs: 4000 }, recoverMs: 1600 },
+    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', speed: 160, radius: 9, lifetimeMs: 5000 }, sweepMs: 900, recoverMs: 1400 },
+  },
   poise: { hitstunScale: 0, knockbackScale: 0.15 },
   aggroRange: 900,
   transformMs: 900,
@@ -223,6 +295,11 @@ export interface SlammerDef {
   puddle?: HazardDef;
   /** Hazards dropped behind it every `everyMs` while it walks (Grimer's sludge trail). */
   trail?: { everyMs: number; puddle: HazardDef };
+  /**
+   * Frontal slam (Golett): only a sector of this many degrees in front is hit,
+   * and the aim is fixed when the wind-up starts (step around it).
+   */
+  arcDegrees?: number;
 }
 
 /** A lingering ground hazard: a still projectile that hits whoever walks in, once, and fades after `lifetimeMs`. */
@@ -800,7 +877,118 @@ export const EXPERIMENTAL_ENEMIES: readonly ExperimentalEnemy[] = [
   { species: 'croagunk', minDepth: 5, weight: 1, coins: 3, futureDungeon: 'toxic-swamp' },
 ];
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
+/** Sableye's spell cards (Crypt mid-boss). */
+export type ThiefCard = 'glint' | 'gems';
+
+/**
+ * Sableye, "el ladrón de gemas" (Crypt mid-boss): two spell cards in order.
+ * Glint: it blinks out, glints where it will reappear beside the player
+ * (the warning), reappears and slashes in a straight line, three times; a
+ * slash that lands steals the last held item (core/stolen.ts) until the
+ * player hits it back. Gems: it blinks to the middle of the vault and throws
+ * rings of stolen gems whose gaps turn between rings. It rests in between.
+ */
+export interface ThiefDef {
+  kind: 'thief';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  keepDistance: number;
+  restMs: number;
+  cards: readonly ThiefCard[];
+  cardNames: Readonly<Record<ThiefCard, string>>;
+  blink: {
+    vanishMs: number;
+    /** Glint at the spot it reappears on: the warning before the slash. */
+    telegraphMs: number;
+    /** It reappears this far from the player, a third of a turn around from where it was. */
+    distance: number;
+    slashMs: number;
+    slashDistance: number;
+    reach: number;
+    attack: EnemyAttackDef;
+    blinks: number;
+    recoverMs: number;
+  };
+  gems: { vanishMs: number; telegraphMs: number; rings: number; perRing: number; gapMs: number; gem: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number }; recoverMs: number };
+  /** A stolen item comes back after this long at the latest. */
+  stealMs: number;
+}
+
+export const DUSKULL: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1, knockbackScale: 0.8 },
+  floats: true,
+  aggroRange: 650,
+  speed: 34,
+  minDistance: 70,
+  maxDistance: 190,
+  telegraphMs: 850,
+  castMs: 300,
+  recoverMs: 700,
+  cooldownMs: 2600,
+  projectile: { power: 28, type: 'fire', speed: 70, radius: 8, lifetimeMs: 5200, steer: { degPerSec: 65, ms: 2200 } },
+};
+
+export const GOLETT: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.2, knockbackScale: 0.05 },
+  aggroRange: 520,
+  walkSpeed: 32,
+  slamRange: 100,
+  telegraphMs: 1000,
+  slamMs: 180,
+  radius: 110,
+  arcDegrees: 100,
+  attack: { power: 46, type: 'ground' },
+  recoverMs: 1400,
+  cooldownMs: 1600,
+};
+
+export const PAWNIARD: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.3 },
+  aggroRange: 600,
+  walkSpeed: 96,
+  stalkRange: 105,
+  lungeRange: 95,
+  telegraphMs: 480,
+  lungeMs: 170,
+  lungeDistance: 110,
+  attack: { power: 20, type: 'steel' },
+  hitRecoverMs: 500,
+  missRecoverMs: 900,
+  cooldownMs: 1300,
+  followUp: { telegraphMs: 260, lungeMs: 150, lungeDistance: 90 },
+};
+
+export const SABLEYE: ThiefDef = {
+  kind: 'thief',
+  poise: { hitstunScale: 0, knockbackScale: 0.15 },
+  bar: true,
+  aggroRange: 900,
+  walkSpeed: 70,
+  keepDistance: 170,
+  restMs: 1300,
+  cards: ['glint', 'gems'],
+  cardNames: { glint: 'spell.sableye.glint', gems: 'spell.sableye.gems' },
+  blink: {
+    vanishMs: 450,
+    telegraphMs: 650,
+    distance: 95,
+    slashMs: 220,
+    slashDistance: 130,
+    reach: 6,
+    attack: { power: 26, type: 'dark' },
+    blinks: 3,
+    recoverMs: 1400,
+  },
+  gems: { vanishMs: 450, telegraphMs: 900, rings: 3, perRing: 12, gapMs: 800, gem: { power: 20, type: 'dark', speed: 105, radius: 6, lifetimeMs: 5000 }, recoverMs: 1500 },
+  stealMs: 9000,
+};
+
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -829,7 +1017,18 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   houndour: HOUNDOUR,
   slugma: SLUGMA,
   litleo: LITLEO,
+  duskull: DUSKULL,
+  golett: GOLETT,
+  pawniard: PAWNIARD,
+  sableye: SABLEYE,
 };
+
+/** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
+export function spellCardKey(species: SpeciesId, stance: string | null | undefined): string | null {
+  const def = ENEMY_BEHAVIOUR[species];
+  if (!def || !stance || !('cardNames' in def)) return null;
+  return (def.cardNames as Readonly<Record<string, string>>)[stance] ?? null;
+}
 
 const DEFAULT_POISE: PoiseDef = { hitstunScale: 1, knockbackScale: 1 };
 

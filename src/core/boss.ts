@@ -1,10 +1,10 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashDef } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef } from '../data/enemies';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
-import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, towardTarget } from './brain';
-import { bashTouches, bladeTouches } from './victim';
+import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, spawnShot, spreadDirections, towardTarget } from './brain';
+import { bashTouches, bladeTouches, slamTouches } from './victim';
 import type { AiState, BossStance, BossState, EnemyState, GameEvent, WorldState } from './state';
-import { angleOf, distance, dot, fromAngle, length, normalize, scale, sub, type Vec2 } from './vec';
+import { angleOf, distance, dot, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 /**
  * Aegislash (docs/gdd.md §4): two stances, as in its Stance Change.
@@ -13,21 +13,26 @@ import { angleOf, distance, dot, fromAngle, length, normalize, scale, sub, type 
  * then stays open. Shield turns into Blade after a while or after taking
  * enough damage; Blade goes back after its combos. The change itself is a
  * telegraphed transformation that neither blocks nor attacks.
+ *
+ * Phase 2 ("El Rey desenvaina", data `AEGISLASH.phase2`): at half HP a long
+ * unsheathing that neither blocks nor attacks, then faster swaps, and after
+ * every Blade stance one named spell card in turn (Midnight, Oaths, Shadow),
+ * each telegraphed and followed by an opening, then back to Shield.
  */
 const PLAYER_RADIUS = TUNING.player.radius;
 const DEG = Math.PI / 180;
 
-/** A boss's starting state: Aegislash in Shield, Decidueye on its first spell card. */
+/** A boss's starting state: Aegislash in Shield, Decidueye and Sableye on their first spell card. */
 export function initialBoss(species?: SpeciesId): BossState {
   const def = species ? ENEMY_BEHAVIOUR[species] : undefined;
-  const stance: BossStance = def?.kind === 'archer' ? def.cards[0]! : 'shield';
+  const stance: BossStance = def?.kind === 'archer' || def?.kind === 'thief' ? def.cards[0]! : 'shield';
   return { stance, stanceMs: 0, stanceDamage: 0, comboIndex: 0, combosDone: 0 };
 }
 
 /** Enemies that carry boss state (stances, spell cards). */
 export const hasBossState = (species: SpeciesId): boolean => {
   const kind = ENEMY_BEHAVIOUR[species]?.kind;
-  return kind === 'boss' || kind === 'archer';
+  return kind === 'boss' || kind === 'archer' || kind === 'thief';
 };
 
 /** Angle in radians between two non-zero directions, in [0, π]. */
@@ -47,6 +52,8 @@ export function rotateToward(facing: Vec2, target: Vec2, maxRadians: number): Ve
 
 /** Whether a hit coming from `from` is stopped by the Shield stance's frontal guard. */
 export function blocksHit(enemy: EnemyState, from: Vec2): boolean {
+  // Oaths: the planted shield guards every side while it fires; it lowers to recover.
+  if (enemy.boss?.stance === 'oaths') return enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack';
   if (enemy.boss?.stance !== 'shield' || enemy.ai.mode === 'transform') return false;
   const incoming = sub(from, enemy.pos);
   if (length(incoming) === 0) return false;
@@ -89,8 +96,113 @@ function telegraph(enemy: EnemyState, attack: string, durationMs: number, events
 }
 
 function wantsStanceChange(boss: BossState, def: AegislashDef): boolean {
-  if (boss.stance === 'shield') return boss.stanceMs >= def.shield.maxMs || boss.stanceDamage >= def.shield.damageToBreak;
-  return boss.stanceMs >= def.blade.maxMs || boss.combosDone >= def.blade.combosPerStance;
+  const p2 = boss.phase === 2 ? def.phase2 : null;
+  if (boss.stance === 'shield') return boss.stanceMs >= (p2?.shieldMaxMs ?? def.shield.maxMs) || boss.stanceDamage >= (p2?.shieldDamageToBreak ?? def.shield.damageToBreak);
+  return boss.stanceMs >= (p2?.bladeMaxMs ?? def.blade.maxMs) || boss.combosDone >= (p2?.bladeCombosPerStance ?? def.blade.combosPerStance);
+}
+
+const isCard = (stance: BossStance): stance is AegislashCard => stance === 'midnight' || stance === 'oaths' || stance === 'shadow';
+
+/** Centre of the gap in the shadow-sword wall for `lane` (the room split into `lanes` equal lanes). */
+export const shadowGapX = (width: number, lane: number, lanes = AEGISLASH.phase2.shadow.lanes): number => (width * (lane + 0.5)) / lanes;
+
+/** The lane farthest from the player: where the gap goes. */
+function farLane(width: number, playerX: number, lanes: number): number {
+  let best = 0;
+  for (let lane = 0; lane < lanes; lane++) if (Math.abs(shadowGapX(width, lane, lanes) - playerX) > Math.abs(shadowGapX(width, best, lanes) - playerX)) best = lane;
+  return best;
+}
+
+function cardWindUp(enemy: EnemyState, card: AegislashCard, durationMs: number, dir: Vec2, comboIndex: number, events: GameEvent[]): EnemyState {
+  events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: card, durationMs });
+  const next = withBoss(enemy, { stance: card, stanceMs: 0, comboIndex });
+  return { ...next, facing: length(dir) > 0 && dir.x !== 0 ? dir : next.facing, ai: { ...enterMode(next.ai, 'telegraph', durationMs), attackDir: dir, contact: 'none' } };
+}
+
+/** After Blade in phase 2: the next spell card, announced (`bossStance`) and telegraphed. */
+function startCard(state: WorldState, enemy: EnemyState, def: AegislashDef, target: Vec2, events: GameEvent[]): EnemyState {
+  const p2 = def.phase2;
+  const played = enemy.boss!.cardsPlayed ?? 0;
+  const card = p2.cards[played % p2.cards.length]!;
+  events.push({ type: 'bossStance', enemyId: enemy.id, stance: card });
+  const counted = withBoss(enemy, { cardsPlayed: played + 1, combosDone: 0, stanceDamage: 0 });
+  const toPlayer = towardTarget(target, enemy);
+  if (card === 'midnight') return cardWindUp(counted, card, p2.midnight.telegraphMs, toPlayer, 0, events);
+  if (card === 'oaths') return cardWindUp(counted, card, p2.oaths.telegraphMs, toPlayer, 0, events);
+  // Shadow: the swords come from the end of the room away from the player; the gap is the lane farthest from it.
+  const down = target.y > state.arena.height / 2;
+  return cardWindUp(counted, card, p2.shadow.telegraphMs, vec(0, down ? 1 : -1), farLane(state.arena.width, target.x, p2.shadow.lanes), events);
+}
+
+/** The shadow-sword wall: one sword every `spacing` px across the room, none in the gap, from the far end. */
+function sweep(state: WorldState, enemy: EnemyState, def: AegislashDef): WorldState {
+  const shadow = def.phase2.shadow;
+  const { width, height } = state.arena;
+  const gap = shadowGapX(width, enemy.boss!.comboIndex, shadow.lanes);
+  const dir = enemy.ai.attackDir;
+  const y = dir.y > 0 ? shadow.sword.radius + 1 : height - shadow.sword.radius - 1;
+  let next = state;
+  for (let x = shadow.spacing / 2; x < width; x += shadow.spacing) {
+    if (Math.abs(x - gap) < shadow.gapWidth / 2) continue;
+    next = spawnShot(next, enemy, shadow.sword, dir, vec(x, y));
+  }
+  return next;
+}
+
+function updateCard(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]) {
+  const p2 = def.phase2;
+  let enemy = start;
+  const ai = enemy.ai;
+  const boss = enemy.boss!;
+  const card = boss.stance as AegislashCard;
+  const toPlayer = towardTarget(target, enemy);
+  switch (ai.mode) {
+    case 'telegraph':
+      // Midnight and Oaths keep facing the player while winding up; Shadow's direction and gap are fixed.
+      if (card !== 'shadow') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      if (!modeOver(ai)) break;
+      events.push({ type: 'enemyAttack', enemyId: enemy.id, attack: card });
+      if (card === 'midnight') {
+        for (const dir of spreadDirections(enemy.ai.attackDir, p2.midnight.blades.count, 360 - 360 / p2.midnight.blades.count)) state = spawnShot(state, enemy, p2.midnight.blades.shot, dir);
+        enemy = withAi(enemy, { ...enterMode(enemy.ai, 'attack', p2.midnight.strikeMs), contact: 'none' });
+      } else if (card === 'oaths') {
+        for (const dir of spreadDirections(enemy.ai.attackDir, p2.oaths.perVolley, p2.oaths.spreadDegrees)) state = spawnShot(state, enemy, p2.oaths.blade, dir);
+        enemy = withAi(withBoss(enemy, { comboIndex: 1 }), enterMode(enemy.ai, 'attack', p2.oaths.gapMs));
+      } else {
+        state = sweep(state, enemy, def);
+        enemy = withAi(enemy, enterMode(enemy.ai, 'attack', p2.shadow.sweepMs));
+      }
+      break;
+    case 'attack':
+      if (card === 'midnight') {
+        const hit = contactPlayer(state, enemy, p2.midnight.attack, slamTouches(enemy, state.player.pos, p2.midnight.radius), events);
+        state = hit.state;
+        enemy = withAi(enemy, { ...enemy.ai, contact: hit.contact });
+        if (modeOver(ai)) enemy = withAi(enemy, { ...enterMode(enemy.ai, 'recover', p2.midnight.recoverMs), contact: 'none' });
+      } else if (card === 'oaths') {
+        if (!modeOver(ai)) break;
+        if (boss.comboIndex >= p2.oaths.volleys) {
+          enemy = withAi(enemy, enterMode(enemy.ai, 'recover', p2.oaths.recoverMs));
+          break;
+        }
+        for (const dir of spreadDirections(toPlayer, p2.oaths.perVolley, p2.oaths.spreadDegrees)) state = spawnShot(state, enemy, p2.oaths.blade, dir);
+        enemy = withAi(withBoss({ ...enemy, facing: toPlayer }, { comboIndex: boss.comboIndex + 1 }), enterMode(enemy.ai, 'attack', p2.oaths.gapMs));
+      } else if (modeOver(ai)) {
+        enemy = withAi(enemy, enterMode(enemy.ai, 'recover', p2.shadow.recoverMs));
+      }
+      break;
+    case 'recover':
+      // The opening is over: back to Shield through the (phase-2) stance change.
+      if (modeOver(ai)) {
+        events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'transform', durationMs: p2.transformMs });
+        enemy = withAi(enemy, enterMode(ai, 'transform', p2.transformMs));
+      }
+      break;
+    default:
+      enemy = withAi(enemy, enterMode(ai, 'recover', 0));
+      break;
+  }
+  return { state, enemy };
 }
 
 /**
@@ -214,18 +326,35 @@ export function updateBoss(state: WorldState, start: EnemyState, def: AegislashD
   }
   enemy = withBoss(enemy, { stanceMs: enemy.boss!.stanceMs + ms });
 
+  // Half HP: "El Rey desenvaina", once, never in the middle of a blow.
+  if (enemy.boss!.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.threshold && ai.mode !== 'attack') {
+    events.push({ type: 'bossStance', enemyId: enemy.id, stance: 'unsheathe' });
+    events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'unsheathe', durationMs: def.phase2.unsheatheMs });
+    enemy = withBoss(enemy, { phase: 2, stance: 'unsheathe', stanceMs: 0, comboIndex: 0, combosDone: 0, cardsPlayed: 0 });
+    return replaceEnemy(state, withAi(enemy, { ...enterMode(ai, 'transform', def.phase2.unsheatheMs), contact: 'none' }));
+  }
+
   if (ai.mode === 'transform') {
     if (modeOver(ai)) {
-      const stance: BossStance = enemy.boss!.stance === 'shield' ? 'blade' : 'shield';
+      const now = enemy.boss!.stance;
+      // Unsheathed: straight into Blade; Shield turns into Blade; Blade and every card end in Shield.
+      const stance: BossStance = now === 'unsheathe' || now === 'shield' ? 'blade' : 'shield';
       events.push({ type: 'bossStance', enemyId: enemy.id, stance });
       enemy = withBoss(enemy, { stance, stanceMs: 0, stanceDamage: 0, comboIndex: 0, combosDone: 0 });
       enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: 0 });
     }
     return replaceEnemy(state, enemy);
   }
+  if (isCard(enemy.boss!.stance)) {
+    const card = updateCard(state, enemy, def, target, ms, events);
+    return replaceEnemy(card.state, card.enemy);
+  }
   if (ai.mode === 'approach' && wantsStanceChange(enemy.boss!, def)) {
-    events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'transform', durationMs: def.transformMs });
-    return replaceEnemy(state, withAi(enemy, enterMode(ai, 'transform', def.transformMs)));
+    // Phase 2: Blade ends in a spell card instead of a plain stance change.
+    if (enemy.boss!.phase === 2 && enemy.boss!.stance === 'blade') return replaceEnemy(state, startCard(state, enemy, def, target, events));
+    const transformMs = enemy.boss!.phase === 2 ? def.phase2.transformMs : def.transformMs;
+    events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'transform', durationMs: transformMs });
+    return replaceEnemy(state, withAi(enemy, enterMode(ai, 'transform', transformMs)));
   }
 
   const result =
