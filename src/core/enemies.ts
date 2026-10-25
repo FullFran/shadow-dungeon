@@ -1,10 +1,12 @@
 import { ENEMY_BEHAVIOUR, type GastlyDef, type PoochyenaDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { updateBoss } from './boss';
+import { flowStep } from './flow';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardPlayer } from './brain';
 import type { AiMode, AiState, EnemyState, GameEvent, ProjectileState, WorldState } from './state';
+import { lineOfSight, tileCenter, tileOf } from './tiles';
 import { enemyTimeScale } from './time';
-import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
+import { add, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
 /**
  * Enemy behaviour as explicit state machines (docs/gdd.md §4). Each brain
@@ -30,6 +32,20 @@ function telegraph(enemy: EnemyState, attack: string, durationMs: number, dir: V
   return { ...enemy, facing: dir, ai: { ...enterMode(enemy.ai, 'telegraph', durationMs), attackDir: dir } };
 }
 
+/**
+ * Where a walker heads to reach the player: straight at it with a clear line
+ * of sight (or on arenas without tiles), otherwise towards the next tile
+ * downhill on the shared flow field. Null when it sees the player.
+ */
+function pathDirection(state: WorldState, enemy: EnemyState): Vec2 | null {
+  const grid = state.arena.tiles;
+  if (!grid || !state.flow || lineOfSight(grid, enemy.pos, state.player.pos)) return null;
+  const next = flowStep(grid, state.flow, tileOf(enemy.pos));
+  if (!next) return null;
+  const dir = normalize(sub(tileCenter(next), enemy.pos));
+  return length(dir) > 0 ? dir : null;
+}
+
 /** Poochyena: stalks, telegraphs with Charge, lunges in a straight line; a dodged lunge leaves it exposed. */
 function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, ms: number, events: GameEvent[]): WorldState {
   let enemy = start;
@@ -42,11 +58,18 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, m
       if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'approach') };
       break;
     case 'approach': {
+      const path = pathDirection(state, enemy);
+      if (path) {
+        // Out of sight: follow the flow field around the walls, no stalking or lunging.
+        enemy = { ...moveEnemy(state, enemy, scale(path, (def.walkSpeed * ms) / 1000)), facing: path };
+        break;
+      }
       if (ai.cooldownMs <= 0 && dist <= def.lungeRange) {
         enemy = telegraph(enemy, 'lunge', def.telegraphMs, toPlayer, events);
         break;
       }
-      const stalking = dist <= def.stalkRange;
+      // Only while recharging: with the lunge ready it closes in to lunge range (it used to hover at the stalk ring).
+      const stalking = ai.cooldownMs > 0 && dist <= def.stalkRange;
       // Circle the player while the lunge recharges, otherwise close in.
       const dir = stalking ? normalize(add(perpendicular(toPlayer, ai.strafeSign), scale(toPlayer, -0.2))) : toPlayer;
       const speed = def.walkSpeed * (stalking ? 0.6 : 1);

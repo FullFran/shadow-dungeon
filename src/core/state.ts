@@ -1,6 +1,7 @@
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
+import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
 import type { Vec2 } from './vec';
 
@@ -241,6 +242,8 @@ export interface WorldState {
   lock: LockState;
   /** Remaining perfect-dodge slow-mo, in real time. */
   slowMoMs: number;
+  /** Generated floors: walking distances to the player's tile, for walkers out of sight (flow.ts). */
+  flow?: FlowField;
   events: GameEvent[];
 }
 
