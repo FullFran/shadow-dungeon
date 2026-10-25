@@ -178,6 +178,18 @@ Antes del combate: "La niebla te ha traído hasta el claro. Aquí acaban los cam
 
 **Música del bosque**: "Cathedral in the forest" (congusbongus, CC0) en las plantas; en Niebla, el mismo tema apagado con un filtro paso bajo; Trevenant usa el tema de batalla de Aegislash y Decidueye "Boss Battle #2 [Symphonic Metal]" (nene, CC0), que ya estaba en el juego y gustaba.
 
+### El mundo *(provisional)*
+
+Fuera de las mazmorras hay un mundo pequeño que se recorre andando, siempre al anochecer del eclipse y sin combate (`src/data/world.ts`). Son mapas unidos por sus bordes: al salir por uno, un fundido corto lleva al siguiente y su nombre aparece arriba.
+
+- **Refugio del Ocaso**: el pueblo de siempre (Mimikyu, Poochyena, Gastly y el tablón). Un poste junto al camino del este abre la lista de mazmorras abiertas, para no tener que andar (atajo pensado para los directos).
+- **Camino de las Ruinas**: tumbas y columnas rotas; la boca de la **Cripta del Rey de las Espadas** es una casa de piedra hundida al norte del camino. Una estatua sin rostro y un poste del camino.
+- **Paso del Mirador**: una grieta parte el paso y solo queda un puente. Desde aquí el eclipse se ve enorme (estatua del mirador, atalaya). Al sur, en la linde, junto a un tronco hueco, entra el **Bosque Brumoso**; al norte sube el camino al cráter.
+- **Cráter del Eclipse**: ceniza y roca alrededor de un pozo justo debajo del eclipse. En su borde está la **Sima del Eclipse**, que sigue cerrada mientras no exista en el juego; una estatua quemada mira al fondo.
+- **Aldea del Lago Negro**: el segundo pueblo, de pescadores, junto a un lago que ya no refleja el cielo. Cubone pesca en el embarcadero, Litwick guarda la llama que guía a los perdidos y cuenta una cosa cada vez, y Phantump, junto a un puesto vacío, ve lo que vendrá (el gacha sigue «Próximamente»). Un ídolo de rana recibe ofrendas.
+
+Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún está sellada, una línea dice qué guardián hay que vencer; si no existe todavía, que algo allí abajo no ha terminado de despertar. Las estatuas, el poste y el ídolo dicen una línea más al vencer al guardián de cada mazmorra (récords de este dispositivo). Por el mundo pasean Pokémon inofensivos (Pumpkaboo, Hoothoot, Foongus, Spinarak) con los sprites que ya tiene el juego. Cada mapa tiene su luz (más roja en el cráter, más fría en el lago), niebla, hojas que caen, pájaros que cruzan el cielo y agua con reflejos rojos. Suena el mismo tema del título (Lonely Village) en todo el mundo.
+
 ## 4. Combate
 
 ### Controles (teclado y ratón)
@@ -423,7 +435,7 @@ Este juego tiene que dejar piezas que se puedan reutilizar:
 - El modelo de datos de especies, kits y tipos.
 - El sistema de idiomas.
 
-Lo que podría venir después: más mazmorras y biomas, un mundo o un pueblo base, historia, reclutamiento y equipos más profundos, más tipos de planta y más jefes.
+Lo que podría venir después: más mazmorras y biomas, un mundo más grande que el de §3 (más pueblos y caminos), historia, reclutamiento y equipos más profundos, más tipos de planta y más jefes.
 
 ## 16. Referencias
 

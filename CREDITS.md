@@ -53,6 +53,7 @@ Sound effects and the fallback chiptune loops are synthesised in the game with W
 
 ## Tiles
 
-The town tiles are crops of the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
+The town and overworld tiles are crops of the [Ninja Adventure Asset Pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack)
 by Pixel-Boy and AAA, under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (no attribution
-required; credited anyway). Sources and crop rectangles are in `public/tiles/town/LICENSE.txt`.
+required; credited anyway). Sources, crop rectangles and file hashes are in `public/tiles/town/LICENSE.txt`.
+Water, bridges, chasms and rock in the overworld are drawn by the game's own code.

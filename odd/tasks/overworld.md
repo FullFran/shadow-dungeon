@@ -29,7 +29,7 @@ User (2026-10-25): "¿podemos poner varios pueblos y hacerlo más duro de cojone
 - [x] T1 World model + transitions: map types, links paired both ways, generalised grid/ground (water, bridge, chasm, rock), per-map ground sheet, fade transition, map banner, hub waystone quick travel, first route map, all new crops + LICENSE (route: inline, single writer of src/town)
 - [x] T2 Second town + routes + entrances: Mirador, Cráter, Lago Negro, entrance windows (registry-guarded) (route: inline)
 - [x] T3 Ambience + lore points + wanderers: fog, leaves, birds, water shimmer, lore lines by progression, wandering Pokémon (route: inline)
-- [ ] T4 Docs: README, docs/gdd.md, CREDITS.md (route: inline)
+- [x] T4 Docs: README, docs/gdd.md, CREDITS.md (route: inline)
 - [ ] T5 Online lobby in town + nicknames (route: inline)
 
 ## Acceptance criteria
@@ -65,3 +65,7 @@ Created 2026-10-25 on branch `feat/overworld` from main 4c90a5d. Forecast ~1800 
 - Ambience (pure positions in `src/town/ambience.ts`): fog banks with parallax (ruins, pass, crater smoke, thick on the lake), falling leaves (ruins, pass), birds in the sky band (hub, ruins, pass, lake), water shimmer, embers everywhere.
 - Checks: `npx vitest run` 843 passed (+14: lore progression, wanderers on floor within radius and moving, particles in bounds); screenshots `/tmp/overworld/t3-*.png` (lore stone dialog, pass with Hoothoot, lake fog, touch 844x390).
 - Fixed from screenshots: the lake plaza read empty (rocks, a broken pillar and rubble added).
+
+### T4 Docs
+- docs/gdd.md §3 "El mundo (provisional)": the five maps, entrances, lore growth, wanderers, looks, music; §15 outlook updated. README Town paragraph rewritten (maps, dev `map`/`tile` query, entrances, waystone). CREDITS Tiles prose kept (no table rows), now mentions overworld crops, hashes and code-drawn water/bridges/chasms/rock.
+- Checks: `npx vitest run` 843 passed (credits test included).
