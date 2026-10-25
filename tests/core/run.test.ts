@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RUN, RUN_PLAN } from '../../src/data/dungeon';
 import { generateFloor } from '../../src/core/dungeon';
-import { chooseItem, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
+import { chooseItem, floorPlanOf, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
+import { ROOMS } from '../../src/data/rooms';
 import type { PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
@@ -17,8 +18,20 @@ const toStairs = (world: WorldState): WorldState => ({
   player: { ...world.player, pos: vec(world.arena.stairs!.x + 16, world.arena.stairs!.y + 16) },
 });
 
+/** Stands on the exit of a fixed room with its enemies down (the Crypt's mid-boss vault). */
+const toExit = (world: WorldState, room: keyof typeof ROOMS): WorldState => {
+  const exit = ROOMS[room].exit!;
+  return {
+    ...world,
+    enemies: world.enemies.map((e) => ({ ...e, alive: false })),
+    player: { ...world.player, pos: vec(exit.x + exit.width / 2, exit.y + exit.height / 2) },
+  };
+};
+
+/** Takes the stairs, or the exit of a mid-boss room after beating it. */
 function descend(progress: RunProgress): RunProgress {
-  return progressRun(progress.run, toStairs(progress.world));
+  const plan = floorPlanOf(progress.run);
+  return progressRun(progress.run, plan.kind === 'room' ? toExit(progress.world, plan.room) : toStairs(progress.world));
 }
 
 describe('run structure', () => {
@@ -32,17 +45,24 @@ describe('run structure', () => {
     expect(floorSeed(SEED, 2)).toBe(floorSeed(SEED, 2));
   });
 
-  it('follows the floor plan: stairs lead down floors 1-3 and floor 4 is the Aegislash arena', () => {
-    expect(RUN_PLAN).toHaveLength(4);
+  it('follows the floor plan: floors 1-2 and 4-5 generated, Sableye on 3 (through its exit), Aegislash on 6', () => {
+    expect(RUN_PLAN).toHaveLength(6);
     let progress: RunProgress = { ...startRun(SEED, {}), entered: false, outcome: null };
-    for (const floor of [2, 3]) {
+    for (const floor of [2, 3, 4, 5]) {
       progress = descend(progress);
       expect(progress.entered).toBe(true);
       expect(progress.run.floor).toBe(floor);
-      expect(progress.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor));
+      if (floor === 3) {
+        expect(progress.world.arena.tiles).toBeUndefined();
+        expect(progress.world.enemies.map((e) => e.species)).toEqual(['sableye']);
+        // The vault only opens once Sableye is down.
+        const exit = ROOMS.vault.exit!;
+        const standing = { ...progress.world, player: { ...progress.world.player, pos: vec(exit.x + exit.width / 2, exit.y + exit.height / 2) } };
+        expect(progressRun(progress.run, standing).entered).toBe(false);
+      } else expect(progress.world.arena.tiles).toEqual(generateFloor(floorSeed(SEED, floor), floor));
     }
     progress = descend(progress);
-    expect(progress.run.floor).toBe(4);
+    expect(progress.run.floor).toBe(6);
     expect(progress.world.arena.tiles).toBeUndefined();
     expect(progress.world.enemies.map((e) => e.species)).toEqual(['aegislash']);
   });
@@ -69,7 +89,7 @@ describe('run structure', () => {
     const { run, world } = startRun(SEED, {});
     expect(progressRun(run, { ...world, player: { ...world.player, hp: 0 } }).outcome).toBe('defeat');
     let progress: RunProgress = { run, world, entered: false, outcome: null };
-    for (let i = 0; i < 3; i++) progress = descend(progress);
+    for (let i = 0; i < 5; i++) progress = descend(progress);
     expect(progressRun(progress.run, progress.world).outcome).toBeNull();
     const cleared = { ...progress.world, enemies: progress.world.enemies.map((e) => ({ ...e, alive: false })) };
     expect(progressRun(progress.run, cleared).outcome).toBe('victory');
@@ -79,7 +99,7 @@ describe('run structure', () => {
     const script = (seed: number) => {
       let progress: RunProgress = { ...startRun(seed, {}), entered: false, outcome: null };
       const trace: unknown[] = [];
-      for (let floor = 0; floor < 3; floor++) {
+      for (let floor = 0; floor < 5; floor++) {
         for (let tick = 0; tick < 240; tick++) {
           const playerInput: PlayerInput = input({
             move: vec(Math.cos(tick / 20), Math.sin(tick / 30)),
@@ -116,16 +136,16 @@ describe('run structure', () => {
     };
     const script = (seed: number) => {
       let progress: RunProgress = { ...startRun(seed, {}), entered: false, outcome: null };
-      for (let floor = 1; floor <= 3; floor++) {
+      for (let floor = 1; floor <= 5; floor++) {
         progress = descend(fight(progress));
         progress = { ...progress, ...chooseItem(progress.run, progress.world, floor % 3) };
       }
       return progress;
     };
     const first = script(SEED);
-    expect(first.run.floor).toBe(4);
+    expect(first.run.floor).toBe(6);
     expect(first.world.player.level).toBeGreaterThan(2);
-    expect(first.world.player.items).toHaveLength(3);
+    expect(first.world.player.items).toHaveLength(5);
     expect(script(SEED)).toEqual(first);
     expect(script(SEED + 1).world.player).not.toEqual(first.world.player);
   });

@@ -439,5 +439,13 @@
   "guardian.aegislash.pre.1": "Soy el primero de los que guardan. Ninguna sombra pasa de esta puerta.",
   "guardian.aegislash.pre.2": "Desenvaina, pequeño. Que el acero diga quién sigue.",
   "guardian.aegislash.post.1": "El juramento se quiebra… pero esta no era la única puerta.",
-  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo."
+  "guardian.aegislash.post.2": "Más allá aguardan otros guardianes. Y más hondo, la luz sigue cayendo.",
+  "species.duskull": "Duskull",
+  "species.golett": "Golett",
+  "species.pawniard": "Pawniard",
+  "species.sableye": "Sableye",
+  "spell.sableye.glint": "Signo Gema «Destello del Ladrón»",
+  "spell.sableye.gems": "Signo Joya «Lluvia de Gemas Robadas»",
+  "log.itemStolen": "¡{thief} te ha robado {item}! Golpéalo para recuperarlo.",
+  "log.itemReturned": "{name} recupera {item}."
 }

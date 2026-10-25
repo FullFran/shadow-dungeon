@@ -13,7 +13,7 @@ import type { MusicContext } from '../data/music';
 import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
 import { fogRadiusTiles } from '../core/fog';
-import { ENEMY_BEHAVIOUR } from '../data/enemies';
+import { spellCardKey } from '../data/enemies';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
 import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -469,9 +469,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
     const bar = bossBar(world);
-    const def = bar ? ENEMY_BEHAVIOUR[bar.species] : undefined;
-    const cardNow = def?.kind === 'archer' && bar?.stance && world.enemies.some((e) => e.id === bar.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar.stance : null;
-    if (cardNow && cardNow !== lastCard && def?.kind === 'archer') spell = { name: t(def.cardNames[cardNow as keyof typeof def.cardNames]), shownAtMs: realMs };
+    // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
+    const cardKey = bar ? spellCardKey(bar.species, bar.stance) : null;
+    const cardNow = cardKey && world.enemies.some((e) => e.id === bar!.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar!.stance : null;
+    if (cardNow && cardKey && cardNow !== lastCard) spell = { name: t(cardKey), shownAtMs: realMs };
     if (cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));

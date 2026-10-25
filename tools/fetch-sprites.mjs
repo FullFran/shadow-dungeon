@@ -53,6 +53,11 @@ const TARGETS = [
   { dex: '0163', form: '0000', species: 'hoothoot', formName: 'base' },
   { dex: '0709', form: '0000', species: 'trevenant', formName: 'base' },
   { dex: '0724', form: '0000', species: 'decidueye', formName: 'base' },
+  // Crypt of the Sword King remaster (docs/species-candidates.md §2).
+  { dex: '0355', form: '0000', species: 'duskull', formName: 'base' },
+  { dex: '0622', form: '0000', species: 'golett', formName: 'base' },
+  { dex: '0624', form: '0000', species: 'pawniard', formName: 'base' },
+  { dex: '0302', form: '0000', species: 'sableye', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

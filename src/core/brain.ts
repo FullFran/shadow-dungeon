@@ -1,4 +1,4 @@
-import { floatsOf, type EnemyAttackDef } from '../data/enemies';
+import { floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
 import { computeDamage } from './damage';
 import { confineCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
@@ -32,8 +32,8 @@ export const perpendicular = (v: Vec2, sign: 1 | -1): Vec2 => vec(-v.y * sign, v
 /** `v` turned by `degrees` (counter-clockwise in screen terms is negative y; only the spread matters here). */
 export const rotate = (v: Vec2, degrees: number): Vec2 => fromAngle(angleOf(v) + (degrees * Math.PI) / 180);
 
-/** An enemy projectile's shape and hit. */
-export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+/** An enemy projectile's shape and hit (and its steering, for shots that bend towards the player). */
+export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
 
 /**
  * Fires one enemy projectile along `dir`, from just outside the body (or from
@@ -55,6 +55,7 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     hitstunMs: 0,
     knockback: 0,
     hitIds: [],
+    ...(shot.steer ? { steer: shot.steer } : {}),
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
 }

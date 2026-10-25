@@ -55,4 +55,8 @@ export const SPRITE_KEYS = {
   hoothoot: '0163/0000',
   trevenant: '0709/0000',
   decidueye: '0724/0000',
+  duskull: '0355/0000',
+  golett: '0622/0000',
+  pawniard: '0624/0000',
+  sableye: '0302/0000',
 } as const;

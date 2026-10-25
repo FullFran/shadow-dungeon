@@ -46,6 +46,18 @@ export interface PoochyenaDef {
   floats?: true;
   /** HP it takes back when its lunge connects (Phantump's grab). */
   drainHp?: number;
+  /**
+   * A second cut right after the first lunge (Pawniard): a short, re-aimed
+   * wind-up and lunge, so rolling into it on the first one gets punished.
+   */
+  followUp?: { telegraphMs: number; lungeMs: number; lungeDistance: number };
+}
+
+/** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
+export interface SteerDef {
+  degPerSec: number;
+  /** Steering stops after this long; it then flies straight. */
+  ms: number;
 }
 
 export interface GastlyDef {
@@ -65,7 +77,7 @@ export interface GastlyDef {
   castMs: number;
   recoverMs: number;
   cooldownMs: number;
-  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
 }
 
 export const POOCHYENA: PoochyenaDef = {
@@ -213,6 +225,11 @@ export interface SlammerDef {
   ring?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
   /** Shows the boss bar (a mid-boss). */
   bar?: true;
+  /**
+   * Frontal slam (Golett): only a sector of this many degrees in front is hit,
+   * and the aim is fixed when the wind-up starts (step around it).
+   */
+  arcDegrees?: number;
 }
 
 /** Foongus: never moves; when the player comes close it puffs, then leaves a spore cloud where it stands. */
@@ -387,7 +404,118 @@ export const DECIDUEYE: ArcherDef = {
   dive: { telegraphMs: 1100, diveMs: 420, distance: 460, reach: 8, attack: { power: 44, type: 'flying' }, recoverMs: 1700 },
 };
 
-export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef;
+/** Sableye's spell cards (Crypt mid-boss). */
+export type ThiefCard = 'glint' | 'gems';
+
+/**
+ * Sableye, "el ladrón de gemas" (Crypt mid-boss): two spell cards in order.
+ * Glint: it blinks out, glints where it will reappear beside the player
+ * (the warning), reappears and slashes in a straight line, three times; a
+ * slash that lands steals the last held item (core/stolen.ts) until the
+ * player hits it back. Gems: it blinks to the middle of the vault and throws
+ * rings of stolen gems whose gaps turn between rings. It rests in between.
+ */
+export interface ThiefDef {
+  kind: 'thief';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  keepDistance: number;
+  restMs: number;
+  cards: readonly ThiefCard[];
+  cardNames: Readonly<Record<ThiefCard, string>>;
+  blink: {
+    vanishMs: number;
+    /** Glint at the spot it reappears on: the warning before the slash. */
+    telegraphMs: number;
+    /** It reappears this far from the player, a third of a turn around from where it was. */
+    distance: number;
+    slashMs: number;
+    slashDistance: number;
+    reach: number;
+    attack: EnemyAttackDef;
+    blinks: number;
+    recoverMs: number;
+  };
+  gems: { vanishMs: number; telegraphMs: number; rings: number; perRing: number; gapMs: number; gem: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number }; recoverMs: number };
+  /** A stolen item comes back after this long at the latest. */
+  stealMs: number;
+}
+
+export const DUSKULL: GastlyDef = {
+  kind: 'caster',
+  poise: { hitstunScale: 1, knockbackScale: 0.8 },
+  floats: true,
+  aggroRange: 650,
+  speed: 34,
+  minDistance: 70,
+  maxDistance: 190,
+  telegraphMs: 850,
+  castMs: 300,
+  recoverMs: 700,
+  cooldownMs: 2600,
+  projectile: { power: 28, type: 'fire', speed: 70, radius: 8, lifetimeMs: 5200, steer: { degPerSec: 65, ms: 2200 } },
+};
+
+export const GOLETT: SlammerDef = {
+  kind: 'slammer',
+  poise: { hitstunScale: 0.2, knockbackScale: 0.05 },
+  aggroRange: 520,
+  walkSpeed: 32,
+  slamRange: 100,
+  telegraphMs: 1000,
+  slamMs: 180,
+  radius: 110,
+  arcDegrees: 100,
+  attack: { power: 46, type: 'ground' },
+  recoverMs: 1400,
+  cooldownMs: 1600,
+};
+
+export const PAWNIARD: PoochyenaDef = {
+  kind: 'lunger',
+  poise: { hitstunScale: 1.2, knockbackScale: 1.3 },
+  aggroRange: 600,
+  walkSpeed: 96,
+  stalkRange: 105,
+  lungeRange: 95,
+  telegraphMs: 480,
+  lungeMs: 170,
+  lungeDistance: 110,
+  attack: { power: 20, type: 'steel' },
+  hitRecoverMs: 500,
+  missRecoverMs: 900,
+  cooldownMs: 1300,
+  followUp: { telegraphMs: 260, lungeMs: 150, lungeDistance: 90 },
+};
+
+export const SABLEYE: ThiefDef = {
+  kind: 'thief',
+  poise: { hitstunScale: 0, knockbackScale: 0.15 },
+  bar: true,
+  aggroRange: 900,
+  walkSpeed: 70,
+  keepDistance: 170,
+  restMs: 1300,
+  cards: ['glint', 'gems'],
+  cardNames: { glint: 'spell.sableye.glint', gems: 'spell.sableye.gems' },
+  blink: {
+    vanishMs: 450,
+    telegraphMs: 650,
+    distance: 95,
+    slashMs: 220,
+    slashDistance: 130,
+    reach: 6,
+    attack: { power: 26, type: 'dark' },
+    blinks: 3,
+    recoverMs: 1400,
+  },
+  gems: { vanishMs: 450, telegraphMs: 900, rings: 3, perRing: 12, gapMs: 800, gem: { power: 20, type: 'dark', speed: 105, radius: 6, lifetimeMs: 5000 }, recoverMs: 1500 },
+  stealMs: 9000,
+};
+
+export type EnemyDef = PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | SporeDef | ArcherDef | ThiefDef;
 
 /** Behaviour per enemy species; species without an entry never act. */
 export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
@@ -402,7 +530,18 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   hoothoot: HOOTHOOT,
   trevenant: TREVENANT,
   decidueye: DECIDUEYE,
+  duskull: DUSKULL,
+  golett: GOLETT,
+  pawniard: PAWNIARD,
+  sableye: SABLEYE,
 };
+
+/** i18n key of a boss's spell card (Decidueye, Sableye, Aegislash's phase 2), if `stance` is one. */
+export function spellCardKey(species: SpeciesId, stance: string | null | undefined): string | null {
+  const def = ENEMY_BEHAVIOUR[species];
+  if (!def || !stance || !('cardNames' in def)) return null;
+  return (def.cardNames as Readonly<Record<string, string>>)[stance] ?? null;
+}
 
 const DEFAULT_POISE: PoiseDef = { hitstunScale: 1, knockbackScale: 1 };
 

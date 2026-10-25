@@ -2,9 +2,10 @@ import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
 import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
-import { blocksHit, onBossDamaged } from './boss';
+import { blocksHit, onBossDamaged, rotateToward } from './boss';
 import { computeDamage, typeEffectiveness } from './damage';
-import { confineCircle } from './geometry';
+import { confineCircle, insideRect } from './geometry';
+import { presentPlayers } from './party';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
@@ -349,13 +350,27 @@ function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number,
   return { ...current, player: { ...current.player, slotsHeld } };
 }
 
-/** Inside the map and, on tiled floors, not in a wall: projectiles die on walls. */
+/** Inside the map and, on tiled floors, not in a wall: projectiles die on walls (and on `cover` blocks, the arena pillars). */
 const insideArena = (state: WorldState, pos: Vec2) =>
   pos.x >= 0 &&
   pos.y >= 0 &&
   pos.x <= state.arena.width &&
   pos.y <= state.arena.height &&
-  !(state.arena.tiles && wallAt(state.arena.tiles, pos));
+  !(state.arena.tiles && wallAt(state.arena.tiles, pos)) &&
+  !(state.arena.obstacles ?? []).some((o) => o.cover === true && insideRect(pos, o));
+
+/** An enemy shot that bends (Duskull's wisp) turns its velocity towards the nearest present player, at most `degPerSec`. */
+function steerShot(state: WorldState, p: ProjectileState, ms: number): ProjectileState {
+  if (!p.steer || p.owner !== 'enemy') return p;
+  const left = p.steer.ms - ms;
+  const target = presentPlayers(state).reduce<Vec2 | null>((best, c) => (best === null || distance(c.pos, p.pos) < distance(best, p.pos) ? c.pos : best), null);
+  const { steer: _done, ...straight } = p;
+  if (!target) return left > 0 ? { ...p, steer: { ...p.steer, ms: left } } : straight;
+  const speed = length(p.vel);
+  const dir = rotateToward(normalize(p.vel), sub(target, p.pos), (p.steer.degPerSec * Math.PI * ms) / 180000);
+  const vel = scale(dir, speed);
+  return left > 0 ? { ...p, vel, steer: { ...p.steer, ms: left } } : { ...straight, vel };
+}
 
 /** Moves projectiles (enemy ones at the slow-mo time scale), resolves hits and expiry. */
 function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
@@ -363,9 +378,10 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
   const survivors: ProjectileState[] = [];
   for (const projectile of state.projectiles) {
     const ms = dtMs * (projectile.owner === 'enemy' ? enemyTimeScale(state) : 1);
+    const steered = steerShot(current, projectile, ms);
     let moved: ProjectileState | null = {
-      ...projectile,
-      pos: add(projectile.pos, scale(projectile.vel, ms / 1000)),
+      ...steered,
+      pos: add(projectile.pos, scale(steered.vel, ms / 1000)),
       remainingMs: projectile.remainingMs - ms,
     };
     if (moved.remainingMs <= 0 || !insideArena(current, moved.pos)) continue;

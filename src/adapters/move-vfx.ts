@@ -86,6 +86,8 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
       if (card === 'dive') return def.dive.attack.type;
       return def.volley.arrow.type;
     }
+    case 'thief':
+      return enemy.boss?.stance === 'gems' ? def.gems.gem.type : def.blink.attack.type;
     case 'lunger':
     case 'slammer':
       return def.attack.type;

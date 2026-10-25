@@ -17,7 +17,11 @@ export type SpeciesId =
   | 'spinarak'
   | 'hoothoot'
   | 'trevenant'
-  | 'decidueye';
+  | 'decidueye'
+  | 'duskull'
+  | 'golett'
+  | 'pawniard'
+  | 'sableye';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -125,6 +129,11 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   hoothoot: { id: 'hoothoot', types: ['normal', 'flying'], maxHp: 55, radius: 11, sprite: 'hoothoot', movepool: [], defaultLoadout: [] },
   trevenant: { id: 'trevenant', types: ['ghost', 'grass'], maxHp: 520, radius: 18, sprite: 'trevenant', movepool: [], defaultLoadout: [] },
   decidueye: { id: 'decidueye', types: ['grass', 'ghost'], maxHp: 780, radius: 15, sprite: 'decidueye', movepool: [], defaultLoadout: [] },
+  // Crypt of the Sword King remaster; HP provisional.
+  duskull: { id: 'duskull', types: ['ghost'], maxHp: 70, radius: 11, sprite: 'duskull', movepool: [], defaultLoadout: [] },
+  golett: { id: 'golett', types: ['ground', 'ghost'], maxHp: 160, radius: 14, sprite: 'golett', movepool: [], defaultLoadout: [] },
+  pawniard: { id: 'pawniard', types: ['dark', 'steel'], maxHp: 34, radius: 9, sprite: 'pawniard', movepool: [], defaultLoadout: [] },
+  sableye: { id: 'sableye', types: ['dark', 'ghost'], maxHp: 460, radius: 13, sprite: 'sableye', movepool: [], defaultLoadout: [] },
 };
 
 /** Species a player can pick, in picker order (Mimikyu first, then the three starters). */

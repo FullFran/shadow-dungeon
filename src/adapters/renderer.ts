@@ -419,10 +419,21 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 4 + 16 * (1 - progress), 0, Math.PI * 2);
       ctx.stroke();
       groundLane(pos, ai.attackDir, 50, def.projectile.radius * 2, fill, progress);
+    } else if (def?.kind === 'slammer' && def.arcDegrees !== undefined) {
+      // Golett: a frontal sector along the aim fixed at the start of the wind-up.
+      groundArc(pos, ai.attackDir, def.radius * (winding ? 0.35 + 0.65 * progress : 1), def.arcDegrees, fill, COLORS.telegraphEdge);
     } else if (def?.kind === 'slammer' || def?.kind === 'spore') {
       // The area that will be hit: its edge from the start, filling in as the wind-up runs.
       const radius = def.kind === 'slammer' ? def.radius : def.cloud.radius;
       if (winding || def.kind === 'slammer') groundCircle(pos, radius, fill, winding ? progress : 1);
+    } else if (def?.kind === 'thief') {
+      if (enemy.boss?.stance === 'glint') {
+        // The glint: where the slash will run, and a star twinkling on the thief.
+        groundLane(pos, ai.attackDir, def.blink.slashDistance, (enemy.radius + def.blink.reach) * 2, striking ? COLORS.strike : fill, winding ? progress : 1);
+        if (winding) glint(pos, enemy.radius, progress);
+      } else if (winding) {
+        groundCircle(pos, enemy.radius + 10 + 30 * (1 - progress), fill, progress);
+      }
     } else if (def?.kind === 'archer') {
       const card = enemy.boss?.stance;
       if (card === 'dive') {
@@ -438,6 +449,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
       groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
     }
+  }
+
+  /** Sableye's glint before a slash: a four-point star over its head, growing as the wind-up runs. */
+  function glint(pos: Vec2, radius: number, progress: number): void {
+    const size = 4 + 8 * progress;
+    const at = { x: pos.x + radius * 0.6, y: pos.y - radius * 2 - 6 };
+    ctx.fillStyle = 'rgba(190, 240, 255, 0.95)';
+    ctx.fillRect(Math.round(at.x - size), Math.round(at.y - 1), Math.round(size * 2), 2);
+    ctx.fillRect(Math.round(at.x - 1), Math.round(at.y - size), 2, Math.round(size * 2));
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    ctx.fillRect(Math.round(at.x - 2), Math.round(at.y - 2), 4, 4);
   }
 
   /** A filled ground circle with a solid edge; `progress` (0..1) fills it from the centre. */
@@ -601,7 +623,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           shadow(pos, enemy.radius);
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
-          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && ENEMY_BEHAVIOUR[enemy.species]?.kind === 'archer';
+          const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
+          // (Sableye blinking out works the same way.)
+          const vanishing = enemy.alive && enemy.ai.mode === 'transform' && (kind === 'archer' || kind === 'thief');
           const fade = vanishing ? flicker * Math.max(0.1, 1 - enemy.ai.modeMs / Math.max(1, enemy.ai.modeDurationMs)) : flicker;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },

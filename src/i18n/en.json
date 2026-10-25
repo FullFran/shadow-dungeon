@@ -439,5 +439,13 @@
   "guardian.aegislash.pre.1": "I am the first of those who keep watch. No shadow passes this door.",
   "guardian.aegislash.pre.2": "Draw, little one. Let steel say who goes on.",
   "guardian.aegislash.post.1": "The oath breaks… but this was not the only door.",
-  "guardian.aegislash.post.2": "Beyond, other guardians wait. And deeper still, the light keeps falling."
+  "guardian.aegislash.post.2": "Beyond, other guardians wait. And deeper still, the light keeps falling.",
+  "species.duskull": "Duskull",
+  "species.golett": "Golett",
+  "species.pawniard": "Pawniard",
+  "species.sableye": "Sableye",
+  "spell.sableye.glint": "Gem Sign \"Glint of the Thief\"",
+  "spell.sableye.gems": "Jewel Sign \"Rain of Stolen Gems\"",
+  "log.itemStolen": "{thief} stole your {item}! Hit it to get it back.",
+  "log.itemReturned": "{name} got {item} back."
 }

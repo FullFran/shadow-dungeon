@@ -1,6 +1,7 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type SlammerDef, type ThiefDef } from '../data/enemies';
 import { TUNING } from '../data/tuning';
 import { contactPlayer, replaceEnemy } from './brain';
+import { stealItem } from './stolen';
 import type { EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
 
@@ -23,6 +24,17 @@ export const lungeTouches = (enemy: EnemyState, player: Vec2): boolean => distan
 
 /** A tank's ground slam: anywhere within `radius` of its body. */
 export const slamTouches = (enemy: EnemyState, player: Vec2, radius: number): boolean => distance(enemy.pos, player) <= radius + PLAYER_RADIUS;
+
+/** A slammer's hit: the ring around it, or only the frontal sector along the locked aim (Golett). */
+export function slammerTouches(enemy: EnemyState, player: Vec2, def: Pick<SlammerDef, 'radius' | 'arcDegrees'>): boolean {
+  if (!slamTouches(enemy, player, def.radius)) return false;
+  if (def.arcDegrees === undefined) return true;
+  const offset = sub(player, enemy.pos);
+  return length(offset) <= enemy.radius + PLAYER_RADIUS || angleBetween(enemy.ai.attackDir, offset) <= (def.arcDegrees * DEG) / 2;
+}
+
+/** Sableye's slash: body contact with a little reach. */
+export const thiefTouches = (enemy: EnemyState, player: Vec2, def: ThiefDef): boolean => distance(enemy.pos, player) <= enemy.radius + PLAYER_RADIUS + def.blink.reach;
 
 /** Decidueye's dive: body contact with the dive's extra reach. */
 export const diveTouches = (enemy: EnemyState, player: Vec2, def: ArcherDef): boolean => distance(enemy.pos, player) <= enemy.radius + PLAYER_RADIUS + def.dive.reach;
@@ -52,7 +64,13 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
     if (!def || def.kind === 'caster' || def.kind === 'spore') continue;
     let hit;
     if (def.kind === 'lunger') hit = contactPlayer(current, enemy, def.attack, lungeTouches(enemy, current.player.pos), events);
-    else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slamTouches(enemy, current.player.pos, def.radius), events);
+    else if (def.kind === 'slammer') hit = contactPlayer(current, enemy, def.attack, slammerTouches(enemy, current.player.pos, def), events);
+    else if (def.kind === 'thief') {
+      // Only the Glint slash touches (and steals); the gems are projectiles.
+      if (enemy.boss?.stance !== 'glint') continue;
+      hit = contactPlayer(current, enemy, def.blink.attack, thiefTouches(enemy, current.player.pos, def), events);
+      if (hit.contact === 'hit') hit = { ...hit, state: { ...hit.state, player: stealItem(hit.state.player, enemy.id, def.stealMs, events) } };
+    }
     else if (def.kind === 'archer') {
       // Only the dive touches; arrows and leaves are projectiles.
       if (enemy.boss?.stance !== 'dive') continue;

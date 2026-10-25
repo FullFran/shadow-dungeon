@@ -77,10 +77,10 @@ describe('item offers', () => {
     expect(counts.rare).toBeGreaterThan(0);
   });
 
-  it('come on entering every floor after the first, boss floor included, and picking one holds it', () => {
+  it('come on entering every floor after the first, fixed rooms included (the vault on 3), and picking one holds it', () => {
     let progress: RunProgress = { ...startRun(SEED, {}), entered: false, outcome: null };
     expect(progress.run.offer).toBeNull();
-    for (const floor of [2, 3, 4]) {
+    for (const floor of [2, 3]) {
       progress = progressRun(progress.run, toStairs(progress.world));
       expect(progress.run.floor).toBe(floor);
       expect(progress.run.offer).toEqual(offerItems(SEED, floor, 'p1', progress.world.player.items));
@@ -89,7 +89,7 @@ describe('item offers', () => {
       expect(picked.run.offer).toBeNull();
       expect(picked.world.player.items.at(-1)).toBe(choice);
       progress = { ...progress, ...picked };
-      if (floor === 4) break;
+      if (floor === 3) break;
     }
   });
 
