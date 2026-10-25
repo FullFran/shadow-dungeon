@@ -1,5 +1,6 @@
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
+import { PROLOGUE_MUSIC } from '../data/prologue-music';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
@@ -19,6 +20,8 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { heldItems } from './item-pick';
 import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
+import { prologueScreen } from './prologue';
+import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
 import { loadStarter, playableStarter, saveStarter } from './starter-choice';
 import { defaultSettings, loadSettings, saveSettings, withSpecies, type Settings } from './settings';
@@ -188,6 +191,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
       { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
+      { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
     ],
   });
   show(root, [
@@ -197,10 +201,28 @@ function titleScreen(root: HTMLElement, initial = 0): void {
   ]);
 }
 
-/** A new adventure: the personality quiz first while no starter is chosen yet, then the loadout. */
+/** Play: the prologue the first time in this browser, then the quiz while no starter is chosen, then the loadout. */
 function newAdventure(root: HTMLElement): void {
-  if (loadStarter(store)) loadout(root);
-  else quiz(root, () => loadout(root), () => titleScreen(root, 0));
+  const toLoadout = () => loadout(root);
+  const toQuiz = () => (loadStarter(store) ? toLoadout() : quiz(root, toLoadout, () => titleScreen(root, 0)));
+  if (hasSeenPrologue(store)) toQuiz();
+  else prologue(root, toQuiz);
+}
+
+/** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
+function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void {
+  void sheetsReady();
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    startMs,
+    music: { start: (offsetS) => audio.playCue(PROLOGUE_MUSIC, offsetS), stop: () => audio.stopCue() },
+    onDone: () => {
+      markPrologueSeen(store);
+      onDone();
+    },
+  });
+  show(root, [screen], false);
+  root.querySelector('.notice')?.classList.add('in-game');
 }
 
 /** The personality quiz over a black screen; its starter becomes the run species. */
@@ -451,7 +473,8 @@ async function play(root: HTMLElement, join?: NetJoin): Promise<void> {
 
 /**
  * Development server only: `?screen=` opens one screen straight away, for
- * screenshots (loadout, settings, credits, online, lobby, victory, defeat).
+ * screenshots (loadout, settings, credits, online, lobby, victory, defeat,
+ * prologue with `&at=ms` to start part way in).
  */
 function devScreen(root: HTMLElement): boolean {
   if (!import.meta.env.DEV) return false;
@@ -466,6 +489,8 @@ function devScreen(root: HTMLElement): boolean {
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false),
     defeat: () => resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [] }, false),
+    // Waits for the sprites so a screenshot shows the silhouettes.
+    prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };
   const open = screen ? screens[screen] : undefined;
   if (!open) return false;

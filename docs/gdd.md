@@ -119,6 +119,23 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
 - Débiles a tipos concretos; el final se conoce de antemano.
 - Cómo escalan con el número de jugadores: sección 8.
 
+### Prólogo y trasfondo *(provisional)*
+
+El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde el menú principal (entrada Prólogo).
+
+Lo que cuenta:
+
+1. Hubo una edad de luz en la que los Pokémon vivían bajo un sol que no conocía la sombra.
+2. Algo despertó bajo la tierra con hambre de luz y se la fue bebiendo al sol hasta dejarlo hueco.
+3. Llegó el Eclipse Carmesí: un anillo rojo sobre negro, quieto desde entonces (es la imagen del juego y el fondo de los menús).
+4. Con él se abrieron las Mazmorras Sombrías. Los Pokémon que entran y vuelven ya no son ellos, solo su sombra (por eso los enemigos son versiones sombrías).
+5. Cada mazmorra tiene su guardián, atado a un juramento que ya nadie recuerda, y más hondo que todas ellas algo sigue devorando la luz (se ven varios guardianes sin rostro, cada uno ante su puerta sellada; Aegislash es solo uno de ellos).
+6. Negro, y una voz: "…¿Me oyes? ¿Puedes oírme?" (un guiño a Mundo Misterioso). De ahí se pasa al test de personalidad.
+
+**Trasfondo de la Cripta del Rey de las Espadas** (primera mazmorra; subtítulo "Donde el acero aún espera órdenes"): "En lo más hondo de la cripta, el Rey de las Espadas guarda una puerta sellada. Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo." Está en `src/data/dungeon-lore.ts` (con sus claves en `es` y `en`) y todavía no sale en pantalla; la idea es enseñarlo al entrar en la mazmorra.
+
+Lo que hay bajo la tierra es Necrozma, el jefe final, pero el prólogo no lo enseña ni lo nombra: solo una luz que se hunde en la oscuridad y el destello de un cristal. Todo este trasfondo es un primer borrador y puede cambiar.
+
 ## 4. Combate
 
 ### Controles (teclado y ratón)

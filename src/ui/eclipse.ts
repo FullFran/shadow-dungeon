@@ -50,26 +50,7 @@ function draw(ctx: CanvasRenderingContext2D, w: number, h: number, ms: number): 
   const cy = Math.round(h * 0.3);
   const r = Math.max(10, Math.round(Math.min(w, h) * 0.13));
   const pulse = 0.82 + 0.18 * Math.sin(ms / 1400);
-  const corona = ctx.createRadialGradient(cx, cy, r * 0.9, cx, cy, r * 3.2);
-  corona.addColorStop(0, `rgba(255, 106, 61, ${0.85 * pulse})`);
-  corona.addColorStop(0.18, `rgba(232, 40, 58, ${0.55 * pulse})`);
-  corona.addColorStop(0.55, `rgba(120, 10, 30, ${0.22 * pulse})`);
-  corona.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = corona;
-  ctx.fillRect(0, 0, w, h);
-  // Ring of light, then the dark moon slightly off centre (a brighter rim on one side).
-  ctx.fillStyle = PALETTE.eclipseGlow;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffd0a0';
-  ctx.beginPath();
-  ctx.arc(cx + 1, cy + 1, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#050003';
-  ctx.beginPath();
-  ctx.arc(cx - 1, cy - 1, r, 0, Math.PI * 2);
-  ctx.fill();
+  drawEclipse(ctx, cx, cy, r, pulse, w, h);
 
   // Ruined skyline in two layers: a far, faint one and a near one of broken walls and towers, rim-lit red on top.
   skyline(ctx, w, h, Math.round(h * 0.8), 200, '#0b0410', 0.18 * pulse);
@@ -84,8 +65,37 @@ function draw(ctx: CanvasRenderingContext2D, w: number, h: number, ms: number): 
   ctx.globalAlpha = 1;
 }
 
+/**
+ * The Crimson Eclipse at (cx, cy): a red corona that breathes with `pulse`
+ * (about 0.6..1), a thin ring of light and the dark moon slightly off centre.
+ * `w`×`h` is the area the corona is painted over. Shared by the menu backdrop
+ * and the prologue.
+ */
+export function drawEclipse(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, pulse: number, w: number, h: number): void {
+  const corona = ctx.createRadialGradient(cx, cy, r * 0.9, cx, cy, r * 3.2);
+  corona.addColorStop(0, `rgba(255, 106, 61, ${0.85 * pulse})`);
+  corona.addColorStop(0.18, `rgba(232, 40, 58, ${0.55 * pulse})`);
+  corona.addColorStop(0.55, `rgba(120, 10, 30, ${0.22 * pulse})`);
+  corona.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = corona;
+  ctx.fillRect(cx - w, cy - h, w * 2, h * 2);
+  // Ring of light, then the dark moon slightly off centre (a brighter rim on one side).
+  ctx.fillStyle = PALETTE.eclipseGlow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffd0a0';
+  ctx.beginPath();
+  ctx.arc(cx + 1, cy + 1, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#050003';
+  ctx.beginPath();
+  ctx.arc(cx - 1, cy - 1, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 /** One skyline layer: segments of wall with an occasional tower, battlements on the towers. */
-function skyline(ctx: CanvasRenderingContext2D, w: number, h: number, base: number, salt: number, color: string, rim: number): void {
+export function skyline(ctx: CanvasRenderingContext2D, w: number, h: number, base: number, salt: number, color: string, rim: number): void {
   let x = 0;
   for (let seg = 0; x < w; seg++) {
     const width = 5 + Math.floor(hash01(seg + salt) * 12);

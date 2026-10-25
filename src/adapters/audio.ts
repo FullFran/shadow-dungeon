@@ -2,6 +2,7 @@ import type { FloorKind } from '../data/dungeon';
 import type { GameEvent } from '../core/state';
 import { MUSIC, type Drum, type MusicId, type MusicTrack, type Note } from '../data/audio';
 import { MUSIC_TRACKS, type LicensedTrack, type MusicContext } from '../data/music';
+import { eventsBetween, type CueMusic, type ScoreEvent } from '../data/prologue-music';
 import { JUICE } from './juice';
 
 /**
@@ -264,6 +265,14 @@ export interface AudioEngine {
   setDucked(ducked: boolean): void;
   /** Collapse rumble loop level, 0..1 (0 keeps it silent). */
   setRumble(level: number): void;
+  /**
+   * Plays a one-shot cue (the prologue) from `offsetS` in, stopping the loops:
+   * its licensed file if it has one, else its synthesised score. Requested
+   * before the first gesture, it starts on unlock, in sync with the clock.
+   */
+  playCue(music: CueMusic, offsetS?: number): void;
+  /** Fades the cue out. */
+  stopCue(): void;
 }
 
 const GATE = { minGapMs: 40, maxVoices: 12 };
@@ -486,6 +495,107 @@ function playNote(s: Synth, t: number, note: Note, stepS: number, type: Oscillat
   tone(s, t, { type, from: midiToHz(note.midi), dur: note.steps * stepS * 0.9, gain, attack: 0.008 });
 }
 
+// ---------------------------------------------------------------------------
+// Cue voices (the prologue score): sustained sounds need a hold, unlike the sfx.
+
+/** Gain that rises over `attack`, holds, and falls to silence over `release`, ending at t + dur. */
+function swell(s: Synth, t: number, dur: number, gain: number, attack: number, release: number, out: AudioNode = s.out): GainNode {
+  const node = s.ctx.createGain();
+  const a = Math.min(attack, dur / 2);
+  const r = Math.min(release, dur - a);
+  node.gain.setValueAtTime(0, t);
+  node.gain.linearRampToValueAtTime(gain, t + a);
+  node.gain.setValueAtTime(gain, t + dur - r);
+  node.gain.linearRampToValueAtTime(0, t + dur);
+  node.connect(out);
+  return node;
+}
+
+/** Oscillators of the cue that ring for a long time, so stopping the cue can silence them. */
+type Held = OscillatorNode[];
+
+function held(s: Synth, t: number, dur: number, type: OscillatorType, hz: number, detune: number, into: AudioNode, keep: Held): OscillatorNode {
+  const osc = s.ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(hz, t);
+  osc.detune.setValueAtTime(detune, t);
+  osc.connect(into);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+  keep.push(osc);
+  return osc;
+}
+
+function lowpass(s: Synth, hz: number, out: AudioNode, q = 0.7): BiquadFilterNode {
+  const filter = s.ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = hz;
+  filter.Q.value = q;
+  filter.connect(out);
+  return filter;
+}
+
+function playScoreEvent(s: Synth, t: number, e: ScoreEvent, keep: Held): void {
+  const per = e.gain / Math.sqrt(e.midi.length);
+  switch (e.voice) {
+    case 'drone': {
+      // Detuned saws under a dark low-pass, plus a sine an octave down: a slow, heavy floor.
+      const filter = lowpass(s, 260, swell(s, t, e.durS, per, 5, 3));
+      for (const midi of e.midi) {
+        const hz = midiToHz(midi);
+        held(s, t, e.durS, 'sawtooth', hz, -5, filter, keep);
+        held(s, t, e.durS, 'sawtooth', hz, 6, filter, keep);
+        held(s, t, e.durS, 'sine', hz / 2, 0, filter, keep);
+      }
+      break;
+    }
+    case 'pad': {
+      // A choir-like pad: three detuned saws per note, a slow vibrato and a soft vowel-ish band.
+      const out = swell(s, t, e.durS, per, 2.4, 2.2);
+      const filter = lowpass(s, 1100, out, 1.2);
+      const vibrato = s.ctx.createOscillator();
+      vibrato.frequency.value = 4.6;
+      const depth = s.ctx.createGain();
+      depth.gain.value = 7;
+      vibrato.connect(depth);
+      vibrato.start(t);
+      vibrato.stop(t + e.durS + 0.05);
+      keep.push(vibrato);
+      for (const midi of e.midi) {
+        for (const cents of [-9, 0, 8]) depth.connect(held(s, t, e.durS, 'sawtooth', midiToHz(midi), cents, filter, keep).detune);
+      }
+      break;
+    }
+    case 'bell': {
+      // Inharmonic sine partials with long decays.
+      for (const midi of e.midi) {
+        const hz = midiToHz(midi);
+        [1, 2.76, 5.4, 8.93].forEach((ratio, i) => tone(s, t, { type: 'sine', from: hz * ratio, dur: e.durS / (1 + i * 0.8), gain: per / (1 + i * 1.6), attack: 0.004 }));
+      }
+      break;
+    }
+    case 'timpani': {
+      // A struck membrane: the pitch settles from above, an overtone, and the felt of the mallet.
+      for (const midi of e.midi) {
+        const hz = midiToHz(midi);
+        tone(s, t, { type: 'sine', from: hz * 1.25, to: hz, dur: e.durS, gain: per, attack: 0.006 });
+        tone(s, t, { type: 'sine', from: hz * 1.5 * 1.1, to: hz * 1.5, dur: e.durS * 0.5, gain: per * 0.35, attack: 0.006 });
+      }
+      noise(s, t, { filter: 'lowpass', from: 500, to: 70, dur: 0.6, gain: e.gain * 0.6 });
+      break;
+    }
+  }
+}
+
+interface CuePlayback {
+  bus: GainNode;
+  keep: Held;
+  timer: ReturnType<typeof setInterval> | null;
+  element: HTMLAudioElement | null;
+}
+
+const CUE_FADE_S = 1.2;
+
 interface Playback {
   track: MusicTrack;
   step: number;
@@ -542,6 +652,9 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
   const decoded = createLru<MusicContext, { buffer: AudioBuffer; format: MusicFormat }>(MUSIC_CACHE);
   const formats = musicFormats(deps.canPlayType);
   let rumble: { gain: GainNode } | null = null;
+  let cue: CuePlayback | null = null;
+  /** A cue asked for before the context existed: what, and when (performance clock, ms). */
+  let pendingCue: { music: CueMusic; offsetS: number; askedAt: number } | null = null;
   const gate = createSfxGate(GATE);
 
   const synth = (out: AudioNode): Synth | null => (ctx && noiseBuffer ? { ctx, out, noise: noiseBuffer } : null);
@@ -677,6 +790,85 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
     else void load(next).then(begin);
   }
 
+  function stopCue(): void {
+    pendingCue = null;
+    if (!cue || !ctx) return;
+    const { bus, keep, timer, element } = cue;
+    if (timer) clearInterval(timer);
+    const t = ctx.currentTime;
+    bus.gain.cancelScheduledValues(t);
+    bus.gain.setValueAtTime(bus.gain.value, t);
+    bus.gain.linearRampToValueAtTime(0, t + CUE_FADE_S);
+    setTimeout(() => {
+      element?.pause();
+      for (const osc of keep) {
+        try {
+          osc.stop();
+        } catch {
+          // Already stopped.
+        }
+      }
+      bus.disconnect();
+    }, (CUE_FADE_S + 0.2) * 1000);
+    cue = null;
+  }
+
+  /** Schedules the score from `offsetS` in, a little ahead of the clock, like the loops. */
+  function startScore(music: CueMusic, playback: CuePlayback, offsetS: number): void {
+    if (!ctx) return;
+    const s = synth(playback.bus);
+    if (!s) return;
+    const zero = ctx.currentTime + 0.05 - offsetS;
+    // Long sounds already under way at the offset still start (their tail plays).
+    const sounding = music.score.events.filter((e) => e.atS < offsetS && e.atS + e.durS > offsetS + 1 && (e.voice === 'drone' || e.voice === 'pad'));
+    for (const e of sounding) playScoreEvent(s, ctx.currentTime + 0.05, { ...e, atS: offsetS, durS: e.atS + e.durS - offsetS }, playback.keep);
+    let cursor = offsetS;
+    const tick = () => {
+      if (!ctx || cue !== playback) return;
+      const until = ctx.currentTime - zero + LOOKAHEAD_S;
+      for (const e of eventsBetween(music.score, cursor, until)) playScoreEvent(s, zero + e.atS, e, playback.keep);
+      cursor = Math.max(cursor, until);
+      if (cursor >= music.score.durationS && playback.timer) clearInterval(playback.timer);
+    };
+    playback.timer = setInterval(tick, SCHEDULER_MS);
+    tick();
+  }
+
+  function playCue(music: CueMusic, offsetS = 0): void {
+    stopCue();
+    if (!ctx || !buses) {
+      pendingCue = { music, offsetS, askedAt: performance.now() };
+      return;
+    }
+    wanted = null;
+    switchTo(null);
+    const bus = ctx.createGain();
+    bus.connect(buses.music);
+    const playback: CuePlayback = { bus, keep: [], timer: null, element: null };
+    cue = playback;
+    if (!music.file) {
+      startScore(music, playback, offsetS);
+      return;
+    }
+    // The licensed recording; if it cannot play, the score takes over from where it should be.
+    const element = new Audio(`${import.meta.env.BASE_URL}${music.file}`);
+    playback.element = element;
+    const startedAt = performance.now();
+    const fallback = () => {
+      if (cue !== playback || playback.timer) return;
+      element.pause();
+      startScore(music, playback, offsetS + (performance.now() - startedAt) / 1000);
+    };
+    element.addEventListener('error', fallback, { once: true });
+    try {
+      ctx.createMediaElementSource(element).connect(bus);
+      element.currentTime = offsetS;
+      void element.play().catch(fallback);
+    } catch {
+      fallback();
+    }
+  }
+
   function play(id: SoundId): void {
     if (!ctx || !buses || levels.muted) return;
     const s = synth(buses.sfx);
@@ -731,7 +923,11 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
       applyLevels();
       if (ctx.state === 'suspended') void ctx.resume();
-      if (wanted) switchTo(wanted);
+      if (pendingCue) {
+        const { music, offsetS, askedAt } = pendingCue;
+        pendingCue = null;
+        playCue(music, offsetS + (performance.now() - askedAt) / 1000);
+      } else if (wanted) switchTo(wanted);
     },
     play,
     handleEvents(events) {
@@ -741,6 +937,7 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
       }
     },
     setMusic(context) {
+      if (context !== null) stopCue();
       if (context === wanted && (!ctx || active === context)) return;
       wanted = context;
       if (ctx) switchTo(context);
@@ -760,5 +957,7 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
       if (!node || !ctx) return;
       node.gain.gain.setTargetAtTime(target, ctx.currentTime, 0.15);
     },
+    playCue,
+    stopCue,
   };
 }
