@@ -36,9 +36,6 @@ export const PALETTE = {
 
 export const RARITY: Record<Rarity, string> = { common: '#c9d2ee', uncommon: '#5ab0ff', rare: '#ffd447' };
 
-/** Type badge fills not in the page stylesheet (index.html has the first six types). */
-export const TYPE_BADGE_FILLS: Readonly<Record<string, string>> = { fire: '#d8642f', ground: '#a8803f' };
-
 /**
  * Pixelify Sans (SIL OFL 1.1, public/fonts). Its pixel is about 1/11 em, so
  * sizes in multiples of 11 px keep the glyph pixels whole.

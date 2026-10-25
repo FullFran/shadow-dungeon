@@ -7,7 +7,6 @@ import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
-import { TYPE_BADGE_FILLS } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { slotOptions } from './settings';
 
@@ -33,10 +32,7 @@ export interface LoadoutOptions {
 const SCALE = 3;
 
 export function typeBadge(type: PokemonType): HTMLElement {
-  const badge = h('span', { className: `type-badge type-${type}`, textContent: t(`type.${type}`) });
-  const fill = TYPE_BADGE_FILLS[type];
-  if (fill) badge.style.background = fill;
-  return badge;
+  return h('span', { className: `type-badge type-${type}`, textContent: t(`type.${type}`) });
 }
 
 /** A species' idle animation on a small canvas, scaled by a whole number. */

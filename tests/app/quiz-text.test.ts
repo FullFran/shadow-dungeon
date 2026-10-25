@@ -15,7 +15,6 @@ describe('quiz strings', () => {
     'quiz.accept',
     'quiz.choose',
     'quiz.chooseTitle',
-    'quiz.notPlayable',
     'quiz.retake',
   ];
   for (const language of LANGUAGES) {

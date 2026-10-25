@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browserStore, memoryStore, type KeyValueStore } from '../../src/adapters/storage';
-import { defaultSettings, loadSettings, saveSettings, slotOptions, withSpecies } from '../../src/app/settings';
+import { defaultSettings, loadSettings, saveSettings, slotOptions, withSpecies, withStarter } from '../../src/app/settings';
+import { SPECIES } from '../../src/data/species';
 
 describe('storage port', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -50,7 +51,7 @@ describe('settings', () => {
   const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', loadout: ['shadow-claw', 'play-rough'], ...SOUND });
+    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'play-rough'], ...SOUND });
   });
 
   it('round-trips through the store', () => {
@@ -60,6 +61,7 @@ describe('settings', () => {
       lockType: 'clickOnly' as const,
       clickToLock: false,
       species: 'mimikyu' as const,
+      starterChosen: true,
       loadout: ['shadow-sneak', 'shadow-ball'] as const,
       masterVolume: 0.3,
       musicVolume: 0,
@@ -108,7 +110,7 @@ describe('settings', () => {
     for (const [lockMode, lockType] of [['hold', 'hold'], ['toggle', 'toggle'], ['weird', 'toggle']]) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
+      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: ['shadow-sneak', 'play-rough'], ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
   });
@@ -141,6 +143,29 @@ describe('settings', () => {
   it('loads settings saved before sound existed with the sound defaults', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', starterChosen: false, loadout: ['shadow-claw', 'shadow-ball'], ...SOUND });
+  });
+});
+
+describe('the quiz starter', () => {
+  it('is not chosen by default, so the first Play runs the quiz', () => {
+    expect(defaultSettings('es').starterChosen).toBe(false);
+  });
+
+  it('withStarter sets the species with its default moves and marks the starter chosen', () => {
+    const next = withStarter(defaultSettings('es'), 'litwick');
+    expect(next.species).toBe('litwick');
+    expect(next.loadout).toEqual(SPECIES.litwick.defaultLoadout);
+    expect(next.starterChosen).toBe(true);
+  });
+
+  it('survives a reload, and a stored non-boolean falls back to not chosen', () => {
+    const store = memoryStore();
+    saveSettings(store, withStarter(defaultSettings('es'), 'cubone'));
+    const loaded = loadSettings(store, defaultSettings('es'));
+    expect(loaded.species).toBe('cubone');
+    expect(loaded.starterChosen).toBe(true);
+    store.set('mazmorra-sombria.settings', JSON.stringify({ starterChosen: 'yes' }));
+    expect(loadSettings(store, defaultSettings('es')).starterChosen).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
+import type { StarterId } from '../data/quiz';
 import { PROLOGUE_MUSIC } from '../data/prologue-music';
 import { loadSheets, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
@@ -23,8 +24,8 @@ import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
-import { loadStarter, playableStarter, saveStarter } from './starter-choice';
-import { defaultSettings, loadSettings, saveSettings, withSpecies, type Settings } from './settings';
+import { nextAdventureScreen } from './adventure-route';
+import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 
 /**
@@ -201,12 +202,16 @@ function titleScreen(root: HTMLElement, initial = 0): void {
   ]);
 }
 
-/** Play: the prologue the first time in this browser, then the quiz while no starter is chosen, then the loadout. */
+/**
+ * Play: the prologue the first time in this browser, then the quiz while no
+ * starter is chosen, then the loadout with the starter preselected (see
+ * `nextAdventureScreen`; each step comes back here when it ends).
+ */
 function newAdventure(root: HTMLElement): void {
-  const toLoadout = () => loadout(root);
-  const toQuiz = () => (loadStarter(store) ? toLoadout() : quiz(root, toLoadout, () => titleScreen(root, 0)));
-  if (hasSeenPrologue(store)) toQuiz();
-  else prologue(root, toQuiz);
+  const next = nextAdventureScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
+  if (next === 'prologue') prologue(root, () => newAdventure(root));
+  else if (next === 'quiz') quiz(root, () => newAdventure(root), () => titleScreen(root, 0));
+  else loadout(root);
 }
 
 /** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
@@ -225,11 +230,10 @@ function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void
   root.querySelector('.notice')?.classList.add('in-game');
 }
 
-/** The personality quiz over a black screen; its starter becomes the run species. */
+/** The personality quiz over a black screen; its starter becomes the `species` setting. */
 function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
-  const onDone = (starter: Parameters<typeof saveStarter>[1]) => {
-    saveStarter(store, starter);
-    update(withSpecies(settings, playableStarter(starter)));
+  const onDone = (starter: StarterId) => {
+    update(withStarter(settings, starter));
     then();
   };
   show(root, quizScreen({ seed: runSeed(), sheets: sheetsReady(), onDone, onCancel: cancel }), false);

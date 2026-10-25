@@ -31,35 +31,12 @@ export interface PrologueOptions {
   startMs?: number;
 }
 
-const STYLE_ID = 'prologue-style';
-const STYLE = `
-.prologue { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
-.prologue-stage { position: relative; }
-.prologue-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
-.prologue-text { position: absolute; left: 7%; right: 7%; bottom: 12%; margin: 0; text-align: center; color: #efe6d2; line-height: 1.45; letter-spacing: 0.02em; text-shadow: 0 2px 0 #000, 0 0 10px #000, 0 0 18px #000; }
-.prologue-text.is-voice { bottom: auto; top: 50%; transform: translateY(-50%); color: #f5f7ff; }
-.prologue-text p { margin: 0.25em 0; min-height: 1.45em; }
-.prologue-text .rest { visibility: hidden; }
-.prologue-skip { position: fixed; right: 20px; bottom: 64px; overflow: hidden; font: inherit; font-size: 16px; color: var(--md-text-dim, #aab6dc); background: rgba(5, 6, 13, 0.7); border: 2px solid var(--md-border-shade, #6f86c6); border-radius: 6px; padding: 4px 14px; cursor: pointer; opacity: 0; transition: opacity 0.8s; }
-.prologue-skip.is-visible { opacity: 0.85; }
-.prologue-skip:hover, .prologue-skip:focus-visible { color: var(--md-text, #fff); opacity: 1; outline: none; }
-.prologue-hold { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--md-cursor, #ffd447); }
-.prologue-hint { position: fixed; right: 20px; bottom: 40px; margin: 0; font-size: 14px; color: var(--md-text-dim, #aab6dc); opacity: 0; transition: opacity 0.8s; pointer-events: none; }
-.prologue-hint.is-visible { opacity: 0.6; }
-`;
-
-function injectStyle(): void {
-  if (document.getElementById(STYLE_ID)) return;
-  document.head.append(h('style', { id: STYLE_ID, textContent: STYLE }));
-}
-
 /** Largest whole-number scale at which the stage fits the window. */
 const stageScale = (): number => Math.max(1, Math.floor(Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h)));
 
 const isSkipKey = (key: string): boolean => key === 'Escape' || key === 'Enter';
 
 export function prologueScreen(options: PrologueOptions): HTMLElement {
-  injectStyle();
   const canvas = h('canvas', { className: 'prologue-canvas' });
   canvas.width = STAGE.w;
   canvas.height = STAGE.h;

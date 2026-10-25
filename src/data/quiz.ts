@@ -12,9 +12,8 @@ export const NATURES = ['brave', 'calm', 'hardy', 'jolly', 'lonely', 'quirky', '
 export type NatureId = (typeof NATURES)[number];
 
 /**
- * Starters the quiz can hand out. Kept here as plain ids: the species data
- * for zorua, litwick and cubone may not exist yet, and the app guards the
- * hand-off (an unplayable starter falls back to Mimikyu).
+ * Starters the quiz can hand out, as plain ids (data stays free of the
+ * species table). Every one is a playable species; a test enforces it.
  */
 export const STARTERS = ['mimikyu', 'zorua', 'litwick', 'cubone'] as const;
 export type StarterId = (typeof STARTERS)[number];

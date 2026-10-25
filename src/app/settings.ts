@@ -13,8 +13,10 @@ export interface Settings {
   lockType: LockType;
   /** A left click on an enemy locks onto it (with toggle and hold; implied by click only, ignored by off). */
   clickToLock: boolean;
-  /** The playable species of solo and shared runs (picked on the loadout screen). */
+  /** The playable species of solo and shared runs: the quiz's starter, changeable on the loadout screen. */
   species: SpeciesId;
+  /** The personality quiz has picked the starter (until then the first Play runs the quiz). */
+  starterChosen: boolean;
   /** Moves of `species`, aligned with the slot layout. */
   loadout: readonly (MoveId | null)[];
   /** Volumes in 0..1; the music and sfx buses sit under the master gain. */
@@ -27,7 +29,7 @@ export interface Settings {
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -43,6 +45,11 @@ export function slotOptions(kind: SlotKind, species: SpeciesId = 'mimikyu'): Mov
 /** The settings with `species` picked: another species comes with its default loadout, the same one keeps the current moves. */
 export function withSpecies(settings: Settings, species: SpeciesId): Settings {
   return species === settings.species ? settings : { ...settings, species, loadout: SPECIES[species].defaultLoadout };
+}
+
+/** The settings after the personality quiz: its starter becomes the species (see `withSpecies`) and counts as chosen. */
+export function withStarter(settings: Settings, species: SpeciesId): Settings {
+  return { ...withSpecies(settings, species), starterChosen: true };
 }
 
 /**
@@ -75,6 +82,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
     lockType,
     clickToLock,
     species,
+    starterChosen: typeof stored.starterChosen === 'boolean' ? stored.starterChosen : fallback.starterChosen,
     loadout,
     masterVolume: volume(stored.masterVolume, fallback.masterVolume),
     musicVolume: volume(stored.musicVolume, fallback.musicVolume),
