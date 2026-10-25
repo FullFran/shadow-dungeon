@@ -88,6 +88,9 @@ export function enemyAttackType(enemy: Pick<EnemyState, 'species' | 'types' | 'b
       const card = enemy.boss?.stance;
       if (card === 'fan') return def.fan.leaf.type;
       if (card === 'dive') return def.dive.attack.type;
+      if (card === 'rain') return def.phase2.rain.arrow.type;
+      if (card === 'feathers') return def.phase2.feathers.feather.type;
+      if (card === 'stitch') return def.phase2.stitch.arrow.type;
       return def.volley.arrow.type;
     }
     case 'thief':

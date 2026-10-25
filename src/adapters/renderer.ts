@@ -1,9 +1,9 @@
-import { AEGISLASH, ENEMY_BEHAVIOUR, type TreantDef } from '../data/enemies';
+import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
-import { DIVE_LOCK_MS } from '../core/archer';
+import { DIVE_LOCK_MS, rainSafeLane, stitchSources } from '../core/archer';
 import { shadowGapX } from '../core/boss';
 import { MOVES } from '../data/moves';
 import { SPRITES } from '../data/sprites';
@@ -707,6 +707,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       }
     } else if (def?.kind === 'archer') {
       const card = enemy.boss?.stance;
+      if (card === 'rain' || card === 'stitch' || card === 'feathers') {
+        archerPhase2Telegraph(enemy, def, pos, progress, winding);
+        return;
+      }
       if (card === 'dive') {
         // Locked aim (the last moments): the lane turns solid and stops following.
         const locked = winding && ai.modeDurationMs - ai.modeMs <= DIVE_LOCK_MS;
@@ -778,6 +782,58 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (let i = 0; i < arms; i++) {
       const a = base + (i * 2 * Math.PI) / arms;
       groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 90, 4, fill, progress);
+    }
+  }
+
+  /** Decidueye's phase-2 cards: the lanes the rain will pour into (the safe one bright), the stitch lines, the feather arms. */
+  function archerPhase2Telegraph(enemy: EnemyState, def: ArcherDef, pos: Vec2, progress: number, winding: boolean): void {
+    if (!currentArena) return;
+    const { width, height } = currentArena;
+    const card = enemy.boss!.stance;
+    const fill = telegraphFill(enemyAttackType(enemy), true);
+    if (card === 'rain') {
+      if (!winding) return;
+      const lanes = def.phase2.rain.lanes;
+      const laneW = width / lanes;
+      const safe = rainSafeLane(enemy, width, lanes);
+      for (let lane = 0; lane < lanes; lane++) {
+        if (lane === safe) {
+          ctx.fillStyle = 'rgba(255, 230, 160, 0.14)';
+          ctx.fillRect(lane * laneW, 0, laneW, height);
+          continue;
+        }
+        ctx.fillStyle = fill;
+        ctx.fillRect(lane * laneW + 2, 0, laneW - 4, height * progress);
+      }
+      ctx.fillStyle = COLORS.telegraphEdge;
+      ctx.fillRect(safe * laneW, 0, 2, height);
+      ctx.fillRect((safe + 1) * laneW - 2, 0, 2, height);
+      return;
+    }
+    if (card === 'stitch') {
+      const aim = enemy.ai.aimPoint;
+      if (!aim || !winding) return;
+      const locked = enemy.ai.modeDurationMs - enemy.ai.modeMs <= def.phase2.stitch.lockMs;
+      for (const from of stitchSources(enemy, currentArena, def.phase2.stitch.inset)) {
+        const dx = aim.x - from.x;
+        const dy = aim.y - from.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) groundLane(from, { x: dx / len, y: dy / len }, len, 4, locked ? COLORS.strike : fill, progress);
+      }
+      return;
+    }
+    if (winding) {
+      ctx.strokeStyle = COLORS.telegraphEdge;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, enemy.radius + 8 + 40 * (1 - progress), 0, Math.PI * 2);
+      ctx.stroke();
+      const arms = def.phase2.feathers.arms;
+      const base = Math.atan2(enemy.ai.attackDir.y, enemy.ai.attackDir.x);
+      for (let i = 0; i < arms; i++) {
+        const a = base + (i * 2 * Math.PI) / arms;
+        groundLane(pos, { x: Math.cos(a), y: Math.sin(a) }, 80, 4, fill, progress);
+      }
     }
   }
 
@@ -985,6 +1041,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade);
         },
       });
+      // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
+      if (enemy.alive && enemy.boss?.stance === 'stitch' && (enemy.ai.mode === 'telegraph' || enemy.ai.mode === 'attack')) {
+        for (const clone of stitchSources(enemy, current.arena).slice(1)) {
+          drawables.push({ y: clone.y, draw: () => drawSprite(enemyAnim({ ...enemy, pos: clone }, { timeMs, sinceDefeatMs: Number.POSITIVE_INFINITY }), clone, 0.4 + 0.1 * Math.sin(timeMs / 120)) });
+        }
+      }
     }
     const playerPos = posOf('player', current.player.pos);
     drawables.push({

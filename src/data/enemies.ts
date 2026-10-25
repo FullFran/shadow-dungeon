@@ -345,8 +345,35 @@ export interface SporeDef {
   cooldownMs: number;
 }
 
-/** A Decidueye spell card (docs/gdd.md, Bosque Brumoso): its i18n name key. */
-export type ArcherCard = 'volley' | 'fan' | 'dive';
+/**
+ * A Decidueye spell card (docs/gdd.md, Bosque Brumoso); `mist` is its fade
+ * into phase 2, `rain`, `feathers` and `stitch` are phase-2 cards.
+ */
+export type ArcherCard = 'volley' | 'fan' | 'dive' | 'mist' | 'rain' | 'feathers' | 'stitch';
+
+/**
+ * Decidueye's second phase, "El Arquero se desvanece en la niebla": at half
+ * HP it fades into the mist (a long, harmless opening), then plays denser
+ * cards. Rain: the clearing is cut into lanes and arrows pour down every lane
+ * but one; the safe lane moves one lane over each wave (positional: a roll
+ * does not save you, `pierceRoll`; the trees stop arrows, so their shadow is
+ * shelter too). Feathers: from the middle of the clearing, arms of feathers
+ * wind out. Stitch: two shadow clones in the far corners and the archer
+ * itself aim at one spot and each fire a line of arrows into it, three times,
+ * re-aimed. Fan and Dive come back between them.
+ */
+export interface ArcherPhase2Def {
+  threshold: number;
+  mistMs: number;
+  restMs: number;
+  cards: readonly ArcherCard[];
+  rain: { telegraphMs: number; waveTelegraphMs: number; waves: number; lanes: number; columnsPerLane: number; spawnMs: number; everyMs: number; arrow: ArrowDef; recoverMs: number };
+  feathers: { vanishMs: number; telegraphMs: number; arms: number; turnDegrees: number; everyMs: number; bursts: number; feather: ArrowDef; recoverMs: number };
+  stitch: { telegraphMs: number; gapMs: number; lockMs: number; stitches: number; arrowsPerLine: number; inset: number; arrow: ArrowDef; recoverMs: number };
+}
+
+/** Most enemy projectiles in the air at once; beyond it new ones are not thrown (performance; patterns only get sparser). */
+export const ENEMY_SHOT_CAP = 160;
 
 export type ArrowDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
 
@@ -369,7 +396,9 @@ export interface ArcherDef {
   restMs: number;
   cards: readonly ArcherCard[];
   /** i18n key of each card's name, shown when it starts. */
-  cardNames: Readonly<Record<ArcherCard, string>>;
+  cardNames: Readonly<Partial<Record<ArcherCard, string>>>;
+  /** The phase at half HP (never in a Sima echo). */
+  phase2: ArcherPhase2Def;
   volley: { telegraphMs: number; shots: number; gapMs: number; arrow: ArrowDef; recoverMs: number };
   fan: { vanishMs: number; telegraphMs: number; fans: number; leaves: number; spreadDegrees: number; gapMs: number; leaf: ArrowDef; recoverMs: number; edgeInset: number };
   dive: { telegraphMs: number; diveMs: number; distance: number; reach: number; attack: EnemyAttackDef; recoverMs: number };
@@ -546,7 +575,43 @@ export const DECIDUEYE: ArcherDef = {
   keepDistance: 150,
   restMs: 1400,
   cards: ['volley', 'fan', 'dive'],
-  cardNames: { volley: 'spell.decidueye.volley', fan: 'spell.decidueye.fan', dive: 'spell.decidueye.dive' },
+  cardNames: {
+    volley: 'spell.decidueye.volley',
+    fan: 'spell.decidueye.fan',
+    dive: 'spell.decidueye.dive',
+    mist: 'spell.decidueye.mist',
+    rain: 'spell.decidueye.rain',
+    feathers: 'spell.decidueye.feathers',
+    stitch: 'spell.decidueye.stitch',
+  },
+  phase2: {
+    threshold: 0.5,
+    mistMs: 1600,
+    restMs: 1200,
+    cards: ['rain', 'fan', 'feathers', 'dive', 'stitch'],
+    rain: {
+      telegraphMs: 1200,
+      waveTelegraphMs: 800,
+      waves: 3,
+      lanes: 8,
+      columnsPerLane: 2,
+      spawnMs: 400,
+      everyMs: 100,
+      arrow: { power: 22, type: 'ghost', speed: 520, radius: 5, lifetimeMs: 900, pierceRoll: true },
+      recoverMs: 1300,
+    },
+    feathers: {
+      vanishMs: 600,
+      telegraphMs: 900,
+      arms: 5,
+      turnDegrees: 14,
+      everyMs: 160,
+      bursts: 16,
+      feather: { power: 18, type: 'grass', speed: 115, radius: 5, lifetimeMs: 4500 },
+      recoverMs: 1300,
+    },
+    stitch: { telegraphMs: 1000, gapMs: 700, lockMs: 300, stitches: 3, arrowsPerLine: 3, inset: 60, arrow: { power: 22, type: 'ghost', speed: 300, radius: 5, lifetimeMs: 2600 }, recoverMs: 1500 },
+  },
   volley: { telegraphMs: 900, shots: 5, gapMs: 480, arrow: { power: 24, type: 'ghost', speed: 230, radius: 5, lifetimeMs: 2400 }, recoverMs: 900 },
   fan: {
     vanishMs: 700,
