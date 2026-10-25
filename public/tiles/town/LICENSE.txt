@@ -19,8 +19,7 @@ storage host was unreachable), so these sheets were used instead.
 Files and source rectangles (x, y, width, height in source pixels):
   ground.png        tileset_floor.png              0, 112, 80, 96
   house-stone.png   tileset_village_abandoned.png  0, 0, 64, 48
-  hut-orange.png    tileset_village_abandoned.png  64, 0, 32, 48
-  notice-board.png  tileset_village_abandoned.png  128, 0, 32, 32
+  notice-board.png  tileset_village_abandoned.png  144, 176, 32, 16
   tree-big.png      tileset_village_abandoned.png  0, 96, 64, 48
   tree-small.png    tileset_village_abandoned.png  64, 96, 32, 32
   bush.png          tileset_village_abandoned.png  64, 80, 16, 16

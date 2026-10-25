@@ -11,7 +11,6 @@ export type TownPropKind =
   | 'house-shop'
   | 'house-stone'
   | 'house-wood'
-  | 'hut-orange'
   | 'notice-board'
   | 'tree-big'
   | 'tree-small'
@@ -33,8 +32,7 @@ export const TOWN_PROPS: Record<TownPropKind, TownPropSpec> = {
   'house-shop': { file: 'house-shop.png', width: 3, height: 3, solidRows: 2 },
   'house-stone': { file: 'house-stone.png', width: 4, height: 3, solidRows: 2 },
   'house-wood': { file: 'house-wood.png', width: 3, height: 3, solidRows: 2 },
-  'hut-orange': { file: 'hut-orange.png', width: 2, height: 3, solidRows: 2 },
-  'notice-board': { file: 'notice-board.png', width: 2, height: 2, solidRows: 1 },
+  'notice-board': { file: 'notice-board.png', width: 2, height: 1, solidRows: 1 },
   'tree-big': { file: 'tree-big.png', width: 4, height: 3, solidRows: 1 },
   'tree-small': { file: 'tree-small.png', width: 2, height: 2, solidRows: 1 },
   bush: { file: 'bush.png', width: 1, height: 1, solidRows: 1 },
@@ -69,8 +67,8 @@ export type TownNpcRole = 'gacha' | 'shop' | 'storyteller';
 export interface TownNpc {
   id: string;
   role: TownNpcRole;
-  /** Species of the existing sprite sheets (public/sprites). */
-  species: 'poochyena' | 'gastly' | 'aegislash';
+  /** Placeholder species from the existing sprite sheets (public/sprites); no new sprites. */
+  species: 'mimikyu' | 'poochyena' | 'gastly';
   /** Standing tile; it is solid. */
   x: number;
   y: number;
@@ -110,7 +108,7 @@ export const TOWN: TownMap = {
   props: [
     { kind: 'stall', x: 5, y: 3 },
     { kind: 'house-shop', x: 13, y: 3 },
-    { kind: 'notice-board', x: 10, y: 6 },
+    { kind: 'notice-board', x: 10, y: 7 },
     { kind: 'tree-big', x: 21, y: 2 },
     { kind: 'stump', x: 26, y: 6 },
     { kind: 'stump', x: 25, y: 7 },
@@ -118,7 +116,7 @@ export const TOWN: TownMap = {
     { kind: 'tree-small', x: 2, y: 3 },
     { kind: 'house-stone', x: 3, y: 13 },
     { kind: 'house-wood', x: 8, y: 14 },
-    { kind: 'hut-orange', x: 24, y: 13 },
+    { kind: 'house-wood', x: 24, y: 13 },
     { kind: 'tree-big', x: 18, y: 15 },
     { kind: 'tree-small', x: 13, y: 16 },
     { kind: 'tree-small', x: 27, y: 16 },
@@ -128,11 +126,11 @@ export const TOWN: TownMap = {
     { kind: 'bush', x: 3, y: 9 },
   ],
   npcs: [
-    { id: 'gacha', role: 'gacha', species: 'poochyena', x: 8, y: 6, lines: ['town.gacha.1', 'town.soon'] },
-    { id: 'shop', role: 'shop', species: 'aegislash', x: 16, y: 6, lines: ['town.shop.1', 'town.soon'] },
+    { id: 'gacha', role: 'gacha', species: 'mimikyu', x: 8, y: 6, lines: ['town.gacha.1', 'town.soon'] },
+    { id: 'shop', role: 'shop', species: 'poochyena', x: 16, y: 6, lines: ['town.shop.1', 'town.soon'] },
     { id: 'storyteller', role: 'storyteller', species: 'gastly', x: 24, y: 6, lines: ['town.story.1', 'town.story.2', 'town.story.3'] },
   ],
   board: { x: 11, y: 7.5 },
-  spawn: { x: 15, y: 12 },
+  spawn: { x: 15, y: 9 },
   exit: { x: 31, y: 10, width: 1, height: 2 },
 };

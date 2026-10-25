@@ -7,7 +7,8 @@ import { sheetKey, type SheetStore } from '../adapters/assets';
 import { directionRow, frameAtTime } from '../adapters/sprite-anim';
 import { visibleTiles } from '../adapters/view';
 import { emberAt, hash01 } from '../ui/eclipse';
-import { PALETTE } from '../ui/tokens';
+import { drawPanel, pixelText } from '../ui/canvas';
+import { canvasFont, PALETTE } from '../ui/tokens';
 import { groundAt, pathPatchCell } from './map';
 
 /**
@@ -229,4 +230,53 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
   tint(ctx, view, timeMs);
   sky(ctx, view, timeMs);
   embers(ctx, view, timeMs);
+}
+
+export interface TownOverlay {
+  /** "E / Enter: talk" over the target in range. */
+  prompt: { text: string; pos: Vec2 } | null;
+  dialog: { speaker: string; text: string; done: boolean } | null;
+}
+
+/** Greedy word wrap to `maxWidth` view px in the current font. */
+export function wrapText(text: string, maxWidth: number, measure: (s: string) => number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && measure(next) > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** Interaction prompt and the dialog box (Mystery Dungeon window language), in view pixels. */
+export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
+  ctx.font = canvasFont();
+  if (overlay.prompt && !overlay.dialog) {
+    const width = Math.ceil(ctx.measureText(overlay.prompt.text).width) + 12;
+    const x = Math.round(Math.min(view.width - width - 4, Math.max(4, overlay.prompt.pos.x - view.x - width / 2)));
+    const y = Math.round(Math.max(SKY_BAND - 8, overlay.prompt.pos.y - view.y - 52));
+    drawPanel(ctx, x, y, width, 16, { fill: 0.9 });
+    pixelText(ctx, overlay.prompt.text, x + 6, y + 12, PALETTE.text);
+  }
+  const dialog = overlay.dialog;
+  if (!dialog) return;
+  const x = 16;
+  const w = view.width - 32;
+  const h = 70;
+  // Clear of the fan-project notice at the bottom of the page.
+  const y = view.height - h - 24;
+  drawPanel(ctx, x, y, w, h);
+  pixelText(ctx, dialog.speaker, x + 10, y + 15, PALETTE.cursor);
+  const lines = wrapText(dialog.text, w - 24, (s) => ctx.measureText(s).width);
+  lines.slice(0, 3).forEach((line, i) => pixelText(ctx, line, x + 10, y + 31 + i * 13, PALETTE.text));
+  if (dialog.done && Math.floor(timeMs / 400) % 2 === 0) {
+    // "More" marker: a small down-pointing triangle (the pixel font has no glyph for it).
+    ctx.fillStyle = PALETTE.cursor;
+    for (let row = 0; row < 3; row++) ctx.fillRect(x + w - 16 + row, y + h - 12 + row, 5 - row * 2, 1);
+  }
 }
