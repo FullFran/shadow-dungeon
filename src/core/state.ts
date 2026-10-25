@@ -209,6 +209,10 @@ export interface EnemyState {
    * and the damage `by` another player dealt it meanwhile.
    */
   aggro?: { targetId: string; heldMs: number; pressure: number; by?: string; swung?: true };
+  /** Host only (core/bounds.ts): how long a wave enemy has been outside its sealed room. */
+  strayMs?: number;
+  /** Host only (core/bounds.ts): it was just brought back into its room (the renderer draws a poof while > 0). */
+  warpMs?: number;
 }
 
 /** Aegislash's two stances, its unsheathing and phase-2 cards, or the spell card Decidueye or Sableye is playing. */

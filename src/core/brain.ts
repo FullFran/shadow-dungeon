@@ -2,7 +2,7 @@ import { ENEMY_SHOT_CAP, floatsOf, type EnemyAttackDef, type SteerDef } from '..
 import { wadeFactor } from './water';
 import { ELITE_TRAIT_DEFS } from '../data/difficulty';
 import { computeDamage } from './damage';
-import { confineCircle } from './geometry';
+import { sweepCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
 import { flowStep } from './flow';
 import { onContact } from './items';
@@ -91,9 +91,10 @@ export function moveEnemy(state: WorldState, enemy: EnemyState, delta: Vec2): En
   // Walkers that are not Water types wade slower through shallow water (the caves' pools).
   if (solid && state.arena.water) delta = scale(delta, wadeFactor(enemy.types, state.arena, enemy.pos));
   const desired = add(enemy.pos, delta);
-  let pos = confineCircle(state.arena, desired, enemy.radius, solid);
+  // Swept: a lunge or a dash longer than a quarter tile cannot jump a wall.
+  let pos = sweepCircle(state.arena, enemy.pos, delta, enemy.radius, solid);
   if (solid && distance(pos, desired) > 0.01 && length(delta) > 0) {
-    pos = confineCircle(state.arena, add(pos, perpendicular(delta, enemy.ai.strafeSign)), enemy.radius, solid);
+    pos = sweepCircle(state.arena, pos, perpendicular(delta, enemy.ai.strafeSign), enemy.radius, solid);
   }
   return { ...enemy, pos };
 }
