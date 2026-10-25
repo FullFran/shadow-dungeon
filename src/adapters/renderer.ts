@@ -27,6 +27,7 @@ import { ringRadius } from '../core/roster';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
+import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, type SimaLook } from './sima-backdrop';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -75,6 +76,8 @@ export interface RenderFrame {
   spell?: SpellBanner | null;
   /** The endless dungeon's run clock (absent elsewhere). */
   clock?: RunClock | null;
+  /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
+  sima?: SimaLook | null;
 }
 
 const COLORS = {
@@ -221,14 +224,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number): void {
+  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number, abyss = false): void {
     const { x0, y0, x1, y1 } = visibleTiles(view, grid);
     const front = collapse ? collapseFront(collapse) : 0;
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
         const x = tx * TILE;
         const y = ty * TILE;
-        if (isWall(grid, tx, ty)) {
+        if (isWall(grid, tx, ty) && abyss) {
+          // The Sima's abyss: no wall, only the void and the underside of the island above.
+          abyssWallTile(ctx, grid, tx, ty);
+        } else if (isWall(grid, tx, ty)) {
           ctx.fillStyle = COLORS.tileWallTop;
           ctx.fillRect(x, y, TILE, TILE);
           // Staggered stone blocks on the wall tops.
@@ -254,7 +260,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           }
           ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.tileFloorA : COLORS.tileFloorB;
           ctx.fillRect(x, y, TILE, TILE);
-          if (isWall(grid, tx, ty - 1)) {
+          if (abyss) abyssRim(ctx, grid, tx, ty, COLORS.tileWallLip);
+          else if (isWall(grid, tx, ty - 1)) {
             ctx.fillStyle = COLORS.tileShadow;
             ctx.fillRect(x, y, TILE, 6);
           }
@@ -343,12 +350,15 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (let x = 48; x < width - 32; x += 112) wallCandle(x - 16, -TILE, timeMs, decorHash(x, 0, 9));
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null): void {
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: 'crypt' | null, sima: SimaLook | null = null): void {
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
-      ctx.fillStyle = COLORS.mapVoid;
-      ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
-      tiles(grid, view, state.collapse, timeMs);
+      // The Sima draws its eclipse backdrop where the void would be.
+      if (!sima) {
+        ctx.fillStyle = COLORS.mapVoid;
+        ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
+      }
+      tiles(grid, view, state.collapse, timeMs, sima?.abyss === true);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       // A thin rim marks where the map ends and the void begins.
       ctx.strokeStyle = COLORS.mapRim;
@@ -357,8 +367,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       return;
     }
     const { width, height } = state.arena;
-    ctx.fillStyle = COLORS.wall;
-    ctx.fillRect(-200, -200, width + 400, height + 400);
+    if (!sima) {
+      ctx.fillStyle = COLORS.wall;
+      ctx.fillRect(-200, -200, width + 400, height + 400);
+    }
     for (let y = 0; y < height; y += TILE) {
       for (let x = 0; x < width; x += TILE) {
         ctx.fillStyle = ((x + y) / TILE) % 2 === 0 ? COLORS.floorA : COLORS.floorB;
@@ -819,6 +831,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillStyle = COLORS.wall;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    if (frame.sima) drawSimaBackdrop(ctx, view, pixelScale, frame.sima, timeMs);
     const event = shakeOffset(juice, random);
     const rumble = rumbleOffset(frame.rumble, random);
     const shake = { x: event.x + rumble.x, y: event.y + rumble.y };
@@ -826,7 +839,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view, timeMs, frame.decor ?? null);
+    floor(current, view, timeMs, frame.decor ?? null, frame.sima ?? null);
+    if (frame.sima?.abyss) drawFallingLight(ctx, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);

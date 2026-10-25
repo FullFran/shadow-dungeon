@@ -6,6 +6,7 @@ import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
 import { runUpgrades, scaleCoins } from '../core/endless';
+import { bandLoreKey, bandStartsAt, simaBandAt, simaPalette } from '../core/sima';
 import { tickDue, type RunClock } from '../adapters/clock-hud';
 import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -249,16 +250,29 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /** The Sima's depth band of the current floor (data/sima.ts); null in other dungeons. */
+  const simaBand = () => {
+    const bands = dungeonOf(run).endless?.bands;
+    return bands ? simaBandAt(bands, run.floor) : null;
+  };
   function announceFloor(descended: boolean): void {
     const lore = dungeonOf(run).lore;
-    // The floor's own lore line, when the dungeon has one (the Crypt).
-    const floorKey = lore.floorKeys?.[run.floor - 1];
+    const bands = dungeonOf(run).endless?.bands;
+    // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
+    const floorKey = bands ? bandLoreKey(bands, run.floor) : lore.floorKeys?.[run.floor - 1];
     const floorLore = floorKey ? { lore: t(floorKey) } : {};
     card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, ...floorLore };
     // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
     if (run.floor === 1) {
       intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, ...floorLore };
       card = null;
+    }
+    // The Sima's first floor of a new depth band: the band's own title card, and the track note again (Touhou style).
+    const band = simaBand();
+    if (bands && band && bandStartsAt(bands, run.floor)) {
+      intro = { name: t(band.nameKey), subtitle: t(band.subtitleKey), shownAtMs: realMs, ...floorLore };
+      card = null;
+      if (playing) nowPlaying = { title: trackNote(playing), shownAtMs: realMs };
     }
     if (run.kind !== 'normal') say(t(`card.${run.kind}`), 'warn');
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
@@ -554,6 +568,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     audio?.setRumble(rumble);
     const plan = floorPlanOf(run);
     const exit = roomExit(plan, dungeonOf(run));
+    const band = simaBand();
     // Click-to-lock hover: the enemy a click would lock (same rule as the core).
     const hovered =
       clickLockActive(world.lock) && !closeMenu && lastInput
@@ -579,8 +594,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       minimap: showMinimap ? minimap : null,
       log,
       coins: scaleCoins(coinBreakdown(tally, null), dungeonOf(run).endless?.coinScale ?? 1).total,
-      palette: dungeonOf(run).palette,
-      decor: dungeonOf(run).decor ?? null,
+      // The Sima's look follows its depth band (palette, decoration, backdrop, abyss).
+      palette: band ? simaPalette(band) : dungeonOf(run).palette,
+      decor: band ? (band.decor ?? null) : (dungeonOf(run).decor ?? null),
+      sima: band ? { floor: run.floor, abyss: band.abyss === true } : null,
       intro,
       nowPlaying,
       spell,

@@ -1,6 +1,7 @@
 import type { MusicContext } from './music';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
+import { SIMA_BANDS, type SimaBand } from './sima';
 
 /**
  * The endless dungeon (Sima del Eclipse, docs/gdd.md §3 "La Sima del
@@ -95,6 +96,8 @@ export interface EndlessDef {
   coinScale: number;
   /** Modo puro: permanent shop upgrades do not apply (scores stay comparable). */
   pure: boolean;
+  /** The Sima's depth bands (data/sima.ts): its look changes as you descend. */
+  bands?: readonly SimaBand[];
 }
 
 export const ENDLESS: EndlessDef = {
@@ -117,6 +120,7 @@ export const ENDLESS: EndlessDef = {
   bandFloors: 5,
   coinScale: 0.5,
   pure: true,
+  bands: SIMA_BANDS,
 };
 
 /** True on the floors that hold a guardian echo (5, 10, 15...). */
