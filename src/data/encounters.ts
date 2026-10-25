@@ -1,0 +1,144 @@
+import type { Difficulty } from './difficulty';
+import type { SpeciesId } from './species';
+
+/**
+ * Encounters with a meaning (docs/gdd.md §3 "Encuentros con sentido",
+ * docs/souls-difficulty-research.md P1-P3; user decision 2026-10-25: fewer
+ * enemies, but ones that matter). Every floor enemy plays a role; a room
+ * spends a threat budget on roles instead of drawing a raw count, so a
+ * typical room is one to three enemies forming a readable combo (a brute in
+ * front of a gunner, a controller with a skirmisher) and some rooms are
+ * empty. Values are provisional (to be measured by the balance harness).
+ */
+
+/**
+ * - `brute`: slow melee, hits hard, soaks.
+ * - `skirmisher`: fast, darts in and out.
+ * - `ranged`: shoots from afar, punishes standing still.
+ * - `swarm`: weak, comes in numbers (`pack`).
+ * - `controller`: denies space (spores, gas, pulses, sludge).
+ * - `support`: makes the others better (kill it first). No species of the
+ *   roster plays it today; a group's leader (its rally cry) fills it.
+ */
+export type EnemyRole = 'brute' | 'skirmisher' | 'ranged' | 'swarm' | 'controller' | 'support';
+
+export const ENEMY_ROLES: readonly EnemyRole[] = ['brute', 'skirmisher', 'ranged', 'swarm', 'controller', 'support'];
+
+/** Threat cost of one enemy of each role (a pack pays per unit). */
+export const ROLE_COST: Readonly<Record<EnemyRole, number>> = {
+  brute: 3,
+  skirmisher: 2,
+  ranged: 3,
+  swarm: 1,
+  controller: 4,
+  support: 4,
+};
+
+/**
+ * Where a role stands in its room: the front line takes the tiles nearest
+ * the way in (walking distance from the floor's start), the back line the
+ * farthest ones, so a gunner waits behind its brute instead of at the door.
+ */
+export const ROLE_LINE: Readonly<Record<EnemyRole, 'front' | 'back'>> = {
+  brute: 'front',
+  skirmisher: 'front',
+  swarm: 'front',
+  ranged: 'back',
+  controller: 'back',
+  support: 'back',
+};
+
+/** The role of every species that spawns on generated floors and in events (guardians, mid-bosses and players have none). */
+export const SPECIES_ROLE: Readonly<Partial<Record<SpeciesId, EnemyRole>>> = {
+  // Crypt
+  poochyena: 'skirmisher',
+  gastly: 'ranged',
+  duskull: 'ranged',
+  pawniard: 'skirmisher',
+  golett: 'brute',
+  // Misty Forest
+  'pumpkaboo-small': 'swarm',
+  'pumpkaboo-super': 'brute',
+  phantump: 'skirmisher',
+  spinarak: 'ranged',
+  foongus: 'controller',
+  hoothoot: 'skirmisher',
+  shroomish: 'brute',
+  drifloon: 'ranged',
+  impidimp: 'skirmisher',
+  // Flooded Caves
+  krabby: 'brute',
+  zubat: 'swarm',
+  remoraid: 'ranged',
+  tentacool: 'brute',
+  shellos: 'ranged',
+  corphish: 'ranged',
+  chinchou: 'controller',
+  wooper: 'brute',
+  clauncher: 'ranged',
+  // Toxic Swamp
+  venipede: 'swarm',
+  stunky: 'swarm',
+  ekans: 'skirmisher',
+  skrelp: 'ranged',
+  salandit: 'skirmisher',
+  koffing: 'controller',
+  grimer: 'controller',
+  croagunk: 'brute',
+  // The Sima's own roster
+  litleo: 'ranged',
+  houndour: 'controller',
+  slugma: 'ranged',
+};
+
+/** The role of a species (a species without one counts as a skirmisher: cheap, never blocks a room). */
+export const roleOf = (species: SpeciesId): EnemyRole => SPECIES_ROLE[species] ?? 'skirmisher';
+
+/** Threat cost of one enemy of a species. */
+export const threatOf = (species: SpeciesId): number => ROLE_COST[roleOf(species)];
+
+/**
+ * A dungeon's per-room threat budget (data/dungeon.ts `SpawnTuning.budget`):
+ * `base` on floor 1, plus `perDepth` per deeper floor, plus up to `jitter`
+ * (a whole number drawn per room). The room buys roles from the pool until
+ * nothing affordable fits; it never holds more than `maxEnemies` nor more
+ * than the tier's roles (`ROLES_PER_ROOM`). `rest` is the chance by floor
+ * (index 0 is floor 1, deeper floors use the last entry) that a room other
+ * than the start is left empty: a breather.
+ */
+export interface EncounterBudget {
+  base: number;
+  perDepth: number;
+  jitter: number;
+  maxEnemies: number;
+  rest: readonly number[];
+  /** A role already in the room weighs this share when the next one is bought (variety makes the combo). */
+  repeatWeight: number;
+  /** Roles per room (set from the run's tier by core/difficulty.ts `tieredSpawns`; `ROLES_PER_ROOM.easy` when absent). */
+  maxRoles?: number;
+}
+
+/** Roles one room may mix, by tier (research P2: two up to Normal, three from Hard). */
+export const ROLES_PER_ROOM: Readonly<Record<Difficulty, number>> = { easy: 2, normal: 2, hard: 3, nightmare: 3 };
+
+/**
+ * Experience per defeat, by role, on top of the species' own
+ * (data/progression.ts): with about 40 % fewer enemies, each one pays more so
+ * a player who kills what is there earns about as much per floor as before.
+ * Guardians, mid-bosses and echoes have no role and pay as they always did.
+ * Tuned against the pre-change average per dungeon (tests/core/encounters.test.ts).
+ */
+export const ROLE_XP_SCALE: Readonly<Record<EnemyRole, number>> = {
+  brute: 1.45,
+  skirmisher: 1.75,
+  ranged: 1.6,
+  swarm: 2.2,
+  controller: 1.5,
+  support: 1.5,
+};
+
+/** Experience scale of a defeated species: its role's, or 1 for guardians and anything without a role. */
+export const xpScaleOf = (species: SpeciesId): number => {
+  const role = SPECIES_ROLE[species];
+  return role ? ROLE_XP_SCALE[role] : 1;
+};

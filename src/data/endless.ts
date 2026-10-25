@@ -1,3 +1,4 @@
+import type { EncounterBudget } from './encounters';
 import type { MusicContext } from './music';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
@@ -91,7 +92,7 @@ export interface EndlessDef {
   echoExit: { width: number; height: number };
   pool: readonly EndlessPoolEntry[];
   /** Enemies per room: `base` on floor 1, plus `perDepth` (rounded down) per deeper floor, plus up to `jitter`, at most `maxPerRoom`. */
-  spawns: { base: number; perDepth: number; jitter: number; maxPerRoom: number };
+  spawns: { base: number; perDepth: number; jitter: number; maxPerRoom: number; budget?: EncounterBudget };
   /** Enemy HP and damage multipliers: +perFloor per floor past the first, capped; echoes take `echoHp` of that HP. */
   scaling: { hpPerFloor: number; damagePerFloor: number; maxHp: number; maxDamage: number; echoHp: number };
   /** Urgent floor chances: `start` from `fromFloor`, + `perFloor` per deeper floor, at most `max` (each). */
@@ -141,7 +142,7 @@ export const ENDLESS: EndlessDef = {
   eclipseEcho: { room: 'eclipse', music: 'guardian' },
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
-  spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3 },
+  spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3, budget: { base: 2, perDepth: 0.2, jitter: 1, maxEnemies: 3, rest: [0.2], repeatWeight: 0.4 } },
   scaling: { hpPerFloor: 0.05, damagePerFloor: 0.035, maxHp: 3, maxDamage: 2.5, echoHp: 0.6 },
   urgent: [
     { kind: 'collapse', fromFloor: 2, start: 0.08, perFloor: 0.01, max: 0.22 },

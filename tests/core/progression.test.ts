@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ROLE_XP_SCALE, SPECIES_ROLE } from '../../src/data/encounters';
 import { PROGRESSION } from '../../src/data/progression';
 import { TUNING } from '../../src/data/tuning';
 import { creditDefeats, levelDamage, levelForXp, levelMaxHp, levelProgress, xpFor } from '../../src/core/progression';
@@ -34,8 +35,11 @@ function swing(state: WorldState, ms = 600): { state: WorldState; events: GameEv
 
 describe('experience and level curve', () => {
   it('gives experience by species, growing with depth', () => {
-    expect(xpFor('poochyena', 1)).toBe(PROGRESSION.xpBySpecies.poochyena);
-    expect(xpFor('poochyena', 3)).toBeCloseTo(PROGRESSION.xpBySpecies.poochyena * (1 + 2 * PROGRESSION.xpPerDepth));
+    // A floor enemy pays its role's scale on top (data/encounters.ts: fewer enemies, each one worth more); a guardian pays as before.
+    const scale = ROLE_XP_SCALE[SPECIES_ROLE.poochyena!];
+    expect(xpFor('poochyena', 1)).toBeCloseTo(PROGRESSION.xpBySpecies.poochyena * scale);
+    expect(xpFor('poochyena', 3)).toBeCloseTo(PROGRESSION.xpBySpecies.poochyena * scale * (1 + 2 * PROGRESSION.xpPerDepth));
+    expect(xpFor('aegislash', 1)).toBe(PROGRESSION.xpBySpecies.aegislash);
     expect(xpFor('gastly', 2)).toBeGreaterThan(xpFor('gastly', 1));
   });
 

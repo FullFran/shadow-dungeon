@@ -10,8 +10,12 @@ export type { Difficulty };
 export const COINS = {
   /** Per floor cleared, times its depth (floor 1 pays 6, floor 3 pays 18). */
   perFloor: 6,
-  /** Per enemy defeated: base * (1 + perEnemyDepth * (depth - 1)). */
-  perEnemy: 1,
+  /**
+   * Per enemy defeated: base * (1 + perEnemyDepth * (depth - 1)). Raised from
+   * 1 with the encounter budget (data/encounters.ts): about 40 % fewer
+   * enemies each pay more, so a floor pays about as much as before.
+   */
+  perEnemy: 1.65,
   perEnemyDepth: 0.5,
   /** Collapse floor escaped within `withinMs` (first matching tier), else `escapeSlow`. */
   escapeTiers: [

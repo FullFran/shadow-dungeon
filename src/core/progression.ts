@@ -1,3 +1,4 @@
+import { xpScaleOf } from '../data/encounters';
 import { PROGRESSION } from '../data/progression';
 import type { SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
@@ -13,7 +14,8 @@ import { upgradeBonuses } from './upgrades';
  * a snapshot showing it down, the collapse) pays once per enemy id.
  */
 export function xpFor(species: SpeciesId, depth: number): number {
-  return PROGRESSION.xpBySpecies[species] * (1 + PROGRESSION.xpPerDepth * Math.max(0, depth - 1));
+  // Fewer enemies that matter (data/encounters.ts): a floor enemy pays its role's scale on top of its species' experience.
+  return PROGRESSION.xpBySpecies[species] * xpScaleOf(species) * (1 + PROGRESSION.xpPerDepth * Math.max(0, depth - 1));
 }
 
 const LEVELS = PROGRESSION.levelXp;

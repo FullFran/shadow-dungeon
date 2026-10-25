@@ -132,6 +132,7 @@ export const FOREST: DungeonDef = {
     perDepth: 0.5,
     jitter: 1,
     maxPerRoom: 4,
+    budget: { base: 2, perDepth: 0.9, jitter: 1, maxEnemies: 3, rest: [0.25, 0.2, 0.2, 0.2, 0.15], repeatWeight: 0.4 },
     // Weights by floor 1..7 (floors 4 and 8 are arenas; their entries keep the tables aligned).
     // Remaster: Shroomish pairs (with a Foongus among them) from floor 1, Drifloon from 2, Impidimp leading
     // two Pumpkaboo Small from 3 (mixed packs only add tiles to a pick).
@@ -201,6 +202,7 @@ export const CAVES: DungeonDef = {
     perDepth: 0.5,
     jitter: 1,
     maxPerRoom: 4,
+    budget: { base: 3, perDepth: 0.75, jitter: 1, maxEnemies: 3, rest: [0.25, 0.2, 0.2, 0.2, 0.15], repeatWeight: 0.4 },
     // Weights by floor 1..9 (floor 5 is the grotto; its entry keeps the table aligned).
     pool: [
       { species: 'krabby', weights: [3, 3, 3, 2, 2, 2, 2, 2, 2] },
@@ -268,6 +270,7 @@ export const SWAMP: DungeonDef = {
     perDepth: 0.4,
     jitter: 1,
     maxPerRoom: 5,
+    budget: { base: 2, perDepth: 0.65, jitter: 1, maxEnemies: 3, rest: [0.3, 0.25, 0.25, 0.25, 0.2], repeatWeight: 0.4 },
     // Weights by floor 1..9 (floor 5 is the den; its entry keeps the tables aligned).
     pool: [
       { species: 'venipede', weights: [3, 3, 2, 2, 0, 2, 2, 2, 2], pack: 3 },
