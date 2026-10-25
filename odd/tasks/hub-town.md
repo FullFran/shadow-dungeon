@@ -23,8 +23,8 @@ Out of scope: gacha and shop logic, story text, online walking together, new spr
 
 ## Tasks
 - [x] T1 Tiles: confirm license, fetch, copy used PNGs + LICENSE, CREDITS.md section (route: inline in this writer)
-- [ ] T2 Town map and walking scene (route: inline in this writer)
-- [ ] T3 NPCs, dialog, notice board, exit window, title entry (route: inline in this writer)
+- [x] T2 Town map and walking scene, title entry "Pueblo" (route: inline in this writer; one module group plus a 9-line hook, no delegation trigger)
+- [ ] T3 NPCs, dialog, notice board, exit window (route: inline in this writer)
 
 ## Acceptance criteria
 - Every walkable tile is reachable from spawn; every NPC and the exit are reachable and no NPC stands on a wall (tests).
@@ -44,3 +44,12 @@ Created 2026-10-25. Forecast ~900 authored lines. Delivery strategy: ask-on-risk
 - Only 11 crops copied (ground 9-patch + grass, three houses, hut, stall, signpost, two trees, bush, stump), ~6 KB in total; crop rectangles listed in the LICENSE note.
 - CREDITS.md: Tiles section as prose (a table row would be counted as a sprite artist by the credits screen test). Check: `tests/app/credits.test.ts` 2 passed.
 - The repository pack has no dedicated notice board, gacha machine or market stall beyond a raised orange platform; the signpost and platform stand in.
+
+### T2 Town map and walking
+- Data `src/data/town.ts`: 32x22 tiles (`F` forest ring two tiles thick, `.` grass, `,` road), props with bottom solid rows (stall, shop, notice board, storyteller tree with stumps, three houses, trees, bushes), three NPC spots, spawn on the plaza, exit on the east edge (31, 10-11).
+- Pure `src/town/map.ts` (TileGrid, flood fill, path 9-patch cell) and `src/town/interact.ts` (walk step with the core `confineCircle`, same speed and radius as the run; interaction range 48 px; exit test).
+- Scene `src/town/scene.ts` + `src/town/render.ts`: own canvas and rAF loop that stops when the page replaces the canvas; WASD/arrows, camera follow (`followCamera`, `cameraView`); ground at 2x, y-sorted props and characters, red multiply tint, fixed sky band at the top of the view with the eclipse, far ruins and a fade, embers (`emberAt`, `hash01` from `src/ui/eclipse.ts`).
+- Decision: a following camera only shows a north sky when the player stands at the north edge, so the sky is a fixed band at the top of the view (the camera may scroll 64 px up under it so the north edge is never hidden).
+- Hook in `src/app/main.ts`: "Pueblo"/"Town" appended as the last title entry (indices of the other entries unchanged, Enter still plays), `townScreen` (route exit -> `loadout`, the same function as "Jugar"; Esc -> title), dev `?screen=town`. i18n: `town.menu` starts the `town.*` block at the end of both catalogs.
+- Checks: RED observed (modules missing), GREEN 17 town tests (map validity: every floor tile reachable from spawn, NPCs off walls and reachable within range, board readable, exit on the edge and reachable, a sealed-pocket map is detected; walking speed, forest stop, exit reached; interaction range). Full suite 445 passed except the two T3 RED files (dialog, records) not yet implemented; typecheck clean.
+- Screenshots (headless Firefox over WebDriver BiDi, 1024x640, pixel scale 2): `/tmp/hub-town/spawn.png`, `/tmp/hub-town/north.png`. Fixed after looking: tint too strong (grass read orange), notice too large (now the in-game size), road too wide (now two rows with spurs). Scale: one 16 px tile at 2x = 32 world px; Mimikyu (32x48 frame) stands about one tile tall next to 3-tile houses.

@@ -20,6 +20,7 @@ import { loadoutScreen } from './loadout';
 import { openPauseMenu } from './menu';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
+import { openTown } from '../town/scene';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -181,6 +182,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
       { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
       { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
+      { label: t('town.menu'), onConfirm: () => townScreen(root) },
     ],
   });
   show(root, [
@@ -222,6 +224,12 @@ function settingsScreen(root: HTMLElement): void {
       mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
     ]),
   ]);
+}
+
+/** The hub town (src/town): walk around; its route exit goes on like "Play", Esc goes back to the title. */
+function townScreen(root: HTMLElement): void {
+  waitScreen(root, t('app.loading'));
+  void openTown({ sheets: sheetsReady(), species: SPECIES, show: (nodes) => show(root, nodes, false), onDepart: () => loadout(root), onQuit: () => titleScreen(root, 4) });
 }
 
 function creditsScreen(root: HTMLElement): void {
@@ -431,6 +439,7 @@ function devScreen(root: HTMLElement): boolean {
     loadout: () => loadout(root),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
+    town: () => townScreen(root),
     online: () => onlineScreen(root),
     lobby: () => void openLobby(root, 'K7M2Q', true, () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false),

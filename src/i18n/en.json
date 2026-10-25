@@ -176,5 +176,6 @@
   "screen.noItems": "None",
   "log.defeated": "{name} fainted!",
   "log.berry": "{name} ate an Oran Berry and restored {heal} HP.",
-  "log.item": "{name} equipped {item}."
+  "log.item": "{name} equipped {item}.",
+  "town.menu": "Town"
 }
