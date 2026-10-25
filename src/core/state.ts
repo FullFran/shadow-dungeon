@@ -130,6 +130,8 @@ export interface PlayerState {
   illusionBroken: boolean;
   /** Flash Fire passive: a Fire hit was absorbed and the next heavy move is powered up. */
   flashFire: boolean;
+  /** Flash Fire: own Fire hits landed towards the next stoke (`TUNING.passives.flashFireKindle`); absent = 0. */
+  kindling?: number;
   /** The last finished melee move struck nothing (Stomping Tantrum). */
   lastMoveMissed: boolean;
   /** In-run level (progression.ts), 1 at the run start. */
@@ -235,6 +237,8 @@ export interface ProjectileState {
   returnAtMs?: number;
   /** Goes through enemies instead of being spent on the first hit (boomerangs). */
   pierce?: boolean;
+  /** Player projectiles: the move that fired it (its hits and its look). */
+  moveId?: MoveId;
 }
 
 export interface Arena {
@@ -259,11 +263,13 @@ export type GameEvent =
   | { type: 'playerHurt'; damage: number }
   | { type: 'disguiseBroken' }
   /** A starter passive acted: Illusion broke, Flash Fire absorbed a Fire hit, Battle Armor took a frontal hit. */
-  | { type: 'passiveTriggered'; passive: PassiveId }
+  /** `kindled`: Flash Fire was stoked by the player's own Fire hits rather than an absorbed attack. */
+  | { type: 'passiveTriggered'; passive: PassiveId; kindled?: boolean }
   | { type: 'moveStarted'; moveId: MoveId; slotIndex: number }
   | { type: 'moveDenied'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
-  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
+  /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
+  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean }
   | { type: 'enemyDefeated'; enemyId: string }
   /** A held item acted (Sitrus Berry heal, Focus Sash save, Rocky Helmet recoil on `enemyId`). */
   | { type: 'itemTriggered'; item: ItemId; enemyId?: string }

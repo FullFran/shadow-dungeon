@@ -225,12 +225,13 @@ Iniciales (aprobados el 2026-10-25; se eligen en la pantalla de equipo antes de 
 
 | Pokémon | Estilo | Rápida | Fuerte | Pasiva |
 |---|---|---|---|---|
-| Zorua (Siniestro) | Cuerpo a cuerpo rápido, poca vida | Golpes Furia (cinco arañazos, Normal), Finta (avance) | Pulso Noche (onda alrededor), Juego Sucio (embestida; más daño si el enemigo está atacando) | Ilusión: los enemigos dormidos solo te notan si los tocas; el primer golpe es crítico; vuelve en cada sala |
-| Litwick (Fantasma/Fuego) | A distancia, frágil | Ascuas (llama rápida), Impresionar (susto a bocajarro que aturde) | Infortunio (daño doble a un enemigo aturdido), Infierno (bola lenta y fuerte) | Absorbe Fuego: los golpes de Fuego curan un poco y potencian el siguiente movimiento fuerte |
-| Cubone (Tierra) | Aguante, lento, mucha vida | Hueso Palo (golpe que aturde), Ataque Óseo (tres golpes avanzando) | Huesomerang (va y vuelve, golpea dos veces), Pataleta (pisotón; doble si el golpe anterior falló) | Armadura Batalla: mientras cargas o preparas un movimiento fuerte, los golpes de frente hacen la mitad |
+| Zorua (Siniestro) | Cuerpo a cuerpo rápido, poca vida | Golpes Furia (cinco arañazos, Normal), Finta (atraviesa al enemigo y se gira) | Pulso Noche (onda alrededor), Juego Sucio (embestida; más daño si el enemigo está atacando) | Ilusión: los enemigos dormidos solo te notan si los tocas; el primer golpe es crítico; vuelve en cada piso |
+| Litwick (Fantasma/Fuego) | A distancia, frágil | Ascuas (llama rápida), Impresionar (susto a bocajarro que aturde) | Infortunio (daño doble a un enemigo aturdido), Infierno (bola lenta y fuerte) | Absorbe Fuego: los golpes de Fuego curan un poco y potencian el siguiente movimiento fuerte; además, cada 4 golpes de Fuego propios avivan la llama y potencian el siguiente movimiento fuerte |
+| Cubone (Tierra) | Aguante, lento, mucha vida | Hueso Palo (golpe que aturde), Ataque Óseo (tres golpes avanzando) | Huesomerang (va y vuelve hacia Cubone, que lo atrapa; golpea dos veces), Pataleta (pisotón; doble si el golpe anterior falló) | Armadura Batalla: mientras cargas o preparas un movimiento fuerte, los golpes de frente hacen la mitad |
 
-Sin estados alterados todavía: lo que en el juego original depende de la quemadura aquí depende del aturdimiento. Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego no se nota hasta que lleguen enemigos de Fuego.
-- La efectividad de tipos se aplica a E (y a las debilidades de los jefes).
+Sin estados alterados todavía: lo que en el juego original depende de la quemadura aquí depende del aturdimiento. Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego también se carga con los golpes de Fuego del propio Litwick (cuatro golpes potencian el siguiente movimiento fuerte).
+- La efectividad de tipos se aplica a E (y a las debilidades de los jefes). La pantalla de movimientos dice, para cada uno, su coste de estamina, su forma (arco corto, anillo 360°, proyectil lento...) y contra qué enemigos de la Cripta es eficaz o poco eficaz.
+- Cada ataque, del jugador o enemigo, se pinta con el color de su tipo (una sola paleta); los avisos enemigos conservan el borde rojo. El último golpe de un movimiento de varios golpes y los movimientos marcados como pesados dan la pausa, la sacudida y el sonido fuertes.
 - Los kits son datos: un movimiento es una entrada de tabla con daño, arranque, fotogramas activos, recuperación, coste de estamina, forma del golpe y niveles de carga.
 
 ### Contenido del primer prototipo (M0)

@@ -4,7 +4,7 @@ import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { collapseFront, type CollapseState } from '../core/collapse';
-import type { EnemyState, ProjectileState, Rect, WorldState } from '../core/state';
+import type { EnemyState, Rect, WorldState } from '../core/state';
 import { isWall, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
@@ -15,6 +15,7 @@ import { drawMessageLog, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
+import { drawPlayerVfx, drawProjectileVfx, enemyAttackType, playerVfx, telegraphFill, type DrawnProjectile } from './move-vfx';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 
@@ -349,7 +350,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.restore();
   }
 
-  function groundArc(origin: Vec2, dir: Vec2, radius: number, arcDegrees: number, fill: string): void {
+  function groundArc(origin: Vec2, dir: Vec2, radius: number, arcDegrees: number, fill: string, edge?: string): void {
     const angle = Math.atan2(dir.y, dir.x);
     const half = (arcDegrees * DEG) / 2;
     ctx.fillStyle = fill;
@@ -358,6 +359,13 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.arc(origin.x, origin.y, radius, angle - half, angle + half);
     ctx.closePath();
     ctx.fill();
+    if (edge) {
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, radius - 1, angle - half, angle + half);
+      ctx.stroke();
+    }
   }
 
   /** Readable wind-ups: lanes, arcs and rings on the ground (docs/gdd.md §10: readable on a stream). */
@@ -384,7 +392,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       return;
     }
     if (!winding && !striking) return;
-    const fill = winding ? COLORS.telegraph : COLORS.strike;
+    // Tinted by the attack's type; the red edges keep the warning readable.
+    const fill = telegraphFill(enemyAttackType(enemy), winding);
     if (enemy.species === 'poochyena') {
       groundLane(pos, ai.attackDir, POOCHYENA.lungeDistance, enemy.radius * 2, fill, winding ? progress : 1);
     } else if (enemy.species === 'gastly' && winding) {
@@ -398,25 +407,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       groundLane(pos, ai.attackDir, AEGISLASH.shield.bashDistance, enemy.radius * 2, fill, winding ? progress : 1);
     } else if (enemy.boss?.stance === 'blade') {
       const blow = AEGISLASH.blade.combo[enemy.boss.comboIndex] ?? AEGISLASH.blade.combo[0]!;
-      groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill);
+      groundArc(pos, ai.attackDir, blow.range + blow.lungeDistance * (winding ? progress : 1), blow.arcDegrees, fill, winding ? COLORS.telegraphEdge : undefined);
     }
   }
 
-  function projectile(p: Pick<ProjectileState, 'owner' | 'radius'>, pos: Vec2, timeMs: number): Drawable {
+  /** Projectiles are drawn in their move type's colours (move-vfx.ts). */
+  function projectile(p: DrawnProjectile, pos: Vec2, timeMs: number): Drawable {
     return {
       y: pos.y,
       draw: () => {
         shadow({ x: pos.x, y: pos.y + 10 }, p.radius * 0.8);
-        const pulse = 1 + 0.12 * Math.sin(timeMs / 60);
-        const lifted = { x: pos.x, y: pos.y - 6 };
-        ctx.fillStyle = p.owner === 'player' ? 'rgba(150, 90, 220, 0.9)' : 'rgba(150, 220, 90, 0.9)';
-        ctx.beginPath();
-        ctx.arc(lifted.x, lifted.y, p.radius * pulse, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = p.owner === 'player' ? '#2a1240' : '#3a1a4a';
-        ctx.beginPath();
-        ctx.arc(lifted.x, lifted.y, p.radius * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        drawProjectileVfx(ctx, p, pos, timeMs);
       },
     };
   }
@@ -516,6 +517,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
     // Ground layer: telegraphs and shadows under everything.
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos));
+    drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
     for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect));
