@@ -21,7 +21,7 @@ Out of scope: gacha and shop logic, online walking together.
 - [x] M1 Merge and resolve (route: inline; conflict resolution in 4 files, mechanical)
 - [x] R1 Run records (route: inline; one module + one hook)
 - [x] L1 Lore lines (route: inline; i18n strings plus a small rotation helper)
-- [ ] A1 Town music (route: inline; one call)
+- [x] A1 Town music (route: inline; one call)
 
 ## Acceptance criteria
 - `npm test` and `npm run build` pass after every task.
@@ -51,3 +51,15 @@ Created 2026-10-25. Forecast ~250 authored lines beyond the merge. Delivery: one
 - Gacha (Mimikyu) and shop (Poochyena): one flavour line each, then "Próximamente." (unchanged flow).
 - `town.exit.crypt` aligned with `dungeon.crypt.name` ("Cripta del Rey de las Espadas"; en already matched).
 - Checks: RED observed (`tests/town/lines.test.ts` 3 failing: no `npcLines`, no `rotate`, "duerme" in the old line), GREEN 3; `npm test` 65 files / 621 tests passed.
+
+### A1 Town music
+- The town screen is shown without the eclipse backdrop, so `show()` never set its music; it only inherited the title track by accident (via the loading window). `townScreen` now calls `audio.setMusic('title')` after showing the town, explicitly. `setMusic` with the context already wanted and active returns early, so the step from the title does not restart Lonely Village. The planned dry "hub" version in `src/data/music.ts` (`PLANNED`) is not shipped, so the title context is reused as asked.
+- Test-first exception: DOM/audio glue in `src/app/main.ts` with no runnable deterministic seam; the idempotence it relies on is the adapter's existing early return. Checks: typecheck clean, `npm test` 65 files / 621 tests passed, `npm run build` ok.
+
+### Screenshots
+Headless Firefox over WebDriver BiDi (own instance on port 9333, own profile, dev server on 4421), 1024x640, `/tmp/town-int/`: `01-spawn.png` (Zorua, the quiz starter, walks the town), `03-board.png` (board with a seeded record: "Mejor planta en la cripta: 4 · Expediciones: 3 · Victorias: 1 · Mejor nivel: 7"), `04-story-1.png` and `04-story-2.png` (storyteller tells a different line on the second talk). The record in the screenshot was written into localStorage by the script in the reducer's shape, not by a played run; the write path is covered by the unit tests only.
+
+## Next steps
+- Play a real run end to end and confirm the board updates from the result screen.
+- The board line wraps with "·" at the start of the second line; a two-line layout would read better.
+- Dry "hub" music version when it is shipped; gacha and shop logic.

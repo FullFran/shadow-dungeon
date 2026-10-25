@@ -285,10 +285,20 @@ function settingsScreen(root: HTMLElement): void {
   ]);
 }
 
-/** The hub town (src/town): walk around; its route exit goes on exactly like "Play" (`newAdventure`), Esc goes back to the title. */
+/**
+ * The hub town (src/town): walk around; its route exit goes on exactly like
+ * "Play" (`newAdventure`), Esc goes back to the title. It keeps the title
+ * track (Lonely Village) playing, so the step from the title is seamless
+ * (`setMusic` with the context already playing does nothing); the planned
+ * dry "hub" version in src/data/music.ts is not shipped yet.
+ */
 function townScreen(root: HTMLElement): void {
   waitScreen(root, t('app.loading'));
-  void openTown({ sheets: sheetsReady(), species: settings.species, show: (nodes) => show(root, nodes, false), onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5) });
+  const showTown = (nodes: Node[]) => {
+    show(root, nodes, false);
+    audio.setMusic('title');
+  };
+  void openTown({ sheets: sheetsReady(), species: settings.species, show: showTown, onDepart: () => newAdventure(root), onQuit: () => titleScreen(root, 5) });
 }
 
 function creditsScreen(root: HTMLElement): void {
