@@ -64,7 +64,7 @@ describe('the Sima del Eclipse (data)', () => {
     const at1 = endlessSpawns(ENDLESS, 1).pool.map((e) => e.species);
     expect(at1).toEqual(ENDLESS_POOL.filter((e) => e.minDepth <= 1).map((e) => e.species));
     expect(at1).not.toContain('pumpkaboo-super');
-    expect(endlessSpawns(ENDLESS, 30).pool.map((e) => e.species)).toEqual(ENDLESS_POOL.map((e) => e.species));
+    expect(endlessSpawns(ENDLESS, 40).pool.map((e) => e.species)).toEqual(ENDLESS_POOL.map((e) => e.species));
     const appended = endlessSpawns({ ...ENDLESS, pool: [...ENDLESS_POOL, { species: 'trevenant', minDepth: 12, weight: 1 }] }, 12);
     expect(appended.pool.at(-1)).toEqual({ species: 'trevenant', weights: [1] });
     expect(endlessSpawns(ENDLESS, 1).pool.find((e) => e.species === 'pumpkaboo-small')?.pack).toBe(3);
@@ -107,7 +107,7 @@ describe('the Sima del Eclipse (data)', () => {
     const minDepth = new Map(ENDLESS_POOL.map((e) => [e.species, e.minDepth]));
     const seen = new Map<string, number>();
     let pairs = 0;
-    for (const seed of [SEED, 7, 99, 2024]) {
+    for (const seed of [SEED, 7, 99, 2024, 1, 2, 3, 4, 5, 6]) {
       for (let floor = 1; floor <= 9; floor++) {
         if (isEchoFloor(ENDLESS, floor)) continue;
         const spawns = generateFloor(floorSeed(seed, floor), floor, endlessSpawns(ENDLESS, floor)).spawns;

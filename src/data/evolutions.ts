@@ -1,3 +1,4 @@
+import type { DungeonId } from './dungeons';
 import type { SpeciesId } from './species';
 
 /**
@@ -10,34 +11,36 @@ import type { SpeciesId } from './species';
 export interface Evolution {
   species: SpeciesId;
   from: SpeciesId;
+  /** The dungeon of its line (the Sima's own species live in the Sima only). */
+  home: DungeonId;
 }
 
 export const EVOLUTIONS: readonly Evolution[] = [
   // Crypt of the Sword King
-  { species: 'mightyena', from: 'poochyena' },
-  { species: 'haunter', from: 'gastly' },
-  { species: 'gengar', from: 'haunter' },
-  { species: 'dusclops', from: 'duskull' },
-  { species: 'bisharp', from: 'pawniard' },
+  { species: 'mightyena', from: 'poochyena', home: 'crypt-of-the-sword-king' },
+  { species: 'haunter', from: 'gastly', home: 'crypt-of-the-sword-king' },
+  { species: 'gengar', from: 'haunter', home: 'crypt-of-the-sword-king' },
+  { species: 'dusclops', from: 'duskull', home: 'crypt-of-the-sword-king' },
+  { species: 'bisharp', from: 'pawniard', home: 'crypt-of-the-sword-king' },
   // Misty Forest
-  { species: 'breloom', from: 'shroomish' },
-  { species: 'drifblim', from: 'drifloon' },
-  { species: 'morgrem', from: 'impidimp' },
-  { species: 'noctowl', from: 'hoothoot' },
-  { species: 'ariados', from: 'spinarak' },
+  { species: 'breloom', from: 'shroomish', home: 'misty-forest' },
+  { species: 'drifblim', from: 'drifloon', home: 'misty-forest' },
+  { species: 'morgrem', from: 'impidimp', home: 'misty-forest' },
+  { species: 'noctowl', from: 'hoothoot', home: 'misty-forest' },
+  { species: 'ariados', from: 'spinarak', home: 'misty-forest' },
   // Flooded Caves
-  { species: 'golbat', from: 'zubat' },
-  { species: 'kingler', from: 'krabby' },
-  { species: 'octillery', from: 'remoraid' },
-  { species: 'crawdaunt', from: 'corphish' },
+  { species: 'golbat', from: 'zubat', home: 'flooded-caves' },
+  { species: 'kingler', from: 'krabby', home: 'flooded-caves' },
+  { species: 'octillery', from: 'remoraid', home: 'flooded-caves' },
+  { species: 'crawdaunt', from: 'corphish', home: 'flooded-caves' },
   // Toxic Swamp
-  { species: 'arbok', from: 'ekans' },
-  { species: 'skuntank', from: 'stunky' },
-  { species: 'weezing', from: 'koffing' },
-  { species: 'muk', from: 'grimer' },
-  { species: 'toxicroak', from: 'croagunk' },
-  // The Sima's own
-  { species: 'houndoom', from: 'houndour' },
+  { species: 'arbok', from: 'ekans', home: 'toxic-swamp' },
+  { species: 'skuntank', from: 'stunky', home: 'toxic-swamp' },
+  { species: 'weezing', from: 'koffing', home: 'toxic-swamp' },
+  { species: 'muk', from: 'grimer', home: 'toxic-swamp' },
+  { species: 'toxicroak', from: 'croagunk', home: 'toxic-swamp' },
+  // The Sima's own (Houndour lives only there)
+  { species: 'houndoom', from: 'houndour', home: 'eclipse-chasm' },
 ];
 
 /** The first stage of a line (Gengar's is Gastly). */

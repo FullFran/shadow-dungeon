@@ -49,7 +49,12 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 - [x] T2 Behaviours + tricks, tests first (route: inline, this writer) — RED: `tests/core/evolved-behaviour.test.ts` failed to
   load (no `src/data/evolved-enemies.ts`); GREEN 75/75 after the data (test fix on the way: a bomber's puff emits no
   `enemyAttack`, so the strike check counts hits too); suite 156 files / 1617 tests; typecheck clean
-- [ ] T3 Placement: pools, Sima strata, threat, escorts (route: inline, this writer)
+- [x] T3 Placement: pools, Sima strata, threat, escorts (route: inline, this writer) — RED: new
+  `tests/core/evolved-placement.test.ts` 62 failing before the data; GREEN after it; 4 existing tests moved on purpose:
+  Easy golden digest ('530cec91' -> '6e22f931', the Crypt's floors 4-5 now draw evolutions), the Crypt floor-4 species
+  set (now lists the evolutions), the Sima "whole pool by depth" check (30 -> 40, the swamp evolutions join on 36-38)
+  and the Sima "Crypt newcomers seen" check (seeds widened: Pawniard still shows, 16 times on late floors over 40
+  seeds, but not on the original four once the evolutions share its floors); suite 157 files / 1680 tests
 - [ ] T4 GDD, README, balance before/after, screenshots (route: inline, this writer)
 
 ## Acceptance criteria
@@ -83,7 +88,17 @@ Amoonguss, Gourgeist Small. Lanturn and Salazzle are bosses (skipped).
 - Fairness: every damaging attack on every tier (with its tricks) under `TUNING.roster.maxHitShare` against every
   starter; openers >= `TUNING.roster.minTelegraphMs`, chained wind-ups >= `TELEGRAPH_FLOOR.minMs`; a nightmare run of each
   evolution shows every `enemyTelegraph` >= the floor (the game's own `effectiveTelegraphMs` path).
+- Threat: `SPECIES_THREAT` override in `src/data/encounters.ts` (role cost + 1, at most 5, Weezing/Muk/Houndoom 5);
+  `threatOf` reads it first. So an evolution spends more of a room's budget (fewer, tougher bodies) and, being its
+  room's highest threat, is the one crowned by the existing leader rule; no leader code change was needed (the leader
+  code has no species preference; the highest-threat rule is the preference).
+- Roles follow the line, except the swarm's evolutions fight alone: Golbat skirmisher, Skuntank brute.
+- Leading their line: mixed packs (`escort`) Mightyena+Poochyena, Bisharp+Pawniard, Gengar+Gastly (Crypt), Morgrem+Impidimp
+  (Forest), Golbat+2 Zubat (Caves), Skuntank+Stunky (Swamp). Base weights are untouched: the budget does the replacing.
+- Placement: second half of each dungeon's generated floors (Crypt 4-5, Forest 5-7, Caves 6-9, Swamp 6-9; Gengar
+  only on Crypt 5, Toxicroak from Swamp 7). Sima: stratum I 6-9, II 16-18 (Houndoom 18), III 26-28, IV 36-38, weight 1,
+  +0.04 per floor, never in packs.
 
 ## Next step
 
-T3.
+T4.

@@ -114,11 +114,12 @@ describe('floor generator', () => {
     }
   });
 
-  it('mixes the Crypt species over many floors: only the M2 pair on floor 1, Golett from floor 4', () => {
+  it('mixes the Crypt species over many floors: only the M2 pair on floor 1, Golett and the evolved forms from floor 4, Gengar on 5', () => {
     const at = (depth: number) => new Set(SEEDS.slice(0, 100).flatMap((seed) => generateFloor(seed, depth).spawns.map((s) => s.species)));
     expect([...at(1)].sort()).toEqual(['gastly', 'poochyena']);
     expect([...at(2)].sort()).toEqual(['duskull', 'gastly', 'pawniard', 'poochyena']);
-    expect([...at(4)].sort()).toEqual(['duskull', 'gastly', 'golett', 'pawniard', 'poochyena']);
+    expect([...at(4)].sort()).toEqual(['bisharp', 'dusclops', 'duskull', 'gastly', 'golett', 'haunter', 'mightyena', 'pawniard', 'poochyena']);
+    expect(at(5).has('gengar')).toBe(true);
   });
 
   it('uses the shared tile size', () => {

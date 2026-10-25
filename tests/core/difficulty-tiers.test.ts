@@ -71,7 +71,7 @@ function fnv(text: string): string {
  * changed under the cap. A
  * change to the simulation changes it: re-record it only on purpose.
  */
-const PRE_TIER_DIGEST = '530cec91';
+const PRE_TIER_DIGEST = '6e22f931';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
