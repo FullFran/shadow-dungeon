@@ -1,0 +1,38 @@
+import { describe, expect, it } from 'vitest';
+import { catalog, detectLanguage, LANGUAGES, setLanguage, t } from '../src/i18n';
+
+describe('i18n catalogs', () => {
+  const spanishKeys = Object.keys(catalog('es'));
+
+  for (const language of LANGUAGES) {
+    it(`"${language}" defines every key that Spanish defines`, () => {
+      const missing = spanishKeys.filter((key) => !(key in catalog(language)));
+      expect(missing).toEqual([]);
+    });
+
+    it(`"${language}" has no empty strings`, () => {
+      const empty = Object.entries(catalog(language)).filter(([, value]) => value.trim() === '');
+      expect(empty).toEqual([]);
+    });
+  }
+});
+
+describe('detectLanguage', () => {
+  it('picks English only for English browser languages', () => {
+    expect(detectLanguage('en-GB')).toBe('en');
+    expect(detectLanguage('EN')).toBe('en');
+    expect(detectLanguage('es-ES')).toBe('es');
+    expect(detectLanguage('fr')).toBe('es');
+    expect(detectLanguage(undefined)).toBe('es');
+  });
+});
+
+describe('t', () => {
+  it('returns the string of the current language and falls back to the key', () => {
+    setLanguage('en');
+    expect(t('app.title')).toBe('Shadow Dungeon');
+    setLanguage('es');
+    expect(t('app.title')).toBe('Mazmorra Sombría');
+    expect(t('does.not.exist')).toBe('does.not.exist');
+  });
+});

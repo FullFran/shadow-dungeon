@@ -34,7 +34,7 @@ Out of scope: dungeon generation, co-op/netcode, gacha, meta, backend, deploy.
 - RDD: off (global), so no native review lifecycle; ordinary checks only.
 
 ## Tasks
-- [ ] T1 Scaffold: Vite + TS strict + Vitest, folder layout (`src/core`, `src/adapters`, `src/data`, `src/app`), i18n skeleton (es/en + missing-key test), fan-project notice, npm scripts (`dev`, `build`, `test`, `typecheck`). Route: delegated (writer batch 1).
+- [x] T1 Scaffold: Vite + TS strict + Vitest, folder layout (`src/core`, `src/adapters`, `src/data`, `src/app`), i18n skeleton (es/en + missing-key test), fan-project notice, npm scripts (`dev`, `build`, `test`, `typecheck`). Route: delegated (writer batch 1).
 - [ ] T2 Sprite pipeline: `tools/fetch-sprites` downloads species 778, 261, 92, 681 (+ form 0681/0001 if it is Blade) from SpriteCollab, converts AnimData.xml to JSON meta (frame size, durations, anchors, 8 directions), writes `CREDITS.md`. Route: delegated (batch 1).
 - [ ] T3 Core simulation: fixed-timestep loop, movement, roll with i-frames, stamina, perfect-dodge detection. TDD. Route: delegated (batch 1).
 - [ ] T4 Moves as data + combat resolution: slot model (data-driven count), wind-up/active/recovery, charge levels, hitboxes, damage, type chart, Disfraz. TDD. Route: delegated (batch 1).
