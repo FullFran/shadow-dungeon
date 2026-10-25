@@ -29,13 +29,15 @@ The Sima has five guardian echoes and the Eclipse Echo: a long run sees the same
 
 ## Checklist
 
-- [ ] T1 Pattern grammar + fairness checks (route: delegated-direct writer = this worker; new modules `src/data/herald.ts`, `src/core/herald/patterns.ts`, `src/core/herald/fairness.ts`)
-- [ ] T2 Generator `generateBoss(seed, depth, tier)` with rejection sampling, names, theme (route: this worker; `src/core/herald/generate.ts`, `src/data/herald-words.ts`)
-- [ ] T0 Shared card framework `src/data/cards.ts` + `src/core/cards.ts` (route: this worker)
-- [ ] T3 Sima integration: herald floors, runtime behaviour, banner, capture bonus, co-op, bestiary (route: this worker)
-- [ ] T3b Eclipse Echo escalation per encounter (route: this worker)
-- [ ] T4 Epic intro cutscene composed from the boss def (route: this worker)
-- [ ] T5 Docs + dev tools: `?boss=<seed>`, GDD section, README, screenshots (route: this worker)
+Route for every task: this worker (a delegated bounded writer) inline; no further delegation.
+
+- [x] T0 Shared card framework `src/data/cards.ts` + `src/core/cards.ts` (HP segments, timer, capture judge, reward; API documented for hand-authored bosses) - `e5a0482`. Test-first: `tests/core/cards.test.ts` RED (module missing) then GREEN.
+- [x] T1 Pattern grammar + fairness checks (`src/data/herald.ts`, `src/core/herald/patterns.ts`, `src/core/herald/fairness.ts`) - `02011fd`. Mutation: path check disabled -> 2 tests fail.
+- [x] T2 Generator `generateBoss(seed, depth, tier)` with rejection sampling, names, theme (`src/core/herald/generate.ts`, `names.ts`, `rand.ts`, `src/data/herald-words.ts`) - `0a7cc37`.
+- [x] T3 Sima integration: herald floors 22, 32, 42..., runtime (`src/core/herald/brain.ts`, `floor.ts`), banner, HUD, capture coins, co-op, bestiary - `fedd5b6`.
+- [x] T3b Eclipse Echo escalation per encounter (`src/core/eclipse-escalation.ts`) - `83f1452`. Mutation: escalation unwired -> the fight test fails.
+- [x] T4 Epic intro cutscene (`src/ui/herald-intro.ts`, `src/adapters/herald-scenes.ts`) + `?boss=<seed>` dev route; anchors moved off the HUD corners after screenshots - `5b5c223`.
+- [x] T5 Docs (GDD Sima section, README), this document, screenshots - this commit.
 
 ## Acceptance criteria
 
@@ -44,6 +46,19 @@ The Sima has five guardian echoes and the Eclipse Echo: a long run sees the same
 - Guest snapshot round-trip keeps the herald's card (stance) and its def on the guest.
 - `npm test`, `npm run build` green; `git log --format=%B | grep -ic co-authored` = 0.
 
-## Progress
+## Progress and evidence
 
-(updated per task)
+- Primitives: aimed and tracking streams, gapped rings (static/aimed), 1-4 arm spirals (+mirror), sine waves (+mirror), lane walls with a safe lane (+flip from the side), closing ring with a gap, seeded scatter, homing orbs, laser lines with warnings (fast lanes), pierce pockets, summons.
+- Fairness method: analytic rules (tier-scaled wind-up floors 400/280 ms, laser warning >= 400, <= 2 aimed threats, <= 3 layers, density/speed never both > x1.3 and product <= 1.95, homing <= 0.6 x player speed and <= 3 orbs, tracking streams beaten by a sidestep, peak shots <= cap) plus a space-time reachability walk on an 8 px grid (dt = cell / player speed, 4-neighbour, swept shot capsules inflated by player radius + half a cell, pockets burn everything outside them) from 9 starts per attack anchor; the anchor-only shots are rasterised once per anchor and shared by the starts. The recover window lasts until the cycle's shots are gone, so cycles never overlap.
+- Audit: 240 seeds per `npm test` (about 1500 cards); deep audit `HERALD_AUDIT_SEEDS=420` = 2520 seeds passed (all phase-1 and phase-2 cards re-proved). Rejection rate about 12 %.
+- Generation cost: about 80 ms per herald on this machine (node); the floor load only computes its look and HP, the full def is generated the first time it acts.
+- Decisions: herald floors 22, 32, 42... (after strata I-II; user feedback); one technical species `sima-herald` with the def regenerated from `EnemyState.herald`; no new snapshot field (guests regenerate from the run seed and floor); captures pay 6 coins per player through the guardian line (`CoinTally.captures`, optional field); shared card framework in `src/core/cards.ts` for the other writer; Echo escalation density capped at the fairness knob limit x1.3, speed unchanged.
+- Screenshots (silent: headless Firefox over WebDriver BiDi, profile `user.js` with `media.volume_scale` 0.0, settings `muted: true` stored before load; dev server 4631, BiDi 9631, both stopped after) in `/tmp/procedural-bosses/`: `boss-vaelorion-seed1234-floor32.png` (closing ring), `boss-savrax-seed4242-floor32.png` (rings, Decidueye), `boss-vaelaeyss-seed77-floor42.png` (Salandit, poison streams), `boss-omaemor-seed9001-floor42.png` (Aegislash, ghost darts), `boss-kaelekar-seed31337-floor42-pockets.png` (pockets + fire stream, banner «Signo Ígneo «Ocaso Ahogado»»); intros `intro-vaelorion-title.png`, `intro-vaelaeyss-arrive.png`, `intro-vaelaeyss-title.png`, `intro-kaelekar-title.png`. Rejected and fixed from screenshots: heralds hidden under the HUD's top-left status panel (anchors moved to the centre band), the title text over the herald's silhouette (herald raised, sheet-relative scale).
+
+## Not verified
+
+- Shared run with a real second peer on a herald floor (covered by the snapshot round-trip and followToFloor tests only).
+- Touch hold-to-skip on a real device; the generated sting through the real speakers (screenshots were silent by design).
+- Generation time on slow phones (about 80 ms here; the first step of a herald floor pays it).
+- No extra species were fetched (the optional curated download was not done): the pool is the 25 curated sheets already in `public/sprites` without fallbacks.
+- Guests see the card's time left only as the card number (the timer is host-side state).
