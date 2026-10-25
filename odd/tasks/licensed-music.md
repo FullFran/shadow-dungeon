@@ -21,7 +21,7 @@ Out of scope: prologue cinematic, hub town, new dungeons, auditioning by ear (th
 ## Tasks
 - [x] T1 Fetch, verify licenses, convert, normalise and check loop seams; asset manifest with license data; CREDITS.md and generator fix (route: delegated writer; trigger: assets, tools, data, docs)
 - [x] T2 Audio adapter streaming playback with gapless loops, crossfades and fallback; wire contexts in the app (route: same writer)
-- [ ] T3 Deploy (route: parent; standing OK)
+- [x] T3 Deploy (route: parent; standing OK).
 
 ## Acceptance criteria
 - Every shipped track has a verified license, a source URL and a credit line.
