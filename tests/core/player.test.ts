@@ -105,8 +105,9 @@ describe('incoming hits and perfect dodge', () => {
     return run(started, input(), ticksFor(ms) - 1);
   };
 
-  it('hurts a player who is not rolling', () => {
-    const hurt = hitPlayer(world(), { damage: 12 });
+  it('hurts a player who is not rolling (once the Disguise is gone)', () => {
+    const base = world();
+    const hurt = hitPlayer({ ...base, player: { ...base.player, disguiseBroken: true } }, { damage: 12 });
     expect(hurt.player.hp).toBe(playerTuning.maxHp - 12);
     expect(hurt.events).toContainEqual({ type: 'playerHurt', damage: 12 });
   });

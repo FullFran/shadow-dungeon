@@ -1,12 +1,18 @@
+import type { MoveId } from '../data/moves';
+import type { SpeciesId } from '../data/species';
+import type { PokemonType } from '../data/types';
 import type { Vec2 } from './vec';
 
-/** One tick of player intent, produced by the input adapter. Booleans are edges ("pressed this tick"). */
+/** One tick of player intent, produced by the input adapter. */
 export interface PlayerInput {
   /** Raw WASD vector; components in [-1, 1], not necessarily normalized. */
   move: Vec2;
   /** Cursor position in world coordinates. */
   aim: Vec2;
+  /** Edge: roll pressed this tick. */
   roll: boolean;
+  /** Level: whether each move slot's button is held, aligned with the loadout. Edges are derived in the core. */
+  slots: readonly boolean[];
 }
 
 export interface RollState {
@@ -20,7 +26,27 @@ export interface DamageBuff {
   remainingMs: number;
 }
 
+export type ActionPhase = 'charging' | 'windup' | 'active' | 'recovery';
+
+/** A move in progress. */
+export interface ActionState {
+  slotIndex: number;
+  moveId: MoveId;
+  phase: ActionPhase;
+  /** Time spent in the current phase. */
+  phaseMs: number;
+  /** Time spent charging (heavy moves). */
+  chargeMs: number;
+  chargeLevel: number;
+  /** Unit aim direction, committed when the wind-up starts. */
+  aimDir: Vec2;
+  /** Entities already hit by this use of the move (one hit per target per swing). */
+  hitIds: readonly string[];
+}
+
 export interface PlayerState {
+  species: SpeciesId;
+  types: readonly PokemonType[];
   pos: Vec2;
   /** Unit vector of the last movement direction; rolls without input go this way. */
   facing: Vec2;
@@ -32,6 +58,48 @@ export interface PlayerState {
   roll: RollState | null;
   /** Granted by a perfect dodge; consumed by the next damaging player hit. */
   nextHitBuff: DamageBuff | null;
+  /** Equipped moves aligned with the slot layout (null = empty slot). */
+  loadout: readonly (MoveId | null)[];
+  /** Slot buttons held on the previous tick, to detect press/release edges. */
+  slotsHeld: readonly boolean[];
+  action: ActionState | null;
+  /** Disguise passive: true once the free hit of this room has been used. */
+  disguiseBroken: boolean;
+}
+
+export interface EnemyState {
+  id: string;
+  species: SpeciesId;
+  types: readonly PokemonType[];
+  pos: Vec2;
+  facing: Vec2;
+  hp: number;
+  maxHp: number;
+  radius: number;
+  alive: boolean;
+  /** While > 0 the enemy is staggered and cannot act. */
+  hitstunMs: number;
+  /** Knockback displacement still to be applied. */
+  knockback: Vec2;
+}
+
+export interface ProjectileState {
+  id: string;
+  owner: 'player' | 'enemy';
+  type: PokemonType;
+  attackerTypes: readonly PokemonType[];
+  power: number;
+  /** Charge (and other) damage multiplier fixed at spawn. */
+  damageMultiplier: number;
+  pos: Vec2;
+  /** Pixels per second. */
+  vel: Vec2;
+  radius: number;
+  remainingMs: number;
+  hitstunMs: number;
+  knockback: number;
+  /** Entities already hit or passed through (a dodged projectile keeps flying). */
+  hitIds: readonly string[];
 }
 
 export interface Arena {
@@ -45,21 +113,31 @@ export type GameEvent =
   | { type: 'rollDenied' }
   | { type: 'hitDodged' }
   | { type: 'perfectDodge' }
-  | { type: 'playerHurt'; damage: number };
+  | { type: 'playerHurt'; damage: number }
+  | { type: 'disguiseBroken' }
+  | { type: 'moveStarted'; moveId: MoveId; slotIndex: number }
+  | { type: 'moveDenied'; moveId: MoveId }
+  | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
+  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2 }
+  | { type: 'enemyDefeated'; enemyId: string };
 
 export interface WorldState {
   tick: number;
   /** Real (unscaled) simulation time. */
   timeMs: number;
   rng: number;
+  /** Counter for deterministic entity ids. */
+  nextId: number;
   arena: Arena;
   player: PlayerState;
+  enemies: readonly EnemyState[];
+  projectiles: readonly ProjectileState[];
   /** Remaining perfect-dodge slow-mo, in real time. */
   slowMoMs: number;
   events: GameEvent[];
 }
 
-/** A hit about to land on the player (from an enemy attack or projectile). */
+/** A hit about to land on the player (from an enemy attack or projectile), damage already computed. */
 export interface IncomingHit {
   damage: number;
 }

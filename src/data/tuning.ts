@@ -43,4 +43,16 @@ export const TUNING = {
     damageMultiplier: 1.5,
     buffDurationMs: 3000,
   },
+
+  combat: {
+    /** Damage = power * damagePerPower * STAB * effectiveness * multipliers. */
+    damagePerPower: 0.2,
+    stab: 1.5,
+    /** Type immunities (x0) are softened to this multiplier. */
+    immunityMultiplier: 0.25,
+    /** Walking speed factor while holding a heavy move to charge; other move phases root the player. */
+    chargingMoveFactor: 0.4,
+    /** Fraction of the remaining knockback applied per 60 Hz tick (ease-out). */
+    knockbackPerTick: 0.25,
+  },
 } as const;

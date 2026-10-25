@@ -2,7 +2,7 @@ import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
 import { add, clamp, length, normalize, scale, vec, type Vec2 } from './vec';
 
-const { roll: ROLL, stamina: STAMINA, perfectDodge: PERFECT, player: PLAYER } = TUNING;
+const { roll: ROLL, stamina: STAMINA, perfectDodge: PERFECT, player: PLAYER, combat: COMBAT } = TUNING;
 const ROLL_SPEED = ROLL.distance / ROLL.durationMs; // px per ms
 
 export function isInvulnerable(player: PlayerState): boolean {
@@ -29,7 +29,7 @@ function confine(pos: Vec2, arena: Arena): Vec2 {
 }
 
 function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): PlayerState {
-  if (player.roll) return player;
+  if (player.roll || player.action) return player;
   if (player.stamina < ROLL.staminaCost) {
     events.push({ type: 'rollDenied' });
     return player;
@@ -46,9 +46,16 @@ function tickBuff(player: PlayerState, dtMs: number): PlayerState {
   return { ...player, nextHitBuff: remainingMs > 0 ? { ...buff, remainingMs } : null };
 }
 
+/** Walking speed factor: slowed while charging a heavy move, rooted during other move phases. */
+function walkFactor(player: PlayerState): number {
+  if (!player.action) return 1;
+  return player.action.phase === 'charging' ? COMBAT.chargingMoveFactor : 0;
+}
+
 /**
  * Advances the player one step: roll start (edge input), roll motion with a
  * committed direction, otherwise walking along WASD; then stamina regen.
+ * Move actions (combat.ts) run after this and may move the player too (dashes).
  */
 export function updatePlayer(
   player: PlayerState,
@@ -67,8 +74,9 @@ export function updatePlayer(
     const rollMs = Math.min(dtMs, ROLL.durationMs - next.roll.elapsedMs);
     const pos = confine(add(next.pos, scale(next.roll.dir, ROLL_SPEED * rollMs)), arena);
     next = { ...next, pos, roll: elapsedMs >= ROLL.durationMs ? null : { ...next.roll, elapsedMs } };
-  } else if (length(moveDir) > 0) {
-    const pos = confine(add(next.pos, scale(moveDir, (PLAYER.moveSpeed * dtMs) / 1000)), arena);
+  } else if (length(moveDir) > 0 && walkFactor(next) > 0) {
+    const speed = PLAYER.moveSpeed * walkFactor(next);
+    const pos = confine(add(next.pos, scale(moveDir, (speed * dtMs) / 1000)), arena);
     next = { ...next, pos, facing: moveDir };
   }
 
