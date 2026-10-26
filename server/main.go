@@ -38,7 +38,11 @@ func main() {
 			names = append(names, p.Name)
 		}
 		e.App.Logger().Info("shadow dungeon api configured",
-			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits)
+			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits,
+			"smtp", cfg.Mail.SMTPEnabled(), "appURL", cfg.Mail.AppURL)
+		if cfg.Mail.SMTPPartial() {
+			e.App.Logger().Warn("SMTP stays off: set SD_SMTP_HOST, SD_SMTP_PASSWORD and SD_MAIL_FROM_ADDRESS")
+		}
 		return e.Next()
 	})
 

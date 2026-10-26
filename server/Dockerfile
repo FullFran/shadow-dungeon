@@ -8,7 +8,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/sd-api .
 
 FROM alpine:3.22
-# ca-certificates: OAuth2 token exchange calls the providers over HTTPS.
+# ca-certificates: OAuth2 token exchange (HTTPS) and SMTP over TLS (Resend).
 RUN apk add --no-cache ca-certificates \
  && adduser -D -H -u 10001 sdapi \
  && mkdir /pb_data && chown sdapi:sdapi /pb_data

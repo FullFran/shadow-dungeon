@@ -20,7 +20,7 @@ Guests keep playing without an account; that is all client-side.
 | `migrations/` | The schema as Go migrations (`users` changes, `profiles`, `saves`, then password accounts); never edit an applied one, add a new file |
 | `internal/rules/` | Pure rules: save validation, revision check, nickname rules (table-driven tests) |
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
-| `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers |
+| `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
 
 ## Collections
 
@@ -34,8 +34,10 @@ Guests keep playing without an account; that is all client-side.
 - The email is private: `emailVisibility` is forced to `false` on sign-up and
   on every update by the owner, and nobody but the owner can list or view a
   user (`id = @request.auth.id`).
-- **No email verification is required to sign in** (`authRule = ""`): there
-  is no SMTP yet. `verified` stays `false` and the owner cannot set it.
+- **No email verification is required to sign in** (`authRule = ""`, for
+  now). With SMTP on, sign-up sends a verification email and the account
+  becomes `verified` when the link is opened; the owner cannot set
+  `verified` any other way.
 - The owner can update and **delete their own account** (GDPR); deleting it
   deletes their profile and save (cascade).
 - OAuth2 is still configured from the environment (below) and the provider's
@@ -87,6 +89,9 @@ With the PocketBase JS SDK (`pb = new PocketBase(BASE)`) or plain `fetch`;
 | Get my save | `pb.collection('saves').getFirstListItem('user="'+id+'"')` | `GET /api/collections/saves/records?filter=(user='ID')` → `items[0]` or none |
 | First save | `pb.collection('saves').create({user: id, data, version, rev: 0})` | `POST /api/collections/saves/records` → 200 with `rev: 1`, or 409 if one exists |
 | Update save | `pb.collection('saves').update(saveId, {data, version, rev})` | `PATCH /api/collections/saves/records/SAVE_ID` with the `rev` it was based on → 200 `rev+1`, or 409 `data.current` |
+| Resend verification | `pb.collection('users').requestVerification(email)` | `POST /api/collections/users/request-verification` `{"email"}` → 204 (always, even for an unknown email) |
+| Forgot password | `pb.collection('users').requestPasswordReset(email)` | `POST /api/collections/users/request-password-reset` `{"email"}` → 204 (always) |
+| Change email | `pb.collection('users').requestEmailChange(newEmail)` | `POST /api/collections/users/request-email-change` `{"newEmail"}` with `Authorization: TOKEN` → 204 |
 | Delete account | `pb.collection('users').delete(id)` | `DELETE /api/collections/users/records/ID` with `Authorization: TOKEN` → 204; profile and save go with it |
 
 Sign-up does not log in: call `auth-with-password` after it. Errors are
@@ -94,21 +99,67 @@ PocketBase's `{"status":400,"data":{"email":{"code":"validation_not_unique"}}}`
 shape (`validation_min_text_constraint` for a short password,
 `validation_required` for a missing email). A 429 means a rate limit.
 
-## Email (no SMTP yet)
+## Email (Resend SMTP)
 
-There is no SMTP server, so the API sends no email: **no verification, no
-password reset, no email change**. A forgotten password can only be reset
-by a superuser in the dashboard. To add it later:
+Outgoing email goes through [Resend](https://resend.com) SMTP, configured
+from the environment (`SD_SMTP_*`, `SD_MAIL_*`, `SD_APP_*`, see below) and
+applied on every start. **SMTP is on only when `SD_SMTP_HOST`,
+`SD_SMTP_PASSWORD` and `SD_MAIL_FROM_ADDRESS` are all set**; anything less
+keeps it off (the start log warns about a partial setup) and the API sends
+no email, so a forgotten password can only be reset by a superuser.
 
-1. Get SMTP credentials (for example Gmail with 2-step verification and an
-   [app password](https://myaccount.google.com/apppasswords):
-   host `smtp.gmail.com`, port 587, TLS, user = the Gmail address).
-2. Read them in `internal/setup` from new variables (say `SD_SMTP_HOST`,
-   `SD_SMTP_PORT`, `SD_SMTP_USERNAME`, `SD_SMTP_PASSWORD`, `SD_MAIL_FROM`)
-   and write `settings.SMTP` and `settings.Meta.SenderAddress` in `Apply`,
-   like the OAuth2 providers. Not implemented yet.
-3. Then the client can call `requestPasswordReset` and `requestVerification`;
-   only after that consider `authRule = "verified = true"` (a new migration).
+With SMTP on:
+
+- **Sign-up sends the verification email** (a hook, right after the account
+  is created; a failed send is logged and the sign-up still succeeds, the
+  client can ask again with `request-verification`).
+- `request-verification`, `request-password-reset` and `request-email-change`
+  send their emails (PocketBase sends these in the background and answers 204
+  whether or not the email exists).
+- The login alert ("new sign-in from a new place") is on; with SMTP off it is off.
+
+The templates (verification, password reset, email change, one-time code
+and login alert) are short Spanish + English texts set on the `users`
+collection in `internal/setup/mail.go` on every start, so dashboard edits
+are overwritten. Their buttons open **PocketBase's built-in confirmation
+pages** at `SD_APP_URL` (`/_/#/auth/confirm-verification/TOKEN`,
+`/_/#/auth/confirm-password-reset/TOKEN`, `/_/#/auth/confirm-email-change/TOKEN`):
+they work for any auth collection, ask for the new password themselves and
+need no page in the game. `SD_APP_URL` must therefore be the public API URL
+(`/_/` must be reachable through Traefik). A game-side page can replace them
+later by changing the links and calling `confirm-verification` /
+`confirm-password-reset` with the token.
+
+Unverified accounts can still sign in. Requiring verification later is a
+new migration (`authRule = "verified = true"`).
+
+### Resend setup (once)
+
+1. In Resend → **Domains**, add `fullfran.com` (or a subdomain such as
+   `mail.fullfran.com` to keep its reputation separate) and pick a region.
+2. In Cloudflare → DNS for `fullfran.com`, add exactly the records Resend
+   shows: the DKIM `TXT` (`resend._domainkey`), the SPF `MX` and `TXT` on the
+   `send` subdomain, and optionally a DMARC `TXT` (`_dmarc`, e.g.
+   `v=DMARC1; p=none;`). Set them **DNS only** (grey cloud), then press
+   **Verify** in Resend and wait until the domain is "Verified".
+3. In Resend → **API Keys**, create a key with permission **Sending access**
+   restricted to that domain (not "Full access"). Copy it once.
+4. Put it in the server `.env` (never in git):
+
+   ```dotenv
+   SD_SMTP_HOST=smtp.resend.com
+   SD_SMTP_PORT=465
+   SD_SMTP_USERNAME=resend
+   SD_SMTP_PASSWORD=re_...            # the API key
+   SD_MAIL_FROM_ADDRESS=no-reply@fullfran.com
+   SD_APP_URL=https://sd-api.fullfran.com
+   ```
+
+5. Restart the service (`docker compose up -d` or redeploy in Dokploy); the
+   start log shows `smtp=true`. Test it with a sign-up or a
+   `request-password-reset` to an address you own. Port 465 uses implicit
+   TLS; for 587 set `SD_SMTP_PORT=587` (STARTTLS, `SD_SMTP_TLS` defaults to
+   false there).
 
 ## Linking OAuth2 later
 
@@ -122,9 +173,9 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 - If the provider id already belongs to another account, PocketBase signs
   into that account instead; the client must detect that (returned record id
   differs) and tell the user.
-- Accounts stay unverified without SMTP, and PocketBase keeps at most one
-  provider link on an unverified account (linking a second one drops the
-  first).
+- Accounts stay unverified until their email is confirmed (needs SMTP), and
+  PocketBase keeps at most one provider link on an unverified account
+  (linking a second one drops the first).
 - `GET /api/collections/_externalAuths/records` lists a user's links;
   unlinking is `DELETE` on one of them (its default rules are owner-only).
 
@@ -164,6 +215,15 @@ these settings are overwritten on the next start.
 | `TWITCH_CLIENT_ID` / `_SECRET` | empty | Twitch OAuth2, enabled when both are set |
 | `DISCORD_CLIENT_ID` / `_SECRET` | empty | Discord OAuth2, same |
 | `GOOGLE_CLIENT_ID` / `_SECRET` | empty | Google OAuth2, same |
+| `SD_SMTP_HOST` | empty (SMTP off) | `smtp.resend.com` |
+| `SD_SMTP_PORT` | `465` | SMTP port |
+| `SD_SMTP_USERNAME` | empty | `resend` for Resend |
+| `SD_SMTP_PASSWORD` | empty | Resend API key ("Sending access" only). Secret |
+| `SD_SMTP_TLS` | `true` on 465, else `false` | Implicit TLS; `false` uses STARTTLS |
+| `SD_MAIL_FROM_ADDRESS` | empty | Sender, e.g. `no-reply@fullfran.com` (a verified Resend domain) |
+| `SD_MAIL_FROM_NAME` | `Mazmorra Sombría` | Sender name |
+| `SD_APP_URL` | `https://sd-api.fullfran.com` | Public API URL used in the email links |
+| `SD_APP_NAME` | `Mazmorra Sombría` | Game name in the emails |
 
 Rate limits (PocketBase's built-in limiter, per IP or per user):
 `*:auth` 10/min (log in, refresh, OAuth2), `users:create` 5 per 10 min

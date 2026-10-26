@@ -9,6 +9,7 @@ import (
 	validation "github.com/pocketbase/ozzo-validation/v4"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/mails"
 
 	"github.com/fullfran/mazmorra-sombria/server/internal/rules"
 )
@@ -28,8 +29,11 @@ func Register(app core.App) {
 
 // signUp requires an email for a password account (the field is optional
 // because OAuth2 accounts have none) and keeps the address private and the
-// account unverified: only a verification email may verify it, and there is
-// no SMTP yet. PocketBase itself rejects short passwords and taken emails.
+// account unverified: only a verification email may verify it. When SMTP is
+// configured it sends that email once the account exists; a failed send is
+// logged and does not undo the sign-up (the client can ask again with
+// request-verification). PocketBase itself rejects short passwords and taken
+// emails.
 func signUp(e *core.RecordRequestEvent) error {
 	if e.HasSuperuserAuth() {
 		return e.Next()
@@ -43,7 +47,15 @@ func signUp(e *core.RecordRequestEvent) error {
 	}
 	e.Record.SetEmailVisibility(false)
 	e.Record.SetVerified(false)
-	return e.Next()
+	if err := e.Next(); err != nil {
+		return err
+	}
+	if e.App.Settings().SMTP.Enabled && e.Record.Email() != "" {
+		if err := mails.SendRecordVerification(e.App, e.Record); err != nil {
+			e.App.Logger().Error("sign-up verification email failed", "user", e.Record.Id, "error", err)
+		}
+	}
+	return nil
 }
 
 // keepAccountFlags stops an owner from publishing their email or marking

@@ -1,5 +1,6 @@
 // Package setup reads the environment and applies it to PocketBase at
-// startup: CORS origins, OAuth2 providers, rate limits and proxy headers.
+// startup: CORS origins, OAuth2 providers, rate limits, proxy headers and
+// outgoing email (SMTP, sender, app URL and the users email templates).
 // Email + password sign-in is schema (migrations), not environment.
 // The environment is the source of truth; changes made in the dashboard to
 // these settings are overwritten on the next start.
@@ -28,6 +29,7 @@ type Config struct {
 	Providers           []Provider
 	TrustedProxyHeaders []string
 	RateLimits          bool
+	Mail                Mail
 }
 
 // FromEnv reads the configuration through getenv (os.Getenv in production).
@@ -36,6 +38,7 @@ func FromEnv(getenv func(string) string) Config {
 		Origins:             splitList(getenv("SD_ALLOWED_ORIGINS")),
 		TrustedProxyHeaders: splitList(getenv("SD_TRUSTED_PROXY_HEADERS")),
 		RateLimits:          getenv("SD_RATE_LIMITS") != "off",
+		Mail:                mailFromEnv(getenv),
 	}
 	if len(cfg.Origins) == 0 {
 		cfg.Origins = DefaultOrigins
@@ -81,7 +84,8 @@ var RateLimitRules = []core.RateLimitRule{
 	{Label: "/api/", MaxRequests: 300, Duration: 10},
 }
 
-// Apply writes the settings and the OAuth2 providers of the users collection.
+// Apply writes the settings, and the OAuth2 providers and email templates of
+// the users collection.
 func Apply(app core.App, cfg Config) error {
 	settings := app.Settings()
 	settings.RateLimits.Enabled = cfg.RateLimits
@@ -89,6 +93,7 @@ func Apply(app core.App, cfg Config) error {
 	settings.TrustedProxy.Headers = cfg.TrustedProxyHeaders
 	settings.TrustedProxy.UseLeftmostIP = false
 	settings.Batch.Enabled = false
+	applyMail(settings, cfg.Mail)
 	if err := app.Save(settings); err != nil {
 		return err
 	}
@@ -106,6 +111,7 @@ func Apply(app core.App, cfg Config) error {
 		})
 	}
 	users.OAuth2.Enabled = len(users.OAuth2.Providers) > 0
+	applyMailTemplates(users, cfg.Mail.SMTPEnabled())
 	return app.Save(users)
 }
 
