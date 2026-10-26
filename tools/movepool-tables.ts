@@ -5,9 +5,14 @@
  */
 import { MOVES, type MoveId } from '../src/data/moves';
 import { originalKit, SPECIES } from '../src/data/species';
-import { movePrice, RECOMMENDED_BUILD } from '../src/data/tutor';
+import { movePrice, moveTier, RANK_COSTS_BY_TIER, RECOMMENDED_BUILD, unlockOf } from '../src/data/tutor';
+import { RANK_EFFECTS } from '../src/data/rank-effects';
+import { dungeonById } from '../src/data/dungeons';
+import { rankEffectText, tierName } from '../src/app/tutor';
 import { moveShape } from '../src/app/move-info';
-import { catalog } from '../src/i18n';
+import { catalog, setLanguage } from '../src/i18n';
+
+setLanguage('es');
 
 const es = catalog('es');
 const SLOT: Record<string, string> = { fast: 'Rápido', heavy: 'Fuerte', boost: 'Potenciación', area: 'Área' };
@@ -43,14 +48,17 @@ function effect(id: MoveId): string {
 const order = ['fast', 'heavy', 'boost', 'area'];
 for (const id of ['mimikyu', 'zorua', 'litwick', 'cubone'] as const) {
   console.log(`\n#### ${es[`species.${id}`]}\n`);
-  console.log('| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |');
-  console.log('|---|---|---|---|---|---|');
+  console.log('| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |');
+  console.log('|---|---|---|---|---|---|---|---|---|');
   const kit = originalKit(id);
   const rows = [...SPECIES[id].movepool].sort((a, b) => order.indexOf(MOVES[a].slot) - order.indexOf(MOVES[b].slot));
   for (const m of rows) {
     const mv = MOVES[m];
-    const price = kit.includes(m) ? 'inicial (gratis; Mejoras 150 / 350)' : `${movePrice(mv)} P`;
-    console.log(`| ${es[`move.${m}`]} | ${SLOT[mv.slot]} | ${es[`type.${mv.type}`]} | ${mv.power || '—'} | ${effect(m)} | ${price} |`);
+    const ranks = RANK_COSTS_BY_TIER[moveTier(m)].join(' / ');
+    const lock = unlockOf(m) ? `, tras ${es[dungeonById(unlockOf(m)).lore.nameKey]}` : '';
+    const price = kit.includes(m) ? `inicial (${ranks})` : `${movePrice(mv)} P${lock} (${ranks})`;
+    const [one, two] = RANK_EFFECTS[m].map(rankEffectText);
+    console.log(`| ${es[`move.${m}`]} | ${SLOT[mv.slot]} | ${tierName(moveTier(m))} | ${es[`type.${mv.type}`]} | ${mv.power || '—'} | ${effect(m)} | ${price} | ${one} | ${two} |`);
   }
   console.log(`\nBuild recomendado: ${RECOMMENDED_BUILD[id].map((m) => es[`move.${m}`]).join(' · ')}.`);
 }

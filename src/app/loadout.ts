@@ -11,7 +11,8 @@ import { stepDifficulty, type Difficulty } from '../data/difficulty';
 import { h, mdWindow } from '../ui/window';
 import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
-import { rankedName, slotFilterRow, type SlotFilter } from './tutor';
+import { rankedName, rankStars, slotFilterRow, tierName, type SlotFilter } from './tutor';
+import { moveTier } from '../data/tutor';
 
 /**
  * The loadout picker before a run, in two steps. `species`: a cursor list of
@@ -113,6 +114,9 @@ function moveCard(id: MoveId, equipped: boolean, rank = 0): HTMLElement {
   return h('div', { className: 'move-card' }, [
     h('div', { className: 'move-head' }, [
       h('strong', { textContent: rankedName(id, rank) }),
+      // The tutor's rank stars and the power tier (the original kit has no badge).
+      rank > 0 ? h('span', { className: 'rank-stars', textContent: rankStars(rank) }) : null,
+      moveTier(id) === 'basic' ? null : h('span', { className: `tier-badge tier-${moveTier(id)}`, textContent: tierName(moveTier(id)) }),
       typeBadge(move.type),
       equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
     ]),

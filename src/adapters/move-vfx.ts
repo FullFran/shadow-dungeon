@@ -358,7 +358,7 @@ export function drawEnemyShotVfx(ctx: CanvasRenderingContext2D, look: EnemyShotL
 }
 
 /** Fields a projectile needs to be drawn (remote ones carry no type: they fall back to Ghost). */
-export type DrawnProjectile = Pick<ProjectileState, 'owner' | 'radius'> & Partial<Pick<ProjectileState, 'type' | 'moveId' | 'vel'>>;
+export type DrawnProjectile = Pick<ProjectileState, 'owner' | 'radius'> & Partial<Pick<ProjectileState, 'type' | 'moveId' | 'vel' | 'zone' | 'armMs'>>;
 
 function orb(ctx: CanvasRenderingContext2D, at: Vec2, radius: number, type: PokemonType, pulse: number): void {
   const c = TYPE_COLORS[type];
@@ -419,7 +419,40 @@ function emberTrail(ctx: CanvasRenderingContext2D, at: Vec2, radius: number, vel
 }
 
 /** Draws one projectile in its type's colours (lifted off the ground; the shadow is the renderer's). */
+/**
+ * A rank effect's zone (embers, a toxic puddle, a flame line, an aftershock):
+ * a flat disc on the ground in its type's colours, a faint dashed ring while
+ * it is not armed yet.
+ */
+export function drawZoneVfx(ctx: CanvasRenderingContext2D, p: DrawnProjectile, pos: Vec2, timeMs: number): void {
+  const c = TYPE_COLORS[p.type ?? 'ghost'];
+  ctx.save();
+  if (p.armMs !== undefined && p.armMs > 0) {
+    ctx.strokeStyle = withAlpha(c.glow, 0.55);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, p.radius, p.radius * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  const flicker = 0.08 * Math.sin(timeMs / 70 + pos.x);
+  ctx.fillStyle = withAlpha(c.core, 0.28 + flicker);
+  ctx.beginPath();
+  ctx.ellipse(pos.x, pos.y, p.radius, p.radius * 0.55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = withAlpha(c.glow, 0.7);
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawProjectileVfx(ctx: CanvasRenderingContext2D, p: DrawnProjectile, pos: Vec2, timeMs: number): void {
+  if (p.zone) {
+    drawZoneVfx(ctx, p, pos, timeMs);
+    return;
+  }
   const lifted = { x: pos.x, y: pos.y - 6 };
   const type: PokemonType = p.type ?? 'ghost';
   const pulse = 1 + 0.12 * Math.sin(timeMs / 60);

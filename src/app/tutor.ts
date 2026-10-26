@@ -1,12 +1,15 @@
-import { buyMove, knownMoves, moveRank, rankCost, rankUp, tutorPrice, type TutorWallet } from '../core/tutor';
+import { costsOf } from '../core/move-power';
+import { buyMove, knownMoves, moveRank, rankCost, rankUp, tutorLock, tutorPrice, type TutorWallet } from '../core/tutor';
+import { dungeonById } from '../data/dungeons';
+import { RANK_EFFECTS, type RankEffect } from '../data/rank-effects';
 import type { StarterId } from '../data/learnsets';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
-import { originalKit, PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
-import { MAX_RANK, RANK_EFFECT, RECOMMENDED_BUILD, TUTOR_OFFER } from '../data/tutor';
+import { PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
+import { MAX_RANK, moveTier, RANK_EFFECT, RECOMMENDED_BUILD, TUTOR_OFFER, type MoveTier } from '../data/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 import { isTouchUi } from '../adapters/touch-mode';
-import { t } from '../i18n';
+import { getLanguage, t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
@@ -56,18 +59,97 @@ export function buildHint(species: SpeciesId): string {
   return t('tutor.build').replace('{moves}', build.map((m) => t(`move.${m}`)).join(' · '));
 }
 
+/** "Básico", "Avanzado", "Maestro". */
+export const tierName = (tier: MoveTier): string => t(`tutor.tier.${tier}`);
+
+/** "★☆": filled stars per rank, empty ones for the ranks still to buy. */
+export const rankStars = (rank: number): string => '★'.repeat(Math.max(0, Math.min(MAX_RANK, rank))) + '☆'.repeat(Math.max(0, MAX_RANK - rank));
+
+const pct = (share: number): string => String(Math.round(share * 100));
+/** Seconds with one decimal at most, with the language's decimal mark ("1,2 s" in Spanish). */
+const secs = (ms: number): string => {
+  const s = String(Math.round(ms / 100) / 10);
+  return getLanguage() === 'es' ? s.replace('.', ',') : s;
+};
+const fill = (key: string, values: Record<string, string>): string => Object.entries(values).reduce((text, [k, v]) => text.replaceAll(`{${k}}`, v), t(key));
+
+/** The text of one rank effect ("deja una marca que estalla a los 1,2 s (35 % del golpe)"). */
+export function rankEffectText(e: RankEffect): string {
+  switch (e.kind) {
+    case 'crit':
+      return fill('rank.crit', { pct: pct(e.bonus) });
+    case 'size':
+      return fill('rank.size', { pct: pct(e.multiplier - 1) });
+    case 'dot':
+      return e.chance >= 1 ? t(`rank.dot.${e.dot}.always`) : fill(`rank.dot.${e.dot}`, { pct: pct(e.chance) });
+    case 'mark':
+      return fill('rank.mark', { s: secs(e.delayMs), pct: pct(e.share) });
+    case 'split':
+      return fill('rank.split', { n: String(e.count), pct: pct(e.share) });
+    case 'weaken':
+      return fill('rank.weaken', { pct: pct(1 - e.factor), s: secs(e.durationMs) });
+    case 'zone': {
+      const key = e.at === 'self' ? (e.every ? 'rank.zone.aura' : 'rank.zone.aftershock') : `rank.zone.${e.at}`;
+      return fill(key, { s: secs(e.at === 'self' && !e.every ? (e.delayMs ?? 0) : e.lifetimeMs) }) + (e.dot ? ` ${t(`rank.zone.${e.dot}`)}` : '');
+    }
+    case 'hits':
+      return fill('rank.hits', { n: String(e.add) });
+    case 'return':
+      return fill('rank.return', { n: String(e.times), pct: pct(e.share) });
+    case 'chain':
+      return fill('rank.chain', { pct: pct(e.share) });
+    case 'ward':
+      return fill('rank.ward', { pct: pct(1 - e.damageTaken), s: secs(e.durationMs) });
+    case 'iframes':
+      return t('rank.iframes');
+    case 'buff': {
+      const parts = [
+        e.hits ? fill('rank.buff.hits', { n: String(e.hits) }) : null,
+        e.durationMs ? fill('rank.buff.duration', { s: secs(e.durationMs) }) : null,
+        e.critChance ? fill('rank.buff.crit', { pct: pct(e.critChance) }) : null,
+        e.speed ? fill('rank.buff.speed', { pct: pct(e.speed) }) : null,
+        e.damageTaken ? fill('rank.buff.guard', { pct: pct(-e.damageTaken) }) : null,
+        e.multiplier ? fill('rank.buff.power', { pct: pct(e.multiplier) }) : null,
+      ];
+      return parts.filter((p): p is string => p !== null).join(', ');
+    }
+    case 'drain':
+      return fill('rank.drain', { pct: pct(e.share) });
+    case 'stagger':
+      return fill('rank.stagger', { pct: pct(e.multiplier - 1) });
+    case 'homing':
+      return t('rank.homing');
+    case 'heal':
+      return fill('rank.heal', { pct: pct(e.share) });
+  }
+}
+
+/** What rank `rank` (1 or 2) of `move` adds: the damage and, on a boost, the cooldown, then its effect. */
+export function rankText(move: MoveId, rank: number): string {
+  const numbers = MOVES[move].slot === 'boost' ? fill('tutor.rank.boost', { pct: pct(RANK_EFFECT.cooldown) }) : fill('tutor.rank.damage', { pct: pct(RANK_EFFECT.damage) });
+  const effect = RANK_EFFECTS[move][rank - 1];
+  return `+${rank}: ${numbers}, ${effect ? rankEffectText(effect) : ''}`;
+}
+
+/** Both ranks of a move, for its row on sale. */
+const bothRanks = (move: MoveId): string => `${rankText(move, 1)}. ${rankText(move, 2)}.`;
+
 export interface TutorRow {
   kind: 'move' | 'rank';
   move: MoveId;
   label: string;
+  /** The move's power tier (its badge). */
+  tier: MoveTier;
   /** Price or rank cost; null when learned or maxed. */
   cost: number | null;
   affordable: boolean;
+  /** A Maestro move still locked: the name of the dungeon to clear first; null when open. */
+  locked: string | null;
   /** What the row does, for the line under the list. */
   effect: string;
 }
 
-/** The rows of `species` under `filter`: moves on sale, then the Mejoras of its original kit. */
+/** The rows of `species` under `filter`: moves on sale, then the Mejoras of every move it knows. */
 export function tutorRows(save: TutorWallet, species: SpeciesId, filter: SlotFilter = 'all'): TutorRow[] {
   const fits = (m: MoveId) => filter === 'all' || MOVES[m].slot === filter;
   const known = knownMoves(save, species);
@@ -75,32 +157,40 @@ export function tutorRows(save: TutorWallet, species: SpeciesId, filter: SlotFil
   const moves = offer.map((move): TutorRow => {
     const learned = known.includes(move);
     const cost = learned ? null : tutorPrice(species, move);
+    const lock = learned ? null : tutorLock(save, species, move);
+    const locked = lock ? t(dungeonById(lock).lore.nameKey) : null;
     const [stats] = moveInfoLines(move);
     const power = MOVES[move].power > 0 ? `${t('loadout.power')} ${MOVES[move].power} · ` : '';
+    const tier = moveTier(move);
+    const costs = costsOf(MOVES[move]);
+    const paid = tier !== 'basic' && costs.length > 0 ? ` ${fill('tutor.costs', { list: costs.map((c) => t(`tutor.cost.${c}`)).join(', ') })}` : '';
+    const lockLine = locked ? ` ${fill('tutor.locked', { dungeon: locked })}` : '';
     return {
       kind: 'move',
       move,
+      tier,
       label: `${t(`move.${move}`)} · ${t(`type.${MOVES[move].type}`)} · ${t(`slot.${MOVES[move].slot}`)}`,
       cost,
-      affordable: cost !== null && save.coins >= cost,
-      effect: `${power}${stats}. ${t(`move.${move}.description`)}`,
+      locked,
+      affordable: cost !== null && !locked && save.coins >= cost,
+      effect: `${tierName(tier)}.${lockLine} ${power}${stats}. ${t(`move.${move}.description`)}${paid} ${bothRanks(move)}`,
     };
   });
-  const ranks = originalKit(species)
-    .filter(fits)
-    .map((move): TutorRow => {
-      const rank = moveRank(save, species, move);
-      const cost = rankCost(save, species, move);
-      const cooldown = MOVES[move].cooldownMs ? ` ${t('tutor.rank.cooldown').replace('{pct}', String(Math.round(RANK_EFFECT.cooldown * 100)))}` : '';
-      return {
-        kind: 'rank',
-        move,
-        label: `${rankedName(move, rank)} ${t('shop.level').replace('{level}', String(rank)).replace('{max}', String(MAX_RANK))}`,
-        cost,
-        affordable: cost !== null && save.coins >= cost,
-        effect: `${t('tutor.rank.effect').replace('{pct}', String(Math.round(RANK_EFFECT.damage * 100)))}${cooldown}`,
-      };
-    });
+  const ranks = known.filter(fits).map((move): TutorRow => {
+    const rank = moveRank(save, species, move);
+    const cost = rankCost(save, species, move);
+    const next = rank < MAX_RANK ? fill('tutor.rank.next', { text: rankText(move, rank + 1) }) : fill('tutor.rank.maxed', { text: bothRanks(move) });
+    return {
+      kind: 'rank',
+      move,
+      tier: moveTier(move),
+      label: `${rankedName(move, rank)} ${rankStars(rank)}`,
+      cost,
+      locked: null,
+      affordable: cost !== null && save.coins >= cost,
+      effect: next,
+    };
+  });
   return [...moves, ...ranks];
 }
 
@@ -129,7 +219,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   let save = loadSave(options.store);
   let species = options.species;
   let filter: SlotFilter = 'all';
-  let rows = tutorRows(save, species, filter);
+  let rows = tutorRows({ ...save, cleared: [...(options.cleared ?? [])] }, species, filter);
   const balance = h('div', { className: 'shop-balance' });
   const build = h('p', { className: 'tutor-build' });
   const effect = h('p', { className: 'shop-effect dim' });
@@ -159,8 +249,9 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
         out.push({ header: true, label: t(row.kind === 'move' ? 'tutor.moves' : 'tutor.ranks') });
       }
       out.push({
-        label: row.label,
-        value: row.cost === null ? t(row.kind === 'move' ? 'tutor.learned' : 'shop.max') : coinText(row.cost, (key) => t(key)),
+        // The tier badge (Avanzado, Maestro) beside the name; the original kit has none.
+        label: row.tier === 'basic' ? row.label : h('span', {}, [row.label, ' ', h('span', { className: `tier-badge tier-${row.tier}`, textContent: tierName(row.tier) })]),
+        value: row.locked ? t('tutor.lockedShort') : row.cost === null ? t(row.kind === 'move' ? 'tutor.learned' : 'shop.max') : coinText(row.cost, (key) => t(key)),
         className: row.affordable ? 'shop-row' : 'shop-row is-disabled',
         tapToSelect: true,
         onConfirm: () => {
@@ -196,7 +287,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   }
 
   function refresh(): void {
-    rows = tutorRows(save, species, filter);
+    rows = tutorRows({ ...save, cleared: [...(options.cleared ?? [])] }, species, filter);
     balance.replaceChildren(statLine(t('screen.coins.balance'), coinText(save.coins, (key) => t(key))));
     build.textContent = buildHint(species);
     const next = items();

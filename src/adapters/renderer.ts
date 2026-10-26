@@ -1306,12 +1306,40 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   /** Projectiles are drawn in their move type's colours (move-vfx.ts). */
   function projectile(p: DrawnProjectile, pos: Vec2, timeMs: number): Drawable {
     return {
-      y: pos.y,
+      // A zone lies on the ground: under everything standing in it, and with no shadow.
+      y: p.zone ? pos.y - p.radius : pos.y,
       draw: () => {
-        shadow({ x: pos.x, y: pos.y + 10 }, p.radius * 0.8);
+        if (!p.zone) shadow({ x: pos.x, y: pos.y + 10 }, p.radius * 0.8);
         drawProjectileVfx(ctx, p, pos, timeMs);
       },
     };
+  }
+
+  /** A rank mark (a violet diamond over the head, pulsing faster as it nears its burst) and a weakening (a grey ring at the feet). */
+  function statusMarks(pos: Vec2, radius: number, markMs: number | null, weakened: boolean, timeMs: number): void {
+    ctx.save();
+    if (weakened) {
+      ctx.strokeStyle = 'rgba(170, 170, 190, 0.75)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y + 2, radius + 4, (radius + 4) * 0.45, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (markMs !== null) {
+      const pulse = 0.6 + 0.4 * Math.sin(timeMs / Math.max(40, markMs / 6));
+      const y = pos.y - radius * 2 - 10;
+      ctx.fillStyle = `rgba(178, 102, 255, ${pulse.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, y - 6);
+      ctx.lineTo(pos.x + 5, y);
+      ctx.lineTo(pos.x, y + 6);
+      ctx.lineTo(pos.x - 5, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function lockMarker(pos: Vec2, radius: number, timeMs: number): void {
@@ -1538,6 +1566,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
+    // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
+    for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);

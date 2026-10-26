@@ -630,7 +630,7 @@ Sin estados alterados completos: lo que en el juego original depende de la quema
 
 Cada inicial puede aprender los movimientos que aprende en los juegos originales (por nivel, MT/DT, tutor y huevo; aprendizajes de PokeAPI, todas las generaciones, en `src/data/learnsets.ts`), rediseñados para el combate en tiempo real. Se eligieron los que importan: todos los de daño relevantes y los de estado clave (Danza Espada, Maquinación, Paz Mental, Fuego Fatuo, Corpulencia, Maldición, Tambor...). Entre 23 y 28 por especie. Golpe Umbrío de Mimikyu y Corpulencia de Cubone no están en sus aprendizajes canónicos, pero se quedan porque ya eran parte del kit.
 
-**Cómo se adaptan.** La potencia es la oficial; los tiempos se ajustan para que ningún movimiento comprado supere al mejor movimiento original de su ranura y su forma (un test lo comprueba): lo más fuerte es más lento, gasta más estamina o PS, o retrocede. Los estados se simplifican:
+**Cómo se adaptan.** La potencia es la oficial; los tiempos se ajustan al presupuesto de su nivel de poder (abajo): lo más fuerte es más lento, gasta más estamina o PS, o retrocede. Los estados se simplifican:
 
 | En los juegos | Aquí |
 |---|---|
@@ -646,11 +646,40 @@ Cada inicial puede aprender los movimientos que aprende en los juegos originales
 
 Formas nuevas, todas genéricas: el **remolino** (Giro Fuego: una zona que se queda delante de ti y vuelve a golpear cada 600 ms) y el **disparo teledirigido** (Meteoros: se curva hacia el enemigo más cercano). Ideas tomadas de PokeSurvivor (solo mecánicas, nada de su código): sus zonas en el suelo y sus disparos teledirigidos, y su «evolución» de movimientos al nivel máximo, que aquí son las Mejoras.
 
-**Precios** (Pokémonedas): rápidos 120 / 200 / 300 (potencia < 60, < 75, más); fuertes 220 / 380 / 560 y de área 300 / 450 / 650 (< 80, < 100, más); potenciaciones 350. El kit original es gratis.
+**Niveles de poder.** Cada movimiento tiene un nivel, con un presupuesto de daño efectivo (daño por tiempo de uso, contando la mitad de una quemadura o un veneno y el crítico esperado) frente al mejor movimiento original de su ranura y su forma (`src/core/move-power.ts`; un test lo comprueba para todos):
 
-**Mejoras.** Los siete movimientos originales se pueden mejorar dos veces («Garra Umbría +», «++»): 150 y 350 Pokémonedas; cada rango da +10 % de daño y, en potenciación y área, un 10 % menos de enfriamiento. Así los movimientos de siempre siguen valiendo. Lo aprendido y las Mejoras cuentan en todas partes: también en el Santuario (Reflejos, Desafíos, pruebas en línea) y en el modo puro de la Sima, porque es un juego de farmeo y el progreso tiene que notarse (decisión del 26-10-2026). Las mejoras de Poochyena siguen fuera del Santuario y del modo puro. Una marca guarda el equipo con el que se hizo (movimientos, rangos y nivel de poder) junto al tiempo, en vez de igualar las estadísticas.
+| Nivel | Quién | Presupuesto | A cambio | Precio (rápido / fuerte / potenciación / área) | Mejoras |
+|---|---|---|---|---|---|
+| Básico | el kit original de cada inicial | ×1,0 (es la referencia) | — | gratis (el de otro inicial, según su potencia) | 150 / 350 |
+| Avanzado | casi todo lo que enseña Smeargle | hasta ×1,2 | por encima de ×1,0, un coste real | 120–300 / 220–560 / 350 / 300–650 (según la potencia) | 250 / 500 |
+| Maestro | 13 movimientos, 2–4 por inicial | hasta ×1,4 (los de daño, ×1,30–1,38) | dos costes: retroceso, PS, enfriamiento en un fuerte, mucha estamina (≥ 35 fuerte, ≥ 40 área) o una carga un 25 % más lenta que la más lenta del kit | 450 / 800 / 600 / 950 | 400 / 750 |
 
-**El maestro.** Smeargle, «Maestro de movimientos», está en el Refugio, en el césped del oeste junto a la casa de piedra. Su ventana es como la tienda de Poochyena: arriba el saldo y el equipo recomendado; una fila elige el Pokémon (◀ ▶, empieza en el tuyo), otra filtra por ranura (Todos, Rápida, Fuerte, Potenciación, Área); luego los movimientos a la venta (precio, o «Aprendido») y las Mejoras (rango y precio). La línea de abajo explica la fila del cursor. Lo comprado se guarda en `mazmorra-sombria.save` (versión 2; un guardado de la versión 1 se lee sin nada aprendido). En la pantalla de equipo solo aparecen los movimientos aprendidos de cada ranura, con el mismo filtro, los nombres con sus «+» y el equipo recomendado debajo; un movimiento no aprendido nunca llega a una partida (se cambia por el de por defecto de su ranura).
+Los Maestro: Mazazo, Golpe Fantasma (tras la Cripta), Trueno (tras el Bosque Brumoso) y Maldición (Mimikyu); Bomba Lodo y Vozarrón (tras el Bosque) (Zorua); Llamarada, Envite Ígneo (tras la Cripta), Giro Fuego (tras el Bosque) y Maldición (Litwick); Doble Filo, Puño Certero (tras la Cripta), Rayo Hielo (tras el Bosque) y Tambor (Cubone). Así comprar sirve: un Maestro pega un 30–38 % más que lo mejor del kit, pero tarda más en salir o cuesta más, y no es mejor en todo (un Trueno de 660 ms de carga se esquiva peor que se lanza). Por encima de todo hay un techo duro: con los dos rangos y sus efectos, ningún movimiento pasa de ×1,9 la referencia (solo daño del jugador: el tope de un golpe enemigo y los telegrafiados no cambian).
+
+**Precios** (Pokémonedas): Avanzado rápidos 120 / 200 / 300 (potencia < 60, < 75, más); fuertes 220 / 380 / 560 y de área 300 / 450 / 650 (< 80, < 100, más); potenciaciones 350. Maestro: tabla de arriba. El kit original es gratis.
+
+**Mejoras (rangos).** Todo movimiento aprendido (no solo el kit) se puede mejorar dos veces («Garra Umbría +», «++»; estrellas ★☆ en la pantalla de equipo); el precio va por nivel (tabla de arriba). Cada rango da +10 % de daño (en potenciación, un 10 % menos de enfriamiento; los de área conservan el suyo) y además un efecto propio, diseñado por movimiento (`src/data/rank-effects.ts`), inspirado en las «evoluciones» de PokeSurvivor (solo la idea). Los efectos son genéricos y cualquier movimiento puede llevarlos:
+
+| Efecto | Qué hace | Ejemplos |
+|---|---|---|
+| Crítico | +probabilidad de crítico | Garra Umbría +1, Golpe Bajo +2 |
+| Tamaño | golpe o proyectil más grande | Bola Sombra +1, Brillo Mágico +1 |
+| Quemar / envenenar | probabilidad de estado (o siempre) | Ascuas +1 (30 %), Infierno +1 (siempre) |
+| Marca | el golpe deja una marca que estalla después (no se acumula) | Garra Umbría +2, Infortunio +2 |
+| División | el proyectil se divide al impactar (los trozos no repiten en el mismo enemigo) | Bola Sombra +2 (3), Llamarada +2 (4) |
+| Debilitar | el objetivo hace menos daño (cuerpo a cuerpo y disparos) unos segundos | Carantoña +2, Alarido +2 |
+| Zona | en el impacto, a tu alrededor (réplica o aura) o en línea tras una onda; daña poco y en silencio | Ascuas +2 (brasas), Terremoto +2 (réplica), Lanzallamas +2 (rastro de fuego), Bomba Lodo +2 (charco) |
+| Golpes | un golpe más en los de varios | Golpes Furia +2, Doble Patada +2 |
+| Regreso | el bumerán vuelve a lanzarse | Huesomerang +2 (una vez más, al 50 %) |
+| Cadena | el golpe salta al enemigo más cercano | Rayo +2, Trueno +2, Puño Trueno +2 |
+| Superarmadura | menos daño recibido desde que empieza el movimiento (no hay aturdimiento del jugador contra el que armarse) | Danza Espada +2, Mazazo +2 |
+| Invulnerable | i-frames en la fase activa (los ataques posicionales sí te dan) | Sombra Vil +2, Golpe Fantasma +2, Excavar +1 |
+| Potenciación | más golpes, duración, crítico o defensa | Danza Espada +1, Maquinación +1/+2 |
+| Drenaje, aturdir, perseguir, curar | más drenaje; más aturdimiento y empuje; el proyectil se curva; cura PS al lanzarse | Juego Sucio +2, Carantoña +1, Infortunio +1, Corpulencia +2 |
+
+Así los movimientos de siempre siguen valiendo, y uno comprado crece con el jugador. Lo aprendido y las Mejoras cuentan en todas partes: también en el Santuario (Reflejos, Desafíos, pruebas en línea) y en el modo puro de la Sima, porque es un juego de farmeo y el progreso tiene que notarse (decisión del 26-10-2026). Las mejoras de Poochyena siguen fuera del Santuario y del modo puro. Una marca guarda el equipo con el que se hizo (movimientos, rangos y nivel de poder) junto al tiempo, en vez de igualar las estadísticas.
+
+**El maestro.** Smeargle, «Maestro de movimientos», está en el Refugio, en el césped del oeste junto a la casa de piedra. Su ventana es como la tienda de Poochyena: arriba el saldo y el equipo recomendado; una fila elige el Pokémon (◀ ▶, empieza en el tuyo), otra filtra por ranura (Todos, Rápida, Fuerte, Potenciación, Área); luego los movimientos a la venta (precio, «Aprendido» o «Bloqueado»; los Avanzado y Maestro llevan su insignia de nivel) y las Mejoras de cada movimiento que ya sabes (nombre con «+», estrellas ★☆ y precio del siguiente rango). La línea de abajo explica la fila del cursor: en un movimiento a la venta, su nivel, qué mazmorra lo desbloquea, sus costes y lo que darán sus rangos +1 y +2; en una Mejora, lo que da el siguiente rango. Lo comprado se guarda en `mazmorra-sombria.save` (versión 2; un guardado de la versión 1 se lee sin nada aprendido). En la pantalla de equipo solo aparecen los movimientos aprendidos de cada ranura, con el mismo filtro, los nombres con sus «+», sus estrellas de rango y su insignia de nivel, y el equipo recomendado debajo; un movimiento no aprendido nunca llega a una partida (se cambia por el de por defecto de su ranura).
 
 **Equipos recomendados** (siguen los sets competitivos de Smogon, exportados por data.pkmn.cc; fuentes en `src/data/learnsets.ts`):
 
@@ -669,138 +698,138 @@ Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. =
 
 #### Mimikyu
 
-| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
-|---|---|---|---|---|---|
-| Garra Umbría | Rápido | Fantasma | 70 | arco corto | inicial (gratis; Mejoras 150 / 350) |
-| Sombra Vil | Rápido | Fantasma | 40 | embestida | inicial (gratis; Mejoras 150 / 350) |
-| Impresionar | Rápido | Fantasma | 30 | arco corto, aturde mucho | 120 P |
-| Cuchillada | Rápido | Normal | 70 | arco corto, +25 % crítico | 200 P |
-| Tajo Umbrío | Rápido | Siniestro | 70 | arco corto, +25 % crítico | 200 P |
-| Tijera X | Rápido | Bicho | 80 | arco corto | 300 P |
-| Chupavidas | Rápido | Bicho | 80 | arco corto, drena 25 % | 300 P |
-| Beso Drenaje | Rápido | Hada | 50 | arco corto, drena 40 % | 120 P |
-| Carantoña | Fuerte | Hada | 90 | arco amplio, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Puño Drenaje | Fuerte | Lucha | 75 | arco amplio, drena 50 %, est. 30 | 220 P |
-| Mazazo | Fuerte | Planta | 120 | arco amplio, retroceso 33 %, est. 35 | 560 P |
-| Gigadrenado | Fuerte | Planta | 75 | proyectil rápido, drena 50 %, est. 30 | 220 P |
-| Rayo | Fuerte | Eléctrico | 90 | proyectil rápido, est. 30 | 380 P |
-| Derribo | Fuerte | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P |
-| Infortunio | Fuerte | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | 220 P |
-| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | inicial (gratis; Mejoras 150 / 350) |
-| Afilagarras | Potenciación | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P |
-| Maldición | Potenciación | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 350 P |
-| Corpulencia | Potenciación | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | 350 P |
-| Fuego Fatuo | Potenciación | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | 350 P |
-| Brillo Mágico | Área | Hada | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
-| Golpe Umbrío | Área | Fantasma | 120 | cono amplio, enfr. 10 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
-| Golpe Fantasma | Área | Fantasma | 90 | embestida, enfr. 8 s, est. 35 | 450 P |
-| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
-| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
-| Trueno | Área | Eléctrico | 110 | anillo 360°, enfr. 11 s, est. 40 | 650 P |
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | inicial (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
+| Sombra Vil | Rápido | Básico | Fantasma | 40 | embestida | inicial (150 / 350) | golpe un 25 % más grande | invulnerable mientras golpea |
+| Impresionar | Rápido | Básico | Fantasma | 30 | arco corto, aturde mucho | 120 P (150 / 350) | aturde un 40 % más | el objetivo hace −25 % de daño durante 2,5 s |
+| Cuchillada | Rápido | Avanzado | Normal | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | aturde un 30 % más |
+| Tajo Umbrío | Rápido | Avanzado | Siniestro | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Tijera X | Rápido | Avanzado | Bicho | 80 | arco corto | 300 P (250 / 500) | +15 % de crítico | deja una marca que estalla a los 0,8 s (30 % del golpe) |
+| Chupavidas | Rápido | Avanzado | Bicho | 80 | arco corto, drena 25 % | 300 P (250 / 500) | +10 % de drenaje | el objetivo hace −15 % de daño durante 3 s |
+| Beso Drenaje | Rápido | Avanzado | Hada | 50 | arco corto, drena 40 % | 120 P (250 / 500) | +15 % de drenaje | el objetivo hace −30 % de daño durante 3 s |
+| Carantoña | Fuerte | Básico | Hada | 90 | arco amplio, est. 30 | inicial (150 / 350) | aturde un 30 % más | el objetivo hace −30 % de daño durante 4 s |
+| Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | inicial (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
+| Puño Drenaje | Fuerte | Avanzado | Lucha | 75 | arco amplio, drena 50 %, est. 30 | 220 P (250 / 500) | +15 % de drenaje | superarmadura: −25 % de daño recibido durante 2,5 s |
+| Mazazo | Fuerte | Maestro | Planta | 120 | arco amplio, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 30 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Gigadrenado | Fuerte | Avanzado | Planta | 75 | proyectil rápido, drena 50 %, est. 30 | 220 P (250 / 500) | persigue al enemigo más cercano | +20 % de drenaje |
+| Rayo | Fuerte | Avanzado | Eléctrico | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | aturde un 40 % más | salta al enemigo más cercano (50 % del daño) |
+| Derribo | Fuerte | Avanzado | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | invulnerable mientras golpea |
+| Infortunio | Fuerte | Básico | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | 220 P (150 / 350) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (40 % del golpe) |
+| Danza Espada | Potenciación | Básico | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | inicial (150 / 350) | +1 golpe potenciado | superarmadura: −40 % de daño recibido durante 3 s |
+| Afilagarras | Potenciación | Avanzado | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P (250 / 500) | +1 s de duración | +10 % de crítico |
+| Maldición | Potenciación | Maestro | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 600 P (400 / 750) | +1 golpe potenciado | superarmadura: −30 % de daño recibido durante 3 s |
+| Corpulencia | Potenciación | Básico | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | 350 P (150 / 350) | −10 % de daño recibido | cura un 10 % de los PS |
+| Fuego Fatuo | Potenciación | Básico | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | 350 P (150 / 350) | superarmadura: −25 % de daño recibido durante 2,5 s | un aura a tu alrededor daña durante 2,4 s que quema |
+| Brillo Mágico | Área | Básico | Hada | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Golpe Umbrío | Área | Básico | Fantasma | 120 | cono amplio, enfr. 10 s, est. 40 | inicial (150 / 350) | invulnerable mientras golpea | deja una marca que estalla a los 0,9 s (30 % del golpe) |
+| Golpe Fantasma | Área | Maestro | Fantasma | 90 | embestida, enfr. 5.6 s, est. 40 | 950 P, tras Cripta del Rey de las Espadas (400 / 750) | golpe un 20 % más grande | invulnerable mientras golpea |
+| Envidia Ardiente | Área | Avanzado | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Pulso Umbrío | Área | Básico | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P (150 / 350) | aturde un 50 % más | deja una marca que estalla a los 0,8 s (25 % del golpe) |
+| Trueno | Área | Maestro | Eléctrico | 110 | anillo 360°, enfr. 6.8 s, est. 45 | 950 P, tras Bosque Brumoso (400 / 750) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
 
 Build recomendado: Sombra Vil · Carantoña · Danza Espada · Golpe Fantasma.
 
 #### Zorua
 
-| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
-|---|---|---|---|---|---|
-| Golpes Furia | Rápido | Normal | 25 | arco corto, ×5 | inicial (gratis; Mejoras 150 / 350) |
-| Finta | Rápido | Siniestro | 60 | embestida | inicial (gratis; Mejoras 150 / 350) |
-| Garra Umbría | Rápido | Fantasma | 70 | arco corto | 200 P |
-| Golpe Bajo | Rápido | Siniestro | 70 | embestida, ×1.5 si el enemigo ataca, prioridad | 200 P |
-| Desarme | Rápido | Siniestro | 65 | arco corto | 200 P |
-| Ida y Vuelta | Rápido | Bicho | 70 | embestida | 200 P |
-| Desahogo | Rápido | Siniestro | 75 | arco corto, ×1.5 si fallaste antes | 300 P |
-| Meteoros | Rápido | Normal | 60 | proyectil rápido, teledirigido | 200 P |
-| Pulso Noche | Fuerte | Siniestro | 85 | anillo 360°, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Juego Sucio | Fuerte | Siniestro | 95 | embestida, ×1.5 si el enemigo ataca, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Bomba Lodo | Fuerte | Veneno | 90 | proyectil rápido, envenena, est. 30 | 380 P |
-| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | 380 P |
-| Paranormal | Fuerte | Psíquico | 80 | proyectil rápido, est. 30 | 380 P |
-| Hierba Lazo | Fuerte | Planta | 80 | arco amplio, est. 30 | 380 P |
-| Maquinación | Potenciación | Siniestro | — | sobre ti, velocidad ×1.3, +35 % crítico, 5 s, enfr. 14 s | inicial (gratis; Mejoras 150 / 350) |
-| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P |
-| Paz Mental | Potenciación | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P |
-| Afilagarras | Potenciación | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P |
-| Agilidad | Potenciación | Psíquico | — | sobre ti, velocidad ×1.5, +0 % crítico, 5 s, enfr. 12 s | 350 P |
-| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
-| Alarido | Área | Siniestro | 55 | cono amplio, enfr. 6 s, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Vozarrón | Área | Normal | 90 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
-| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Golpes Furia | Rápido | Básico | Normal | 25 | arco corto, ×5 | inicial (150 / 350) | +10 % de crítico | +1 golpe |
+| Finta | Rápido | Básico | Siniestro | 60 | embestida | inicial (150 / 350) | +20 % de crítico | invulnerable mientras golpea |
+| Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | 200 P (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
+| Golpe Bajo | Rápido | Avanzado | Siniestro | 70 | embestida, ×1.5 si el enemigo ataca, prioridad | 200 P (250 / 500) | invulnerable mientras golpea | +30 % de crítico |
+| Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Ida y Vuelta | Rápido | Avanzado | Bicho | 70 | embestida | 200 P (250 / 500) | invulnerable mientras golpea | deja una marca que estalla a los 0,7 s (25 % del golpe) |
+| Desahogo | Rápido | Avanzado | Siniestro | 75 | arco corto, ×1.5 si fallaste antes | 300 P (250 / 500) | aturde un 30 % más | +20 % de drenaje |
+| Meteoros | Rápido | Avanzado | Normal | 60 | proyectil rápido, teledirigido | 200 P (250 / 500) | golpe un 30 % más grande | se divide en 2 al impactar (40 % de poder cada uno) |
+| Pulso Noche | Fuerte | Básico | Siniestro | 85 | anillo 360°, est. 30 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Juego Sucio | Fuerte | Básico | Siniestro | 95 | embestida, ×1.5 si el enemigo ataca, est. 30 | inicial (150 / 350) | aturde un 30 % más | +25 % de drenaje |
+| Bomba Lodo | Fuerte | Maestro | Veneno | 90 | proyectil rápido, envenena, est. 40 | 800 P (400 / 750) | golpe un 25 % más grande | deja una zona en el impacto durante 2,4 s que envenena |
+| Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | 380 P (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
+| Paranormal | Fuerte | Avanzado | Psíquico | 80 | proyectil rápido, est. 30 | 380 P (250 / 500) | aturde un 30 % más | persigue al enemigo más cercano |
+| Hierba Lazo | Fuerte | Avanzado | Planta | 80 | arco amplio, est. 30 | 380 P (250 / 500) | aturde un 40 % más | el objetivo hace −20 % de daño durante 3 s |
+| Maquinación | Potenciación | Básico | Siniestro | — | sobre ti, velocidad ×1.3, +35 % crítico, 5 s, enfr. 14 s | inicial (150 / 350) | +1 s de duración | +10 % de crítico |
+| Danza Espada | Potenciación | Básico | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P (150 / 350) | +1 golpe potenciado | superarmadura: −40 % de daño recibido durante 3 s |
+| Paz Mental | Potenciación | Avanzado | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P (250 / 500) | +2 s de duración | −10 % de daño recibido |
+| Afilagarras | Potenciación | Avanzado | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P (250 / 500) | +1 s de duración | +10 % de crítico |
+| Agilidad | Potenciación | Avanzado | Psíquico | — | sobre ti, velocidad ×1.5, +0 % crítico, 5 s, enfr. 12 s | 350 P (250 / 500) | +1,5 s de duración | +15 % de crítico |
+| Pulso Umbrío | Área | Básico | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (150 / 350) | aturde un 50 % más | deja una marca que estalla a los 0,8 s (25 % del golpe) |
+| Alarido | Área | Básico | Siniestro | 55 | cono amplio, enfr. 6 s, est. 30 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −30 % de daño durante 4 s |
+| Vozarrón | Área | Maestro | Normal | 90 | anillo 360°, enfr. 5.6 s, est. 40 | 950 P, tras Bosque Brumoso (400 / 750) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Envidia Ardiente | Área | Avanzado | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
 
 Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
 
 #### Litwick
 
-| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
-|---|---|---|---|---|---|
-| Ascuas | Rápido | Fuego | 50 | proyectil rápido | inicial (gratis; Mejoras 150 / 350) |
-| Impresionar | Rápido | Fantasma | 30 | arco corto, aturde mucho | inicial (gratis; Mejoras 150 / 350) |
-| Tinieblas | Rápido | Fantasma | 50 | proyectil rápido | 120 P |
-| Polución | Rápido | Veneno | 30 | proyectil rápido, envenena | 120 P |
-| Niebla Clara | Rápido | Veneno | 50 | proyectil rápido | 120 P |
-| Nitrocarga | Rápido | Fuego | 50 | embestida | 120 P |
-| Infortunio | Fuerte | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Infierno | Fuerte | Fuego | 100 | proyectil lento, est. 35 | inicial (gratis; Mejoras 150 / 350) |
-| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | 380 P |
-| Llamarada | Fuerte | Fuego | 110 | proyectil lento, quema, est. 40 | 560 P |
-| Energibola | Fuerte | Planta | 90 | proyectil rápido, est. 30 | 380 P |
-| Sofoco | Fuerte | Fuego | 130 | proyectil rápido, enfr. 7 s, est. 40 | 560 P |
-| Envite Ígneo | Fuerte | Fuego | 120 | embestida, retroceso 33 %, quema, est. 35 | 560 P |
-| Poltergeist | Fuerte | Fantasma | 110 | arco amplio, est. 35 | 560 P |
-| Psíquico | Fuerte | Psíquico | 90 | proyectil rápido, est. 30 | 380 P |
-| Rayo Solar | Fuerte | Planta | 120 | onda en línea (atraviesa), est. 35 | 560 P |
-| Cólera Ardiente | Fuerte | Fuego | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | 220 P |
-| Fuego Fatuo | Potenciación | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | inicial (gratis; Mejoras 150 / 350) |
-| Paz Mental | Potenciación | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P |
-| Maldición | Potenciación | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 350 P |
-| Armadura Ácida | Potenciación | Veneno | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P |
-| Reducción | Potenciación | Normal | — | sobre ti, velocidad ×1.25, +10 % crítico, 4 s, enfr. 12 s | 350 P |
-| Lanzallamas | Área | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
-| Onda Ígnea | Área | Fuego | 95 | cono amplio, enfr. 9 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
-| Giro Fuego | Área | Fuego | 30 | proyectil lento, zona que repite cada 600 ms, quema, enfr. 10 s, est. 35 | 300 P |
-| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
-| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Ascuas | Rápido | Básico | Fuego | 50 | proyectil rápido | inicial (150 / 350) | 30 % de quemar | deja una zona en el impacto durante 1,8 s que quema |
+| Impresionar | Rápido | Básico | Fantasma | 30 | arco corto, aturde mucho | inicial (150 / 350) | aturde un 40 % más | el objetivo hace −25 % de daño durante 2,5 s |
+| Tinieblas | Rápido | Avanzado | Fantasma | 50 | proyectil rápido | 120 P (250 / 500) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Polución | Rápido | Avanzado | Veneno | 30 | proyectil rápido, envenena | 120 P (250 / 500) | golpe un 30 % más grande | deja una zona en el impacto durante 1,6 s que envenena |
+| Niebla Clara | Rápido | Avanzado | Veneno | 50 | proyectil rápido | 120 P (250 / 500) | golpe un 20 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Nitrocarga | Rápido | Avanzado | Fuego | 50 | embestida | 120 P (250 / 500) | superarmadura: −20 % de daño recibido durante 2 s | invulnerable mientras golpea |
+| Infortunio | Fuerte | Básico | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | inicial (150 / 350) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (40 % del golpe) |
+| Infierno | Fuerte | Básico | Fuego | 100 | proyectil lento, est. 35 | inicial (150 / 350) | siempre quema | deja una zona en el impacto durante 2,4 s que quema |
+| Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | 380 P (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
+| Llamarada | Fuerte | Maestro | Fuego | 110 | proyectil lento, quema, est. 40 | 800 P (400 / 750) | golpe un 20 % más grande | se divide en 4 al impactar (30 % de poder cada uno) |
+| Energibola | Fuerte | Avanzado | Planta | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | se divide en 3 al impactar (30 % de poder cada uno) |
+| Sofoco | Fuerte | Avanzado | Fuego | 130 | proyectil rápido, enfr. 7 s, est. 40 | 560 P (250 / 500) | golpe un 20 % más grande | superarmadura: −30 % de daño recibido durante 2,5 s |
+| Envite Ígneo | Fuerte | Maestro | Fuego | 120 | embestida, retroceso 33 %, quema, est. 35 | 800 P, tras Cripta del Rey de las Espadas (400 / 750) | superarmadura: −25 % de daño recibido durante 2 s | invulnerable mientras golpea |
+| Poltergeist | Fuerte | Avanzado | Fantasma | 110 | arco amplio, est. 35 | 560 P (250 / 500) | aturde un 30 % más | deja una marca que estalla a los 1,2 s (30 % del golpe) |
+| Psíquico | Fuerte | Avanzado | Psíquico | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | persigue al enemigo más cercano | el objetivo hace −20 % de daño durante 3 s |
+| Rayo Solar | Fuerte | Avanzado | Planta | 120 | onda en línea (atraviesa), est. 35 | 560 P (250 / 500) | golpe un 20 % más grande | deja un rastro que daña durante 1,8 s |
+| Cólera Ardiente | Fuerte | Avanzado | Fuego | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | 220 P (250 / 500) | golpe un 15 % más grande | un aura a tu alrededor daña durante 1,8 s que quema |
+| Fuego Fatuo | Potenciación | Básico | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | inicial (150 / 350) | superarmadura: −25 % de daño recibido durante 2,5 s | un aura a tu alrededor daña durante 2,4 s que quema |
+| Paz Mental | Potenciación | Avanzado | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P (250 / 500) | +2 s de duración | −10 % de daño recibido |
+| Maldición | Potenciación | Maestro | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 600 P (400 / 750) | +1 golpe potenciado | superarmadura: −30 % de daño recibido durante 3 s |
+| Armadura Ácida | Potenciación | Avanzado | Veneno | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P (250 / 500) | +1,5 s de duración | cura un 8 % de los PS |
+| Reducción | Potenciación | Avanzado | Normal | — | sobre ti, velocidad ×1.25, +10 % crítico, 4 s, enfr. 12 s | 350 P (250 / 500) | +10 % de velocidad | superarmadura: −30 % de daño recibido durante 2 s |
+| Lanzallamas | Área | Básico | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | inicial (150 / 350) | 30 % de quemar | deja un rastro que daña durante 2 s que quema |
+| Onda Ígnea | Área | Básico | Fuego | 95 | cono amplio, enfr. 9 s, est. 40 | inicial (150 / 350) | golpe un 15 % más grande | 50 % de quemar |
+| Giro Fuego | Área | Maestro | Fuego | 30 | proyectil lento, zona que repite cada 600 ms, quema, enfr. 8.7 s, est. 40 | 950 P, tras Bosque Brumoso (400 / 750) | golpe un 20 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Pulso Umbrío | Área | Básico | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P (150 / 350) | aturde un 50 % más | deja una marca que estalla a los 0,8 s (25 % del golpe) |
+| Envidia Ardiente | Área | Avanzado | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
 
 Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
 
 #### Cubone
 
-| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
-|---|---|---|---|---|---|
-| Hueso Palo | Rápido | Tierra | 65 | arco corto | inicial (gratis; Mejoras 150 / 350) |
-| Ataque Óseo | Rápido | Tierra | 30 | embestida, ×3 | inicial (gratis; Mejoras 150 / 350) |
-| Desarme | Rápido | Siniestro | 65 | arco corto | 200 P |
-| Puño Fuego | Rápido | Fuego | 75 | arco corto, quema | 300 P |
-| Puño Trueno | Rápido | Eléctrico | 75 | arco corto | 300 P |
-| Golpe Cabeza | Rápido | Normal | 70 | embestida, aturde mucho | 200 P |
-| Patada Baja | Rápido | Lucha | 60 | arco corto | 200 P |
-| Doble Patada | Rápido | Lucha | 30 | arco corto, ×2 | 120 P |
-| Bofetón Lodo | Rápido | Tierra | 20 | proyectil rápido, aturde mucho | 120 P |
-| Huesomerang | Fuerte | Tierra | 50 | bumerán (vuelve a ti), est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Pataleta | Fuerte | Tierra | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Doble Filo | Fuerte | Normal | 120 | embestida, retroceso 33 %, est. 35 | 560 P |
-| Cabeza de Hierro | Fuerte | Acero | 80 | embestida, est. 30 | 380 P |
-| Tierra Viva | Fuerte | Tierra | 90 | onda en línea (atraviesa), est. 30 | 380 P |
-| Demolición | Fuerte | Lucha | 75 | arco amplio, est. 30 | 220 P |
-| Arenas Ardientes | Fuerte | Tierra | 70 | proyectil rápido, quema, est. 30 | 220 P |
-| Excavar | Fuerte | Tierra | 80 | embestida, est. 30 | 380 P |
-| Puño Certero | Fuerte | Lucha | 150 | arco amplio, est. 40 | 560 P |
-| Corpulencia | Potenciación | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | inicial (gratis; Mejoras 150 / 350) |
-| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P |
-| Foco Energía | Potenciación | Normal | — | sobre ti, velocidad ×1, +50 % crítico, 6 s, enfr. 15 s | 350 P |
-| Tambor | Potenciación | Normal | — | sobre ti, cuesta 50 % PS, 3 golpes ×2, 10 s, enfr. 22 s | 350 P |
-| Defensa Férrea | Potenciación | Acero | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P |
-| Terremoto | Área | Tierra | 100 | anillo 360°, enfr. 10 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
-| Terratemblor | Área | Tierra | 60 | anillo 360°, enfr. 6 s, est. 30 | inicial (gratis; Mejoras 150 / 350) |
-| Avalancha | Área | Roca | 75 | cono amplio, enfr. 7 s, est. 35 | 300 P |
-| Rayo Hielo | Área | Hielo | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P |
-| Lanzallamas | Área | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P |
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Hueso Palo | Rápido | Básico | Tierra | 65 | arco corto | inicial (150 / 350) | aturde un 30 % más | +25 % de crítico |
+| Ataque Óseo | Rápido | Básico | Tierra | 30 | embestida, ×3 | inicial (150 / 350) | golpe un 20 % más grande | +1 golpe |
+| Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Puño Fuego | Rápido | Avanzado | Fuego | 75 | arco corto, quema | 300 P (250 / 500) | +10 % de crítico | deja una zona en el impacto durante 1,5 s que quema |
+| Puño Trueno | Rápido | Avanzado | Eléctrico | 75 | arco corto | 300 P (250 / 500) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
+| Golpe Cabeza | Rápido | Avanzado | Normal | 70 | embestida, aturde mucho | 200 P (250 / 500) | aturde un 30 % más | superarmadura: −20 % de daño recibido durante 1,5 s |
+| Patada Baja | Rápido | Avanzado | Lucha | 60 | arco corto | 200 P (250 / 500) | aturde un 40 % más | el objetivo hace −20 % de daño durante 2,5 s |
+| Doble Patada | Rápido | Avanzado | Lucha | 30 | arco corto, ×2 | 120 P (250 / 500) | +10 % de crítico | +1 golpe |
+| Bofetón Lodo | Rápido | Avanzado | Tierra | 20 | proyectil rápido, aturde mucho | 120 P (250 / 500) | aturde un 30 % más | el objetivo hace −30 % de daño durante 3 s |
+| Huesomerang | Fuerte | Básico | Tierra | 50 | bumerán (vuelve a ti), est. 30 | inicial (150 / 350) | golpe un 25 % más grande | vuelve a lanzarse 1 vez más (50 % de poder) |
+| Pataleta | Fuerte | Básico | Tierra | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | inicial (150 / 350) | golpe un 15 % más grande | una réplica a tu alrededor a los 0,5 s |
+| Doble Filo | Fuerte | Maestro | Normal | 120 | embestida, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 20 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Cabeza de Hierro | Fuerte | Avanzado | Acero | 80 | embestida, est. 30 | 380 P (250 / 500) | aturde un 30 % más | invulnerable mientras golpea |
+| Tierra Viva | Fuerte | Avanzado | Tierra | 90 | onda en línea (atraviesa), est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | deja un rastro que daña durante 1,5 s |
+| Demolición | Fuerte | Avanzado | Lucha | 75 | arco amplio, est. 30 | 220 P (250 / 500) | +15 % de crítico | el objetivo hace −25 % de daño durante 3 s |
+| Arenas Ardientes | Fuerte | Avanzado | Tierra | 70 | proyectil rápido, quema, est. 35 | 220 P (250 / 500) | golpe un 20 % más grande | deja una zona en el impacto durante 1,8 s que quema |
+| Excavar | Fuerte | Avanzado | Tierra | 80 | embestida, est. 30 | 380 P (250 / 500) | invulnerable mientras golpea | una réplica a tu alrededor a los 0,3 s |
+| Puño Certero | Fuerte | Maestro | Lucha | 150 | arco amplio, est. 40 | 800 P, tras Cripta del Rey de las Espadas (400 / 750) | superarmadura: −30 % de daño recibido durante 1,5 s | aturde un 40 % más |
+| Corpulencia | Potenciación | Básico | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | inicial (150 / 350) | −10 % de daño recibido | cura un 10 % de los PS |
+| Danza Espada | Potenciación | Básico | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P (150 / 350) | +1 golpe potenciado | superarmadura: −40 % de daño recibido durante 3 s |
+| Foco Energía | Potenciación | Avanzado | Normal | — | sobre ti, velocidad ×1, +50 % crítico, 6 s, enfr. 15 s | 350 P (250 / 500) | +1 s de duración | +10 % de crítico |
+| Tambor | Potenciación | Maestro | Normal | — | sobre ti, cuesta 50 % PS, 3 golpes ×2, 10 s, enfr. 22 s | 600 P (400 / 750) | +1 golpe potenciado | cura un 15 % de los PS |
+| Defensa Férrea | Potenciación | Avanzado | Acero | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P (250 / 500) | +1,5 s de duración | cura un 8 % de los PS |
+| Terremoto | Área | Básico | Tierra | 100 | anillo 360°, enfr. 10 s, est. 40 | inicial (150 / 350) | aturde un 25 % más | una réplica a tu alrededor a los 0,6 s |
+| Terratemblor | Área | Básico | Tierra | 60 | anillo 360°, enfr. 6 s, est. 30 | inicial (150 / 350) | golpe un 15 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Avalancha | Área | Avanzado | Roca | 75 | cono amplio, enfr. 7 s, est. 35 | 300 P (250 / 500) | aturde un 30 % más | deja una zona en el impacto durante 0,2 s |
+| Rayo Hielo | Área | Maestro | Hielo | 90 | onda en línea (atraviesa), enfr. 5.6 s, est. 40 | 950 P, tras Bosque Brumoso (400 / 750) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Lanzallamas | Área | Básico | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P (150 / 350) | 30 % de quemar | deja un rastro que daña durante 2 s que quema |
 
 Build recomendado: Desarme · Huesomerang · Danza Espada · Terremoto.
 
-**Pendiente:** en una sala en línea, la quemadura o el veneno que aplica un invitado no viaja en su reclamación de golpe, así que el anfitrión no la aplica; Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma no te hace invulnerable mientras desapareces.
+**Pendiente:** en una sala en línea, la quemadura o el veneno que aplica un invitado no viaja en su reclamación de golpe, así que el anfitrión no la aplica; Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma solo te hace invulnerable con su rango +2 (y solo en el golpe, no mientras desapareces). Los efectos de rango que crean algo (zonas, divisiones, cadenas, marcas, debilitar) solo los resuelve el anfitrión o la partida en solitario: un invitado ve su golpe, pero no esos efectos.
 
 ### Contenido del primer prototipo (M0)
 
