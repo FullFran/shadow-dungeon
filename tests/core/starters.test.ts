@@ -10,7 +10,7 @@ import { createWorld, enterRoom, spawnEnemy } from '../../src/core/world';
 import { ITEM_EFFECTS } from '../../src/data/items';
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
+import { PLAYABLE_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { ticksFor } from './helpers';
 
@@ -65,7 +65,7 @@ describe('starter species data', () => {
 
   it.each(PLAYABLE_SPECIES)('%s has two fast and two heavy moves, a valid default loadout and a passive', (id) => {
     const species = SPECIES[id];
-    const kinds = species.movepool.map((m) => MOVES[m].slot);
+    const kinds = originalKit(species.id).map((m) => MOVES[m].slot);
     expect(kinds.filter((k) => k === 'fast')).toHaveLength(2);
     expect(kinds.filter((k) => k === 'heavy')).toHaveLength(2);
     expect(validateLoadout(species, PLAYER_SLOT_LAYOUT, species.defaultLoadout)).toEqual([]);
@@ -78,7 +78,7 @@ describe('starter species data', () => {
   });
 
   it('gives Litwick a ranged option in both slots', () => {
-    const ranged = SPECIES.litwick.movepool.filter((m) => MOVES[m].hitbox.kind === 'projectile').map((m) => MOVES[m].slot);
+    const ranged = originalKit('litwick').filter((m) => MOVES[m].hitbox.kind === 'projectile').map((m) => MOVES[m].slot);
     expect(ranged).toContain('fast');
     expect(ranged).toContain('heavy');
   });

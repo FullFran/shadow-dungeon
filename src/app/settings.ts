@@ -50,9 +50,9 @@ function volume(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
 }
 
-/** Moves of a species' movepool that fit a slot kind. */
-export function slotOptions(kind: SlotKind, species: SpeciesId = 'mimikyu'): MoveId[] {
-  return SPECIES[species].movepool.filter((id) => MOVES[id].slot === kind);
+/** Moves of a species' movepool that fit a slot kind; with `known`, only those (the learned ones, app/tutor.ts). */
+export function slotOptions(kind: SlotKind, species: SpeciesId = 'mimikyu', known?: readonly MoveId[]): MoveId[] {
+  return SPECIES[species].movepool.filter((id) => MOVES[id].slot === kind && (!known || known.includes(id)));
 }
 
 /** The settings with `species` picked: another species comes with its default loadout, the same one keeps the current moves. */

@@ -1,6 +1,7 @@
 import type { MoveId } from './moves';
 import type { SPRITE_KEYS } from './sprites';
 import type { PokemonType } from './types';
+import { TUTOR_OFFER } from './tutor';
 
 export type SpeciesId =
   | 'mimikyu'
@@ -90,7 +91,11 @@ export interface SpeciesDef {
   spentSprite?: keyof typeof SPRITE_KEYS;
   /** Playable species: walking speed relative to `TUNING.player.moveSpeed` (default 1). */
   speedScale?: number;
-  /** Moves the species can equip; empty for enemy-only species in M0. */
+  /**
+   * Moves the species can equip; empty for enemy-only species in M0. A
+   * starter's are its original kit (the first seven, known from the start)
+   * and then the move tutor's (data/tutor.ts), learned by buying them.
+   */
   movepool: readonly MoveId[];
   /** Default loadout, aligned with the slot layout (fast, heavy, boost, area; null = empty slot). */
   defaultLoadout: readonly (MoveId | null)[];
@@ -111,7 +116,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'mimikyu',
     spentSprite: 'mimikyuBusted',
-    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball', 'swords-dance', 'dazzling-gleam', 'shadow-force'],
+    movepool: ['shadow-claw', 'shadow-sneak', 'play-rough', 'shadow-ball', 'swords-dance', 'dazzling-gleam', 'shadow-force', ...TUTOR_OFFER.mimikyu],
     defaultLoadout: ['shadow-claw', 'play-rough', 'swords-dance', 'dazzling-gleam'],
     passive: 'disguise',
   },
@@ -122,7 +127,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'zorua',
     speedScale: 1.12,
-    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play', 'nasty-plot', 'dark-pulse', 'snarl'],
+    movepool: ['fury-swipes', 'feint-attack', 'night-daze', 'foul-play', 'nasty-plot', 'dark-pulse', 'snarl', ...TUTOR_OFFER.zorua],
     defaultLoadout: ['feint-attack', 'night-daze', 'nasty-plot', 'dark-pulse'],
     passive: 'illusion',
   },
@@ -133,7 +138,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'litwick',
     speedScale: 0.95,
-    movepool: ['ember', 'astonish', 'hex', 'inferno', 'will-o-wisp', 'flamethrower', 'heat-wave'],
+    movepool: ['ember', 'astonish', 'hex', 'inferno', 'will-o-wisp', 'flamethrower', 'heat-wave', ...TUTOR_OFFER.litwick],
     defaultLoadout: ['ember', 'hex', 'will-o-wisp', 'flamethrower'],
     passive: 'flash-fire',
   },
@@ -144,7 +149,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     radius: 10,
     sprite: 'cubone',
     speedScale: 0.92,
-    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum', 'bulk-up', 'earthquake', 'bulldoze'],
+    movepool: ['bone-club', 'bone-rush', 'bonemerang', 'stomping-tantrum', 'bulk-up', 'earthquake', 'bulldoze', ...TUTOR_OFFER.cubone],
     defaultLoadout: ['bone-club', 'bonemerang', 'bulk-up', 'earthquake'],
     passive: 'battle-armor',
   },
@@ -253,3 +258,9 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
 export const PLAYABLE_SPECIES: readonly SpeciesId[] = ['mimikyu', 'zorua', 'litwick', 'cubone'];
 
 export const isPlayable = (id: unknown): id is SpeciesId => PLAYABLE_SPECIES.some((s) => s === id);
+
+/** A species' original kit: its movepool without the move tutor's moves (known from the start). */
+export function originalKit(id: SpeciesId): MoveId[] {
+  const taught: readonly MoveId[] = (TUTOR_OFFER as Partial<Record<SpeciesId, readonly MoveId[]>>)[id] ?? [];
+  return SPECIES[id].movepool.filter((m) => !taught.includes(m));
+}

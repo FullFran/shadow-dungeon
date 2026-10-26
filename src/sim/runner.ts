@@ -2,6 +2,7 @@ import type { FloorKind } from '../data/dungeon';
 import type { Difficulty } from '../data/difficulty';
 import { dungeonById, floorsOf, planAt, type DungeonId } from '../data/dungeons';
 import { ROOMS } from '../data/rooms';
+import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import { chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock, type RunState } from '../core/run';
 import type { Rect, WorldState } from '../core/state';
@@ -51,6 +52,9 @@ export interface RunOptions {
   inject?: (world: WorldState) => WorldState;
   /** The perfect and average bots also use the boost and area slots (four-slots; `BotOptions.slots`). Default off. */
   slots?: boolean;
+  /** The species the bots play (Mimikyu by default) and its loadout (its default when absent): `npm run balance -- --build=<species>`. */
+  species?: SpeciesId;
+  loadout?: readonly (MoveId | null)[];
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -104,7 +108,8 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const timeout = options.floorTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const bot = createBot(s.bot, botSeed(s), BOT_PROFILES[s.bot], { slots: options.slots === true });
   // Floor 1 starts at the party size like a co-op room (`WorldOptions.party`); later floors go through `applyParty`.
-  const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}) }, startFloor, s.dungeon);
+  const build = { ...(options.species ? { species: options.species } : {}), ...(options.loadout ? { loadout: options.loadout } : {}) };
+  const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}), ...build }, startFloor, s.dungeon);
   let run = started.run;
   let world = applyParty(started.world, s.party);
   const floors: FloorResult[] = [];

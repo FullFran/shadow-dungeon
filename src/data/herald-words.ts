@@ -101,6 +101,8 @@ export const SIGN_THEMES: Readonly<Record<PokemonType, { es: string; en: string 
   electric: { es: 'Signo Voltaico', en: 'Storm Sign' },
   fighting: { es: 'Signo del Puño', en: 'Fist Sign' },
   rock: { es: 'Signo Pétreo', en: 'Stone Sign' },
+  psychic: { es: 'Signo Onírico', en: 'Dream Sign' },
+  ice: { es: 'Signo Gélido', en: 'Frost Sign' },
 };
 
 /** The card's own noun, from its main primitive (singular). */
@@ -192,4 +194,6 @@ export const TYPE_COLOURS: Readonly<Record<PokemonType, { colour: string; glow: 
   electric: { colour: '#ffe866', glow: '#b09a1a' },
   fighting: { colour: '#ff9a70', glow: '#a03a1a' },
   rock: { colour: '#d8c8a0', glow: '#6a5a3a' },
+  psychic: { colour: '#ffa8cc', glow: '#a83a6a' },
+  ice: { colour: '#c8f4ff', glow: '#3d8a99' },
 };

@@ -5,7 +5,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { SPECIES } from '../../src/data/species';
+import { SPECIES, originalKit } from '../../src/data/species';
 import { POKEMON_TYPES } from '../../src/data/types';
 import { SOUND_IDS, soundFor } from '../../src/adapters/audio';
 import { applyEvents, initialJuice, isHeavyHit, JUICE } from '../../src/adapters/juice';
@@ -50,7 +50,7 @@ describe('juice tier', () => {
   });
 
   it("leaves Mimikyu's fast and heavy moves on the plain damage rule (area moves always feel heavy)", () => {
-    for (const id of SPECIES.mimikyu.movepool.filter((m) => MOVES[m].slot === 'fast' || MOVES[m].slot === 'heavy')) {
+    for (const id of originalKit('mimikyu').filter((m) => MOVES[m].slot === 'fast' || MOVES[m].slot === 'heavy')) {
       expect(MOVES[id].juice).toBeUndefined();
       expect(isHeavyHit(hit({ moveId: id }))).toBe(false);
     }

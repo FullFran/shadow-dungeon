@@ -1,5 +1,6 @@
 import { heraldWear } from '../core/herald/generate';
-import { MOVES, type MoveId } from '../data/moves';
+import { MOVES, type MoveDef, type MoveId } from '../data/moves';
+import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
 import { SPECIES } from '../data/species';
 import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
 import { TUNING } from '../data/tuning';
@@ -116,7 +117,7 @@ export interface MoveAnim {
   turnAround?: boolean;
 }
 
-export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
+const BASE_ANIMS: Record<Exclude<MoveId, TutorMoveId>, MoveAnim> = {
   'shadow-claw': { attack: 'Attack' },
   'shadow-sneak': { attack: 'Strike' },
   'play-rough': { charge: 'Charge', attack: 'Double' },
@@ -147,6 +148,27 @@ export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
   'heat-wave': { attack: 'SpAttack' },
   earthquake: { attack: 'SpAttack' },
   bulldoze: { attack: 'Double' },
+};
+
+/**
+ * The move tutor's moves (data/tutor-moves.ts) pick their sheet from their
+ * shape: a self buff the special pose, a shot Shoot, a dash Strike (it turns
+ * around after carrying the player through), a ring SpAttack, a swing Attack
+ * (Double for a heavy one); heavy moves charge with Charge.
+ */
+export function tutorAnim(move: MoveDef): MoveAnim {
+  const charge = move.charge ? { charge: 'Charge' } : {};
+  const box = move.hitbox;
+  if (box.kind === 'self') return { attack: 'SpAttack' };
+  if (box.kind === 'projectile') return { ...charge, attack: 'Shoot' };
+  if (box.kind === 'dash') return { ...charge, attack: 'Strike', turnAround: true };
+  if (box.arcDegrees >= 360) return { ...charge, attack: 'SpAttack' };
+  return { ...charge, attack: move.slot === 'heavy' ? 'Double' : 'Attack' };
+}
+
+export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
+  ...BASE_ANIMS,
+  ...(Object.fromEntries(TUTOR_MOVE_IDS.map((id) => [id, tutorAnim(MOVES[id])])) as Record<TutorMoveId, MoveAnim>),
 };
 
 /** Release sheets tried, in order, when a move's own sheet is missing or only a copy of Charge. */

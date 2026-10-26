@@ -78,6 +78,11 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
   for (const event of events) {
     switch (event.type) {
       case 'enemyHit': {
+        // A burn or poison tick: a small number, no hitstop.
+        if (event.dot) {
+          next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: 'normal', big: false, ageMs: 0 }] };
+          break;
+        }
         const heavy = isHeavyHit(event);
         next = {
           ...next,

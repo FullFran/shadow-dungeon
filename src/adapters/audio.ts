@@ -86,6 +86,8 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'moveReleased':
       return 'release';
     case 'enemyHit':
+      // Burn and poison ticks are silent (the number is enough).
+      if (event.dot) return null;
       return isHeavyHit(event) ? 'hitHeavy' : 'hit';
     case 'enemyDefeated':
       return 'defeated';

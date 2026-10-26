@@ -49,10 +49,10 @@ export function tickBoosts(player: PlayerState, dtMs: number): PlayerState {
   return next;
 }
 
-/** Damage multiplier of the player's next hit from a `power` buff (1 without). */
+/** Damage multiplier of the player's next hit from a `power` buff, or of every hit under `focus` (1 without). */
 export function buffDamage(player: Pick<PlayerState, 'buff'>): number {
   const def = activeBuff(player);
-  return def?.kind === 'power' ? def.multiplier : 1;
+  return def?.kind === 'power' || def?.kind === 'focus' ? def.multiplier : 1;
 }
 
 /** A damaging hit landed: a `power` buff spends one of its hits (and ends on the last). */
@@ -77,8 +77,8 @@ export function buffSpeed(player: Pick<PlayerState, 'buff'>): number {
   return def?.kind === 'haste' ? def.speed : 1;
 }
 
-/** Damage-taken factor from a `guard` buff (1 without). */
+/** Damage-taken factor from a `guard` or `focus` buff (1 without). */
 export function buffDamageTaken(player: Pick<PlayerState, 'buff'>): number {
   const def = activeBuff(player);
-  return def?.kind === 'guard' ? def.damageTaken : 1;
+  return def?.kind === 'guard' || def?.kind === 'focus' ? def.damageTaken : 1;
 }

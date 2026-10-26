@@ -8,7 +8,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
+import { PLAYABLE_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { catalog } from '../../src/i18n';
 import { IDLE } from './helpers';
@@ -55,7 +55,7 @@ function useArea(state: WorldState, extraMs = 0): { state: WorldState; events: G
   return { state: after.state, events, hit: new Set(events.flatMap((e) => (e.type === 'enemyHit' ? [e.enemyId] : []))) };
 }
 
-const areaMoves = (id: SpeciesId) => SPECIES[id].movepool.filter((m) => MOVES[m].slot === 'area');
+const areaMoves = (id: SpeciesId) => originalKit(id).filter((m) => MOVES[m].slot === 'area');
 
 describe('area moves: data', () => {
   it.each(PLAYABLE_SPECIES)('%s has two area moves, slow and costly, with heavy juice and one equipped by default', (id) => {

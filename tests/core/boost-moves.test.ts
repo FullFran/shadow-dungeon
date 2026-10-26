@@ -6,7 +6,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
+import { PLAYABLE_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { catalog } from '../../src/i18n';
 import { IDLE } from './helpers';
@@ -51,7 +51,7 @@ function swingDamage(state: WorldState): { state: WorldState; damage: number } {
 
 describe('boost moves: data', () => {
   it.each(PLAYABLE_SPECIES)('%s has one boost move on a cooldown, without stamina, equipped by default', (id) => {
-    const boosts = SPECIES[id].movepool.filter((m) => MOVES[m].slot === 'boost');
+    const boosts = originalKit(id).filter((m) => MOVES[m].slot === 'boost');
     expect(boosts).toHaveLength(1);
     const move = MOVES[boosts[0]!];
     expect(move.hitbox.kind).toBe('self');

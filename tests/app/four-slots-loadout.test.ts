@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
 import { moveInfoLines } from '../../src/app/move-info';
+import { originalKit } from '../../src/data/species';
 import { defaultSettings, loadSettings, saveSettings, slotOptions } from '../../src/app/settings';
 import { setLanguage } from '../../src/i18n';
 
 describe('four-slot loadout', () => {
   it('offers each starter its boost and its two area moves', () => {
-    expect(slotOptions('boost', 'zorua')).toEqual(['nasty-plot']);
-    expect(slotOptions('area', 'zorua')).toEqual(['dark-pulse', 'snarl']);
-    expect(slotOptions('area', 'litwick')).toEqual(['flamethrower', 'heat-wave']);
+    expect(slotOptions('boost', 'zorua', originalKit('zorua'))).toEqual(['nasty-plot']);
+    expect(slotOptions('area', 'zorua', originalKit('zorua'))).toEqual(['dark-pulse', 'snarl']);
+    expect(slotOptions('area', 'litwick', originalKit('litwick'))).toEqual(['flamethrower', 'heat-wave']);
   });
 
   it('persists a four-move pick and rejects a move in the wrong new slot', () => {

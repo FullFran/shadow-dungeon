@@ -8,12 +8,17 @@
  *   npm run balance -- --seeds=1,2  other seeds
  *   npm run balance -- --dungeon=crypt-of-the-sword-king --tier=nightmare
  *   npm run balance -- --quick --slots  the perfect/average bots also use boost and area (four-slots)
+ *   npm run balance -- --quick --slots --species=zorua  another starter with its default loadout
+ *   npm run balance -- --quick --slots --build=zorua    a starter with its recommended tutor build (data/tutor.ts)
  *
  * Exits 1 when a fairness invariant fails beyond the known violations.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDifficulty } from '../src/data/difficulty';
+import { isPlayable } from '../src/data/species';
+import { RECOMMENDED_BUILD } from '../src/data/tutor';
+import type { StarterId } from '../src/data/learnsets';
 import { DUNGEONS, type DungeonId } from '../src/data/dungeons';
 import { evaluate, failures } from '../src/sim/bands';
 import { renderJson, renderMarkdown } from '../src/sim/report';
@@ -36,6 +41,12 @@ if (tier) {
   config = { ...config, tiers: [tier] };
 }
 if (args.includes('--slots')) config = { ...config, options: { ...config.options, slots: true } };
+const species = flag('species') ?? flag('build');
+if (species) {
+  if (!isPlayable(species)) throw new Error(`unknown starter ${species}`);
+  const loadout = flag('build') ? { loadout: RECOMMENDED_BUILD[species as StarterId] } : {};
+  config = { ...config, options: { ...config.options, species, ...loadout } };
+}
 const outDir = flag('out') ?? join('reports', 'balance');
 
 const started = performance.now();

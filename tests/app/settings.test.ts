@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browserStore, memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import { defaultSettings, loadSettings, saveSettings, slotOptions, withSpecies, withStarter } from '../../src/app/settings';
-import { SPECIES, type SpeciesId } from '../../src/data/species';
+import { SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import type { MoveId } from '../../src/data/moves';
 
 describe('storage port', () => {
@@ -43,10 +43,10 @@ describe('storage port', () => {
 
 describe('settings', () => {
   it('offers only moves of the right slot kind', () => {
-    expect(slotOptions('fast')).toEqual(['shadow-claw', 'shadow-sneak']);
-    expect(slotOptions('heavy')).toEqual(['play-rough', 'shadow-ball']);
-    expect(slotOptions('fast', 'cubone')).toEqual(['bone-club', 'bone-rush']);
-    expect(slotOptions('heavy', 'litwick')).toEqual(['hex', 'inferno']);
+    expect(slotOptions('fast', 'mimikyu', originalKit('mimikyu'))).toEqual(['shadow-claw', 'shadow-sneak']);
+    expect(slotOptions('heavy', 'mimikyu', originalKit('mimikyu'))).toEqual(['play-rough', 'shadow-ball']);
+    expect(slotOptions('fast', 'cubone', originalKit('cubone'))).toEqual(['bone-club', 'bone-rush']);
+    expect(slotOptions('heavy', 'litwick', originalKit('litwick'))).toEqual(['hex', 'inferno']);
   });
 
   /** A two-move save as it loads since four-slots: boost and area take the species defaults. */

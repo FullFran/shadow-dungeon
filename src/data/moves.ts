@@ -1,7 +1,12 @@
 import type { SlotKind } from './slots';
 import type { PokemonType } from './types';
+import { HEAVY_CHARGE } from './charge';
+import { TUTOR_MOVES, type TutorMoveId } from './tutor-moves';
 
-export type MoveId =
+/** Every move: the starters' original kits and the move tutor's (data/tutor-moves.ts). */
+export type MoveId = BaseMoveId | TutorMoveId;
+
+export type BaseMoveId =
   | 'shadow-claw'
   | 'shadow-sneak'
   | 'play-rough'
@@ -42,7 +47,21 @@ export type HitboxDef =
   /** No hitbox: a boost move acts on the user at the start of its active phase (`MoveDef.buff`). */
   | { kind: 'self' }
   /** Spawns a projectile at the start of the active phase. */
-  | { kind: 'projectile'; speed: number; radius: number; lifetimeMs: number; boomerang?: boolean; wave?: boolean };
+  | {
+      kind: 'projectile';
+      speed: number;
+      radius: number;
+      lifetimeMs: number;
+      boomerang?: boolean;
+      wave?: boolean;
+      /** Bends towards the nearest enemy at up to this many degrees per second (Swift). */
+      homing?: number;
+      /**
+       * A lingering zone (Fire Spin): it goes through what it hits and may
+       * hit everything in it again every `linger` ms until it fades.
+       */
+      linger?: number;
+    };
 
 /**
  * Extra damage when a condition holds at the moment of the hit: the enemy is
@@ -65,7 +84,22 @@ export type BuffDef =
   | { kind: 'power'; multiplier: number; hits: number; durationMs: number }
   | { kind: 'haste'; speed: number; critChance: number; durationMs: number }
   | { kind: 'guard'; damageTaken: number; durationMs: number }
+  /** Calm Mind: every hit stronger and the damage taken scaled, for a while. */
+  | { kind: 'focus'; multiplier: number; damageTaken: number; durationMs: number }
   | { kind: 'kindle' };
+
+/** A damage over time a hit leaves on an enemy (burn, poison): see `DOTS`. */
+export type DotKind = 'burn' | 'poison';
+
+/**
+ * Damage over time, simplified from the games' status: a hit with `dot`
+ * leaves `share` of its damage on the enemy, dealt in `ticks` equal parts
+ * every `everyMs` (core/afflictions.ts). A new one replaces the running one.
+ */
+export const DOTS: Record<DotKind, { share: number; ticks: number; everyMs: number }> = {
+  burn: { share: 0.4, ticks: 4, everyMs: 750 },
+  poison: { share: 0.5, ticks: 5, everyMs: 800 },
+};
 
 /** One charge level, reached after holding the button for `holdMs`. Level 0 is a tap. */
 export interface ChargeLevel {
@@ -106,13 +140,17 @@ export interface MoveDef {
   cooldownMs?: number;
   /** Boost moves: the effect on the user (with a `self` hitbox). */
   buff?: BuffDef;
+  /** Heals the user by this share of the damage dealt (Drain Punch). */
+  drain?: number;
+  /** Hurts the user by this share of the damage dealt, never below 1 HP (Wood Hammer). */
+  recoil?: number;
+  /** Leaves a damage over time on the enemy hit (Fire Punch burns, Sludge Bomb poisons). */
+  dot?: DotKind;
+  /** Extra crit chance of this move's hits (Slash, Night Slash). */
+  critBonus?: number;
+  /** Boost moves: share of max HP paid on the cast, never below 1 HP (Curse, Belly Drum). */
+  hpCost?: number;
 }
-
-const HEAVY_CHARGE: readonly ChargeLevel[] = [
-  { holdMs: 0, damageMultiplier: 1, sizeMultiplier: 1, speedMultiplier: 1 },
-  { holdMs: 450, damageMultiplier: 1.4, sizeMultiplier: 1.25, speedMultiplier: 1.3 },
-  { holdMs: 900, damageMultiplier: 1.9, sizeMultiplier: 1.5, speedMultiplier: 1.6 },
-];
 
 /**
  * Powers are the official ones; timings are provisional feel values. A
@@ -121,7 +159,7 @@ const HEAVY_CHARGE: readonly ChargeLevel[] = [
  * in its line once and never comes back (Flamethrower). Area moves are
  * tap-only (no charge), slow to wind up, and gated by a cooldown and stamina.
  */
-export const MOVES: Record<MoveId, MoveDef> = {
+const BASE_MOVES: Record<BaseMoveId, MoveDef> = {
   'shadow-claw': {
     id: 'shadow-claw',
     slot: 'fast',
@@ -535,3 +573,8 @@ export const MOVES: Record<MoveId, MoveDef> = {
     cooldownMs: 6000,
   },
 };
+
+export const MOVES: Record<MoveId, MoveDef> = { ...BASE_MOVES, ...TUTOR_MOVES };
+
+/** The original kits' moves (free and known from the start; the tutor's Mejoras rank them up). */
+export const BASE_MOVE_IDS = Object.keys(BASE_MOVES) as BaseMoveId[];

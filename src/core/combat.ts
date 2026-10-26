@@ -15,7 +15,8 @@ import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
 import { buffCrit, buffDamage, castBuff, cooldownLeft, spendBuffHit, startCooldown, tickBoosts } from './boosts';
-import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, PlayerInput, ProjectileState, WorldState } from './state';
+import { afterHit, applyDot, hitEffects, payHpCost, tickDots } from './afflictions';
+import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, HitEffects, PlayerInput, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
 import { add, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -115,6 +116,8 @@ type StrikeHit = {
   /** The move that landed it, and whether this is the last part of a multi-hit move (game feel only). */
   moveId?: MoveDef['id'];
   finisher?: boolean;
+  /** Drain, recoil, damage over time and crit bonus of the move (core/afflictions.ts). */
+  effects?: HitEffects;
 };
 
 /**
@@ -174,7 +177,8 @@ function strikeEnemy(
   if (guard !== null) return blockedStrike(state, enemy, hit, events, guard);
   const stats = playerStats(state.player);
   // A haste buff (Nasty Plot) sharpens crits for a while.
-  const rolled = rollCrit(state, stats.critChance + buffCrit(state.player));
+  // ...and so does a high-crit move (Slash).
+  const rolled = rollCrit(state, stats.critChance + buffCrit(state.player) + (hit.effects?.critBonus ?? 0));
   state = rolled.state;
   const superEffective = typeEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
   const fromIllusion = illusionActive(state.player);
@@ -196,7 +200,7 @@ function strikeEnemy(
   const base = poiseOf(enemy.species);
   const poise = party === 1 ? base : { hitstunScale: base.hitstunScale * party, knockbackScale: base.knockbackScale * party };
   const pushDir = normalize(sub(enemy.pos, hit.from));
-  const struck: EnemyState = {
+  const reacted: EnemyState = {
     // A party boss notes who hurt it (core/aggro.ts; no aggro solo).
     ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, damage) : enemy, state.localId, damage),
     hp,
@@ -213,11 +217,13 @@ function strikeEnemy(
     ...(hit.moveId ? { moveId: hit.moveId } : {}),
     ...(hit.finisher ? { finisher: true } : {}),
   });
+  // A burning or poisoning move leaves its damage over time on a survivor.
+  const struck = hit.effects?.dot && reacted.alive ? applyDot(reacted, hit.effects.dot, damage) : reacted;
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
   return {
     ...state,
-    player: { ...spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), nextHitBuff: null },
+    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), hit.effects, damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
 }
@@ -258,6 +264,7 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
         ...(move.bonus ? { bonus: move.bonus } : {}),
         moveId: move.id,
         ...(move.multiHit && move.multiHit > 1 && (action.hitWindow ?? 0) === move.multiHit - 1 ? { finisher: true } : {}),
+        ...withEffects(move),
       },
       events,
     );
@@ -287,6 +294,10 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     ...(move.bonus ? { bonus: move.bonus } : {}),
     ...(move.hitbox.boomerang ? { returnAtMs: move.hitbox.lifetimeMs / 2, pierce: true } : {}),
     ...(move.hitbox.wave ? { pierce: true, wave: true } : {}),
+    // A zone never moves on nor turns back: it pierces like a wave and re-arms on its period.
+    ...(move.hitbox.linger ? { pierce: true, wave: true, linger: move.hitbox.linger, lingerMs: move.hitbox.linger } : {}),
+    ...(move.hitbox.homing ? { homing: move.hitbox.homing } : {}),
+    ...withEffects(move),
     moveId: move.id,
   };
   return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
@@ -361,7 +372,7 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
       action = { ...action, phase: next, phaseMs: 0 };
       if (next === 'active') current = spawnPlayerProjectile(current, move, action);
       // A boost move takes hold as its active phase starts.
-      if (next === 'active' && move.buff) current = { ...current, player: castBuff(current.player, move, events) };
+      if (next === 'active' && move.buff) current = { ...current, player: castBuff(payHpCost(current.player, move), move, events) };
     }
   }
   return withAction(current, action);
@@ -400,13 +411,35 @@ function steerShot(state: WorldState, p: ProjectileState, ms: number): Projectil
   return left > 0 ? { ...p, vel, steer: { ...p.steer, ms: left } } : { ...straight, vel };
 }
 
+/** The move's hit effects as an optional field (moves without any add nothing). */
+function withEffects(move: MoveDef): { effects?: HitEffects } {
+  const effects = hitEffects(move);
+  return effects ? { effects } : {};
+}
+
+/** A homing player shot (Swift) turns towards the nearest living enemy, at most `homing` degrees per second. */
+function homeShot(state: WorldState, p: ProjectileState, ms: number): ProjectileState {
+  if (!p.homing || p.owner !== 'player') return p;
+  const target = state.enemies.filter((e) => e.alive && !p.hitIds.includes(e.id)).reduce<Vec2 | null>((best, e) => (best === null || distance(e.pos, p.pos) < distance(best, p.pos) ? e.pos : best), null);
+  if (!target) return p;
+  const dir = rotateToward(normalize(p.vel), sub(target, p.pos), (p.homing * Math.PI * ms) / 180000);
+  return { ...p, vel: scale(dir, length(p.vel)) };
+}
+
+/** A lingering zone (Fire Spin) forgets what it hit every `linger` ms, so it can hit it again. */
+function rearmZone(p: ProjectileState, ms: number): ProjectileState {
+  if (!p.linger || p.lingerMs === undefined) return p;
+  const lingerMs = p.lingerMs - ms;
+  return lingerMs > 0 ? { ...p, lingerMs } : { ...p, lingerMs: lingerMs + p.linger, hitIds: [] };
+}
+
 /** Moves projectiles (enemy ones at the slow-mo time scale), resolves hits and expiry. */
 function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   let current = state;
   const survivors: ProjectileState[] = [];
   for (const projectile of state.projectiles) {
     const ms = dtMs * (projectile.owner === 'enemy' ? enemyTimeScale(state) : 1);
-    const steered = steerShot(current, projectile, ms);
+    const steered = rearmZone(homeShot(current, steerShot(current, projectile, ms), ms), ms);
     let moved: ProjectileState | null = {
       ...steered,
       pos: add(projectile.pos, scale(steered.vel, ms / 1000)),
@@ -445,6 +478,7 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             source: returning ? `${moved.id}r` : moved.id,
             ...(moved.bonus ? { bonus: moved.bonus } : {}),
             ...(moved.moveId ? { moveId: moved.moveId } : {}),
+            ...(moved.effects ? { effects: moved.effects } : {}),
           },
           events,
         );
@@ -498,5 +532,6 @@ function updateEnemyReactions(state: WorldState, dtMs: number): WorldState {
 export function updateCombat(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   let current = updatePlayerAction(state, input, dtMs, events);
   current = updateProjectiles(current, dtMs, events);
-  return current.role === 'guest' ? current : updateEnemyReactions(current, dtMs);
+  // Burns and poisons tick on the host, like the rest of the enemies' reactions.
+  return current.role === 'guest' ? current : tickDots(updateEnemyReactions(current, dtMs), dtMs, events);
 }
