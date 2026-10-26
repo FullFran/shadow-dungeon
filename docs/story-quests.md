@@ -167,7 +167,7 @@ El texto completo está en `src/i18n/es.json` (`story.abra.*`, `story.piplup.*`,
 ## Pendiente
 
 - Patrones nuevos de inspiración Touhou que el motor aún no tiene (cuchillos que se quedan quietos y luego caen, balas que se ven tarde, alas de fénix que renacen): las cartas actuales se hacen con los patrones demostrados; añadirlos pide su prueba de justicia en `src/sim/prove.ts`.
-- Las sombras nuevas no están aún en el Santuario de los Juramentos ni en la Sima.
+- Las sombras nuevas no están aún en el Santuario de los Juramentos.
 - Fondos propios por Senda (el piloto usa los genéricos).
 - Cinemáticas en cooperativo (ahora: solo voz, fragmentos y jefes).
 - Más de un ataque para los enemigos (otra tarea, futura).
