@@ -55,6 +55,8 @@ export interface RunOptions {
   /** The species the bots play (Mimikyu by default) and its loadout (its default when absent): `npm run balance -- --build=<species>`. */
   species?: SpeciesId;
   loadout?: readonly (MoveId | null)[];
+  /** The tutor's Mejoras of the bots' moves (`npm run balance -- --ranks=2`); absent = none. */
+  moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -108,7 +110,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const timeout = options.floorTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   const bot = createBot(s.bot, botSeed(s), BOT_PROFILES[s.bot], { slots: options.slots === true });
   // Floor 1 starts at the party size like a co-op room (`WorldOptions.party`); later floors go through `applyParty`.
-  const build = { ...(options.species ? { species: options.species } : {}), ...(options.loadout ? { loadout: options.loadout } : {}) };
+  const build = { ...(options.species ? { species: options.species } : {}), ...(options.loadout ? { loadout: options.loadout } : {}), ...(options.moveRanks ? { moveRanks: options.moveRanks } : {}) };
   const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}), ...build }, startFloor, s.dungeon);
   let run = started.run;
   let world = applyParty(started.world, s.party);

@@ -6,7 +6,7 @@ import { LEARNSETS, type StarterId } from '../../src/data/learnsets';
 import { BASE_MOVE_IDS, MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
 import { originalKit, PLAYABLE_SPECIES, SPECIES } from '../../src/data/species';
-import { GRANDFATHERED, MASTER_MOVES, movePrice, moveTier, RECOMMENDED_BUILD, TIER_BUDGET, TUTOR_OFFER, type MoveTier } from '../../src/data/tutor';
+import { GRANDFATHERED, FULL_BUILD, MASTER_MOVES, movePrice, moveTier, RECOMMENDED_BUILD, TIER_BUDGET, TUTOR_OFFER, type MoveTier } from '../../src/data/tutor';
 import { TUTOR_MOVE_IDS } from '../../src/data/tutor-moves';
 
 const starters = PLAYABLE_SPECIES as readonly StarterId[];
@@ -47,6 +47,10 @@ describe('tutor moves: canon learnsets', () => {
 
   it.each(starters)("%s's recommended build is a valid loadout of its learnable moves", (id) => {
     expect(validateLoadout(SPECIES[id], PLAYER_SLOT_LAYOUT, RECOMMENDED_BUILD[id])).toEqual([]);
+  });
+
+  it.each(starters)("%s's full-investment build is a valid loadout", (id) => {
+    expect(validateLoadout(SPECIES[id], PLAYER_SLOT_LAYOUT, FULL_BUILD[id])).toEqual([]);
   });
 });
 

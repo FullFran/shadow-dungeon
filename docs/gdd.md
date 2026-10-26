@@ -664,8 +664,8 @@ Los Maestro: Mazazo, Golpe Fantasma (tras la Cripta), Trueno (tras el Bosque Bru
 |---|---|---|
 | Crítico | +probabilidad de crítico | Garra Umbría +1, Golpe Bajo +2 |
 | Tamaño | golpe o proyectil más grande | Bola Sombra +1, Brillo Mágico +1 |
-| Quemar / envenenar | probabilidad de estado (o siempre) | Ascuas +1 (30 %), Infierno +1 (siempre) |
-| Marca | el golpe deja una marca que estalla después (no se acumula) | Garra Umbría +2, Infortunio +2 |
+| Quemar / envenenar | probabilidad de estado (o siempre) | Ascuas +1 (40 %), Infierno +1 (siempre) |
+| Marca | el golpe deja una marca que estalla después (no se acumula) | Garra Umbría +2, Finta +2, Infortunio +2 |
 | División | el proyectil se divide al impactar (los trozos no repiten en el mismo enemigo) | Bola Sombra +2 (3), Llamarada +2 (4) |
 | Debilitar | el objetivo hace menos daño (cuerpo a cuerpo y disparos) unos segundos | Carantoña +2, Alarido +2 |
 | Zona | en el impacto, a tu alrededor (réplica o aura) o en línea tras una onda; daña poco y en silencio | Ascuas +2 (brasas), Terremoto +2 (réplica), Lanzallamas +2 (rastro de fuego), Bomba Lodo +2 (charco) |
@@ -692,7 +692,7 @@ Así los movimientos de siempre siguen valiendo, y uno comprado crece con el jug
 
 Zorua no aprende Lanzallamas ni Onda Certera (los aprende Zoroark): su cobertura es Bomba Lodo, Hierba Lazo y Envidia Ardiente. La alternativa de Litwick en la ranura fuerte es Llamarada o Energibola.
 
-**Arnés:** `npm run balance -- --quick --slots --build=<especie>` juega con el equipo recomendado (`--species=<especie>` con el de por defecto). Antes y después en `reports/balance/movepools-builds.md`: ningún equipo rompe una invariante de justicia y ninguno supera claramente al de por defecto con los bots.
+**Arnés:** `npm run balance -- --quick --slots --build=<especie>` juega con el equipo recomendado (`--species=<especie>` con el de por defecto; `--full=<especie> --ranks=2` con la inversión completa: `FULL_BUILD`, todo a rango +2). Antes y después en `reports/balance/movepools-builds.md` y `reports/balance/move-progression.md`: ningún equipo rompe una invariante de justicia. Con la inversión completa los bots matan a los jefes un 37 % (Mimikyu), 37 % (Zorua), 26 % (Litwick) y 30 % (Cubone) más rápido (mediana emparejada, `npx vite-node tools/move-progression-ttk.ts` → `reports/balance/move-progression-ttk.md`); las cartas siguen durando y hay que esquivarlas igual.
 
 Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. = enfriamiento):
 
@@ -735,7 +735,7 @@ Build recomendado: Sombra Vil · Carantoña · Danza Espada · Golpe Fantasma.
 | Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
 |---|---|---|---|---|---|---|---|---|
 | Golpes Furia | Rápido | Básico | Normal | 25 | arco corto, ×5 | inicial (150 / 350) | +10 % de crítico | +1 golpe |
-| Finta | Rápido | Básico | Siniestro | 60 | embestida | inicial (150 / 350) | +20 % de crítico | invulnerable mientras golpea |
+| Finta | Rápido | Básico | Siniestro | 60 | embestida | inicial (150 / 350) | +20 % de crítico | deja una marca que estalla a los 0,9 s (35 % del golpe) |
 | Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | 200 P (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
 | Golpe Bajo | Rápido | Avanzado | Siniestro | 70 | embestida, ×1.5 si el enemigo ataca, prioridad | 200 P (250 / 500) | invulnerable mientras golpea | +30 % de crítico |
 | Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
@@ -764,7 +764,7 @@ Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
 
 | Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
 |---|---|---|---|---|---|---|---|---|
-| Ascuas | Rápido | Básico | Fuego | 50 | proyectil rápido | inicial (150 / 350) | 30 % de quemar | deja una zona en el impacto durante 1,8 s que quema |
+| Ascuas | Rápido | Básico | Fuego | 50 | proyectil rápido | inicial (150 / 350) | 40 % de quemar | deja una zona en el impacto durante 1,8 s que quema |
 | Impresionar | Rápido | Básico | Fantasma | 30 | arco corto, aturde mucho | inicial (150 / 350) | aturde un 40 % más | el objetivo hace −25 % de daño durante 2,5 s |
 | Tinieblas | Rápido | Avanzado | Fantasma | 50 | proyectil rápido | 120 P (250 / 500) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (30 % del golpe) |
 | Polución | Rápido | Avanzado | Veneno | 30 | proyectil rápido, envenena | 120 P (250 / 500) | golpe un 30 % más grande | deja una zona en el impacto durante 1,6 s que envenena |

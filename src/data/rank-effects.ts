@@ -79,14 +79,14 @@ export const RANK_EFFECTS: Readonly<Record<MoveId, readonly [RankEffect, RankEff
   'shadow-force': [IFRAMES, mark(0.3, 900)],
   // Zorua
   'fury-swipes': [crit(0.1), hits(1)],
-  'feint-attack': [crit(0.2), IFRAMES],
+  'feint-attack': [crit(0.2), mark(0.35, 900)],
   'night-daze': [size(1.2), weaken(0.75, 3000)],
   'foul-play': [stagger(1.3), drain(0.25)],
   'nasty-plot': [buff({ durationMs: 1000 }), buff({ critChance: 0.1 })],
   'dark-pulse': [stagger(1.5), mark(0.25, 800)],
   snarl: [size(1.2), weaken(0.7, 4000)],
   // Litwick
-  ember: [dot('burn', 0.3), zone({ at: 'impact', power: 6, radius: 18, lifetimeMs: 1800, every: 600, delayMs: 150, dot: 'burn' })],
+  ember: [dot('burn', 0.4), zone({ at: 'impact', power: 7, radius: 22, lifetimeMs: 1800, every: 600, delayMs: 150, dot: 'burn' })],
   astonish: [stagger(1.4), weaken(0.75, 2500)],
   hex: [homing(120), mark(0.4, 1000)],
   inferno: [dot('burn', 1), zone({ at: 'impact', power: 8, radius: 30, lifetimeMs: 2400, every: 800, delayMs: 150, dot: 'burn' })],

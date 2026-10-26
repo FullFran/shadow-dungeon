@@ -10,14 +10,16 @@
  *   npm run balance -- --quick --slots  the perfect/average bots also use boost and area (four-slots)
  *   npm run balance -- --quick --slots --species=zorua  another starter with its default loadout
  *   npm run balance -- --quick --slots --build=zorua    a starter with its recommended tutor build (data/tutor.ts)
+ *   npm run balance -- --quick --slots --full=zorua --ranks=2  its full-investment build, every move at rank +2
  *
  * Exits 1 when a fairness invariant fails beyond the known violations.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDifficulty } from '../src/data/difficulty';
-import { isPlayable } from '../src/data/species';
-import { RECOMMENDED_BUILD } from '../src/data/tutor';
+import { isPlayable, SPECIES } from '../src/data/species';
+import type { MoveId } from '../src/data/moves';
+import { FULL_BUILD, MAX_RANK, RECOMMENDED_BUILD } from '../src/data/tutor';
 import type { StarterId } from '../src/data/learnsets';
 import { DUNGEONS, type DungeonId } from '../src/data/dungeons';
 import { evaluate, failures } from '../src/sim/bands';
@@ -41,11 +43,18 @@ if (tier) {
   config = { ...config, tiers: [tier] };
 }
 if (args.includes('--slots')) config = { ...config, options: { ...config.options, slots: true } };
-const species = flag('species') ?? flag('build');
+const species = flag('species') ?? flag('build') ?? flag('full');
 if (species) {
   if (!isPlayable(species)) throw new Error(`unknown starter ${species}`);
-  const loadout = flag('build') ? { loadout: RECOMMENDED_BUILD[species as StarterId] } : {};
+  const loadout = flag('build') ? { loadout: RECOMMENDED_BUILD[species as StarterId] } : flag('full') ? { loadout: FULL_BUILD[species as StarterId] } : {};
   config = { ...config, options: { ...config.options, species, ...loadout } };
+}
+// `--ranks=1|2`: every move of the bots' loadout at that Mejora rank (full investment: `--full=<starter> --ranks=2`).
+const ranks = Number.parseInt(flag('ranks') ?? '', 10);
+if (Number.isInteger(ranks) && ranks > 0) {
+  const starter = (species ?? 'mimikyu') as StarterId;
+  const moves = config.options?.loadout ?? SPECIES[starter].defaultLoadout;
+  config = { ...config, options: { ...config.options, moveRanks: Object.fromEntries(moves.filter((m): m is MoveId => m !== null).map((m) => [m, Math.min(MAX_RANK, ranks)])) } };
 }
 const outDir = flag('out') ?? join('reports', 'balance');
 

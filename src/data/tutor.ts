@@ -116,6 +116,19 @@ export const RANK_COSTS_BY_TIER: Readonly<Record<MoveTier, readonly number[]>> =
 export const RANK_EFFECT = { damage: 0.1, cooldown: 0.1 } as const;
 
 /**
+ * The full-investment build per starter (fast, heavy, boost, area): its
+ * Maestro moves where they pay off against the bosses, every move at rank +2, for the balance harness
+ * (`npm run balance -- --master=<starter> --ranks=2`; odd/tasks/move-progression.md T4).
+ */
+export const FULL_BUILD: Readonly<Record<StarterId, readonly MoveId[]>> = {
+  mimikyu: ['shadow-claw', 'wood-hammer', 'swords-dance', 'phantom-force'],
+  // Zorua's Maestro moves (Poison, Normal) are no use on the Ghost and Steel bosses: its kit, fully ranked.
+  zorua: ['feint-attack', 'night-daze', 'nasty-plot', 'dark-pulse'],
+  litwick: ['ember', 'fire-blast', 'will-o-wisp', 'flamethrower'],
+  cubone: ['bone-club', 'double-edge', 'swords-dance', 'earthquake'],
+};
+
+/**
  * The recommended build per starter (fast, heavy, boost, area), after its
  * competitive sets (data/learnsets.ts `COMPETITIVE_SOURCES`).
  */
