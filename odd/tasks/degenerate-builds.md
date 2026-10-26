@@ -27,7 +27,7 @@ ask-on-risk; forecast ~700 authored changed lines (hooks, a sim harness, tests, 
 ## Tasks
 - [x] B1 Shell Bell: RED tank test, fix (direct hits, per-second cap, numbers), docs/i18n. Route: inline in this bounded writer (the parent delegated the whole feature).
 - [x] B2 Degenerate-build audit: tank-bot harness + i-frame uptime metric, fixes with regression tests. Route: inline.
-- [ ] B3 Report table. Route: inline.
+- [x] B3 Report table. Route: inline.
 
 ## Acceptance
 - The face-tank test fails before B1 and passes after; every exploit found in B2 has a regression test.
@@ -47,6 +47,8 @@ npx vitest run --testTimeout=30000; npm run build; npm run balance -- --quick --
   - Residual (reported, not fixed): with every sustain item (`TANK_ITEMS`) the tank bot still holds 0–31 of 46 cards (cubone-iframes 31, zorua-weaken 21, mimikyu-drain 21) because those cards are near equilibrium for a face-tanker even bare (survival 80–177 s) and 2 %/s is the requested ceiling; the unranked kits with the same items hold 10–17.
   - RED observed for the B2 tests against the B1 code (src files swapped back to HEAD temporarily): drain zorua-iframes/aegislash 0, Leftovers mimikyu/dhelmise 1, super-armor ×3 failed; the drain cases decidueye 1 and sableye 2 were then picked from the pre-fix per-card grid (ALIVE before, 10 s and 133 s after).
 - B2 checks: `npx vitest run --testTimeout=30000` 208 files / 2523 tests passed; `npm run build` ok; `npm run balance -- --quick --slots` byte-identical to the baseline (0 failures, 41 warnings, 72 passes); `npm run prove` 166 cards (166 survivable), 24/24 solver fights, reports/proof unchanged.
+- B3 (route: inline; passive report, structural readback only): reports/balance/degenerate-builds.md, exploit → mechanism → fix → before (main 91408ba, audited with core/data swapped back temporarily) / after metric, the residual with every sustain item, and the balance-report explanation. Commits: B1 9ac826b, B2 175e773, B3 this one.
+- Review: RDD not run by this bounded writer (the parent owns the native review lifecycle). Engram mirror `odd/degenerate-builds/tasks`: pending (this worker has no registered session id).
 
 ## Next step
-B3.
+Parent: review the three commits; push/PR are the user's decision. Follow-ups: decide whether a fully defensive item build should still hold near-equilibrium cards (lower `sustainPerSecond`, or make Bulk Up +2 / Iron Defense +2 heals smaller); co-op guests do not carry `shellBell`/`drained` in claims (each peer budgets its own player, as before).
