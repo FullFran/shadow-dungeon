@@ -1,5 +1,6 @@
 import { HERALD_ARENA } from './herald';
 import type { SpeciesId } from './species';
+import { STORY_ROOMS, type StoryRoomId } from './story/bosses';
 
 /** Axis-aligned rectangle in world pixels (same shape as the core's Rect). */
 export interface RoomRect {
@@ -26,7 +27,13 @@ export interface RoomDef {
   pools?: readonly { x: number; y: number; radius: number }[];
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss' | 'throne' | 'wound-mimikyu';
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss' | 'throne'
+  | 'wound-mimikyu'
+  // A Senda's mid-boss in a guardian's arena needs a way on (docs/story-quests.md): the rift and the roost with an exit.
+  | 'rift-way'
+  | 'roost-way'
+  // The starters' Sendas' shadows and wounds (data/story/<line>.ts).
+  | StoryRoomId;
 
 /** M0 rooms: the sandbox with a few enemies, then the Aegislash arena. */
 export const ROOMS: Record<RoomId, RoomDef> = {
@@ -273,4 +280,41 @@ export const ROOMS: Record<RoomId, RoomDef> = {
       { x: 704, y: 56, radius: 40 },
     ],
   },
+  /** Nihilego's rift as a Senda's mid-boss (Litwick's): the same spires and pools, the way on at the top once it falls. */
+  'rift-way': {
+    id: 'rift-way',
+    width: 760,
+    height: 600,
+    obstacles: [
+      { x: 160, y: 150, width: 48, height: 48, cover: true },
+      { x: 552, y: 150, width: 48, height: 48, cover: true },
+      { x: 160, y: 402, width: 48, height: 48, cover: true },
+      { x: 552, y: 402, width: 48, height: 48, cover: true },
+    ],
+    playerStart: { x: 380, y: 530 },
+    spawns: [{ species: 'nihilego', x: 380, y: 210 }],
+    exit: { x: 340, y: 0, width: 80, height: 50 },
+    next: null,
+    pools: [
+      { x: 56, y: 56, radius: 40 },
+      { x: 704, y: 56, radius: 40 },
+    ],
+  },
+  /** Decidueye's roost as a Senda's mid-boss (Zorua's): the same clearing and trees, the way on at the top once it falls. */
+  'roost-way': {
+    id: 'roost-way',
+    width: 640,
+    height: 400,
+    obstacles: [
+      { x: 130, y: 100, width: 36, height: 36, cover: true },
+      { x: 474, y: 100, width: 36, height: 36, cover: true },
+      { x: 130, y: 260, width: 36, height: 36, cover: true },
+      { x: 474, y: 260, width: 36, height: 36, cover: true },
+    ],
+    playerStart: { x: 320, y: 330 },
+    spawns: [{ species: 'decidueye', x: 320, y: 120 }],
+    exit: { x: 280, y: 0, width: 80, height: 50 },
+    next: null,
+  },
+  ...STORY_ROOMS,
 };

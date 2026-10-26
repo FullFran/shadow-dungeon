@@ -5,6 +5,7 @@ import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 import { EVOLVED_BEHAVIOUR } from './evolved-enemies';
 import { WOUND_MIMIKYU_EASY } from './wound-cards';
+import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
 
 /**
@@ -1693,6 +1694,8 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   'eclipse-echo': ECLIPSE_ECHO,
   // A Senda's wound (data/wound-cards.ts): Decidueye's card engine with its own cards on every tier (Easy too), and no knockback.
   'mimikyu-wound': { ...DECIDUEYE, poise: { hitstunScale: 0, knockbackScale: 0 }, spellCards: WOUND_MIMIKYU_EASY },
+  // The starters' Sendas' shadows and wounds (data/story/kit.ts): the same engine, their Easy fight here (data/guardian-tricks.ts patches the rest).
+  ...Object.fromEntries(STORY_BOSSES.map((b) => [b.id, { ...DECIDUEYE, poise: { hitstunScale: 0, knockbackScale: 0 }, spellCards: STORY_FIGHTS[b.id][0] }])),
   'sima-herald': HERALD_BASE,
   // Evolved forms (data/evolved-enemies.ts).
   ...EVOLVED_BEHAVIOUR,

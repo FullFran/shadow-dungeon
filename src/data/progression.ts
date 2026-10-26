@@ -1,4 +1,5 @@
 import type { SpeciesId } from './species';
+import { STORY_BOSSES } from './story/bosses';
 
 /**
  * In-run progression (docs/gdd.md §3 "Progresión dentro de la partida"):
@@ -80,6 +81,8 @@ export const PROGRESSION = {
     'eclipse-hunter': 0,
     'eclipse-echo': 60,
     'sima-herald': 90,
+    // A Senda's shadows pay like a mid-boss; its wound, like Mimikyu's, pays nothing (it ends the run).
+    ...Object.fromEntries(STORY_BOSSES.filter((b) => !b.wound).map((b) => [b.id, 50])),
   } as Record<SpeciesId, number>,
   /** Experience grows with depth: base * (1 + perDepth * (floor - 1)). */
   xpPerDepth: 0.5,

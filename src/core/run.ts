@@ -4,7 +4,7 @@ import { ECHO_CARDS } from '../data/cards';
 import { behaviourFor } from './tricks';
 import { heraldSeed, withHerald } from './herald/floor';
 import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
-import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
 import { eliteRuleAt } from './sima';
@@ -236,7 +236,8 @@ export function startRun(
   floor = 1,
   dungeon: DungeonId = CRYPT.id,
 ): { run: RunState; world: WorldState } {
-  const def = dungeonById(dungeon);
+  // A Senda's challenge on Hard or Nightmare walks that chapter's own road (data/dungeons.ts `roadFor`); every peer maps it the same way.
+  const def = roadFor(dungeonById(dungeon), options.difficulty);
   const start = Math.min(Math.max(1, Math.floor(floor)), floorsOf(def));
   const base = createWorld({ ...options, seed, arena: { width: 1, height: 1 }, playerPos: vec(0, 0) });
   const run: RunState = {

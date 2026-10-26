@@ -5,6 +5,11 @@ import type { MusicContext } from './music';
 import { ROOMS, type RoomId } from './rooms';
 import type { SpeciesId } from './species';
 import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
+import type { Difficulty } from './difficulty';
+import { CUBONE_ROADS } from './story/cubone';
+import { LITWICK_ROADS } from './story/litwick';
+import type { SendaRoad } from './story/roads';
+import { ZORUA_ROADS } from './story/zorua';
 
 /**
  * Every dungeon as data (docs/gdd.md §3): its name and lore, its floors
@@ -19,7 +24,9 @@ export type DungeonId =
   | 'eclipse-chasm'
   | 'toxic-swamp'
   | 'flooded-caves'
-  | `challenge-${ChallengeLine}`;
+  | `challenge-${ChallengeLine}`
+  // A Senda's second and third chapter roads (data/story/roads.ts).
+  | `challenge-${ChallengeLine}-${2 | 3}`;
 
 /** The lines with a challenge dungeon: the gacha's and the starters' (odd/tasks/roster-parity.md). */
 export type ChallengeLine = 'abra' | 'piplup' | 'shinx' | 'axew' | 'mimikyu' | 'zorua' | 'litwick' | 'cubone';
@@ -83,6 +90,8 @@ export interface DungeonDef {
   gates?: GateTuning;
   /** A challenge dungeon only (`CHALLENGES`): the line it belongs to (its first form) and the materials a clear pays (core/challenge.ts). */
   challenge?: { line: ChallengeLine; materials: number };
+  /** A Senda line's challenge (chapter I's road): the roads a Hard and a Nightmare run walk instead (`roadFor`). */
+  roads?: { hard: DungeonId; nightmare: DungeonId };
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -454,14 +463,15 @@ export const CHALLENGE_MATERIALS = 3;
  * after the victory). Kept apart from `DUNGEONS` (the main select and the
  * balance sweeps never list it).
  */
-const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: readonly SpawnEntry[], plan: readonly FloorPlan[] = [GENERATED, GENERATED, GENERATED, { kind: 'room', room }]): DungeonDef => ({
-  id: `challenge-${line}`,
+const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: readonly SpawnEntry[], plan: readonly FloorPlan[] = [GENERATED, GENERATED, GENERATED, { kind: 'room', room }], chapter: 1 | 2 | 3 = 1): DungeonDef => ({
+  id: chapter === 1 ? `challenge-${line}` : `challenge-${line}-${chapter}`,
   lore: {
-    id: `challenge-${line}`,
+    id: chapter === 1 ? `challenge-${line}` : `challenge-${line}-${chapter}`,
     nameKey: `challenge.${line}.name`,
     subtitleKey: `challenge.${line}.subtitle`,
     loreKeys: [`challenge.${line}.lore`],
-    floorKeys: plan.map((_, i) => `challenge.${line}.floor.${i + 1}`),
+    // A later chapter's road has its own floor lines (`challenge.<line>.<chapter>.floor.<n>`).
+    floorKeys: plan.map((_, i) => (chapter === 1 ? `challenge.${line}.floor.${i + 1}` : `challenge.${line}.${chapter}.floor.${i + 1}`)),
     victoryKey: `challenge.${line}.victory`,
   },
   plan,
@@ -492,6 +502,19 @@ const sendaPlan = (first: RoomId, second: RoomId, wound: RoomId): readonly Floor
   { kind: 'room', room: wound },
 ];
 
+const BASES: Record<SendaRoad['base'], DungeonDef> = { crypt: CRYPT, forest: FOREST, caves: CAVES, swamp: SWAMP };
+const roadPlan = (road: SendaRoad): readonly FloorPlan[] => sendaPlan(road.mid[0], road.mid[1], road.wound);
+
+/**
+ * A starter's Senda (data/story/<line>.ts): its challenge is chapter I's road;
+ * chapters II and III walk roads of their own, each with its own look and its
+ * own two shadows before the wound. The enemy pool is the line's.
+ */
+function senda(line: ChallengeLine, roads: readonly [SendaRoad, SendaRoad, SendaRoad], pool: readonly SpawnEntry[]): readonly [DungeonDef, DungeonDef, DungeonDef] {
+  const [one, two, three] = roads.map((road, i) => challenge(line, BASES[road.base], road.wound, pool, roadPlan(road), (i + 1) as 1 | 2 | 3));
+  return [{ ...one!, roads: { hard: two!.id, nightmare: three!.id } }, two!, three!];
+}
+
 /** A pool entry: its weight on challenge floors 1, 2 and 3. */
 const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry => ({ species, weights: [f1, f2, f3] });
 
@@ -499,10 +522,15 @@ const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry 
  * One challenge per line, each with its own trial and a boss its types can
  * hurt: Abra's dream (Lanturn's lights), Piplup's frozen lake (Sableye's
  * hoard), Shinx's storm (Salazzle), Axew's ravine of fangs (Trevenant),
- * Mimikyu's disguise (its Senda: Sableye, Aegislash, then its own wound), Zorua's illusions (Decidueye), Litwick's
- * candles (Dhelmise's wreck) and Cubone's bone (Nihilego). The gacha lines
- * keep the four mid-boss arenas, the starters face the four guardians.
+ * Mimikyu's disguise (its Senda: Sableye, Aegislash, then its own wound), Zorua's reflection (Trevenant, Decidueye, its
+ * wound), Litwick's flame (Lanturn, Dhelmise, its wound) and Cubone's bone (Trevenant, Dhelmise, its wound). The gacha
+ * lines keep the four mid-boss arenas; a starter with a Senda faces its own wound last.
  */
+// The starters' Sendas, one road per chapter (data/story/<line>.ts); chapter I's is the line's challenge.
+const ZORUA_SENDA = senda('zorua', ZORUA_ROADS, [at('drifloon', 3, 2, 2), at('phantump', 2, 2, 2), at('pumpkaboo-small', 2, 2, 2), at('duskull', 1, 2, 2), at('drifblim', 0, 0, 1)]);
+const LITWICK_SENDA = senda('litwick', LITWICK_ROADS, [at('phantump', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
+const CUBONE_SENDA = senda('cubone', CUBONE_ROADS, [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
+
 export const CHALLENGES: readonly DungeonDef[] = [
   challenge('abra', CAVES, 'grotto', [at('hoothoot', 3, 2, 2), at('gastly', 2, 2, 2), at('drifloon', 1, 2, 2), at('koffing', 1, 1, 2), at('haunter', 0, 0, 1)]),
   challenge('piplup', CRYPT, 'vault', [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('krabby', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]),
@@ -510,12 +538,26 @@ export const CHALLENGES: readonly DungeonDef[] = [
   challenge('axew', FOREST, 'hollow', [at('poochyena', 3, 3, 2), at('ekans', 2, 2, 2), at('corphish', 1, 2, 2), at('croagunk', 0, 1, 2), at('mightyena', 0, 0, 1)]),
   // Mimikyu's Senda: Sableye's eyes that look, Aegislash who forbids hiding, then Mimikyu Sin Disfraz.
   challenge('mimikyu', CRYPT, 'wound-mimikyu', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)], sendaPlan('vault', 'throne', 'wound-mimikyu')),
-  challenge('zorua', FOREST, 'roost', [at('drifloon', 3, 2, 2), at('phantump', 2, 2, 2), at('pumpkaboo-small', 2, 2, 2), at('duskull', 1, 2, 2), at('drifblim', 0, 0, 1)]),
-  challenge('litwick', CAVES, 'wreck', [at('phantump', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]),
-  challenge('cubone', SWAMP, 'rift', [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]),
+  ZORUA_SENDA[0],
+  LITWICK_SENDA[0],
+  CUBONE_SENDA[0],
 ];
 
-const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES];
+/** The Sendas' second and third chapter roads (kept apart from `CHALLENGES`: one challenge per line). */
+export const SENDA_ROADS: readonly DungeonDef[] = [ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
+
+const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES, ...SENDA_ROADS];
+
+/** The road a run of `dungeon` on `difficulty` walks: a Senda's chapter II road on Hard, its III on Nightmare; the dungeon itself otherwise. */
+export function roadFor(dungeon: DungeonDef, difficulty: Difficulty | undefined): DungeonDef {
+  if (!dungeon.roads) return dungeon;
+  if (difficulty === 'hard') return dungeonById(dungeon.roads.hard);
+  if (difficulty === 'nightmare') return dungeonById(dungeon.roads.nightmare);
+  return dungeon;
+}
+
+/** A road's own challenge (chapter I's, the line's): what records, missions and achievements count a Senda run under. */
+export const challengeOfRoad = (dungeon: DungeonDef): DungeonDef => (dungeon.challenge ? (CHALLENGES.find((d) => d.challenge!.line === dungeon.challenge!.line) ?? dungeon) : dungeon);
 
 /** True for the id of a dungeon of this build (challenges too). */
 export const isDungeonId = (id: unknown): id is DungeonId => ALL.some((d) => d.id === id);

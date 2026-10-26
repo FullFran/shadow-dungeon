@@ -146,6 +146,7 @@ describe('Senda progress in the save', () => {
   });
 
   it('a line without a Senda has no bond line', () => {
-    expect(bondLine({ story: { zorua: 2 } }, 'zorua' as ChallengeLine)).toBeNull();
+    const without = CHALLENGES.map((d) => d.challenge!.line).filter((line) => !STORY_QUESTS[line]);
+    for (const line of without) expect(bondLine({ story: { [line]: 2 } }, line as ChallengeLine)).toBeNull();
   });
 });
