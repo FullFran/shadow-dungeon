@@ -38,7 +38,7 @@ single branch `feat/gacha-evolutions`, one commit per task; forecast ~2,000–2,
 
 ## Tasks
 - [x] T1 Roster seam + save v3 (owned species, gacha pity, per-species stage, materials) + net fallback. Route: delegated.
-- [ ] T2 Gacha core + data + tests. Route: delegated.
+- [x] T2 Gacha core + data + tests. Route: delegated.
 - [x] T3 Species and evolution lines: sprites, kits, stage stats/moves, i18n, budget/ceiling tests. Route: delegated.
 - [ ] T4 Challenge dungeons + material reward. Route: delegated.
 - [ ] T5 UI: stall, evolve, loadout; GDD section. Route: delegated.
@@ -49,7 +49,12 @@ single branch `feat/gacha-evolutions`, one commit per task; forecast ~2,000–2,
 
 ## Progress / evidence
 - T1: `core/collection.ts` `rosterOf` (starters + owned); save v3 (`owned`, `materials`, `pity`; v1/v2 migrate; learned/ranks kept for every playable species); `loadSettings(..., roster)`, loadout picker and tutor window cycle the roster; `core/tutor.ts` keyed by `SpeciesId`; net decode maps an unknown/unplayable species in hello/start/lobby/state to Mimikyu. RED observed (save v3, roster, settings roster, protocol fallback), then GREEN. typecheck ok; vitest 209 files / 2529 tests ok; build ok; prove 166 cards survivable, 24/24 fights. Commit 6d0ff48.
-- T3: 12 playable forms (Abra, Piplup, Shinx, Axew lines) with PMDCollab sprites (fetch-sprites: only additions, CREDITS regenerated), `PLAYER_EVOLUTIONS`, pure `canEvolve`/`evolve`/`stageBonus`/`lineOf`/`stageOf`, save keeps one form per line and materials by first form. RED observed (missing core/evolution), then GREEN. typecheck ok; vitest 210 files / 2569 tests ok (fairness, boosts, sprites and anims now also cover the 12 forms); build ok; prove 166 cards survivable, 24/24 fights (unchanged).
+- T3: 12 playable forms (Abra, Piplup, Shinx, Axew lines) with PMDCollab sprites (fetch-sprites: only additions, CREDITS regenerated), `PLAYER_EVOLUTIONS`, pure `canEvolve`/`evolve`/`stageBonus`/`lineOf`/`stageOf`, save keeps one form per line and materials by first form. RED observed (missing core/evolution), then GREEN. typecheck ok; vitest 210 files / 2569 tests ok (fairness, boosts, sprites and anims now also cover the 12 forms); build ok; prove 166 cards survivable, 24/24 fights (unchanged). Commit 202aded.
+- T2: `data/gacha.ts` (100 P, rare 15 %, hard pity 10, duplicate refund 40; Piplup and Shinx common, Abra and Axew rare) and pure seeded `core/gacha.ts` `pull(collection, rng) -> { result, state, rng } | null` (null without the Pokémonedas; a duplicate is any owned form of the line). RED observed (missing core/gacha), then GREEN; the pity sweep (500 seeds x 200 pulls) fails when the pity is disabled (mutation checked). typecheck ok; vitest 211 files / 2577 tests ok; build ok; prove 166 cards survivable, 24/24 fights.
 
 ## Next step
-T1–T3 in one writer pass (data and core), then T4–T5.
+T4 (challenge dungeons + material reward), then T5 (stall, evolve and loadout UI; GDD section).
+
+## Open decisions
+- Luxray and Empoleon unlock Maestro moves (Thunder, Ice Beam) by evolving, without the tutor's dungeon lock; evolving already costs a challenge dungeon's materials.
+- Gacha and evolution numbers (rates, pity, refund, costs, +6 %/+12 % stage bonus, caps 15 %/8 %) are provisional.
