@@ -7,6 +7,8 @@
 //   node tools/fetch-sprites.mjs
 //   node tools/fetch-sprites.mjs --only=shiny   (only the shiny sheets; the
 //     rest of sprite-meta.json is kept, CREDITS.md is regenerated in full)
+//   node tools/fetch-sprites.mjs --add=drowzee,hypno   (only those species'
+//     sheets; the rest of sprite-meta.json is kept, CREDITS.md in full)
 //
 // SpriteCollab layout: sprite/<dex4>/ is the base form, sprite/<dex4>/<form4>/
 // an alternate form and sprite/<dex4>/<form4>/0001/ its shiny (local folder
@@ -125,6 +127,13 @@ const TARGETS = [
   { dex: '0429', form: '0000', species: 'mismagius', formName: 'base' },
   { dex: '0352', form: '0000', species: 'kecleon', formName: 'base' },
   { dex: '0442', form: '0000', species: 'spiritomb', formName: 'base' },
+  // Mimikyu's Senda's shadows (docs/story-quests.md; AnimData 2026-10-26: native Idle, Walk, Attack, Charge and Hurt;
+  // Ditto's Shoot is a copy of its Charge, which is how it copies).
+  { dex: '0132', form: '0000', species: 'ditto', formName: 'base' },
+  { dex: '0855', form: '0000', species: 'polteageist', formName: 'base' },
+  { dex: '0039', form: '0000', species: 'jigglypuff', formName: 'base' },
+  { dex: '0025', form: '0000', species: 'pikachu', formName: 'base' },
+  { dex: '0858', form: '0000', species: 'hatterene', formName: 'base' },
   // The Refugio's move tutor (tracker.json 2026-10-26: full sheet set, CHUNSOFT + PMDCollab).
   { dex: '0235', form: '0000', species: 'smeargle', formName: 'base' },
   // Gacha evolution lines (odd/tasks/gacha-evolutions.md T3).
@@ -256,11 +265,14 @@ async function collectCredits(targets, names) {
 
 async function main() {
   const onlyShiny = process.argv.includes('--only=shiny');
-  const kept = onlyShiny ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
+  const added = new Set((process.argv.find((a) => a.startsWith('--add='))?.slice('--add='.length) ?? '').split(',').filter(Boolean));
+  const partial = onlyShiny || added.size > 0;
+  const kept = partial ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
   const meta = { directions: DIRECTIONS, ticksPerSecond: 60, sprites: {} };
   for (const target of ALL_TARGETS) {
     const key = localKey(target);
-    meta.sprites[key] = onlyShiny && !target.shiny && kept[key] ? kept[key] : await downloadTarget(target);
+    const fresh = added.size > 0 ? added.has(target.species) : target.shiny;
+    meta.sprites[key] = partial && !fresh && kept[key] ? kept[key] : await downloadTarget(target);
   }
   await writeFile(OUT_META, `${JSON.stringify(meta, null, 2)}\n`);
 

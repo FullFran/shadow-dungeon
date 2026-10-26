@@ -111,6 +111,12 @@ export const SPRITE_KEYS = {
   muk: '0089/0000',
   toxicroak: '0454/0000',
   houndoom: '0229/0000',
+  // Mimikyu's Senda's shadows (data/story/mimikyu.ts).
+  ditto: '0132/0000',
+  polteageist: '0855/0000',
+  jigglypuff: '0039/0000',
+  pikachu: '0025/0000',
+  hatterene: '0858/0000',
   // The Refugio's move tutor (odd/tasks/movepools.md).
   smeargle: '0235/0000',
   // The gacha's evolution lines (odd/tasks/gacha-evolutions.md).
