@@ -27,6 +27,7 @@ import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { IDLE } from './helpers';
+import { behaviourFor } from '../../src/core/tricks';
 
 /** A tough, idle player and one enemy, at tier `d`. */
 function arena(species: EnemyState['species'], d: Difficulty | undefined, enemyPos: Vec2, playerPos = vec(400, 300), size = { width: 800, height: 600 }): WorldState {
@@ -59,14 +60,24 @@ describe('hard+ content: the Crypt', () => {
     const feint = hard[3]!;
     expect(feint.telegraphMs).toBeGreaterThan(Math.max(...AEGISLASH.blade.combo.map((b) => b.telegraphMs)));
     const blade = (d: Difficulty) => {
-      // Normal and harder fight with spell cards (data/aegislash-cards.ts); the stance duel's tier content now plays in a Sima echo.
+      // Normal and harder fight with spell cards everywhere, Sima echoes too (data/aegislash-cards.ts); the stance duel's tier content is driven through its state machine directly.
       const w = arena('aegislash', d, vec(400, 240));
       const boss = w.enemies[0]!;
-      return { ...w, enemyScale: { hp: 1, damage: 1, echo: true as const }, enemies: [{ ...boss, boss: { ...boss.boss!, stance: 'blade' as const }, ai: { ...boss.ai, mode: 'approach' as const } }] };
+      return { ...w, enemies: [{ ...boss, boss: { ...boss.boss!, stance: 'blade' as const }, ai: { ...boss.ai, mode: 'approach' as const } }] };
     };
-    const easy = run(blade('easy'), 4000, recovering);
+    const duel = (state: WorldState, d: Difficulty, ms: number) => {
+      const def = { ...(behaviourFor('aegislash', d) as typeof AEGISLASH), spellCards: undefined };
+      let current = state;
+      const events: GameEvent[] = [];
+      for (let i = 0; i < ms / FIXED_DT_MS && !recovering(current); i++) {
+        const e = current.enemies[0]!;
+        current = updateBoss(current, { ...e, ai: tickAiAt(e.ai, FIXED_DT_MS, d) }, def, current.player.pos, FIXED_DT_MS, events);
+      }
+      return { state: current, events };
+    };
+    const easy = duel(blade('easy'), 'easy', 4000);
     expect(attacks(easy.events)).toEqual(['combo1', 'combo2', 'combo3']);
-    const hardRun = run(blade('hard'), 5000, recovering);
+    const hardRun = duel(blade('hard'), 'hard', 5000);
     expect(attacks(hardRun.events)).toEqual(['combo1', 'combo2', 'combo3', 'combo4']);
     expect(recovering(hardRun.state)).toBe(true);
     const wound = telegraphsOf(hardRun.events).find((e) => e.attack === 'combo4')!;

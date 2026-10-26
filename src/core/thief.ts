@@ -8,7 +8,7 @@ import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
 import { TUNING } from '../data/tuning';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from './vec';
-import { hostedMoves, updateHostedCardFight } from './cards';
+import { fightFor, hostedMoves, updateHostedCardFight } from './cards';
 
 /**
  * Sableye, the Crypt's mid-boss "el ladrón de gemas" (data/enemies.ts
@@ -92,8 +92,8 @@ function throwRing(state: WorldState, enemy: EnemyState, def: ThiefDef, aim: Vec
 export function updateThief(state: WorldState, start: EnemyState, def: ThiefDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
   // Normal and harder: hosted spell cards (data/hosted-cards.ts); each card plays some of its own moves.
-  const fight = def.spellCards;
-  if (fight && !state.enemyScale?.echo) {
+  const fight = fightFor(state, def.spellCards);
+  if (fight) {
     const own = (card: Parameters<typeof hostedMoves>[0]): ThiefDef => ({ ...def, spellCards: undefined, cards: hostedMoves<ThiefCard>(card, def) });
     return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateThief(s, e, own(card), target, ms, events), (card) => own(card).cards[0]!);
   }

@@ -388,9 +388,10 @@ describe('guardian spell cards: in a run', () => {
     expect(bossBar(played)!.segments).toBeUndefined();
   });
 
-  it('a Sima echo of Aegislash keeps the lighter duel on every tier', () => {
-    const echo = { ...throne('nightmare'), enemyScale: { hp: 1, damage: 1, echo: true as const } };
-    const played = runFor(echo, 2000);
-    expect(['shield', 'blade']).toContain(played.enemies[0]!.boss!.stance);
+  it('a Sima echo of Aegislash keeps the duel on easy, and plays its phase-1 cards on harder tiers (tests/core/echo-cards.test.ts)', () => {
+    const easy = runFor({ ...throne(undefined), enemyScale: { hp: 1, damage: 1, echo: true as const } }, 2000);
+    expect(['shield', 'blade']).toContain(easy.enemies[0]!.boss!.stance);
+    const night = runFor({ ...throne('nightmare'), enemyScale: { hp: 1, damage: 1, echo: true as const, echoStage: 1 as const } }, 2000);
+    expect(night.enemies[0]!.boss!.stance).toBe('sc-aeg-walls');
   });
 });

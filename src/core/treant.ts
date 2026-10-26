@@ -3,7 +3,7 @@ import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, replaceEn
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { slamTouches } from './victim';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from './vec';
-import { hostedMoves, updateHostedCardFight } from './cards';
+import { fightFor, hostedMoves, updateHostedCardFight } from './cards';
 
 /**
  * Trevenant, the Misty Forest's mid-boss (data/enemies.ts `TreantDef`): it
@@ -215,8 +215,8 @@ function updateCard(state: WorldState, start: EnemyState, def: TreantDef, target
 export function updateTreant(state: WorldState, start: EnemyState, def: TreantDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
   // Normal and harder: hosted spell cards (data/hosted-cards.ts); every card walks in to slam between its moves, as it always did.
-  const fight = def.spellCards;
-  if (fight && !state.enemyScale?.echo) {
+  const fight = fightFor(state, def.spellCards);
+  if (fight) {
     const own = (card: Parameters<typeof hostedMoves>[0]): TreantDef => ({ ...def, spellCards: undefined, cards: hostedMoves<TreantCard>(card, def) });
     return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateTreant(s, e, own(card), target, ms, events), () => 'slam');
   }

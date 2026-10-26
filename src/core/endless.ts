@@ -21,6 +21,12 @@ export interface EnemyScale {
    * harder with depth, and the clock is running).
    */
   echo?: true;
+  /**
+   * A card guardian's echo (core/cards.ts `echoStageAt`, user decision
+   * 2026-10-26 C): 1 plays its phase-1 cards, 2 adds phase 2, 3 adds the
+   * survival card and the last spell. Absent on an echo = 1.
+   */
+  echoStage?: 1 | 2 | 3;
 }
 
 export function depthScale(scaling: EndlessDef['scaling'], floor: number, echo = false): EnemyScale {

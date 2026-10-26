@@ -4,7 +4,7 @@ import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEn
 import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
-import { hostedMoves, updateHostedCardFight } from './cards';
+import { fightFor, hostedMoves, updateHostedCardFight } from './cards';
 import type { SpellCardDef } from '../data/cards';
 
 /**
@@ -268,8 +268,8 @@ export function hostedDanmaku(def: DanmakuDef, card: SpellCardDef, phase2: boole
 export function updateDanmaku(state: WorldState, start: EnemyState, def: DanmakuDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
   // Normal and harder: hosted spell cards (data/hosted-cards.ts); the patterns stay these.
-  const fight = def.spellCards;
-  if (fight && !state.enemyScale?.echo) {
+  const fight = fightFor(state, def.spellCards);
+  if (fight) {
     const own = (card: SpellCardDef, e: EnemyState) => hostedDanmaku(def, card, card.phase2 === true || e.boss?.phase === 2);
     return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateDanmaku(s, e, own(card, e), target, ms, events), (card) => hostedMoves<DanmakuCard>(card, def)[0]!);
   }

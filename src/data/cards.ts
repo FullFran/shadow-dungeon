@@ -98,6 +98,20 @@ export interface CardFightDef {
  */
 export const CAPTURE = { coins: 8, healShare: 0.12 } as const;
 
+/**
+ * Sima echoes of card guardians (user decision 2026-10-26 C; core/cards.ts
+ * `echoCards`): the first stratum (floors 5 and 15) plays the phase-1 cards
+ * only, from `phase2FromFloor` the phase-2 cards join, and from
+ * `fullFromFloor` (or on a guardian's second encounter) the survival card
+ * and the last spell too. An echo holds only the HP of the cards it plays
+ * (so every segment is the guardian's own) at `hpScale` of the guardian's
+ * HP whatever the depth (depth makes its hits harder, not its bar longer:
+ * src/sim/prove.ts found deep echoes past the reference player's reach), and
+ * its timers run `timerScale` as long, so the fight fits the Sima clock.
+ * Easy keeps the echo's duel (no cards).
+ */
+export const ECHO_CARDS = { phase2FromFloor: 25, fullFromFloor: 35, timerScale: 0.8, hpScale: 0.6 } as const;
+
 /** Where card `index` of a fight with these HP shares ends, as a share of max HP (shares are normalised; the last ends at 0). */
 export function segmentFloorShare(shares: readonly number[], index: number): number {
   const total = shares.reduce((sum, s) => sum + s, 0);

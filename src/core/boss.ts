@@ -1,7 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef, type ComboHitDef } from '../data/enemies';
 import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
-import { cardFloors, cardGuard, cardTimeLeftMs, fightOf, spellOf, updateCardFight } from './cards';
+import { cardFloors, cardGuard, cardTimeLeftMs, fightFor, fightOf, spellOf, updateCardFight } from './cards';
 import { heraldBar } from './herald/brain';
 import { behaviourFor } from './tricks';
 import type { SpeciesId } from '../data/species';
@@ -113,7 +113,7 @@ export function bossBar(state: WorldState): BossBar | null {
   // A herald's cards: equal segments, its card clock (core/herald/brain.ts).
   const herald = enemy.herald ? heraldBar(state, enemy) : null;
   if (herald) return { ...bar, ...herald };
-  const fight = spellOf(enemy.boss) ? fightOf(behaviourFor(enemy.species, worldDifficulty(state))) : undefined;
+  const fight = spellOf(enemy.boss) ? fightFor(state, fightOf(behaviourFor(enemy.species, worldDifficulty(state)))) : undefined;
   if (!fight) return bar;
   const left = cardTimeLeftMs(fight, enemy);
   return { ...bar, segments: cardFloors(fight).slice(0, -1).map((share) => share * enemy.maxHp), ...(left !== null ? { cardLeftMs: left } : {}) };
@@ -388,7 +388,8 @@ function updateBlade(state: WorldState, start: EnemyState, def: AegislashDef, ta
 /** One step of Aegislash: stance timers, the stance change, then the current stance's state machine. */
 export function updateBoss(state: WorldState, start: EnemyState, def: AegislashDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   // Normal and harder: the spell-card fight (core/cards.ts); a Sima echo keeps the lighter stance duel.
-  if (def.spellCards && !state.enemyScale?.echo) return updateCardFight(state, start, def.spellCards, target, ms, events);
+  const fight = fightFor(state, def.spellCards);
+  if (fight) return updateCardFight(state, start, fight, target, ms, events);
   let enemy = start;
   const ai = enemy.ai;
   if (ai.mode === 'idle') {

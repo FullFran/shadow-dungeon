@@ -1,4 +1,4 @@
-import { CAPTURE, cardInfo, segmentFloorShare, type CardFightDef, type CardId, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
+import { CAPTURE, cardInfo, ECHO_CARDS, segmentFloorShare, type CardFightDef, type CardId, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
 import type { DanmakuPattern, EnemyAttackDef } from '../data/enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
 import { crossed, firePattern, laneGapOf, patternAttackMs, patternMelee, patternParts, ringDirections, shoot } from './danmaku';
@@ -329,6 +329,55 @@ export function updateCardFight(state: WorldState, start: EnemyState, fight: Car
   const broken = !card.survival && enemy.hp <= floor;
   if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
   return playCard(state, enemy, fight, card, target, ms, events);
+}
+
+/** A Sima echo's stage of a card fight (data/cards.ts `ECHO_CARDS`). */
+export type EchoStage = 1 | 2 | 3;
+
+/**
+ * The stage of a guardian echo on floor `floor`: its `encounter`-th meeting
+ * with that guardian in the run (2 and up: a repeat plays the whole fight).
+ */
+export function echoStageAt(floor: number, encounter = 1): EchoStage {
+  if (encounter >= 2 || floor >= ECHO_CARDS.fullFromFloor) return 3;
+  return floor >= ECHO_CARDS.phase2FromFloor ? 2 : 1;
+}
+
+/** Which of a fight's cards an echo of `stage` plays: phase 1 (the cards before its first `phase2` one), then phase 2, then the survival card and the last spell. */
+export function echoKeeps(fight: CardFightDef, stage: EchoStage): boolean[] {
+  const awaken = fight.cards.findIndex((c) => c.phase2);
+  return fight.cards.map((c, i) => {
+    if (stage === 3) return true;
+    if (c.survival || c.lastSpell) return false;
+    return stage === 2 || awaken < 0 || i < awaken;
+  });
+}
+
+const echoCache = new WeakMap<CardFightDef, Map<EchoStage, CardFightDef>>();
+
+/** The fight an echo of `stage` plays: its kept cards (their shares as they were), each timer `ECHO_CARDS.timerScale` as long. */
+export function echoCards(fight: CardFightDef, stage: EchoStage): CardFightDef {
+  const byStage = echoCache.get(fight) ?? new Map<EchoStage, CardFightDef>();
+  echoCache.set(fight, byStage);
+  const hit = byStage.get(stage);
+  if (hit) return hit;
+  const keeps = echoKeeps(fight, stage);
+  const echo: CardFightDef = { ...fight, cards: fight.cards.filter((_, i) => keeps[i]).map((c) => ({ ...c, timerMs: Math.round(c.timerMs * ECHO_CARDS.timerScale) })) };
+  byStage.set(stage, echo);
+  return echo;
+}
+
+/** The share of the full fight's HP an echo of `stage` keeps (its max HP is scaled by it, so every segment stays the guardian's own). */
+export function echoShare(fight: CardFightDef, stage: EchoStage): number {
+  const total = fight.cards.reduce((sum, c) => sum + c.hpShare, 0);
+  const kept = echoCards(fight, stage).cards.reduce((sum, c) => sum + c.hpShare, 0);
+  return total > 0 ? kept / total : 1;
+}
+
+/** The card fight a boss plays in `state`: its tier's, or in a Sima echo the echo's stage of it (absent: it fights without cards). */
+export function fightFor(state: Pick<WorldState, 'enemyScale'>, fight: CardFightDef | undefined): CardFightDef | undefined {
+  if (!fight || !state.enemyScale?.echo) return fight;
+  return echoCards(fight, state.enemyScale.echoStage ?? 1);
 }
 
 /** How a hosted boss plays one step of a card's moves: its own engine, restricted to `card.moves` (and never awakening on its own). */

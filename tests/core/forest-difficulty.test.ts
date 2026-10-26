@@ -4,7 +4,8 @@ import { TREVENANT_CARDS_NORMAL } from '../../src/data/hosted-cards';
 import { updateTreant } from '../../src/core/treant';
 import { tickAiAt } from '../../src/core/difficulty';
 import { FIXED_DT_MS as TICK_MS } from '../../src/core/timestep';
-import type { TreantDef } from '../../src/data/enemies';
+import type { ArcherDef, TreantDef } from '../../src/data/enemies';
+import { updateArcher } from '../../src/core/archer';
 import type { GameEvent as Ev } from '../../src/core/state';
 import type { Difficulty } from '../../src/data/difficulty';
 import { DECIDUEYE, ENEMY_BEHAVIOUR, TREVENANT } from '../../src/data/enemies';
@@ -125,9 +126,14 @@ describe('forest difficulty hooks', () => {
     expect(night.phase2.rain.waves).toBeGreaterThan(DECIDUEYE.phase2.rain.waves);
     expect(night.phase2.stitch.stitches).toBeGreaterThan(DECIDUEYE.phase2.stitch.stitches);
     const roost = { width: 640, height: 400 };
-    // Hard's Decidueye fights with spell cards; its card rotation still plays in a Sima echo.
-    const echo = { ...arena('decidueye', vec(320, 120), 'hard', vec(320, 330), roost), enemyScale: { hp: 1, damage: 1, echo: true as const } };
-    const played = watch(echo, 60000, (s) => (first(s).boss?.combosDone ?? 0) >= 4);
-    expect(stances(played.events).slice(0, 4)).toEqual(hard.cards);
+    // Hard's Decidueye fights with spell cards everywhere (Sima echoes too); its own rotation is driven through its state machine directly.
+    const own: ArcherDef = { ...hard, spellCards: undefined };
+    let s = arena('decidueye', vec(320, 120), 'hard', vec(320, 330), roost);
+    const events: Ev[] = [];
+    for (let i = 0; i < 60000 / TICK_MS && (first(s).boss?.combosDone ?? 0) < 4; i++) {
+      const e = first(s);
+      s = updateArcher(s, { ...e, ai: tickAiAt(e.ai, TICK_MS, 'hard') }, own, s.player.pos, TICK_MS, events);
+    }
+    expect(stances(events).slice(0, 4)).toEqual(hard.cards);
   });
 });
