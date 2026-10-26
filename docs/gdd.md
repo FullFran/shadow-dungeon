@@ -1263,6 +1263,8 @@ Metas a largo plazo que se miran al terminar cada partida y al cambiar la colecc
 
 Ningún logro da poder: solo unas pocas Pokémonedas. Al conseguirlos sale un aviso arriba de la pantalla; la ventana de logros (en el menú principal y desde el tablón del pueblo) enseña cada familia con su progreso. En cooperativo cada jugador mira sus logros con su propia partida y su propio guardado; las pruebas del Santuario no cuentan como partidas.
 
+Logros retroactivos: al abrir el juego se conceden, una sola vez y sin avisos uno a uno, los logros que ya demuestra el progreso guardado de antes de que existieran: las mazmorras ganadas por dificultad (récords del tablón; un récord de antes de las dificultades cuenta como Fácil), la profundidad de la Sima (récords y clasificación de la Sima), la colección, las evoluciones, los despertares, los shiny y las Pokémonedas ganadas. Un guardado anterior a la versión 4 no tiene el total ganado: se rellena con un mínimo (el saldo más lo que costaron las mejoras, los movimientos del tutor y las Mejoras, cada uno a su precio más barato), y nunca baja. Sale un único aviso con el número de logros. Pagan su premio una vez, como cualquier logro (queda guardado y no se repite). Los que solo puede demostrar una partida (guardián sin un rasguño, ganar con cada especie, cooperativo y el secreto) siguen esperando a la siguiente partida.
+
 ### Misiones *(provisional)*
 
 El tablón del pueblo, además de los récords, tiene encargos al estilo de los tablones de Mundo Misterioso. Cada día (a las 00:00 UTC) salen de 3 a 5 misiones, las mismas para todos los jugadores porque dependen solo de la fecha, y una semanal que cambia cada lunes. Se generan de las listas de contenido:

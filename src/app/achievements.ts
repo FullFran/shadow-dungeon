@@ -70,18 +70,23 @@ const TOAST_LINES = 3;
  * like the install banner) naming the new achievements, gone after a few
  * seconds or a tap. Nothing when the list is empty.
  */
-export function achievementToast(defs: readonly AchievementDef[], tr: Tr = (key) => t(key)): void {
+export function achievementToast(defs: readonly AchievementDef[], tr: Tr = (key) => t(key), past = false): void {
   if (defs.length === 0 || typeof document === 'undefined') return;
   const shown = defs.slice(0, TOAST_LINES).map((d) => h('p', { textContent: `★ ${achievementTitle(d, tr)}` }));
   const more = defs.length > TOAST_LINES ? [h('p', { className: 'dim', textContent: tr('achievement.toast.more').replace('{n}', String(defs.length - TOAST_LINES)) })] : [];
   const coins = defs.reduce((sum, d) => sum + d.reward, 0);
   const paid = coins > 0 ? [h('p', { className: 'dim', textContent: tr('achievement.reward').replace('{coins}', coinText(coins, tr)) })] : [];
-  const toast = h('div', { className: 'achievement-toast' }, [mdWindow({ title: tr('achievement.toast.title') }, [...shown, ...more, ...paid])]);
+  // Unlocked for progress made before achievements existed: one summary line instead of a list.
+  const lines = past ? [h('p', { textContent: pastAchievementsText(defs.length, tr) })] : [...shown, ...more];
+  const toast = h('div', { className: 'achievement-toast' }, [mdWindow({ title: tr(past ? 'achievement.past.title' : 'achievement.toast.title') }, [...lines, ...paid])]);
   const close = () => toast.remove();
   toast.addEventListener('click', close);
   document.body.append(toast);
   setTimeout(close, TOAST_MS);
 }
+
+/** The retroactive toast's line: how many achievements earlier progress unlocked. */
+export const pastAchievementsText = (n: number, tr: Tr): string => tr(n === 1 ? 'achievement.past.one' : 'achievement.past.many').replace('{n}', String(n));
 
 export interface AchievementsOptions {
   store: KeyValueStore;

@@ -56,7 +56,7 @@ import { earnChallengeReward, earnCoins, loadSave, wearShinyAt, writeSave } from
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast } from './achievements';
-import { recordRun, recordSave } from './progress';
+import { recordPast, recordRun, recordSave } from './progress';
 import { runReport } from '../core/run-report';
 import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
@@ -98,6 +98,9 @@ const { account, store } = setupAccount({
   onChange: () => {},
 });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
+// Achievements arrived after players had progress: what the save, the records and the Sima leaderboard prove unlocks once, with one summary toast (app/progress.ts).
+setLanguage(settings.language);
+achievementToast(recordPast(store, Date.now()).unlocked, undefined, true);
 const audio = createAudio(settings);
 // Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
 setTouchMode(settings.touchMode);
