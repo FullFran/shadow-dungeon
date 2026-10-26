@@ -3,6 +3,8 @@ import type { MoveId } from '../data/moves';
 import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
 import { MAX_RANK, tutorOffer } from '../data/tutor';
 import { lineOf } from '../core/evolution';
+import { challengeReward } from '../core/challenge';
+import type { DungeonDef } from '../data/dungeons';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 
@@ -170,5 +172,13 @@ export function earnCoins(store: KeyValueStore, amount: number): SaveData {
   const save = loadSave(store);
   const next = sanitize({ ...save, coins: save.coins + Math.max(0, Math.floor(amount)) });
   writeSave(store, next);
+  return next;
+}
+
+/** Pays a run's challenge materials (core/challenge.ts) into the stored save and returns it; any other run changes nothing. */
+export function earnChallengeReward(store: KeyValueStore, dungeon: DungeonDef, victory: boolean): SaveData {
+  const save = loadSave(store);
+  const next = challengeReward(save, dungeon, victory);
+  if (next !== save) writeSave(store, next);
   return next;
 }

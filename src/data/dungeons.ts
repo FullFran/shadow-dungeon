@@ -2,7 +2,7 @@ import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type Sp
 import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
 import type { GateTuning } from './encounters';
 import type { MusicContext } from './music';
-import { ROOMS } from './rooms';
+import { ROOMS, type RoomId } from './rooms';
 import type { SpeciesId } from './species';
 import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
 
@@ -13,7 +13,16 @@ import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
  * music of each kind of floor, the colours of its tiles and what unlocks it.
  * The run (core/run.ts) reads everything from here.
  */
-export type DungeonId = 'crypt-of-the-sword-king' | 'misty-forest' | 'eclipse-chasm' | 'toxic-swamp' | 'flooded-caves';
+export type DungeonId =
+  | 'crypt-of-the-sword-king'
+  | 'misty-forest'
+  | 'eclipse-chasm'
+  | 'toxic-swamp'
+  | 'flooded-caves'
+  | 'challenge-abra'
+  | 'challenge-piplup'
+  | 'challenge-shinx'
+  | 'challenge-axew';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -72,6 +81,8 @@ export interface DungeonDef {
   toxicPools?: true;
   /** Mandatory kills on some generated floors (core/gates.ts): a sealed stairs, a locked door, a wave room. */
   gates?: GateTuning;
+  /** A challenge dungeon only (`CHALLENGES`): the gacha line it belongs to (its first form) and the materials a clear pays. */
+  challenge?: { line: SpeciesId; materials: number };
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -426,10 +437,46 @@ export function planAt(dungeon: DungeonDef, floor: number): FloorPlan | undefine
 /** Floors of a dungeon; the endless one never runs out. */
 export const floorsOf = (dungeon: DungeonDef): number => (dungeon.endless ? Number.POSITIVE_INFINITY : dungeon.plan.length);
 
-const isDungeonId = (id: unknown): id is DungeonId => DUNGEONS.some((d) => d.id === id);
+/** Materials a challenge dungeon's clear pays (provisional; evolving costs 3, then 6). */
+export const CHALLENGE_MATERIALS = 3;
 
-/** A dungeon by id; anything unknown (an old or hostile peer, a bad address) is the Crypt. */
-export const dungeonById = (id: unknown): DungeonDef => (isDungeonId(id) ? DUNGEONS.find((d) => d.id === id)! : CRYPT);
+/**
+ * A challenge dungeon (odd/tasks/gacha-evolutions.md T4): three generated
+ * floors of `base` and, on the fourth, one of its arenas as the boss. It
+ * borrows the look, music and enemies of `base`; it is open while the
+ * player owns any form of `line` (core/challenge.ts) and its clear pays the
+ * line's materials. Kept apart from `DUNGEONS` (the main select and the
+ * balance sweeps never list it).
+ */
+const challenge = (line: 'abra' | 'piplup' | 'shinx' | 'axew', base: DungeonDef, room: RoomId): DungeonDef => ({
+  id: `challenge-${line}`,
+  lore: { id: `challenge-${line}`, nameKey: `challenge.${line}.name`, subtitleKey: `challenge.${line}.subtitle`, loreKeys: [`challenge.${line}.lore`] },
+  plan: [GENERATED, GENERATED, GENERATED, { kind: 'room', room }],
+  spawns: base.spawns,
+  urgent: [],
+  music: base.music,
+  palette: base.palette,
+  unlockedBy: null,
+  ...(base.decor ? { decor: base.decor } : {}),
+  ...(base.water ? { water: base.water } : {}),
+  ...(base.toxicPools ? { toxicPools: base.toxicPools } : {}),
+  challenge: { line, materials: CHALLENGE_MATERIALS },
+});
+
+/** One challenge per gacha line, themed by type: psychic in the Crypt (Sableye), water in the caves (Lanturn), electric in the Forest (Trevenant), dragon in the swamp (Salazzle). */
+export const CHALLENGES: readonly DungeonDef[] = [
+  challenge('abra', CRYPT, 'vault'),
+  challenge('piplup', CAVES, 'grotto'),
+  challenge('shinx', FOREST, 'hollow'),
+  challenge('axew', SWAMP, 'den'),
+];
+
+const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES];
+
+const isDungeonId = (id: unknown): id is DungeonId => ALL.some((d) => d.id === id);
+
+/** A dungeon by id (challenges too); anything unknown (an old or hostile peer, a bad address) is the Crypt. */
+export const dungeonById = (id: unknown): DungeonDef => (isDungeonId(id) ? ALL.find((d) => d.id === id)! : CRYPT);
 
 /** Chance of a table at a floor: index 0 is floor 1, deeper floors use the last entry. */
 export const chanceAt = (table: readonly number[], floor: number): number => table[Math.min(floor, table.length) - 1] ?? 0;

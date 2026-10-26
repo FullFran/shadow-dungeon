@@ -1258,5 +1258,17 @@
   "touch.size.normal": "Normal",
   "touch.size.large": "Large",
   "touch.opacity": "Button opacity",
-  "touch.leftHanded": "Left-handed (mirrored controls)"
+  "touch.leftHanded": "Left-handed (mirrored controls)",
+  "challenge.abra.name": "Abra's Challenge",
+  "challenge.abra.subtitle": "Psychic echoes among the tombs",
+  "challenge.abra.lore": "Three floors of the crypt and Sableye at the end. Beating it gives Abra Essence to evolve.",
+  "challenge.piplup.name": "Piplup's Challenge",
+  "challenge.piplup.subtitle": "Cold water under the stone",
+  "challenge.piplup.lore": "Three floors of the caves and Lanturn at the end. Beating it gives Piplup Essence to evolve.",
+  "challenge.shinx.name": "Shinx's Challenge",
+  "challenge.shinx.subtitle": "Sparks in the mist",
+  "challenge.shinx.lore": "Three floors of the forest and Trevenant at the end. Beating it gives Shinx Essence to evolve.",
+  "challenge.axew.name": "Axew's Challenge",
+  "challenge.axew.subtitle": "Fangs in the swamp",
+  "challenge.axew.lore": "Three floors of the swamp and Salazzle at the end. Beating it gives Axew Essence to evolve."
 }

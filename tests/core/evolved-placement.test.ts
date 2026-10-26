@@ -16,7 +16,7 @@ const generatedFloors = (id: DungeonId): number[] => {
 };
 
 /** The Sima stratum of each home dungeon (the Sima's own species: the Forest stratum, after Houndour's first floors). */
-const HOME_BAND: Readonly<Record<DungeonId, string>> = {
+const HOME_BAND: Readonly<Partial<Record<DungeonId, string>>> = {
   'crypt-of-the-sword-king': 'crypt',
   'misty-forest': 'forest',
   'flooded-caves': 'caves',

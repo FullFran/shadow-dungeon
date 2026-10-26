@@ -51,7 +51,7 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import type { SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { earnCoins, loadSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
@@ -1093,7 +1093,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
       // Every peer earns its own Pokémonedas, guests too.
-      const save = earnCoins(store, summary.coins.total);
+      earnCoins(store, summary.coins.total);
+      // A challenge dungeon's victory pays its line's materials, to every peer that owns the line.
+      const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory');
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       const score = summary.clockMs !== undefined ? endlessScore(summary) : undefined;
       resultScreen(root, result, summary, online, save.coins, score);

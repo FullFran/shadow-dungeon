@@ -1258,5 +1258,17 @@
   "touch.size.normal": "Normal",
   "touch.size.large": "Grande",
   "touch.opacity": "Opacidad de los botones",
-  "touch.leftHanded": "Zurdo (controles invertidos)"
+  "touch.leftHanded": "Zurdo (controles invertidos)",
+  "challenge.abra.name": "Reto de Abra",
+  "challenge.abra.subtitle": "Ecos psíquicos entre tumbas",
+  "challenge.abra.lore": "Tres plantas de la cripta y Sableye al fondo. Vencerlo da Esencias de Abra para evolucionar.",
+  "challenge.piplup.name": "Reto de Piplup",
+  "challenge.piplup.subtitle": "Agua fría bajo la piedra",
+  "challenge.piplup.lore": "Tres plantas de las cuevas y Lanturn al fondo. Vencerlo da Esencias de Piplup para evolucionar.",
+  "challenge.shinx.name": "Reto de Shinx",
+  "challenge.shinx.subtitle": "Chispas en la niebla",
+  "challenge.shinx.lore": "Tres plantas del bosque y Trevenant al fondo. Vencerlo da Esencias de Shinx para evolucionar.",
+  "challenge.axew.name": "Reto de Axew",
+  "challenge.axew.subtitle": "Colmillos en el pantano",
+  "challenge.axew.lore": "Tres plantas del pantano y Salazzle al fondo. Vencerlo da Esencias de Axew para evolucionar."
 }

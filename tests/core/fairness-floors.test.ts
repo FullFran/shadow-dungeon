@@ -10,7 +10,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { input } from './helpers';
-import { CAVES, CRYPT, DUNGEONS, ECLIPSE, floorsOf, planAt, type DungeonDef } from '../../src/data/dungeons';
+import { CAVES, CHALLENGES, CRYPT, DUNGEONS, ECLIPSE, floorsOf, planAt, type DungeonDef } from '../../src/data/dungeons';
 import { PROGRESSION } from '../../src/data/progression';
 import { SPECIES } from '../../src/data/species';
 import { expectedFloorXp, expectedLevel, hitCap, referenceMaxHp, speciesMaxHpAt } from '../../src/core/fairness';
@@ -44,7 +44,8 @@ const atLevel = (w: WorldState, level: number): WorldState => {
 describe('reference max HP (the yardstick of the one-hit cap)', () => {
   it('is the species at the level expected from clearing the floors before', () => {
     expect(expectedLevel(CRYPT.id, 1, 'easy')).toBe(1);
-    for (const d of DUNGEONS) {
+    // The challenge dungeons (T4) too: they borrow their floors and arenas from the main ones.
+    for (const d of [...DUNGEONS, ...CHALLENGES]) {
       let previous = 1;
       for (let f = 1; f <= Math.min(10, floorsOf(d)); f++) {
         const level = expectedLevel(d.id, f, 'nightmare');
@@ -84,7 +85,7 @@ describe('reference level after meaningful encounters', () => {
     startRun(seed, { difficulty: tier }, f, d.id).world.enemies.reduce((sum, e) => sum + enemyXp(e, f), 0);
 
   it('a regular dungeon\'s generated floor pays exactly what the run places on its reference seeds (counts, roles, leaders)', () => {
-    for (const d of DUNGEONS.filter((x) => !x.endless))
+    for (const d of [...DUNGEONS, ...CHALLENGES].filter((x) => !x.endless))
       for (const tier of ['easy', 'nightmare'] as const)
         for (let f = 2; f <= lastFloor(d); f++) {
           if (!generated(d, f)) continue;
@@ -95,7 +96,7 @@ describe('reference level after meaningful encounters', () => {
 
   it('the expected level is within one level of what real run seeds reach, floor by floor, in every dungeon', () => {
     const seeds = Array.from({ length: 16 }, (_, i) => 101 + i);
-    for (const d of DUNGEONS)
+    for (const d of [...DUNGEONS, ...CHALLENGES])
       for (const tier of ['easy', 'nightmare'] as const) {
         let xp = 0;
         for (let f = 1; f <= lastFloor(d); f++) {
