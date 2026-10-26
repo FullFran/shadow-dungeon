@@ -28,7 +28,7 @@ import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
-import { accountWindow, setupAccount } from './account-screen';
+import { accountWindow, setupAccount, type AccountView } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
 import { loadoutScreen, type ShinySkins } from './loadout';
@@ -88,6 +88,9 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
 applyTokens(document.documentElement);
+/** Where the open account screen goes back to (its redraws keep it); declared before the account, whose start may report a change at once. */
+let accountBack: (() => void) | null = null;
+let accountView: AccountView | null = null;
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
 const { account, store } = setupAccount({
   store: browserStore(),
@@ -95,7 +98,17 @@ const { account, store } = setupAccount({
     const app = document.getElementById('app');
     if (app) toast(app, text);
   },
-  onChange: () => {},
+  // Sync moved (status, a choice, another tab): a signed-in account screen shows it at once; the title redraws for a replaced profile.
+  onChange: () => {
+    const app = document.getElementById('app');
+    if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountBack) accountScreen(app, accountBack);
+  },
+  onReplaced: () => {
+    // The picked species must still be in the (possibly new) roster.
+    settings = loadSettings(store, settings, rosterOf(loadSave(store)));
+    const app = document.getElementById('app');
+    if (app?.querySelector('.title-logo')) titleScreen(app);
+  },
 });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 // Achievements arrived after players had progress: what the save, the records and the Sima leaderboard prove unlocks once, with one summary toast (app/progress.ts).
@@ -577,9 +590,11 @@ function settingsScreen(root: HTMLElement): void {
   ]);
 }
 
-/** The account screen (log in, sign up, log out, delete; the first-login save choice), from the title or Settings. */
-function accountScreen(root: HTMLElement, back: () => void): void {
-  show(root, [accountWindow({ account, refresh: () => accountScreen(root, back), onBack: back })]);
+/** The account screen (log in, sign up, log out, delete; cloud sync choices, status and backups), from the title or Settings. */
+function accountScreen(root: HTMLElement, back: () => void, view: AccountView = 'main'): void {
+  accountBack = back;
+  accountView = view;
+  show(root, [accountWindow({ account, refresh: (next) => accountScreen(root, back, next), onBack: back }, view)]);
 }
 
 /**

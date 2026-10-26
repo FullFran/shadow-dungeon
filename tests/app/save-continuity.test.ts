@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import { httpAccountApi } from '../../src/adapters/account-api';
 import { createAccount } from '../../src/app/account';
-import { observeKey, readRemote, type Timers } from '../../src/app/cloud-sync';
+import { observeKey, type Timers } from '../../src/app/cloud-sync';
+import { decodeCloud, encodeCloud } from '../../src/app/cloud-payload';
+import { readProfile, sameProfile } from '../../src/app/profile';
 import { loadSave, parseSave, SAVE_KEY, SAVE_VERSION, writeSave, type SaveData } from '../../src/app/save';
 import { defaultSettings, loadSettings } from '../../src/app/settings';
 import { rosterOf } from '../../src/core/collection';
@@ -67,6 +69,12 @@ describe('progress continuity from the deployed saves', () => {
         expect(readShrine(store)).toEqual(JSON.parse(contents[SHRINE_KEY]!));
       });
 
+      it('the whole profile (save, records, leaderboard, shrine) survives the trip through the cloud', () => {
+        const store = deviceWith(contents);
+        const profile = readProfile(store);
+        expect(sameProfile(decodeCloud(JSON.parse(JSON.stringify(encodeCloud(profile, { savedAt: 1 })))).profile, profile)).toBe(true);
+      });
+
       it('as a guest: no network request at start or on a save write, and the save is kept', async () => {
         const store = deviceWith(contents);
         const calls: string[] = [];
@@ -74,7 +82,7 @@ describe('progress continuity from the deployed saves', () => {
           calls.push(String(input));
           throw new Error('no network in this test');
         });
-        const account = createAccount({ api, store, timers: noTimers, onNotice: () => {}, onChange: () => {} });
+        const account = createAccount({ api, store, timers: noTimers, now: () => 0, isLeader: () => true, onNotice: () => {}, onChange: () => {}, onReplaced: () => {} });
         const game = observeKey(store, SAVE_KEY, () => account.saveChanged());
         await account.start();
         account.online();
@@ -127,6 +135,6 @@ describe('progress continuity from the deployed saves', () => {
     expect(reloaded).toEqual(save);
     expect(familyProgress(reloaded.achievements ?? {}).reduce((n, f) => n + f.done, 0)).toBe(Object.keys(save.achievements ?? {}).length);
     // Cloud sync pushes the sanitized save and reads it back the same way.
-    expect(readRemote(JSON.parse(JSON.stringify(reloaded)))).toEqual(save);
+    expect(decodeCloud(JSON.parse(JSON.stringify(reloaded))).profile.save).toEqual(save);
   });
 });

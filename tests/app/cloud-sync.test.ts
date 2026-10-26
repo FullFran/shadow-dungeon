@@ -1,27 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { memoryStore } from '../../src/adapters/storage';
+import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import type { ApiResult, RemoteSave } from '../../src/adapters/account-api';
-import { EMPTY_SAVE, SAVE_KEY, SAVE_VERSION, type SaveData } from '../../src/app/save';
+import { encodeCloud, type CloudData } from '../../src/app/cloud-payload';
 import {
   createPusher,
   DEBOUNCE_MS,
-  firstLoginDecision,
-  isEmptySave,
+  decideSync,
+  decisionInput,
+  EMPTY_SYNC,
+  FIRST_RETRY_MS,
   MAX_RETRY_MS,
-  observeKey,
-  readRemote,
-  resumeDecision,
-  saveSummary,
+  observeKeys,
+  parseSync,
+  readSync,
+  SYNC_KEY,
+  writeSync,
+  type DecisionInput,
   type PushApi,
-  type SyncLink,
+  type SyncAction,
+  type SyncState,
   type Timers,
 } from '../../src/app/cloud-sync';
+import { EMPTY_PROFILE, profileHash, PROFILE_KEYS, type Profile } from '../../src/app/profile';
+import { EMPTY_SAVE, SAVE_KEY } from '../../src/app/save';
+import { electLeader, HEARTBEAT_MS, LEASE_KEY, LEASE_MS, type LockManagerLike } from '../../src/app/sync-leader';
 
-const save = (patch: Partial<SaveData>): SaveData => ({ ...EMPTY_SAVE, ...patch });
-const remote = (data: SaveData, rev = 1, id = 'save1'): RemoteSave => ({ id, rev, data });
+const profile = (coins: number): Profile => ({ ...EMPTY_PROFILE, save: { ...EMPTY_SAVE, coins } });
 
 /** Timers driven by hand: `advance(ms)` runs what came due, in order. */
-function manualTimers(): Timers & { advance(ms: number): void; pending(): number[] } {
+function manualTimers(): Timers & { advance(ms: number): void; now(): number } {
   let now = 0;
   let next = 1;
   const queue = new Map<number, { at: number; fn: () => void }>();
@@ -45,301 +52,357 @@ function manualTimers(): Timers & { advance(ms: number): void; pending(): number
       }
       now = end;
     },
-    pending: () => [...queue.values()].map((t) => t.at - now),
+    now: () => now,
   };
 }
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+const settle = async () => {
+  for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+};
 
-describe('save emptiness and summaries', () => {
-  it('a fresh save is empty; any coin, upgrade or Pokémon is not', () => {
-    expect(isEmptySave(EMPTY_SAVE)).toBe(true);
-    expect(isEmptySave(save({ coins: 1 }))).toBe(false);
-    expect(isEmptySave(save({ upgrades: { vitality: 1 } }))).toBe(false);
-    expect(isEmptySave(save({ owned: ['kadabra'] }))).toBe(false);
-    expect(isEmptySave(save({ owned: [] }))).toBe(true);
+describe('the decision table', () => {
+  const H = { base: 'h-base', changed: 'h-local', cloud: 'h-cloud' };
+  const OWNERS = ['none', 'same', 'other'] as const;
+  const BASES = [null, { saveId: 's1', rev: 3, hash: H.base }] as const;
+  const LOCALS = [
+    { hash: H.base, empty: false },
+    { hash: H.changed, empty: false },
+    { hash: 'h-empty', empty: true },
+  ] as const;
+  const REMOTES = [
+    null,
+    { id: 's1', rev: 3, hash: 'h-empty', empty: true },
+    // Same content as the local one (filled per case below).
+    'equal',
+    ...[2, 3, 4].flatMap((rev) => ['s1', 's2'].map((id) => ({ id, rev, hash: H.cloud, empty: false }))),
+  ] as const;
+
+  /** Every combination of owner, held, base, local and remote. */
+  const cases: DecisionInput[] = [];
+  for (const owner of OWNERS)
+    for (const held of [false, true])
+      for (const base of BASES)
+        for (const local of LOCALS)
+          for (const remote of REMOTES) {
+            // A base or a held flag only exists for the same owner.
+            if ((base || held) && owner !== 'same') continue;
+            const r = remote === 'equal' ? { id: 's1', rev: 3, hash: local.hash, empty: local.empty } : remote;
+            cases.push({ owner, held, base, local, remote: r });
+          }
+
+  const ACTIONS: SyncAction[] = ['none', 'push', 'pull', 'offer-download', 'diverged', 'foreign', 'held'];
+
+  it(`answers every one of the ${cases.length} states with a known action`, () => {
+    expect(cases.length).toBeGreaterThan(100);
+    for (const c of cases) expect(ACTIONS).toContain(decideSync(c));
   });
 
-  it('summarizes coins and owned Pokémon', () => {
-    expect(saveSummary(save({ coins: 250 }))).toEqual({ coins: 250, owned: 0 });
-    expect(saveSummary(save({ coins: 3, owned: ['kadabra', 'luxio'] }))).toEqual({ coins: 3, owned: 2 });
+  it('never loses progress: invariants over every state', () => {
+    for (const c of cases) {
+      const action = decideSync(c);
+      const at = `${JSON.stringify(c)} -> ${action}`;
+      const cloudHasProgress = c.remote !== null && !c.remote.empty;
+      const seenRemote = c.base !== null && c.remote !== null && c.remote.id === c.base.saveId && c.remote.rev === c.base.rev;
+      // Another account's progress is never mixed in silently.
+      if (c.owner === 'other' && !c.local.empty) expect(action, at).toBe('foreign');
+      // An empty device never pushes over cloud progress.
+      if (c.local.empty && cloudHasProgress) expect(action, at).not.toBe('push');
+      // A push only overwrites a cloud revision this device has seen (or no progress at all).
+      if (action === 'push') expect(!cloudHasProgress || seenRemote, at).toBe(true);
+      // A pull never throws local changes away.
+      if (action === 'pull') expect(c.local.empty || c.local.hash === c.base?.hash, at).toBe(true);
+      // Equal profiles need nothing.
+      if (c.remote && c.remote.hash === c.local.hash && c.owner !== 'other') expect(action, at).toBe('none');
+      // "Empezar de cero" holds everything that would move.
+      if (c.held && cloudHasProgress && c.remote!.hash !== c.local.hash) expect(action, at).toBe('held');
+      if (action === 'diverged') expect(c.local.empty, at).toBe(false);
+      if (action === 'offer-download') expect(c.local.empty && cloudHasProgress, at).toBe(true);
+    }
   });
 
-  it('reads cloud data like a local save (migrate + sanitize), hostile data as empty', () => {
-    expect(readRemote({ version: 1, coins: 40, upgrades: {} })).toEqual(save({ coins: 40 }));
-    expect(readRemote('nope')).toEqual(EMPTY_SAVE);
-    expect(readRemote({ coins: -3 }).coins).toBe(0);
+  const base = { saveId: 's1', rev: 3, hash: H.base };
+  const cloud = (rev: number, id = 's1') => ({ id, rev, hash: H.cloud, empty: false });
+  const full = { hash: H.changed, empty: false };
+  const unchanged = { hash: H.base, empty: false };
+  const empty = { hash: 'h-empty', empty: true };
+  const row = (owner: DecisionInput['owner'], b: DecisionInput['base'], local: DecisionInput['local'], remote: DecisionInput['remote'], held = false): DecisionInput => ({ owner, held, base: b, local, remote });
+
+  it.each<[string, DecisionInput, SyncAction]>([
+    ['guest progress, account without cloud save: upload', row('none', null, full, null), 'push'],
+    ['guest progress, empty cloud save: upload', row('none', null, full, { id: 's1', rev: 1, hash: 'h-empty', empty: true }), 'push'],
+    ['nothing anywhere', row('none', null, empty, null), 'none'],
+    ['new browser, cloud progress: offer the download', row('none', null, empty, cloud(4)), 'offer-download'],
+    ['guest progress meets different cloud progress: pick', row('none', null, full, cloud(4)), 'diverged'],
+    ['same account, only the device moved (server rev == baseRev): push', row('same', base, full, cloud(3)), 'push'],
+    ['same account, only the cloud moved: silent pull', row('same', base, unchanged, cloud(4)), 'pull'],
+    ['same account, both moved: pick', row('same', base, full, cloud(4)), 'diverged'],
+    ['same account, storage wiped under a known record: take it back', row('same', base, empty, cloud(4)), 'pull'],
+    ['same account, record replaced (other id): pick', row('same', base, full, cloud(4, 's2')), 'diverged'],
+    ['same account, cloud behind the base (restored server): pick', row('same', base, full, cloud(2)), 'diverged'],
+    ['same account, unchanged device, cloud record unknown: pick', row('same', base, unchanged, cloud(9, 's2')), 'diverged'],
+    ['another account\'s progress on this browser: ask', row('other', null, full, cloud(4)), 'foreign'],
+    ['another account\'s progress, account without cloud save: still ask', row('other', null, full, null), 'foreign'],
+    ['another account tag but nothing local: like a new browser', row('other', null, empty, cloud(4)), 'offer-download'],
+    ['held ("Empezar de cero"): nothing moves', row('same', base, full, cloud(4), true), 'held'],
+    ['held, cloud emptied meanwhile: push', row('same', base, full, null, true), 'push'],
+  ])('%s', (_name, input, expected) => {
+    expect(decideSync(input)).toBe(expected);
+  });
+
+  it('builds its input from the sync state, the local profile and the cloud record', () => {
+    const state: SyncState = { ...EMPTY_SYNC, owner: 'u1', saveId: 's1', rev: 3, hash: profileHash(profile(5)) };
+    const remote: RemoteSave = { id: 's1', rev: 4, data: encodeCloud(profile(9), { savedAt: 1 }) };
+    const input = decisionInput(state, 'u1', profile(5), remote);
+    expect(input.owner).toBe('same');
+    expect(decideSync(input)).toBe('pull');
+    expect(decisionInput(state, 'u2', profile(5), remote).owner).toBe('other');
+    expect(decisionInput(state, 'u2', profile(5), remote).base).toBeNull();
+    expect(decisionInput(EMPTY_SYNC, 'u1', profile(5), remote).owner).toBe('none');
   });
 });
 
-describe('first login on a device', () => {
-  const local = save({ coins: 100 });
-  it('uploads the local save when the account has none', () => {
-    expect(firstLoginDecision(local, null)).toBe('upload');
-    expect(firstLoginDecision(EMPTY_SAVE, null)).toBe('upload');
-  });
-  it('uploads over an empty cloud save', () => {
-    expect(firstLoginDecision(local, remote(EMPTY_SAVE))).toBe('upload');
-  });
-  it('takes the cloud save when this device has nothing', () => {
-    expect(firstLoginDecision(EMPTY_SAVE, remote(save({ coins: 5 })))).toBe('download');
-  });
-  it('does nothing when both are the same', () => {
-    expect(firstLoginDecision(local, remote(local))).toBe('same');
-  });
-  it('asks when both have progress and differ', () => {
-    expect(firstLoginDecision(local, remote(save({ coins: 7 })))).toBe('ask');
-  });
-});
-
-describe('resuming a linked session', () => {
-  const local = save({ coins: 100 });
-  const link: SyncLink = { saveId: 'save1', rev: 3 };
-  it('adopts a newer cloud revision', () => {
-    expect(resumeDecision(local, remote(save({ coins: 9 }), 4), link)).toBe('adopt');
-  });
-  it('pushes progress made offline on top of the known revision', () => {
-    expect(resumeDecision(local, remote(save({ coins: 9 }), 3), link)).toBe('push');
-  });
-  it('never pushes an empty device save over cloud progress (storage wiped under a live session)', () => {
-    expect(resumeDecision(EMPTY_SAVE, remote(save({ coins: 9 }), 3), link)).toBe('adopt');
-  });
-  it('does nothing when both agree', () => {
-    expect(resumeDecision(local, remote(local, 3), link)).toBe('none');
-  });
-  it('uploads again when the cloud save is gone', () => {
-    expect(resumeDecision(local, null, link)).toBe('upload');
-  });
-});
-
-describe('observeKey', () => {
-  it('reports writes of the observed key only, after they are stored', () => {
-    const inner = memoryStore();
-    const seen: string[] = [];
-    const store = observeKey(inner, SAVE_KEY, () => seen.push(inner.get(SAVE_KEY) ?? ''));
-    store.set('other', 'x');
-    store.set(SAVE_KEY, '{"coins":1}');
-    expect(seen).toEqual(['{"coins":1}']);
-    expect(store.get('other')).toBe('x');
+describe('sync state', () => {
+  it('round-trips and tags local data with its account', () => {
+    const store = memoryStore();
+    const state: SyncState = { owner: 'u1', saveId: 's1', rev: 7, hash: 'abc:1', syncedAt: 100, held: true, status: 'held' };
+    writeSync(store, state);
+    expect(readSync(store)).toEqual(state);
   });
 
-  it('does not report a write the store refused (nothing new to push)', () => {
-    let calls = 0;
-    const store = observeKey({ get: () => null, set: () => { throw new Error('quota'); } }, SAVE_KEY, () => calls++);
-    expect(() => store.set(SAVE_KEY, '{}')).toThrow();
-    expect(calls).toBe(0);
-  });
-});
-
-/** A fake save endpoint with a revision counter and switchable failures. */
-function fakeApi(initial: RemoteSave | null = null) {
-  let current = initial;
-  const calls: { kind: 'create' | 'update'; rev: number; coins: number }[] = [];
-  let failure: 'offline' | 'unauthorized' | 'rejected' | null = null;
-  const api: PushApi & { calls: typeof calls; fail(kind: typeof failure): void; bump(data: SaveData): void; current(): RemoteSave | null } = {
-    calls,
-    fail: (kind) => {
-      failure = kind;
-    },
-    bump: (data) => {
-      current = { id: current?.id ?? 'save1', rev: (current?.rev ?? 0) + 1, data };
-    },
-    current: () => current,
-    async create(data) {
-      calls.push({ kind: 'create', rev: 0, coins: data.coins });
-      return answer(0, data);
-    },
-    async update(_id, data, rev) {
-      calls.push({ kind: 'update', rev, coins: data.coins });
-      return answer(rev, data);
-    },
-  };
-  function answer(rev: number, data: SaveData): ApiResult<RemoteSave> {
-    if (failure) return { ok: false, error: { kind: failure } };
-    if ((current?.rev ?? 0) !== rev) return { ok: false, error: { kind: 'conflict', current: current! } };
-    current = { id: current?.id ?? 'save1', rev: rev + 1, data };
-    return { ok: true, value: current };
-  }
-  return api;
-}
-
-function harness(initialRemote: RemoteSave | null, link: SyncLink) {
-  const api = fakeApi(initialRemote);
-  const timers = manualTimers();
-  let local = save({ coins: 10 });
-  const events: string[] = [];
-  let stored = link;
-  const pusher = createPusher({
-    api,
-    timers,
-    link: () => stored,
-    setLink: (next) => {
-      stored = next;
-    },
-    readLocal: () => local,
-    adopt: (data) => {
-      local = data;
-      events.push(`adopt:${data.coins}`);
-    },
-    onAuthLost: () => events.push('auth-lost'),
-  });
-  return {
-    api,
-    timers,
-    pusher,
-    events,
-    link: () => stored,
-    setLocal: (coins: number) => {
-      local = save({ coins });
-    },
-  };
-}
-
-describe('push loop', () => {
-  it('debounces bursts of writes into one push with the known revision', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.setLocal(20);
-    h.pusher.changed();
-    h.timers.advance(DEBOUNCE_MS - 1);
-    h.setLocal(30);
-    h.pusher.changed();
-    h.timers.advance(DEBOUNCE_MS - 1);
-    expect(h.api.calls).toEqual([]);
-    h.timers.advance(1);
-    await settle();
-    expect(h.api.calls).toEqual([{ kind: 'update', rev: 1, coins: 30 }]);
-    expect(h.link()).toEqual({ saveId: 'save1', rev: 2 });
+  it('broken, hostile or ownerless state reads as never synced', () => {
+    expect(parseSync('{')).toEqual(EMPTY_SYNC);
+    expect(parseSync(JSON.stringify({ owner: 'bad id!', saveId: 's1', rev: 3 }))).toEqual(EMPTY_SYNC);
+    expect(parseSync(JSON.stringify({ owner: 'u1', rev: -1, status: 'weird', hash: 5 }))).toEqual({ ...EMPTY_SYNC, owner: 'u1' });
   });
 
-  it('flushes at once (the tab is being hidden)', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.setLocal(15);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.api.calls).toHaveLength(1);
-    expect(h.timers.pending()).toEqual([]);
-  });
-
-  it('creates the cloud save when none is linked yet', async () => {
-    const h = harness(null, { saveId: null, rev: 0 });
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.api.calls).toEqual([{ kind: 'create', rev: 0, coins: 10 }]);
-    expect(h.link()).toEqual({ saveId: 'save1', rev: 1 });
-  });
-
-  it('skips a push when nothing changed since the last one', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.setLocal(11);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.api.calls).toHaveLength(1);
-  });
-
-  it('on 409 adopts the newer cloud save, takes its revision and reports it', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.api.bump(save({ coins: 999 })); // another device wrote rev 2
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.events).toEqual(['adopt:999']);
-    expect(h.link()).toEqual({ saveId: 'save1', rev: 2 });
-    // The next local change goes on top of rev 2.
-    h.setLocal(1000);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.api.calls.at(-1)).toEqual({ kind: 'update', rev: 2, coins: 1000 });
-  });
-
-  it('offline: keeps the latest save and retries later with a growing delay', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.api.fail('offline');
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    const first = h.timers.pending();
-    expect(first).toHaveLength(1);
-    h.timers.advance(first[0]!);
-    await settle();
-    expect(h.timers.pending()[0]).toBeGreaterThan(first[0]!);
-    expect(h.timers.pending()[0]).toBeLessThanOrEqual(MAX_RETRY_MS);
-    h.setLocal(25); // played on while offline
-    h.api.fail(null);
-    h.pusher.flush(); // back online
-    await settle();
-    expect(h.api.calls.at(-1)).toEqual({ kind: 'update', rev: 1, coins: 25 });
-    expect(h.link().rev).toBe(2);
-    expect(h.timers.pending()).toEqual([]);
-  });
-
-  it('a write during a push is sent after it, on the new revision', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.flush();
-    h.setLocal(30);
-    h.pusher.changed();
-    h.pusher.flush(); // in flight: waits
-    await settle();
-    h.timers.advance(DEBOUNCE_MS);
-    await settle();
-    expect(h.api.calls.map((c) => [c.rev, c.coins])).toEqual([
-      [1, 20],
-      [2, 30],
-    ]);
-  });
-
-  it('an expired session stops pushing and says so', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.api.fail('unauthorized');
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.events).toEqual(['auth-lost']);
-    expect(h.timers.pending()).toEqual([]);
-  });
-
-  it('a rejected save is dropped, not retried forever', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.api.fail('rejected');
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.flush();
-    await settle();
-    expect(h.timers.pending()).toEqual([]);
-  });
-
-  it('stop() cancels the pending push', async () => {
-    const h = harness(remote(save({ coins: 10 }), 1), { saveId: 'save1', rev: 1 });
-    h.setLocal(20);
-    h.pusher.changed();
-    h.pusher.stop();
-    h.timers.advance(DEBOUNCE_MS * 10);
-    await settle();
-    expect(h.api.calls).toEqual([]);
-  });
-
-  it('payloads are sanitized at the current version', async () => {
-    const h = harness(null, { saveId: null, rev: 0 });
-    let sent: SaveData | null = null;
-    const create = h.api.create;
-    h.api.create = async (data) => {
-      sent = data;
-      return create(data);
+  it('a failing store does not throw', () => {
+    const broken: KeyValueStore = {
+      get: () => {
+        throw new Error('x');
+      },
+      set: () => {
+        throw new Error('x');
+      },
     };
-    h.pusher.changed();
-    h.pusher.flush();
+    expect(readSync(broken)).toEqual(EMPTY_SYNC);
+    expect(() => writeSync(broken, EMPTY_SYNC)).not.toThrow();
+  });
+});
+
+describe('observed profile keys', () => {
+  it('reports writes of every profile key and nothing else', () => {
+    const seen: string[] = [];
+    const store = observeKeys(memoryStore(), PROFILE_KEYS, (k) => seen.push(k));
+    for (const key of PROFILE_KEYS) store.set(key, '1');
+    store.set('mazmorra-sombria.settings', '{}');
+    expect(seen).toEqual([...PROFILE_KEYS]);
+  });
+});
+
+describe('the push loop', () => {
+  function rig(start: Partial<SyncState> = {}) {
+    const timers = manualTimers();
+    let state: SyncState = { ...EMPTY_SYNC, owner: 'u1', saveId: 's1', rev: 1, hash: profileHash(profile(1)), ...start };
+    let local = profile(1);
+    const calls: { saveId: string | null; rev: number; coins: number }[] = [];
+    const events: string[] = [];
+    let answer: (data: CloudData, rev: number) => ApiResult<RemoteSave> = (data, rev) => ({ ok: true, value: { id: 's1', rev: rev + 1, data } });
+    const api: PushApi = {
+      async create(data) {
+        calls.push({ saveId: null, rev: 0, coins: data.coins });
+        return answer(data, 0);
+      },
+      async update(saveId, data, rev) {
+        calls.push({ saveId, rev, coins: data.coins });
+        return answer(data, rev);
+      },
+    };
+    const pusher = createPusher({
+      api,
+      timers,
+      state: () => state,
+      readLocal: () => local,
+      encode: (p) => encodeCloud(p, { savedAt: 0 }),
+      pushed: (remote, hash) => {
+        state = { ...state, saveId: remote.id, rev: remote.rev, hash };
+        events.push(`pushed@${remote.rev}`);
+      },
+      conflict: (current) => events.push(`conflict@${current.rev}`),
+      onAuthLost: () => events.push('auth'),
+      status: (s) => events.push(s),
+    });
+    return {
+      timers,
+      pusher,
+      calls,
+      events,
+      setLocal: (p: Profile) => (local = p),
+      setState: (patch: Partial<SyncState>) => (state = { ...state, ...patch }),
+      state: () => state,
+      answer: (fn: typeof answer) => (answer = fn),
+    };
+  }
+
+  it('debounces writes into one push with the baseRev', async () => {
+    const r = rig();
+    r.setLocal(profile(2));
+    r.pusher.changed();
+    r.setLocal(profile(3));
+    r.pusher.changed();
+    r.timers.advance(DEBOUNCE_MS - 1);
+    expect(r.calls).toEqual([]);
+    r.timers.advance(1);
     await settle();
-    expect(sent).toMatchObject({ version: SAVE_VERSION, coins: 10 });
+    expect(r.calls).toEqual([{ saveId: 's1', rev: 1, coins: 3 }]);
+    expect(r.state().rev).toBe(2);
+  });
+
+  it('creates the record when the device has none', async () => {
+    const r = rig({ saveId: null, rev: 0, hash: null });
+    r.setLocal(profile(5));
+    r.pusher.flush();
+    await settle();
+    expect(r.calls).toEqual([{ saveId: null, rev: 0, coins: 5 }]);
+  });
+
+  it('pushes nothing when the local profile equals the base', async () => {
+    const r = rig();
+    r.pusher.flush();
+    await settle();
+    expect(r.calls).toEqual([]);
+  });
+
+  it('never pushes while held or while a choice is open, nor an empty profile over a known record', async () => {
+    const r = rig({ held: true });
+    r.setLocal(profile(9));
+    r.pusher.flush();
+    r.setState({ held: false, status: 'choice' });
+    r.pusher.flush();
+    r.setState({ status: 'synced' });
+    r.setLocal(EMPTY_PROFILE);
+    r.pusher.flush();
+    await settle();
+    expect(r.calls).toEqual([]);
+  });
+
+  it('a 409 goes back to the caller instead of overwriting', async () => {
+    const r = rig();
+    r.answer(() => ({ ok: false, error: { kind: 'conflict', current: { id: 's1', rev: 5, data: {} } } }));
+    r.setLocal(profile(2));
+    r.pusher.flush();
+    await settle();
+    expect(r.events).toContain('conflict@5');
+    expect(r.calls).toHaveLength(1);
+  });
+
+  it('offline: keeps the latest and retries with backoff up to the cap', async () => {
+    const r = rig();
+    r.answer(() => ({ ok: false, error: { kind: 'offline' } }));
+    r.setLocal(profile(2));
+    r.pusher.flush();
+    await settle();
+    expect(r.events).toContain('offline');
+    let wait = FIRST_RETRY_MS;
+    for (let i = 0; i < 6; i++) {
+      r.timers.advance(wait);
+      await settle();
+      wait = Math.min(wait * 2, MAX_RETRY_MS);
+    }
+    expect(r.calls.length).toBe(7);
+    r.answer((data, rev) => ({ ok: true, value: { id: 's1', rev: rev + 1, data } }));
+    r.timers.advance(MAX_RETRY_MS);
+    await settle();
+    expect(r.state().rev).toBe(2);
+  });
+
+  it('an expired session stops and reports; a stopped loop sends nothing', async () => {
+    const r = rig();
+    r.answer(() => ({ ok: false, error: { kind: 'unauthorized' } }));
+    r.setLocal(profile(2));
+    r.pusher.flush();
+    await settle();
+    expect(r.events).toContain('auth');
+    r.pusher.stop();
+    r.pusher.changed();
+    r.timers.advance(DEBOUNCE_MS);
+    await settle();
+    expect(r.calls).toHaveLength(1);
+  });
+});
+
+describe('one tab pushes', () => {
+  /** A fake Web Locks manager: one holder at a time, the next in line gets it on release. */
+  function fakeLocks(): LockManagerLike {
+    const queue: (() => void)[] = [];
+    let held = false;
+    const next = () => {
+      const run = queue.shift();
+      if (run) run();
+    };
+    return {
+      request(_name, _options, callback) {
+        return new Promise((resolve) => {
+          const run = () => {
+            held = true;
+            void callback(null).then(() => {
+              held = false;
+              resolve(undefined);
+              next();
+            });
+          };
+          if (held) queue.push(run);
+          else run();
+        });
+      },
+    };
+  }
+
+  it('Web Locks: the first tab leads; the next takes over when it closes', async () => {
+    const locks = fakeLocks();
+    const store = memoryStore();
+    const timers = manualTimers();
+    const led: string[] = [];
+    const tab = (id: string) => electLeader({ locks, store, timers, now: timers.now, id, onLeader: () => led.push(id), onLost: () => led.push(`lost ${id}`) });
+    const a = tab('a');
+    const b = tab('b');
+    await settle();
+    expect([a.isLeader(), b.isLeader()]).toEqual([true, false]);
+    a.stop();
+    await settle();
+    expect([a.isLeader(), b.isLeader()]).toEqual([false, true]);
+    expect(led).toEqual(['a', 'b']);
+  });
+
+  it('lease fallback: one leader; a closed or frozen leader is replaced after the lease', () => {
+    const store = memoryStore();
+    const timers = manualTimers();
+    const led: string[] = [];
+    const tab = (id: string) => electLeader({ locks: null, store, timers, now: timers.now, id, onLeader: () => led.push(id), onLost: () => led.push(`lost ${id}`) });
+    const a = tab('a');
+    const b = tab('b');
+    timers.advance(HEARTBEAT_MS * 3);
+    expect([a.isLeader(), b.isLeader()]).toEqual([true, false]);
+    a.stop();
+    timers.advance(HEARTBEAT_MS);
+    expect(b.isLeader()).toBe(true);
+    // b freezes (no heartbeat) and c claims the expired lease; when b wakes up it steps down.
+    const c = electLeader({ locks: null, store, timers: manualTimers(), now: () => timers.now() + LEASE_MS + 1, id: 'c', onLeader: () => led.push('c'), onLost: () => led.push('lost c') });
+    expect(c.isLeader()).toBe(true);
+    timers.advance(HEARTBEAT_MS);
+    expect(b.isLeader()).toBe(false);
+    expect(led).toEqual(['a', 'b', 'c', 'lost b']);
+    expect(JSON.parse(store.get(LEASE_KEY)!).id).toBe('c');
+  });
+
+  it('lease fallback without storage: the tab leads itself', () => {
+    const silent: KeyValueStore = { get: () => null, set: () => {} };
+    const timers = manualTimers();
+    const tab = electLeader({ locks: null, store: silent, timers, now: timers.now, id: 'a', onLeader: () => {}, onLost: () => {} });
+    expect(tab.isLeader()).toBe(true);
+  });
+
+  it('keeps no sync key collision with the profile or the lease', () => {
+    expect(PROFILE_KEYS).not.toContain(SYNC_KEY);
+    expect([SYNC_KEY, LEASE_KEY, SAVE_KEY].length).toBe(new Set([SYNC_KEY, LEASE_KEY, SAVE_KEY]).size);
   });
 });
