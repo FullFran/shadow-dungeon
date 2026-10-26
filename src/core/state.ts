@@ -17,6 +17,7 @@ import type { EnemyScale } from './endless';
 import type { SimaEventState, SimaPactState } from './sima-events';
 import type { GateOutcome, GateState } from './gates';
 import type { ReviveState } from './revive';
+import type { FogWall } from './fog-wall';
 import type { TileRect } from './dungeon';
 import type { FlowField } from './flow';
 import type { TileGrid } from './tiles';
@@ -624,6 +625,8 @@ export interface WorldState {
   capture?: { enemyId: string; card: CardId; hit: boolean };
   /** Generated floors: this floor's mandatory kill, if any (core/gates.ts); the host resolves it, guests follow its snapshot. */
   gate?: GateState;
+  /** A boss room before the party crossed its fog (core/fog-wall.ts): the antechamber's line and the held-back boss. */
+  fogWall?: FogWall;
   events: GameEvent[];
 }
 

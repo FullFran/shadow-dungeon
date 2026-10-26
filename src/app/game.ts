@@ -16,7 +16,7 @@ import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, withFogWall, type RunState } from '../core/run';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
@@ -297,6 +297,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   // Development server only: `?nearEvent=1` starts a Sima floor beside its event (screenshots of the shrine, the nest...).
   const devNearEvent = import.meta.env.DEV && new URLSearchParams(window.location.search).get('nearEvent') === '1';
   if (devNearEvent && world.simaEvent) world = { ...world, player: { ...world.player, pos: { x: world.simaEvent.pos.x, y: world.simaEvent.pos.y + 34 } } };
+  // Development server only: `?onStairs=1` starts a generated floor on its stairs (screenshots of the leave prompt).
+  const devStairs = import.meta.env.DEV && new URLSearchParams(window.location.search).get('onStairs') === '1' ? world.arena.stairs : undefined;
+  if (devStairs) world = { ...world, player: { ...world.player, pos: { x: devStairs.x + devStairs.width / 2, y: devStairs.y + devStairs.height / 2 } } };
+  // A boss room opens behind its fog wall (core/fog-wall.ts; not the shrine's arenas).
+  if (!trial) world = withFogWall(run, world);
   let lockSettings = { lockType: options.lockType, clickToLock: options.clickToLock };
   /** World as the current floor was entered, for "Restart floor". */
   let floorStart = world;
@@ -580,9 +585,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (world.player.hp <= 0 || !atLeavingPoint(run, world, world.player.pos)) return;
     leaveAsked = true;
     const shared = net !== undefined;
-    showChoice(t('leave.title'), t(shared ? 'leave.hintShared' : 'leave.hint'), [
-      { name: t('leave.go'), description: t(shared ? 'leave.goShared' : 'leave.goText'), look: 'rare' },
-      { name: t('leave.stay'), description: t('leave.stayText'), look: 'common' },
+    // The stairs ask to go down, a room's exit to move on, a boss room's fog to cross it.
+    const kind = world.fogWall ? 'fog.' : floorPlanOf(run).kind === 'room' ? 'exit.' : '';
+    showChoice(t(`leave.${kind}title`), t(shared ? `leave.${kind}hintShared` : 'leave.hint'), [
+      { name: t(`leave.${kind}go`), description: t(shared ? 'leave.goShared' : `leave.${kind}goText`), look: 'rare' },
+      { name: t('leave.stay'), description: t(`leave.${kind}stayText`), look: 'common' },
     ], (index) => {
       if (index === 0) {
         ready = true;
@@ -591,6 +598,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       hideChoice();
     });
     leaveOpen = true;
+  }
+
+  /** The party went through a boss room's fog: it seals behind, and the boss shows itself (its cinematic solo). */
+  function crossedFog(): void {
+    hideChoice();
+    ready = false;
+    leaveAsked = false;
+    prev = world;
+    camera = world.player.pos;
+    say(t('leave.fog.sealed'), 'warn');
+    guardianMoment('pre', () => undefined);
   }
 
   /** Each step: tells the log what the floor's event did, records it, hands out its item pick, and opens the shrine or merchant on reaching them. */
@@ -829,7 +847,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null, left.kind === 'room' && left.role === 'midboss');
     floorStartTally = tally;
     run = next.run;
-    world = next.world;
+    world = trial ? next.world : withFogWall(next.run, next.world);
     floorStart = world;
     restartsUsed = 0;
     hideChoice();
@@ -851,7 +869,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
-  function trialProgress(hostEpoch: number | null): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number } {
+  function trialProgress(hostEpoch: number | null): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number; crossed?: boolean } {
     // Online, a guest follows the host's arena (`hostEpoch`) instead of loading the next one itself.
     const p = net ? progressSharedTrial(trial!, run, world, FIXED_DT_MS, net.role, hostEpoch) : progressTrial(trial!, run, world, FIXED_DT_MS);
     if (trial!.pauseMs === null && p.trial.pauseMs !== null) {
@@ -883,6 +901,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
       prev = world;
+      const behindFog = world.fogWall !== undefined;
       let netEvents: GameEvent[] = [];
       if (net) {
         const synced = net.session.beforeStep(world, netFloor());
@@ -936,6 +955,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const progress = trial ? trialProgress(hostFloor) : progressRun(run, world, agreed);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
+      // The host's party went through the fog (a guest crosses on the host's snapshot, net/session.ts).
+      if (progress.crossed) world = progress.world;
+      if (behindFog && !world.fogWall && !progress.entered) crossedFog();
       // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
       const plan = floorPlanOf(run);
       const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? 'echo' : world.simaEvent?.kind;

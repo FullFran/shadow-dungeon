@@ -33,8 +33,9 @@ function cardBossHp(state: WorldState): WorldState {
   return { ...state, enemies };
 }
 
+/** Every enemy of the room is down (never while the boss still waits behind its fog, core/fog-wall.ts). */
 export function roomCleared(state: WorldState): boolean {
-  return state.enemies.every((e) => !e.alive);
+  return !state.fogWall && state.enemies.every((e) => !e.alive);
 }
 
 /** True when the room is cleared and the player stands on its exit. */

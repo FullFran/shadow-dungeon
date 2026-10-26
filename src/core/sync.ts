@@ -1,3 +1,4 @@
+import { crossFogWall } from './fog-wall';
 import { UNKILLABLE } from '../data/sima';
 import { cardHpFloor } from './cards';
 import { applySimaSync, simaSync, type SimaSync } from './sima-events';
@@ -115,6 +116,8 @@ export interface HostSnapshot {
   party?: number;
   /** The floor's gate progress (core/gates.ts); absent without a gate or from an older host. */
   gate?: GateSync;
+  /** A boss room whose fog the host's party has not crossed yet (core/fog-wall.ts); absent once crossed. */
+  fogWall?: true;
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
@@ -217,6 +220,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
     ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
     ...(state.party !== undefined ? { party: state.party } : {}),
     ...(gateSync(state) ? { gate: gateSync(state)! } : {}),
+    ...(state.fogWall ? { fogWall: true as const } : {}),
   };
 }
 
@@ -264,7 +268,9 @@ function withoutNamedAttack(ai: EnemyState['ai']): EnemyState['ai'] {
  * win), drops the berries the host no longer has, keeping only the guest's own per-attack contact records and its own
  * player and player projectiles.
  */
-export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): WorldState {
+export function applyHostSnapshot(seen: WorldState, snapshot: HostSnapshot): WorldState {
+  // The host's party crossed the boss room's fog: this guest crosses with it (core/fog-wall.ts).
+  const state = seen.fogWall && !snapshot.fogWall ? crossFogWall(seen) : seen;
   // The host's party size wins (core/party.ts): a guest that counted differently rescales the enemies it spawned.
   const party = snapshot.party !== undefined ? clampParty(snapshot.party) : partySizeOf(state);
   const counted = { ...withoutParty(state), ...partyField(party) };

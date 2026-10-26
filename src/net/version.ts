@@ -11,7 +11,7 @@ import { SPECIES } from '../data/species';
  * of another deploy that added a species or a dungeon hashes differently,
  * so the host turns it away instead of desyncing (docs/gdd.md §12).
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** FNV-1a (32-bit) of `text`, as 8 hex digits. */
 export function fnv1a(text: string): string {

@@ -331,6 +331,8 @@ export function encodeMessage(message: NetMessage): string {
         ...(message.s.party !== undefined ? { n: message.s.party } : {}),
         // The floor's gate (optional): done flag, outcome, the dropped key's position.
         ...(message.s.gate ? { g: encodeGate(message.s.gate) } : {}),
+        // A boss room's fog still closed (core/fog-wall.ts).
+        ...(message.s.fogWall ? { w: 1 } : {}),
         // Rank-effect marks and weakenings on enemies (optional: an older guest ignores them).
         ...(encodeStatuses(message.s.enemies).length > 0 ? { x: encodeStatuses(message.s.enemies) } : {}),
       };
@@ -414,6 +416,7 @@ export function decodeMessage(text: string): NetMessage | null {
           ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
           ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),
           ...(decodeGate(wire.g) ? { gate: decodeGate(wire.g)! } : {}),
+          ...(wire.w === 1 ? { fogWall: true as const } : {}),
         },
       };
     case 'hello':

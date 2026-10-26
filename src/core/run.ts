@@ -26,6 +26,7 @@ import { wispCache } from './wisp';
 import { partyDefeated, partyField, partySizeOf, presentPartySize } from './party';
 import { deriveSeed, nextRandom } from './rng';
 import { loadRoom, roomCleared } from './rooms';
+import { atFogWall, closeFogWall, crossFogWall } from './fog-wall';
 import type { WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 import { createWorld, type WorldOptions } from './world';
@@ -74,6 +75,8 @@ export interface RunProgress {
   outcome: RunOutcome | null;
   /** Time this call added to the run clock (an echo felled, a floor entered), for the HUD; 0 or absent otherwise. */
   bonusMs?: number;
+  /** True when this call took the party through a boss room's fog (core/fog-wall.ts). */
+  crossed?: boolean;
 }
 
 /** Seed of one generated floor of a run. */
@@ -119,6 +122,19 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
   const plan = floorPlanOf(run);
   return plan.kind === 'room' && plan.role === undefined;
 };
+
+/**
+ * Whether the floor opens behind a fog wall (core/fog-wall.ts): every mid-boss
+ * and guardian room of the main and challenge dungeons; never the Sima (its
+ * echoes and heralds) nor the shrine (its trials load their arenas apart).
+ */
+export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'>): boolean {
+  const plan = floorPlanOf(run);
+  return plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless;
+}
+
+/** The floor as the party meets it: a boss room behind its fog when it has one (the game; the harnesses skip the wall). */
+export const withFogWall = (run: RunState, world: WorldState): WorldState => (fogWallFloor(run) && !world.fogWall ? closeFogWall(world) : world);
 
 /** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
 function guardianEncounter(endless: EndlessDef, floor: number): number {
@@ -292,9 +308,12 @@ function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: n
 /**
  * Whether `pos` is where the current floor is left: the stairs of a generated
  * floor (unless a gate holds them shut), or the exit of a cleared room. Never
- * on the last floor (beating its room is the victory).
+ * on the last floor (beating its room is the victory). In a boss room still
+ * behind its fog (core/fog-wall.ts), the fog: agreeing there crosses it.
  */
 export function atLeavingPoint(run: RunState, world: WorldState, pos: Vec2): boolean {
+  // A boss room still behind its fog: touching the fog is the way on.
+  if (world.fogWall) return atFogWall(world, pos);
   if (run.floor >= floorCount(run)) return false;
   const plan = floorPlanOf(run);
   if (plan.kind === 'generated') return onStairs(world, pos) && !gateShut(world);
@@ -323,6 +342,7 @@ export function progressRun(current: RunState, world: WorldState, agreed?: boole
   const bonus = paid.bonusMs > 0 ? { bonusMs: paid.bonusMs } : {};
   if (world.role === 'guest') return { run, world, entered: false, outcome: null, ...bonus };
   const leaving = agreed ?? atLeavingPoint(run, world, world.player.pos);
+  if (world.fogWall) return { run, world: leaving ? crossFogWall(world) : world, entered: false, outcome: null, ...bonus, ...(leaving ? { crossed: true } : {}) };
   if (last || !leaving) return { run, world, entered: false, outcome: null, ...bonus };
   const down = goDown(run, world, run.floor + 1);
   const total = paid.bonusMs + down.bonusMs;

@@ -28,6 +28,7 @@ import { updateGate } from './gates';
 import { endlessSpawns } from './endless';
 import { ENDLESS } from '../data/endless';
 import { SIMA_EVENTS } from '../data/sima';
+import { holdAtFogWall } from './fog-wall';
 
 export { enemyTimeScale } from './time';
 
@@ -63,11 +64,13 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const revived = updateRevive(fought, dtMs, events);
   // A guardian's spell card captured by the local player (core/cards.ts; every peer for itself).
   const captured = updateCapture(revived, events);
+  // A boss room's fog (core/fog-wall.ts): nobody walks or shoots through it before the party crosses.
+  const held = holdAtFogWall(captured);
   return {
-    ...captured,
+    ...held,
     tick: state.tick + 1,
     timeMs: state.timeMs + dtMs,
-    slowMoMs: Math.max(0, captured.slowMoMs - dtMs),
+    slowMoMs: Math.max(0, held.slowMoMs - dtMs),
     events,
   };
 }

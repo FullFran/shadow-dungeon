@@ -728,6 +728,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(x - 1, y - 6, 1, 2);
   }
 
+  /**
+   * A boss room's fog wall (core/fog-wall.ts), Dark Souls style: the room beyond
+   * is veiled, and a band of drifting grey-white fog lies along its edge.
+   */
+  function fogWallVeil(line: number, width: number, timeMs: number): void {
+    ctx.fillStyle = 'rgba(8, 6, 14, 0.55)';
+    ctx.fillRect(0, 0, width, line);
+    const band = 26;
+    for (let x = 0; x < width; x += 8) {
+      const wave = Math.sin(timeMs / 420 + x / 37) + Math.sin(timeMs / 270 - x / 23);
+      const top = line - band + wave * 4;
+      ctx.fillStyle = `rgba(214, 218, 232, ${0.42 + 0.12 * Math.sin(timeMs / 350 + x / 19)})`;
+      ctx.fillRect(x, top, 8, band + 10 - wave * 2);
+    }
+    ctx.fillStyle = 'rgba(240, 242, 250, 0.35)';
+    ctx.fillRect(0, line - 3 + Math.sin(timeMs / 300) * 2, width, 3);
+  }
+
   function exitGate(exit: Rect, open: boolean, timeMs: number): void {
     if (open) {
       const pulse = 0.6 + 0.4 * Math.sin(timeMs / 180);
@@ -1608,6 +1626,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
     for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
+    if (current.fogWall) fogWallVeil(current.fogWall.line, current.arena.width, timeMs);
     if (frame.touchAim && !target) aimLine(playerPos, frame.touchAim);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
