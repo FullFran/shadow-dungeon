@@ -103,8 +103,13 @@ export interface WorldMap {
   spawn?: { x: number; y: number };
   /** The notice board's reading point, in tiles (the hub only). */
   board?: { x: number; y: number };
-  /** The waystone's reading point, in tiles: quick travel to any open dungeon (the hub only). */
-  waystone?: { x: number; y: number };
+  /**
+   * The waystone's reading point, in tiles (a signpost, `notice-board` art,
+   * near the map's arrival): fast travel to any map visited on this device
+   * (src/town/travel.ts); the hub's also lists the open dungeons. Every map
+   * has one; the walker lands on the tile just below it.
+   */
+  waystone: { x: number; y: number };
   /** Santuario de los Juramentos (the hub only): the altar's reading point, in tiles; it opens the boss shrine. */
   shrine?: { x: number; y: number };
   /** The signal pillar's reading point, in tiles (the hub only): it opens the online room window (create, or join by code). */
@@ -163,6 +168,8 @@ export const RUINAS: WorldMap = {
     [',', 19, 7, 2, 3],
   ]),
   props: [
+    // The waystone (fast travel, src/town/travel.ts), by the arrival.
+    { kind: 'notice-board', x: 5, y: 12 },
     { kind: 'crypt-gate', x: 18, y: 4 },
     { kind: 'grave', x: 12, y: 3 },
     { kind: 'grave', x: 25, y: 4 },
@@ -190,6 +197,7 @@ export const RUINAS: WorldMap = {
     { id: 'road-sign', nameKey: 'world.lore.sign.name', x: 4, y: 8.5, lines: [{ key: 'world.lore.sign.1' }, { key: 'world.lore.sign.2', after: CRYPT }] },
   ],
   wanderers: [{ id: 'ruins-pumpkaboo', species: 'pumpkabooSmall', x: 27, y: 13, radius: 3 }],
+  waystone: { x: 6, y: 12.5 },
   look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], eclipse: 1.3, fog: 0.5, leaves: true, birds: 1 },
 };
 
@@ -216,6 +224,8 @@ export const MIRADOR: WorldMap = {
     [',', 8, 13, 2, 6],
   ]),
   props: [
+    // The waystone (fast travel, src/town/travel.ts), by the arrival.
+    { kind: 'notice-board', x: 4, y: 9 },
     { kind: 'statue', x: 16, y: 5 },
     { kind: 'tower', x: 37, y: 3 },
     { kind: 'trunk', x: 10, y: 16 },
@@ -242,6 +252,7 @@ export const MIRADOR: WorldMap = {
     { id: 'pass-hoothoot', species: 'hoothoot', x: 29, y: 8, radius: 4 },
     { id: 'pass-foongus', species: 'foongus', x: 14, y: 16, radius: 2 },
   ],
+  waystone: { x: 5, y: 9.5 },
   look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], eclipse: 2.4, fog: 0.35, leaves: true, birds: 3 },
 };
 
@@ -267,6 +278,8 @@ export const CRATER: WorldMap = {
     [',', 15, 15, 2, 11],
   ]),
   props: [
+    // The waystone (fast travel, src/town/travel.ts), by the arrival.
+    { kind: 'notice-board', x: 12, y: 22 },
     { kind: 'statue', x: 23, y: 11 },
     { kind: 'pillar-broken', x: 8, y: 13 },
     { kind: 'pillar', x: 21, y: 16 },
@@ -278,6 +291,7 @@ export const CRATER: WorldMap = {
   entrances: [{ dungeon: SIMA_DUNGEON_ID, nameKey: 'world.sima.name', x: 15, y: 15, width: 2, height: 1, back: { x: 15, y: 17 } }],
   lore: [{ id: 'burnt-statue', nameKey: 'world.lore.crater.name', x: 24, y: 13.5, lines: [{ key: 'world.lore.crater.1' }, { key: 'world.lore.crater.2', after: CRYPT }, { key: 'world.lore.crater.3', after: FOREST }] }],
   wanderers: [],
+  waystone: { x: 13, y: 22.5 },
   look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], eclipse: 3.4, fog: 0.6 },
 };
 
@@ -303,6 +317,8 @@ export const LAGO: WorldMap = {
     ['.', 34, 18, 2, 2],
   ]),
   props: [
+    // The waystone (fast travel, src/town/travel.ts), by the arrival.
+    { kind: 'notice-board', x: 3, y: 9 },
     { kind: 'house-big', x: 3, y: 2 },
     { kind: 'house-moss', x: 12, y: 2 },
     { kind: 'house-wood', x: 4, y: 14 },
@@ -332,6 +348,7 @@ export const LAGO: WorldMap = {
   entrances: [{ dungeon: 'flooded-caves', nameKey: 'dungeon.caves.name', x: 23, y: 6, width: 2, height: 1, back: { x: 23, y: 8 } }],
   lore: [{ id: 'idol', nameKey: 'world.lore.idol.name', x: 20, y: 16.5, lines: [{ key: 'world.lore.idol.1' }, { key: 'world.lore.idol.2', after: CRYPT }, { key: 'world.lore.idol.3', after: FOREST }] }],
   wanderers: [{ id: 'lake-spinarak', species: 'spinarak', x: 27, y: 19, radius: 2 }],
+  waystone: { x: 4, y: 9.5 },
   look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1, fog: 0.8, birds: 1 },
 };
 
@@ -363,6 +380,8 @@ export const CIENAGA: WorldMap = {
     [',', 22, 11, 8, 2],
   ]),
   props: [
+    // The waystone (fast travel, src/town/travel.ts), by the arrival.
+    { kind: 'notice-board', x: 3, y: 9 },
     { kind: 'pillar-broken', x: 18, y: 2 },
     { kind: 'pillar-broken', x: 23, y: 2 },
     { kind: 'trunk', x: 14, y: 3 },
@@ -393,6 +412,7 @@ export const CIENAGA: WorldMap = {
     { id: 'mire-skrelp', species: 'skrelp', x: 22, y: 19, radius: 2 },
     { id: 'mire-venipede', species: 'venipede', x: 30, y: 10, radius: 3 },
   ],
+  waystone: { x: 4, y: 9.5 },
   look: { ground: 'dark', tint: ['#9fb888', '#3e3a58'], eclipse: 1.6, fog: 0.9 },
 };
 

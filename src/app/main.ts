@@ -36,7 +36,9 @@ import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
-import { nextAdventureScreen } from './adventure-route';
+import { nextAdventureScreen, nextPlayScreen } from './adventure-route';
+import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
+import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
@@ -345,31 +347,48 @@ function waitScreen(root: HTMLElement, text: string): void {
 function titleScreen(root: HTMLElement, initial = 0): void {
   leaveNet();
   applyLanguage(settings.language);
-  const list = cursorList({
-    initial,
-    label: t('app.title'),
-    items: [
-      { label: t('title.play'), onConfirm: () => newAdventure(root) },
-      { label: t('lobby.online'), onConfirm: () => onlineScreen(root) },
-      { label: t('title.settings'), onConfirm: () => settingsScreen(root) },
-      { label: t('title.credits'), onConfirm: () => creditsScreen(root) },
-      { label: t('title.prologue'), onConfirm: () => prologue(root, () => titleScreen(root, 4)) },
-      { label: t('town.menu'), onConfirm: () => townScreen(root) },
-      // Appended last so the indices above stay put.
-      { label: t('title.shop'), onConfirm: () => shopScreen(root) },
-      { label: t('title.shrine'), onConfirm: () => shrineScreen(root) },
-      { label: t('title.achievements'), onConfirm: () => achievementsScreen(root) },
-      { label: t('title.account'), onConfirm: () => accountScreen(root, () => titleScreen(root, 9)) },
-      // Only when installable, and after every fixed entry so indices stay stable.
-      ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
-    ],
-  });
+  // Three entries only (src/app/title-menu.ts): every service lives in the town and its Esc menu.
+  const action: Record<TitleEntry, () => void> = {
+    play: () => playScreen(root),
+    online: () => onlineScreen(root),
+    options: () => optionsScreen(root),
+  };
+  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: t(TITLE_LABEL[entry]), onConfirm: action[entry] })) });
   show(root, [
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
   ]);
   pwa.banner(root);
+}
+
+/** The title's "Opciones": settings, account, achievements, prologue, credits and the install offer, in the shared described menu. */
+function optionsScreen(root: HTMLElement, at: OptionsEntry = 'settings'): void {
+  const entries = optionsEntries(pwa.offer() !== 'none');
+  const action: Record<OptionsEntry, () => void> = {
+    settings: () => settingsScreen(root),
+    account: () => accountScreen(root, () => optionsScreen(root, 'account')),
+    achievements: () => achievementsScreen(root),
+    prologue: () => prologue(root, () => optionsScreen(root, 'prologue')),
+    credits: () => creditsScreen(root),
+    install: () => pwa.install(root),
+  };
+  const open = menuWindow({
+    title: t('title.options'),
+    rows: entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
+    back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
+    className: 'options',
+    initial: Math.max(0, entries.indexOf(at)),
+  });
+  show(root, [open.element]);
+}
+
+/** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
+function playScreen(root: HTMLElement): void {
+  const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
+  if (next === 'prologue') prologue(root, () => playScreen(root));
+  else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
+  else townScreen(root);
 }
 
 /**
@@ -583,13 +602,14 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       // Solo: the tier for the run (remembered); a room's is the host's, picked in the town.
       difficulty: { value: settings.difficulty, onChange: (next) => update({ difficulty: next }) },
       onStart: () => (dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'moves', dungeon)) : chooseDungeon(root, () => loadout(root, 'moves'))),
-      onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : titleScreen(root, 0)),
+      // Runs start in the town now: the loadout's way back is the town.
+      onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : townScreen(root)),
     }),
   ]);
 }
 
 function settingsScreen(root: HTMLElement): void {
-  const back = () => titleScreen(root, 2);
+  const back = () => optionsScreen(root, 'settings');
   const access: SettingsAccess = {
     get: () => settings,
     update,
@@ -599,7 +619,7 @@ function settingsScreen(root: HTMLElement): void {
     },
   };
   const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
-  const retake = () => quiz(root, () => titleScreen(root, 0), () => settingsScreen(root));
+  const retake = () => quiz(root, () => settingsScreen(root), () => settingsScreen(root));
   const nickname = nicknameRow();
   const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root)) };
   const refresh = () => list.setItems([...settingItems(access, refresh), nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
@@ -636,7 +656,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: (here) => accountScreen(root, () => townScreen(root, here)), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -700,6 +720,25 @@ const settleOnClose = (onClose: () => void) => () => {
   achievementToast(recordSave(store, Date.now()).unlocked);
 };
 
+/** The achievements window over the town (its Esc menu). */
+const townAchievements = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, achievementsWindow({ store, onBack: onClose }));
+
+/** The settings over the town (its Esc menu): the same rows as the Settings screen; a language change redraws them in place. */
+function townSettings(parent: HTMLElement, onClose: () => void): () => void {
+  const list = cursorList({ items: [], onBack: onClose, label: t('title.settings') });
+  const access: SettingsAccess = {
+    get: () => settings,
+    update,
+    setLanguage: (language) => {
+      applyLanguage(language);
+      refresh();
+    },
+  };
+  const refresh = (): void => list.setItems([...settingItems(access, refresh), nicknameRow(), { label: t('menu.back'), onConfirm: onClose }]);
+  refresh();
+  return townWindow(parent, { element: mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]), dispose: () => list.dispose() });
+}
+
 /** Mimikyu's gacha stall over the town. */
 const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: settleOnClose(onClose) }));
 
@@ -743,7 +782,7 @@ function townBoard(parent: HTMLElement, onClose: () => void): () => void {
 
 /** The achievements window from the title menu. */
 function achievementsScreen(root: HTMLElement): void {
-  const open = achievementsWindow({ store, onBack: () => titleScreen(root, 8) });
+  const open = achievementsWindow({ store, onBack: () => optionsScreen(root, 'achievements') });
   show(root, [open.element]);
 }
 
@@ -788,7 +827,7 @@ function shrineScreen(root: HTMLElement, from: ShrineFrom = 'title', view?: Shri
   if (r && !r.asHost) return roomShrineGuest(root);
   if (!r) leaveNet();
   applyLanguage(settings.language);
-  const back = () => (r ? townLobby(root) : from === 'town' ? townScreen(root, SHRINE_TILE) : titleScreen(root, 7));
+  const back = () => (r ? townLobby(root) : from === 'town' ? townScreen(root, SHRINE_TILE) : titleScreen(root));
   const shrine = shrineWindow({
     shrine: readShrine(store),
     beaten: beatenBosses(readRecords(store)),
@@ -961,12 +1000,12 @@ function trialEnd(root: HTMLElement, run: TrialRun, result: GameResult, summary:
 
 /** The upgrade shop from the title menu (its last entry). */
 function shopScreen(root: HTMLElement): void {
-  const shop = shopWindow({ store, play: (sound) => audio.play(sound), onBack: () => titleScreen(root, 6) });
+  const shop = shopWindow({ store, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
   show(root, [shop.element]);
 }
 
 function creditsScreen(root: HTMLElement): void {
-  show(root, [creditsWindow(single(t('menu.back'), () => titleScreen(root, 3)))]);
+  show(root, [creditsWindow(single(t('menu.back'), () => optionsScreen(root, 'credits')))]);
 }
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
@@ -1154,7 +1193,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1354,7 +1393,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
 }
 
 /** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
-type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
+type TownPlace = Pick<TownOptions, 'at' | 'tile' | 'startWindow'>;
 
 /** Development server only: `&coins=N` sets the saved balance (smoke tests of the stalls). */
 function devCoins(): void {
@@ -1367,12 +1406,14 @@ function devStoryDone(): boolean {
   return import.meta.env.DEV && new URLSearchParams(window.location.search).get('storySkip') === '1';
 }
 
-/** Development server only: the `map` and `tile` query of `?screen=town`. */
+/** Development server only: the `map`, `tile` and `window` (travel or menu) query of `?screen=town`. */
 function devTownPlace(): TownPlace {
   const params = new URLSearchParams(window.location.search);
   const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
   const at = (params.get('map') ?? undefined) as TownOptions['at'];
-  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}) };
+  const window_ = params.get('window');
+  const startWindow = window_ === 'travel' || window_ === 'menu' ? window_ : undefined;
+  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}) };
 }
 
 /**

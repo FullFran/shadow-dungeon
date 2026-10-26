@@ -5,7 +5,7 @@ import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/to
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
-import { TILE } from '../core/tiles';
+import { TILE, tileOf } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
@@ -23,6 +23,10 @@ import { nearestInteractable, stepWalker, townArena, type Interactable, type Wal
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
+import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
+import { travelWindow } from './travel-window';
+import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
+import { menuWindow } from '../ui/menu-window';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
@@ -41,7 +45,8 @@ import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type Town
  * typewriter (E, Enter or Space); the hub's waystone opens the destination
  * window that hands over to the run flow. It owns its canvas and loop and
  * stops by itself when the page replaces the canvas. Esc closes the dialog,
- * else goes back to the title.
+ * else opens the town menu (every service as a window, travel, back to the
+ * title; src/town/town-menu.ts).
  */
 export const TOWN_VIEW = { width: 512, height: 320 } as const;
 
@@ -100,6 +105,14 @@ export interface TownOptions {
   openShrine?: () => void;
   /** The hub's signal pillar, alone: opens the online room window (create a room, or join one by code). */
   openOnline?: () => void;
+  /** The achievements window over the town (its Esc menu), like `openShop`. */
+  openAchievements?: TownWindowOpener;
+  /** The settings over the town (its Esc menu), like `openShop`. */
+  openSettings?: TownWindowOpener;
+  /** The account screen from the town's Esc menu (it leaves the town; `here` is where to come back). */
+  openAccount?: (here: { at: WorldMapId; tile: { x: number; y: number } }) => void;
+  /** Development (`?screen=town&window=travel|menu`): a window open from the start, for screenshots and the menu geometry check. */
+  startWindow?: 'travel' | 'menu';
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -229,7 +242,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     onTap: () => {
       if (dialog && !exitWindow) interact();
     },
-    buttons: [{ id: 'talk', label: t('touch.talk'), className: 'big', onPress: () => !exitWindow && interact() }],
+    buttons: [
+      { id: 'talk', label: t('touch.talk'), className: 'big', onPress: () => !exitWindow && interact() },
+      // The town's Esc menu, in the top corner "Atrás" leaves free over the bare town.
+      { id: 'pause', label: t('townMenu.button'), className: 'top', onPress: () => openMenu() },
+    ],
   });
   canvas.parentElement?.append(touch.element);
 
@@ -243,8 +260,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
   let exitWindow: HTMLElement | null = null;
-  /** Changing maps: the black fade, and the link taken (switched at the fade's darkest point). */
-  let fade: (Fade & { link?: MapLink }) | null = null;
+  /** Changing maps: the black fade, and the link taken or the travel destination (switched at the fade's darkest point). */
+  let fade: (Fade & { link?: MapLink; to?: TravelDestination }) | null = null;
   const held = new Set<string>();
   const start = performance.now();
   let last = start;
@@ -287,20 +304,49 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** The wandering Pokémon of the current map, restarted at home on every visit. */
   let wanderers = new Map<string, WanderState>(map.wanderers.map((w) => [w.id, startWander(w)]));
 
+  markVisited(browserStore(), map.id);
+
+  /** Puts the walker on `next` (its NPCs, wanderers and name banner start over) and records the visit on this device. */
+  function enterMap(next: WorldMap, at: Walker): void {
+    map = next;
+    arena = arenaOf(map);
+    targets = targetsOf(map);
+    wanderers = new Map(map.wanderers.map((w) => [w.id, startWander(w)]));
+    walker = at;
+    camera = walker.pos;
+    bannerAt = performance.now() - start;
+    markVisited(browserStore(), map.id);
+  }
+
   /** Leave through `link` onto the paired link of the next map, keeping the offset along the edge. */
   function crossLink(link: MapLink): void {
     const next = WORLD[link.to];
     const back = next.links.find((l) => l.id === link.toLink);
     if (!back) return;
-    const offset = offsetAlong(walker.pos, link, linkEdge(map, link) ?? 'west');
-    map = next;
-    arena = arenaOf(map);
-    targets = targetsOf(map);
-    wanderers = new Map(map.wanderers.map((w) => [w.id, startWander(w)]));
-    walker = arrival(map, back, offset);
-    camera = walker.pos;
-    bannerAt = performance.now() - start;
+    enterMap(next, arrival(next, back, offsetAlong(walker.pos, link, linkEdge(map, link) ?? 'west')));
   }
+
+  /** Fast travel: lands on the destination's tile (each player alone, also in a room: positions are per player). */
+  const travelTo = (dest: TravelDestination): void => enterMap(WORLD[dest.map], { pos: tileCentre(dest.tile.x, dest.tile.y), facing: dest.facing });
+
+  /** The "Viajar" window over the town: choosing a place fades out and back in there. */
+  const openTravel: TownWindowOpener = (parent, onClose) => {
+    const open = travelWindow({
+      destinations: travelDestinations(readVisited(browserStore())),
+      current: map.id,
+      onTravel: (dest) => {
+        onClose();
+        fade = { phase: 'out', ms: 0, to: dest };
+      },
+      onBack: onClose,
+    });
+    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    parent.append(overlay);
+    return () => {
+      open.dispose();
+      overlay.remove();
+    };
+  };
 
   function resize(): void {
     pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
@@ -352,8 +398,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!target) return;
     held.clear();
     if (target.kind === 'waystone') {
-      if (canTravel(lobby)) openExitWindow();
-      else dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
+      // The hub's waystone also leads into the dungeons (the host's call in a room); every other one travels at once.
+      if (map.id === HUB && canTravel(lobby)) openExitWindow();
+      else openShopWindow(openTravel);
       return;
     }
     if (target.kind === 'shrine') {
@@ -462,6 +509,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
               },
             ]
           : []),
+        {
+          label: t('travel.title'),
+          onConfirm: () => {
+            closeExitWindow();
+            openShopWindow(openTravel);
+          },
+        },
         { label: t('town.exit.stay'), onConfirm: closeExitWindow },
       ],
       closeExitWindow,
@@ -507,16 +561,106 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       e.preventDefault();
       if (!e.repeat) interact();
     } else if (e.code === 'Escape') {
+      // Taken here: the menu opened now must not read this same Esc as its own "back".
+      e.preventDefault();
       if (dialog) dialog = null;
-      else if (lobby) {
-        // In a room Esc opens the room menu (copy or hide the code, leave) instead of leaving at once.
-        openChoiceWindow(t('lobby.room'), lobby.code(), [...lobby.menu(closeExitWindow), { label: t('lobby.resume'), onConfirm: closeExitWindow }], closeExitWindow);
-      } else {
-        handle.stop();
-        options.onQuit();
-      }
+      else openMenu();
     }
   };
+
+  /** The services the app wired for this town (the Esc menu lists them). */
+  function services(): Set<TownService> {
+    const wired: Record<TownService, boolean> = {
+      travel: true,
+      dungeons: true,
+      challenges: !!options.openChallenges,
+      evolve: !!options.openEvolve,
+      shop: !!options.openShop,
+      tutor: !!options.openTutor,
+      gacha: !!options.openGacha,
+      board: !!options.openBoard,
+      achievements: !!options.openAchievements,
+      shrine: !!options.openShrine,
+      online: !!options.openOnline,
+      account: !!options.openAccount,
+      settings: !!options.openSettings,
+    };
+    return new Set(TOWN_SERVICES.filter((s) => wired[s]));
+  }
+
+  const hostOnly = () => {
+    dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
+  };
+  const leaveTown = (go: (() => void) | undefined) => {
+    if (!go) return;
+    handle.stop();
+    go();
+  };
+
+  /** What a row of the Esc menu does (the same windows the NPCs and places open). */
+  function serviceAction(service: TownService): void {
+    switch (service) {
+      case 'travel':
+        return openShopWindow(openTravel);
+      case 'dungeons':
+        return canTravel(lobby) ? openExitWindow() : hostOnly();
+      case 'challenges':
+        return canTravel(lobby) ? openShopWindow(options.openChallenges) : hostOnly();
+      case 'evolve':
+        return openShopWindow(options.openEvolve);
+      case 'shop':
+        return openShopWindow(options.openShop);
+      case 'tutor':
+        return openShopWindow(options.openTutor);
+      case 'gacha':
+        return openShopWindow(options.openGacha);
+      case 'board':
+        return openShopWindow(options.openBoard);
+      case 'achievements':
+        return openShopWindow(options.openAchievements);
+      case 'settings':
+        return openShopWindow(options.openSettings);
+      case 'shrine':
+        return leaveTown(options.openShrine);
+      case 'online':
+        return leaveTown(options.openOnline);
+      case 'account': {
+        const tile = tileOf(walker.pos);
+        const here = { at: map.id, tile: { x: tile.x, y: tile.y } };
+        return leaveTown(options.openAccount && (() => options.openAccount!(here)));
+      }
+    }
+  }
+
+  /** The Esc menu: every town service as a window, then back to the title (a room: its own rows, copy the code, leave). */
+  const openTownMenu: TownWindowOpener = (parent, onClose) => {
+    const pick = (action: () => void) => () => {
+      onClose();
+      action();
+    };
+    const end = lobby
+      ? lobby.menu(onClose).map((row) => ({ label: row.label, about: t('townMenu.room.about'), onConfirm: row.onConfirm }))
+      : [{ label: t('townMenu.title'), about: t('townMenu.title.about'), onConfirm: pick(() => leaveTown(options.onQuit)) }];
+    const open = menuWindow({
+      title: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
+      rows: [...townMenuServices(services(), lobby !== null).map((s) => ({ label: t(serviceLabelKey(s)), about: t(serviceAboutKey(s)), onConfirm: pick(() => serviceAction(s)) })), ...end],
+      back: { label: t('townMenu.resume'), about: t('townMenu.resume.about'), onConfirm: onClose },
+      className: 'town-menu',
+    });
+    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    parent.append(overlay);
+    return () => {
+      open.dispose();
+      overlay.remove();
+    };
+  };
+
+  /** Opens the Esc menu when nothing else is on screen. */
+  function openMenu(): void {
+    if (exitWindow || closeShop || fade || stopped) return;
+    dialog = null;
+    openShopWindow(openTownMenu);
+  }
   const onKeyUp = (e: KeyboardEvent) => held.delete(e.code);
   const onBlur = () => held.clear();
 
@@ -555,6 +699,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       fade = { ...fade, ms: fade.ms + dt };
       if (fade.phase === 'out' && fade.ms >= FADE_MS) {
         if (fade.link) crossLink(fade.link);
+        if (fade.to) travelTo(fade.to);
         fade = { phase: 'in', ms: 0 };
       } else if (fade.phase === 'in' && fade.ms >= FADE_MS) fade = null;
     }
@@ -587,6 +732,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade ? null : nearestInteractable(walker.pos, targets);
     touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
+    touch.setHidden('pause', exitWindow !== null || closeShop !== null);
     if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));
     drawTownOverlay(
       ctx,
@@ -626,6 +772,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
   resize();
+  if (options.startWindow === 'travel') openShopWindow(openTravel);
+  if (options.startWindow === 'menu') openMenu();
   raf = requestAnimationFrame(frame);
   return handle;
 }

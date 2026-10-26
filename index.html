@@ -217,6 +217,11 @@
       }
       .shop { width: 52rem; max-width: 100%; }
       .shop.tutor { width: 60rem; }
+      .shop.travel { width: 44rem; }
+      .shop.menu-window { width: 40rem; }
+      .menu-about { margin: 0; }
+      .travel-detail h3 { margin: 0 0 6px; }
+      .travel-lines { margin: 0; padding-left: 1.2em; }
       .shop .shop-effect { margin: 0; }
       .shop .shop-balance { margin-bottom: 8px; }
       /* The move tutor: its long list scrolls inside the window; the build hint in the cursor colour. */
@@ -342,6 +347,8 @@
       html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
       html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
         html.touch #app:has(.result) ~ .touch-back { display: none; }
+      /* The bare town: its own "Menú" button takes the corner (Esc opens the town menu); "Atrás" comes back over its windows. */
+      html.touch #app:has(canvas.town):not(:has(.town-shop, .town-exit)) ~ .touch-back { display: none; }
       /* Phones: no window wider than the screen (desktop min-widths would push it off both edges), inputs are tap targets too. */
       html.touch .md-window { min-width: 0; max-width: 100%; box-sizing: border-box; }
       html.touch input { min-height: 44px; box-sizing: border-box; }
@@ -404,6 +411,8 @@
         html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
         /* The move list scrolls inside the window, so the text and balance on the left stay in view. */
         html.touch .tutor .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
+        /* Viajar: every visited map plus the shortcuts; the list scrolls inside the window like the tutor's. */
+        html.touch .travel .shop-list, html.touch .menu-window .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
         html.touch .achievements .achievement-list { max-height: calc(100dvh - 220px); }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }
