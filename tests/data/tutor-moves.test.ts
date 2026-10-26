@@ -2,28 +2,55 @@ import { describe, expect, it } from 'vitest';
 import { budgetRatio, costsOf } from '../../src/core/move-power';
 import { validateLoadout } from '../../src/core/loadout';
 import { DUNGEONS } from '../../src/data/dungeons';
-import { LEARNSETS } from '../../src/data/learnsets';
+import { lineOf, stageOf } from '../../src/core/evolution';
+import { COMPETITIVE_SOURCES, LEARNSETS, type LineId } from '../../src/data/learnsets';
+import { LINE_MOVE_IDS } from '../../src/data/line-moves';
 import { BASE_MOVE_IDS, MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
-import { originalKit, STARTER_SPECIES, SPECIES } from '../../src/data/species';
+import { originalKit, PLAYABLE_SPECIES, STARTER_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
 import { GRANDFATHERED, FULL_BUILD, MASTER_MOVES, movePrice, moveTier, RECOMMENDED_BUILD, TIER_BUDGET, TUTOR_OFFER, type MoveTier } from '../../src/data/tutor';
 import { TUTOR_MOVE_IDS } from '../../src/data/tutor-moves';
 
 const starters = STARTER_SPECIES;
-const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS];
+/** Every line with a movepool (odd/tasks/roster-parity.md): the starters' and the gacha's, by first form. */
+const LINES = Object.keys(LEARNSETS) as LineId[];
+/** The forms of a line, first to last. */
+const formsOf = (line: LineId): SpeciesId[] => PLAYABLE_SPECIES.filter((id) => lineOf(id) === line).sort((a, b) => stageOf(a) - stageOf(b));
+/** The last form of a line: it can equip every move of the line. */
+const finalOf = (line: LineId): SpeciesId => formsOf(line).at(-1)!;
+/** Every move any form of the line can equip. */
+const linePool = (line: LineId): MoveId[] => [...new Set(formsOf(line).flatMap((id) => SPECIES[id].movepool))];
+const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS, ...LINE_MOVE_IDS];
 
 describe('tutor moves: canon learnsets', () => {
-  it.each(starters)("%s's movepool is its canon learnset (plus the grandfathered original moves)", (id) => {
-    const canon = Object.keys(LEARNSETS[id]);
-    const pool = SPECIES[id].movepool;
-    expect(new Set(pool).size).toBe(pool.length);
-    expect([...pool].sort()).toEqual([...canon, ...(GRANDFATHERED[id] ?? [])].sort());
+  it('every playable species belongs to a line with a learnset, an offer, builds and competitive sources', () => {
+    expect(LINES).toEqual([...STARTER_SPECIES, 'abra', 'piplup', 'shinx', 'axew']);
+    for (const id of PLAYABLE_SPECIES) expect(LINES, id).toContain(lineOf(id));
+    for (const line of LINES) {
+      expect(TUTOR_OFFER[line], line).toBeDefined();
+      expect(FULL_BUILD[line], line).toBeDefined();
+      expect(RECOMMENDED_BUILD[line], line).toBeDefined();
+      expect(COMPETITIVE_SOURCES[line]?.length, line).toBeGreaterThan(0);
+    }
   });
 
-  it.each(starters)('%s has 20–30 moves, at least two per slot kind beyond its kit', (id) => {
-    expect(SPECIES[id].movepool.length).toBeGreaterThanOrEqual(20);
-    expect(SPECIES[id].movepool.length).toBeLessThanOrEqual(30);
-    for (const kind of PLAYER_SLOT_LAYOUT) expect(TUTOR_OFFER[id].filter((m) => MOVES[m].slot === kind).length, kind).toBeGreaterThanOrEqual(2);
+  it.each(LINES)("%s's line can learn exactly its canon learnset (plus the grandfathered original moves)", (line) => {
+    const canon = Object.keys(LEARNSETS[line]);
+    for (const id of formsOf(line)) expect(new Set(SPECIES[id].movepool).size, id).toBe(SPECIES[id].movepool.length);
+    expect([...linePool(line)].sort()).toEqual([...canon, ...(GRANDFATHERED[line] ?? [])].sort());
+  });
+
+  it.each(LINES)('%s has 20–30 moves, at least two per slot kind beyond its kit', (line) => {
+    expect(linePool(line).length).toBeGreaterThanOrEqual(20);
+    expect(linePool(line).length).toBeLessThanOrEqual(30);
+    for (const kind of PLAYER_SLOT_LAYOUT) expect(TUTOR_OFFER[line].filter((m) => MOVES[m].slot === kind).length, kind).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each(LINES)('every form of %s shares the line\'s offer; its stage moves are known, never sold', (line) => {
+    for (const id of formsOf(line)) {
+      expect(SPECIES[id].movepool.filter((m) => !originalKit(id).includes(m))).toEqual([...TUTOR_OFFER[line]]);
+      for (const m of TUTOR_OFFER[line]) expect(originalKit(finalOf(line)), `${id} ${m}`).not.toContain(m);
+    }
   });
 
   it('keeps the original kits and default loadouts as they were', () => {
@@ -40,17 +67,17 @@ describe('tutor moves: canon learnsets', () => {
   });
 
   it('every tutor move is taught to someone, and the offers hold only moves outside each kit', () => {
-    const taught = new Set(starters.flatMap((id) => TUTOR_OFFER[id]));
+    const taught = new Set(LINES.flatMap((id) => TUTOR_OFFER[id]));
     for (const id of TUTOR_MOVE_IDS) expect(taught.has(id), id).toBe(true);
-    for (const id of starters) for (const m of TUTOR_OFFER[id]) expect(originalKit(id).includes(m), `${id} ${m}`).toBe(false);
+    for (const id of LINES) for (const m of TUTOR_OFFER[id]) expect(originalKit(id).includes(m), `${id} ${m}`).toBe(false);
   });
 
-  it.each(starters)("%s's recommended build is a valid loadout of its learnable moves", (id) => {
-    expect(validateLoadout(SPECIES[id], PLAYER_SLOT_LAYOUT, RECOMMENDED_BUILD[id])).toEqual([]);
+  it.each(LINES)("%s's recommended build is a valid loadout of its line's last form", (line) => {
+    expect(validateLoadout(SPECIES[finalOf(line)], PLAYER_SLOT_LAYOUT, RECOMMENDED_BUILD[line])).toEqual([]);
   });
 
-  it.each(starters)("%s's full-investment build is a valid loadout", (id) => {
-    expect(validateLoadout(SPECIES[id], PLAYER_SLOT_LAYOUT, FULL_BUILD[id])).toEqual([]);
+  it.each(LINES)("%s's full-investment build is a valid loadout of its line's last form", (line) => {
+    expect(validateLoadout(SPECIES[finalOf(line)], PLAYER_SLOT_LAYOUT, FULL_BUILD[line])).toEqual([]);
   });
 });
 
@@ -59,7 +86,7 @@ describe('tutor moves: tier-aware damage budget', () => {
   const damaging = ALL.filter((id) => MOVES[id].slot !== 'boost');
 
   it('every move has a tier: the original kits are Básico, the tutor sells Avanzado and Maestro', () => {
-    for (const id of BASE_MOVE_IDS) expect(moveTier(id), id).toBe('basic');
+    for (const id of [...BASE_MOVE_IDS, ...LINE_MOVE_IDS]) expect(moveTier(id), id).toBe('basic');
     for (const id of TUTOR_MOVE_IDS) expect(['advanced', 'master'], id).toContain(moveTier(id));
   });
 
@@ -72,7 +99,7 @@ describe('tutor moves: tier-aware damage budget', () => {
     if (ratio > TIER_BUDGET.advanced + 1e-9) expect(costsOf(move).length, `${id} ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(2);
   });
 
-  it.each(starters)('%s can buy at least two Maestro moves, and its damaging ones really are stronger (×1.25 or more)', (id) => {
+  it.each(LINES)('%s can buy at least two Maestro moves, and its damaging ones really are stronger (×1.25 or more)', (id) => {
     const masters = TUTOR_OFFER[id].filter((m) => moveTier(m) === 'master');
     expect(masters.length).toBeGreaterThanOrEqual(2);
     for (const m of masters.filter((x) => MOVES[x].slot !== 'boost')) expect(budgetRatio(MOVES[m]), m).toBeGreaterThanOrEqual(1.25);
@@ -80,7 +107,7 @@ describe('tutor moves: tier-aware damage budget', () => {
     for (const m of masters.filter((x) => MOVES[x].slot === 'boost')) expect(MOVES[m].hpCost, m).toBeGreaterThan(0);
   });
 
-  it.each(starters)('%s has a Maestro move that only unlocks after clearing a dungeon', (id) => {
+  it.each(LINES)('%s has a Maestro move that only unlocks after clearing a dungeon', (id) => {
     const locked = TUTOR_OFFER[id].filter((m) => MASTER_MOVES[m]?.unlockedBy);
     expect(locked.length).toBeGreaterThanOrEqual(1);
     for (const m of locked) expect(DUNGEONS.some((d) => d.id === MASTER_MOVES[m]!.unlockedBy && !d.endless), m).toBe(true);

@@ -51,12 +51,12 @@ describe('evolution lines: data', () => {
     for (const id of PLAYABLE_SPECIES) expect(LINES.filter((l) => l.includes(id)).length, id).toBe(id === 'mimikyu' ? 0 : 1);
   });
 
-  it.each(FIRST_FORMS)('%s has one move per slot, equipped by default, inside the starters\' budget', (id) => {
+  it.each(FIRST_FORMS)('%s has a kit of one move per slot, equipped by default, inside the starters\' budget', (id) => {
     const species = SPECIES[id];
-    expect(species.movepool.map((m) => MOVES[m].slot)).toEqual(PLAYER_SLOT_LAYOUT);
-    expect(species.defaultLoadout).toEqual(species.movepool);
+    expect(originalKit(id).map((m) => MOVES[m].slot)).toEqual(PLAYER_SLOT_LAYOUT);
+    expect(species.defaultLoadout).toEqual(originalKit(id));
     expect(validateLoadout(species, PLAYER_SLOT_LAYOUT, species.defaultLoadout)).toEqual([]);
-    for (const m of species.movepool.filter((x) => MOVES[x].slot !== 'boost')) expect(budgetRatio(MOVES[m]), m).toBeLessThanOrEqual(1 + 1e-9);
+    for (const m of originalKit(id).filter((x) => MOVES[x].slot !== 'boost')) expect(budgetRatio(MOVES[m]), m).toBeLessThanOrEqual(1 + 1e-9);
   });
 
   it('each evolution keeps the kit, the tutor offer, the loadout and the passive, and unlocks exactly its one new (non-boost) move', () => {

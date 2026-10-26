@@ -127,9 +127,14 @@ const PIPLUP: readonly MoveId[] = ['water-gun', 'bubble-beam', 'swords-dance', '
 const SHINX: readonly MoveId[] = ['spark', 'thunderbolt', 'agility', 'snarl'];
 const AXEW: readonly MoveId[] = ['dragon-claw', 'dragon-pulse', 'swords-dance', 'earthquake'];
 
-/** A form of a gacha line: its sprite has its own name, its default loadout is the first form's kit. */
-function lineForm(id: SpeciesId & keyof typeof SPRITE_KEYS, types: readonly PokemonType[], maxHp: number, speedScale: number, movepool: readonly MoveId[]): SpeciesDef {
-  return { id, types, maxHp, radius: 10, sprite: id, speedScale, movepool, defaultLoadout: movepool.slice(0, 4) };
+/**
+ * A form of a gacha line: its sprite has its own name; its movepool is its
+ * kit (the first form's four moves and its stage moves, known from the
+ * start) then the line's tutor offer (odd/tasks/roster-parity.md); its
+ * default loadout is the first form's kit.
+ */
+function lineForm(id: SpeciesId & keyof typeof SPRITE_KEYS, types: readonly PokemonType[], maxHp: number, speedScale: number, kit: readonly MoveId[], line: keyof typeof TUTOR_OFFER): SpeciesDef {
+  return { id, types, maxHp, radius: 10, sprite: id, speedScale, movepool: [...kit, ...TUTOR_OFFER[line]], defaultLoadout: kit.slice(0, 4) };
 }
 
 /**
@@ -287,20 +292,20 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
   // Its sheets and types come from the generated herald (core/herald); the radius is HERALD_RADIUS.
   'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },
-  // The gacha's evolution lines (odd/tasks/gacha-evolutions.md): a first form with one move per slot, all equipped; each
-  // evolution keeps the line's HP and speed and unlocks one more move (data/player-evolutions.ts adds its stage bonus).
-  abra: lineForm('abra', ['psychic'], 90, 1.05, ABRA),
-  kadabra: lineForm('kadabra', ['psychic'], 90, 1.05, [...ABRA, 'night-shade']),
-  alakazam: lineForm('alakazam', ['psychic'], 90, 1.05, [...ABRA, 'night-shade', 'shadow-ball']),
-  piplup: lineForm('piplup', ['water'], 105, 0.95, PIPLUP),
-  prinplup: lineForm('prinplup', ['water'], 105, 0.95, [...PIPLUP, 'brick-break']),
-  empoleon: lineForm('empoleon', ['water', 'steel'], 105, 0.95, [...PIPLUP, 'brick-break', 'ice-beam']),
-  shinx: lineForm('shinx', ['electric'], 95, 1.1, SHINX),
-  luxio: lineForm('luxio', ['electric'], 95, 1.1, [...SHINX, 'swift']),
-  luxray: lineForm('luxray', ['electric'], 95, 1.1, [...SHINX, 'swift', 'thunder']),
-  axew: lineForm('axew', ['dragon'], 100, 1, AXEW),
-  fraxure: lineForm('fraxure', ['dragon'], 100, 1, [...AXEW, 'x-scissor']),
-  haxorus: lineForm('haxorus', ['dragon'], 100, 1, [...AXEW, 'x-scissor', 'brick-break']),
+  // The gacha's evolution lines (odd/tasks/gacha-evolutions.md): a first form's kit of one move per slot, all equipped, then the
+  // line's tutor offer; each evolution keeps the line's HP and speed and unlocks one more move (data/player-evolutions.ts adds its stage bonus).
+  abra: lineForm('abra', ['psychic'], 90, 1.05, ABRA, 'abra'),
+  kadabra: lineForm('kadabra', ['psychic'], 90, 1.05, [...ABRA, 'night-shade'], 'abra'),
+  alakazam: lineForm('alakazam', ['psychic'], 90, 1.05, [...ABRA, 'night-shade', 'shadow-ball'], 'abra'),
+  piplup: lineForm('piplup', ['water'], 105, 0.95, PIPLUP, 'piplup'),
+  prinplup: lineForm('prinplup', ['water'], 105, 0.95, [...PIPLUP, 'brick-break'], 'piplup'),
+  empoleon: lineForm('empoleon', ['water', 'steel'], 105, 0.95, [...PIPLUP, 'brick-break', 'ice-beam'], 'piplup'),
+  shinx: lineForm('shinx', ['electric'], 95, 1.1, SHINX, 'shinx'),
+  luxio: lineForm('luxio', ['electric'], 95, 1.1, [...SHINX, 'swift'], 'shinx'),
+  luxray: lineForm('luxray', ['electric'], 95, 1.1, [...SHINX, 'swift', 'thunder'], 'shinx'),
+  axew: lineForm('axew', ['dragon'], 100, 1, AXEW, 'axew'),
+  fraxure: lineForm('fraxure', ['dragon'], 100, 1, [...AXEW, 'x-scissor'], 'axew'),
+  haxorus: lineForm('haxorus', ['dragon'], 100, 1, [...AXEW, 'x-scissor', 'brick-break'], 'axew'),
   // The starters' evolved forms (odd/tasks/roster-parity.md): the starter's kit, its stage moves, then its tutor offer.
   zoroark: starterForm('zorua', 'zoroark', ['night-slash']),
   lampent: starterForm('litwick', 'lampent', ['lash-out']),

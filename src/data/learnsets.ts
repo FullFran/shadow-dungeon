@@ -1,5 +1,6 @@
 /**
- * How each starter learns its moves in the original games (movepools): the
+ * How each line learns its moves in the original games (movepools; every
+ * form of the line, odd/tasks/roster-parity.md): the
  * relevant attacking and status moves picked from PokeAPI's learnsets
  * (https://pokeapi.co/api/v2/pokemon/{mimikyu-disguised,zorua,litwick,cubone},
  * every version group, read 2026-10-26). Keys are PokeAPI move names, the
@@ -14,7 +15,10 @@ export type LearnMethod = 'level' | 'tm' | 'tutor' | 'egg' | 'other';
 
 export type StarterId = 'mimikyu' | 'zorua' | 'litwick' | 'cubone';
 
-export const LEARNSETS: Readonly<Record<StarterId, Readonly<Record<string, readonly LearnMethod[]>>>> = {
+/** Every line with a movepool, by its first form: the starters and the gacha lines (odd/tasks/roster-parity.md). */
+export type LineId = StarterId | 'abra' | 'piplup' | 'shinx' | 'axew';
+
+export const LEARNSETS: Readonly<Record<LineId, Readonly<Record<string, readonly LearnMethod[]>>>> = {
   mimikyu: {
     'shadow-claw': ['level', 'tm'],
     'shadow-sneak': ['level', 'other'],
@@ -44,6 +48,8 @@ export const LEARNSETS: Readonly<Record<StarterId, Readonly<Record<string, reado
     thunder: ['tm'],
   },
   zorua: {
+    // Zoroark (odd/tasks/roster-parity.md): its evolution move.
+    'night-slash': ['level'],
     'fury-swipes': ['level'],
     'feint-attack': ['level'],
     'night-daze': ['level'],
@@ -69,6 +75,9 @@ export const LEARNSETS: Readonly<Record<StarterId, Readonly<Record<string, reado
     'burning-jealousy': ['tm', 'tutor'],
   },
   litwick: {
+    // Lampent and Chandelure (odd/tasks/roster-parity.md): their stage moves.
+    'lash-out': ['tm'],
+    'hyper-beam': ['tm'],
     ember: ['level'],
     astonish: ['level'],
     hex: ['level', 'tm'],
@@ -98,6 +107,8 @@ export const LEARNSETS: Readonly<Record<StarterId, Readonly<Record<string, reado
     'burning-jealousy': ['tm', 'tutor'],
   },
   cubone: {
+    // Marowak (odd/tasks/roster-parity.md): its stage move.
+    'fire-blast': ['tm'],
     'bone-club': ['level'],
     'bone-rush': ['level'],
     bonemerang: ['level'],
@@ -126,13 +137,104 @@ export const LEARNSETS: Readonly<Record<StarterId, Readonly<Record<string, reado
     flamethrower: ['tm', 'tutor'],
     'scorching-sands': ['tutor'],
   },
+  // The gacha lines (odd/tasks/roster-parity.md): every form of the line, PokeAPI's latest version group with data
+  // (brilliant-diamond-shining-pearl for Abra's, scarlet-violet for the others; Abra's Swift and Night Shade from older games).
+  abra: {
+    swift: ['tm'],
+    psychic: ['tm', 'level'],
+    'calm-mind': ['tm', 'level'],
+    'dazzling-gleam': ['tm'],
+    'night-shade': ['level'],
+    'shadow-ball': ['tm'],
+    'fire-punch': ['egg'],
+    'thunder-punch': ['egg'],
+    'ice-punch': ['egg'],
+    'knock-off': ['egg'],
+    'psycho-cut': ['level'],
+    psyshock: ['level'],
+    'energy-ball': ['tm'],
+    'grass-knot': ['tm'],
+    'drain-punch': ['tm'],
+    'focus-punch': ['tm'],
+    'nasty-plot': ['tm'],
+    reflect: ['tm', 'level'],
+    psybeam: ['level'],
+    'future-sight': ['level'],
+  },
+  piplup: {
+    'water-gun': ['level'],
+    'bubble-beam': ['level'],
+    'swords-dance': ['level', 'tm'],
+    surf: ['tm'],
+    'brick-break': ['tm'],
+    'ice-beam': ['tm'],
+    'aqua-jet': ['level'],
+    'metal-claw': ['level', 'tm'],
+    'shadow-claw': ['tm'],
+    'knock-off': ['tm'],
+    'flash-cannon': ['tm'],
+    'hydro-pump': ['level', 'tm'],
+    'grass-knot': ['tm'],
+    'double-edge': ['tm'],
+    'take-down': ['tm'],
+    agility: ['tm'],
+    'iron-defense': ['tm'],
+    'rock-slide': ['tm'],
+    bulldoze: ['tm'],
+    earthquake: ['tm'],
+  },
+  shinx: {
+    spark: ['level'],
+    thunderbolt: ['tm'],
+    agility: ['tm'],
+    snarl: ['tm'],
+    swift: ['tm'],
+    thunder: ['tm'],
+    'thunder-fang': ['tm'],
+    'ice-fang': ['tm'],
+    'fire-fang': ['tm'],
+    'night-slash': ['egg'],
+    'double-kick': ['egg'],
+    'take-down': ['egg', 'tm'],
+    'double-edge': ['tm'],
+    'play-rough': ['tm'],
+    crunch: ['level', 'tm'],
+    'wild-charge': ['level', 'tm'],
+    charge: ['level', 'tm'],
+    howl: ['egg'],
+    discharge: ['level'],
+    electroweb: ['tm'],
+  },
+  axew: {
+    'dragon-claw': ['level', 'tm'],
+    'dragon-pulse': ['level', 'tm'],
+    'swords-dance': ['level', 'tm'],
+    earthquake: ['tm'],
+    'x-scissor': ['tm'],
+    'brick-break': ['tm'],
+    slash: ['level'],
+    'night-slash': ['egg'],
+    'shadow-claw': ['tm'],
+    'low-kick': ['tm'],
+    'iron-head': ['tm'],
+    dig: ['tm'],
+    'stomping-tantrum': ['tm'],
+    crunch: ['level', 'tm'],
+    outrage: ['level', 'tm'],
+    'double-edge': ['tm'],
+    'focus-energy': ['level'],
+    'dragon-dance': ['level', 'tm'],
+    'rock-slide': ['tm'],
+    bulldoze: ['tm'],
+    snarl: ['tm'],
+  },
 };
 
 /**
  * The competitive sets each kit's recommended build follows (Smogon analyses,
  * as exported by https://data.pkmn.cc/sets/gen9.json, gen8.json, gen7.json).
  */
-export const COMPETITIVE_SOURCES: Readonly<Record<StarterId, readonly string[]>> = {
+export const COMPETITIVE_SOURCES: Readonly<Record<LineId, readonly string[]>> = {
   mimikyu: [
     'gen9 OU/UU Swords Dance: Swords Dance / Play Rough / Shadow Claw / Shadow Sneak',
     'gen8 Battle Stadium Singles Swords Dance Sweeper: Swords Dance / Play Rough / Shadow Sneak / Phantom Force',
@@ -150,5 +252,21 @@ export const COMPETITIVE_SOURCES: Readonly<Record<StarterId, readonly string[]>>
   cubone: [
     'gen7 LC Physical Attacker: Bonemerang / Knock Off / Rock Slide / Fire Punch',
     'Marowak gen8 ZU Swords Dance: Swords Dance / Bonemerang / Earthquake / Knock Off',
+  ],
+  abra: [
+    'Alakazam gen9 National Dex UU Nasty Plot: Nasty Plot / Psychic / Focus Blast / Shadow Ball',
+    'Alakazam gen8 BDSP OU Nasty Plot: Psychic | Psyshock / Focus Blast / Shadow Ball / Nasty Plot',
+    'Abra gen8 LC Life Orb: Psychic / Dazzling Gleam / Fire Punch / Protect',
+  ],
+  piplup: [
+    'Empoleon gen9 RU Offensive: Surf / Ice Beam / Grass Knot / Roost',
+    'Empoleon gen9 Battle Stadium Singles Assault Vest: Flash Cannon / Surf / Ice Beam / Grass Knot',
+    'Empoleon gen9 RU Specially Defensive: Surf / Roost / Stealth Rock / Knock Off',
+  ],
+  shinx: ['Luxray gen8 ZU Wallbreaker: Facade / Wild Charge / Superpower / Crunch'],
+  axew: [
+    'Haxorus gen9 Battle Stadium Singles: Dragon Dance | Swords Dance / Dragon Claw | Outrage / Earthquake / Iron Head',
+    'Axew gen9 LC Dragon Dance: Dragon Dance / Outrage / Stomping Tantrum | Iron Head',
+    'Fraxure gen9 NFE Setup Sweeper: Swords Dance / Outrage / Scale Shot / Stomping Tantrum',
   ],
 };

@@ -171,6 +171,31 @@ export const RANK_EFFECTS: Readonly<Record<MoveId, readonly [RankEffect, RankEff
   'iron-defense': [buff({ durationMs: 1500 }), heal(0.08)],
   'rock-slide': [stagger(1.3), zone({ at: 'impact', power: 15, radius: 20, lifetimeMs: 200, delayMs: 400 })],
   'ice-beam': [size(1.15), weaken(0.75, 3000)],
+  // --- Tutor: Abra's line ---
+  'psycho-cut': [crit(0.1), mark(0.3, 1000)],
+  'ice-punch': [stagger(1.3), weaken(0.8, 3000)],
+  psyshock: [homing(90), weaken(0.8, 3000)],
+  reflect: [buff({ durationMs: 1500 }), heal(0.08)],
+  psybeam: [size(1.15), weaken(0.8, 3000)],
+  'future-sight': [size(1.15), weaken(0.75, 3000)],
+  // --- Tutor: Piplup's line ---
+  'aqua-jet': [IFRAMES, crit(0.2)],
+  'metal-claw': [crit(0.15), ward(0.8, 1500)],
+  'flash-cannon': [size(1.2), split(3, 0.3)],
+  'hydro-pump': [size(1.2), stagger(1.3)],
+  // --- Tutor: Shinx's line ---
+  'thunder-fang': [stagger(1.3), chain(0.5, 80)],
+  'ice-fang': [stagger(1.3), weaken(0.8, 3000)],
+  'fire-fang': [crit(0.1), dot('burn', 0.6)],
+  crunch: [stagger(1.3), weaken(0.75, 4000)],
+  'wild-charge': [ward(0.75, 2000), IFRAMES],
+  charge: [buff({ hits: 1 }), buff({ durationMs: 1000 })],
+  howl: [buff({ hits: 1 }), ward(0.8, 2000)],
+  discharge: [size(1.15), chain(0.5, 100)],
+  electroweb: [size(1.15), weaken(0.7, 4000)],
+  // --- Tutor: Axew's line ---
+  outrage: [ward(0.7, 2000), stagger(1.3)],
+  'dragon-dance': [buff({ durationMs: 1000 }), buff({ critChance: 0.1 })],
   // --- The gacha lines' own moves (data/line-moves.ts) ---
   'water-gun': [size(1.3), split(2, 0.4)],
   'bubble-beam': [size(1.2), weaken(0.8, 3000)],
