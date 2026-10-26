@@ -2222,5 +2222,18 @@
   "lore.reborn.name": "Caminantes de la Sima",
   "lore.reborn.one": "Caminante de la Sima",
   "hud.lucidity": "LUCIDEZ",
-  "endless.echo.faceless": "Guardián sin rostro · Planta {floor}"
+  "endless.echo.faceless": "Planta {floor} · Tu cabeza no tiene con qué darle cara",
+  "species.sima-faceless": "Guardián sin rostro",
+  "species.sima-someone": "Sombra de alguien",
+  "species.sima-not-yours": "Una herida que no es tuya",
+  "sima.stray.nameless": "Planta {floor} · Alguien que bajó y no volvió",
+  "sima.stray.known": "Planta {floor} · {epithet}",
+  "sima.stray.log.nameless": "Detrás de la niebla espera alguien que bajó y no volvió. Puedes seguir de largo: la escalera está a un lado.",
+  "sima.stray.log.known": "Es {name}. {line} ya lo dejó atrás. Este no lo sabe.",
+  "sima.wound.nameless": "Planta {floor} · Lo que el eclipse se quedó de alguien",
+  "sima.wound.known": "Planta {floor} · {epithet}",
+  "sima.wound.log.nameless": "Una herida enorme, de otro. Duele mirarla igual.",
+  "sima.wound.log.known": "La herida de {line}. {line} la cerró. Esta se quedó abajo.",
+  "sima.bonus.stray": "sombra vencida",
+  "sima.stray.reward": "La sombra se deshace. Algo suyo se queda en el suelo: elige un objeto."
 }

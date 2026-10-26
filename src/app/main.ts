@@ -34,6 +34,7 @@ import { heldItems } from './item-pick';
 import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
+import { readSimaMemory } from './sima-lore';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen } from './adventure-route';
@@ -1325,6 +1326,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     ...(story ? { story } : {}),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
+    // The Sima as this player remembers it (names only; every peer reads its own: app/sima-lore.ts).
+    ...(dungeonById(shared.dungeon ?? dungeon).endless ? { simaMemory: readSimaMemory(store) } : {}),
     onEnd: (result, summary) => {
       // The host left mid-run: the room is gone, this peer goes back to the hub alone (after being paid below).
       if (summary.cutShort === 'hostLeft') leaveNet();

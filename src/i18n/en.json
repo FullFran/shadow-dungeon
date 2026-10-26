@@ -2222,5 +2222,18 @@
   "lore.reborn.name": "Sima Walkers",
   "lore.reborn.one": "Sima Walker",
   "hud.lucidity": "LUCIDITY",
-  "endless.echo.faceless": "Faceless guardian · Floor {floor}"
+  "endless.echo.faceless": "Floor {floor} · Your mind has nothing to give it a face",
+  "species.sima-faceless": "Faceless guardian",
+  "species.sima-someone": "Someone's shadow",
+  "species.sima-not-yours": "A wound that is not yours",
+  "sima.stray.nameless": "Floor {floor} · Someone who went down and never came back",
+  "sima.stray.known": "Floor {floor} · {epithet}",
+  "sima.stray.log.nameless": "Behind the fog waits someone who went down and never came back. You may walk past: the stairs are to one side.",
+  "sima.stray.log.known": "It is {name}. {line} already left it behind. This one does not know.",
+  "sima.wound.nameless": "Floor {floor} · What the eclipse kept of someone",
+  "sima.wound.known": "Floor {floor} · {epithet}",
+  "sima.wound.log.nameless": "A huge wound, someone else's. It hurts to look at all the same.",
+  "sima.wound.log.known": "{line}'s wound. {line} closed it. This one stayed below.",
+  "sima.bonus.stray": "shadow felled",
+  "sima.stray.reward": "The shadow comes apart. Something of it stays on the floor: pick an item."
 }
