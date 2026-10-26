@@ -274,8 +274,22 @@
       html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
       html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
         html.touch #app:has(.result) ~ .touch-back { display: none; }
+      /* Phones: no window wider than the screen (desktop min-widths would push it off both edges), inputs are tap targets too. */
+      html.touch .md-window { min-width: 0; max-width: 100%; box-sizing: border-box; }
+      html.touch input { min-height: 44px; box-sizing: border-box; }
+      @media (max-width: 560px) {
+        /* Settings rows wrap: the value drops under its label instead of overlapping it. */
+        html.touch .settings .md-item, html.touch .pause-settings .md-item { flex-wrap: wrap; row-gap: 2px; }
+        html.touch .settings .md-label, html.touch .pause-settings .md-label { white-space: normal; flex: 1 1 9rem; min-width: 0; }
+        /* End screens in portrait: the summary scrolls inside the window, the two actions stay pinned at its foot. */
+        html.touch .result { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; }
+        html.touch .result-actions { position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px; background: var(--md-window-bottom); }
+        html.touch .settings .md-value, html.touch .pause-settings .md-value { min-width: 0; max-width: 100%; margin-left: auto; white-space: normal; text-align: right; }
+      }
       @media (orientation: portrait) {
-        html.touch .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
+        /* Menus work in portrait: the rotate hint shows only where there is a game to play (a run, the town). */
+        html.touch .rotate-hint { display: none; }
+        html.touch #app:has(canvas.game) ~ .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
           color: var(--md-cursor); background: rgba(5, 6, 13, 0.85); border: 2px solid var(--md-border-shade); border-radius: 8px; pointer-events: none; }
         /* In a run the canvas sits in the middle: the hint goes in the empty band above it, clear of the buttons. */
         html.touch #app:has(canvas.game) ~ .rotate-hint { bottom: auto; top: 22%; }
@@ -317,7 +331,8 @@
         html.touch .shop .shop-effect { grid-area: effect; margin: 0; }
         html.touch .tutor .md-window-body { grid-template-rows: auto auto auto 1fr; grid-template-areas: 'text list' 'balance list' 'build list' 'effect list'; }
         html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
-        html.touch .tutor .shop-list { max-height: none; }
+        /* The move list scrolls inside the window, so the text and balance on the left stay in view. */
+        html.touch .tutor .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }
         html.touch .result h1 { font-size: 22px; }
