@@ -91,10 +91,19 @@ export interface AchievementWallet extends ProgressSnapshot {
  * reaches a lifetime milestone unlocks it too. The same save comes back
  * when nothing unlocks.
  */
-export function settleAchievements<S extends AchievementWallet>(save: S, report: RunReport | null, dateKey: string, defs: readonly AchievementDef[] = ACHIEVEMENTS): { save: S; unlocked: AchievementDef[] } {
+export const settleAchievements = <S extends AchievementWallet>(save: S, report: RunReport | null, dateKey: string, defs: readonly AchievementDef[] = ACHIEVEMENTS): { save: S; unlocked: AchievementDef[] } =>
+  settleBy(save, (def, s) => achieved(def, report, s), dateKey, defs);
+
+/**
+ * The settling loop for any rule check (`holds`, read against the save as
+ * it grows): unlock, pay, repeat until nothing more holds (a reward can reach
+ * a lifetime milestone). The same save comes back when nothing unlocks.
+ */
+export function settleBy<S extends AchievementWallet>(save: S, holds: (def: AchievementDef, save: S) => boolean, dateKey: string, defs: readonly AchievementDef[] = ACHIEVEMENTS): { save: S; unlocked: AchievementDef[] } {
   let next = save;
   const unlocked: AchievementDef[] = [];
-  for (let fresh = newlyUnlocked(next.achievements ?? {}, report, next, defs); fresh.length > 0; fresh = newlyUnlocked(next.achievements ?? {}, report, next, defs)) {
+  const pending = (): AchievementDef[] => defs.filter((def) => next.achievements?.[def.id] === undefined && holds(def, next));
+  for (let fresh = pending(); fresh.length > 0; fresh = pending()) {
     const paid = rewardOf(fresh);
     next = { ...next, achievements: unlockAll(next.achievements ?? {}, fresh, dateKey), coins: next.coins + paid, earned: (next.earned ?? 0) + paid };
     unlocked.push(...fresh);

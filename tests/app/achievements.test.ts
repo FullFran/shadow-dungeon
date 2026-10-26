@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { achievementLine, achievementText, achievementTitle } from '../../src/app/achievements';
+import { achievementLine, achievementText, achievementTitle, pastAchievementsText } from '../../src/app/achievements';
 import { recordRun, recordSave } from '../../src/app/progress';
 import { EMPTY_SAVE, loadSave, writeSave } from '../../src/app/save';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENTS } from '../../src/data/achievements';
@@ -10,6 +10,15 @@ import { catalog, LANGUAGES } from '../../src/i18n';
 describe('achievement texts', () => {
   for (const language of LANGUAGES) {
     const tr = (key: string) => catalog(language)[key] ?? key;
+    it(`"${language}" sums up retroactive unlocks in one line, singular and plural`, () => {
+      expect(tr('achievement.past.title')).not.toBe('achievement.past.title');
+      for (const n of [1, 7]) {
+        const text = pastAchievementsText(n, tr);
+        expect(text).toContain(String(n));
+        expect(/[{}]|achievement\.|—/.test(text), text).toBe(false);
+      }
+      expect(pastAchievementsText(1, tr)).not.toBe(pastAchievementsText(2, tr).replace('2', '1'));
+    });
     it(`"${language}" names every achievement and family from the content, with every placeholder filled`, () => {
       for (const family of ACHIEVEMENT_FAMILIES) expect(catalog(language)[`achievement.family.${family}`], family).toBeTruthy();
       for (const def of ACHIEVEMENTS) {
