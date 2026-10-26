@@ -1227,5 +1227,11 @@
   "tutor.build": "Recomendado (competitivo): {moves}",
   "town.name.tutor": "Smeargle · Maestro de movimientos",
   "town.tutor.1": "Cada Pokémon guarda en su sangre los movimientos de su tierra. Yo sé pintarlos de nuevo.",
-  "town.tutor.open": "Elige qué aprender. Paga con Pokémonedas."
+  "town.tutor.open": "Elige qué aprender. Paga con Pokémonedas.",
+  "touch.size": "Tamaño de los botones",
+  "touch.size.small": "Pequeño",
+  "touch.size.normal": "Normal",
+  "touch.size.large": "Grande",
+  "touch.opacity": "Opacidad de los botones",
+  "touch.leftHanded": "Zurdo (controles invertidos)"
 }

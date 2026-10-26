@@ -1227,5 +1227,11 @@
   "tutor.build": "Recommended (competitive): {moves}",
   "town.name.tutor": "Smeargle · Move tutor",
   "town.tutor.1": "Every Pokémon keeps the moves of its homeland in its blood. I know how to paint them again.",
-  "town.tutor.open": "Choose what to learn. Pay with Pokémonedas."
+  "town.tutor.open": "Choose what to learn. Pay with Pokémonedas.",
+  "touch.size": "Button size",
+  "touch.size.small": "Small",
+  "touch.size.normal": "Normal",
+  "touch.size.large": "Large",
+  "touch.opacity": "Button opacity",
+  "touch.leftHanded": "Left-handed (mirrored controls)"
 }

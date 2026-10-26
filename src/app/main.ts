@@ -36,7 +36,7 @@ import { prologueScreen } from './prologue';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen } from './adventure-route';
-import { defaultSettings, loadSettings, saveSettings, withSpecies, withStarter, type Settings } from './settings';
+import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import type { TownLobby } from '../town/lobby';
@@ -56,7 +56,7 @@ import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { coinLines } from './coin-lines';
-import { setTouchMode } from '../adapters/touch-mode';
+import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
 import { endActions, returnPlace, townOf, type ReturnPlace } from './after-run';
@@ -81,6 +81,7 @@ let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navi
 const audio = createAudio(settings);
 // Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
 setTouchMode(settings.touchMode);
+setTouchPrefs(touchPrefsOf(settings));
 const touchChrome = installTouchChrome();
 // PWA: service worker (builds only), "Instalar juego" on the title and a one-time banner.
 const pwa = setupPwa({
@@ -237,6 +238,7 @@ function update(changes: Partial<Settings>): void {
   saveSettings(store, settings);
   audio.setVolumes(settings);
   if (changes.touchMode) setTouchMode(settings.touchMode);
+  setTouchPrefs(touchPrefsOf(settings));
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 

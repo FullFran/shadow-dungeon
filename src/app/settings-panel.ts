@@ -1,5 +1,7 @@
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { TOUCH_MODES } from '../adapters/touch-mode';
+import { TOUCH_SCALES } from '../ui/touch-layout';
+import { TOUCH_OPACITIES } from './settings';
 import { LANGUAGES, t, type Language } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
 import { h } from '../ui/window';
@@ -23,7 +25,7 @@ export interface SettingsAccess {
 }
 
 export interface SettingRow {
-  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'touchMode' | 'autoAim' | 'haptics';
+  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
   label: string;
   value: string;
   /** Volumes: the level 0..1 for the meter. */
@@ -60,7 +62,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     access.update({ language });
     access.setLanguage(language);
   };
-  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics') => () => access.update({ [key]: !access.get()[key] });
+  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded') => () => access.update({ [key]: !access.get()[key] });
   const volume = (key: VolumeKey, section?: string): SettingRow => ({
     id: key,
     label: t(`menu.${key}`),
@@ -73,6 +75,9 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
   });
   const lockType = (delta: -1 | 1) => access.update({ lockType: cycle(LOCK_TYPES, access.get().lockType, delta) });
   const touchMode = (delta: -1 | 1) => access.update({ touchMode: cycle(TOUCH_MODES, access.get().touchMode, delta) });
+  const touchSize = (delta: -1 | 1) => access.update({ touchSize: cycle(TOUCH_SCALES, access.get().touchSize as (typeof TOUCH_SCALES)[number], delta) });
+  const touchOpacity = (delta: -1 | 1) => access.update({ touchOpacity: cycle(TOUCH_OPACITIES, access.get().touchOpacity as (typeof TOUCH_OPACITIES)[number], delta) });
+  const sizeKey = s.touchSize < 1 ? 'small' : s.touchSize > 1 ? 'large' : 'normal';
   return [
     { id: 'language', label: t('language.label'), value: t(`language.${s.language}`), disabled: false, adjust: pickLanguage, confirm: () => pickLanguage(1) },
     { id: 'lockType', section: t('menu.lockOn'), label: t('menu.lockType'), value: t(`lockType.${s.lockType}`), disabled: false, adjust: lockType, confirm: () => lockType(1) },
@@ -91,6 +96,9 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     { id: 'touchMode', section: t('touch.section'), label: t('touch.mode'), value: t(`touch.mode.${s.touchMode}`), disabled: false, adjust: touchMode, confirm: () => touchMode(1) },
     { id: 'autoAim', label: t('touch.autoAim'), value: onOff(s.autoAim), disabled: false, adjust: toggle('autoAim'), confirm: toggle('autoAim') },
     { id: 'haptics', label: t('touch.haptics'), value: onOff(s.haptics), disabled: false, adjust: toggle('haptics'), confirm: toggle('haptics') },
+    { id: 'touchSize', label: t('touch.size'), value: t(`touch.size.${sizeKey}`), disabled: false, adjust: touchSize, confirm: () => touchSize(1) },
+    { id: 'touchOpacity', label: t('touch.opacity'), value: `${Math.round(s.touchOpacity * 100)} %`, disabled: false, adjust: touchOpacity, confirm: () => touchOpacity(1) },
+    { id: 'touchLeftHanded', label: t('touch.leftHanded'), value: onOff(s.touchLeftHanded), disabled: false, adjust: toggle('touchLeftHanded'), confirm: toggle('touchLeftHanded') },
   ];
 }
 

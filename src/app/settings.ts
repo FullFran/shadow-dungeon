@@ -7,7 +7,8 @@ import { NEW_PLAYER_DIFFICULTY, isDifficulty, type Difficulty } from '../data/di
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
 import type { KeyValueStore } from '../adapters/storage';
-import { TOUCH_MODES, type TouchMode } from '../adapters/touch-mode';
+import { TOUCH_MODES, type TouchMode, type TouchPrefs } from '../adapters/touch-mode';
+import { TOUCH_SCALES } from '../ui/touch-layout';
 
 /** Player settings remembered between sessions (guest-only, local). */
 export interface Settings {
@@ -33,6 +34,10 @@ export interface Settings {
   autoAim: boolean;
   /** Touch only: short vibrations on a hit taken and on a perfect dodge. */
   haptics: boolean;
+  /** Touch only: button size (a `TOUCH_SCALES` step), opacity (a `TOUCH_OPACITIES` step) and the mirrored left-handed layout (src/ui/touch-layout.ts). */
+  touchSize: number;
+  touchOpacity: number;
+  touchLeftHanded: boolean;
   /** Shown over this player in online rooms (src/net/nickname.ts); empty uses "Jugador-XYZ". */
   nickname: string;
   /** The last difficulty tier picked (solo, and the host's for a room); normal for new players (data/difficulty.ts). */
@@ -41,8 +46,17 @@ export interface Settings {
 
 const KEY = 'mazmorra-sombria.settings';
 
+/** Touch button opacities offered in the settings. */
+export const TOUCH_OPACITIES = [0.5, 0.75, 1] as const;
+
+/** The touch layout preferences of these settings (src/adapters/touch-mode.ts `setTouchPrefs`). */
+export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 'touchLeftHanded'>): TouchPrefs => ({ scale: s.touchSize, opacity: s.touchOpacity, leftHanded: s.touchLeftHanded });
+
+/** A stored value only when it is one of `choices`. */
+const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
+
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -106,6 +120,9 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
     touchMode: TOUCH_MODES.find((m) => m === stored.touchMode) ?? fallback.touchMode,
     autoAim: typeof stored.autoAim === 'boolean' ? stored.autoAim : fallback.autoAim,
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : fallback.haptics,
+    touchSize: offered(stored.touchSize, TOUCH_SCALES, fallback.touchSize),
+    touchOpacity: offered(stored.touchOpacity, TOUCH_OPACITIES, fallback.touchOpacity),
+    touchLeftHanded: typeof stored.touchLeftHanded === 'boolean' ? stored.touchLeftHanded : fallback.touchLeftHanded,
     nickname: typeof stored.nickname === 'string' ? sanitizeNickname(stored.nickname) : fallback.nickname,
     difficulty: isDifficulty(stored.difficulty) ? stored.difficulty : fallback.difficulty,
   };
