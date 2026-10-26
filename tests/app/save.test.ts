@@ -51,6 +51,22 @@ describe('save facade', () => {
     expect(sanitize(migrate({ coins: 30 }))).toEqual({ version: SAVE_VERSION, coins: 30, upgrades: {} });
   });
 
+  it('migrate brings a v2 save to v3 with everything it held', () => {
+    const v2 = { version: 2, coins: 50, upgrades: { vitality: 1 }, learned: { zorua: ['swift'] }, ranks: { mimikyu: { 'shadow-claw': 1 } } };
+    expect(migrate(v2)).toEqual({ ...v2, version: 3 });
+    expect(sanitize(migrate(v2))).toEqual({ ...v2, version: SAVE_VERSION });
+    expect(SAVE_VERSION).toBe(3);
+  });
+
+  it('sanitize keeps only gacha species in the collection: no starters, enemies, unknowns or repeats', () => {
+    const save = sanitize({ coins: 0, upgrades: {}, owned: ['mimikyu', 'gastly', 'nope', 7], materials: { mimikyu: 3, gastly: 2 }, pity: 4.7 });
+    expect(save.owned).toBeUndefined();
+    expect(save.materials).toBeUndefined();
+    expect(save.pity).toBe(4);
+    expect(sanitize({ coins: 0, upgrades: {}, pity: -3 }).pity).toBeUndefined();
+    expect(sanitize({ coins: 0, upgrades: {}, pity: 'x' }).pity).toBeUndefined();
+  });
+
   it('earnCoins adds to the stored balance and returns the new save', () => {
     const store = memoryStore();
     earnCoins(store, 40);

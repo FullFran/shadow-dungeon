@@ -114,9 +114,8 @@ describe('move tutor: Mejoras', () => {
 describe('save v2: learned moves and ranks', () => {
   it('migrates a v1 save with nothing learned and keeps its coins and upgrades', () => {
     const v1 = { version: 1, coins: 300, upgrades: { vitality: 2 } };
-    expect(SAVE_VERSION).toBe(2);
-    expect(migrate(v1)).toEqual({ ...v1, version: 2 });
-    expect(sanitize(migrate(v1))).toEqual({ version: 2, coins: 300, upgrades: { vitality: 2 } });
+    expect(migrate(v1)).toEqual({ ...v1, version: SAVE_VERSION });
+    expect(sanitize(migrate(v1))).toEqual({ version: SAVE_VERSION, coins: 300, upgrades: { vitality: 2 } });
   });
 
   it('keeps only moves the tutor teaches that species, and only ranks of moves it can know', () => {

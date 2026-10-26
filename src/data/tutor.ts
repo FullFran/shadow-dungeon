@@ -18,6 +18,9 @@ export const TUTOR_OFFER: Readonly<Record<StarterId, readonly MoveId[]>> = {
   cubone: ['knock-off', 'fire-punch', 'thunder-punch', 'headbutt', 'low-kick', 'double-kick', 'mud-slap', 'double-edge', 'iron-head', 'earth-power', 'brick-break', 'scorching-sands', 'dig', 'focus-punch', 'swords-dance', 'focus-energy', 'belly-drum', 'iron-defense', 'rock-slide', 'ice-beam', 'flamethrower'],
 };
 
+/** The tutor's offer for any species (none for a species it does not teach). */
+export const tutorOffer = (id: string): readonly MoveId[] => (TUTOR_OFFER as Readonly<Partial<Record<string, readonly MoveId[]>>>)[id] ?? [];
+
 /** Moves of the original kits the canon learnsets lack, kept so no save loses them (data/learnsets.ts). */
 export const GRANDFATHERED: Readonly<Partial<Record<StarterId, readonly MoveId[]>>> = {
   mimikyu: ['shadow-force'],

@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { budgetRatio, costsOf } from '../../src/core/move-power';
 import { validateLoadout } from '../../src/core/loadout';
 import { DUNGEONS } from '../../src/data/dungeons';
-import { LEARNSETS, type StarterId } from '../../src/data/learnsets';
+import { LEARNSETS } from '../../src/data/learnsets';
 import { BASE_MOVE_IDS, MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
-import { originalKit, PLAYABLE_SPECIES, SPECIES } from '../../src/data/species';
+import { originalKit, STARTER_SPECIES, SPECIES } from '../../src/data/species';
 import { GRANDFATHERED, FULL_BUILD, MASTER_MOVES, movePrice, moveTier, RECOMMENDED_BUILD, TIER_BUDGET, TUTOR_OFFER, type MoveTier } from '../../src/data/tutor';
 import { TUTOR_MOVE_IDS } from '../../src/data/tutor-moves';
 
-const starters = PLAYABLE_SPECIES as readonly StarterId[];
+const starters = STARTER_SPECIES;
 const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS];
 
 describe('tutor moves: canon learnsets', () => {

@@ -8,7 +8,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
+import { STARTER_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { catalog } from '../../src/i18n';
 import { IDLE } from './helpers';
@@ -58,7 +58,7 @@ function useArea(state: WorldState, extraMs = 0): { state: WorldState; events: G
 const areaMoves = (id: SpeciesId) => originalKit(id).filter((m) => MOVES[m].slot === 'area');
 
 describe('area moves: data', () => {
-  it.each(PLAYABLE_SPECIES)('%s has two area moves, slow and costly, with heavy juice and one equipped by default', (id) => {
+  it.each(STARTER_SPECIES)('%s has two area moves, slow and costly, with heavy juice and one equipped by default', (id) => {
     const moves = areaMoves(id);
     expect(moves).toHaveLength(2);
     for (const m of moves) {
@@ -75,7 +75,7 @@ describe('area moves: data', () => {
   it('use the official Spanish move names', () => {
     const es = catalog('es');
     for (const [id, name] of Object.entries(AREA_NAMES)) expect(es[`move.${id}`], id).toBe(name);
-    expect(PLAYABLE_SPECIES.flatMap(areaMoves).sort()).toEqual(Object.keys(AREA_NAMES).sort());
+    expect(STARTER_SPECIES.flatMap(areaMoves).sort()).toEqual(Object.keys(AREA_NAMES).sort());
   });
 });
 

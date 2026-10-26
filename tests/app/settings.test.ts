@@ -105,6 +105,13 @@ describe('settings', () => {
     expect(loadSettings(store, defaultSettings('es'))).toMatchObject({ species: 'zorua', loadout: pad('zorua', ['fury-swipes', 'foul-play']) });
   });
 
+  it('falls back when the stored species is not in the roster (a gacha species the save no longer owns)', () => {
+    const store = memoryStore();
+    saveSettings(store, { ...defaultSettings('es'), species: 'zorua', loadout: ['fury-swipes', 'foul-play'] });
+    expect(loadSettings(store, defaultSettings('es'), ['mimikyu']).species).toBe('mimikyu');
+    expect(loadSettings(store, defaultSettings('es'), ['mimikyu', 'zorua']).species).toBe('zorua');
+  });
+
   it('picking another species equips its default moves; picking the same one keeps the loadout', () => {
     const tuned = { ...defaultSettings('es'), loadout: ['shadow-sneak', 'shadow-ball'] as const };
     expect(withSpecies(tuned, 'litwick')).toMatchObject({ species: 'litwick', loadout: pad('litwick', ['ember', 'hex']) });

@@ -1,7 +1,8 @@
 import type { MoveId } from './moves';
 import type { SPRITE_KEYS } from './sprites';
 import type { PokemonType } from './types';
-import { TUTOR_OFFER } from './tutor';
+import type { StarterId } from './learnsets';
+import { TUTOR_OFFER, tutorOffer } from './tutor';
 
 export type SpeciesId =
   | 'mimikyu'
@@ -254,13 +255,21 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },
 };
 
-/** Species a player can pick, in picker order (Mimikyu first, then the three starters). */
-export const PLAYABLE_SPECIES: readonly SpeciesId[] = ['mimikyu', 'zorua', 'litwick', 'cubone'];
+/** The starters, in picker order (Mimikyu first): always playable. */
+export const STARTER_SPECIES: readonly StarterId[] = ['mimikyu', 'zorua', 'litwick', 'cubone'];
+
+/**
+ * Every species a player can play as: the starters, then the forms of the
+ * gacha's evolution lines (odd/tasks/gacha-evolutions.md). Which of the
+ * latter a player has is the save's business (core/collection.ts).
+ */
+export const PLAYABLE_SPECIES: readonly SpeciesId[] = [...STARTER_SPECIES];
 
 export const isPlayable = (id: unknown): id is SpeciesId => PLAYABLE_SPECIES.some((s) => s === id);
+export const isStarter = (id: unknown): id is StarterId => STARTER_SPECIES.some((s) => s === id);
 
 /** A species' original kit: its movepool without the move tutor's moves (known from the start). */
 export function originalKit(id: SpeciesId): MoveId[] {
-  const taught: readonly MoveId[] = (TUTOR_OFFER as Partial<Record<SpeciesId, readonly MoveId[]>>)[id] ?? [];
+  const taught = tutorOffer(id);
   return SPECIES[id].movepool.filter((m) => !taught.includes(m));
 }

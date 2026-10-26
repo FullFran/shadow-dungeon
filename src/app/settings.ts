@@ -1,7 +1,7 @@
 import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
-import { isPlayable, SPECIES, type SpeciesId } from '../data/species';
+import { isPlayable, SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
 import { padLoadout, validateLoadout } from '../core/loadout';
 import { NEW_PLAYER_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
 import { LOCK_TYPES, type LockType } from '../core/state';
@@ -84,8 +84,10 @@ export function withStarter(settings: Settings, species: SpeciesId): Settings {
  * are dropped; fields added later (sound) take the fallback. The old `lockMode`
  * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).
  * The loadout must fit the stored species; otherwise that species' default.
+ * The species must be in `roster` (the starters and the owned gacha species,
+ * core/collection.ts `rosterOf`); otherwise the fallback's.
  */
-export function loadSettings(store: KeyValueStore, fallback: Settings): Settings {
+export function loadSettings(store: KeyValueStore, fallback: Settings, roster: readonly SpeciesId[] = STARTER_SPECIES): Settings {
   let raw: unknown;
   try {
     raw = JSON.parse(store.get(KEY) ?? 'null');
@@ -98,7 +100,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings): Settings
   const legacy = (raw as { lockMode?: unknown }).lockMode === 'hold' ? 'hold' : 'toggle';
   const lockType = LOCK_TYPES.find((l) => l === stored.lockType) ?? (stored.lockType === undefined && 'lockMode' in raw ? legacy : fallback.lockType);
   const clickToLock = typeof stored.clickToLock === 'boolean' ? stored.clickToLock : fallback.clickToLock;
-  const species = isPlayable(stored.species) ? stored.species : fallback.species;
+  const species = isPlayable(stored.species) && roster.includes(stored.species) ? stored.species : fallback.species;
   // A save from before four-slots holds two moves: the new slots take the species defaults.
   const storedLoadout =
     Array.isArray(stored.loadout) && stored.loadout.every((m) => m === null || typeof m === 'string')

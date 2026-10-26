@@ -86,6 +86,22 @@ describe('protocol', () => {
     expect(wire.length).toBeLessThan(4000);
   });
 
+  it('turns a species it does not know (or cannot play) into the default, so a newer or hostile peer never crashes the world', () => {
+    for (const species of ['missingno', 'gastly', 42]) {
+      const hello = decodeMessage(JSON.stringify({ t: 'hello', species, loadout: [] }));
+      expect(hello?.t === 'hello' && hello.species).toBe('mimikyu');
+      const lobby = decodeMessage(JSON.stringify({ t: 'lobby', players: [{ peer: 'a', id: 'p1', species }] }));
+      expect(lobby?.t === 'lobby' && lobby.players[0]!.species).toBe('mimikyu');
+      const start = decodeMessage(JSON.stringify({ t: 'start', seed: 1, floor: 1, players: [{ peer: 'a', id: 'p1', species }] }));
+      expect(start?.t === 'start' && start.players[0]!.species).toBe('mimikyu');
+    }
+    const world = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: vec(10, 10), localId: 'p2', species: 'zorua' });
+    const wire = JSON.parse(encodeMessage({ t: 'state', at: 5, floor: 1, p: playerSnapshot(world) })) as { p: unknown[] };
+    wire.p[1] = 'missingno';
+    const state = decodeMessage(JSON.stringify(wire));
+    expect(state?.t === 'state' && state.p.species).toBe('mimikyu');
+  });
+
   it('rejects garbage', () => {
     expect(decodeMessage('not json')).toBeNull();
     expect(decodeMessage('{"t":"nope"}')).toBeNull();

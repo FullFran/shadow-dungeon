@@ -10,7 +10,7 @@ import { createWorld, enterRoom, spawnEnemy } from '../../src/core/world';
 import { ITEM_EFFECTS } from '../../src/data/items';
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
+import { PLAYABLE_SPECIES, STARTER_SPECIES, SPECIES, type SpeciesId, originalKit } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { ticksFor } from './helpers';
 
@@ -59,11 +59,12 @@ const plain = (power: number, moveType: MoveId, species: SpeciesId, enemy: Speci
   computeDamage({ power, moveType: MOVES[moveType].type, attackerTypes: SPECIES[species].types, defenderTypes: SPECIES[enemy].types, multiplier }).damage;
 
 describe('starter species data', () => {
-  it('lists Mimikyu and the three starters as playable', () => {
-    expect(PLAYABLE_SPECIES).toEqual(['mimikyu', 'zorua', 'litwick', 'cubone']);
+  it('lists Mimikyu and the three starters as the starters, and every starter is playable', () => {
+    expect(STARTER_SPECIES).toEqual(['mimikyu', 'zorua', 'litwick', 'cubone']);
+    expect(PLAYABLE_SPECIES.slice(0, 4)).toEqual(STARTER_SPECIES);
   });
 
-  it.each(PLAYABLE_SPECIES)('%s has two fast and two heavy moves, a valid default loadout and a passive', (id) => {
+  it.each(STARTER_SPECIES)('%s has two fast and two heavy moves, a valid default loadout and a passive', (id) => {
     const species = SPECIES[id];
     const kinds = originalKit(species.id).map((m) => MOVES[m].slot);
     expect(kinds.filter((k) => k === 'fast')).toHaveLength(2);

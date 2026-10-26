@@ -55,6 +55,7 @@ import { earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
+import { rosterOf } from '../core/collection';
 import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
@@ -77,7 +78,7 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  */
 applyTokens(document.documentElement);
 const store = browserStore();
-let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)));
+let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 const audio = createAudio(settings);
 // Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
 setTouchMode(settings.touchMode);
@@ -464,6 +465,7 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       stage,
       species: settings.species,
       loadout: settings.loadout,
+      roster: rosterOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       onSpecies: (species) => {
@@ -629,6 +631,7 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       stage,
       species: settings.species,
       loadout: settings.loadout,
+      roster: rosterOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       startLabel: t('shrine.start'),
@@ -673,6 +676,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         stage,
         species: settings.species,
         loadout: settings.loadout,
+        roster: rosterOf(loadSave(store)),
         sheets: sheetsReady(),
         ...tutorView(settings.species),
         startLabel: t('shrine.ready'),

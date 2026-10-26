@@ -1,6 +1,6 @@
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
+import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
 import { SPRITE_KEYS, SPRITES } from '../data/sprites';
 import type { PokemonType } from '../data/types';
 import { sheetKey, type SheetStore } from '../adapters/assets';
@@ -26,6 +26,8 @@ import { moveTier } from '../data/tutor';
 export interface LoadoutOptions {
   stage: 'species' | 'moves';
   species: SpeciesId;
+  /** Who can be picked: the starters and the owned gacha species (core/collection.ts `rosterOf`; absent = the starters). */
+  roster?: readonly SpeciesId[];
   loadout: readonly (MoveId | null)[];
   sheets: Promise<SheetStore>;
   onSpecies(species: SpeciesId): void;
@@ -148,8 +150,9 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
     for (const child of [...info.children]) if (child !== title) child.remove();
     info.append(...speciesInfo(options.sheets, id));
   };
+  const roster = options.roster ?? STARTER_SPECIES;
   const items: ListItem[] = [
-    ...PLAYABLE_SPECIES.map((id) => ({
+    ...roster.map((id) => ({
       label: speciesRow(id, id === options.species),
       className: id === options.species ? 'move-row is-equipped' : 'move-row',
       onConfirm: () => options.onSpecies(id),
@@ -158,10 +161,10 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
   ];
   const list = cursorList({
     items,
-    initial: Math.max(0, PLAYABLE_SPECIES.indexOf(options.species)),
+    initial: Math.max(0, roster.indexOf(options.species)),
     onBack: options.onBack,
     onCursor: (index) => {
-      const id = PLAYABLE_SPECIES[index];
+      const id = roster[index];
       if (id) preview(id);
     },
     label: t('loadout.pick'),

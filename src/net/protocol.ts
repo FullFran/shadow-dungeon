@@ -2,7 +2,7 @@ import type { SimaSync } from '../core/sima-events';
 import type { GateSync } from '../core/gates';
 import { isEliteTrait, toDifficulty, type Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
-import type { SpeciesId } from '../data/species';
+import { isPlayable, type SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { ActionPhase, AiMode, BossStance, HitClaim } from '../core/state';
 import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } from '../core/sync';
@@ -111,13 +111,20 @@ function encodePlayer(p: PlayerSnapshot): unknown[] {
   return out;
 }
 
+/** A peer's species: one this game can play, else Mimikyu (a newer or hostile peer never crashes the world). */
+const playerSpecies = (value: unknown): SpeciesId => (isPlayable(value) ? value : 'mimikyu');
+
+/** Roster entries with a playable species each. */
+const withPlayableSpecies = (players: unknown): unknown =>
+  Array.isArray(players) ? players.map((p: unknown) => (typeof p === 'object' && p !== null ? { ...p, species: playerSpecies((p as { species?: unknown }).species) } : p)) : players;
+
 function decodePlayer(w: unknown[]): PlayerSnapshot {
   const [id, species, x, y, fx, fy, hp, maxHp, roll, action, shots, hidden, revive] = w as [string, SpeciesId, number, number, number, number, number, number, unknown, unknown, unknown, unknown, unknown];
   const r = Array.isArray(roll) ? (roll as number[]) : null;
   const a = Array.isArray(action) ? (action as [MoveId, ActionPhase, number, number, number, number, number]) : null;
   return {
     id,
-    species,
+    species: playerSpecies(species),
     pos: { x, y },
     facing: { x: fx, y: fy },
     hp,
@@ -354,5 +361,7 @@ export function decodeMessage(text: string): NetMessage | null {
       },
     };
   }
+  if (wire.t === 'hello') return { ...wire, species: playerSpecies(wire.species) } as unknown as NetMessage;
+  if (wire.t === 'start' || wire.t === 'lobby') return { ...wire, players: withPlayableSpecies(wire.players) } as unknown as NetMessage;
   return wire as unknown as NetMessage;
 }

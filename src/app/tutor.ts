@@ -1,12 +1,12 @@
+import { rosterOf } from '../core/collection';
 import { costsOf } from '../core/move-power';
 import { buyMove, knownMoves, moveRank, rankCost, rankUp, tutorLock, tutorPrice, type TutorWallet } from '../core/tutor';
 import { dungeonById } from '../data/dungeons';
 import { RANK_EFFECTS, type RankEffect } from '../data/rank-effects';
-import type { StarterId } from '../data/learnsets';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
-import { PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
-import { MAX_RANK, moveTier, RANK_EFFECT, RECOMMENDED_BUILD, TUTOR_OFFER, type MoveTier } from '../data/tutor';
+import { isStarter, type SpeciesId } from '../data/species';
+import { MAX_RANK, moveTier, RANK_EFFECT, RECOMMENDED_BUILD, tutorOffer, type MoveTier } from '../data/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 import { isTouchUi } from '../adapters/touch-mode';
 import { getLanguage, t } from '../i18n';
@@ -53,9 +53,10 @@ export function rankedName(move: MoveId, rank: number): string {
   return rank > 0 ? `${t(`move.${move}`)} ${'+'.repeat(rank)}` : t(`move.${move}`);
 }
 
-/** "Recomendado: Sombra Furtiva · Carantoña · Danza Espada · Golpe Fantasma". */
+/** "Recomendado: Sombra Furtiva · Carantoña · Danza Espada · Golpe Fantasma" (a starter's; none for the others). */
 export function buildHint(species: SpeciesId): string {
-  const build = RECOMMENDED_BUILD[species as StarterId] ?? [];
+  if (!isStarter(species)) return '';
+  const build = RECOMMENDED_BUILD[species];
   return t('tutor.build').replace('{moves}', build.map((m) => t(`move.${m}`)).join(' · '));
 }
 
@@ -153,7 +154,7 @@ export interface TutorRow {
 export function tutorRows(save: TutorWallet, species: SpeciesId, filter: SlotFilter = 'all'): TutorRow[] {
   const fits = (m: MoveId) => filter === 'all' || MOVES[m].slot === filter;
   const known = knownMoves(save, species);
-  const offer = (TUTOR_OFFER[species as StarterId] ?? []).filter(fits);
+  const offer = tutorOffer(species).filter(fits);
   const moves = offer.map((move): TutorRow => {
     const learned = known.includes(move);
     const cost = learned ? null : tutorPrice(species, move);
@@ -281,8 +282,9 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   });
 
   function switchSpecies(delta: -1 | 1): void {
-    const i = PLAYABLE_SPECIES.indexOf(species);
-    species = PLAYABLE_SPECIES[(i + delta + PLAYABLE_SPECIES.length) % PLAYABLE_SPECIES.length]!;
+    const roster = rosterOf(save);
+    const i = roster.indexOf(species);
+    species = roster[(i + delta + roster.length) % roster.length]!;
     refresh();
   }
 

@@ -3,7 +3,7 @@ import { TIERS, type Difficulty } from '../data/difficulty';
 import { DUNGEONS, type DungeonId } from '../data/dungeons';
 import { MOVES, type MoveDef } from '../data/moves';
 import type { RoomId } from '../data/rooms';
-import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
+import { STARTER_SPECIES, SPECIES, type SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { blocksHit } from '../core/boss';
 import { atCard, cardGuard, echoShare, echoStageAt, fightFor, fightOf, inTurn, isDeclaring } from '../core/cards';
@@ -586,7 +586,7 @@ export function judgeCard(c: BossCase, tier: Difficulty, index: number, starts: 
   let margin = Infinity;
   let worstStarter: SpeciesId | null = null;
   if (!card.survival) {
-    for (const player of PLAYABLE_SPECIES) {
+    for (const player of STARTER_SPECIES) {
       // A type disadvantage (no default move at neutral or better) is reported apart, not as the card's margin.
       if (typeWalled(player, c.species)) continue;
       const ref = referenceDps(player, c.species, level);

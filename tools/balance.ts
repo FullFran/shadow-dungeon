@@ -17,10 +17,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDifficulty } from '../src/data/difficulty';
-import { isPlayable, SPECIES } from '../src/data/species';
+import { isPlayable, isStarter, SPECIES } from '../src/data/species';
 import type { MoveId } from '../src/data/moves';
 import { FULL_BUILD, MAX_RANK, RECOMMENDED_BUILD } from '../src/data/tutor';
-import type { StarterId } from '../src/data/learnsets';
 import { DUNGEONS, type DungeonId } from '../src/data/dungeons';
 import { evaluate, failures } from '../src/sim/bands';
 import { renderJson, renderMarkdown } from '../src/sim/report';
@@ -45,15 +44,15 @@ if (tier) {
 if (args.includes('--slots')) config = { ...config, options: { ...config.options, slots: true } };
 const species = flag('species') ?? flag('build') ?? flag('full');
 if (species) {
-  if (!isPlayable(species)) throw new Error(`unknown starter ${species}`);
-  const loadout = flag('build') ? { loadout: RECOMMENDED_BUILD[species as StarterId] } : flag('full') ? { loadout: FULL_BUILD[species as StarterId] } : {};
+  if (!isPlayable(species)) throw new Error(`unknown species ${species}`);
+  if ((flag('build') || flag('full')) && !isStarter(species)) throw new Error(`builds exist for the starters only, not ${species}`);
+  const loadout = flag('build') && isStarter(species) ? { loadout: RECOMMENDED_BUILD[species] } : flag('full') && isStarter(species) ? { loadout: FULL_BUILD[species] } : {};
   config = { ...config, options: { ...config.options, species, ...loadout } };
 }
 // `--ranks=1|2`: every move of the bots' loadout at that Mejora rank (full investment: `--full=<starter> --ranks=2`).
 const ranks = Number.parseInt(flag('ranks') ?? '', 10);
 if (Number.isInteger(ranks) && ranks > 0) {
-  const starter = (species ?? 'mimikyu') as StarterId;
-  const moves = config.options?.loadout ?? SPECIES[starter].defaultLoadout;
+  const moves = config.options?.loadout ?? SPECIES[isPlayable(species) ? species : 'mimikyu'].defaultLoadout;
   config = { ...config, options: { ...config.options, moveRanks: Object.fromEntries(moves.filter((m): m is MoveId => m !== null).map((m) => [m, Math.min(MAX_RANK, ranks)])) } };
 }
 const outDir = flag('out') ?? join('reports', 'balance');
