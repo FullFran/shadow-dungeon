@@ -11,6 +11,8 @@ export default defineConfig({
   test: {
     include: process.env.PROOFS === '1' ? HEAVY_PROOFS : ['tests/**/*.test.ts'],
     exclude: process.env.PROOFS === '1' ? [] : HEAVY_PROOFS,
+    // One proof file at a time: run side by side they starve each worker's RPC ("Timeout calling onTaskUpdate").
+    fileParallelism: process.env.PROOFS !== '1',
     environment: 'node',
   },
 });
