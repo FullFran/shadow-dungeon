@@ -50,7 +50,6 @@ describe('shrine trials in an online room', () => {
     expect(host.session.roster().find((r) => r.id === 'p2')?.species).toBe('zorua');
     host.session.repick('cubone', SPECIES.cubone.defaultLoadout);
     expect(guest.session.roster().find((r) => r.id === 'p1')?.species).toBe('cubone');
-    expect(host.session.oldPeers()).toEqual([]);
 
     const request = trialRequestOf(AEGISLASH)!;
     host.session.begin(request.stops[0]!.dungeon, 77, AEGISLASH);
@@ -77,16 +76,6 @@ describe('shrine trials in an online room', () => {
     host.session.begin('misty-forest', 9);
     expect(guest.started).not.toBeNull();
     expect(guest.started!.trial).toBeUndefined();
-  });
-
-  it('flags a guest on an older version, which cannot join a trial (and is turned away from one under way)', () => {
-    const { hub, host } = room();
-    const old = hub.connect('o');
-    // An older peer's hello has no `shrine` flag.
-    old.send(JSON.stringify({ t: 'hello', species: 'litwick', loadout: [] }), true);
-    expect(host.session.oldPeers().map((r) => r.peer)).toEqual(['o']);
-    old.close();
-    expect(host.session.oldPeers()).toEqual([]);
   });
 
   it('a late older peer is turned away while a trial runs, a current one joins it', () => {

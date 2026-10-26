@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
+import { CONTENT_HASH, PROTOCOL_VERSION } from '../../src/net/version';
 import { createSession, type NetSession, type StartInfo } from '../../src/net/session';
 import { createFakeScheduler, createMemoryHub, type FakeScheduler, type MemoryHub } from '../../src/net/transport';
 
@@ -68,7 +69,8 @@ describe('difficulty over the network', () => {
     const hub = createMemoryHub<string>();
     const guest = peer(hub, 'g', scheduler);
     guest.session.join('mimikyu', LOADOUT);
-    hub.connect('h').send(JSON.stringify({ t: 'start', seed: 5, floor: 1, difficulty: 'legendary', players: [{ peer: 'g', id: 'p2', species: 'mimikyu' }] }), true);
+    hub.connect('h').send(JSON.stringify({ t: 'start', seed: 5, floor: 1, difficulty: 'legendary', players: [{ peer: 'g', id: 'p2', species: 'mimikyu' }], v: PROTOCOL_VERSION, c: CONTENT_HASH }), true);
+    expect(guest.started).not.toBeNull();
     expect(guest.started?.difficulty).toBeUndefined();
     expect(guest.session.difficulty()).toBe('easy');
   });

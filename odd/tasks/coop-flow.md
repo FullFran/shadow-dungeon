@@ -37,7 +37,7 @@ User requests (2026-10-26): stairs should ask before descending; the party gathe
 New branch `feat/coop-flow` from main after the gacha merge; one commit per task; forecast ~1,500–2,000 authored lines.
 
 ## Tasks
-- [ ] T1 Version gate + wire validation.
+- [x] T1 Version gate + wire validation.
 - [ ] T2 Payout on host leave + reopen race.
 - [ ] T3 Stairs confirm + gather + AFK exclusion + room exits.
 - [ ] T4 Fog gate before bosses.
@@ -49,7 +49,7 @@ New branch `feat/coop-flow` from main after the gacha merge; one commit per task
 - Loopback net tests (tests/net/coop-loop.ts) cover: mismatch refused, guest paid on host leave, stairs need all active players, AFK excluded, fog starts the fight only when all crossed, wipe after mid-boss respawns at the bonfire, Sima unaffected.
 
 ## Progress / evidence
-(none yet)
+- T1 (route: delegated writer, single bounded writer for T1–T3). hello, lobby and start carry `v` (PROTOCOL_VERSION 2) and `c` (FNV-1a of the sorted species, move, item, room and dungeon ids, src/net/version.ts). The host answers another version with `full` + `reason: 'version'` (an older peer reads it as a full room) and fires `onVersionRefused` (toast); a guest refuses a lobby/start of another version itself. The decoder drops enemies of unknown species, projectiles of unknown types, malformed states, actions of unknown moves (action null), unknown AI modes (idle), starts of unknown dungeons, roster entries without a p1..p4 id, malformed hit claims and non-whole floors. The shrine flag and `oldPeers` were removed: the gate supersedes them. RED: tests/net/version.test.ts failed (module missing) on the base; GREEN after. Checks: typecheck ok; vitest 215 files / 2608 tests passed; build ok; prove 166/166 cards, 24/24 fights.
 
 ## Next step
 Merge and deploy gacha-evolutions, then T1.

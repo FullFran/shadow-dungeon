@@ -473,7 +473,8 @@ export const CHALLENGES: readonly DungeonDef[] = [
 
 const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES];
 
-const isDungeonId = (id: unknown): id is DungeonId => ALL.some((d) => d.id === id);
+/** True for the id of a dungeon of this build (challenges too). */
+export const isDungeonId = (id: unknown): id is DungeonId => ALL.some((d) => d.id === id);
 
 /** A dungeon by id (challenges too); anything unknown (an old or hostile peer, a bad address) is the Crypt. */
 export const dungeonById = (id: unknown): DungeonDef => (isDungeonId(id) ? ALL.find((d) => d.id === id)! : CRYPT);

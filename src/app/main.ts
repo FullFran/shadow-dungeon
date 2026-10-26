@@ -290,6 +290,16 @@ function messageScreen(root: HTMLElement, text: string, place: ReturnPlace = 'ti
   show(root, [mdWindow({ className: 'narrow' }, [h('p', { textContent: text }), back])]);
 }
 
+/** A short line over whatever is on screen (the town, a run), gone after a few seconds. */
+function toast(root: HTMLElement, text: string): void {
+  const line = h('p', { className: 'net-toast', textContent: text });
+  line.setAttribute('role', 'status');
+  root.append(line);
+  window.setTimeout(() => line.remove(), TOAST_MS);
+}
+
+const TOAST_MS = 6000;
+
 /** Loading or connecting: a window with the text only. */
 function waitScreen(root: HTMLElement, text: string): void {
   show(root, [mdWindow({ className: 'narrow wait' }, [h('p', { textContent: text })])]);
@@ -746,16 +756,10 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
   ]);
 }
 
-/** The room's host begins the trial for everyone: never with a player on an older version (it would play a dungeon run instead). */
+/** The room's host begins the trial for everyone (every player shares its version: net/version.ts). */
 function startRoomTrial(root: HTMLElement, request: TrialRequest, pick: TrialPick): void {
   const r = liveRoom('room');
   if (!r) return titleScreen(root);
-  const old = r.session.oldPeers();
-  if (old.length > 0) {
-    const line = t('shrine.oldVersion').replace('{names}', old.map(nameOf).join(', '));
-    show(root, [mdWindow({ title: t('shrine.title'), className: 'shrine' }, [h('p', { textContent: line }), single(t('menu.back'), () => shrineStep(root, 'room', loadoutSpecies(request)))])]);
-    return;
-  }
   const dungeon = request.stops[0]!.dungeon;
   r.session.repick(pick.species, pick.loadout);
   r.session.setDifficulty(request.difficulty);
@@ -881,8 +885,12 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   room = { session, code, asHost, seed: runSeed(), from };
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
-  session.onFull(() => {
-    if (current === session) messageScreen(root, t('lobby.full'));
+  session.onFull((reason) => {
+    if (current === session) messageScreen(root, t(reason === 'version' ? 'net.version' : 'lobby.full'));
+  });
+  // Host: someone on another version knocked; say so here too (they see "reload the page").
+  session.onVersionRefused(() => {
+    if (current === session) toast(root, t('net.versionRefused'));
   });
   session.onStart((start) => {
     if (current !== session) return;
