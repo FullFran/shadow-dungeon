@@ -1,7 +1,7 @@
-import { IDLE_TOUCH, joystickVector, swipeSteps, type TouchFrame } from '../adapters/touch';
+import { dragAim, IDLE_TOUCH, joystickVector, swipeSteps, type CastMode, type TouchFrame } from '../adapters/touch';
 import type { Vec2 } from '../core/vec';
 import { onTouchPrefs, touchPrefs } from '../adapters/touch-mode';
-import { combatLayout, type Insets } from './touch-layout';
+import { combatLayout, hitButton, type Insets, type TouchLayout } from './touch-layout';
 import { h } from './window';
 
 /**
@@ -11,12 +11,16 @@ import { h } from './window';
  * canvas pixels of `tapTarget`), and the buttons placed by the pure layout in
  * src/ui/touch-layout.ts (main attack in the thumb corner, an arc around it,
  * Pause and Map in the top corners; safe areas, size, opacity and hand from
- * the touch preferences). Pointer events with pointer capture, so several
- * fingers work at once (move + attack); buttons show a pressed state.
+ * the touch preferences). Every finger is routed by where it lands (the
+ * layout's hit test, with a little slop around each button) and then followed
+ * by its pointer id on the window, never by the event target: a browser that
+ * retargets a second touch to the first one's capture (seen in Firefox) still
+ * gets move + attack at once. Buttons show a pressed state.
  * Button ids `roll`, `fast`, `heavy`, `boost`, `area` and `lock` feed the `TouchFrame`
  * (src/adapters/touch.ts maps it onto PlayerInput); others only call
  * `onPress`. A button with `swipe` reports horizontal swipe steps instead of
- * a tap when dragged.
+ * a tap when dragged. A slot button dragged past a dead zone aims its slot
+ * (`aimPreview` for the renderer); its cast mode says when it presses.
  */
 export interface TouchButtonSpec {
   id: string;
@@ -29,16 +33,18 @@ export interface TouchButtonSpec {
 
 export interface TouchControlsOptions {
   buttons: TouchButtonSpec[];
-  /** Canvas the free taps are measured against; without it the right half takes no taps. */
+  /** Canvas the free taps are measured against; without it the other half takes no taps. */
   tapTarget?: HTMLCanvasElement;
   /** Called on a free tap (after it is recorded for `take`). */
   onTap?(): void;
   className?: string;
+  /** How each slot button (fast, heavy, boost, area) casts (src/adapters/touch.ts `slotCastMode`); default `press`. */
+  castMode?(id: string): CastMode;
 }
 
 export interface TouchControls {
   element: HTMLElement;
-  /** State for the next simulation step; edges (roll, lock tap, swipe, tap) are consumed. */
+  /** State for the next simulation step; edges (roll, lock tap, swipe, tap, a release cast) are consumed. */
   take(): TouchFrame;
   /** The joystick vector right now (not consumed). */
   move(): Vec2;
@@ -46,6 +52,8 @@ export interface TouchControls {
   setLabel(id: string, label: string): void;
   /** Suspended (a menu is open): everything is released and new touches are ignored. */
   setSuspended(suspended: boolean): void;
+  /** The direction of a slot button being dragged to aim (for the aim preview), or null. */
+  aimPreview(): Vec2 | null;
   /** Places the buttons again (after a resize or a preference change; also done on its own). */
   relayout(): void;
   dispose(): void;
@@ -57,6 +65,16 @@ export const STICK = { radius: 56, deadZone: 0.18 } as const;
 export const SWIPE_STEP_PX = 36;
 /** A free tap: released within this time and distance. */
 const TAP = { ms: 350, px: 14 } as const;
+/** Slot buttons and their slot index. */
+const SLOT_OF: Record<string, number> = { fast: 0, heavy: 1, boost: 2, area: 3 };
+
+/** What a finger drives until it lifts. */
+interface Gesture {
+  move(e: PointerEvent): void;
+  up(e: PointerEvent): void;
+  /** Let go without effect (cancel, blur, suspend). */
+  drop(): void;
+}
 
 export function createTouchControls(options: TouchControlsOptions): TouchControls {
   const knob = h('div', { className: 'touch-knob' });
@@ -68,16 +86,20 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   element.addEventListener('contextmenu', (e) => e.preventDefault());
 
   let suspended = false;
+  let layout: TouchLayout | null = null;
   let move: Vec2 = { x: 0, y: 0 };
-  let stickPointer: number | null = null;
-  let stickOrigin: Vec2 = { x: 0, y: 0 };
   const held = new Set<string>();
   let roll = false;
   let lockTap = false;
   let swipe = 0;
   let tap: Vec2 | null = null;
+  /** The slot button held to aim (hold / release modes) and its drag direction so far. */
+  let aiming: { id: string; slot: number; dir: Vec2 | null } | null = null;
+  /** Release-mode casts waiting for the next step: the slot is held for that one step with the aim it was lifted with. */
+  const casts: { id: string; slot: number; dir: Vec2 | null }[] = [];
   const buttons = new Map<string, HTMLButtonElement>();
-  const releasers: (() => void)[] = [];
+  const specs = new Map<string, TouchButtonSpec>();
+  const gestures = new Map<number, Gesture>();
 
   const showStick = (visible: boolean) => stick.classList.toggle('is-visible', visible);
   const placeKnob = (offset: Vec2) => {
@@ -85,103 +107,144 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     const k = len > STICK.radius ? STICK.radius / len : 1;
     knob.style.transform = `translate(${offset.x * k}px, ${offset.y * k}px)`;
   };
-  const releaseStick = () => {
-    stickPointer = null;
-    move = { x: 0, y: 0 };
-    showStick(false);
-    placeKnob({ x: 0, y: 0 });
-  };
 
-  stickZone.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    if (suspended || stickPointer !== null) return;
-    stickPointer = e.pointerId;
-    stickZone.setPointerCapture?.(e.pointerId);
-    stickOrigin = { x: e.clientX, y: e.clientY };
-    stick.style.left = `${e.clientX}px`;
-    stick.style.top = `${e.clientY}px`;
+  let stickBusy = false;
+  const stickGesture = (e: PointerEvent): Gesture | null => {
+    if (stickBusy) return null;
+    stickBusy = true;
+    const origin = { x: e.clientX, y: e.clientY };
+    stick.style.left = `${origin.x}px`;
+    stick.style.top = `${origin.y}px`;
     showStick(true);
-  });
-  stickZone.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== stickPointer) return;
-    const point = { x: e.clientX, y: e.clientY };
-    move = joystickVector(stickOrigin, point, STICK.radius, STICK.deadZone);
-    placeKnob({ x: point.x - stickOrigin.x, y: point.y - stickOrigin.y });
-  });
-  const endStick = (e: PointerEvent) => {
-    if (e.pointerId === stickPointer) releaseStick();
+    const end = () => {
+      stickBusy = false;
+      move = { x: 0, y: 0 };
+      showStick(false);
+      placeKnob({ x: 0, y: 0 });
+    };
+    return {
+      move(ev) {
+        const point = { x: ev.clientX, y: ev.clientY };
+        move = joystickVector(origin, point, STICK.radius, STICK.deadZone);
+        placeKnob({ x: point.x - origin.x, y: point.y - origin.y });
+      },
+      up: end,
+      drop: end,
+    };
   };
-  stickZone.addEventListener('pointerup', endStick);
-  stickZone.addEventListener('pointercancel', endStick);
-  stickZone.addEventListener('lostpointercapture', endStick);
 
-  const taps = new Map<number, { x: number; y: number; at: number }>();
-  tapZone.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    if (suspended) return;
-    taps.set(e.pointerId, { x: e.clientX, y: e.clientY, at: e.timeStamp });
-  });
-  tapZone.addEventListener('pointerup', (e) => {
-    const start = taps.get(e.pointerId);
-    taps.delete(e.pointerId);
-    const canvas = options.tapTarget;
-    if (!start || !canvas || suspended) return;
-    if (e.timeStamp - start.at > TAP.ms || Math.hypot(e.clientX - start.x, e.clientY - start.y) > TAP.px) return;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
-    tap = { x: ((e.clientX - rect.left) * canvas.width) / rect.width, y: ((e.clientY - rect.top) * canvas.height) / rect.height };
-    options.onTap?.();
-  });
-  tapZone.addEventListener('pointercancel', (e) => taps.delete(e.pointerId));
+  const tapGesture = (e: PointerEvent): Gesture => {
+    const start = { x: e.clientX, y: e.clientY, at: e.timeStamp };
+    return {
+      move() {},
+      up(ev) {
+        const canvas = options.tapTarget;
+        if (!canvas || suspended || !Number.isFinite(ev.clientX)) return;
+        if (ev.timeStamp - start.at > TAP.ms || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > TAP.px) return;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || ev.clientX < rect.left || ev.clientX > rect.right || ev.clientY < rect.top || ev.clientY > rect.bottom) return;
+        tap = { x: ((ev.clientX - rect.left) * canvas.width) / rect.width, y: ((ev.clientY - rect.top) * canvas.height) / rect.height };
+        options.onTap?.();
+      },
+      drop() {},
+    };
+  };
+
+  /** Buttons with a finger on them (a second finger on a held button is ignored). */
+  const busy = new Set<string>();
+  const buttonGesture = (spec: TouchButtonSpec, e: PointerEvent): Gesture | null => {
+    if (busy.has(spec.id)) return null;
+    const button = buttons.get(spec.id)!;
+    const slot = SLOT_OF[spec.id];
+    const mode: CastMode = slot === undefined ? 'press' : (options.castMode?.(spec.id) ?? 'press');
+    const start = { x: e.clientX, y: e.clientY };
+    let swiped = 0;
+    busy.add(spec.id);
+    // A release-mode button only aims while held; it casts when lifted.
+    if (mode !== 'release') held.add(spec.id);
+    if (slot !== undefined && mode !== 'press') aiming = { id: spec.id, slot, dir: null };
+    button.classList.add('is-pressed');
+    if (spec.id === 'roll') roll = true;
+    spec.onPress?.();
+    const end = () => {
+      busy.delete(spec.id);
+      held.delete(spec.id);
+      if (aiming?.id === spec.id) aiming = null;
+      button.classList.remove('is-pressed', 'is-aiming');
+    };
+    return {
+      move(ev) {
+        if (aiming?.id === spec.id) {
+          aiming = { ...aiming, dir: dragAim(start, { x: ev.clientX, y: ev.clientY }) };
+          button.classList.toggle('is-aiming', aiming.dir !== null);
+        }
+        if (!spec.swipe) return;
+        const steps = swipeSteps(ev.clientX - start.x, SWIPE_STEP_PX);
+        if (steps !== swiped) {
+          swipe += steps - swiped;
+          swiped = steps;
+        }
+      },
+      up() {
+        if (!suspended) {
+          if (spec.id === 'lock' && swiped === 0) lockTap = true;
+          if (slot !== undefined && mode === 'release') casts.push({ id: spec.id, slot, dir: aiming?.id === spec.id ? aiming.dir : null });
+        }
+        end();
+      },
+      drop: end,
+    };
+  };
 
   for (const spec of options.buttons) {
     const button = h('button', { type: 'button', className: ['touch-button', `touch-${spec.id}`, spec.className ?? ''].filter(Boolean).join(' '), textContent: spec.label });
     button.setAttribute('aria-label', spec.label);
     buttons.set(spec.id, button);
-    let pointer: number | null = null;
-    let startX = 0;
-    let swiped = 0;
-    const release = () => {
-      if (pointer === null) return;
-      pointer = null;
-      held.delete(spec.id);
-      button.classList.remove('is-pressed');
-    };
-    releasers.push(release);
-    button.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      if (suspended || pointer !== null) return;
-      pointer = e.pointerId;
-      button.setPointerCapture?.(e.pointerId);
-      startX = e.clientX;
-      swiped = 0;
-      held.add(spec.id);
-      button.classList.add('is-pressed');
-      if (spec.id === 'roll') roll = true;
-      spec.onPress?.();
-    });
-    button.addEventListener('pointermove', (e) => {
-      if (e.pointerId !== pointer || !spec.swipe) return;
-      const steps = swipeSteps(e.clientX - startX, SWIPE_STEP_PX);
-      if (steps !== swiped) {
-        swipe += steps - swiped;
-        swiped = steps;
-      }
-    });
-    button.addEventListener('pointerup', (e) => {
-      if (e.pointerId !== pointer) return;
-      if (spec.id === 'lock' && swiped === 0 && !suspended) lockTap = true;
-      release();
-    });
-    button.addEventListener('pointercancel', (e) => {
-      if (e.pointerId === pointer) release();
-    });
-    button.addEventListener('lostpointercapture', (e) => {
-      if (e.pointerId === pointer) release();
-    });
-    // Keyboard and mouse clicks do nothing extra: the pointer events above are the input.
+    specs.set(spec.id, spec);
+    // Keyboard and mouse clicks do nothing extra: the pointer router below is the input.
     element.append(button);
   }
+
+  /** A finger lands on the layer: a shown button under it (with slop), else the joystick half, else the tap half. */
+  const onDown = (e: PointerEvent) => {
+    if (!layout || !(e.target instanceof Node) || !element.contains(e.target)) return;
+    e.preventDefault();
+    if (suspended || gestures.has(e.pointerId)) return;
+    const point = { x: e.clientX, y: e.clientY };
+    const shown = Object.fromEntries(Object.entries(layout.buttons).filter(([id]) => !buttons.get(id)?.hidden));
+    const id = hitButton({ ...layout, buttons: shown }, point);
+    const zone = layout.stickZone;
+    const inStick = point.x >= zone.x && point.x < zone.x + zone.width;
+    const spec = id ? specs.get(id) : undefined;
+    const gesture = spec ? buttonGesture(spec, e) : inStick ? stickGesture(e) : tapGesture(e);
+    if (gesture) gestures.set(e.pointerId, gesture);
+  };
+  const onMove = (e: PointerEvent) => gestures.get(e.pointerId)?.move(e);
+  const onUp = (e: PointerEvent) => {
+    const gesture = gestures.get(e.pointerId);
+    if (!gesture) return;
+    gestures.delete(e.pointerId);
+    gesture.up(e);
+  };
+  const onCancel = (e: PointerEvent) => {
+    const gesture = gestures.get(e.pointerId);
+    gestures.delete(e.pointerId);
+    gesture?.drop();
+  };
+  // Safety net: when the last finger lifts, nothing may stay held, even if a pointerup was lost
+  // (seen in Firefox when two fingers lift in the same frame). A lost tap is not replayed.
+  const onTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length > 0 || gestures.size === 0) return;
+    const ending = [...gestures.values()];
+    gestures.clear();
+    for (const gesture of ending) (e.type === 'touchcancel' ? gesture.drop() : gesture.up(e as unknown as PointerEvent));
+  };
+  window.addEventListener('touchend', onTouchEnd, { capture: true });
+  window.addEventListener('touchcancel', onTouchEnd, { capture: true });
+  window.addEventListener('pointerdown', onDown, { capture: true, passive: false });
+  window.addEventListener('pointermove', onMove, { capture: true });
+  window.addEventListener('pointerup', onUp, { capture: true });
+  window.addEventListener('pointercancel', onCancel, { capture: true });
 
   /** Safe-area insets as the CSS sees them (`env()` is only readable through a styled element). */
   const readInsets = (): Insets => {
@@ -199,7 +262,7 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     if (!element.isConnected) return;
     const prefs = touchPrefs();
     const viewport = { width: window.innerWidth, height: window.innerHeight };
-    const layout = combatLayout(viewport, readInsets(), [...buttons.keys()], prefs);
+    layout = combatLayout(viewport, readInsets(), [...buttons.keys()], prefs);
     for (const [id, button] of buttons) {
       const at = layout.buttons[id];
       if (at) place(button, at.x - at.width / 2, at.y - at.height / 2, at.width, at.height);
@@ -216,9 +279,10 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   requestAnimationFrame(relayout);
 
   const releaseAll = () => {
-    releaseStick();
-    for (const release of releasers) release();
-    taps.clear();
+    for (const gesture of gestures.values()) gesture.drop();
+    gestures.clear();
+    aiming = null;
+    casts.length = 0;
     roll = false;
     lockTap = false;
     swipe = 0;
@@ -231,7 +295,11 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     element,
     take() {
       if (suspended) return IDLE_TOUCH;
-      const frame: TouchFrame = { move, roll, fast: held.has('fast'), heavy: held.has('heavy'), boost: held.has('boost'), area: held.has('area'), lockHeld: held.has('lock'), lockTap, swipe, tap };
+      // One release-mode cast per step, held for that step with the aim it was lifted with.
+      const cast = casts.shift();
+      const on = (id: string) => held.has(id) || cast?.id === id;
+      const aim = cast ? { slot: cast.slot, dir: cast.dir } : aiming && held.has(aiming.id) ? { slot: aiming.slot, dir: aiming.dir } : null;
+      const frame: TouchFrame = { move, roll, fast: on('fast'), heavy: on('heavy'), boost: on('boost'), area: on('area'), lockHeld: held.has('lock'), lockTap, swipe, tap, aim };
       roll = false;
       lockTap = false;
       swipe = 0;
@@ -239,6 +307,7 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
       return frame;
     },
     move: () => (suspended ? { x: 0, y: 0 } : move),
+    aimPreview: () => (suspended ? null : (aiming?.dir ?? null)),
     setHidden(id, hidden) {
       const button = buttons.get(id);
       if (button && button.hidden !== hidden) button.hidden = hidden;
@@ -256,8 +325,15 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     },
     relayout,
     dispose() {
+      releaseAll();
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('pointerdown', onDown, { capture: true });
+      window.removeEventListener('touchend', onTouchEnd, { capture: true });
+      window.removeEventListener('touchcancel', onTouchEnd, { capture: true });
+      window.removeEventListener('pointermove', onMove, { capture: true });
+      window.removeEventListener('pointerup', onUp, { capture: true });
+      window.removeEventListener('pointercancel', onCancel, { capture: true });
       stopPrefs();
       element.remove();
     },

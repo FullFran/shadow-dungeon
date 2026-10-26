@@ -1,4 +1,5 @@
 import type { EnemyState, LockType, PlayerInput, Rect } from '../core/state';
+import type { MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { add, distance, dot, length, normalize, scale, sub, type Vec2 } from '../core/vec';
 import { screenToWorld } from './view';
@@ -17,7 +18,11 @@ import { screenToWorld } from './view';
  *   front); a tap toggles with `toggle`, holding it is the lock with `hold`;
  *   a horizontal swipe on it switches target like the wheel;
  * - a free tap on the screen is a left click at that point (click-to-lock),
- *   never an attack.
+ *   never an attack;
+ * - dragging from a slot button aims that slot along the drag (`aim`), as a
+ *   mouse-aimed move would; a tap leaves it to auto-aim. `slotCastMode` says
+ *   when the button presses the slot: a charged move charges while held, the
+ *   main attack fires on press, the other slots fire on release (aim first).
  */
 export interface TouchFrame {
   /** Joystick vector, dead zone applied, length <= 1. */
@@ -37,9 +42,15 @@ export interface TouchFrame {
   swipe: number;
   /** Edge: a free tap, in canvas pixels. */
   tap: Vec2 | null;
+  /**
+   * Level: the slot whose button is held for aiming, and the drag's direction
+   * past the dead zone (null: not dragged yet, the stand-in aim; the move still
+   * counts as aimed so a drag during a charge steers it).
+   */
+  aim: { slot: number; dir: Vec2 | null } | null;
 }
 
-export const IDLE_TOUCH: TouchFrame = { move: { x: 0, y: 0 }, roll: false, fast: false, heavy: false, boost: false, area: false, lockHeld: false, lockTap: false, swipe: 0, tap: null };
+export const IDLE_TOUCH: TouchFrame = { move: { x: 0, y: 0 }, roll: false, fast: false, heavy: false, boost: false, area: false, lockHeld: false, lockTap: false, swipe: 0, tap: null, aim: null };
 
 /** Auto-aim cone in front of the player (world pixels, radians). */
 export const AUTO_AIM = { range: 220, halfAngle: (50 * Math.PI) / 180 } as const;
@@ -53,6 +64,23 @@ export function joystickVector(origin: Vec2, point: Vec2, radius: number, deadZo
   if (reach <= deadZone) return { x: 0, y: 0 };
   const magnitude = Math.min(1, (reach - deadZone) / (1 - deadZone));
   return scale(normalize(offset), magnitude);
+}
+
+/** Drag aim: a drag shorter than the dead zone is a tap (auto-aim); the aim point sits `reach` world px along the drag. */
+export const AIM_DRAG = { deadZonePx: 20, reach: 140 } as const;
+
+/** Unit direction of a drag from a slot button, or null inside the dead zone. The camera never rotates, so screen and world share axes. */
+export function dragAim(start: Vec2, point: Vec2, deadZonePx: number = AIM_DRAG.deadZonePx): Vec2 | null {
+  const offset = sub(point, start);
+  return length(offset) < deadZonePx ? null : normalize(offset);
+}
+
+export type CastMode = 'press' | 'hold' | 'release';
+
+/** When a slot button presses its slot: `hold` charges while held, `press` fires at once (main attack), `release` fires on lift (drag to aim first). */
+export function slotCastMode(slotIndex: number, move: Pick<MoveDef, 'charge'> | null | undefined): CastMode {
+  if (move?.charge) return 'hold';
+  return slotIndex === 0 ? 'press' : 'release';
 }
 
 /** Whole swipe steps in a horizontal drag (towards zero). */
@@ -97,14 +125,16 @@ export function touchToPlayerInput(frame: TouchFrame, ctx: TouchAimContext): Pla
   const ahead = add(ctx.playerPos, scale(normalize(ctx.facing), LOCK_PROBE));
   const aim = frame.tap ? screenToWorld(frame.tap, ctx.view, ctx.pixelScale) : (front?.pos ?? ahead);
   const autoAimed = ctx.autoAim && !ctx.locked && front !== null && frame.tap === null;
+  const dragged = frame.aim && frame.tap === null ? frame.aim : null;
+  const slotAimed = (slot: number, held: boolean): boolean => (dragged ? dragged.slot === slot : autoAimed && held);
   return {
     move: frame.move,
-    aim,
+    aim: dragged?.dir ? add(ctx.playerPos, scale(dragged.dir, AIM_DRAG.reach)) : aim,
     // The touch aim is a stand-in (ahead, the enemy in front, a tap): a neutral roll keeps the facing.
     aimPointer: false,
     roll: frame.roll,
     slots: [frame.fast, frame.heavy, frame.boost, frame.area],
-    slotMouse: [autoAimed && frame.fast, autoAimed && frame.heavy, autoAimed && frame.boost, autoAimed && frame.area],
+    slotMouse: [slotAimed(0, frame.fast), slotAimed(1, frame.heavy), slotAimed(2, frame.boost), slotAimed(3, frame.area)],
     lock: ctx.lockType === 'hold' ? frame.lockHeld : frame.lockTap,
     click: frame.tap !== null,
     wheel: frame.swipe === 0 ? 0 : -frame.swipe * TUNING.lockOn.wheelThreshold,

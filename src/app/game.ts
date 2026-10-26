@@ -11,7 +11,7 @@ import type { PactEffect, SimaEvents } from '../data/sima';
 import { announcedOnEntry, simaNews } from '../adapters/sima-events-view';
 import { openSimaChoice, type SimaChoiceOption } from './sima-choice';
 import type { ItemId } from '../data/items';
-import type { MoveId } from '../data/moves';
+import { MOVES, type MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
@@ -55,7 +55,7 @@ import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
 import { isTouchUi } from '../adapters/touch-mode';
 import { holdWakeLock } from '../adapters/wake-lock';
-import { mergeInputs, touchToPlayerInput } from '../adapters/touch';
+import { mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
 import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
 import { devPerfProbe } from '../adapters/perf-probe';
@@ -195,6 +195,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** On-screen controls (hidden by CSS unless html.touch); Pause stands in for Esc. */
   const touch = createTouchControls({
     tapTarget: canvas,
+    // Charged moves charge while held; the main attack fires on press; the other slots fire on release (drag to aim).
+    castMode: (id) => {
+      const slot = ['fast', 'heavy', 'boost', 'area'].indexOf(id);
+      const moveId = slot >= 0 ? world.player.loadout[slot] : null;
+      return slotCastMode(slot, moveId ? MOVES[moveId] : null);
+    },
     buttons: [
       { id: 'pause', label: t('touch.pause'), className: 'top', onPress: () => showMenu() },
       { id: 'map', label: t('touch.map'), className: 'top', onPress: () => (showMinimap = !showMinimap) },
@@ -953,6 +959,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       capture,
       clock: run.clockMs !== undefined ? { ms: run.clockMs, lowMs, bonus: clockBonus } : null,
       touchUi: isTouchUi(),
+      touchAim: isTouchUi() ? touch.aimPreview() : null,
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
     });
     if (perf) {

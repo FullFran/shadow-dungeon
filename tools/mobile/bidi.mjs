@@ -9,9 +9,20 @@ import { join } from 'node:path';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Everything started here, killed on any exit (a crash included). */
+const started = new Set();
+process.on('exit', () => {
+  for (const child of started) killGroup(child);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('unhandled:', err?.message ?? err);
+  process.exit(1);
+});
+
 /** Starts the Vite dev server on `port` (the dev-only `?screen=`/`?perf=` hooks need it). */
 export async function startVite(port) {
   const child = spawn('npx', ['vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  started.add(child);
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('vite did not start')), 30000);
     child.stdout.on('data', (d) => {
@@ -48,6 +59,7 @@ export async function startFirefox(port) {
     ].join('\n'),
   );
   const child = spawn('firefox', ['--headless', '--no-remote', '--profile', profile, `--remote-debugging-port=${port}`, 'about:blank'], { stdio: 'ignore', detached: true });
+  started.add(child);
   let ws;
   for (let i = 0; i < 60 && !ws; i++) {
     await wait(500);
@@ -93,15 +105,16 @@ export async function startFirefox(port) {
       const { data } = await send('browsingContext.captureScreenshot', { context });
       writeFileSync(path, Buffer.from(data, 'base64'));
     },
-    /** Touch fingers in parallel: each [x, y, holdMs, dx, dy] (a drag of dx, dy while held). */
+    /** Touch fingers in parallel: each [x, y, holdMs, dx, dy, delayMs] (a drag of dx, dy while held; starting delayMs late). */
     touch(fingers) {
       return send('input.performActions', {
         context,
-        actions: fingers.map(([x, y, hold = 60, dx = 0, dy = 0], i) => ({
+        actions: fingers.map(([x, y, hold = 60, dx = 0, dy = 0, delay = 0], i) => ({
           type: 'pointer',
           id: `finger${i}`,
           parameters: { pointerType: 'touch' },
           actions: [
+            ...(delay ? [{ type: 'pause', duration: delay }] : []),
             { type: 'pointerMove', x: Math.round(x), y: Math.round(y) },
             { type: 'pointerDown', button: 0 },
             ...(dx || dy ? [{ type: 'pointerMove', x: Math.round(x + dx), y: Math.round(y + dy), duration: 150 }] : []),

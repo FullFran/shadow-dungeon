@@ -23,6 +23,7 @@ import { collapseFront, type CollapseState } from '../core/collapse';
 import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState } from '../core/state';
 import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
+import { AIM_DRAG } from './touch';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine, drawGateNotice, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
@@ -98,6 +99,8 @@ export interface RenderFrame {
   nowPlaying?: NowPlaying | null;
   /** On-screen touch controls are up: HUD notes keep clear of the action buttons. */
   touchUi?: boolean;
+  /** Touch: the direction a slot button is being dragged to aim (src/ui/touch-controls.ts), drawn as an aim line from the player. */
+  touchAim?: Vec2 | null;
   /** Shared runs: player id -> nickname for the tags over remote players (their id when absent). */
   names?: ReadonlyMap<string, string>;
   /** The boss spell card just announced, while it shows. */
@@ -111,6 +114,7 @@ export interface RenderFrame {
 }
 
 const COLORS = {
+  aimLine: '#ffd447',
   floorA: '#1d1a26',
   floorB: '#211d2c',
   wall: '#0d0b12',
@@ -302,6 +306,29 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.broken;
       ctx.fillRect(x - 1, top + ((timeMs / 60) % 6), 2, 3);
     }
+    ctx.restore();
+  }
+
+  /** Touch drag-aim preview: a dashed line and a chevron along the aim, from the player's feet. */
+  function aimLine(from: Vec2, dir: Vec2): void {
+    const reach = AIM_DRAG.reach;
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = COLORS.aimLine;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(Math.round(from.x + dir.x * 14), Math.round(from.y + dir.y * 14));
+    ctx.lineTo(Math.round(from.x + dir.x * reach), Math.round(from.y + dir.y * reach));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const tip = { x: from.x + dir.x * reach, y: from.y + dir.y * reach };
+    const side = { x: -dir.y, y: dir.x };
+    ctx.beginPath();
+    ctx.moveTo(tip.x - dir.x * 8 + side.x * 6, tip.y - dir.y * 8 + side.y * 6);
+    ctx.lineTo(tip.x, tip.y);
+    ctx.lineTo(tip.x - dir.x * 8 - side.x * 6, tip.y - dir.y * 8 - side.y * 6);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -1569,6 +1596,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
     for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
+    if (frame.touchAim && !target) aimLine(playerPos, frame.touchAim);
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
     if (current.gas && current.arena.tiles) drawGas(ctx, current.arena.tiles, current.gas, view, timeMs);
