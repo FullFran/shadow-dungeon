@@ -2,6 +2,7 @@ import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { isPlayable, SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
+import { lineRoot } from '../data/player-evolutions';
 import { padLoadout, validateLoadout } from '../core/loadout';
 import { NEW_PLAYER_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
 import { LOCK_TYPES, type LockType } from '../core/state';
@@ -85,7 +86,8 @@ export function withStarter(settings: Settings, species: SpeciesId): Settings {
  * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).
  * The loadout must fit the stored species; otherwise that species' default.
  * The species must be in `roster` (the starters and the owned gacha species,
- * core/collection.ts `rosterOf`); otherwise the fallback's.
+ * core/collection.ts `rosterOf`); otherwise its line's form in the roster
+ * (it evolved), else the fallback's.
  */
 export function loadSettings(store: KeyValueStore, fallback: Settings, roster: readonly SpeciesId[] = STARTER_SPECIES): Settings {
   let raw: unknown;
@@ -100,7 +102,9 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
   const legacy = (raw as { lockMode?: unknown }).lockMode === 'hold' ? 'hold' : 'toggle';
   const lockType = LOCK_TYPES.find((l) => l === stored.lockType) ?? (stored.lockType === undefined && 'lockMode' in raw ? legacy : fallback.lockType);
   const clickToLock = typeof stored.clickToLock === 'boolean' ? stored.clickToLock : fallback.clickToLock;
-  const species = isPlayable(stored.species) && roster.includes(stored.species) ? stored.species : fallback.species;
+  // A form the player no longer has (it evolved meanwhile) gives way to its line's current form.
+  const sameLine = isPlayable(stored.species) ? roster.find((id) => lineRoot(id) === lineRoot(stored.species as SpeciesId)) : undefined;
+  const species = isPlayable(stored.species) && roster.includes(stored.species) ? stored.species : (sameLine ?? fallback.species);
   // A save from before four-slots holds two moves: the new slots take the species defaults.
   const storedLoadout =
     Array.isArray(stored.loadout) && stored.loadout.every((m) => m === null || typeof m === 'string')

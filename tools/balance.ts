@@ -17,7 +17,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isDifficulty } from '../src/data/difficulty';
-import { isPlayable, isStarter, SPECIES } from '../src/data/species';
+import { isPlayable, SPECIES } from '../src/data/species';
+import { lineRoot } from '../src/data/player-evolutions';
 import type { MoveId } from '../src/data/moves';
 import { FULL_BUILD, MAX_RANK, RECOMMENDED_BUILD } from '../src/data/tutor';
 import { DUNGEONS, type DungeonId } from '../src/data/dungeons';
@@ -45,8 +46,11 @@ if (args.includes('--slots')) config = { ...config, options: { ...config.options
 const species = flag('species') ?? flag('build') ?? flag('full');
 if (species) {
   if (!isPlayable(species)) throw new Error(`unknown species ${species}`);
-  if ((flag('build') || flag('full')) && !isStarter(species)) throw new Error(`builds exist for the starters only, not ${species}`);
-  const loadout = flag('build') && isStarter(species) ? { loadout: RECOMMENDED_BUILD[species] } : flag('full') && isStarter(species) ? { loadout: FULL_BUILD[species] } : {};
+  // Builds belong to a line (odd/tasks/roster-parity.md) and need a form that knows their moves (a gacha line's: its last form).
+  const line = lineRoot(species) as keyof typeof FULL_BUILD;
+  const build = flag('build') ? RECOMMENDED_BUILD[line] : flag('full') ? FULL_BUILD[line] : undefined;
+  if (build && build.some((m) => !SPECIES[species].movepool.includes(m))) throw new Error(`${species} cannot equip its line's build; try its last form`);
+  const loadout = build ? { loadout: build } : {};
   config = { ...config, options: { ...config.options, species, ...loadout } };
 }
 // `--ranks=1|2`: every move of the bots' loadout at that Mejora rank (full investment: `--full=<starter> --ranks=2`).

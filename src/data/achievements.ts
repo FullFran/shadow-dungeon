@@ -1,13 +1,13 @@
 import { DIFFICULTIES, type Difficulty } from './difficulty';
 import { CHALLENGES, DUNGEONS, guardianOf, type DungeonDef, type DungeonId } from './dungeons';
-import { PLAYER_EVOLUTIONS } from './player-evolutions';
+import { PLAYER_AWAKENINGS, PLAYER_EVOLUTIONS } from './player-evolutions';
 import { SIMA_BANDS } from './sima';
 import { PLAYABLE_SPECIES, type SpeciesId } from './species';
 
 /**
  * Achievements (logros, odd/tasks/achievements-missions.md), as data
  * generated from the content lists: a new dungeon, challenge, species,
- * evolution or Sima stratum gets its achievements with no edit here. The
+ * evolution, awakening or Sima stratum gets its achievements with no edit here. The
  * rules are evaluated by core/achievements.ts from run-end reports and the
  * save; a few pay a small Pokémonedas reward, none gives power. Names come
  * from i18n templates (`achievement.<family>.title`) filled with the
@@ -24,6 +24,8 @@ export type AchievementRule =
   | { kind: 'species'; species: SpeciesId }
   /** Own `species` (an evolved form) or a later form of its line. */
   | { kind: 'evolve'; species: SpeciesId }
+  /** Awaken `species` (one that never evolves) to its `step`-th awakening or further. */
+  | { kind: 'awaken'; species: SpeciesId; step: number }
   /** Own any gacha species. */
   | { kind: 'firstPull' }
   /** Own every gacha line. */
@@ -78,6 +80,9 @@ function generate(): AchievementDef[] {
     ),
     ...PLAYABLE_SPECIES.map((species): AchievementDef => ({ id: `species-${species}`, family: 'species', rule: { kind: 'species', species }, reward: ACHIEVEMENT_REWARDS.species })),
     ...PLAYER_EVOLUTIONS.map((e): AchievementDef => ({ id: `evolve-${e.to}`, family: 'evolve', rule: { kind: 'evolve', species: e.to }, reward: ACHIEVEMENT_REWARDS.evolve })),
+    ...(Object.entries(PLAYER_AWAKENINGS) as [SpeciesId, readonly unknown[]][]).flatMap(([species, steps]) =>
+      steps.map((_, i): AchievementDef => ({ id: `awaken-${species}-${i + 1}`, family: 'evolve', rule: { kind: 'awaken', species, step: i + 1 }, reward: ACHIEVEMENT_REWARDS.evolve })),
+    ),
     { id: 'gacha-first-pull', family: 'gacha', rule: { kind: 'firstPull' }, reward: ACHIEVEMENT_REWARDS.firstPull },
     { id: 'gacha-collect-all', family: 'gacha', rule: { kind: 'collectAll' }, reward: ACHIEVEMENT_REWARDS.collectAll },
     { id: 'coop-clear', family: 'coop', rule: { kind: 'coop' }, reward: ACHIEVEMENT_REWARDS.coop },

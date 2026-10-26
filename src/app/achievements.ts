@@ -2,6 +2,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { familyProgress } from '../core/achievements';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENTS, type AchievementDef } from '../data/achievements';
 import { dungeonById, guardianOf } from '../data/dungeons';
+import { awakeningsOf } from '../data/player-evolutions';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
@@ -34,6 +35,8 @@ function values(def: AchievementDef, tr: Tr): Record<string, string> {
     case 'species':
     case 'evolve':
       return { species: tr(`species.${r.species}`) };
+    case 'awaken':
+      return { species: tr(`species.${r.species}`), n: String(r.step), steps: String(awakeningsOf(r.species).length) };
     case 'earned':
       return { n: String(r.coins) };
     default:

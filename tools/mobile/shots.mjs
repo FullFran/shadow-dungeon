@@ -26,6 +26,8 @@ const SCREENS = [
   ['endless', 'screen=endless', 1200],
   ['town', 'screen=town', 3500],
   ['tutor', 'screen=tutor', 1500],
+  ['evolve', 'screen=evolve&coins=2000', 1500],
+  ['challenges', 'screen=challenges', 1500],
   ['shop', 'screen=shop', 1500],
   ['shrine', 'screen=shrine', 1500],
   ['online', 'screen=online', 1200],

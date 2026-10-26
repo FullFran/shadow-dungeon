@@ -40,12 +40,17 @@ export interface WorldOptions {
   difficulty?: Difficulty;
   /** Co-op: the room's roster size when the run starts (core/party.ts; absent or 1 = solo). */
   party?: number;
+  /** Awakening steps of the local player's species (Mimikyu's; core/evolution.ts `stageBonus`; absent = none). */
+  awakened?: number;
 }
 
-/** `party`: players at the run's start (an evolved form's stage bonus is capped lower in a party; core/evolution.ts). */
-export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels, party = 1): PlayerState {
+/**
+ * `party`: players at the run's start (an evolved form's stage bonus is capped lower in a party; core/evolution.ts);
+ * `awakened`: awakening steps of a species that awakens (Mimikyu), which give the same bonus.
+ */
+export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels, party = 1, awakened = 0): PlayerState {
   const species = SPECIES[speciesId];
-  const stage = stageBonus(speciesId, party);
+  const stage = stageBonus(speciesId, party, awakened);
   const maxHp = Math.round(species.maxHp * (1 + stage.hp)) + upgradeBonuses(upgrades).maxHp;
   // An older two-slot loadout (save or peer) gets the species defaults in the new slots.
   const equipped = padLoadout(species, loadout ?? species.defaultLoadout);
@@ -98,8 +103,9 @@ export function createWorld({
   moveRanks,
   difficulty,
   party,
+  awakened,
 }: WorldOptions): WorldState {
-  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1), difficulty);
+  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1, awakened ?? 0), difficulty);
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),

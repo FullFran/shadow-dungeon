@@ -6,7 +6,7 @@ import { ACHIEVEMENT_FAMILIES, ACHIEVEMENTS, achievementById, clearableDungeons,
 import { DIFFICULTIES } from '../../src/data/difficulty';
 import { CHALLENGES, DUNGEONS, guardianOf } from '../../src/data/dungeons';
 import { GACHA_POOL } from '../../src/data/gacha';
-import { PLAYER_EVOLUTIONS } from '../../src/data/player-evolutions';
+import { PLAYER_AWAKENINGS, PLAYER_EVOLUTIONS } from '../../src/data/player-evolutions';
 import { SIMA_BANDS } from '../../src/data/sima';
 import { PLAYABLE_SPECIES } from '../../src/data/species';
 
@@ -52,6 +52,12 @@ describe('achievements as data', () => {
     for (const e of PLAYER_EVOLUTIONS) expect(ACHIEVEMENTS.some((a) => a.rule.kind === 'evolve' && a.rule.species === e.to), e.to).toBe(true);
   });
 
+  it('every awakening step of a species that never evolves has an achievement in the evolutions family', () => {
+    for (const [species, steps] of Object.entries(PLAYER_AWAKENINGS)) {
+      steps!.forEach((_, i) => expect(ACHIEVEMENTS.some((a) => a.family === 'evolve' && a.rule.kind === 'awaken' && a.rule.species === species && a.rule.step === i + 1), `${species} ${i + 1}`).toBe(true));
+    }
+  });
+
   it('rewards are small whole Pokémonedas (no power, no materials)', () => {
     for (const def of ACHIEVEMENTS) {
       expect(Number.isInteger(def.reward) && def.reward >= 0 && def.reward <= 200, def.id).toBe(true);
@@ -66,7 +72,7 @@ describe('achievements as data', () => {
 });
 
 /** A run report and a save that should unlock `def` (each rule's witness). */
-function witness(def: AchievementDef): { report: RunReport | null; save: { owned?: string[]; earned?: number } } {
+function witness(def: AchievementDef): { report: RunReport | null; save: { owned?: string[]; earned?: number; awakened?: Record<string, number> } } {
   const r = def.rule;
   switch (r.kind) {
     case 'clear':
@@ -79,6 +85,8 @@ function witness(def: AchievementDef): { report: RunReport | null; save: { owned
       return { report: report({ species: r.species }), save: {} };
     case 'evolve':
       return { report: null, save: { owned: [r.species] } };
+    case 'awaken':
+      return { report: null, save: { awakened: { [r.species]: r.step } } };
     case 'firstPull':
       return { report: null, save: { owned: [GACHA_POOL[0]!.species] } };
     case 'collectAll':
@@ -125,6 +133,13 @@ describe('evaluating achievements', () => {
     expect(got).toEqual(expect.arrayContaining(['evolve-kadabra', 'evolve-alakazam', 'gacha-first-pull']));
     expect(got).not.toContain('evolve-luxio');
     for (const e of PLAYER_EVOLUTIONS) expect(lineOf(e.to) === lineOf(e.from) && stageOf(e.to) === stageOf(e.from) + 1).toBe(true);
+  });
+
+  it('a later awakening step also proves the earlier ones, never a later one', () => {
+    const got = ids(newlyUnlocked({}, null, { awakened: { mimikyu: 1 } }));
+    expect(got).toContain('awaken-mimikyu-1');
+    expect(got).not.toContain('awaken-mimikyu-2');
+    expect(ids(newlyUnlocked({}, null, { awakened: { mimikyu: 2 } }))).toEqual(expect.arrayContaining(['awaken-mimikyu-1', 'awaken-mimikyu-2']));
   });
 
   it('already unlocked achievements are not returned again', () => {

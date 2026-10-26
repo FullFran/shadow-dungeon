@@ -1,4 +1,4 @@
-import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnTuning, type WaterTuning } from './dungeon';
+import { CRYPT_SPAWNS, RUN_PLAN, URGENT, type FloorKind, type FloorPlan, type SpawnEntry, type SpawnTuning, type WaterTuning } from './dungeon';
 import { DUNGEON_LORE, type DungeonLore } from './dungeon-lore';
 import type { GateTuning } from './encounters';
 import type { MusicContext } from './music';
@@ -19,10 +19,10 @@ export type DungeonId =
   | 'eclipse-chasm'
   | 'toxic-swamp'
   | 'flooded-caves'
-  | 'challenge-abra'
-  | 'challenge-piplup'
-  | 'challenge-shinx'
-  | 'challenge-axew';
+  | `challenge-${ChallengeLine}`;
+
+/** The lines with a challenge dungeon: the gacha's and the starters' (odd/tasks/roster-parity.md). */
+export type ChallengeLine = 'abra' | 'piplup' | 'shinx' | 'axew' | 'mimikyu' | 'zorua' | 'litwick' | 'cubone';
 
 /** Urgent floor kinds a dungeon can roll (everything but `normal`). */
 export type UrgentKind = Exclude<FloorKind, 'normal'>;
@@ -81,8 +81,8 @@ export interface DungeonDef {
   toxicPools?: true;
   /** Mandatory kills on some generated floors (core/gates.ts): a sealed stairs, a locked door, a wave room. */
   gates?: GateTuning;
-  /** A challenge dungeon only (`CHALLENGES`): the gacha line it belongs to (its first form) and the materials a clear pays (core/challenge.ts). */
-  challenge?: { line: SpeciesId; materials: number };
+  /** A challenge dungeon only (`CHALLENGES`): the line it belongs to (its first form) and the materials a clear pays (core/challenge.ts). */
+  challenge?: { line: ChallengeLine; materials: number };
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -441,18 +441,31 @@ export const floorsOf = (dungeon: DungeonDef): number => (dungeon.endless ? Numb
 export const CHALLENGE_MATERIALS = 3;
 
 /**
- * A challenge dungeon (odd/tasks/gacha-evolutions.md T4): three generated
- * floors of `base` and, on the fourth, one of its arenas as the boss. It
- * borrows the look, music and enemies of `base`; it is open while the
- * player owns any form of `line` (core/challenge.ts) and its clear pays the
- * line's materials. Kept apart from `DUNGEONS` (the main select and the
+ * A challenge dungeon (odd/tasks/gacha-evolutions.md T4,
+ * odd/tasks/roster-parity.md): the line's own trial. Three generated floors
+ * with its own enemy pool (`pool`: by floor 1..3, drawn from every dungeon's
+ * regulars, themed to its lore and mostly hit at least neutrally by the
+ * line's own types: tests/core/challenge.test.ts) and, on the fourth, one of
+ * `base`'s arenas as the boss. It borrows the look and music of `base` and
+ * its room budget; it is open while the player has any form of `line`, only
+ * a form of the line may play it (core/challenge.ts) and its clear pays the
+ * line's materials. Its lore is its own (`challenge.<line>.*`: a name, a
+ * subtitle, an intro, a line per floor, the fourth before the boss, and one
+ * after the victory). Kept apart from `DUNGEONS` (the main select and the
  * balance sweeps never list it).
  */
-const challenge = (line: 'abra' | 'piplup' | 'shinx' | 'axew', base: DungeonDef, room: RoomId): DungeonDef => ({
+const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: readonly SpawnEntry[]): DungeonDef => ({
   id: `challenge-${line}`,
-  lore: { id: `challenge-${line}`, nameKey: `challenge.${line}.name`, subtitleKey: `challenge.${line}.subtitle`, loreKeys: [`challenge.${line}.lore`] },
+  lore: {
+    id: `challenge-${line}`,
+    nameKey: `challenge.${line}.name`,
+    subtitleKey: `challenge.${line}.subtitle`,
+    loreKeys: [`challenge.${line}.lore`],
+    floorKeys: [1, 2, 3, 4].map((floor) => `challenge.${line}.floor.${floor}`),
+    victoryKey: `challenge.${line}.victory`,
+  },
   plan: [GENERATED, GENERATED, GENERATED, { kind: 'room', room }],
-  spawns: base.spawns,
+  spawns: { ...base.spawns, pool },
   urgent: [],
   music: base.music,
   palette: base.palette,
@@ -463,12 +476,26 @@ const challenge = (line: 'abra' | 'piplup' | 'shinx' | 'axew', base: DungeonDef,
   challenge: { line, materials: CHALLENGE_MATERIALS },
 });
 
-/** One challenge per gacha line, themed by type: psychic in the Crypt (Sableye), water in the caves (Lanturn), electric in the Forest (Trevenant), dragon in the swamp (Salazzle). */
+/** A pool entry: its weight on challenge floors 1, 2 and 3. */
+const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry => ({ species, weights: [f1, f2, f3] });
+
+/**
+ * One challenge per line, each with its own trial and a boss its types can
+ * hurt: Abra's dream (Lanturn's lights), Piplup's frozen lake (Sableye's
+ * hoard), Shinx's storm (Salazzle), Axew's ravine of fangs (Trevenant),
+ * Mimikyu's disguise (Aegislash), Zorua's illusions (Decidueye), Litwick's
+ * candles (Dhelmise's wreck) and Cubone's bone (Nihilego). The gacha lines
+ * keep the four mid-boss arenas, the starters face the four guardians.
+ */
 export const CHALLENGES: readonly DungeonDef[] = [
-  challenge('abra', CRYPT, 'vault'),
-  challenge('piplup', CAVES, 'grotto'),
-  challenge('shinx', FOREST, 'hollow'),
-  challenge('axew', SWAMP, 'den'),
+  challenge('abra', CAVES, 'grotto', [at('hoothoot', 3, 2, 2), at('gastly', 2, 2, 2), at('drifloon', 1, 2, 2), at('koffing', 1, 1, 2), at('haunter', 0, 0, 1)]),
+  challenge('piplup', CRYPT, 'vault', [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('salandit', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]),
+  challenge('shinx', SWAMP, 'den', [at('zubat', 3, 2, 2), at('drifloon', 2, 2, 2), at('krabby', 2, 2, 2), at('hoothoot', 1, 2, 2), at('chinchou', 0, 1, 2), at('golbat', 0, 0, 1)]),
+  challenge('axew', FOREST, 'hollow', [at('poochyena', 3, 3, 2), at('ekans', 2, 2, 2), at('corphish', 1, 2, 2), at('croagunk', 0, 1, 2), at('mightyena', 0, 0, 1)]),
+  challenge('mimikyu', CRYPT, 'boss', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)]),
+  challenge('zorua', FOREST, 'roost', [at('drifloon', 3, 2, 2), at('phantump', 2, 2, 2), at('pumpkaboo-small', 2, 2, 2), at('duskull', 1, 2, 2), at('drifblim', 0, 0, 1)]),
+  challenge('litwick', CAVES, 'wreck', [at('duskull', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('dusclops', 0, 0, 1)]),
+  challenge('cubone', SWAMP, 'rift', [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]),
 ];
 
 const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES];

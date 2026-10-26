@@ -1,7 +1,9 @@
 import { BASE_MOVE_IDS, type MoveDef, type MoveId } from './moves';
 import { LINE_MOVE_IDS } from './line-moves';
 import type { DungeonId } from './dungeons';
-import type { StarterId } from './learnsets';
+import type { LineId } from './learnsets';
+import { lineRoot } from './player-evolutions';
+import type { SpeciesId } from './species';
 
 /**
  * The move tutor (Smeargle, "Maestro de movimientos", in the Refugio;
@@ -11,19 +13,29 @@ import type { StarterId } from './learnsets';
  * ranked up twice ("Mejoras") so early picks stay viable.
  */
 
-/** Moves the tutor teaches each starter, in shop order: fast, heavy, boost, area (moves of another kit count as new here). */
-export const TUTOR_OFFER: Readonly<Record<StarterId, readonly MoveId[]>> = {
+/**
+ * Moves the tutor teaches each line (every form of it: an evolved form
+ * shares its first form's offer), in shop order: fast, heavy, boost, area
+ * (moves of another kit count as new here; a line's stage moves are never
+ * sold: they come with the evolution).
+ */
+export const TUTOR_OFFER: Readonly<Record<LineId, readonly MoveId[]>> = {
   mimikyu: ['astonish', 'slash', 'night-slash', 'x-scissor', 'leech-life', 'draining-kiss', 'drain-punch', 'wood-hammer', 'giga-drain', 'thunderbolt', 'take-down', 'hex', 'hone-claws', 'curse', 'bulk-up', 'will-o-wisp', 'phantom-force', 'burning-jealousy', 'dark-pulse', 'thunder'],
   zorua: ['shadow-claw', 'sucker-punch', 'knock-off', 'u-turn', 'lash-out', 'swift', 'sludge-bomb', 'shadow-ball', 'extrasensory', 'grass-knot', 'swords-dance', 'calm-mind', 'hone-claws', 'agility', 'hyper-voice', 'burning-jealousy'],
   litwick: ['night-shade', 'smog', 'clear-smog', 'flame-charge', 'shadow-ball', 'fire-blast', 'energy-ball', 'overheat', 'flare-blitz', 'poltergeist', 'psychic', 'solar-beam', 'temper-flare', 'calm-mind', 'curse', 'acid-armor', 'minimize', 'fire-spin', 'dark-pulse', 'burning-jealousy'],
   cubone: ['knock-off', 'fire-punch', 'thunder-punch', 'headbutt', 'low-kick', 'double-kick', 'mud-slap', 'double-edge', 'iron-head', 'earth-power', 'brick-break', 'scorching-sands', 'dig', 'focus-punch', 'swords-dance', 'focus-energy', 'belly-drum', 'iron-defense', 'rock-slide', 'ice-beam', 'flamethrower'],
+  // The gacha lines (odd/tasks/roster-parity.md).
+  abra: ['psycho-cut', 'fire-punch', 'thunder-punch', 'ice-punch', 'knock-off', 'psyshock', 'energy-ball', 'grass-knot', 'drain-punch', 'focus-punch', 'nasty-plot', 'reflect', 'psybeam', 'future-sight'],
+  piplup: ['aqua-jet', 'metal-claw', 'shadow-claw', 'knock-off', 'flash-cannon', 'grass-knot', 'take-down', 'hydro-pump', 'double-edge', 'agility', 'iron-defense', 'rock-slide', 'bulldoze', 'earthquake'],
+  shinx: ['thunder-fang', 'ice-fang', 'fire-fang', 'night-slash', 'double-kick', 'crunch', 'take-down', 'play-rough', 'wild-charge', 'double-edge', 'charge', 'howl', 'discharge', 'electroweb'],
+  axew: ['slash', 'night-slash', 'shadow-claw', 'low-kick', 'crunch', 'iron-head', 'dig', 'stomping-tantrum', 'outrage', 'double-edge', 'focus-energy', 'dragon-dance', 'rock-slide', 'bulldoze', 'snarl'],
 };
 
-/** The tutor's offer for any species (none for a species it does not teach). */
-export const tutorOffer = (id: string): readonly MoveId[] => (TUTOR_OFFER as Readonly<Partial<Record<string, readonly MoveId[]>>>)[id] ?? [];
+/** The tutor's offer for any species: its line's (an evolved form shares its first form's); none for a species it does not teach. */
+export const tutorOffer = (id: SpeciesId): readonly MoveId[] => (TUTOR_OFFER as Readonly<Partial<Record<string, readonly MoveId[]>>>)[lineRoot(id)] ?? [];
 
 /** Moves of the original kits the canon learnsets lack, kept so no save loses them (data/learnsets.ts). */
-export const GRANDFATHERED: Readonly<Partial<Record<StarterId, readonly MoveId[]>>> = {
+export const GRANDFATHERED: Readonly<Partial<Record<LineId, readonly MoveId[]>>> = {
   mimikyu: ['shadow-force'],
   cubone: ['bulk-up'],
 };
@@ -69,6 +81,14 @@ export const MASTER_MOVES: Readonly<Partial<Record<MoveId, { unlockedBy?: Dungeo
   'focus-punch': { unlockedBy: 'crypt-of-the-sword-king' },
   'ice-beam': { unlockedBy: 'misty-forest' },
   'belly-drum': {},
+  // Abra's line (Focus Punch above, behind the Crypt)
+  'future-sight': { unlockedBy: 'misty-forest' },
+  // Piplup's line (Double-Edge above)
+  'hydro-pump': { unlockedBy: 'flooded-caves' },
+  // Shinx's line (Double-Edge above)
+  'wild-charge': { unlockedBy: 'toxic-swamp' },
+  // Axew's line (Double-Edge above)
+  outrage: { unlockedBy: 'crypt-of-the-sword-king' },
 };
 
 /** The tier of a move: the original kits (the gacha lines' own moves too) are Básico, the Maestro list Maestro, every other tutor move Avanzado. */
@@ -124,21 +144,31 @@ export const RANK_EFFECT = { damage: 0.1, cooldown: 0.1 } as const;
  * Maestro moves where they pay off against the bosses, every move at rank +2, for the balance harness
  * (`npm run balance -- --master=<starter> --ranks=2`; odd/tasks/move-progression.md T4).
  */
-export const FULL_BUILD: Readonly<Record<StarterId, readonly MoveId[]>> = {
+export const FULL_BUILD: Readonly<Record<LineId, readonly MoveId[]>> = {
   mimikyu: ['shadow-claw', 'wood-hammer', 'swords-dance', 'phantom-force'],
   // Zorua's Maestro moves (Poison, Normal) are no use on the Ghost and Steel bosses: its kit, fully ranked.
   zorua: ['feint-attack', 'night-daze', 'nasty-plot', 'dark-pulse'],
   litwick: ['ember', 'fire-blast', 'will-o-wisp', 'flamethrower'],
   cubone: ['bone-club', 'double-edge', 'swords-dance', 'earthquake'],
+  // The gacha lines, as their last form (it knows its stage moves).
+  abra: ['psycho-cut', 'focus-punch', 'nasty-plot', 'future-sight'],
+  piplup: ['aqua-jet', 'hydro-pump', 'swords-dance', 'ice-beam'],
+  shinx: ['spark', 'wild-charge', 'charge', 'thunder'],
+  axew: ['dragon-claw', 'outrage', 'swords-dance', 'earthquake'],
 };
 
 /**
  * The recommended build per starter (fast, heavy, boost, area), after its
  * competitive sets (data/learnsets.ts `COMPETITIVE_SOURCES`).
  */
-export const RECOMMENDED_BUILD: Readonly<Record<StarterId, readonly MoveId[]>> = {
+export const RECOMMENDED_BUILD: Readonly<Record<LineId, readonly MoveId[]>> = {
   mimikyu: ['shadow-sneak', 'play-rough', 'swords-dance', 'phantom-force'],
   zorua: ['knock-off', 'sludge-bomb', 'nasty-plot', 'dark-pulse'],
   litwick: ['ember', 'shadow-ball', 'calm-mind', 'flamethrower'],
   cubone: ['knock-off', 'bonemerang', 'swords-dance', 'earthquake'],
+  // The gacha lines, as their last form.
+  abra: ['psycho-cut', 'shadow-ball', 'nasty-plot', 'dazzling-gleam'],
+  piplup: ['knock-off', 'flash-cannon', 'iron-defense', 'surf'],
+  shinx: ['ice-fang', 'wild-charge', 'howl', 'snarl'],
+  axew: ['dragon-claw', 'outrage', 'dragon-dance', 'earthquake'],
 };

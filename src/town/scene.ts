@@ -45,6 +45,13 @@ import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type Town
  */
 export const TOWN_VIEW = { width: 512, height: 320 } as const;
 
+/**
+ * Opens a window over the town inside `parent` and returns a function that
+ * closes it; `onClose` runs when the player leaves it, `depart` takes the
+ * player (or the room) into dungeon `id` from it (the challenges menu).
+ */
+export type TownWindowOpener = (parent: HTMLElement, onClose: () => void, depart: (id: string) => void) => () => void;
+
 export interface TownOptions {
   sheets: Promise<SheetStore>;
   /** Player species (a SPRITE_KEYS name); unknown names fall back to Mimikyu. */
@@ -57,16 +64,24 @@ export interface TownOptions {
   onDepart: (id: string, variant?: string) => void;
   /** Esc: back to the title. */
   onQuit: () => void;
-  /** Opens the upgrade shop window inside `parent` (Poochyena's stall); returns a function that closes it. `onClose` runs when the player leaves it. */
-  openShop?: (parent: HTMLElement, onClose: () => void) => () => void;
-  /** Opens Smeargle's move tutor window inside `parent`, like `openShop`. */
-  openTutor?: (parent: HTMLElement, onClose: () => void) => () => void;
-  /** Opens Mimikyu's gacha stall inside `parent`, like `openShop`. */
-  openGacha?: (parent: HTMLElement, onClose: () => void) => () => void;
-  /** Opens Phantump's evolution window inside `parent`, like `openShop`. */
-  openEvolve?: (parent: HTMLElement, onClose: () => void) => () => void;
-  /** Opens the notice board's missions window inside `parent` once its records are read, like `openShop`. */
-  openBoard?: (parent: HTMLElement, onClose: () => void) => () => void;
+  /** Opens the upgrade shop window (Poochyena's stall). */
+  openShop?: TownWindowOpener;
+  /** Opens Smeargle's move tutor window, like `openShop`. */
+  openTutor?: TownWindowOpener;
+  /** Opens Mimikyu's gacha stall, like `openShop`. */
+  openGacha?: TownWindowOpener;
+  /** Opens Phantump's evolution window, like `openShop` (its "Desafíos" row departs from it). */
+  openEvolve?: TownWindowOpener;
+  /** Opens the notice board's missions window once its records are read, like `openShop`. */
+  openBoard?: TownWindowOpener;
+  /** Opens the challenges menu (a "Desafíos" row in the waystone's window; app/challenges.ts). */
+  openChallenges?: TownWindowOpener;
+  /**
+   * Why the group cannot go into dungeon `id` now (a room: a challenge only
+   * the line's forms may play), shown as a dialog instead of departing; null
+   * lets it go.
+   */
+  departBlock?: (id: string) => string | null;
   /** The map to open (the hub, at its spawn, when absent). */
   at?: WorldMapId;
   /** The tile to start on (the map's spawn or first arrival when absent). */
@@ -101,7 +116,7 @@ const INTERACT_KEYS = new Set(['KeyE', 'Enter', 'NumpadEnter', 'Space']);
 const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
 /** Floaters bob over the ground. */
-const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
+const FLOATERS = new Set<string>(['gastly', 'litwick', 'lampent', 'chandelure', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
 
 type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'beacon' } | { kind: 'lore'; point: LorePoint });
 
@@ -367,13 +382,17 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     held.clear();
     // The joystick and "Hablar" step aside while the shop window takes the taps.
     touch.setSuspended(true);
-    closeShop = open(parent, () => {
-      closeShop?.();
-      closeShop = null;
-      held.clear();
-      touch.setSuspended(false);
-      last = performance.now();
-    });
+    closeShop = open(
+      parent,
+      () => {
+        closeShop?.();
+        closeShop = null;
+        held.clear();
+        touch.setSuspended(false);
+        last = performance.now();
+      },
+      (id) => depart(id),
+    );
   }
 
   function closeExitWindow(): void {
@@ -394,6 +413,16 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   };
 
   const depart = (id: string, variant?: string) => {
+    // In a room only the host leads (a guest reaching a challenge from Phantump's window is told so).
+    const blocked = lobby && !lobby.isHost ? t('lobby.hostOnly') : (options.departBlock?.(id) ?? null);
+    if (blocked) {
+      closeExitWindow();
+      closeShop?.();
+      closeShop = null;
+      touch.setSuspended(false);
+      dialog = { speaker: t('lobby.room'), state: openDialog([blocked]) };
+      return;
+    }
     handle.stop();
     options.onDepart(id, variant);
   };
@@ -415,7 +444,22 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     openChoiceWindow(
       t('town.exit.title'),
       t('town.exit.text'),
-      () => [...tierRows(), ...options.dungeons.flatMap((d) => enterRows(d.id, d.label, lobby, depart)), { label: t('town.exit.stay'), onConfirm: closeExitWindow }],
+      () => [
+        ...tierRows(),
+        ...options.dungeons.flatMap((d) => enterRows(d.id, d.label, lobby, depart)),
+        ...(options.openChallenges && (!lobby || lobby.isHost)
+          ? [
+              {
+                label: t('challenges.title'),
+                onConfirm: () => {
+                  closeExitWindow();
+                  openShopWindow(options.openChallenges);
+                },
+              },
+            ]
+          : []),
+        { label: t('town.exit.stay'), onConfirm: closeExitWindow },
+      ],
       closeExitWindow,
     );
   }

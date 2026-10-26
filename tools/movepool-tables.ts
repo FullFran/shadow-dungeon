@@ -1,10 +1,13 @@
 /**
- * `npx vite-node tools/movepool-tables.ts`: prints the per-species move
+ * `npx vite-node tools/movepool-tables.ts`: prints the per-line move
  * tables of docs/gdd.md «Movimientos y maestro» (Spanish names, slot, type,
  * power, effect and price) from the data, so the GDD never drifts by hand.
  */
 import { MOVES, type MoveId } from '../src/data/moves';
-import { originalKit, SPECIES } from '../src/data/species';
+import { originalKit, PLAYABLE_SPECIES, SPECIES } from '../src/data/species';
+import { LEARNSETS, type LineId } from '../src/data/learnsets';
+import { awakeningsOf, lineRoot } from '../src/data/player-evolutions';
+import { stageOf } from '../src/core/evolution';
 import { movePrice, moveTier, RANK_COSTS_BY_TIER, RECOMMENDED_BUILD, unlockOf } from '../src/data/tutor';
 import { RANK_EFFECTS } from '../src/data/rank-effects';
 import { dungeonById } from '../src/data/dungeons';
@@ -46,17 +49,26 @@ function effect(id: MoveId): string {
 }
 
 const order = ['fast', 'heavy', 'boost', 'area'];
-for (const id of ['mimikyu', 'zorua', 'litwick', 'cubone'] as const) {
-  console.log(`\n#### ${es[`species.${id}`]}\n`);
+for (const id of Object.keys(LEARNSETS) as LineId[]) {
+  // A line's table lists what its last form can equip; its stage moves come with an evolution, never from the tutor.
+  const forms = PLAYABLE_SPECIES.filter((s) => lineRoot(s) === id).sort((a, b) => stageOf(a) - stageOf(b));
+  const last = forms.at(-1)!;
+  const stageForm = (m: MoveId) => forms.find((f) => originalKit(f).includes(m));
+  console.log(`\n#### ${forms.map((f) => es[`species.${f}`]).join(' → ')}\n`);
   console.log('| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |');
   console.log('|---|---|---|---|---|---|---|---|---|');
   const kit = originalKit(id);
-  const rows = [...SPECIES[id].movepool].sort((a, b) => order.indexOf(MOVES[a].slot) - order.indexOf(MOVES[b].slot));
+  const rows = [...SPECIES[last].movepool].sort((a, b) => order.indexOf(MOVES[a].slot) - order.indexOf(MOVES[b].slot));
   for (const m of rows) {
     const mv = MOVES[m];
     const ranks = RANK_COSTS_BY_TIER[moveTier(m)].join(' / ');
     const lock = unlockOf(m) ? `, tras ${es[dungeonById(unlockOf(m)).lore.nameKey]}` : '';
-    const price = kit.includes(m) ? `inicial (${ranks})` : `${movePrice(mv)} P${lock} (${ranks})`;
+    const awake = awakeningsOf(id).findIndex((step) => step.move === m);
+    const price = kit.includes(m)
+      ? `inicial (${ranks})`
+      : stageForm(m)
+        ? `con ${es[`species.${stageForm(m)}`]} (${ranks})`
+        : `${movePrice(mv)} P${lock}${awake >= 0 ? `, o gratis al despertar ${awake + 1}` : ''} (${ranks})`;
     const [one, two] = RANK_EFFECTS[m].map(rankEffectText);
     console.log(`| ${es[`move.${m}`]} | ${SLOT[mv.slot]} | ${tierName(moveTier(m))} | ${es[`type.${mv.type}`]} | ${mv.power || '—'} | ${effect(m)} | ${price} | ${one} | ${two} |`);
   }

@@ -632,7 +632,7 @@ Sin estados alterados completos: lo que en el juego original depende de la quema
 
 ### Movimientos y maestro *(provisional)*
 
-Cada inicial puede aprender los movimientos que aprende en los juegos originales (por nivel, MT/DT, tutor y huevo; aprendizajes de PokeAPI, todas las generaciones, en `src/data/learnsets.ts`), rediseñados para el combate en tiempo real. Se eligieron los que importan: todos los de daño relevantes y los de estado clave (Danza Espada, Maquinación, Paz Mental, Fuego Fatuo, Corpulencia, Maldición, Tambor...). Entre 23 y 28 por especie. Golpe Umbrío de Mimikyu y Corpulencia de Cubone no están en sus aprendizajes canónicos, pero se quedan porque ya eran parte del kit.
+Cada línea (los cuatro iniciales y las cuatro del gacha, decisión del 26-10-2026) puede aprender los movimientos que aprende en los juegos originales cualquiera de sus formas (por nivel, MT/DT, tutor y huevo; aprendizajes de PokeAPI en `src/data/learnsets.ts`: todas las generaciones para los iniciales, la última con datos para las líneas del gacha), rediseñados para el combate en tiempo real. Se eligieron los que importan: todos los de daño relevantes y los de estado clave (Danza Espada, Maquinación, Paz Mental, Fuego Fatuo, Corpulencia, Maldición, Tambor...). Entre 23 y 28 por especie. Golpe Umbrío de Mimikyu y Corpulencia de Cubone no están en sus aprendizajes canónicos, pero se quedan porque ya eran parte del kit.
 
 **Cómo se adaptan.** La potencia es la oficial; los tiempos se ajustan al presupuesto de su nivel de poder (abajo): lo más fuerte es más lento, gasta más estamina o PS, o retrocede. Los estados se simplifican:
 
@@ -654,9 +654,9 @@ Formas nuevas, todas genéricas: el **remolino** (Giro Fuego: una zona que se qu
 
 | Nivel | Quién | Presupuesto | A cambio | Precio (rápido / fuerte / potenciación / área) | Mejoras |
 |---|---|---|---|---|---|
-| Básico | el kit original de cada inicial | ×1,0 (es la referencia) | — | gratis (el de otro inicial, según su potencia) | 150 / 350 |
+| Básico | el kit original de cada línea | ×1,0 (es la referencia) | — | gratis (el de otro inicial, según su potencia) | 150 / 350 |
 | Avanzado | casi todo lo que enseña Smeargle | hasta ×1,2 | por encima de ×1,0, un coste real | 120–300 / 220–560 / 350 / 300–650 (según la potencia) | 250 / 500 |
-| Maestro | 13 movimientos, 2–4 por inicial | hasta ×1,4 (los de daño, ×1,30–1,38) | dos costes: retroceso, PS, enfriamiento en un fuerte, mucha estamina (≥ 35 fuerte, ≥ 40 área) o una carga un 25 % más lenta que la más lenta del kit | 450 / 800 / 600 / 950 | 400 / 750 |
+| Maestro | 17 movimientos, 2–4 por línea | hasta ×1,4 (los de daño, ×1,30–1,38) | dos costes: retroceso, PS, enfriamiento en un fuerte, mucha estamina (≥ 35 fuerte, ≥ 40 área) o una carga un 25 % más lenta que la más lenta del kit | 450 / 800 / 600 / 950 | 400 / 750 |
 
 Los Maestro: Mazazo, Golpe Fantasma (tras la Cripta), Trueno (tras el Bosque Brumoso) y Maldición (Mimikyu); Bomba Lodo y Vozarrón (tras el Bosque) (Zorua); Llamarada, Envite Ígneo (tras la Cripta), Giro Fuego (tras el Bosque) y Maldición (Litwick); Doble Filo, Puño Certero (tras la Cripta), Rayo Hielo (tras el Bosque) y Tambor (Cubone). Así comprar sirve: un Maestro pega un 30–38 % más que lo mejor del kit, pero tarda más en salir o cuesta más, y no es mejor en todo (un Trueno de 660 ms de carga se esquiva peor que se lanza). Por encima de todo hay un techo duro: con los dos rangos y sus efectos, ningún movimiento pasa de ×1,9 la referencia (solo daño del jugador: el tope de un golpe enemigo y los telegrafiados no cambian).
 
@@ -693,12 +693,18 @@ Así los movimientos de siempre siguen valiendo, y uno comprado crece con el jug
 | Zorua | Desarme | Bomba Lodo | Maquinación | Pulso Umbrío | Maquinación / Pulso Umbrío / Bomba Lodo (Zoroark UU Gen 7), Desarme (Zorua LC Gen 7 y 9) |
 | Litwick | Ascuas | Bola Sombra | Paz Mental | Lanzallamas | Paz Mental / Llamarada o Lanzallamas / Bola Sombra / Energibola (Lampent NFE, Chandelure NU Gen 9) |
 | Cubone | Desarme | Huesomerang | Danza Espada | Terremoto | Danza Espada / Huesomerang / Terremoto / Desarme (Marowak ZU Gen 8; Cubone LC Gen 7) |
+| Alakazam | Psicocorte | Bola Sombra | Maquinación | Brillo Mágico | Maquinación / Psíquico / Onda Certera / Bola Sombra (National Dex UU Gen 9), Brillo Mágico (Abra LC Gen 8) |
+| Empoleon | Desarme | Foco Resplandor | Defensa Férrea | Surf | Foco Resplandor / Surf / Rayo Hielo / Hierba Lazo (BSS Gen 9), Desarme (RU Gen 9, defensivo) |
+| Luxray | Colmillo Hielo | Voltio Cruel | Aullido | Alarido | Voltio Cruel / Triturar / Fachada (ZU Gen 8) |
+| Haxorus | Garra Dragón | Enfado | Danza Dragón | Terremoto | Danza Dragón / Garra Dragón o Enfado / Terremoto (BSS Gen 9; Axew LC Gen 9) |
 
 Zorua no aprende Lanzallamas ni Onda Certera (los aprende Zoroark): su cobertura es Bomba Lodo, Hierba Lazo y Envidia Ardiente. La alternativa de Litwick en la ranura fuerte es Llamarada o Energibola.
 
 **Arnés:** `npm run balance -- --quick --slots --build=<especie>` juega con el equipo recomendado (`--species=<especie>` con el de por defecto; `--full=<especie> --ranks=2` con la inversión completa: `FULL_BUILD`, todo a rango +2). Antes y después en `reports/balance/movepools-builds.md` y `reports/balance/move-progression.md`: ningún equipo rompe una invariante de justicia. Con la inversión completa los bots matan a los jefes un 37 % (Mimikyu), 37 % (Zorua), 26 % (Litwick) y 30 % (Cubone) más rápido (mediana emparejada, `npx vite-node tools/move-progression-ttk.ts` → `reports/balance/move-progression-ttk.md`); las cartas siguen durando y hay que esquivarlas igual.
 
-Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. = enfriamiento):
+Las líneas del gacha comparten repertorio en todas sus formas; lo que trae una evolución (Tinieblas con Kadabra, Rayo Hielo con Empoleon...) llega gratis al evolucionar y Smeargle nunca lo vende. Movimientos nuevos para ellas: Psicocorte, Puño Hielo, Psicocarga, Reflejo, Psicorrayo, Premonición (Maestro, tras el Bosque), Acua Jet, Garra Metal, Foco Resplandor, Hidrobomba (Maestro, tras las Cuevas), Colmillo Rayo, Colmillo Hielo, Colmillo Ígneo, Triturar, Voltio Cruel (Maestro, tras el Pantano), Carga, Aullido, Chispazo, Electrotela, Enfado (Maestro, tras la Cripta) y Danza Dragón; cada una tiene además Doble Filo (o Puño Certero) como Maestro.
+
+Repertorio completo por línea (la última forma; precio «inicial» = kit original, «con X» = lo trae esa evolución; est. = estamina; enfr. = enfriamiento):
 
 #### Mimikyu
 
@@ -715,7 +721,7 @@ Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. =
 | Carantoña | Fuerte | Básico | Hada | 90 | arco amplio, est. 30 | inicial (150 / 350) | aturde un 30 % más | el objetivo hace −30 % de daño durante 4 s |
 | Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | inicial (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
 | Puño Drenaje | Fuerte | Avanzado | Lucha | 75 | arco amplio, drena 50 %, est. 30 | 220 P (250 / 500) | +15 % de drenaje | superarmadura: −25 % de daño recibido durante 2,5 s |
-| Mazazo | Fuerte | Maestro | Planta | 120 | arco amplio, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 30 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Mazazo | Fuerte | Maestro | Planta | 120 | arco amplio, retroceso 33 %, est. 35 | 800 P, o gratis al despertar 1 (400 / 750) | aturde un 30 % más | superarmadura: −30 % de daño recibido durante 2 s |
 | Gigadrenado | Fuerte | Avanzado | Planta | 75 | proyectil rápido, drena 50 %, est. 30 | 220 P (250 / 500) | persigue al enemigo más cercano | +20 % de drenaje |
 | Rayo | Fuerte | Avanzado | Eléctrico | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | aturde un 40 % más | salta al enemigo más cercano (50 % del daño) |
 | Derribo | Fuerte | Avanzado | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | invulnerable mientras golpea |
@@ -727,19 +733,20 @@ Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. =
 | Fuego Fatuo | Potenciación | Básico | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | 350 P (150 / 350) | superarmadura: −25 % de daño recibido durante 2,5 s | un aura a tu alrededor daña durante 2,4 s que quema |
 | Brillo Mágico | Área | Básico | Hada | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −25 % de daño durante 3 s |
 | Golpe Umbrío | Área | Básico | Fantasma | 120 | cono amplio, enfr. 10 s, est. 40 | inicial (150 / 350) | invulnerable mientras golpea | deja una marca que estalla a los 0,9 s (30 % del golpe) |
-| Golpe Fantasma | Área | Maestro | Fantasma | 90 | embestida, enfr. 5.6 s, est. 40 | 950 P, tras Cripta del Rey de las Espadas (400 / 750) | golpe un 20 % más grande | invulnerable mientras golpea |
+| Golpe Fantasma | Área | Maestro | Fantasma | 90 | embestida, enfr. 5.6 s, est. 40 | 950 P, tras Cripta del Rey de las Espadas, o gratis al despertar 2 (400 / 750) | golpe un 20 % más grande | invulnerable mientras golpea |
 | Envidia Ardiente | Área | Avanzado | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
 | Pulso Umbrío | Área | Básico | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P (150 / 350) | aturde un 50 % más | deja una marca que estalla a los 0,8 s (25 % del golpe) |
 | Trueno | Área | Maestro | Eléctrico | 110 | anillo 360°, enfr. 6.8 s, est. 45 | 950 P, tras Bosque Brumoso (400 / 750) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
 
 Build recomendado: Sombra Vil · Carantoña · Danza Espada · Golpe Fantasma.
 
-#### Zorua
+#### Zorua → Zoroark
 
 | Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
 |---|---|---|---|---|---|---|---|---|
 | Golpes Furia | Rápido | Básico | Normal | 25 | arco corto, ×5 | inicial (150 / 350) | +10 % de crítico | +1 golpe |
 | Finta | Rápido | Básico | Siniestro | 60 | embestida | inicial (150 / 350) | +20 % de crítico | deja una marca que estalla a los 0,9 s (35 % del golpe) |
+| Tajo Umbrío | Rápido | Avanzado | Siniestro | 70 | arco corto, +25 % crítico | con Zoroark (250 / 500) | +10 % de crítico | deja una marca que estalla a los 1 s (30 % del golpe) |
 | Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | 200 P (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
 | Golpe Bajo | Rápido | Avanzado | Siniestro | 70 | embestida, ×1.5 si el enemigo ataca, prioridad | 200 P (250 / 500) | invulnerable mientras golpea | +30 % de crítico |
 | Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
@@ -764,18 +771,20 @@ Build recomendado: Sombra Vil · Carantoña · Danza Espada · Golpe Fantasma.
 
 Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
 
-#### Litwick
+#### Litwick → Lampent → Chandelure
 
 | Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
 |---|---|---|---|---|---|---|---|---|
 | Ascuas | Rápido | Básico | Fuego | 50 | proyectil rápido | inicial (150 / 350) | 40 % de quemar | deja una zona en el impacto durante 1,8 s que quema |
 | Impresionar | Rápido | Básico | Fantasma | 30 | arco corto, aturde mucho | inicial (150 / 350) | aturde un 40 % más | el objetivo hace −25 % de daño durante 2,5 s |
+| Desahogo | Rápido | Avanzado | Siniestro | 75 | arco corto, ×1.5 si fallaste antes | con Lampent (250 / 500) | aturde un 30 % más | +20 % de drenaje |
 | Tinieblas | Rápido | Avanzado | Fantasma | 50 | proyectil rápido | 120 P (250 / 500) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (30 % del golpe) |
 | Polución | Rápido | Avanzado | Veneno | 30 | proyectil rápido, envenena | 120 P (250 / 500) | golpe un 30 % más grande | deja una zona en el impacto durante 1,6 s que envenena |
 | Niebla Clara | Rápido | Avanzado | Veneno | 50 | proyectil rápido | 120 P (250 / 500) | golpe un 20 % más grande | el objetivo hace −20 % de daño durante 3 s |
 | Nitrocarga | Rápido | Avanzado | Fuego | 50 | embestida | 120 P (250 / 500) | superarmadura: −20 % de daño recibido durante 2 s | invulnerable mientras golpea |
 | Infortunio | Fuerte | Básico | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | inicial (150 / 350) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (40 % del golpe) |
 | Infierno | Fuerte | Básico | Fuego | 100 | proyectil lento, est. 35 | inicial (150 / 350) | siempre quema | deja una zona en el impacto durante 2,4 s que quema |
+| Hiperrayo | Fuerte | Básico | Normal | 150 | onda en línea (atraviesa), est. 35 | con Chandelure (150 / 350) | golpe un 20 % más grande | aturde un 40 % más |
 | Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | 380 P (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
 | Llamarada | Fuerte | Maestro | Fuego | 110 | proyectil lento, quema, est. 40 | 800 P (400 / 750) | golpe un 20 % más grande | se divide en 4 al impactar (30 % de poder cada uno) |
 | Energibola | Fuerte | Avanzado | Planta | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | se divide en 3 al impactar (30 % de poder cada uno) |
@@ -798,7 +807,7 @@ Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
 
 Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
 
-#### Cubone
+#### Cubone → Marowak
 
 | Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
 |---|---|---|---|---|---|---|---|---|
@@ -813,6 +822,7 @@ Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
 | Bofetón Lodo | Rápido | Avanzado | Tierra | 20 | proyectil rápido, aturde mucho | 120 P (250 / 500) | aturde un 30 % más | el objetivo hace −30 % de daño durante 3 s |
 | Huesomerang | Fuerte | Básico | Tierra | 50 | bumerán (vuelve a ti), est. 30 | inicial (150 / 350) | golpe un 25 % más grande | vuelve a lanzarse 1 vez más (50 % de poder) |
 | Pataleta | Fuerte | Básico | Tierra | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | inicial (150 / 350) | golpe un 15 % más grande | una réplica a tu alrededor a los 0,5 s |
+| Llamarada | Fuerte | Maestro | Fuego | 110 | proyectil lento, quema, est. 40 | con Marowak (400 / 750) | golpe un 20 % más grande | se divide en 4 al impactar (30 % de poder cada uno) |
 | Doble Filo | Fuerte | Maestro | Normal | 120 | embestida, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 20 % más | superarmadura: −30 % de daño recibido durante 2 s |
 | Cabeza de Hierro | Fuerte | Avanzado | Acero | 80 | embestida, est. 30 | 380 P (250 / 500) | aturde un 30 % más | invulnerable mientras golpea |
 | Tierra Viva | Fuerte | Avanzado | Tierra | 90 | onda en línea (atraviesa), est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | deja un rastro que daña durante 1,5 s |
@@ -832,6 +842,115 @@ Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
 | Lanzallamas | Área | Básico | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P (150 / 350) | 30 % de quemar | deja un rastro que daña durante 2 s que quema |
 
 Build recomendado: Desarme · Huesomerang · Danza Espada · Terremoto.
+
+#### Abra → Kadabra → Alakazam
+
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Meteoros | Rápido | Avanzado | Normal | 60 | proyectil rápido, teledirigido | inicial (250 / 500) | golpe un 30 % más grande | se divide en 2 al impactar (40 % de poder cada uno) |
+| Tinieblas | Rápido | Avanzado | Fantasma | 50 | proyectil rápido | con Kadabra (250 / 500) | persigue al enemigo más cercano | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Psicocorte | Rápido | Avanzado | Psíquico | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Puño Fuego | Rápido | Avanzado | Fuego | 75 | arco corto, quema | 300 P (250 / 500) | +10 % de crítico | deja una zona en el impacto durante 1,5 s que quema |
+| Puño Trueno | Rápido | Avanzado | Eléctrico | 75 | arco corto | 300 P (250 / 500) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
+| Puño Hielo | Rápido | Avanzado | Hielo | 75 | arco corto | 300 P (250 / 500) | aturde un 30 % más | el objetivo hace −20 % de daño durante 3 s |
+| Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Psíquico | Fuerte | Avanzado | Psíquico | 90 | proyectil rápido, est. 30 | inicial (250 / 500) | persigue al enemigo más cercano | el objetivo hace −20 % de daño durante 3 s |
+| Bola Sombra | Fuerte | Básico | Fantasma | 80 | proyectil rápido, est. 30 | con Alakazam (150 / 350) | golpe un 35 % más grande | se divide en 3 al impactar (35 % de poder cada uno) |
+| Psicocarga | Fuerte | Avanzado | Psíquico | 80 | proyectil rápido, est. 30 | 380 P (250 / 500) | persigue al enemigo más cercano | el objetivo hace −20 % de daño durante 3 s |
+| Energibola | Fuerte | Avanzado | Planta | 90 | proyectil rápido, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | se divide en 3 al impactar (30 % de poder cada uno) |
+| Hierba Lazo | Fuerte | Avanzado | Planta | 80 | arco amplio, est. 30 | 380 P (250 / 500) | aturde un 40 % más | el objetivo hace −20 % de daño durante 3 s |
+| Puño Drenaje | Fuerte | Avanzado | Lucha | 75 | arco amplio, drena 50 %, est. 30 | 220 P (250 / 500) | +15 % de drenaje | superarmadura: −25 % de daño recibido durante 2,5 s |
+| Puño Certero | Fuerte | Maestro | Lucha | 150 | arco amplio, est. 40 | 800 P, tras Cripta del Rey de las Espadas (400 / 750) | superarmadura: −30 % de daño recibido durante 1,5 s | aturde un 40 % más |
+| Paz Mental | Potenciación | Avanzado | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | inicial (250 / 500) | +2 s de duración | −10 % de daño recibido |
+| Maquinación | Potenciación | Básico | Siniestro | — | sobre ti, velocidad ×1.3, +35 % crítico, 5 s, enfr. 14 s | 350 P (150 / 350) | +1 s de duración | +10 % de crítico |
+| Reflejo | Potenciación | Avanzado | Psíquico | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P (250 / 500) | +1,5 s de duración | cura un 8 % de los PS |
+| Brillo Mágico | Área | Básico | Hada | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Psicorrayo | Área | Avanzado | Psíquico | 65 | onda en línea (atraviesa), enfr. 6 s, est. 35 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Premonición | Área | Maestro | Psíquico | 120 | anillo 360°, enfr. 7.6 s, est. 45 | 950 P, tras Bosque Brumoso (400 / 750) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+
+Build recomendado: Psicocorte · Bola Sombra · Maquinación · Brillo Mágico.
+
+#### Piplup → Prinplup → Empoleon
+
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Pistola Agua | Rápido | Básico | Agua | 40 | proyectil rápido | inicial (150 / 350) | golpe un 30 % más grande | se divide en 2 al impactar (40 % de poder cada uno) |
+| Acua Jet | Rápido | Avanzado | Agua | 40 | embestida, prioridad | 120 P (250 / 500) | invulnerable mientras golpea | +20 % de crítico |
+| Garra Metal | Rápido | Avanzado | Acero | 50 | arco corto | 120 P (250 / 500) | +15 % de crítico | superarmadura: −20 % de daño recibido durante 1,5 s |
+| Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | 200 P (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
+| Desarme | Rápido | Avanzado | Siniestro | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Rayo Burbuja | Fuerte | Básico | Agua | 65 | proyectil rápido, est. 30 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Demolición | Fuerte | Avanzado | Lucha | 75 | arco amplio, est. 30 | con Prinplup (250 / 500) | +15 % de crítico | el objetivo hace −25 % de daño durante 3 s |
+| Foco Resplandor | Fuerte | Avanzado | Acero | 80 | proyectil rápido, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | se divide en 3 al impactar (30 % de poder cada uno) |
+| Hierba Lazo | Fuerte | Avanzado | Planta | 80 | arco amplio, est. 30 | 380 P (250 / 500) | aturde un 40 % más | el objetivo hace −20 % de daño durante 3 s |
+| Derribo | Fuerte | Avanzado | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | invulnerable mientras golpea |
+| Hidrobomba | Fuerte | Maestro | Agua | 110 | proyectil rápido, est. 40 | 800 P, tras Cuevas Inundadas (400 / 750) | golpe un 20 % más grande | aturde un 30 % más |
+| Doble Filo | Fuerte | Maestro | Normal | 120 | embestida, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 20 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Danza Espada | Potenciación | Básico | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | inicial (150 / 350) | +1 golpe potenciado | superarmadura: −40 % de daño recibido durante 3 s |
+| Agilidad | Potenciación | Avanzado | Psíquico | — | sobre ti, velocidad ×1.5, +0 % crítico, 5 s, enfr. 12 s | 350 P (250 / 500) | +1,5 s de duración | +15 % de crítico |
+| Defensa Férrea | Potenciación | Avanzado | Acero | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P (250 / 500) | +1,5 s de duración | cura un 8 % de los PS |
+| Surf | Área | Básico | Agua | 90 | anillo 360°, enfr. 7.6 s, est. 35 | inicial (150 / 350) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Rayo Hielo | Área | Maestro | Hielo | 90 | onda en línea (atraviesa), enfr. 5.6 s, est. 40 | con Empoleon (400 / 750) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
+| Avalancha | Área | Avanzado | Roca | 75 | cono amplio, enfr. 7 s, est. 35 | 300 P (250 / 500) | aturde un 30 % más | deja una zona en el impacto durante 0,2 s |
+| Terratemblor | Área | Básico | Tierra | 60 | anillo 360°, enfr. 6 s, est. 30 | 300 P (150 / 350) | golpe un 15 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Terremoto | Área | Básico | Tierra | 100 | anillo 360°, enfr. 10 s, est. 40 | 650 P (150 / 350) | aturde un 25 % más | una réplica a tu alrededor a los 0,6 s |
+
+Build recomendado: Desarme · Foco Resplandor · Defensa Férrea · Surf.
+
+#### Shinx → Luxio → Luxray
+
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Chispa | Rápido | Básico | Eléctrico | 65 | embestida | inicial (150 / 350) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
+| Meteoros | Rápido | Avanzado | Normal | 60 | proyectil rápido, teledirigido | con Luxio (250 / 500) | golpe un 30 % más grande | se divide en 2 al impactar (40 % de poder cada uno) |
+| Colmillo Rayo | Rápido | Avanzado | Eléctrico | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
+| Colmillo Hielo | Rápido | Avanzado | Hielo | 65 | arco corto | 200 P (250 / 500) | aturde un 30 % más | el objetivo hace −20 % de daño durante 3 s |
+| Colmillo Ígneo | Rápido | Avanzado | Fuego | 65 | arco corto, quema | 200 P (250 / 500) | +10 % de crítico | 60 % de quemar |
+| Tajo Umbrío | Rápido | Avanzado | Siniestro | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Doble Patada | Rápido | Avanzado | Lucha | 30 | arco corto, ×2 | 120 P (250 / 500) | +10 % de crítico | +1 golpe |
+| Rayo | Fuerte | Avanzado | Eléctrico | 90 | proyectil rápido, est. 30 | inicial (250 / 500) | aturde un 40 % más | salta al enemigo más cercano (50 % del daño) |
+| Triturar | Fuerte | Avanzado | Siniestro | 80 | arco amplio, est. 30 | 380 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Derribo | Fuerte | Avanzado | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P (250 / 500) | golpe un 20 % más grande | invulnerable mientras golpea |
+| Carantoña | Fuerte | Básico | Hada | 90 | arco amplio, est. 30 | 380 P (150 / 350) | aturde un 30 % más | el objetivo hace −30 % de daño durante 4 s |
+| Voltio Cruel | Fuerte | Maestro | Eléctrico | 120 | embestida, retroceso 25 %, est. 35 | 800 P, tras Pantano Tóxico (400 / 750) | superarmadura: −25 % de daño recibido durante 2 s | invulnerable mientras golpea |
+| Doble Filo | Fuerte | Maestro | Normal | 120 | embestida, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 20 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Agilidad | Potenciación | Avanzado | Psíquico | — | sobre ti, velocidad ×1.5, +0 % crítico, 5 s, enfr. 12 s | inicial (250 / 500) | +1,5 s de duración | +15 % de crítico |
+| Carga | Potenciación | Avanzado | Eléctrico | — | sobre ti, 2 golpes ×1.5, 8 s, enfr. 14 s | 350 P (250 / 500) | +1 golpe potenciado | +1 s de duración |
+| Aullido | Potenciación | Avanzado | Normal | — | sobre ti, 3 golpes ×1.25, 8 s, enfr. 14 s | 350 P (250 / 500) | +1 golpe potenciado | superarmadura: −20 % de daño recibido durante 2 s |
+| Alarido | Área | Básico | Siniestro | 55 | cono amplio, enfr. 6 s, est. 30 | inicial (150 / 350) | golpe un 20 % más grande | el objetivo hace −30 % de daño durante 4 s |
+| Trueno | Área | Maestro | Eléctrico | 110 | anillo 360°, enfr. 6.8 s, est. 45 | con Luxray (400 / 750) | aturde un 30 % más | salta al enemigo más cercano (50 % del daño) |
+| Chispazo | Área | Avanzado | Eléctrico | 80 | anillo 360°, enfr. 7 s, est. 35 | 450 P (250 / 500) | golpe un 15 % más grande | salta al enemigo más cercano (50 % del daño) |
+| Electrotela | Área | Avanzado | Eléctrico | 55 | cono amplio, enfr. 6 s, est. 35 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −30 % de daño durante 4 s |
+
+Build recomendado: Colmillo Hielo · Voltio Cruel · Aullido · Alarido.
+
+#### Axew → Fraxure → Haxorus
+
+| Movimiento | Hueco | Nivel | Tipo | Potencia | Efecto | Precio (Mejoras) | Rango +1 | Rango +2 |
+|---|---|---|---|---|---|---|---|---|
+| Garra Dragón | Rápido | Básico | Dragón | 80 | arco corto | inicial (150 / 350) | +15 % de crítico | deja una marca que estalla a los 0,8 s (30 % del golpe) |
+| Tijera X | Rápido | Avanzado | Bicho | 80 | arco corto | con Fraxure (250 / 500) | +15 % de crítico | deja una marca que estalla a los 0,8 s (30 % del golpe) |
+| Cuchillada | Rápido | Avanzado | Normal | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | aturde un 30 % más |
+| Tajo Umbrío | Rápido | Avanzado | Siniestro | 70 | arco corto, +25 % crítico | 200 P (250 / 500) | +10 % de crítico | deja una marca que estalla a los 1 s (30 % del golpe) |
+| Garra Umbría | Rápido | Básico | Fantasma | 70 | arco corto | 200 P (150 / 350) | +15 % de crítico | deja una marca que estalla a los 1,2 s (35 % del golpe) |
+| Patada Baja | Rápido | Avanzado | Lucha | 60 | arco corto | 200 P (250 / 500) | aturde un 40 % más | el objetivo hace −20 % de daño durante 2,5 s |
+| Pulso Dragón | Fuerte | Básico | Dragón | 85 | proyectil rápido, est. 30 | inicial (150 / 350) | golpe un 20 % más grande | se divide en 3 al impactar (30 % de poder cada uno) |
+| Demolición | Fuerte | Avanzado | Lucha | 75 | arco amplio, est. 30 | con Haxorus (250 / 500) | +15 % de crítico | el objetivo hace −25 % de daño durante 3 s |
+| Triturar | Fuerte | Avanzado | Siniestro | 80 | arco amplio, est. 30 | 380 P (250 / 500) | aturde un 30 % más | el objetivo hace −25 % de daño durante 4 s |
+| Cabeza de Hierro | Fuerte | Avanzado | Acero | 80 | embestida, est. 30 | 380 P (250 / 500) | aturde un 30 % más | invulnerable mientras golpea |
+| Excavar | Fuerte | Avanzado | Tierra | 80 | embestida, est. 30 | 380 P (250 / 500) | invulnerable mientras golpea | una réplica a tu alrededor a los 0,3 s |
+| Pataleta | Fuerte | Básico | Tierra | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | 220 P (150 / 350) | golpe un 15 % más grande | una réplica a tu alrededor a los 0,5 s |
+| Enfado | Fuerte | Maestro | Dragón | 120 | arco amplio, enfr. 0.78 s, est. 40 | 800 P, tras Cripta del Rey de las Espadas (400 / 750) | superarmadura: −30 % de daño recibido durante 2 s | aturde un 30 % más |
+| Doble Filo | Fuerte | Maestro | Normal | 120 | embestida, retroceso 33 %, est. 35 | 800 P (400 / 750) | aturde un 20 % más | superarmadura: −30 % de daño recibido durante 2 s |
+| Danza Espada | Potenciación | Básico | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | inicial (150 / 350) | +1 golpe potenciado | superarmadura: −40 % de daño recibido durante 3 s |
+| Foco Energía | Potenciación | Avanzado | Normal | — | sobre ti, velocidad ×1, +50 % crítico, 6 s, enfr. 15 s | 350 P (250 / 500) | +1 s de duración | +10 % de crítico |
+| Danza Dragón | Potenciación | Avanzado | Dragón | — | sobre ti, velocidad ×1.25, +15 % crítico, 6 s, enfr. 14 s | 350 P (250 / 500) | +1 s de duración | +10 % de crítico |
+| Terremoto | Área | Básico | Tierra | 100 | anillo 360°, enfr. 10 s, est. 40 | inicial (150 / 350) | aturde un 25 % más | una réplica a tu alrededor a los 0,6 s |
+| Avalancha | Área | Avanzado | Roca | 75 | cono amplio, enfr. 7 s, est. 35 | 300 P (250 / 500) | aturde un 30 % más | deja una zona en el impacto durante 0,2 s |
+| Terratemblor | Área | Básico | Tierra | 60 | anillo 360°, enfr. 6 s, est. 30 | 300 P (150 / 350) | golpe un 15 % más grande | el objetivo hace −20 % de daño durante 3 s |
+| Alarido | Área | Básico | Siniestro | 55 | cono amplio, enfr. 6 s, est. 30 | 300 P (150 / 350) | golpe un 20 % más grande | el objetivo hace −30 % de daño durante 4 s |
+
+Build recomendado: Garra Dragón · Enfado · Danza Dragón · Terremoto.
 
 **Pendiente:** Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma solo te hace invulnerable con su rango +2 (y solo en el golpe, no mientras desapareces).
 
@@ -864,25 +983,31 @@ Mimikyu atiende el puesto de la suerte en el pueblo (decisión del 26-10-2026: q
 - Si ya tienes esa línea (en cualquier forma), te devuelve 40 P.
 - Lo que sale se puede jugar en todas partes, también en cooperativo. Los cuatro iniciales siguen siempre disponibles.
 
-Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Cada línea evoluciona dos veces, con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
+Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Evolucionan las líneas del gacha y también los iniciales (decisión del 26-10-2026): Zorua en Zoroark, Litwick en Lampent y luego Chandelure, Cubone en Marowak. Se paga con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
 
 | Paso | Precio | Esencias | Bono de PS y daño |
 | --- | --- | --- | --- |
 | Primera a segunda forma | 400 P | 3 Normal y 2 Difícil | +6 % |
-| Segunda a tercera forma | 900 P | 3 Difícil y 2 Pesadilla | +12 % |
+| A la forma final | 900 P | 3 Difícil y 2 Pesadilla | +12 % |
 
-El bono tiene tope: 15 % jugando solo y 8 % en grupo. Cada forma nueva conserva el kit y las Mejoras y aprende un movimiento: Kadabra Tinieblas, Alakazam Bola Sombra, Prinplup Demolición, Empoleon Rayo Hielo, Luxio Meteoros, Luxray Trueno, Fraxure Tijera X, Haxorus Demolición. Si evolucionas el Pokémon que llevas elegido, pasas a jugar con su forma nueva.
+Una línea de un solo paso (Zorua, Cubone) va directa a la forma final, así que pide Esencias de Pesadilla. El bono tiene tope: 15 % jugando solo y 8 % en grupo. Cada forma nueva conserva el kit, la oferta del maestro, los movimientos comprados, las Mejoras y la habilidad, y aprende un movimiento: Kadabra Tinieblas, Alakazam Bola Sombra, Prinplup Demolición, Empoleon Rayo Hielo, Luxio Meteoros, Luxray Trueno, Fraxure Tijera X, Haxorus Demolición, Zoroark Tajo Umbrío, Lampent Desahogo, Chandelure Hiperrayo y Marowak Llamarada. Si evolucionas el Pokémon que llevas elegido, pasas a jugar con su forma nueva; un inicial evolucionado ocupa su sitio en la lista.
 
-Las Esencias se ganan en las mazmorras reto, una por línea. Cada una tiene tres plantas generadas y un jefe, y reutiliza enemigos, salas y música de una mazmorra principal según el tipo de la línea:
+Mimikyu no evoluciona (no tiene evolución en los juegos): **despierta** (decisión del 26-10-2026). Sigue siendo Mimikyu, con el mismo sprite, pero sube dos pasos como una línea de tres formas, con los mismos precios, Esencias y bonos. El primer despertar le enseña Mazazo y el segundo Golpe Fantasma, gratis y sin esperar a la mazmorra que los abre en el maestro. Su paso se guarda en la partida (`awakened`). En la ventana de Phantump su fila dice «Mimikyu · Despertar 1/2».
 
-| Reto | Plantas de | Jefe |
+Las Esencias se ganan en las mazmorras reto, una por línea. Cada reto es la prueba de su Pokémon, con nombre, presentación, una frase por planta y otra al ganar: tres plantas generadas y un jefe en el escenario de una mazmorra principal. Los enemigos se mezclan de varias mazmorras según la historia del reto, y casi todos (al menos el 70 % del peso) reciben daño neutro o mejor de los tipos de la línea; ninguno es inmune a todos y el jefe tampoco los resiste:
+
+| Reto | Escenario | Jefe |
 | --- | --- | --- |
-| Abra (psíquico) | Cripta | Sableye |
-| Piplup (agua) | Cuevas | Lanturn |
-| Shinx (eléctrico) | Bosque | Trevenant |
-| Axew (dragón) | Pantano | Salazzle |
+| El Sueño de Abra | Cuevas | Lanturn |
+| El Lago Helado de Piplup | Cripta | Sableye |
+| La Tormenta de Shinx | Pantano | Salazzle |
+| El Barranco de los Colmillos (Axew) | Bosque | Trevenant |
+| El Disfraz de Mimikyu | Cripta | Aegislash |
+| Las Ilusiones de Zorua | Bosque | Decidueye |
+| Las Velas de Litwick | Cuevas | Dhelmise |
+| El Hueso de Cubone | Pantano | Nihilego |
 
-Un reto se abre cuando tienes cualquier forma de su línea y sale aparte, en el grupo "Retos" de la selección de mazmorra y en la salida del pueblo. Ganarlo da 3 Esencias del nivel de su dificultad (la selección lo recuerda). En cooperativo cada jugador cobra en su propia partida guardada, y solo si tiene esa línea. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
+Las líneas del gacha usan los cuatro jefes intermedios y los iniciales los cuatro guardianes. Los retos no llenan la selección de mazmorra: una sola entrada **Desafíos** abre su propio menú (decisión del 26-10-2026), al que también se llega desde la salida del pueblo y desde la ventana de Phantump. El menú enseña cada reto con el retrato de la forma que tienes de su línea, su presentación, qué dificultad da qué Esencia, si tienes la línea y si tu Pokémon puede entrar; los que no se pueden jugar salen en gris («Juega con Kadabra.», «Aún no tienes esta línea.»). Elegido desde el pueblo, el equipo solo ofrece las formas de esa línea y empieza con la que tienes. Al ganar, la pantalla final cierra con la frase del reto. Un reto se abre cuando tienes cualquier forma de su línea (los de los iniciales, siempre) y **solo se puede jugar con una forma de esa línea**, también en cooperativo: el anfitrión no puede empezarlo si alguien lleva otro Pokémon (decisión del 26-10-2026). Ganarlo da 3 Esencias del nivel de su dificultad. En cooperativo cada jugador cobra en su propia partida guardada. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
 
 ## 6. Muerte y revivir
 
@@ -1107,7 +1232,7 @@ Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú princ
 
 Comprarlo todo cuesta unas 5000 Pokémonedas (unas 30 victorias). El gacha sigue pendiente ("Próximamente"). Las Pokémonedas también compran movimientos y Mejoras al maestro de movimientos (Smeargle, en el Refugio; sección 4, «Movimientos y maestro»).
 
-Guardado: el saldo, los niveles comprados y, desde la versión 2, los movimientos aprendidos y las Mejoras viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes. La versión 4 añade los logros, las Pokémonedas ganadas en total y las misiones (un guardado de la versión 3 se lee sin ninguno).
+Guardado: el saldo, los niveles comprados y, desde la versión 2, los movimientos aprendidos y las Mejoras viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes. La versión 4 añade los logros, las Pokémonedas ganadas en total y las misiones (un guardado de la versión 3 se lee sin ninguno). Los campos de la colección de la versión 3 (los iniciales evolucionados en `owned`, las Esencias de sus líneas y `awakened`) siguen igual en la 4.
 
 ### Logros *(provisional)*
 
@@ -1119,7 +1244,7 @@ Metas a largo plazo que se miran al terminar cada partida y al cambiar la colecc
 | Guardianes sin un rasguño | Mazmorra con guardián: ganar sin recibir ningún golpe en la planta del guardián | 50 P |
 | Profundidades de la Sima | Estrato de la Sima después del primero (plantas 11, 21, 31 y 41) | 30 P |
 | Compañeros | Especie jugable: ganar cualquier mazmorra con ella | 0 |
-| Evoluciones | Evolución de una línea (una forma posterior también la cuenta) | 20 P |
+| Evoluciones | Evolución de una línea (una forma posterior también la cuenta); cada despertar de Mimikyu (un paso posterior también cuenta los de antes) | 20 P |
 | Puesto de Mimikyu | Primera tirada; todas las líneas del puesto | 0; 50 P |
 | En equipo | Ganar una mazmorra en grupo | 30 P |
 | Pokémonedas | 1000, 5000, 20 000 y 100 000 ganadas en total (gastar no resta) | 0 |

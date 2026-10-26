@@ -128,6 +128,11 @@ const TARGETS = [
   { dex: '0610', form: '0000', species: 'axew', formName: 'base' },
   { dex: '0611', form: '0000', species: 'fraxure', formName: 'base' },
   { dex: '0612', form: '0000', species: 'haxorus', formName: 'base' },
+  // The starters' evolved forms (odd/tasks/roster-parity.md; AnimData 2026-10-26: Idle, Walk, Attack, Shoot, Charge and Hurt are their own sheets).
+  { dex: '0571', form: '0000', species: 'zoroark', formName: 'base' },
+  { dex: '0608', form: '0000', species: 'lampent', formName: 'base' },
+  { dex: '0609', form: '0000', species: 'chandelure', formName: 'base' },
+  { dex: '0105', form: '0000', species: 'marowak', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

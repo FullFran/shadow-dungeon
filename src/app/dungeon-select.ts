@@ -9,14 +9,14 @@ import { h, mdWindow } from '../ui/window';
  * The dungeon select (after the loadout, when more than one dungeon is
  * open): every dungeon in order, the locked ones greyed out with what opens
  * them, and a side window with the highlighted dungeon's subtitle and best
- * floor on this device. Below them, under "Retos", the challenge dungeons
- * of the lines the player owns (odd/tasks/gacha-evolutions.md T4).
+ * floor on this device. Below them, one "Desafíos" row opens the challenges
+ * menu (app/challenges.ts; odd/tasks/roster-parity.md).
  */
 export interface DungeonSelectOptions {
   records: Records;
   cleared: ReadonlySet<string>;
-  /** The open challenge dungeons (core/challenge.ts `openChallenges`); none by default. */
-  challenges?: readonly DungeonDef[];
+  /** Opens the challenges menu (a "Desafíos" row; absent: no row). */
+  onChallenges?(): void;
   onChoose(dungeon: DungeonId): void;
   onBack(): void;
 }
@@ -30,24 +30,28 @@ export const lockedHint = (dungeon: DungeonDef): string =>
   dungeon.unlockedBy ? t('select.locked').replace('{dungeon}', t(dungeonById(dungeon.unlockedBy).lore.nameKey)) : '';
 
 export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[] {
-  // Header rows take a list slot too: index the choices like the list (null on the header).
-  const challenges = options.challenges ?? [];
-  const choices = [...dungeonChoices(options.cleared), ...(challenges.length > 0 ? [null] : []), ...challenges.map((dungeon) => ({ dungeon, unlocked: true }))];
+  // The challenges row takes a list slot too: index the choices like the list (null on it).
+  const choices = [...dungeonChoices(options.cleared), ...(options.onChallenges ? [null] : [])];
   const subtitle = h('p', { className: 'dim' });
   const best = h('p');
   const legend = h('p', { className: 'dim' });
   const describe = (index: number) => {
     const choice = choices[index];
+    if (choice === null) {
+      subtitle.textContent = t('challenges.text');
+      best.textContent = t('select.drops');
+      legend.textContent = '';
+      return;
+    }
     if (!choice) return;
     subtitle.textContent = choice.unlocked ? t(choice.dungeon.lore.subtitleKey) : lockedHint(choice.dungeon);
-    // A challenge says which difficulty drops which Essence instead of its best floor.
-    best.textContent = !choice.unlocked ? '' : choice.dungeon.challenge ? t('select.drops') : bestFloorText(options.records, choice.dungeon);
+    best.textContent = choice.unlocked ? bestFloorText(options.records, choice.dungeon) : '';
     // The first line of its legend, once it is open.
     legend.textContent = choice.unlocked ? t(choice.dungeon.lore.loreKeys[0] ?? '') : '';
   };
   const items: ListItem[] = choices.map((choice) =>
     choice === null
-      ? { header: true, label: t('select.challenges') }
+      ? { label: t('challenges.title'), onConfirm: () => options.onChallenges?.() }
       : {
           label: choice.unlocked ? t(choice.dungeon.lore.nameKey) : '???',
           disabled: !choice.unlocked,

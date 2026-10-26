@@ -11,6 +11,8 @@ export interface DungeonLore {
   loreKeys: readonly string[];
   /** A short line per floor for the floor card (Touhou style); index 0 is floor 1 (shown under the entry title). */
   floorKeys?: readonly string[];
+  /** A challenge's line after its boss falls (the end screen of a victory). */
+  victoryKey?: string;
 }
 
 export const DUNGEON_LORE: readonly DungeonLore[] = [

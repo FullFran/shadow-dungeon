@@ -16,6 +16,8 @@ export type Unlocked = Readonly<Record<string, string>>;
 /** The save's part the rules read. */
 export interface ProgressSnapshot {
   owned?: readonly SpeciesId[];
+  /** Awakening steps per species that never evolves. */
+  awakened?: Readonly<Partial<Record<SpeciesId, number>>>;
   /** Lifetime Pokémonedas earned. */
   earned?: number;
 }
@@ -36,6 +38,8 @@ export function achieved(def: AchievementDef, report: RunReport | null, save: Pr
       return won && report!.species === rule.species;
     case 'evolve':
       return owned.some((id) => lineOf(id) === lineOf(rule.species) && stageOf(id) >= stageOf(rule.species));
+    case 'awaken':
+      return (save.awakened?.[rule.species] ?? 0) >= rule.step;
     case 'firstPull':
       return owned.length > 0;
     case 'collectAll':

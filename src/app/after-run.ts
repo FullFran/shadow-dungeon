@@ -53,6 +53,9 @@ export function cutShortAction(run: { ended: boolean; finished: boolean }): 'end
  * reward), or null when it added none (a main dungeon, Easy, a defeat, a
  * peer that does not own the line). `tr` is the i18n lookup.
  */
+/** A challenge's closing line after its boss falls (its lore's `victoryKey`), null for any other end. */
+export const victoryLine = (dungeon: DungeonDef, result: string): string | null => (result === 'victory' ? (dungeon.lore.victoryKey ?? null) : null);
+
 export function materialsEarned(dungeon: DungeonDef, difficulty: Difficulty, before: Pick<Collection, 'materials'>, after: Pick<Collection, 'materials'>, tr: (key: string) => string): string | null {
   const line = dungeon.challenge?.line;
   if (!line || difficulty === 'easy') return null;

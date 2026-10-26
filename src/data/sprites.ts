@@ -126,4 +126,9 @@ export const SPRITE_KEYS = {
   axew: '0610/0000',
   fraxure: '0611/0000',
   haxorus: '0612/0000',
+  // The starters' evolved forms (odd/tasks/roster-parity.md).
+  zoroark: '0571/0000',
+  lampent: '0608/0000',
+  chandelure: '0609/0000',
+  marowak: '0105/0000',
 } as const;

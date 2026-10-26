@@ -99,10 +99,11 @@ describe('save facade', () => {
     expect(sanitize({ coins: 0, upgrades: {}, achievements: [1, 2] }).achievements).toBeUndefined();
   });
 
-  it('sanitize keeps only gacha species in the collection: no starters, enemies, unknowns or repeats', () => {
-    const save = sanitize({ coins: 0, upgrades: {}, owned: ['mimikyu', 'gastly', 'nope', 7], materials: { mimikyu: 3, gastly: 2 }, pity: 4.7 });
+  it('sanitize keeps only gacha species and evolved starters in the collection: no base starters, enemies, unknowns or repeats', () => {
+    const save = sanitize({ coins: 0, upgrades: {}, owned: ['mimikyu', 'gastly', 'nope', 7], materials: { mimikyu: 3, gastly: 2, zoroark: 1 }, pity: 4.7 });
     expect(save.owned).toBeUndefined();
-    expect(save.materials).toBeUndefined();
+    // Mimikyu's line has materials (its awakening); an enemy's or an evolved form's key does not.
+    expect(save.materials).toEqual({ mimikyu: { normal: 3 } });
     expect(save.pity).toBe(4);
     expect(sanitize({ coins: 0, upgrades: {}, pity: -3 }).pity).toBeUndefined();
     expect(sanitize({ coins: 0, upgrades: {}, pity: 'x' }).pity).toBeUndefined();

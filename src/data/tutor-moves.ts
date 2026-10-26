@@ -4,8 +4,9 @@ import type { SlotKind } from './slots';
 import type { PokemonType } from './types';
 
 /**
- * The move tutor's moves (odd/tasks/movepools.md): the starters' canon
- * learnsets (data/learnsets.ts) redesigned for real-time combat. Powers are
+ * The move tutor's moves (odd/tasks/movepools.md, odd/tasks/roster-parity.md):
+ * the starters' and the gacha lines' canon learnsets (data/learnsets.ts)
+ * redesigned for real-time combat. Powers are
  * the official ones; the timings keep each slot inside the damage budget of
  * the original kits (tests/data/tutor-moves.test.ts): a stronger move is
  * slower, costs stamina or HP, or recoils. Simplified statuses: burn and
@@ -78,6 +79,31 @@ export const TUTOR_MOVE_IDS = [
   'iron-defense',
   'rock-slide',
   'ice-beam',
+  // Abra's line
+  'psycho-cut',
+  'ice-punch',
+  'psyshock',
+  'reflect',
+  'psybeam',
+  'future-sight',
+  // Piplup's line
+  'aqua-jet',
+  'metal-claw',
+  'flash-cannon',
+  'hydro-pump',
+  // Shinx's line
+  'thunder-fang',
+  'ice-fang',
+  'fire-fang',
+  'crunch',
+  'wild-charge',
+  'charge',
+  'howl',
+  'discharge',
+  'electroweb',
+  // Axew's line
+  'outrage',
+  'dragon-dance',
 ] as const;
 
 export type TutorMoveId = (typeof TUTOR_MOVE_IDS)[number];
@@ -185,4 +211,29 @@ export const TUTOR_MOVES: Record<TutorMoveId, MoveDef> = {
   'iron-defense': def('iron-defense', 'boost', 'steel', 0, [200, 60, 240], SELF, 0, 0, { cooldownMs: 16000, buff: { kind: 'guard', damageTaken: 0.5, durationMs: 5000 } }),
   'rock-slide': def('rock-slide', 'area', 'rock', 75, [300, 120, 380], arc(66, 110), 420, 60, { staminaCost: 35, cooldownMs: 7000 }),
   'ice-beam': def('ice-beam', 'area', 'ice', 90, [660, 60, 380], shot(280, 12, 520, { wave: true }), 400, 50, { staminaCost: 40, cooldownMs: 5600 }),
+  // --- Abra's line ---
+  'psycho-cut': def('psycho-cut', 'fast', 'psychic', 70, [100, 80, 195], arc(36, 110), 220, 30, { critBonus: 0.25 }),
+  'ice-punch': def('ice-punch', 'fast', 'ice', 75, [110, 80, 200], arc(34, 100), 320, 40),
+  psyshock: def('psyshock', 'heavy', 'psychic', 80, [260, 60, 370], shot(200, 9, 2000), 420, 50),
+  reflect: def('reflect', 'boost', 'psychic', 0, [200, 60, 240], SELF, 0, 0, { cooldownMs: 16000, buff: { kind: 'guard', damageTaken: 0.5, durationMs: 5000 } }),
+  psybeam: def('psybeam', 'area', 'psychic', 65, [400, 60, 360], shot(280, 10, 520, { wave: true }), 340, 40, { staminaCost: 35, cooldownMs: 6000 }),
+  'future-sight': def('future-sight', 'area', 'psychic', 120, [660, 140, 440], arc(70, 360), 480, 80, { staminaCost: 45, cooldownMs: 7600 }),
+  // --- Piplup's line ---
+  'aqua-jet': def('aqua-jet', 'fast', 'water', 40, [40, 120, 200], dash(64, 16), 200, 30),
+  'metal-claw': def('metal-claw', 'fast', 'steel', 50, [90, 80, 170], arc(32, 100), 220, 25),
+  'flash-cannon': def('flash-cannon', 'heavy', 'steel', 80, [280, 60, 380], shot(200, 10, 2000), 380, 50),
+  'hydro-pump': def('hydro-pump', 'heavy', 'water', 110, [480, 60, 190], shot(170, 13, 2400), 460, 90, { staminaCost: 40, juice: 'heavy' }),
+  // --- Shinx's line ---
+  'thunder-fang': def('thunder-fang', 'fast', 'electric', 65, [100, 80, 200], arc(30, 90), 320, 30),
+  'ice-fang': def('ice-fang', 'fast', 'ice', 65, [100, 80, 200], arc(30, 90), 320, 30),
+  'fire-fang': def('fire-fang', 'fast', 'fire', 65, [100, 80, 200], arc(30, 90), 260, 30, { dot: 'burn', dotChance: 0.3 }),
+  crunch: def('crunch', 'heavy', 'dark', 80, [260, 100, 340], arc(40, 90), 420, 60),
+  'wild-charge': def('wild-charge', 'heavy', 'electric', 120, [300, 180, 280], dash(84, 17), 460, 90, { staminaCost: 35, recoil: 0.25, juice: 'heavy' }),
+  charge: def('charge', 'boost', 'electric', 0, CAST, SELF, 0, 0, { cooldownMs: 14000, buff: { kind: 'power', multiplier: 1.5, hits: 2, durationMs: 8000 } }),
+  howl: def('howl', 'boost', 'normal', 0, CAST, SELF, 0, 0, { cooldownMs: 14000, buff: { kind: 'power', multiplier: 1.25, hits: 3, durationMs: 8000 } }),
+  discharge: def('discharge', 'area', 'electric', 80, [300, 120, 380], arc(64, 360), 400, 60, { staminaCost: 35, cooldownMs: 7000 }),
+  electroweb: def('electroweb', 'area', 'electric', 55, [280, 120, 360], arc(66, 110), 420, 40, { staminaCost: 35, cooldownMs: 6000 }),
+  // --- Axew's line ---
+  outrage: def('outrage', 'heavy', 'dragon', 120, [280, 140, 300], arc(46, 140), 460, 90, { staminaCost: 40, cooldownMs: 780, juice: 'heavy' }),
+  'dragon-dance': def('dragon-dance', 'boost', 'dragon', 0, CAST, SELF, 0, 0, { cooldownMs: 14000, buff: { kind: 'haste', speed: 1.25, critChance: 0.15, durationMs: 6000 } }),
 };
