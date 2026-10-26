@@ -80,13 +80,13 @@ describe('tile collision', () => {
     expect(run(open, input(), 30).projectiles).toHaveLength(1);
   });
 
-  it('lets a Gastly float through walls but keeps it inside the map', () => {
+  it('stops a Gastly at the walls too (always on usable floor) and keeps it inside the map', () => {
     let state = spawnEnemy(tiled(at(1, 1)), 'gastly', at(9, 2), { dormant: true });
-    // A dormant ghost does not act; a knockback carries it across the wall column.
+    // A dormant ghost does not act; a knockback towards the wall column stops at it.
     state = { ...state, enemies: state.enemies.map((e) => ({ ...e, knockback: vec(-6 * TILE, 0) })) };
     const later = run(state, input(), 60);
     const ghost = later.enemies[0]!;
-    expect(tileOf(ghost.pos).x).toBeLessThan(5);
+    expect(tileOf(ghost.pos).x).toBeGreaterThanOrEqual(7);
     const outward = { ...state, enemies: state.enemies.map((e) => ({ ...e, knockback: vec(0, -20 * TILE) })) };
     const clamped = run(outward, input(), 60).enemies[0]!;
     expect(clamped.pos.y).toBeGreaterThanOrEqual(clamped.radius);

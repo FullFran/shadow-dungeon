@@ -84,18 +84,21 @@ export function spreadDirections(dir: Vec2, count: number, degrees: number, offs
 }
 
 /**
- * Moves an enemy by `delta`, confined to the room. Walkers that bump into an
- * obstacle slide along it (sideways by their strafe sign) instead of sticking.
+ * Moves an enemy by `delta`, confined to the room: wall tiles stop everyone,
+ * obstacles only walkers (floaters drift over them). Walkers that bump into
+ * something slide along it (sideways by their strafe sign) instead of
+ * sticking; floaters only take the wall's push (the strafe slide could hold
+ * one against a corner, odd/tasks/floaters-usable-floor.md).
  */
 export function moveEnemy(state: WorldState, enemy: EnemyState, delta: Vec2): EnemyState {
-  const solid = !floatsOf(enemy.species);
+  const walker = !floatsOf(enemy.species);
   // Walkers that are not Water types wade slower through shallow water (the caves' pools).
-  if (solid && state.arena.water) delta = scale(delta, wadeFactor(enemy.types, state.arena, enemy.pos));
+  if (walker && state.arena.water) delta = scale(delta, wadeFactor(enemy.types, state.arena, enemy.pos));
   const desired = add(enemy.pos, delta);
   // Swept: a lunge or a dash longer than a quarter tile cannot jump a wall.
-  let pos = sweepCircle(state.arena, enemy.pos, delta, enemy.radius, solid);
-  if (solid && distance(pos, desired) > 0.01 && length(delta) > 0) {
-    pos = sweepCircle(state.arena, pos, perpendicular(delta, enemy.ai.strafeSign), enemy.radius, solid);
+  let pos = sweepCircle(state.arena, enemy.pos, delta, enemy.radius, walker);
+  if (walker && distance(pos, desired) > 0.01 && length(delta) > 0) {
+    pos = sweepCircle(state.arena, pos, perpendicular(delta, enemy.ai.strafeSign), enemy.radius, walker);
   }
   return { ...enemy, pos };
 }
@@ -137,14 +140,17 @@ export function telegraph(enemy: EnemyState, attack: string, durationMs: number,
 }
 
 /**
- * Where a walker heads to reach its target: straight at it with a clear line
+ * Where an enemy heads to reach its target: straight at it with a clear line
  * of sight (or on arenas without tiles), otherwise towards the next tile
  * downhill on the shared flow field (towards the nearest player). Null when it sees the target.
+ *
+ * Floaters path like walkers: wall tiles confine them too, so they are always
+ * on floor the player can reach (odd/tasks/floaters-usable-floor.md). This is
+ * where a future telegraphed phase through a thin wall would hook in
+ * (docs/gdd.md, "Fantasmas y paredes"); no species crosses rock today.
  */
-export function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2, floats = false): Vec2 | null {
+export function pathDirection(state: WorldState, enemy: EnemyState, target: Vec2): Vec2 | null {
   const grid = state.arena.tiles;
-  // Fliers and phasers go straight over the walls.
-  if (floats) return null;
   if (!grid || !state.flow || lineOfSight(grid, enemy.pos, target)) return null;
   const next = flowStep(grid, state.flow, tileOf(enemy.pos));
   if (!next) return null;

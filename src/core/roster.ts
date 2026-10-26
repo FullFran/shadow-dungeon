@@ -62,20 +62,20 @@ function rested(enemy: EnemyState): EnemyState {
   return { ...enemy, ai: { ...enterMode(enemy.ai, 'approach'), strafeSign: enemy.ai.strafeSign === 1 ? -1 : 1 } };
 }
 
-/** Keeps a distance band to the target while strafing; walkers follow the flow field when out of sight. */
-function holdBand(state: WorldState, enemy: EnemyState, target: Vec2, band: { min: number; max: number; speed: number }, ms: number, floats = false): EnemyState {
+/** Keeps a distance band to the target while strafing; out of sight it follows the flow field (floaters too). */
+function holdBand(state: WorldState, enemy: EnemyState, target: Vec2, band: { min: number; max: number; speed: number }, ms: number): EnemyState {
   const toPlayer = towardTarget(target, enemy);
   const dist = distance(enemy.pos, target);
-  const path = pathDirection(state, enemy, target, floats);
+  const path = pathDirection(state, enemy, target);
   const radial = dist < band.min ? scale(toPlayer, -1) : dist > band.max ? toPlayer : vec(0, 0);
   const dir = path ?? normalize(add(radial, scale(perpendicular(toPlayer, enemy.ai.strafeSign), 0.5)));
   return moveEnemy(state, enemy, scale(dir, (band.speed * ms) / 1000));
 }
 
 /** Walks at the target until `closeEnough`. */
-function closeIn(state: WorldState, enemy: EnemyState, target: Vec2, speed: number, closeEnough: number, ms: number, floats = false): EnemyState {
+function closeIn(state: WorldState, enemy: EnemyState, target: Vec2, speed: number, closeEnough: number, ms: number): EnemyState {
   const toPlayer = towardTarget(target, enemy);
-  const dir = pathDirection(state, enemy, target, floats) ?? toPlayer;
+  const dir = pathDirection(state, enemy, target) ?? toPlayer;
   const moved = distance(enemy.pos, target) > closeEnough ? moveEnemy(state, enemy, scale(dir, (speed * ms) / 1000)) : enemy;
   return { ...moved, facing: dir };
 }
@@ -372,7 +372,7 @@ function updateBomber(state: WorldState, start: EnemyState, def: BomberDef, targ
         enemy = telegraph(enemy, 'puff', def.telegraphMs, toPlayer, events);
         break;
       }
-      enemy = closeIn(state, enemy, target, def.speed, def.keepDistance, ms, true);
+      enemy = closeIn(state, enemy, target, def.speed, def.keepDistance, ms);
       break;
     case 'telegraph':
       enemy = { ...enemy, facing: toPlayer };

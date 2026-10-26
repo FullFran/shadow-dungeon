@@ -8,12 +8,13 @@ import { add, clamp, distance, length, normalize, scale, sub, vec, type Vec2 } f
 /**
  * The out-of-bounds safety net (odd/tasks/out-of-bounds-fix.md), host and solo
  * only, every step; guests take the result from the snapshot. Collision
- * (geometry.ts) should already keep every walker on the floor; this catches
- * whatever slips past it, so no enemy is ever out of reach:
+ * (geometry.ts) should already keep every enemy, walker or floater, on the
+ * floor; this catches whatever slips past it, so no enemy is ever out of reach:
  *
- * - a walker whose centre is in a wall tile, or on floor no living player can
+ * - an enemy whose centre is in a wall tile, or on floor no living player can
  *   walk to, is snapped to the nearest floor tile they can (BFS from its tile);
- * - a floater (Gastly) may cross walls but stays inside the map;
+ *   floaters too (odd/tasks/floaters-usable-floor.md: an old snapshot, a spawn
+ *   or a push may still leave one in the rock, where nothing could hit it);
  * - during a sealed wave room, a wave enemy outside the room drifts back
  *   (floaters) and, after `TUNING.bounds.strayMs`, is brought to a free tile
  *   inside it with a poof (`warpMs`).
@@ -142,10 +143,11 @@ export function keepEnemiesInBounds(state: WorldState, dtMs: number): WorldState
       enemy = left > 0 ? { ...rest, warpMs: left } : rest;
     }
     const floats = floatsOf(enemy.species);
-    if (floats) {
+    if (!grid || !labels) {
+      // No tiles (a hand-made arena): just inside the map.
       const inside = vec(clamp(enemy.pos.x, enemy.radius, state.arena.width - enemy.radius), clamp(enemy.pos.y, enemy.radius, state.arena.height - enemy.radius));
       if (inside.x !== enemy.pos.x || inside.y !== enemy.pos.y) enemy = { ...enemy, pos: inside };
-    } else if (grid && labels) {
+    } else {
       const t = tileOf(enemy.pos);
       const index = t.y * grid.cols + t.x;
       const buried = isWall(grid, t.x, t.y);
@@ -153,7 +155,7 @@ export function keepEnemiesInBounds(state: WorldState, dtMs: number): WorldState
       if (buried || cut) {
         const onFloor = (x: number, y: number) => !isWall(grid, x, y) && (playerLabels.size === 0 || playerLabels.has(labels[y * grid.cols + x]!));
         const to = nearestTile(grid, t, onFloor);
-        if (to) enemy = { ...enemy, pos: confineCircle(state.arena, tileCenter(to), enemy.radius), knockback: vec(0, 0) };
+        if (to) enemy = { ...enemy, pos: confineCircle(state.arena, tileCenter(to), enemy.radius, !floats), knockback: vec(0, 0) };
       }
     }
     if (waves && (waves.ids ?? []).includes(enemy.id)) enemy = herd(state, enemy, waves.rect, floats, dtMs);

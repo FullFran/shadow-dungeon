@@ -99,10 +99,16 @@ describe('enemy chase pathfinding', () => {
     expect(tileOf(a.enemies[0]!.pos)).not.toEqual({ x: 2, y: 6 });
   });
 
-  it('leaves Gastly floating straight through walls', () => {
-    const state = spawnEnemy(createWorld({ seed: 3, arena: ARENA, playerPos: at(2, 1) }), 'gastly', at(2, 6));
-    const later = run(state, input(), 60);
-    // Straight up towards its distance band: x does not wander around the wall.
-    expect(Math.abs(later.enemies[0]!.pos.x - at(2, 6).x)).toBeLessThan(TILE);
+  it('brings a Gastly round the L-wall like a walker, never through it', () => {
+    let state = spawnEnemy(createWorld({ seed: 3, arena: ARENA, playerPos: at(2, 1) }), 'gastly', at(2, 6));
+    let sighted = -1;
+    for (let i = 0; i < 900 && sighted < 0; i++) {
+      state = step(state, input(), FIXED_DT_MS);
+      const ghost = state.enemies[0]!;
+      const t = tileOf(ghost.pos);
+      expect(GRID.tiles[t.y * GRID.cols + t.x]).toBe(1);
+      if (lineOfSight(GRID, ghost.pos, state.player.pos)) sighted = i;
+    }
+    expect(sighted).toBeGreaterThan(0);
   });
 });

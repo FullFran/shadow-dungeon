@@ -82,17 +82,18 @@ function pushOutOfTiles(pos: Vec2, radius: number, arena: Arena): Vec2 {
 }
 
 /**
- * Keeps a circle inside the arena and, for walkers (`solid`), outside its
- * obstacles and wall tiles. Floaters (Gastly) pass `solid = false` and only
- * meet the outer bounds of the map.
+ * Keeps a circle inside the arena and outside its wall tiles; walkers
+ * (`walker`) also stay outside its obstacles. Floaters (Gastly) pass
+ * `walker = false`: they drift over obstacles but never into the rock, so
+ * they are always on floor the player can use (odd/tasks/floaters-usable-floor.md).
  */
-export function confineCircle(arena: Arena, pos: Vec2, radius: number, solid = true): Vec2 {
+export function confineCircle(arena: Arena, pos: Vec2, radius: number, walker = true): Vec2 {
   let next = pos;
-  if (solid) for (const rect of arena.obstacles ?? []) next = pushOutOfRect(next, radius, rect);
-  if (solid && arena.tiles) next = pushOutOfTiles(next, radius, arena);
+  if (walker) for (const rect of arena.obstacles ?? []) next = pushOutOfRect(next, radius, rect);
+  if (arena.tiles) next = pushOutOfTiles(next, radius, arena);
   next = vec(clamp(next.x, radius, arena.width - radius), clamp(next.y, radius, arena.height - radius));
-  // The map clamp may itself land a big walker's centre in rock: out again.
-  return solid && arena.tiles ? escapeWall(arena.tiles, next) : next;
+  // The map clamp may itself land a big body's centre in rock: out again.
+  return arena.tiles ? escapeWall(arena.tiles, next) : next;
 }
 
 /** Longest single resolution step of a swept move (px): a quarter tile, well under any walker's radius. */
@@ -103,15 +104,15 @@ export const SWEEP_STEP_PX = TILE / 4;
  * after each: a long push (a heavy knockback, a lunge) meets the first wall on
  * its way instead of jumping past it. A short move is one plain `confineCircle`.
  */
-export function sweepCircle(arena: Arena, from: Vec2, delta: Vec2, radius: number, solid = true): Vec2 {
+export function sweepCircle(arena: Arena, from: Vec2, delta: Vec2, radius: number, walker = true): Vec2 {
   const steps = Math.max(1, Math.ceil(Math.hypot(delta.x, delta.y) / SWEEP_STEP_PX));
-  if (steps === 1) return confineCircle(arena, vec(from.x + delta.x, from.y + delta.y), radius, solid);
+  if (steps === 1) return confineCircle(arena, vec(from.x + delta.x, from.y + delta.y), radius, walker);
   // Unobstructed, every step aims at `from + delta * i/steps`, so a free move ends exactly (bit for bit) where one jump would.
   let pos = from;
   let free = true;
   for (let i = 1; i <= steps; i++) {
     const target = free ? vec(from.x + delta.x * (i / steps), from.y + delta.y * (i / steps)) : vec(pos.x + delta.x / steps, pos.y + delta.y / steps);
-    pos = confineCircle(arena, target, radius, solid);
+    pos = confineCircle(arena, target, radius, walker);
     if (pos.x !== target.x || pos.y !== target.y) free = false;
   }
   return pos;

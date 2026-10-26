@@ -41,7 +41,7 @@ export function initialAi(dormant = false): AiState {
 /**
  * Lungers (Poochyena, Phantump, Pumpkaboo Small, Hoothoot, Pawniard): stalk,
  * telegraph with Charge, lunge in a straight line; a dodged lunge leaves them
- * exposed. Fliers and phasers (`floats`) cross walls; Phantump drains on a
+ * exposed. Fliers and ghosts (`floats`) drift over obstacles, never walls; Phantump drains on a
  * hit; Pawniard chains a short, re-aimed second cut (`followUp`).
  */
 function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
@@ -70,7 +70,7 @@ function updateLunger(state: WorldState, start: EnemyState, def: PoochyenaDef, t
       }
       break;
     case 'approach': {
-      const path = pathDirection(state, enemy, target, def.floats === true);
+      const path = pathDirection(state, enemy, target);
       if (path) {
         // Out of sight: follow the flow field around the walls, no stalking or lunging.
         enemy = { ...moveEnemy(state, enemy, scale(path, (def.walkSpeed * ms) / 1000)), facing: path };
@@ -179,6 +179,12 @@ function updateCaster(state: WorldState, start: EnemyState, def: GastlyDef, targ
       if (dist <= def.aggroRange) enemy = { ...enemy, ai: enterMode(ai, 'reposition') };
       break;
     case 'reposition': {
+      // Out of sight (a wall between them): round it on the flow field; it only casts from floor that sees its target.
+      const path = pathDirection(state, enemy, target);
+      if (path) {
+        enemy = { ...moveEnemy(state, enemy, scale(path, (def.speed * ms) / 1000)), facing: path };
+        break;
+      }
       const inBand = dist >= def.minDistance && dist <= def.maxDistance;
       if (inBand && ai.cooldownMs <= 0) {
         enemy = telegraph(enemy, 'ball', def.telegraphMs, toPlayer, events);
@@ -271,7 +277,7 @@ function updateSlammer(state: WorldState, start: EnemyState, def: SlammerDef, ta
         enemy = telegraph(enemy, 'slam', def.telegraphMs, toPlayer, events);
         break;
       }
-      const dir = pathDirection(state, enemy, target, def.floats === true) ?? toPlayer;
+      const dir = pathDirection(state, enemy, target) ?? toPlayer;
       // Close enough to slam: hold the ground while the slam recharges.
       if (dist > def.slamRange * 0.6) {
         // Grimer: a blob of sludge where it was, every `everyMs` of walking.
