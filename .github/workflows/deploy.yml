@@ -21,12 +21,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
+      # The Sendas' boss proofs are slow: run them only when a push touches what they prove
+      # (a manual run, or a push whose base is unknown, always runs them).
+      - name: Boss proofs (when their inputs changed)
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" != "push" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            npm run test:proofs
+          elif git diff --name-only "$BASE" "${{ github.sha }}" | grep -qE '^(src/sim/|src/data/story|src/data/story-quests|src/data/.*cards|src/core/(cards|danmaku|damage|boss|combat)|src/data/(types|difficulty|rooms|dungeons|tuning)\.ts|tests/sim/(story-prove|wound-prove))'; then
+            npm run test:proofs
+          else
+            echo "Boss proofs skipped: nothing they prove changed."
+          fi
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
