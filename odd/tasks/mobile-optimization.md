@@ -72,5 +72,18 @@ Touch controls, PWA and a fit-to-screen canvas landed in `mobile-touch` / `integ
 - With a 4-6x phone budget the boss card and the town are at or over 16.7 ms on a mid-range phone; sim (<0.6 ms p95) is not a concern.
 - Build: `index-*.js` 950.57 kB (270.22 kB gzip), trystero chunk 80.49 kB, index.html 33.31 kB; dist 37 MB (sprites 13 MB, music 23 MB runtime-cached). Sprite sheets (727 files, 11.5 MB) load on the first run/town, not on the title.
 
+### Closing verification (HEAD 8d356bd)
+- `npx vitest run --testTimeout=30000`: 207 files / 2501 tests passed (golden digest included).
+- `npm run balance -- --quick --slots`: latest.md and latest.json byte-identical to the 31e3404 run (`cmp`).
+- `node tools/mobile/combat-check.mjs`: 8/8 (right hand), 8/8 `--left`.
+- `npm run build`: green; sizes in M4.
+- Review (RDD): not run by this writer; delivery is the user's decision.
+
+## Next step
+Human decision on push / PR for `perf/mobile`; then a real-device pass (iOS Safari, Android Chrome) on the thumb arc, drag-aim feel and fullscreen.
+
 ## Unverified
 - Real iOS Safari / Android Chrome devices; CPU throttling (Firefox headless cannot throttle; numbers are this machine's).
+- Multi-touch was synthesized by WebDriver BiDi in Firefox, which drops a second pointerdown/pointerup when two fingers land or lift in the same tick; real devices may differ (the controls are now robust to both).
+- Fullscreen / orientation lock, wake lock, haptics, iOS audio unlock on touchend: feature-detected code paths, not exercised on a device.
+- Pixel identity of the arena-checker and town-ground changes is argued (whole-factor scales, rounded offsets), checked only by eye on screenshots.
