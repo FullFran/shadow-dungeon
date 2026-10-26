@@ -1,5 +1,6 @@
 import type { KeyValueStore } from '../adapters/storage';
 import { SHRINE_BOSSES } from '../core/shrine';
+import { COINS } from '../data/coins';
 import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
 import { gauntletById, GAUNTLETS, type GauntletId } from '../data/shrine';
 import type { SpeciesId } from '../data/species';
@@ -64,6 +65,9 @@ export function beatenBosses(records: Records): Set<SpeciesId> {
 }
 
 export const gauntletUnlocked = (id: GauntletId, beaten: ReadonlySet<string>): boolean => gauntletById(id).bosses.every((b) => beaten.has(b));
+
+/** Pokémonedas of a gauntlet's first clear on tier `d` (its reward times the tier's multiplier); reflections pay none. */
+export const gauntletReward = (id: GauntletId, d: Difficulty): number => Math.floor(gauntletById(id).reward * COINS.difficulty[d]);
 
 export function trialBest(records: ShrineRecords, kind: TrialResult['kind'], id: string, d: Difficulty): TrialBest | null {
   const table = kind === 'boss' ? records.bosses[id] : records.gauntlets[id as GauntletId];

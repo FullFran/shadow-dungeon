@@ -28,6 +28,7 @@ import { canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRo
 type ChoiceRow = { label: string; onConfirm: () => void } | TierRow;
 import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
+import { beatenBosses, readShrine, shrineBoardLine } from './shrine-records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
 import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
 
@@ -69,6 +70,8 @@ export interface TownOptions {
   lobby?: TownLobby;
   /** The tier picked now (solo: the player's last; a room: the host's), for the notice board's records. */
   difficulty?: () => Difficulty;
+  /** The hub's altar: opens the Santuario de los Juramentos (solo only; a room gets a line instead). */
+  openShrine?: () => void;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -89,7 +92,7 @@ const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 /** Floaters bob over the ground. */
 const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
 
-type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'lore'; point: LorePoint });
+type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'lore'; point: LorePoint });
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -141,6 +144,8 @@ const readBoard = (difficulty: Difficulty): string[] => {
     ...leaderboardLines(readScores(browserStore()), (key) => t(key), 5, tier),
     // The heralds met on this device (count only).
     ...bestiaryLines(browserStore(), (key) => t(key)),
+    // The Santuario de los Juramentos: reflections open and gauntlets beaten.
+    ...shrineBoardLine(readShrine(browserStore()), beatenBosses(readRecords(browserStore())), (key) => t(key)),
   ];
 };
 
@@ -154,6 +159,7 @@ function targetsOf(map: WorldMap): Target[] {
     ...map.npcs.map((npc): Target => ({ id: npc.id, kind: 'npc', npc, pos: tileCentre(npc.x, npc.y) })),
     ...(map.board ? [{ id: 'board', kind: 'board', pos: { x: map.board.x * TILE, y: map.board.y * TILE } } as Target] : []),
     ...(map.waystone ? [{ id: 'waystone', kind: 'waystone', pos: { x: map.waystone.x * TILE, y: map.waystone.y * TILE } } as Target] : []),
+    ...(map.shrine ? [{ id: 'shrine', kind: 'shrine', pos: { x: map.shrine.x * TILE, y: map.shrine.y * TILE } } as Target] : []),
     ...map.lore.map((point): Target => ({ id: point.id, kind: 'lore', point, pos: { x: point.x * TILE, y: point.y * TILE } })),
   ];
 }
@@ -201,7 +207,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pixelScale = 1;
   let stopped = false;
   let raf = 0;
-  let dialog: { speaker: string; state: DialogState; opens?: 'shop' } | null = null;
+  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'shrine' } | null = null;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -297,6 +303,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const opens = dialog.opens;
       dialog = next ? { ...dialog, state: next } : null;
       if (!next && opens === 'shop') openShopWindow();
+      if (!next && opens === 'shrine' && options.openShrine) {
+        handle.stop();
+        options.openShrine();
+      }
       return;
     }
     const target = nearestInteractable(walker.pos, targets);
@@ -305,6 +315,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (target.kind === 'waystone') {
       if (canTravel(lobby)) openExitWindow();
       else dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
+      return;
+    }
+    if (target.kind === 'shrine') {
+      // Solo only: a room hears why; alone, the altar speaks, then the shrine opens.
+      dialog = lobby
+        ? { speaker: t('world.lore.shrine.name'), state: openDialog([t('shrine.room')]) }
+        : { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
       return;
     }
     if (target.kind === 'lore') {

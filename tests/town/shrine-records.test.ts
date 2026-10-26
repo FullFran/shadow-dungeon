@@ -5,6 +5,7 @@ import { EMPTY_RECORDS, parseRecords, recordRun, type Records } from '../../src/
 import {
   beatenBosses,
   EMPTY_SHRINE,
+  gauntletReward,
   gauntletUnlocked,
   parseShrine,
   readShrine,
@@ -105,6 +106,14 @@ describe('shrine records reducer', () => {
     const broken = { get: () => { throw new Error('denied'); }, set: () => { throw new Error('denied'); }, remove: () => undefined };
     expect(readShrine(broken)).toEqual(EMPTY_SHRINE);
     expect(saveTrial(broken, result())).toBe(false);
+  });
+});
+
+describe('gauntlet rewards', () => {
+  it('pays each gauntlet once per tier, more on harder tiers', () => {
+    expect(gauntletReward('guardians', 'easy')).toBe(150);
+    expect(gauntletReward('oaths', 'easy')).toBe(300);
+    expect(gauntletReward('oaths', 'nightmare')).toBeGreaterThan(gauntletReward('oaths', 'hard'));
   });
 });
 

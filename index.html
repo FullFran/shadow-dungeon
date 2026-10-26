@@ -169,6 +169,16 @@
       .shop { min-width: 30rem; max-width: 36rem; }
       .shop .shop-effect { min-height: 2.6em; margin: 10px 0 0; }
       .shop .shop-balance { margin-bottom: 8px; }
+      /* Santuario de los Juramentos (src/app/shrine.ts) */
+      .shrine { min-width: 36rem; max-width: 46rem; }
+      .shrine h3 { margin: 0 0 10px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
+      .shrine-body { display: grid; gap: 0 1.6rem; }
+      @media (min-width: 760px) { .shrine-body { grid-template-columns: minmax(16rem, 1fr) 1fr; } }
+      .shrine-about { min-height: 7em; }
+      .shrine-about p { margin: 0.3em 0 0.6em; }
+      .shrine-solo { margin: 10px 0 0; font-size: 16px; }
+      .shrine-result { min-width: 24rem; }
+      .shrine-new { color: var(--md-cursor); }
       .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; }
 
       .item-pick.shared { position: fixed; left: 0; right: 0; bottom: 3rem; display: flex; justify-content: center; pointer-events: none; z-index: 8; }

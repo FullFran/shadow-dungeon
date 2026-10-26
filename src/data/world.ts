@@ -105,6 +105,8 @@ export interface WorldMap {
   board?: { x: number; y: number };
   /** The waystone's reading point, in tiles: quick travel to any open dungeon (the hub only). */
   waystone?: { x: number; y: number };
+  /** Santuario de los Juramentos (the hub only): the altar's reading point, in tiles; it opens the boss shrine. */
+  shrine?: { x: number; y: number };
 }
 
 /** Rows of `fill`, then each stroke `[char, x, y, width, height]` painted over them in order. */
@@ -127,7 +129,8 @@ export const REFUGIO: WorldMap = {
   nameKey: 'world.map.refugio',
   rows: TOWN.rows,
   // The waystone by the east road (a signpost): quick travel, so a stream never has to walk.
-  props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }],
+  // The Santuario de los Juramentos: an old statue on the south lawn serves as its altar.
+  props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }, { kind: 'statue', x: 21, y: 12 }],
   npcs: TOWN.npcs,
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
   entrances: [],
@@ -137,6 +140,7 @@ export const REFUGIO: WorldMap = {
   spawn: TOWN.spawn,
   board: TOWN.board,
   waystone: { x: 29, y: 8.5 },
+  shrine: { x: 22, y: 15.5 },
 };
 
 /** Camino de las Ruinas: graves and broken pillars around the Crypt's gate, north of the road. */

@@ -3,7 +3,10 @@ import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
 import { drawHeraldScene } from '../adapters/herald-scenes';
 import type { HeraldDef } from '../data/herald';
-import { recordHerald } from '../town/bestiary';
+import { readBestiary, recordHerald } from '../town/bestiary';
+import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest } from '../town/shrine-records';
+import type { GauntletId } from '../data/shrine';
+import { shrineResultScreen, shrineWindow, type ShrineView, type TrialRequest } from './shrine';
 import { simaEventLines } from './sima-summary';
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
@@ -286,6 +289,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('town.menu'), onConfirm: () => townScreen(root) },
       // Appended last so the indices above stay put.
       { label: t('title.shop'), onConfirm: () => shopScreen(root) },
+      { label: t('title.shrine'), onConfirm: () => shrineScreen(root) },
       // Only when installable, and after every fixed entry so indices stay stable.
       ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
     ],
@@ -497,7 +501,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openShrine: () => shrineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -509,6 +513,60 @@ function townShop(parent: HTMLElement, onClose: () => void): () => void {
     shop.dispose();
     overlay.remove();
   };
+}
+
+/** Where the shrine sends the player back: the title menu (its entry) or the Refugio, beside the altar. */
+type ShrineFrom = 'title' | 'town';
+
+/** The Refugio tile in front of the altar (data/world.ts `REFUGIO.shrine`). */
+const SHRINE_TILE = { at: 'refugio', tile: { x: 22, y: 15 } } as const;
+
+/** Santuario de los Juramentos (app/shrine.ts): the window, then a trial (solo only). */
+function shrineScreen(root: HTMLElement, from: ShrineFrom = 'title', view?: ShrineView): void {
+  leaveNet();
+  applyLanguage(settings.language);
+  const back = () => (from === 'town' ? townScreen(root, SHRINE_TILE) : titleScreen(root, 7));
+  const shrine = shrineWindow({
+    shrine: readShrine(store),
+    beaten: beatenBosses(readRecords(store)),
+    heralds: readBestiary(store),
+    difficulty: settings.difficulty,
+    onTier: (difficulty) => update({ difficulty }),
+    onFight: (request) => {
+      shrine.dispose();
+      void playTrial(root, request, from);
+    },
+    onBack: () => {
+      shrine.dispose();
+      back();
+    },
+    ...(view ? { view } : {}),
+  });
+  show(root, [shrine.element]);
+}
+
+/** A shrine trial: its first arena's dungeon, the request's tier, a fresh seed. */
+const playTrial = (root: HTMLElement, request: TrialRequest, from: ShrineFrom): Promise<void> => play(root, undefined, request.stops[0]!.dungeon, undefined, { request, from });
+
+/** A trial ended: its record (heralds are not kept), a gauntlet's first-clear reward, and the shrine's result screen. */
+function trialEnd(root: HTMLElement, request: TrialRequest, from: ShrineFrom, result: GameResult, summary: RunSummary): void {
+  const trial = summary.trial!;
+  const victory = result === 'victory';
+  const kind = request.kind === 'gauntlet' ? 'gauntlet' : 'boss';
+  const kept = request.kind !== 'herald';
+  const before = kept ? trialBest(readShrine(store), kind, request.id, request.difficulty) : null;
+  const first = kept && saveTrial(store, { kind, id: request.id, difficulty: request.difficulty, victory, ms: trial.ms, noHit: trial.noHit, captures: trial.captures });
+  // No farming: reflections pay nothing, a gauntlet pays once per tier.
+  const coins = first && request.kind === 'gauntlet' ? gauntletReward(request.id as GauntletId, request.difficulty) : 0;
+  const balance = coins > 0 ? earnCoins(store, coins).coins : loadSave(store).coins;
+  const view: ShrineView = request.kind === 'gauntlet' ? 'gauntlets' : request.kind === 'herald' ? 'heralds' : 'reflections';
+  const herald = request.kind === 'herald' ? readBestiary(store).find((e) => String(e.seed) === request.id)?.name : undefined;
+  show(
+    root,
+    [shrineResultScreen({ request, victory, trial, before, coins, balance, onRetry: () => void playTrial(root, request, from), onBack: () => shrineScreen(root, from, view) }, herald)],
+    true,
+    victory ? 'victory' : 'defeat',
+  );
 }
 
 /** The upgrade shop from the title menu (its last entry). */
@@ -787,7 +845,7 @@ function endlessScore(summary: RunSummary): EndScore {
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number): Promise<void> {
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: { request: TrialRequest; from: ShrineFrom }): Promise<void> {
   if (!sheets) {
     waitScreen(root, t('app.loading'));
     await sheetsReady();
@@ -798,7 +856,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   // `?boss=<seed>`: that herald on a Sima herald floor.
   const boss = devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
-  if (!join && netMode()) {
+  // A shrine trial: solo, its own arenas and tier, no dev overrides.
+  if (trial) shared = { seed: seed ?? runSeed(), dungeon, difficulty: trial.request.difficulty };
+  if (!join && !trial && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
   }
@@ -821,16 +881,19 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     upgrades: loadSave(store).upgrades,
     ...shared,
     ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
+    ...(trial ? { trial: trial.request.stops } : {}),
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
-    onQuit: () => townScreen(root),
+    onQuit: () => (trial ? shrineScreen(root, trial.from) : townScreen(root)),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     onEnd: (result, summary) => {
+      // A shrine trial keeps its own records and never counts as a run (no dungeon records, no run coins).
+      if (trial && summary.trial) return trialEnd(root, trial.request, trial.from, result, summary);
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
       // Every peer earns its own Pokémonedas, guests too.
@@ -879,6 +942,8 @@ function devScreen(root: HTMLElement): boolean {
     // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
     town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),
+    // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
+    shrine: () => shrineScreen(root, 'title', (new URLSearchParams(window.location.search).get('view') ?? undefined) as ShrineView | undefined),
     online: () => onlineScreen(root),
     // `&guest=1`: join the preview room instead of creating it (two windows walk the town together).
     lobby: () => void openLobby(root, 'K7M2Q', new URLSearchParams(window.location.search).get('guest') !== '1', () => new BroadcastChannelTransport()),
