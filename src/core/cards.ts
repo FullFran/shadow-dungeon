@@ -42,10 +42,26 @@ export const cardFloorShare = (fight: CardFightDef, index: number): number => se
 /** Where each card's segment ends, as shares of max HP (the boss bar's notches; the last is 0). */
 export const cardFloors = (fight: CardFightDef): number[] => fight.cards.map((_, i) => cardFloorShare(fight, i));
 
-/** The card a boss plays or declares: by index on the host, by its stance (the id) on any peer. */
-export function currentCard(fight: CardFightDef, boss: Pick<BossState, 'stance' | 'card'>): { card: SpellCardDef; index: number } | null {
-  if (boss.card !== undefined && fight.cards[boss.card]?.id === boss.stance) return { card: fight.cards[boss.card]!, index: boss.card };
-  const index = fight.cards.findIndex((c) => c.id === boss.stance);
+/**
+ * The spell card a boss plays or declares, on any peer: its stance while it
+ * declares (and during every card of a pattern fight), or the hosted card
+ * (`boss.spell`) while its own engine plays the card's moves.
+ */
+export function spellOf(boss: Pick<BossState, 'stance' | 'spell'> | undefined): CardId | undefined {
+  if (!boss) return undefined;
+  if (cardInfo(boss.stance)) return boss.stance as CardId;
+  return boss.spell && cardInfo(boss.spell) ? boss.spell : undefined;
+}
+
+/** Whether a boss is declaring a card (a short invulnerable break): `transform` with the card's id as its stance (a hosted boss's own `transform`, Sableye's blink, is not one). */
+export const isDeclaring = (enemy: Pick<EnemyState, 'boss' | 'ai'>): boolean => enemy.ai.mode === 'transform' && cardInfo(enemy.boss?.stance) !== undefined;
+
+/** The card a boss plays or declares: by index on the host, by its card id (`spellOf`) on any peer. */
+export function currentCard(fight: CardFightDef, boss: Pick<BossState, 'stance' | 'card' | 'spell'>): { card: SpellCardDef; index: number } | null {
+  // An unregistered id (a test's own card) still names itself through the stance.
+  const id = spellOf(boss) ?? boss.stance;
+  if (boss.card !== undefined && fight.cards[boss.card]?.id === id) return { card: fight.cards[boss.card]!, index: boss.card };
+  const index = fight.cards.findIndex((c) => c.id === id);
   return index >= 0 ? { card: fight.cards[index]!, index } : null;
 }
 
@@ -53,6 +69,7 @@ export function currentCard(fight: CardFightDef, boss: Pick<BossState, 'stance' 
 export function cardStep(fight: CardFightDef, enemy: Pick<EnemyState, 'boss' | 'ai'>): CardStepDef | undefined {
   if (!enemy.boss || enemy.ai.mode === 'transform' || enemy.ai.mode === 'idle') return undefined;
   const found = currentCard(fight, enemy.boss);
+  if (found?.card.moves) return undefined;
   const index = Number(enemy.ai.attack);
   return found && Number.isInteger(index) ? found.card.steps[index] : undefined;
 }
@@ -67,9 +84,9 @@ export const cardHpFloor = (enemy: Pick<EnemyState, 'boss'>): number => enemy.bo
  * guest's local hits agree with the host.
  */
 export function cardGuard(enemy: Pick<EnemyState, 'boss' | 'ai'>): 'all' | 'front' | null {
-  const info = cardInfo(enemy.boss?.stance);
+  const info = cardInfo(spellOf(enemy.boss));
   if (!info) return null;
-  if (enemy.ai.mode === 'transform' || info.survival) return 'all';
+  if (isDeclaring(enemy) || info.survival) return 'all';
   if (info.guard === 'front' && enemy.ai.mode !== 'recover') return 'front';
   return null;
 }
@@ -77,7 +94,7 @@ export function cardGuard(enemy: Pick<EnemyState, 'boss' | 'ai'>): 'all' | 'fron
 /** Time left on the card in play (host: the snapshot does not carry the clock), or null. */
 export function cardTimeLeftMs(fight: CardFightDef, enemy: Pick<EnemyState, 'boss' | 'ai'>): number | null {
   const boss = enemy.boss;
-  if (!boss || boss.cardMs === undefined || enemy.ai.mode === 'transform') return null;
+  if (!boss || boss.cardMs === undefined || isDeclaring(enemy)) return null;
   const found = currentCard(fight, boss);
   return found ? Math.max(0, found.card.timerMs - boss.cardMs) : null;
 }
@@ -99,14 +116,21 @@ function declare(enemy: EnemyState, fight: CardFightDef, index: number, outcome:
   events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'declare', durationMs: ms });
   const hpFloor = enemy.maxHp * cardFloorShare(fight, index);
   const { aimPoint: _aim, chain: _chain, ...ai } = enemy.ai;
-  const next = withBoss(enemy, { stance: card.id, card: index, cardMs: 0, hpFloor, comboIndex: 0, combosDone: 0, stanceMs: 0, stanceDamage: 0 });
+  const next = withBoss(enemy, { stance: card.id, ...(card.moves ? { spell: card.id } : {}), card: index, cardMs: 0, hpFloor, comboIndex: 0, combosDone: 0, stanceMs: 0, stanceDamage: 0 });
   return withAi(next, { ...enterMode(ai, 'transform', ms), contact: 'none', attack: outcome });
+}
+
+/** A card's end: every enemy shot vanishes, and the boss's summons leave with it (no threat survives into a declaration). */
+function clearThreats(state: WorldState, fight: CardFightDef): WorldState {
+  const dismiss = fight.dismiss ?? [];
+  const enemies = dismiss.length === 0 ? state.enemies : state.enemies.map((e) => (e.alive && dismiss.includes(e.species) ? { ...e, alive: false, spent: true } : e));
+  return { ...state, enemies, projectiles: state.projectiles.filter((p) => p.owner !== 'enemy') };
 }
 
 /** Card `index` is over: its shots vanish, a timed-out segment is lost, and the next card is declared (or the boss falls). */
 function endCard(state: WorldState, enemy: EnemyState, fight: CardFightDef, index: number, outcome: Exclude<CardOutcome, 'start'>, events: GameEvent[]): WorldState {
   events.push({ type: 'spellCardEnd', enemyId: enemy.id, card: fight.cards[index]!.id, outcome });
-  const cleared = { ...state, projectiles: state.projectiles.filter((p) => p.owner !== 'enemy') };
+  const cleared = clearThreats(state, fight);
   const hp = outcome === 'timeout' ? Math.min(enemy.hp, enemy.boss!.hpFloor ?? 0) : enemy.hp;
   if (hp <= 0) {
     events.push({ type: 'enemyDefeated', enemyId: enemy.id });
@@ -260,6 +284,48 @@ export function updateCardFight(state: WorldState, start: EnemyState, fight: Car
   return playCard(state, enemy, fight, card, target, ms, events);
 }
 
+/** How a hosted boss plays one step of a card's moves: its own engine, restricted to `card.moves` (and never awakening on its own). */
+export type HostedPlay = (state: WorldState, enemy: EnemyState, card: SpellCardDef) => WorldState;
+
+/**
+ * One step of a hosted spell-card fight (host): the same declaration,
+ * clock, segment and end as `updateCardFight`, but the card's moves are the
+ * boss's own (data/cards.ts `moves`), played by its engine through `play`.
+ * After a declaration the boss starts its card fresh: `opening` is the
+ * stance its engine starts a cycle from (the first move, or Trevenant's
+ * slam), in `approach` with the first move's short wait; a `phase2` card
+ * puts its engine in phase 2 for good.
+ */
+export function updateHostedCardFight(state: WorldState, start: EnemyState, fight: CardFightDef, target: Vec2, ms: number, events: GameEvent[], play: HostedPlay, opening: (card: SpellCardDef) => string): WorldState {
+  if (!start.boss || fight.cards.length === 0) return state;
+  let enemy = start;
+  const ai = enemy.ai;
+  if (ai.mode === 'idle') {
+    if (distance(enemy.pos, target) <= fight.aggroRange) enemy = declare(enemy, fight, 0, 'start', events);
+    return replaceEnemy(state, enemy);
+  }
+  const found = currentCard(fight, enemy.boss!);
+  if (!found) return replaceEnemy(state, declare(enemy, fight, 0, 'start', events));
+  const { card, index } = found;
+  if (isDeclaring(enemy)) {
+    if (!modeOver(ai)) return replaceEnemy(state, enemy);
+    // Its engine announces each move itself as it starts it.
+    const stance = opening(card) as BossState['stance'];
+    const boss = withBoss(enemy, { stance, spell: card.id, stanceMs: 0, comboIndex: 0, combosDone: 0, ...(card.phase2 || enemy.boss!.phase === 2 ? { phase: 2 as const } : {}) });
+    const { aimPoint: _aim, attack: _outcome, ...rest } = ai;
+    return replaceEnemy(state, withAi(boss, { ...enterMode(rest, 'approach'), cooldownMs: FIRST_MOVE_MS, contact: 'none' }));
+  }
+  const cardMs = (enemy.boss!.cardMs ?? 0) + ms;
+  enemy = withBoss(enemy, { cardMs, card: index });
+  const floor = enemy.boss!.hpFloor ?? 0;
+  const broken = !card.survival && enemy.hp <= floor;
+  if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
+  return play(state, enemy, card);
+}
+
+/** The moves a hosted card plays at this party size: its own, then the party's area move (data/party-tricks.ts `partyMoves`) once per loop. */
+export const hostedMoves = <T extends string>(card: SpellCardDef, def: { partyMoves?: readonly string[] }): T[] => [...(card.moves ?? []), ...(card.survival ? [] : (def.partyMoves ?? []))] as T[];
+
 /**
  * Every peer, for its own player, after each step: follows the spell card
  * in play and whether the player was hurt during it; when the card ends
@@ -277,8 +343,8 @@ export function updateCapture(state: WorldState, events: GameEvent[]): WorldStat
   if (capture) {
     const watched = capture;
     const boss = state.enemies.find((e) => e.id === watched.enemyId);
-    const declaring = boss?.alive === true && boss.ai.mode === 'transform';
-    const over = !boss || !boss.alive || boss.boss?.stance !== watched.card || declaring;
+    const declaring = boss?.alive === true && isDeclaring(boss);
+    const over = !boss || !boss.alive || spellOf(boss.boss) !== watched.card || declaring;
     if (over) {
       // A boss that fell on a timed-out last card (a herald fading) seen in this step's events captures nothing.
       const fadedOut = events.some((e) => e.type === 'spellCardEnd' && e.enemyId === watched.enemyId && e.outcome === 'timeout');
@@ -293,8 +359,8 @@ export function updateCapture(state: WorldState, events: GameEvent[]): WorldStat
     } else if (hurt && !watched.hit) capture = { ...watched, hit: true };
   }
   if (!capture) {
-    const boss = state.enemies.find((e) => e.alive && e.boss && cardInfo(e.boss.stance) && e.ai.mode !== 'transform' && e.ai.mode !== 'idle');
-    if (boss) capture = { enemyId: boss.id, card: boss.boss!.stance as CardId, hit: hurt };
+    const boss = state.enemies.find((e) => e.alive && spellOf(e.boss) && !isDeclaring(e) && e.ai.mode !== 'idle');
+    if (boss) capture = { enemyId: boss.id, card: spellOf(boss.boss)!, hit: hurt };
   }
   if (capture === state.capture && player === state.player) return state;
   const { capture: _old, ...rest } = state;

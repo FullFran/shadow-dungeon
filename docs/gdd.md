@@ -177,6 +177,19 @@ Desde Normal, Aegislash y Decidueye pelean como un jefe de Touhou (`src/data/car
 - **Difícil:** más densas o rápidas, la espiral gana otra en sentido contrario, y llega la de supervivencia Signo Bosque «Bosque de Flechas».
 - **Pesadilla:** capas apuntadas de los clones, Signo Sombra «Costura de Sombras» y, en el último 12 %, Última Flecha «Noche sin Luna».
 
+**Los demás jefes con cartas (cartas «alojadas», `src/data/hosted-cards.ts`):** desde Normal, Sableye, Trevenant, Lanturn, Dhelmise, Salazzle y Nihilego también pelean con cartas, sin cambiar sus patrones. Cada carta nombra algunos de sus movimientos de siempre (el Destello de Sableye, el kelp de Dhelmise...), y su propio motor los juega igual que antes, con los trucos de su nivel. La carta pone el tramo de vida, el tiempo, la declaración y la captura. Al jefe nunca le despierta la vida por su cuenta: su fase 2 es una carta de fase 2 (declaración larga). El séquito de Salazzle se va con cada carta, así que en una declaración no queda ninguna amenaza. En Fácil siguen como estaban.
+
+| Jefe | Normal | Difícil (+ supervivencia) | Pesadilla (+ última carta) |
+|---|---|---|---|
+| Sableye | Destello del Ladrón, Gemas Robadas | + Bóveda sin Fondo (12 s) | + Última Gema «El Ladrón de Sombras» (15 %) |
+| Trevenant | Raíz Hambrienta, Bosque que Llora, Viajeros Perdidos | + Mil Ramas (14 s) | + Última Raíz «El Bosque no Olvida» (15 %) |
+| Lanturn | Fondo Callado, Señuelo | + Luz que no Llega (12 s) | + Último Farol «Mar de Faroles» (15 %) |
+| Dhelmise | Resaca, Laberinto de Látigos, Corriente del Pecio (fase 2), Juramentos Hundidos | + La Marea no Perdona (15 s) | + Vórtice sin Orilla, Último Juramento «Pecio sin Nombre» (12 %) |
+| Salazzle | Danza de la Salamandra, Humo Dulce, Neblina de la Reina | + Humo de la Corte (12 s) | + Último Baile «Cortejo de la Reina» (15 %) |
+| Nihilego | Nervios Ajenos, Joya Rota, Agujero Ultra (fase 2), Marea de Neurotoxina | + El Cielo se Abre (15 s) | + Aguacero, Última Grieta «La que Cayó del Cielo» (12 %) |
+
+En partida de tres o más, el movimiento de área de grupo (sección 8) entra una vez más en cada vuelta de cada carta.
+
 En el servidor de desarrollo, `?card=N` empieza el combate en la carta N (para capturas); también un heraldo de la Sima.
 
 ### Prólogo y trasfondo *(provisional)*

@@ -1,8 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef, type ComboHitDef } from '../data/enemies';
 import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
-import { cardFloors, cardGuard, cardTimeLeftMs, fightOf, updateCardFight } from './cards';
-import { cardInfo } from '../data/cards';
+import { cardFloors, cardGuard, cardTimeLeftMs, fightOf, spellOf, updateCardFight } from './cards';
 import { heraldBar } from './herald/brain';
 import { behaviourFor } from './tricks';
 import type { SpeciesId } from '../data/species';
@@ -109,11 +108,12 @@ const showsBar = (enemy: EnemyState): boolean => {
 export function bossBar(state: WorldState): BossBar | null {
   const enemy = state.enemies.find((e) => e.alive && showsBar(e));
   if (!enemy) return null;
-  const bar: BossBar = { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: enemy.boss?.stance ?? null };
+  // A hosted card shows as the card (its name once, its notches), not as the move its engine plays.
+  const bar: BossBar = { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: spellOf(enemy.boss) ?? enemy.boss?.stance ?? null };
   // A herald's cards: equal segments, its card clock (core/herald/brain.ts).
   const herald = enemy.herald ? heraldBar(state, enemy) : null;
   if (herald) return { ...bar, ...herald };
-  const fight = cardInfo(enemy.boss?.stance) ? fightOf(behaviourFor(enemy.species, worldDifficulty(state))) : undefined;
+  const fight = spellOf(enemy.boss) ? fightOf(behaviourFor(enemy.species, worldDifficulty(state))) : undefined;
   if (!fight) return bar;
   const left = cardTimeLeftMs(fight, enemy);
   return { ...bar, segments: cardFloors(fight).slice(0, -1).map((share) => share * enemy.maxHp), ...(left !== null ? { cardLeftMs: left } : {}) };

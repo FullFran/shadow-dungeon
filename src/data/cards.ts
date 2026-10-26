@@ -61,8 +61,15 @@ export interface SpellCardDef {
   phase2?: true;
   /** Pause between two moves of the card (it drifts meanwhile). */
   restMs: number;
-  /** The card's moves, played in order and looped until the card ends. */
+  /** The card's moves, played in order and looped until the card ends (empty for a hosted card). */
   steps: readonly CardStepDef[];
+  /**
+   * A hosted card (data/hosted-cards.ts): the boss's own moves, by the names
+   * its engine already knows (Sableye's `glint`, Dhelmise's `kelp`...),
+   * played by that engine in this order and looped. The patterns stay the
+   * boss's own; the card adds the segment, timer, declaration and capture.
+   */
+  moves?: readonly string[];
 }
 
 export interface CardFightDef {
@@ -79,6 +86,8 @@ export interface CardFightDef {
   keepDistance: number;
   /** Damage of every card hit (shots and melee), on top of the tier's own (the guardians hit harder on Hard and Nightmare). */
   power: number;
+  /** Species the boss summons during its cards (Salazzle's court): they leave with the card when it ends, so a declaration holds no threat. */
+  dismiss?: readonly string[];
 }
 
 /**

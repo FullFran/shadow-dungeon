@@ -12,6 +12,10 @@ import type { SpeciesId } from './species';
  * pressure, never a second telegraph on the same player. Bosses without a
  * cheap area card (Aegislash, Lanturn, Nihilego, the echoes) get none.
  */
+/*
+ * A hosted spell-card boss (data/hosted-cards.ts) plays its party move once
+ * more in every card's loop (`partyMoves`, core/cards.ts `hostedMoves`).
+ */
 export interface PartyTrick {
   minParty: number;
   patch: (def: EnemyDef) => Partial<EnemyDef>;
@@ -21,13 +25,13 @@ const FROM = BOSS_AGGRO.areaCardFrom;
 
 export const PARTY_TRICKS: Partial<Record<SpeciesId, readonly PartyTrick[]>> = {
   // The marked root lanes once more.
-  trevenant: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as TreantDef).cards, 'roots'] }) as Partial<TreantDef> }],
+  trevenant: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as TreantDef).cards, 'roots'], partyMoves: ['roots'] }) as Partial<TreantDef> }],
   // A second fan from the edge of the clearing.
   decidueye: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as ArcherDef).cards, 'fan'] }) as Partial<ArcherDef> }],
   // Another gem ring.
-  sableye: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as ThiefDef).cards, 'gems'] }) as Partial<ThiefDef> }],
+  sableye: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as ThiefDef).cards, 'gems'], partyMoves: ['gems'] }) as Partial<ThiefDef> }],
   // The kelp lanes again.
-  dhelmise: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as DanmakuDef).cards, 'kelp'] }) as Partial<DanmakuDef> }],
+  dhelmise: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as DanmakuDef).cards, 'kelp'], partyMoves: ['kelp'] }) as Partial<DanmakuDef> }],
   // One more haze over the court.
-  salazzle: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as unknown as QueenDef).cards, 'haze'] }) as Partial<EnemyDef> }],
+  salazzle: [{ minParty: FROM, patch: (d) => ({ cards: [...(d as unknown as QueenDef).cards, 'haze'], partyMoves: ['haze'] }) as Partial<EnemyDef> }],
 };

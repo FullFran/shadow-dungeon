@@ -98,7 +98,7 @@ function telegraphLengths(state: WorldState, ms: number): { attack: string; ms: 
   for (let i = 0; i < ticksFor(ms); i++) {
     current = step({ ...current, player: { ...current.player, hp: current.player.maxHp } }, IDLE, FIXED_DT_MS);
     const e: EnemyState | undefined = current.enemies[0];
-    const tele = current.events.find((ev) => ev.type === 'enemyTelegraph');
+    const tele = current.events.find((ev) => ev.type === 'enemyTelegraph' && ev.attack !== 'declare');
     if (tele && tele.type === 'enemyTelegraph') {
       if (open) out.push({ attack: open.attack, ms: open.ticks * FIXED_DT_MS, planned: open.planned });
       open = { attack: tele.attack, ticks: 0, planned: tele.durationMs };

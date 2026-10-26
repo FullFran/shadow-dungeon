@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_SHOT_CAP, type EnemyAttackDef } from '../../src/data/enemies';
+import { NIHILEGO_CARDS_NORMAL, SALAZZLE_CARDS_NORMAL } from '../../src/data/hosted-cards';
 import { scaledTelegraphMs, TELEGRAPH_FLOOR, type Difficulty } from '../../src/data/difficulty';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, SWAMP_SHOT_CAP, VENIPEDE, type QueenDef, type UltraDef } from '../../src/data/swamp-enemies';
 import { spawnShot } from '../../src/core/brain';
@@ -155,7 +156,7 @@ function telegraphLengths(state: WorldState, ms: number): { attack: string; ms: 
   for (let i = 0; i < ticksFor(ms); i++) {
     current = step({ ...current, player: { ...current.player, hp: current.player.maxHp } }, IDLE, FIXED_DT_MS);
     const e: EnemyState | undefined = current.enemies.find((x) => x.species === 'salazzle' || x.species === 'nihilego');
-    const tele = current.events.find((ev) => ev.type === 'enemyTelegraph' && ev.enemyId === e?.id);
+    const tele = current.events.find((ev) => ev.type === 'enemyTelegraph' && ev.enemyId === e?.id && ev.attack !== 'declare');
     if (tele && tele.type === 'enemyTelegraph') {
       if (open) out.push({ attack: open.attack, ms: open.ticks * FIXED_DT_MS, planned: open.planned });
       open = { attack: tele.attack, ticks: 0, planned: tele.durationMs };
@@ -193,7 +194,10 @@ describe('tier telegraph scaling on swamp bosses', () => {
 describe('swamp tricks through behaviourFor', () => {
   it('normal plays the data as written; hard adds each trick; nightmare adds each boss card', () => {
     for (const species of ['venipede', 'salandit', 'skrelp', 'salazzle', 'nihilego'] as const) {
-      expect(behaviourFor(species, 'easy'), species).toBe(behaviourFor(species, 'normal'));
+      // The bosses fight with hosted spell cards from normal on (data/hosted-cards.ts); nothing else changes on normal.
+      const cards = species === 'salazzle' ? SALAZZLE_CARDS_NORMAL : species === 'nihilego' ? NIHILEGO_CARDS_NORMAL : undefined;
+      if (cards) expect(behaviourFor(species, 'normal'), species).toEqual({ ...behaviourFor(species, 'easy'), spellCards: cards });
+      else expect(behaviourFor(species, 'easy'), species).toBe(behaviourFor(species, 'normal'));
       expect(behaviourFor(species, 'hard'), species).not.toBe(behaviourFor(species, 'normal'));
     }
     expect(behaviourFor('venipede', 'hard')).toMatchObject({ bounces: VENIPEDE.bounces + 1 });

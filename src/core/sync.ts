@@ -25,6 +25,11 @@ import type {
   WorldState,
 } from './state';
 import { vec, type Vec2 } from './vec';
+import type { SpellCardId } from '../data/cards';
+import type { BossState } from './state';
+
+/** The boss state without its hosted card: the latest snapshot says whether one plays. */
+const withoutSpell = ({ spell: _spell, ...boss }: BossState): BossState => boss;
 import { createPlayer } from './world';
 import { clampParty } from '../data/party-scaling';
 import { partyField, partyHpScale, partySizeOf } from './party';
@@ -65,7 +70,8 @@ export interface EnemySnapshot {
   hitstunMs: number;
   /** Behaviour, for animation, telegraphs and the guest's victim-side melee check. */
   ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2; attack?: string; aimPoint?: Vec2 };
-  boss?: { stance: BossStance; comboIndex: number };
+  /** `spell`: a hosted spell card in play (core/cards.ts), absent otherwise. */
+  boss?: { stance: BossStance; comboIndex: number; spell?: SpellCardId };
   /** Fell by its own hand: the guest credits it nothing either. */
   spent?: boolean;
   /** Elite trait (the one table, data/difficulty.ts), whether its armor still holds, and whether it strikes positionally. */
@@ -179,7 +185,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
         ...(e.ai.attack !== undefined ? { attack: e.ai.attack } : {}),
         ...(e.ai.aimPoint ? { aimPoint: e.ai.aimPoint } : {}),
       },
-      ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex } } : {}),
+      ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex, ...(e.boss.spell ? { spell: e.boss.spell } : {}) } } : {}),
       ...(e.spent ? { spent: true } : {}),
       ...(e.elite ? { elite: e.elite } : {}),
       ...(e.armor ? { armor: true as const } : {}),
@@ -260,7 +266,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       hitstunMs: s.hitstunMs,
       knockback: vec(0, 0),
       ai: { ...withoutNamedAttack(base.ai), ...s.ai, contact },
-      ...(s.boss ? { boss: { ...(base.boss ?? initialBoss()), ...s.boss } } : {}),
+      ...(s.boss ? { boss: { ...withoutSpell(base.boss ?? initialBoss()), ...s.boss } } : {}),
       ...(s.spent ? { spent: true } : {}),
       elite: s.elite,
       armor: s.armor,

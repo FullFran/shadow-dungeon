@@ -265,6 +265,11 @@ export interface BossState {
   card?: number;
   /** Spell-card fight: time spent in the current card, declaration excluded (host only). */
   cardMs?: number;
+  /**
+   * Hosted spell-card fight (data/cards.ts `moves`): the card in play while
+   * `stance` names the boss's own move (synced: guests read the card from it).
+   */
+  spell?: SpellCardId;
   /** Spell-card fight: the HP the current card's segment ends at; hits never take the boss below it while the card plays (host only). */
   hpFloor?: number;
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DECIDUEYE_CARDS_NORMAL } from '../../src/data/decidueye-cards';
+import { TREVENANT_CARDS_NORMAL } from '../../src/data/hosted-cards';
+import { updateTreant } from '../../src/core/treant';
+import { tickAiAt } from '../../src/core/difficulty';
+import { FIXED_DT_MS as TICK_MS } from '../../src/core/timestep';
+import type { TreantDef } from '../../src/data/enemies';
+import type { GameEvent as Ev } from '../../src/core/state';
 import type { Difficulty } from '../../src/data/difficulty';
 import { DECIDUEYE, ENEMY_BEHAVIOUR, TREVENANT } from '../../src/data/enemies';
 import { FOREST_SPECIES, FOREST_TRICKS } from '../../src/data/forest-tricks';
@@ -41,6 +47,7 @@ describe('forest difficulty hooks', () => {
       expect(behaviourFor(species, 'easy')).toBe(ENEMY_BEHAVIOUR[species]);
       // The guardian fights with spell cards from normal on (data/guardian-tricks.ts); nothing else changes on normal.
       if (species === 'decidueye') expect(behaviourFor(species, 'normal')).toEqual({ ...ENEMY_BEHAVIOUR[species], spellCards: DECIDUEYE_CARDS_NORMAL });
+      else if (species === 'trevenant') expect(behaviourFor(species, 'normal')).toEqual({ ...ENEMY_BEHAVIOUR[species], spellCards: TREVENANT_CARDS_NORMAL });
       else expect(behaviourFor(species, 'normal')).toBe(ENEMY_BEHAVIOUR[species]);
       const tricks = FOREST_TRICKS[species] ?? [];
       expect(tricks.length, species).toBeGreaterThan(0);
@@ -95,9 +102,16 @@ describe('forest difficulty hooks', () => {
     expect(night.spiral.bursts).toBeGreaterThan(TREVENANT.spiral.bursts);
     expect(night.curse.rings).toBeGreaterThan(TREVENANT.curse.rings);
     const hollow = { width: 800, height: 640 };
-    const played = watch(arena('trevenant', vec(400, 230), 'hard', vec(400, 520), hollow), 90000, (s) => (first(s).boss?.combosDone ?? 0) >= 4);
-    expect(stances(played.events)).toContain('grove');
-    for (const e of played.events) if (e.type === 'enemyTelegraph') expect(e.durationMs).toBeGreaterThanOrEqual(500);
+    // Hard fights with hosted cards; its own rotation (the engine the cards host) plays the grove after its three cards.
+    const own: TreantDef = { ...(behaviourFor('trevenant', 'hard') as TreantDef), spellCards: undefined };
+    let s = arena('trevenant', vec(400, 230), 'hard', vec(400, 520), hollow);
+    const events: Ev[] = [];
+    for (let i = 0; i < 90000 / TICK_MS && (first(s).boss?.combosDone ?? 0) < 4; i++) {
+      const e = first(s);
+      s = updateTreant(s, { ...e, ai: tickAiAt(e.ai, TICK_MS, 'hard') }, own, s.player.pos, TICK_MS, events);
+    }
+    expect(stances(events)).toContain('grove');
+    for (const e of events) if (e.type === 'enemyTelegraph') expect(e.durationMs).toBeGreaterThanOrEqual(500);
   });
 
   it('Decidueye deals one more card on hard and plays longer combos on nightmare', () => {

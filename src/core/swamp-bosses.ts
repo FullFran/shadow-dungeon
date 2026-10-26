@@ -6,6 +6,8 @@ import { confineCircle } from './geometry';
 import type { AiState, Arena, BossState, EnemyState, GameEvent, PlayerState, WorldState } from './state';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from './vec';
 import { spawnEnemy } from './world';
+import { hostedMoves, updateHostedCardFight } from './cards';
+import type { SpellCardDef } from '../data/cards';
 
 /**
  * The Toxic Swamp's bosses (data/swamp-enemies.ts): Salazzle, the mid-boss
@@ -145,6 +147,12 @@ function queenRest(enemy: EnemyState, def: QueenDef, recoverMs: number): EnemySt
 
 export function updateQueen(state: WorldState, start: EnemyState, def: QueenDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
+  // Normal and harder: hosted spell cards (data/hosted-cards.ts); the court and its patterns stay hers.
+  const fight = def.spellCards;
+  if (fight && !state.enemyScale?.echo) {
+    const own = (card: SpellCardDef): QueenDef => ({ ...def, spellCards: undefined, cards: hostedMoves<QueenCard>(card, def) });
+    return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateQueen(s, e, own(card), target, ms, events), (card) => own(card).cards[0]!);
+  }
   let enemy = withBoss(start, { stanceMs: start.boss.stanceMs + ms });
   const ai = enemy.ai;
   const boss = enemy.boss!;
@@ -297,8 +305,21 @@ function throwRing(state: WorldState, enemy: EnemyState, def: UltraDef, aim: Vec
   return next;
 }
 
+/** Nihilego restricted to a hosted card's moves, in the phase the card plays (its phase-2 moves are faster); it never awakens on its own. */
+export function hostedUltra(def: UltraDef, card: SpellCardDef, phase2: boolean): UltraDef {
+  const moves = hostedMoves<UltraCard>(card, def);
+  const { spellCards: _cards, ...base } = def;
+  return { ...base, phase1: phase2 ? def.phase1 : moves, phase2: { ...def.phase2, threshold: -1, cards: phase2 ? moves : def.phase2.cards } };
+}
+
 export function updateUltra(state: WorldState, start: EnemyState, def: UltraDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
+  // Normal and harder: hosted spell cards (data/hosted-cards.ts).
+  const fight = def.spellCards;
+  if (fight && !state.enemyScale?.echo) {
+    const own = (card: SpellCardDef, e: EnemyState) => hostedUltra(def, card, card.phase2 === true || e.boss?.phase === 2);
+    return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateUltra(s, e, own(card, e), target, ms, events), (card) => hostedMoves<UltraCard>(card, def)[0]!);
+  }
   let enemy = withBoss(start, { stanceMs: start.boss.stanceMs + ms });
   const ai = enemy.ai;
   const boss = enemy.boss!;
