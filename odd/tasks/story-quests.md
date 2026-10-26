@@ -28,17 +28,28 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
 - [x] T3 Owner addition: seven-floor road, mid-bosses, wound boss with cards, live beatability proof (18 tests: every card of every tier from three starts, solver fights on Nightmare). Route: inline.
 - [x] T4 Owner addition: reach rule + test for every challenge; Litwick and Piplup pools fixed. Route: inline.
 - [x] T5 Mimikyu content (es/en), canon-inspired, challenge text replaced; screenshots.
+- [x] T6 Owner 2026-10-26 "sigue con las otras 7" (commits 1d572c6 sprites, c98ee78 feature; branch `feat/sendas-starters`, the starters; Abra, Piplup, Shinx, Axew on a parallel branch): Cubone, Litwick and Zorua Sendas, text es/en, wounds, scenes. Route: delegated writer (this agent), inline inside it.
+- [x] T7 Owner addition "los tres capítulos no pueden sentirse iguales": a road per chapter (`roadFor`, `challenge-<line>-2/-3`, `SENDA_ROADS`), its own base look and two mid-bosses; the wound grows per tier (cards 2/3/5/6, drawn x1.35/x1.55/x1.8). Runs map the road from dungeon + tier on every peer; the end summary counts the road as its challenge; the fairness yardstick reads the road.
+- [x] T8 Owner addition "pon más jefes, que estos están muy quemados": 15 new Senda shadows (7 new sheets fetched: Mandibuzz, Kangaskhan, Dusknoir, Banette, Mismagius, Kecleon, Spiritomb; 8 from existing sheets), data kit `src/data/story/kit.ts`, one arena each, reach and STAB tests per road, live proofs per line (tests/sim/story-prove-<line>.test.ts).
+- [x] T9 Owner addition "Touhou por dentro": signature cards named «Signo», from the proven patterns plus a moon-phase ring card; survival on Hard, last word on Nightmare; hpScale per tier tuned to the kill margins. New engine patterns (frozen knives, late-visible bullets, phoenix walls) pending.
 
 ## Acceptance (observed)
-- `npm run typecheck`: clean.
-- `npx vitest run --testTimeout=30000 --maxWorkers=4`: 242 files, 3006 tests passed.
-- `npm run build`: built.
-- `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; witnesses file unchanged.
-- tests/sim/wound-prove.test.ts: 17 cards proven on Easy..Nightmare, solver clears Nightmare on seeds 1-3.
+- Pilot (T1-T5): typecheck clean; 242 files, 3006 tests; build; prove 166 cards, 24/24 fights; wound-prove 17 cards.
+- Starters (T6-T9, 2026-10-26), on `feat/sendas-starters`:
+  - `npm run typecheck`: clean (both configs).
+  - `npx vitest run --testTimeout=30000 --maxWorkers=4`: 252 files, 3393 tests passed.
+  - `npm run build`: built.
+  - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports/proof/latest.md unchanged.
+  - tests/sim/story-prove-{cubone,litwick,zorua}.test.ts + wound-prove: 283 tests (every card of 15 shadows and 4 wounds on Easy..Nightmare from three starts; solver clears every Nightmare fight on seeds 1-3).
 
 ## Parity checklist
 - [x] Every challenge line: reach rule applied to all eight (test iterates CHALLENGES on every tier). Mimikyu's Senda complete.
-- [ ] Cubone, Litwick, Zorua, Abra, Piplup, Shinx, Axew Sendas: outlined in docs/story-quests.md, text, mid-bosses and wounds pending (owner's pilot scope; pending, not out of scope).
+- [x] Cubone, Litwick, Zorua Sendas: three chapters with their own roads, shadows, wound, scenes, text es/en (T6-T9).
+- [ ] Abra, Piplup, Shinx, Axew Sendas: parallel branch.
+- [ ] Mimikyu: still one road for its three chapters (Sableye, Aegislash); per-chapter roads and shadows for it are the owner's call (its text names those bosses). Pending, not out of scope.
+- [x] New species parity (shadows): species, behaviour (card engine), tier tricks, sprite anim, rooms, i18n names/cards/stances, XP (50 per shadow, wounds 0 like Mimikyu's), reach rule, proofs. Not in the shrine's reflections nor the Sima (pending decision, like the wound).
+- [x] Sprites: 7 sheets fetched with tools/fetch-sprites.mjs (native Idle, Walk, Attack, Shoot, Charge, Hurt; Alolan Marowak rejected, its Shoot is a copy), CREDITS regenerated. No shiny needed (enemies).
+- [x] Co-op: the road is derived from the host's dungeon id and tier on every peer (startRun), so shared runs walk the same road; not playtested online.
 - [x] Solo: cinematics before/after, voice, fragments, boss lines, bond (screenshots in the scratchpad).
 - [x] Co-op: voice, fragments (non-pausing card), boss lines; no cinematics (shared runs never pause). Not playtested online.
 - [x] Save/sanitize: optional `story`, round trip and hostile values tested.
@@ -48,4 +59,4 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
 - Shrine/Sima/main dungeons: not concerned (the wound is not in the shrine's reflections yet: pending decision).
 
 ## Next step
-Owner review of the Mimikyu text and the wound's feel; then fill the next Senda.
+Owner review of the three starters' texts and the shadows' feel; decide Mimikyu's per-chapter roads; merge with the parallel branch (both touch STORY_QUESTS, RoomId, SpeciesId, the i18n tail and docs/story-quests.md).
