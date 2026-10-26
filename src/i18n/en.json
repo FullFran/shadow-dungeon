@@ -268,7 +268,7 @@
   "item.focus-sash": "Focus Sash",
   "item.focus-sash.description": "Survive an attack that would make you faint with 1 HP. Once per floor.",
   "item.shell-bell": "Shell Bell",
-  "item.shell-bell.description": "Heals 12% of the damage you deal.",
+  "item.shell-bell.description": "Heals 12% of the damage your direct hits deal (not zones, jumps or burns), up to 1% of max HP per second.",
   "item.muscle-band": "Muscle Band",
   "item.muscle-band.description": "20% more damage with your heavy move.",
   "item.expert-belt": "Expert Belt",

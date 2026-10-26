@@ -11,7 +11,7 @@ import { vec } from './vec';
  * pipeline: `playerStats` folds the level, the permanent upgrades (upgrades.ts) and every stack's stat modifiers
  * (data/items.ts) into the numbers combat reads; the remaining items are
  * hooks called from the places they act on: `onHitDealt` (Shell Bell, after
- * the player's hit), `onLethalHit` (Focus Sash, when an attack would faint the
+ * the player's direct hit, within a per-second budget), `onLethalHit` (Focus Sash, when an attack would faint the
  * player), `onTick` (Leftovers regen and the Sitrus Berry's low-HP heal, every
  * step) and `onContact` / `applyRecoil` (Rocky Helmet, when an enemy's melee
  * attack touches the player). Per-floor uses reset on every new floor.
@@ -114,10 +114,32 @@ export function rollCrit(state: WorldState, chance: number): { state: WorldState
   return { state: { ...state, rng: roll.state }, crit: roll.value < chance };
 }
 
-/** onHitDealt: the player's hit dealt `damage` (Shell Bell heals a share of it). */
-export function onHitDealt(player: PlayerState, damage: number): PlayerState {
+/** Shell Bell's budget for `bells` stacks: HP per second it may heal (under the items' shared sustain ceiling, Leftovers first), and the most it holds. */
+const bellRate = (player: PlayerState, bells: number): number => {
+  const room = ITEM_EFFECTS.sustainPerSecond - ITEM_EFFECTS.leftoversPerSecond * itemCount(player, 'leftovers');
+  return Math.max(0, Math.min(ITEM_EFFECTS.shellBellPerSecond * bells, room)) * player.maxHp;
+};
+const bellBudget = (player: PlayerState, bells: number): number => bellRate(player, bells) * ITEM_EFFECTS.shellBellBurstSeconds;
+
+/**
+ * onHitDealt: the player's hit took `damage` HP from an enemy. A direct hit
+ * makes Shell Bell heal a share of it, out of its budget (`ITEM_EFFECTS`);
+ * a zone tick, a chain jump, a split shard or a rethrow (`direct` false) heals nothing.
+ */
+export function onHitDealt(player: PlayerState, damage: number, direct: boolean): PlayerState {
   const bells = itemCount(player, 'shell-bell');
-  return bells > 0 && player.hp > 0 ? healed(player, damage * ITEM_EFFECTS.shellBellHeal * bells) : player;
+  if (bells <= 0 || player.hp <= 0 || !direct || damage <= 0 || player.hp >= player.maxHp) return player;
+  const spent = player.shellBell ?? 0;
+  const heal = Math.min(damage * ITEM_EFFECTS.shellBellHeal * bells, bellBudget(player, bells) - spent, player.maxHp - player.hp);
+  return heal > 0 ? { ...healed(player, heal), shellBell: spent + heal } : player;
+}
+
+/** Shell Bell's budget refills at its rate (the field is dropped once full). */
+function refillBell(player: PlayerState, dtMs: number): PlayerState {
+  if (player.shellBell === undefined) return player;
+  const spent = player.shellBell - (bellRate(player, itemCount(player, 'shell-bell')) * dtMs) / 1000;
+  const { shellBell: _full, ...rest } = player;
+  return spent > 0 ? { ...player, shellBell: spent } : rest;
 }
 
 /** onLethalHit: an attack would faint the player; Focus Sash keeps it at 1 HP, once per floor. Null when nothing saves it. */
@@ -159,10 +181,10 @@ export function applyRecoil(state: WorldState, events: GameEvent[]): WorldState 
   return current;
 }
 
-/** onTick: Leftovers regen and the Sitrus Berry's heal under its HP threshold (one per stack per floor). */
+/** onTick: Shell Bell's budget, Leftovers regen and the Sitrus Berry's heal under its HP threshold (one per stack per floor). */
 export function onTick(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
-  let player = state.player;
-  if (player.hp <= 0 || player.items.length === 0) return state;
+  let player = refillBell(state.player, dtMs);
+  if (player.hp <= 0 || player.items.length === 0) return player === state.player ? state : { ...state, player };
   const leftovers = itemCount(player, 'leftovers');
   if (leftovers > 0 && player.hp < player.maxHp) player = healed(player, (ITEM_EFFECTS.leftoversPerSecond * leftovers * player.maxHp * dtMs) / 1000);
   if (player.hp < ITEM_EFFECTS.sitrusThreshold * player.maxHp && usesOf(player, 'sitrus-berry') < itemCount(player, 'sitrus-berry')) {

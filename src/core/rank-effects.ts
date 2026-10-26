@@ -168,6 +168,7 @@ export function splitShots(state: WorldState, p: ProjectileState, pos: Vec2, dir
       hitIds: [struckId],
       ...(childEffects(p.effects) ? { effects: childEffects(p.effects)! } : {}),
       ...(p.moveId ? { moveId: p.moveId } : {}),
+      secondary: true,
     };
     current = { ...current, nextId: current.nextId + 1, projectiles: [...current.projectiles, child] };
   }

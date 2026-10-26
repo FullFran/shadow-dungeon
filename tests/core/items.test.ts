@@ -3,7 +3,7 @@ import { ITEM_EFFECTS, ITEM_IDS, ITEM_OFFER, ITEMS, type ItemId } from '../../sr
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { TUNING } from '../../src/data/tuning';
 import { computeDamage } from '../../src/core/damage';
-import { addItem, itemCount, offerItems, playerStats } from '../../src/core/items';
+import { addItem, itemCount, offerItems, onHitDealt, onTick, playerStats } from '../../src/core/items';
 import { classifyHit } from '../../src/core/player';
 import { chooseItem, progressRun, startRun, type RunProgress } from '../../src/core/run';
 import type { EnemyState, GameEvent, PlayerInput, PlayerState, WorldState } from '../../src/core/state';
@@ -178,6 +178,34 @@ describe('item effects', () => {
   it('Shell Bell: heals a share of the damage dealt', () => {
     const { state, events } = use(withPlayer(arena(['shell-bell'], [['poochyena', vec(425, 300)]]), { hp: 50 }), 0, 300);
     expect(state.player.hp).toBeCloseTo(50 + ITEM_EFFECTS.shellBellHeal * firstHit(events));
+  });
+
+  it('Shell Bell: heals within a per-second budget scaled to max HP, refilled over time (degenerate-builds B1)', () => {
+    const base = arena(['shell-bell', 'shell-bell']).player;
+    const player: PlayerState = { ...base, hp: 1, maxHp: 200 };
+    const budget = ITEM_EFFECTS.shellBellPerSecond * 2 * 200 * ITEM_EFFECTS.shellBellBurstSeconds;
+    // A huge hit heals only the budget, and the next one nothing until it refills.
+    const once = onHitDealt(player, 10_000, true);
+    expect(once.hp).toBeCloseTo(1 + budget);
+    expect(onHitDealt(once, 10_000, true).hp).toBeCloseTo(once.hp);
+    // One second of refill heals one second's rate again.
+    const refilled = onTick({ ...arena(), player: once }, 1000, []).player;
+    expect(onHitDealt(refilled, 10_000, true).hp).toBeCloseTo(once.hp + ITEM_EFFECTS.shellBellPerSecond * 2 * 200);
+    // A full budget is no field at all (a plain run's state is unchanged).
+    const full = onTick({ ...arena(), player: once }, ITEM_EFFECTS.shellBellBurstSeconds * 1000 + 50, []).player;
+    expect(full.shellBell).toBeUndefined();
+  });
+
+  it('Shell Bell: zone ticks, chain jumps, split shards and rethrows heal nothing', () => {
+    const player: PlayerState = { ...arena(['shell-bell']).player, hp: 10 };
+    expect(onHitDealt(player, 40, false)).toBe(player);
+    expect(onHitDealt(player, 40, true).hp).toBeGreaterThan(10);
+  });
+
+  it('Shell Bell and Leftovers share one sustain ceiling: with three Leftovers the bell heals nothing more', () => {
+    const player: PlayerState = { ...arena(['leftovers', 'leftovers', 'leftovers', 'shell-bell']).player, hp: 10 };
+    expect(3 * ITEM_EFFECTS.leftoversPerSecond).toBeGreaterThanOrEqual(ITEM_EFFECTS.sustainPerSecond);
+    expect(onHitDealt(player, 40, true).hp).toBe(10);
   });
 
   it('Muscle Band: only the heavy slot hits harder', () => {

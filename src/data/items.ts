@@ -70,11 +70,26 @@ export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
 export const ITEM_EFFECTS = {
   /** Leftovers: max HP fraction healed per second. */
   leftoversPerSecond: 0.01,
+  /**
+   * The most the held items heal over time together (Leftovers and Shell
+   * Bell's budget), as a max HP fraction per second: Shell Bell's rate fills
+   * only what Leftovers leaves under it (odd/tasks/degenerate-builds.md B1).
+   */
+  sustainPerSecond: 0.03,
   /** Sitrus Berry: below this HP fraction, heal `sitrusHeal` of max HP; one use per stack per floor. */
   sitrusThreshold: 0.5,
   sitrusHeal: 0.25,
-  /** Shell Bell: fraction of the damage dealt healed. */
+  /**
+   * Shell Bell: fraction of the damage a direct hit really dealt that is
+   * healed (zone ticks, chain jumps, split shards, rethrows, burns and mark
+   * bursts heal nothing), within a budget of `shellBellPerSecond` of max HP
+   * per second (per stack) that holds at most `shellBellBurstSeconds` of it:
+   * it rewards landing hits without out-healing a boss
+   * (odd/tasks/degenerate-builds.md B1).
+   */
   shellBellHeal: 0.12,
+  shellBellPerSecond: 0.01,
+  shellBellBurstSeconds: 3,
   /** Rocky Helmet: damage to an enemy whose melee attack touches the player. */
   rockyHelmetDamage: 8,
   /** Scope Lens: damage multiplier of a critical hit. */

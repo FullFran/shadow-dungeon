@@ -268,7 +268,7 @@
   "item.focus-sash": "Banda Focus",
   "item.focus-sash.description": "Aguantas con 1 PS un ataque que te debilitaría. Una vez por planta.",
   "item.shell-bell": "Campana Concha",
-  "item.shell-bell.description": "Curas un 12 % del daño que haces.",
+  "item.shell-bell.description": "Curas un 12 % del daño de tus golpes directos (no de zonas, saltos ni quemaduras), hasta un 1 % de la vida máxima por segundo.",
   "item.muscle-band": "Cinta Fuerte",
   "item.muscle-band.description": "Un 20 % más de daño con el movimiento fuerte.",
   "item.expert-belt": "Cinta Experto",

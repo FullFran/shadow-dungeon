@@ -137,14 +137,14 @@ Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sec
 | Baya Zidra | Común | Al bajar de la mitad de la vida curas un 25 % de golpe, una vez por planta | 2 |
 | Periscopio | Común | Un 10 % de golpes críticos (daño ×1,5) | 3 |
 | Banda Focus | Rara | Aguantas con 1 PS un ataque que te debilitaría, una vez por planta (el derrumbe no es un ataque) | 1 |
-| Campana Concha | Poco común | Curas un 12 % del daño que haces | 2 |
+| Campana Concha | Poco común | Curas un 12 % del daño de tus golpes directos, hasta un 1 % de la vida máxima por segundo (se guarda hasta 3 s de cura). Las zonas, los saltos de cadena, los fragmentos, los rebotes, las quemaduras y los estallidos de marca no curan | 2 |
 | Cinta Fuerte | Común | Un 20 % más de daño con el movimiento fuerte | 3 |
 | Cinta Experto | Común | Un 20 % más de daño con los golpes supereficaces | 2 |
 | Polvo Brillo | Poco común | La esquiva perfecta tiene 40 ms más de margen | 2 |
 | Lupa | Común | Los golpes alcanzan un 15 % más y los proyectiles son un 15 % más grandes | 2 |
 | Casco Dentado | Poco común | Quien te alcanza cuerpo a cuerpo recibe 8 de daño | 3 |
 
-Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
+Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto. Lo que curan los objetos con el tiempo (Restos y Campana Concha) tiene un techo común: un 3 % de la vida máxima por segundo; con tres Restos la Campana ya no cura más. Así una build que pega mucho no puede curarse más rápido de lo que un jefe la daña (ver "Builds degeneradas" en el arnés de balance).
 
 **Bayas Aranja.** En las plantas generadas, cada sala menos la de entrada tiene un 35 % de llevar una Baya Aranja en el suelo (se decide con la semilla, así que la misma semilla pone las mismas bayas). Pasar por encima cura 20 PS. El minimapa enseña las bayas que has visto. En partida compartida manda el anfitrión: quien la pisa la pide, el anfitrión se la da al primero que la pidió y las instantáneas dicen qué bayas quedan.
 

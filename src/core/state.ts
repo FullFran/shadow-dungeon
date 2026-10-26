@@ -188,6 +188,8 @@ export interface PlayerState {
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
   /** Super-armor from a ranked move (core/rank-effects.ts): damage taken scaled by `damageTaken` for `remainingMs`; absent = none. */
   ward?: { damageTaken: number; remainingMs: number };
+  /** Shell Bell (items.ts): HP its heal has drawn from its per-second budget, refilling over time; absent = the budget is full. */
+  shellBell?: number;
 }
 
 /** A running boost buff: its move (whose `MoveDef.buff` says what it does), time left and, for `power`, hits left. */
@@ -381,6 +383,8 @@ export interface ProjectileState {
   split?: { count: number; share: number };
   /** A boomerang thrown out again when caught: `left` more throws along `dir`, each at `share` power, of `lifetimeMs`. */
   rethrow?: { left: number; share: number; lifetimeMs: number; dir: Vec2 };
+  /** A rank effect's spawned shot (a split shard, a boomerang thrown again): not a direct hit (no Shell Bell heal). */
+  secondary?: true;
 }
 
 /** What a player's hit does beyond its damage (data/moves.ts `MoveDef`). */

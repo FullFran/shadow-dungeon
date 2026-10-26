@@ -125,6 +125,8 @@ type StrikeHit = {
   effects?: HitEffects;
   /** A zone's tick or a chained jump: a small number, no hitstop, no move look. */
   minor?: boolean;
+  /** A split shard or a boomerang thrown again (rank effects): it looks like a hit of the move, but it is not a direct one. */
+  secondary?: boolean;
 };
 
 /**
@@ -258,7 +260,8 @@ function strikeEnemy(
   );
   let next: WorldState = {
     ...state,
-    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), hit.effects, damage), nextHitBuff: null },
+    // Shell Bell heals on the HP the hit really took, and only for a direct hit (no zone tick, chain jump, split shard or rethrow).
+    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), enemy.hp - hp, !hit.minor && !hit.secondary)), hit.effects, damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
   // Zones, split shots and chained jumps are the striker's own hits: a guest spawns them on its side and claims what they hit.
@@ -519,6 +522,7 @@ function rethrown(p: ProjectileState, from: Vec2): ProjectileState | null {
     returnAtMs: again.lifetimeMs / 2,
     hitIds: [],
     damageMultiplier: p.damageMultiplier * again.share,
+    secondary: true,
     ...(again.left > 1 ? { rethrow: { ...again, left: again.left - 1 } } : {}),
   };
 }
@@ -591,6 +595,7 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             ...(moved.moveId ? { moveId: moved.moveId } : {}),
             ...(moved.effects ? { effects: moved.effects } : {}),
             ...(moved.zone ? { minor: true } : {}),
+            ...(moved.secondary ? { secondary: true } : {}),
           },
           events,
         );
