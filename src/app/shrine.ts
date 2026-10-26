@@ -53,10 +53,10 @@ export const heraldEntries = (heralds: readonly BestiaryEntry[], max = 8): Besti
 const bossName = (boss: string): string => t(`species.${boss}`);
 const gauntletName = (id: GauntletId): string => t(`shrine.gauntlet.${id}`);
 
-/** "1:23.4 · ✦3 · Sin rasguños" for a best, "-" before the first clear. */
+/** "1:23.4 · ✦3" (time and captures) for a best, "-" before the first clear. */
 function bestText(best: TrialBest | null): string {
   if (!best) return '-';
-  return [trialTime(best.bestMs), `✦${best.captures}`, ...(best.noHit ? [t('shrine.noHit')] : [])].join(' · ');
+  return `${trialTime(best.bestMs)} · ✦${best.captures}`;
 }
 
 const MAX_HERALDS = 8;
@@ -115,6 +115,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
             t(`shrine.role.${stop.role}`).replace('{dungeon}', t(dungeonById(stop.dungeon).lore.nameKey)),
             statLine(t('shrine.best'), bestText(best)),
             statLine(t('shrine.clears'), String(best?.clears ?? 0)),
+            statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
           );
         }),
         ...(options.heralds.length > 0 ? [() => lines(t('shrine.heralds.text'))] : []),
@@ -141,6 +142,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
         lines(
           unlocked ? g.bosses.map(bossName).join(' → ') : t('shrine.locked').replace('{count}', String(missing.length)),
           statLine(t('shrine.best'), bestText(best)),
+          statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
           statLine(t('shrine.reward'), best ? t('shrine.reward.taken') : coinText(gauntletReward(g.id, tier), (key) => t(key))),
           t('shrine.carry'),
         );

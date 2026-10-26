@@ -239,6 +239,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The shrine trial under way, and whether a hit was taken in it («Sin rasguños»). */
   let trial: TrialState | null = trialStart?.trial ?? null;
   let trialHit = false;
+  // Development server only: `?trialSkip=1` starts a shrine trial with its first arena already won (screenshots of the pause and the next arena).
+  if (import.meta.env.DEV && trial && new URLSearchParams(window.location.search).get('trialSkip') === '1') started.world = { ...started.world, enemies: started.world.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
@@ -429,7 +431,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   /** Run Pokémonedas still in hand (the merchant takes them off the pay). */
-  const coinsInHand = (): number => scaleCoins(coinBreakdown(tally, null, difficulty), dungeonOf(run).endless?.coinScale ?? 1).total - simaSpent;
+  // A shrine trial pays no run coins (main.ts pays a gauntlet's first clear).
+  const coinsInHand = (): number => trial ? 0 : scaleCoins(coinBreakdown(tally, null, difficulty), dungeonOf(run).endless?.coinScale ?? 1).total - simaSpent;
 
   /** "+30 % daño", "enemigos +20 % rápidos"...: a pact's effects as text. */
   function effectText(effect: PactEffect): string {

@@ -196,6 +196,18 @@ En partida de tres o más, el movimiento de área de grupo (sección 8) entra un
 
 En el servidor de desarrollo, `?card=N` empieza el combate en la carta N (para capturas); también un heraldo de la Sima.
 
+### El Santuario de los Juramentos *(provisional)*
+
+Un altar en el Refugio del Ocaso (y la última entrada del menú de título): «Donde los guardianes vuelven a jurar». Inspirado en los Reflejos de Fuerza y los Desafíos de *Sekiro*. Código: `src/core/shrine.ts` (puro), `src/data/shrine.ts`, `src/town/shrine-records.ts`, `src/app/shrine.ts`.
+
+- **Reflejos.** Volver a luchar contra un jefe ya vencido (los ocho: Sableye, Aegislash, Trevenant, Decidueye, Lanturn, Dhelmise, Salazzle, Nihilego), en su propia sala y planta, en cualquier nivel de dificultad. Se lucha al nivel esperado de esa planta (`expectedLevel`, el mismo que fija el tope de un golpe), sin objetos ni mejoras de la tienda: el combate es el de verdad, no uno inflado. Los heraldos ya vistos se pueden repetir por su semilla (en la planta 22 de la Sima, sin reloj).
+- **Desafíos.** Jefes seguidos: «Guardianes» (Aegislash → Decidueye → Dhelmise → Nihilego) y «Todos los juramentos» (los ocho en orden de mazmorra). Los PS pasan de un combate al siguiente (como parte de los PS máximos, al nivel del siguiente jefe) más un respiro del 30 %, tras una pausa de 2,5 s que anuncia el siguiente juramento. Se abren cuando todos sus jefes han caído.
+- **Qué abre cada jefe.** Sale de los récords de siempre, sin migración: un guardián, al limpiar su mazmorra; un jefe intermedio, también cuando una partida pasó de su planta (su salida solo se abre al vencerlo).
+- **Récords.** Por jefe y por desafío, en cada nivel: victorias, mejor tiempo (tiempo de juego, sin pausas), más cartas capturadas y «Sin rasguños» si alguna vez se ganó sin recibir un golpe (ni romper el Disfraz). Una prueba nunca cuenta como partida: no toca los récords de mazmorra. El tablón del pueblo añade una línea con los reflejos abiertos y los desafíos superados.
+- **Pokémonedas.** Los reflejos no pagan nada. Cada desafío paga una vez por nivel la primera vez que se supera (150 y 300, por el multiplicador del nivel). Así no hay granja.
+- **Solo en solitario.** En una sala el altar lo dice y no abre; el reinicio de planta no existe dentro del santuario.
+- Desarrollo: `?screen=shrine` (con `&view=reflections|gauntlets|heralds`); `&trialSkip=1` empieza la prueba con el primer jefe ya vencido (capturas de la pausa y del siguiente).
+
 ### Prólogo y trasfondo *(provisional)*
 
 El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde el menú principal (entrada Prólogo).
@@ -801,7 +813,7 @@ Por tanto un combate dura como mucho la suma de sus tiempos y declaraciones, y s
 
 ### Récords
 
-Cada mazmorra guarda la mejor planta y las victorias por nivel; los récords de antes cuentan como Fácil. La Sima guarda su tablón de diez mejores marcas por nivel (las marcas antiguas, en Fácil). El tablón del pueblo enseña los del nivel elegido ahora, y la pantalla final dice en qué nivel se jugó.
+Cada mazmorra guarda la mejor planta y las victorias por nivel; los récords de antes cuentan como Fácil. La Sima guarda su tablón de diez mejores marcas por nivel (las marcas antiguas, en Fácil). El tablón del pueblo enseña los del nivel elegido ahora, y la pantalla final dice en qué nivel se jugó. El Santuario de los Juramentos guarda los suyos aparte (mejor tiempo, capturas y «Sin rasguños» por jefe, desafío y nivel; ver §3).
 
 ## 10. Directo
 
