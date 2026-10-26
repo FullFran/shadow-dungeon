@@ -1,6 +1,7 @@
 import type { ChallengeLine } from './dungeons';
 import type { Difficulty } from './difficulty';
 import type { SpeciesId } from './species';
+import { MIMIKYU_QUEST } from './story/mimikyu';
 import { CUBONE_QUEST } from './story/cubone';
 import { LITWICK_QUEST } from './story/litwick';
 import { ZORUA_QUEST } from './story/zorua';
@@ -11,7 +12,7 @@ import { ZORUA_QUEST } from './story/zorua';
  * This table holds only the structure (which tableaux, which pose, which
  * floors hide a memory fragment, how many lines each boss says); every text
  * is an i18n key derived from it (`storyKeys`), so a new Senda is a table
- * entry plus its strings (and, for its last boss, a wound: data/wound-cards.ts).
+ * entry plus its strings (its bosses, wound and roads: data/story/<line>.ts).
  * A line absent here plays its challenge without a story.
  */
 export type StoryScene =
@@ -86,41 +87,9 @@ export interface StoryQuest {
 export type ChapterNumber = 1 | 2 | 3;
 export const CHAPTERS: readonly ChapterNumber[] = [1, 2, 3];
 
-/** Pose shorthands. */
-const idle: StoryFigure = { anim: 'Idle' };
-const atCandle = (busted = false): StoryFigure => ({ anim: 'Idle', x: 0.4, ...(busted ? { busted } : {}) });
-
-/** The bosses of a Senda's seven floors (data/dungeons.ts `sendaPlan`): two mid-bosses and the wound, each with its lines. */
-const SENDA_BOSSES: readonly StoryBoss[] = [
-  { floor: 3, pre: 1, post: 1 },
-  { floor: 6, pre: 2, post: 1 },
-  { floor: 7, pre: 2, post: 1 },
-];
-
 export const STORY_QUESTS: Partial<Record<ChallengeLine, StoryQuest>> = {
-  mimikyu: {
-    line: 'mimikyu',
-    chapters: [
-      {
-        before: [{ scene: 'rag' }, { scene: 'pose', figure: idle }, { scene: 'candle', figure: atCandle() }],
-        after: [{ scene: 'pose', figure: { anim: 'Hurt', busted: true } }, { scene: 'candle', figure: atCandle(true) }, { scene: 'candle', figure: atCandle(true) }],
-        fragments: [2, 5],
-        bosses: SENDA_BOSSES,
-      },
-      {
-        before: [{ scene: 'plaza' }, { scene: 'plaza', figure: { anim: 'Hop' } }, { scene: 'dark', figure: { anim: 'Hurt', busted: true } }, { scene: 'candle', figure: atCandle() }],
-        after: [{ scene: 'candle', figure: atCandle(true) }, { scene: 'candle', figure: atCandle(true) }, { scene: 'rag', figure: idle }],
-        fragments: [2, 5],
-        bosses: SENDA_BOSSES,
-      },
-      {
-        before: [{ scene: 'eclipse' }, { scene: 'pose', figure: { anim: 'Walk' } }, { scene: 'dark', figure: idle }],
-        after: [{ scene: 'pose', figure: { anim: 'Faint', busted: true } }, { scene: 'dark' }, { scene: 'candle', figure: atCandle() }, { scene: 'phantump' }],
-        fragments: [2, 5],
-        bosses: SENDA_BOSSES,
-      },
-    ],
-  },
+  // The pilot's Senda (data/story/mimikyu.ts).
+  mimikyu: MIMIKYU_QUEST,
   // The starters' Sendas (data/story/<line>.ts): each line's structure, wound and arena in its own file.
   cubone: CUBONE_QUEST,
   litwick: LITWICK_QUEST,
@@ -170,7 +139,7 @@ export function storyKeyList(quest: StoryQuest): string[] {
   return keys;
 }
 
-/** A Senda's last boss: the line's own Pokémon as its wound (data/wound-cards.ts), drawn huge and corrupted. */
+/** A Senda's last boss: the line's own Pokémon as its wound (data/story/<line>.ts), drawn huge and corrupted. */
 export const isWound = (species: string): boolean => species.endsWith('-wound');
 /** How much bigger a wound is drawn than its sheet: it grows chapter by chapter (owner 2026-10-26), a lesser form on chapter I's tier, the whole of it on chapter III's. */
 export const woundScale = (difficulty: Difficulty): number => ({ easy: 1.7, normal: 1.7, hard: 1.95, nightmare: 2.2 })[difficulty];
