@@ -1,6 +1,7 @@
-import { MATERIAL_TIERS, type MaterialTier } from '../data/player-evolutions';
+import { awakeningsOf, MATERIAL_TIERS, type MaterialTier } from '../data/player-evolutions';
 import type { SpeciesId } from '../data/species';
-import { canEvolve, evolutionOf, evolve, lineOf } from '../core/evolution';
+import { awakenedOf, rosterOf } from '../core/collection';
+import { canEvolve, evolutionOf, evolve, lineOf, nextStep } from '../core/evolution';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
 import { isTouchUi } from '../adapters/touch-mode';
@@ -10,31 +11,44 @@ import { coinText } from './coin-lines';
 import { loadSave, writeSave, type SaveData } from './save';
 
 /**
- * Phantump's evolutions (odd/tasks/gacha-evolutions.md T5): an MD-style
- * window over the town with one row per owned gacha species, its next form,
- * the Pokémonedas and the materials it needs per tier (owned/needed, named
- * by the difficulty that drops them), and Evolve. An evolution is saved at
- * once. Costs come from data/player-evolutions.ts.
+ * Phantump's evolutions (odd/tasks/gacha-evolutions.md T5,
+ * odd/tasks/roster-parity.md): an MD-style window over the town with one row
+ * per species the player has that grows (the starters, an evolved one as its
+ * current form, and the gacha species), its next form (or Mimikyu's next
+ * awakening), the Pokémonedas and the materials it needs per tier
+ * (owned/needed, named by the difficulty that drops them), and Evolve (or
+ * Awaken). A step is saved at once. Costs come from
+ * data/player-evolutions.ts. A "Desafíos" row opens the challenges menu
+ * (app/challenges.ts), where the materials are won.
  */
 export interface EvolveRow {
   species: SpeciesId;
-  /** Its next form, null for a final form. */
+  /** Its next form (itself for an awakening), null when it has no step left. */
   to: SpeciesId | null;
+  /** The step is an awakening (Mimikyu): `awakened` steps taken of `steps`. */
+  awaken?: { awakened: number; steps: number };
   coins: number;
   /** Materials owned and needed, per tier the step asks for (in tier order). */
   materials: { tier: MaterialTier; have: number; need: number }[];
   ready: boolean;
 }
 
-/** Every owned gacha species, in the order obtained, with what its next evolution costs. */
+/** Whether `species` grows at all: it is in an evolution line or it awakens. */
+const grows = (species: SpeciesId): boolean => lineOf(species) !== species || evolutionOf(species) !== null || awakeningsOf(species).length > 0;
+
+/** Every species the player has that grows, in roster order (the starters first), with what its next step costs. */
 export function evolveRows(save: SaveData): EvolveRow[] {
-  return (save.owned ?? []).map((species) => {
-    const next = evolutionOf(species);
-    if (!next) return { species, to: null, coins: 0, materials: [], ready: false };
-    const have = save.materials?.[lineOf(species)] ?? {};
-    const materials = MATERIAL_TIERS.filter((tier) => (next.materials[tier] ?? 0) > 0).map((tier) => ({ tier, have: have[tier] ?? 0, need: next.materials[tier]! }));
-    return { species, to: next.to, coins: next.coins, materials, ready: canEvolve(save, species) };
-  });
+  return rosterOf(save)
+    .filter(grows)
+    .map((species) => {
+      const steps = awakeningsOf(species).length;
+      const awaken = steps > 0 ? { awaken: { awakened: awakenedOf(save, species), steps } } : {};
+      const next = nextStep(save, species);
+      if (!next) return { species, to: null, ...awaken, coins: 0, materials: [], ready: false };
+      const have = save.materials?.[lineOf(species)] ?? {};
+      const materials = MATERIAL_TIERS.filter((tier) => (next.materials[tier] ?? 0) > 0).map((tier) => ({ tier, have: have[tier] ?? 0, need: next.materials[tier]! }));
+      return { species, to: evolutionOf(species)?.to ?? species, ...awaken, coins: next.coins, materials, ready: canEvolve(save, species) };
+    });
 }
 
 /** Evolves `species` in the stored save, written at once; null (nothing written) when it cannot. */
@@ -54,7 +68,16 @@ export interface EvolveOptions {
   play?(sound: 'coin' | 'denied'): void;
   /** After an evolution (the app follows the selected species to its new form). */
   onEvolved?(from: SpeciesId, to: SpeciesId): void;
+  /** Opens the challenges menu (a "Desafíos" row above Back; absent: no row). */
+  onChallenges?(): void;
   onBack(): void;
+}
+
+/** The row's label: "Zorua → Zoroark", "Mimikyu · Despertar 1/2", or the species alone when it has no step left. */
+export function rowLabel(row: EvolveRow): string {
+  const name = t(`species.${row.species}`);
+  if (row.awaken) return t('evolve.awaken.row').replace('{species}', name).replace('{n}', String(Math.min(row.awaken.awakened + 1, row.awaken.steps))).replace('{steps}', String(row.awaken.steps));
+  return row.to ? t('evolve.row').replace('{from}', name).replace('{to}', t(`species.${row.to}`)) : name;
 }
 
 export function evolveWindow(options: EvolveOptions): { element: HTMLElement; dispose(): void } {
@@ -71,7 +94,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
 
   const rowText = (row: EvolveRow) =>
     row.to === null
-      ? t('evolve.final')
+      ? t(row.awaken ? 'evolve.awaken.full' : 'evolve.final')
       : t('evolve.cost')
           .replace('{coins}', coinText(row.coins, (k) => t(k)))
           .replace('{materials}', materialsText(row))
@@ -88,7 +111,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
     for (const row of rows) {
       const to = row.to;
       out.push({
-        label: to ? t('evolve.row').replace('{from}', t(`species.${row.species}`)).replace('{to}', t(`species.${to}`)) : t(`species.${row.species}`),
+        label: rowLabel(row),
         value: to ? coinText(row.coins, (k) => t(k)) : '-',
         className: row.ready ? 'shop-row' : 'shop-row is-disabled',
         tapToSelect: true,
@@ -100,12 +123,18 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
           }
           options.play?.('coin');
           save = evolved;
-          done.textContent = t('evolve.done').replace('{from}', t(`species.${row.species}`)).replace('{to}', t(`species.${to}`));
+          done.textContent = row.awaken
+            ? t('evolve.awaken.done').replace('{species}', t(`species.${row.species}`)).replace('{n}', String(row.awaken.awakened + 1)).replace('{steps}', String(row.awaken.steps))
+            : t('evolve.done').replace('{from}', t(`species.${row.species}`)).replace('{to}', t(`species.${to}`));
           options.onEvolved?.(row.species, to);
           refresh();
         },
       });
       describeAt.push(rowText(row));
+    }
+    if (options.onChallenges) {
+      out.push({ label: t('challenges.title'), onConfirm: options.onChallenges });
+      describeAt.push(t('challenges.text'));
     }
     out.push({ label: t('menu.back'), onConfirm: options.onBack });
     describeAt.push(null);

@@ -54,7 +54,9 @@ import { parseSpawnList } from '../core/test-floor';
 import { earnChallengeReward, earnCoins, loadSave, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { evolveWindow } from './evolve';
-import { openChallenges } from '../core/challenge';
+import { challengeMisfits, openChallenges } from '../core/challenge';
+import { lineOf } from '../core/evolution';
+import { challengesWindow } from './challenges';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
@@ -63,7 +65,7 @@ import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
-import { endActions, materialsEarned, returnPlace, townOf, type ReturnPlace } from './after-run';
+import { endActions, materialsEarned, returnPlace, victoryLine, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
@@ -338,20 +340,43 @@ function newAdventure(root: HTMLElement, dungeon?: DungeonId): void {
 /** Dungeons whose guardian fell on this device (they open the next ones). */
 const cleared = (): Set<string> => clearedDungeons(readRecords(store));
 
-/** The challenge dungeons of the lines this device owns (core/challenge.ts). */
-const challenges = (): DungeonDef[] => openChallenges(loadSave(store).owned ?? []);
+/** The challenge dungeons the selected species may play (open, and of its line: core/challenge.ts). */
+const playableChallenges = (): DungeonDef[] => openChallenges(loadSave(store).owned ?? []).filter((d) => challengeMisfits(d, [settings.species]).length === 0);
 
-/** What the town's exit lists: the open dungeons, then the owned lines' challenges. */
-const townDungeons = (): { id: string; label: string }[] => [...unlockedDungeons(cleared()), ...challenges()].map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
+/** What the town's exit lists: the open dungeons (the challenges have their own menu, `townChallenges`). */
+const townDungeons = (): { id: string; label: string }[] => unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
 
-/** After the loadout: the dungeon select when more than one dungeon is open, otherwise straight in. */
+/** After the loadout: the dungeon select when more than one dungeon is open or a challenge fits the species, otherwise straight in. */
 function chooseDungeon(root: HTMLElement, back: () => void): void {
-  if (!needsDungeonSelect(cleared()) && challenges().length === 0) {
+  if (!needsDungeonSelect(cleared()) && playableChallenges().length === 0) {
     void play(root);
     return;
   }
-  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), challenges: challenges(), onChoose: (dungeon) => enterDungeon(root, dungeon, () => chooseDungeon(root, back)), onBack: back }));
+  const again = () => chooseDungeon(root, back);
+  show(
+    root,
+    dungeonSelectScreen({
+      records: readRecords(store),
+      cleared: cleared(),
+      onChallenges: () => {
+        // After the loadout the species is final: a challenge of another line is greyed out.
+        const menu = challengesWindow({ collection: loadSave(store), species: settings.species, requireFit: true, sheets: sheetsReady(), onChoose: (dungeon) => enterDungeon(root, dungeon, again), onBack: again });
+        show(root, [h('div', { className: 'screen-row' }, [menu.element])]);
+      },
+      onChoose: (dungeon) => enterDungeon(root, dungeon, again),
+      onBack: back,
+    }),
+  );
 }
+
+/**
+ * The challenges menu over the town (the waystone's "Desafíos" row and
+ * Phantump's): the species is not final yet, so any open challenge can be
+ * chosen (alone, the loadout then lists only the line's forms; in a room the
+ * host's start checks everyone, `roomDepartBlock`).
+ */
+const townChallenges = (parent: HTMLElement, onClose: () => void, depart: (id: string) => void): (() => void) =>
+  townWindow(parent, challengesWindow({ collection: loadSave(store), species: settings.species, requireFit: false, sheets: sheetsReady(), onChoose: depart, onBack: onClose }));
 
 /** Today's day of the daily challenge (UTC). */
 const today = (): string => utcDateKey(Date.now());
@@ -470,12 +495,16 @@ function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
 function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dungeon?: DungeonId): void {
+  // A challenge is played only with a form of its line (core/challenge.ts): the picker lists those, and starts on the one the player has.
+  const line = dungeon ? dungeonById(dungeon).challenge?.line : undefined;
+  const save = loadSave(store);
+  if (line && lineOf(settings.species) !== line) update(withSpecies(settings, currentForm(save, line)));
   show(root, [
     ...loadoutScreen({
       stage,
       species: settings.species,
       loadout: settings.loadout,
-      roster: rosterOf(loadSave(store)),
+      roster: rosterOf(save).filter((id) => !line || lineOf(id) === line),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       onSpecies: (species) => {
@@ -531,7 +560,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -573,12 +602,29 @@ function townWindow(parent: HTMLElement, open: { element: HTMLElement; dispose()
 const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: onClose }));
 
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
-const townEvolve = (parent: HTMLElement, onClose: () => void): (() => void) =>
-  townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: onClose }));
+function townEvolve(parent: HTMLElement, onClose: () => void, depart: (id: string) => void): () => void {
+  let close = (): void => undefined;
+  const evolve = () => {
+    close();
+    close = townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: challenges, onBack: onClose }));
+  };
+  // Its "Desafíos" row opens the same challenges menu as the waystone; Back returns to Phantump.
+  const challenges = () => {
+    close();
+    close = townChallenges(parent, evolve, depart);
+  };
+  evolve();
+  return () => close();
+}
 
 /** The selected species evolved: play as its new form (with that form's default loadout). */
 function followEvolution(from: SpeciesId, to: SpeciesId): void {
   if (settings.species === from) update(withSpecies(settings, to));
+}
+
+/** The dev `?screen=challenges` hook: the challenges menu as the town opens it. */
+function devScreenChallenges(root: HTMLElement): void {
+  show(root, [challengesWindow({ collection: loadSave(store), species: settings.species, requireFit: false, sheets: sheetsReady(), onChoose: (id) => newAdventure(root, dungeonById(id).id), onBack: () => titleScreen(root) }).element]);
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -960,8 +1006,18 @@ function townLobby(root: HTMLElement): void {
     session.begin(def.id, runSeed);
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
+  // A challenge only for the line's forms: the host's start names who plays another Pokémon (core/challenge.ts).
+  const departBlock = (id: string): string | null => {
+    const def = dungeonById(id);
+    const roster = session.roster();
+    const misfits = challengeMisfits(def, roster.map((e) => e.species));
+    if (!def.challenge || misfits.length === 0) return null;
+    return t('challenges.party')
+      .replace('{line}', t(`species.${def.challenge.line}`))
+      .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
+  };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1025,6 +1081,8 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       h('h1', { textContent: t(`screen.${result}.title`) }),
       // Victory names the dungeon's guardian, defeat the player's Pokémon.
       h('p', { textContent: t(`screen.${result}.text`).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) }),
+      // A challenge's own closing line (its trial's lore).
+      ...(victoryLine(dungeonById(summary.dungeon), result) ? [h('p', { className: 'dim', textContent: t(victoryLine(dungeonById(summary.dungeon), result)!) })] : []),
       // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
       h('div', { className: 'result-columns' }, [
         h('div', {}, [
@@ -1191,8 +1249,10 @@ function devScreen(root: HTMLElement): boolean {
     },
     evolve: () => {
       devCoins();
-      show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: () => titleScreen(root) }).element]);
+      show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: () => devScreenChallenges(root), onBack: () => titleScreen(root) }).element]);
     },
+    // The challenges menu on its own, as from the town (choosing one goes to its loadout).
+    challenges: () => devScreenChallenges(root),
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
       const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });

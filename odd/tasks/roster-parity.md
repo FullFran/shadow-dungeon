@@ -36,7 +36,7 @@ single branch `feat/roster-parity` from main 245f309, one commit per task; forec
 
 ## Tasks
 - [x] T1 Starter evolutions, Mimikyu's awakening (core + save + run), 8 challenges as data (lore, mixed pools, bosses), challenge entry rule (core), CLAUDE.md, GDD. Route: inline in this bounded writer (the parent delegated the feature).
-- [ ] T2 UI: shared challenges menu (dungeon select, town exit, Phantump's window), Phantump's window lists starters and awakening, challenge loadout filter, co-op start block, victory line. Route: inline.
+- [x] T2 UI: shared challenges menu (dungeon select, town exit, Phantump's window), Phantump's window lists starters and awakening, challenge loadout filter, co-op start block, victory line. Route: inline.
 - [ ] T3 Gacha lines' full movepools (learnsets, offers, new moves, rank effects, builds, GDD tables). Route: inline.
 
 ## Acceptance
@@ -49,11 +49,11 @@ single branch `feat/roster-parity` from main 245f309, one commit per task; forec
 - [ ] Species: starters + gacha lines all grow (evolution or awakening): T1 tests/core/evolution.test.ts, tests/core/awakening.test.ts. Full movepools for every line: T3.
 - [x] Every playable species has its own sprite with the core sheets and a name in es/en (evolution.test iterates `PLAYABLE_SPECIES`); fairness, boosts, sprites and anim tests iterate `PLAYABLE_SPECIES` and now cover the 4 new forms.
 - [x] Dungeons: 8 challenges covered by challenge.test (entry rule, type fit, lore, boss, floors) and fairness-floors (iterates `DUNGEONS` + `CHALLENGES`); main dungeons, Sima/endless and the shrine ignore the line rule (`challengeMisfits` is empty for them, tested).
-- [ ] Solo + co-op entry rule: core in T1 (tests); UI and host start check in T2.
+- [x] Solo + co-op entry rule: core in T1 (challenge.test); solo: the loadout for a challenge lists only the line's forms and switches to the one the player has, the dungeon select's challenges menu greys out other lines (`requireFit`); co-op: the town's `departBlock` (room) names who plays another line, and a guest cannot depart from Phantump's menu (host only). No net protocol change.
 - [x] Save: evolved starter forms, starter-line materials (Mimikyu's too) and `awakened` sanitized and round-tripped (evolution.test, awakening.test, save.test); no version bump.
 - [x] Net: unchanged protocol (evolved forms are playable so `isPlayable` accepts them; the stage bonus, like upgrades, lives in each peer's own player).
 - [x] i18n es/en: species, move Hiperrayo, 8 challenges (name, subtitle, intro, 4 floor lines, victory line; challenge.test checks both languages and no em dash).
-- [ ] Challenges menu reachable from dungeon select, town exit and Phantump's window: T2.
+- [x] Challenges menu (app/challenges.ts, one module) reachable from the dungeon select ("Desafíos" row), the town exit (waystone window, solo and host) and Phantump's window ("Desafíos" row; Back returns to Phantump); tests/app/challenges-menu.test.ts. Phantump's window lists the starters (evolve) and Mimikyu ("Despertar n/2"): tests/app/evolve.test.ts.
 - [x] GDD §5 rewritten for starter evolutions, Mimikyu's awakening, the 8 trials and the line rule (T1); menu and movepools in T2/T3.
 - [x] sim/prove: prove unchanged (166 cards survivable, 24/24 fights), it iterates the starters' base forms.
 
@@ -61,10 +61,12 @@ single branch `feat/roster-parity` from main 245f309, one commit per task; forec
 - Research: PokeAPI learnsets read 2026-10-26 (latest version group with data: scarlet-violet for Piplup, Shinx, Axew, Zorua, Litwick lines; brilliant-diamond-shining-pearl for Abra and Cubone lines). PMDCollab AnimData: Zoroark 0571, Lampent 0608, Chandelure 0609, Marowak 0105 have Idle, Walk, Attack, Shoot, Charge and Hurt as their own sheets (no `CopyOf`); none existed as enemy sprites.
 - Baseline (main 245f309, worktree): vitest 214 files / 2597 tests passed.
 - T1 (route: inline): tests written first (evolution, challenge, awakening, evolved-selection); RED observed at typecheck and run (missing `challengeMisfits`, starter lines, `awakened`, sprites 0571 missing), then GREEN. Data: `PLAYER_EVOLUTIONS` + 4 starter steps (stage moves Tajo Umbrío, Desahogo, Hiperrayo (new Básico heavy beam), Llamarada), `PLAYER_AWAKENINGS.mimikyu` (Mazazo, Golpe Fantasma), `lineRoot`; `starterForm` builds the evolved starters from `SPECIES_BASE` (kit + stage moves + the starter's offer; `tutorOffer` resolves the line). Core: `rosterOf` puts an evolved starter in its starter's place, `currentForm`, `awakenedOf`, `nextStep`/`awakeningOf`, `stageBonus(species, party, awakened)`, `evolve` carries `learned` too and appends an evolved starter to `owned`, `knownMoves` adds awakened moves, `createWorld({ awakened })`; `challengeOpen` reads the roster, `challengeMisfits`. Save: `awakened`, materials keyed by any playable first form. Settings: a stored base form reads as its line's current form; the quiz picks the current form. Challenges: `ChallengeLine`, own pools (`at(species, f1, f2, f3)`), lore `floorKeys` + `victoryKey`. Sprites via tools/fetch-sprites.mjs (only additions; CREDITS regenerated). Town floaters: Lampent, Chandelure.
-- T1 checks: typecheck ok; vitest 216 files / 2629 tests passed; build ok; prove 166 cards survivable, 24/24 fights.
+- T1 checks: typecheck ok; vitest 216 files / 2629 tests passed; build ok; prove 166 cards survivable, 24/24 fights. Commit 8c3d537.
+- T2 (route: inline): app/challenges.ts (`challengeRows`, `rowEnabled`, `rowHint`, `challengesWindow`, reusing the tutor window styles; greyed rows stay reachable so the cursor shows why); dungeon select: one "Desafíos" row instead of the inline group (it shows when a challenge fits the species or more than one dungeon is open); town: `TownWindowOpener` gets `depart`, `openChallenges` row in the waystone window, `departBlock` (room); main: `townChallenges`, `townEvolve` swaps to the challenges menu and back, the loadout for a challenge filters the roster to the line, the result screen closes a challenge with its `victoryKey` line (`victoryLine` in app/after-run.ts); app/evolve.ts lists the roster's growing species with awakening rows (`rowLabel`). Dev hooks `?screen=challenges`, and evolve's "Desafíos". i18n es/en: `challenges.*`, `evolve.awaken.*`; `select.challenges` removed. Tests were written alongside the UI helpers (no RED observed for them). Smoke (tools/mobile/shots.mjs, silent headless Firefox, 844x390 and 390x844): evolve and challenges render, no tap target under 44 px, the challenges list scrolls inside the window (like the tutor's); on 844x390 the page also scrolls ~220 px for the side text (the tutor scrolls too).
+- T2 checks: typecheck ok; vitest 217 files / 2634 tests passed; build ok.
 
 ## Open questions
 - None pending from T1 (Mimikyu: user decided it awakens).
 
 ## Next step
-T2.
+T3.
