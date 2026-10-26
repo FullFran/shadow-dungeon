@@ -3,11 +3,11 @@ import type { HeraldBaseDef, HeraldCard, HeraldDef, HeraldLayer, HeraldMove } fr
 import { contactPlayer, enterMode, modeOver, moveEnemy, replaceEnemy, spawnShot, towardTarget } from '../brain';
 import { equalShares, segmentFloorShare, type CardOutcome } from '../../data/cards';
 import { worldDifficulty } from '../difficulty';
-import type { EnemyState, GameEvent, HeraldStance, WorldState } from '../state';
+import type { BossState, EnemyState, GameEvent, HeraldStance, WorldState } from '../state';
 import { distance, normalize, scale, sub, vec, type Vec2 } from '../vec';
 import { spawnEnemy } from '../world';
 import { heraldDef } from './generate';
-import { startTurn, turnMsFor } from '../cards';
+import { holdBoss, startTurn, turnMsFor } from '../cards';
 import { emitBetween, outsidePockets, pocketsBurning, type EmitContext } from './patterns';
 
 /**
@@ -95,6 +95,9 @@ export function heraldBar(state: WorldState, enemy: EnemyState): { segments: rea
 
 const enemyShots = (state: WorldState): number => state.projectiles.reduce((n, p) => n + (p.owner === 'enemy' ? 1 : 0), 0);
 
+/** A boss state without its card floor's hold (a new card, or the awakening, starts without it). */
+const withoutHold = ({ holdFloor: _pace, held: _held, ...boss }: BossState): BossState => boss;
+
 /** Declares card `index` (its name: `bossStance`), as the guardians do; `outcome` says how the previous card ended. */
 function startCard(enemy: EnemyState, def: HeraldDef, index: number, phase: 2 | undefined, outcome: CardOutcome, events: GameEvent[]): EnemyState {
   const card = cardsOf(def, phase)[index]!;
@@ -104,7 +107,8 @@ function startCard(enemy: EnemyState, def: HeraldDef, index: number, phase: 2 | 
   const hpFloor = floorOf(enemy, index, def.cards.length);
   return {
     ...enemy,
-    boss: { ...enemy.boss!, stance: card.id as HeraldStance, stanceMs: 0, comboIndex: 0, combosDone: index, card: index, hpFloor, ...(phase ? { phase } : {}) },
+    // A new card starts without the last one's hold.
+    boss: { ...withoutHold(enemy.boss!), stance: card.id as HeraldStance, stanceMs: 0, comboIndex: 0, combosDone: index, card: index, hpFloor, ...(phase ? { phase } : {}) },
     ai: { ...enterMode(ai, 'transform', HERALD_DECLARE_MS), contact: 'none', attack: outcome },
   };
 }
@@ -147,7 +151,7 @@ function nextCard(state: WorldState, enemy: EnemyState, def: HeraldDef, how: 'br
       state: cleared,
       enemy: {
         ...next,
-        boss: { ...boss, stance: 'awaken', stanceMs: 0, comboIndex: 0, combosDone: index + 1, card: index + 1, hpFloor: floorOf(next, index + 1, count), phase: 2 },
+        boss: { ...withoutHold(boss), stance: 'awaken', stanceMs: 0, comboIndex: 0, combosDone: index + 1, card: index + 1, hpFloor: floorOf(next, index + 1, count), phase: 2 },
         ai: { ...enterMode(ai, 'transform', def.phase2.transformMs), contact: 'none', attack: how },
       },
     };
@@ -200,6 +204,10 @@ export function updateHerald(state: WorldState, start: EnemyState, base: HeraldB
       const ended = nextCard(state, enemy, def, how, events);
       return replaceEnemy(ended.state, ended.enemy);
     }
+    // The card floor (data/cards.ts `CARD_FLOOR`): the segment's last HP holds until the floor's share of the timer.
+    const index = boss.combosDone;
+    const count = def.cards.length;
+    enemy = holdBoss(state, enemy, index === 0 ? enemy.maxHp : floorOf(enemy, index - 1, count), floorOf(enemy, index, count), boss.stanceMs, card);
   }
 
   switch (ai.mode) {
@@ -210,7 +218,14 @@ export function updateHerald(state: WorldState, start: EnemyState, base: HeraldB
       if (!modeOver(ai)) break;
       // The awakening gives way to the phase-2 card's declaration; a declaration to the card itself (its clock starts now).
       if (boss.stance === 'awaken') enemy = startCard(enemy, def, boss.combosDone, 2, ai.attack as CardOutcome, events);
-      else enemy = { ...enemy, boss: { ...enemy.boss!, stanceMs: 0 }, ai: { ...enterMode(ai, 'approach'), cooldownMs: 0, contact: 'none' } };
+      else {
+        enemy = { ...enemy, boss: { ...enemy.boss!, stanceMs: 0 }, ai: { ...enterMode(ai, 'approach'), cooldownMs: 0, contact: 'none' } };
+        // Hurtable from now: the card floor's hold applies from now too.
+        const playing = heraldCard(def, enemy.boss!.stance);
+        const index = enemy.boss!.combosDone;
+        const count = def.cards.length;
+        if (playing) enemy = holdBoss(state, enemy, index === 0 ? enemy.maxHp : floorOf(enemy, index - 1, count), floorOf(enemy, index, count), 0, playing);
+      }
       break;
     case 'approach': {
       if (!card) {

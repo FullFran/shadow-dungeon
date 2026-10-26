@@ -1,4 +1,5 @@
 import type { DanmakuCardDef, DanmakuPattern } from './enemies';
+import type { Difficulty } from './difficulty';
 
 /**
  * Spell cards (docs/gdd.md §9, docs/souls-difficulty-research.md P4): a
@@ -125,6 +126,15 @@ export const CAPTURE = { coins: 8, healShare: 0.12 } as const;
  * Easy keeps the echo's duel (no cards).
  */
 export const ECHO_CARDS = { phase2FromFloor: 25, fullFromFloor: 35, timerScale: 0.8, hpScale: 0.6 } as const;
+
+/**
+ * The card floor (owner decision 2026-10-26, odd/tasks/type-balance.md,
+ * reports/balance/type-chart-baseline.md): no spell card can be broken
+ * before this share of its timer: until then its segment keeps its last HP
+ * (core/cards.ts `holdFloor`) and hits beyond it are absorbed ("¡Aguanta!"). It never makes a card last past its timer; survival cards
+ * and last spells keep their rules. Easy keeps its classic balance.
+ */
+export const CARD_FLOOR: Readonly<Record<Difficulty, number>> = { easy: 0, normal: 0.35, hard: 0.35, nightmare: 0.35 };
 
 /** Where card `index` of a fight with these HP shares ends, as a share of max HP (shares are normalised; the last ends at 0). */
 export function segmentFloorShare(shares: readonly number[], index: number): number {

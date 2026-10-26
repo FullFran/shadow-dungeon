@@ -308,6 +308,13 @@ export interface BossState {
   restMs?: number;
   /** Spell-card fight: the HP the current card's segment ends at; hits never take the boss below it while the card plays (host only). */
   hpFloor?: number;
+  /**
+   * Spell-card fight: the card floor's hold (core/cards.ts `holdFloor`), `HOLD_HP` above `hpFloor` until the card
+   * floor's share of its timer has run; hits never take the boss below it either (host only; absent once it stops holding).
+   */
+  holdFloor?: number;
+  /** The boss sits on its hold: hits are absorbed ("¡Aguanta!"). Synced: guests show the feedback from it. */
+  held?: true;
 }
 
 /**
@@ -497,6 +504,8 @@ export type GameEvent =
   | { type: 'enemyTelegraph'; enemyId: string; attack: string; durationMs: number; pierceRoll?: true }
   | { type: 'enemyAttack'; enemyId: string; attack: string }
   | { type: 'hitBlocked'; enemyId: string; pos: Vec2 }
+  /** A hit met a spell card's floor (core/cards.ts `holdFloor`): the boss holds ("¡Aguanta!"). */
+  | { type: 'cardHold'; enemyId: string; pos: Vec2 }
   | { type: 'bossStance'; enemyId: string; stance: BossStance }
   /** Co-op: a boss turned to another player (core/aggro.ts). */
   | { type: 'bossAggro'; enemyId: string; targetId: string }

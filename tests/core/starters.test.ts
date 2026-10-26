@@ -56,7 +56,7 @@ function use(state: WorldState, slot: number, holdMs: number, afterMs: number, a
 const totalMs = (id: MoveId) => MOVES[id].windupMs + MOVES[id].activeMs + MOVES[id].recoveryMs;
 const hitDamages = (events: WorldState['events']) => events.flatMap((e) => (e.type === 'enemyHit' ? [e.damage] : []));
 const plain = (power: number, moveType: MoveId, species: SpeciesId, enemy: SpeciesId, multiplier = 1) =>
-  computeDamage({ power, moveType: MOVES[moveType].type, attackerTypes: SPECIES[species].types, defenderTypes: SPECIES[enemy].types, multiplier }).damage;
+  computeDamage({ power, moveType: MOVES[moveType].type, attackerTypes: SPECIES[species].types, defenderTypes: SPECIES[enemy].types, multiplier, onEnemy: true }).damage;
 
 describe('starter species data', () => {
   it('lists Mimikyu and the three starters as the starters, and every starter is playable', () => {

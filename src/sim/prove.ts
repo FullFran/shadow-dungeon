@@ -1,8 +1,8 @@
 import type { CardFightDef, SpellCardDef } from '../data/cards';
 import { TIERS, type Difficulty } from '../data/difficulty';
-import { DUNGEONS, type DungeonId } from '../data/dungeons';
+import { CHALLENGES, DUNGEONS, SENDA_ROADS, type DungeonId } from '../data/dungeons';
 import { MOVES, type MoveDef } from '../data/moves';
-import type { RoomId } from '../data/rooms';
+import { ROOMS, type RoomId } from '../data/rooms';
 import { STARTER_SPECIES, SPECIES, type SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
 import { blocksHit } from '../core/boss';
@@ -10,7 +10,7 @@ import { atCard, cardGuard, echoShare, echoStageAt, fightFor, fightOf, inTurn, i
 import { depthScale } from '../core/endless';
 import { ENDLESS } from '../data/endless';
 import { ECHO_CARDS } from '../data/cards';
-import { computeDamage, typeEffectiveness } from '../core/damage';
+import { computeDamage, hitEffectiveness } from '../core/damage';
 import { expectedLevel } from '../core/fairness';
 import { levelDamage } from '../core/progression';
 import { loadRoom } from '../core/rooms';
@@ -22,6 +22,8 @@ import { pierceZone } from '../core/victim';
 import { add, distance, normalize, scale, sub, vec, type Vec2 } from '../core/vec';
 import { createWorld } from '../core/world';
 import { KILL_GAPS } from './kill-gaps';
+import { STORY_BOSSES } from '../data/story/bosses';
+import { isWound } from '../data/story-quests';
 
 /**
  * The beatability proof (docs/gdd.md "Garantía de que todo se puede
@@ -503,7 +505,7 @@ export function referenceDps(player: SpeciesId, boss: SpeciesId, level: number):
   for (const id of def.defaultLoadout.slice(0, 2)) {
     if (!id) continue;
     const move = MOVES[id];
-    const { damage } = computeDamage({ power: move.power, moveType: move.type, attackerTypes: def.types, defenderTypes: SPECIES[boss].types, multiplier: levelDamage(level) });
+    const { damage } = computeDamage({ power: move.power, moveType: move.type, attackerTypes: def.types, defenderTypes: SPECIES[boss].types, multiplier: levelDamage(level), onEnemy: true });
     const cycle = move.windupMs + move.activeMs + move.recoveryMs + (move.cooldownMs ?? 0);
     const dps = (damage * 1000) / cycle;
     if (!best || dps > best.dps) best = { dps, move };
@@ -515,7 +517,7 @@ export function referenceDps(player: SpeciesId, boss: SpeciesId, level: number):
 /** Whether a starter is at a type disadvantage on a boss: none of its default fast and heavy moves does neutral damage or better (a resistance or an immunity). */
 export function typeWalled(player: SpeciesId, boss: SpeciesId): boolean {
   const def = SPECIES[player];
-  return def.defaultLoadout.slice(0, 2).every((id) => !id || typeEffectiveness(MOVES[id].type, SPECIES[boss].types) < 1);
+  return def.defaultLoadout.slice(0, 2).every((id) => !id || hitEffectiveness(MOVES[id].type, SPECIES[boss].types) < 1);
 }
 
 /** The proof's reach for melee windows (Mimikyu's Shadow Claw, the shortest fast move) and its line-of-fire range. */
@@ -771,6 +773,23 @@ export const ECHO_BOSSES: readonly BossCase[] = (
     return { ...s, depth: floor, enemyScale: scale, enemies };
   },
 }));
+
+/**
+ * The Sendas' shadows: every new story mid-boss (data/story/bosses.ts) on a
+ * challenge or a chapter road, where it first stands (its road and floor).
+ * The live proof (tests/sim/story-prove.ts) and the type-balance study
+ * (src/sim/type-balance.ts) read this one list, so a new shadow reaches both.
+ */
+export const SHADOW_BOSSES: readonly BossCase[] = (() => {
+  const story = new Set<string>(STORY_BOSSES.map((b) => b.id));
+  return [...CHALLENGES, ...SENDA_ROADS].flatMap((d) =>
+    d.plan.flatMap((p, i) => {
+      if (p.kind !== 'room' || p.role !== 'midboss') return [];
+      const species = ROOMS[p.room].spawns[0]!.species;
+      return story.has(species) && !isWound(species) ? [{ species, room: p.room as RoomId, where: { dungeon: d.id, floor: i + 1 } }] : [];
+    }),
+  );
+})();
 
 export const PROOF_CASES: readonly ProofCase[] = [
   ...CARD_BOSSES.map((c) => ({ case: c, tiers: CARD_TIERS, fights: ['nightmare'] as const })),

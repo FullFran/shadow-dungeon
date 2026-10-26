@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AEGISLASH } from '../../src/data/enemies';
+import { PLAYER_HIT_LEVELS } from '../../src/data/types';
 import { bossBar } from '../../src/core/boss';
 import type { BossState, EnemyState, GameEvent, PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
@@ -75,7 +76,7 @@ describe('Shield stance', () => {
       state = step(state, input({ aim: BOSS }), FIXED_DT_MS);
       hit = state.events.find((e) => e.type === 'enemyHit');
     }
-    expect(hit?.type === 'enemyHit' && hit.effectiveness).toBe(2);
+    expect(hit?.type === 'enemyHit' && hit.effectiveness).toBe(PLAYER_HIT_LEVELS.superEffective);
     expect(boss(state).hp).toBeLessThan(boss(state).maxHp);
     expect(boss(state).hitstunMs).toBe(0);
   });

@@ -1,6 +1,6 @@
 import { crossFogWall } from './fog-wall';
 import { UNKILLABLE } from '../data/sima';
-import { cardHpFloor } from './cards';
+import { cardHolds, cardHpFloor } from './cards';
 import { applySimaSync, simaSync, type SimaSync } from './sima-events';
 import { applyGateSync, gateSync, type GateSync } from './gates';
 import type { MoveId } from '../data/moves';
@@ -33,8 +33,8 @@ import { vec, type Vec2 } from './vec';
 import type { SpellCardId } from '../data/cards';
 import type { BossState } from './state';
 
-/** The boss state without its hosted card: the latest snapshot says whether one plays. */
-const withoutSpell = ({ spell: _spell, ...boss }: BossState): BossState => boss;
+/** The boss state without its hosted card and its hold: the latest snapshot says whether one plays and whether it holds. */
+const withoutSpell = ({ spell: _spell, held: _held, ...boss }: BossState): BossState => boss;
 import { createPlayer } from './world';
 import { clampParty } from '../data/party-scaling';
 import { partyField, partyHpScale, partySizeOf } from './party';
@@ -77,8 +77,8 @@ export interface EnemySnapshot {
   hitstunMs: number;
   /** Behaviour, for animation, telegraphs and the guest's victim-side melee check. */
   ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2; attack?: string; aimPoint?: Vec2 };
-  /** `spell`: a hosted spell card in play (core/cards.ts), absent otherwise. */
-  boss?: { stance: BossStance; comboIndex: number; spell?: SpellCardId };
+  /** `spell`: a hosted spell card in play (core/cards.ts), absent otherwise; `held`: on its card floor's hold (hits absorbed). */
+  boss?: { stance: BossStance; comboIndex: number; spell?: SpellCardId; held?: true };
   /** Fell by its own hand: the guest credits it nothing either. */
   spent?: boolean;
   /** Elite trait (the one table, data/difficulty.ts), whether its armor still holds, and whether it strikes positionally. */
@@ -212,7 +212,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
         ...(e.ai.attack !== undefined ? { attack: e.ai.attack } : {}),
         ...(e.ai.aimPoint ? { aimPoint: e.ai.aimPoint } : {}),
       },
-      ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex, ...(e.boss.spell ? { spell: e.boss.spell } : {}) } } : {}),
+      ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex, ...(e.boss.spell ? { spell: e.boss.spell } : {}), ...(e.boss.held ? { held: true as const } : {}) } } : {}),
       ...(e.spent ? { spent: true } : {}),
       ...(e.elite ? { elite: e.elite } : {}),
       ...(e.armor ? { armor: true as const } : {}),
@@ -355,6 +355,8 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
       struck = answerGuardedHit({ ...enemy, armor: undefined, hp: claim.damage > 0 ? Math.max(1, enemy.hp - claim.damage) : enemy.hp }, striker, events);
     } else {
       const hp = Math.max(Math.min(cardHpFloor(enemy), enemy.hp), enemy.hp - claim.damage);
+      // The card floor absorbed part of it (core/cards.ts `holdFloor`): the host shows it too.
+      if (cardHolds(enemy, claim.damage)) events.push({ type: 'cardHold', enemyId: enemy.id, pos: enemy.pos });
       struck = {
         ...noteAggroDamage(enemy.boss ? onBossDamaged(enemy, claim.damage) : enemy, claim.playerId, claim.damage),
         hp,

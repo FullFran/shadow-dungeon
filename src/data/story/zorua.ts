@@ -25,9 +25,9 @@ export type ZoruaBossId = 'zorua-wound' | 'zorua-kecleon' | 'zorua-gengar' | 'zo
 /** Its shadows (data/story/kit.ts; `hpScale` per tier tuned so every card meets its kill margin, tests/sim/story-prove-<line>.test.ts); a shadow that were Dark alone would shrug Zorua's own moves off, so they are part Ghost. */
 export const ZORUA_BOSSES: readonly (StoryBossDef & { id: ZoruaBossId })[] = [
   { id: 'zorua-kecleon', sprite: 'kecleon', types: ['ghost'], maxHp: 520, radius: 15, shots: { a: 'normal', b: 'ghost' }, cards: ['fan', 'drop', 'moon'], hpScale: [0.5, 0.6, 0.54, 0.51] },
-  { id: 'zorua-gengar', sprite: 'gengar', types: ['ghost', 'poison'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'poison' }, cards: ['drop', 'bloom', 'fan'], hpScale: [0.5, 0.54, 0.6, 0.7] },
+  { id: 'zorua-gengar', sprite: 'gengar', types: ['ghost', 'poison'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'poison' }, cards: ['drop', 'bloom', 'fan'], hpScale: [0.5, 0.46, 0.6, 0.7] },
   { id: 'zorua-mightyena', sprite: 'mightyena', types: ['dark', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'dark', b: 'ghost' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.54, 0.44, 0.41] },
-  { id: 'zorua-houndoom', sprite: 'houndoom', types: ['fire', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'fire', b: 'dark' }, cards: ['walls', 'fan', 'bloom'], hpScale: [0.5, 0.6, 0.6, 0.7] },
+  { id: 'zorua-houndoom', sprite: 'houndoom', types: ['fire', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'fire', b: 'dark' }, cards: ['walls', 'fan', 'bloom'], hpScale: [0.5, 0.6, 0.6, 0.69] },
   { id: 'zorua-spiritomb', sprite: 'spiritomb', types: ['ghost', 'dark'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'dark' }, cards: ['moon', 'walls', 'drop'], hpScale: [0.5, 0.56, 0.6, 0.49] },
   // The wound: Zoroark of the white fog (Normal and Ghost, the grudge's vessel): borrowed faces, a blow from behind, the path that loops, the fog that closes in.
   { id: 'zorua-wound', sprite: 'zoroark', types: ['ghost'], maxHp: 760, radius: 20, shots: { a: 'dark', b: 'ghost' }, cards: ['fan', 'drop', 'bloom', 'walls'], hpScale: [0.5, 0.55, 0.7, 0.85], wound: true },

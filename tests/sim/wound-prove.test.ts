@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { CHALLENGES } from '../../src/data/dungeons';
 import { ROOMS } from '../../src/data/rooms';
 import { proveWounds, WOUNDS } from './wound-prove';
+
+// Back-to-back synchronous proofs never let the worker read its RPC replies ("Timeout calling onTaskUpdate" once a file runs past 60 s): yield a macrotask after each.
+afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
 
 /** Every Senda's wound (tests/sim/wound-prove.ts), each tier proven at the end of the road it walks. */
 describe('the wounds are listed', () => {
