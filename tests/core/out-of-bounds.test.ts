@@ -170,13 +170,13 @@ describe('out-of-bounds enemies: knockback never tunnels a walker out of the map
 });
 
 describe('out-of-bounds enemies: wave room sealing and the safety net', () => {
-  it('an enemy standing in a doorway when the doors slam is moved inside the room, not left in the new wall', () => {
+  it.each(['spinarak', 'gastly'] as const)('a %s standing in a doorway when the doors slam is moved inside the room, not left in the new wall', (species) => {
     const { world, floor } = waveWorld(4242);
     const event = world.simaEvent!;
     const room = floor.rooms[event.room]!;
     const door = doorTiles(floor, room)[0]!;
     const doorPos = tileCenter({ x: door % floor.cols, y: Math.floor(door / floor.cols) });
-    let w = spawnEnemy(world, 'spinarak', doorPos, { dormant: true });
+    let w = spawnEnemy(world, species, doorPos, { dormant: true });
     const id = w.enemies.at(-1)!.id;
     w = play(at(w, tileCenter({ x: room.x + 1, y: room.y + 1 })), 50);
     expect(w.simaEvent!.sealed).toBe(true);
@@ -206,7 +206,7 @@ describe('out-of-bounds enemies: wave room sealing and the safety net', () => {
       const room = floor.rooms[event.room]!;
       let w = play(at(world, tileCenter({ x: room.x + 1, y: room.y + 1 })), 50);
       expect(w.simaEvent!.sealed).toBe(true);
-      // The wave's enemies hold still (dormant); one is outside: on the floor of the start room, or (a floater) in the rock.
+      // The wave's enemies hold still (dormant); one is outside, on the floor of the start room.
       const plan = w.arena.tiles as Floor;
       const outside = tileCenter(plan.start);
       w = spawnEnemy(w, species, outside, { dormant: true });
@@ -215,9 +215,10 @@ describe('out-of-bounds enemies: wave room sealing and the safety net', () => {
       const centre = vec(event.rect.x + event.rect.width / 2, event.rect.y + event.rect.height / 2);
       const before = play(w, 2800);
       const waiting = before.enemies.find((e) => e.id === id)!;
-      // A walker waits where it is; a floater drifts back on its own over the walls.
-      if (species === 'gastly') expect(Math.hypot(waiting.pos.x - centre.x, waiting.pos.y - centre.y)).toBeLessThan(Math.hypot(outside.x - centre.x, outside.y - centre.y));
-      else expect(insideRect(waiting.pos, event.rect)).toBe(false);
+      // Walker or floater, it waits where it is, on its floor (a floater no longer drifts into the walls: odd/tasks/floaters-usable-floor.md).
+      expect(waiting.pos).toEqual(outside);
+      expect(insideRect(waiting.pos, event.rect)).toBe(false);
+      expect(Math.hypot(waiting.pos.x - centre.x, waiting.pos.y - centre.y)).toBeGreaterThan(0);
       const after = play(before, 400);
       const back = after.enemies.find((e) => e.id === id)!;
       expect(insideRect(back.pos, event.rect)).toBe(true);

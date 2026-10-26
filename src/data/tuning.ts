@@ -64,8 +64,6 @@ export const TUNING = {
     strayMs: 3000,
     /** How long the poof of that return shows. */
     warpMs: 450,
-    /** A floating wave enemy outside its sealed room drifts back towards it at this speed (px/s). */
-    floaterPullSpeed: 90,
     /** A sealed wave room with a player inside whose wave enemies lose no HP this long ends (they die, unpaid; the doors open). */
     waveStallMs: 60000,
   },

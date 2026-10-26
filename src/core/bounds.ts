@@ -3,7 +3,7 @@ import { TUNING } from '../data/tuning';
 import { confineCircle, insideRect } from './geometry';
 import type { EnemyState, Rect, WorldState } from './state';
 import { isWall, TILE, tileCenter, tileOf, type TileGrid, type TilePoint } from './tiles';
-import { add, clamp, distance, length, normalize, scale, sub, vec, type Vec2 } from './vec';
+import { clamp, distance, vec, type Vec2 } from './vec';
 
 /**
  * The out-of-bounds safety net (odd/tasks/out-of-bounds-fix.md), host and solo
@@ -15,9 +15,9 @@ import { add, clamp, distance, length, normalize, scale, sub, vec, type Vec2 } f
  *   walk to, is snapped to the nearest floor tile they can (BFS from its tile);
  *   floaters too (odd/tasks/floaters-usable-floor.md: an old snapshot, a spawn
  *   or a push may still leave one in the rock, where nothing could hit it);
- * - during a sealed wave room, a wave enemy outside the room drifts back
- *   (floaters) and, after `TUNING.bounds.strayMs`, is brought to a free tile
- *   inside it with a poof (`warpMs`).
+ * - during a sealed wave room, a wave enemy outside the room, after
+ *   `TUNING.bounds.strayMs`, is brought to a free tile inside it with a poof
+ *   (`warpMs`).
  */
 
 const BOUNDS = TUNING.bounds;
@@ -169,7 +169,11 @@ export function keepEnemiesInBounds(state: WorldState, dtMs: number): WorldState
   return changed ? { ...state, enemies } : state;
 }
 
-/** A wave enemy outside its sealed room: floaters drift back; anyone out too long is brought in with a poof. */
+/**
+ * A wave enemy outside its sealed room, walker or floater alike: out too long,
+ * it is brought in with a poof. (Floaters used to drift back over the walls;
+ * walls confine them now, odd/tasks/floaters-usable-floor.md.)
+ */
 function herd(state: WorldState, start: EnemyState, rect: Rect, floats: boolean, dtMs: number): EnemyState {
   if (insideRect(start.pos, rect)) {
     if (start.strayMs === undefined) return start;
@@ -177,16 +181,8 @@ function herd(state: WorldState, start: EnemyState, rect: Rect, floats: boolean,
     return rest;
   }
   const strayMs = (start.strayMs ?? 0) + dtMs;
-  let enemy: EnemyState = { ...start, strayMs };
-  if (strayMs > BOUNDS.strayMs) {
-    const { strayMs: _gone, ...rest } = enemy;
-    const to = freeRoomTile(state, rect, enemy.pos, enemy.id);
-    return { ...rest, pos: confineCircle(state.arena, to, enemy.radius, !floats), knockback: vec(0, 0), warpMs: BOUNDS.warpMs };
-  }
-  if (floats) {
-    const toRoom = sub(vec(rect.x + rect.width / 2, rect.y + rect.height / 2), enemy.pos);
-    const stepPx = Math.min(length(toRoom), (BOUNDS.floaterPullSpeed * dtMs) / 1000);
-    enemy = { ...enemy, pos: confineCircle(state.arena, add(enemy.pos, scale(normalize(toRoom), stepPx)), enemy.radius, false) };
-  }
-  return enemy;
+  if (strayMs <= BOUNDS.strayMs) return { ...start, strayMs };
+  const { strayMs: _gone, ...rest } = start;
+  const to = freeRoomTile(state, rect, start.pos, start.id);
+  return { ...rest, pos: confineCircle(state.arena, to, start.radius, !floats), knockback: vec(0, 0), warpMs: BOUNDS.warpMs };
 }

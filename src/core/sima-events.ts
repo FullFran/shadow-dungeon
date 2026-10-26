@@ -7,7 +7,7 @@ import type { PactEffect, PactId, SimaEventKind, SimaEvents, SimaPact } from '..
 import type { SpeciesId } from '../data/species';
 import { enterMode } from './brain';
 import { roomRect, type Floor, type TileRect } from './dungeon';
-import { ENEMY_BEHAVIOUR, floatsOf } from '../data/enemies';
+import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { confineCircle, insideRect } from './geometry';
 import { offerItems } from './items';
 import { deriveSeed } from './rng';
@@ -337,7 +337,7 @@ export function updateSimaEvent(state: WorldState, dtMs: number, def: SimaEvents
 
 /**
  * Waves: closes or opens the room's doors (the grid changes on every peer;
- * guests follow the `sealed` flag). On closing, a walker standing in a
+ * guests follow the `sealed` flag). On closing, an enemy (walker or floater) standing in a
  * doorway is first moved into the room, never left inside the new wall.
  */
 function sealed(state: WorldState, event: SimaEventState, closed: boolean): WorldState {
@@ -345,7 +345,7 @@ function sealed(state: WorldState, event: SimaEventState, closed: boolean): Worl
   if (!grid || !event.doors) return { ...state, simaEvent: { ...event, sealed: closed } };
   const tiles = withDoors(grid, event.doors, closed);
   const arena = { ...state.arena, tiles };
-  const enemies = closed ? state.enemies.map((e) => (e.alive && !floatsOf(e.species) && inDoorway(grid, event.doors!, e) ? intoRoom(arena, event.rect, e) : e)) : state.enemies;
+  const enemies = closed ? state.enemies.map((e) => (e.alive && inDoorway(grid, event.doors!, e) ? intoRoom(arena, event.rect, e) : e)) : state.enemies;
   return { ...state, arena, enemies, simaEvent: { ...event, sealed: closed } };
 }
 
