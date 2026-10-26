@@ -376,6 +376,20 @@ describe('a linked browser', () => {
     expect(backend.cloudOf('ana@example.com')).toEqual({ rev: 2, coins: 999 });
   });
 
+  it('the cloud moved and the device only in what merges (a run record): merged without asking', async () => {
+    const { backend, d } = await linked();
+    backend.writeElsewhere('ana@example.com', cloudOf(withRecords(999, 1)) as SaveData);
+    saveRun(d.game, { dungeon: 'flooded-caves', floor: 3, level: 4, species: 'mimikyu', victory: false });
+    d.account.flush();
+    await d.idle();
+    expect(d.account.pendingChoice()).toBeNull();
+    expect(d.local().coins).toBe(999);
+    expect(readRecords(d.storage).dungeons['flooded-caves']?.bestFloor).toBe(3);
+    // The merged profile goes up over the newer revision.
+    expect(backend.cloudOf('ana@example.com')).toEqual({ rev: 3, coins: 999 });
+    expect(decodeCloud(backend.dataOf('ana@example.com')).profile.records.dungeons['flooded-caves']?.bestFloor).toBe(3);
+  });
+
   it('a reload pushes progress made while offline', async () => {
     const { backend, d, storage } = await linked();
     backend.setDown('offline');
@@ -606,6 +620,19 @@ describe('backups from the account screen', () => {
     expect(backend.cloudOf('ana@example.com')).toEqual({ rev: 3, coins: 100 });
     expect(d.names()).toEqual(['imported', 'restored']);
     expect(d.account.restore('missing')).toBe(false);
+  });
+
+  it('a restore brings the backup economy back but never loses records made since', () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    writeProfile(d.game, withRecords(10, 2));
+    d.account.importProfile(withRecords(500, 1));
+    saveRun(d.game, { dungeon: 'flooded-caves', floor: 6, level: 4, species: 'mimikyu', victory: false });
+    const before = d.account.backups().find((b) => backupProfile(b).save.coins === 10)!;
+    d.account.restore(before.id);
+    expect(d.local().coins).toBe(10);
+    expect(readRecords(d.storage).dungeons['flooded-caves']?.bestFloor).toBe(6);
+    expect(readRecords(d.storage).dungeons['crypt-of-the-sword-king']?.bestFloor).toBe(2);
   });
 
   it('works for a guest too, without any request', async () => {

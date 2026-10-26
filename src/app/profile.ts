@@ -82,8 +82,10 @@ export const profileText = (profile: Profile): string => JSON.stringify(cleanPro
  * what the device remembers of the last synced profile, to tell whether
  * local progress changed since then.
  */
-export function profileHash(profile: Profile): string {
-  const text = profileText(profile);
+export const profileHash = (profile: Profile): string => hashText(profileText(profile));
+
+/** cyrb53 of any text, with its length: short, stable, not cryptographic. */
+export function hashText(text: string): string {
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
   for (let i = 0; i < text.length; i++) {

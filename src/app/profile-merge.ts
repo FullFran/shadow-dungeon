@@ -4,7 +4,8 @@ import { parseBoard, type ScoreEntry } from '../town/leaderboard';
 import { tierRecord, type DungeonRecord, type Records, type TierRecord } from '../town/records';
 import type { ShrineRecords, TrialBest } from '../town/shrine-records';
 import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
-import { cleanProfile, type Profile } from './profile';
+import { cleanProfile, hashText, type Profile } from './profile';
+import { sanitize } from './save';
 import type { SaveData } from './save';
 
 /**
@@ -151,4 +152,18 @@ export function mergeProfiles(kept: Profile, other: Profile): Profile {
     board: mergeBoard(kept.board, other.board),
     bestiary: mergeBestiary(kept.bestiary, other.bestiary),
   });
+}
+
+/**
+ * Hash of a profile's economy only (the save fields `SAVE_FIELD_RULES` marks
+ * economy). When the device's economy did not move since its last sync, its
+ * other changes merge without loss, so a newer cloud is pulled (and merged)
+ * instead of asking.
+ */
+export function economyHash(profile: Profile): string {
+  const save = sanitize(profile.save) as unknown as Record<string, unknown>;
+  const economy = Object.entries(SAVE_FIELD_RULES)
+    .filter(([, rule]) => rule === 'economy')
+    .map(([field]) => [field, save[field] ?? null]);
+  return hashText(JSON.stringify(economy));
 }

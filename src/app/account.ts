@@ -16,7 +16,7 @@ import {
   type SyncStatus,
   type Timers,
 } from './cloud-sync';
-import { mergeProfiles } from './profile-merge';
+import { economyHash, mergeProfiles } from './profile-merge';
 import { EMPTY_PROFILE, PROFILE_KEYS, profileHash, profileSummary, readProfile, sameProfile, writeProfile, type Profile, type ProfileSummary } from './profile';
 
 /**
@@ -200,8 +200,8 @@ export function createAccount(deps: AccountDeps): Account {
       },
       readLocal: local,
       encode: (profile) => encodeCloud(profile, { savedAt: deps.now() }),
-      pushed: (remote, hash) => {
-        setSync({ saveId: remote.id, rev: remote.rev, hash, syncedAt: deps.now(), status: sync().status === 'resolved' ? 'resolved' : 'synced' });
+      pushed: (remote, sent) => {
+        setSync({ saveId: remote.id, rev: remote.rev, ...bases(sent), syncedAt: deps.now(), status: sync().status === 'resolved' ? 'resolved' : 'synced' });
         deps.onChange();
       },
       conflict: (current) => reconcile(current, 'conflict'),
@@ -217,10 +217,10 @@ export function createAccount(deps: AccountDeps): Account {
     pusher?.flush();
   };
 
-  /** Links the device to `remote` as the base for the local profile `hash`. */
-  const link = (remote: RemoteSave | null, hash: string | null, status: SyncStatus = 'synced') => {
+  /** Links the device to `remote` with `base` as the profile synced at its revision (null: none yet). */
+  const link = (remote: RemoteSave | null, base: Profile | null, status: SyncStatus = 'synced') => {
     if (!session) return;
-    setSync({ owner: session.userId, saveId: remote?.id ?? null, rev: remote?.rev ?? 0, hash, held: false, status, syncedAt: deps.now() });
+    setSync({ owner: session.userId, saveId: remote?.id ?? null, rev: remote?.rev ?? 0, ...bases(base), held: false, status, syncedAt: deps.now() });
   };
 
   /**
@@ -235,7 +235,7 @@ export function createAccount(deps: AccountDeps): Account {
     const cloudBackup = remote && !sameProfile(cloud, kept) ? backup(cloud, 'cloud') : null;
     if (!sameProfile(before, kept)) replaceLocal(kept);
     // The base is the cloud as it is: when `kept` differs from it the push loop sends `kept` at its revision.
-    link(remote, remote ? profileHash(cloud) : null, status);
+    link(remote, remote ? cloud : null, status);
     if (!remote || !sameProfile(cloud, kept)) pushNow();
     deps.onChange();
     return undoSide === 'local' ? localBackup : undoSide === 'cloud' ? cloudBackup : null;
@@ -249,11 +249,11 @@ export function createAccount(deps: AccountDeps): Account {
     pending = null;
     switch (action) {
       case 'none':
-        link(remote, profileHash(profile));
+        link(remote, profile);
         break;
       case 'push':
         // Base: the record as it is (its revision), so the push loop sends the local profile over it.
-        link(remote, null, 'pending');
+        link(remote, remote ? readRemote(remote).profile : null, 'pending');
         pushNow();
         break;
       case 'pull': {
@@ -331,7 +331,7 @@ export function createAccount(deps: AccountDeps): Account {
         } else if (answer === 'fresh') {
           // "Empezar de cero": this device keeps its fresh progress; nothing goes up or down until the player picks a side.
           pending = { kind: 'held', remote: open.remote };
-          setSync({ owner: session.userId, saveId: open.remote.id, rev: open.remote.rev, hash: null, held: true, status: 'held', syncedAt: null });
+          setSync({ owner: session.userId, saveId: open.remote.id, rev: open.remote.rev, hash: null, econ: null, held: true, status: 'held', syncedAt: null });
         }
         break;
       case 'held':
@@ -374,7 +374,7 @@ export function createAccount(deps: AccountDeps): Account {
       // A session from before profile sync: its link becomes the base, with the local profile as it is now.
       const state = sync();
       if (stored.legacy && state.owner === null) {
-        writeSync(deps.store, { ...EMPTY_SYNC, owner: stored.userId, saveId: stored.legacy.saveId, rev: stored.legacy.rev, hash: profileHash(local()), status: 'idle' });
+        writeSync(deps.store, { ...EMPTY_SYNC, owner: stored.userId, saveId: stored.legacy.saveId, rev: stored.legacy.rev, ...bases(local()), status: 'idle' });
         persist();
       }
       deps.onChange();
@@ -462,9 +462,10 @@ export function createAccount(deps: AccountDeps): Account {
     restore(id) {
       const found = findBackup(deps.store, id);
       if (!found) return false;
-      const profile = backupProfile(found);
-      backup(local(), 'restore');
-      replaceLocal(profile);
+      // The backup's economy comes back; achievements, records and the rest stay merged (never lost).
+      const current = local();
+      backup(current, 'restore');
+      replaceLocal(mergeProfiles(backupProfile(found), current));
       if (session) pushNow();
       deps.onNotice('restored');
       deps.onChange();
@@ -472,8 +473,9 @@ export function createAccount(deps: AccountDeps): Account {
     },
     exportText: () => exportText(local(), deps.now()),
     importProfile(profile) {
-      backup(local(), 'import');
-      replaceLocal(profile);
+      const current = local();
+      backup(current, 'import');
+      replaceLocal(mergeProfiles(profile, current));
       if (session) pushNow();
       deps.onNotice('imported');
       deps.onChange();
@@ -525,5 +527,8 @@ export function createAccount(deps: AccountDeps): Account {
     },
   };
 }
+
+/** The base hashes of a synced profile (null: none). */
+const bases = (profile: Profile | null): Pick<SyncState, 'hash' | 'econ'> => (profile ? { hash: profileHash(profile), econ: economyHash(profile) } : { hash: null, econ: null });
 
 const errorOf = (error: ApiError): AccountError => (error.kind === 'conflict' ? 'server' : error.kind);

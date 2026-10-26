@@ -22,6 +22,7 @@ import {
   type Timers,
 } from '../../src/app/cloud-sync';
 import { EMPTY_PROFILE, profileHash, PROFILE_KEYS, type Profile } from '../../src/app/profile';
+import { economyHash } from '../../src/app/profile-merge';
 import { EMPTY_SAVE, SAVE_KEY } from '../../src/app/save';
 import { electLeader, HEARTBEAT_MS, LEASE_KEY, LEASE_MS, type LockManagerLike } from '../../src/app/sync-leader';
 
@@ -63,11 +64,15 @@ const settle = async () => {
 describe('the decision table', () => {
   const H = { base: 'h-base', changed: 'h-local', cloud: 'h-cloud' };
   const OWNERS = ['none', 'same', 'other'] as const;
-  const BASES = [null, { saveId: 's1', rev: 3, hash: H.base }] as const;
+  const BASES = [null, { saveId: 's1', rev: 3, hash: H.base, econ: 'e-base' }] as const;
   const LOCALS = [
-    { hash: H.base, empty: false },
-    { hash: H.changed, empty: false },
-    { hash: 'h-empty', empty: true },
+    // Unchanged since the base.
+    { hash: H.base, econ: 'e-base', empty: false },
+    // Changed only in what always merges (records, achievements...).
+    { hash: 'h-merged-only', econ: 'e-base', empty: false },
+    // Changed in its economy.
+    { hash: H.changed, econ: 'e-local', empty: false },
+    { hash: 'h-empty', econ: 'e-empty', empty: true },
   ] as const;
   const REMOTES = [
     null,
@@ -108,9 +113,11 @@ describe('the decision table', () => {
       // An empty device never pushes over cloud progress.
       if (c.local.empty && cloudHasProgress) expect(action, at).not.toBe('push');
       // A push only overwrites a cloud revision this device has seen (or no progress at all).
-      if (action === 'push') expect(!cloudHasProgress || seenRemote, at).toBe(true);
-      // A pull never throws local changes away.
-      if (action === 'pull') expect(c.local.empty || c.local.hash === c.base?.hash, at).toBe(true);
+      if (action === 'push') expect(!cloudHasProgress || seenRemote || (c.base !== null && c.remote!.hash === c.base.hash), at).toBe(true);
+      // A pull never throws local economy away (everything else merges).
+      if (action === 'pull') expect(c.local.empty || c.local.hash === c.base?.hash || c.local.econ === c.base?.econ, at).toBe(true);
+      // Two moved economies are always the player's call.
+      if (c.base && c.remote && !c.remote.empty && c.remote.rev > c.base.rev && c.local.econ !== c.base.econ && !c.local.empty && c.remote.hash !== c.local.hash && !c.held && c.owner === 'same') expect(action, at).toBe('diverged');
       // Equal profiles need nothing.
       if (c.remote && c.remote.hash === c.local.hash && c.owner !== 'other') expect(action, at).toBe('none');
       // "Empezar de cero" holds everything that would move.
@@ -120,11 +127,12 @@ describe('the decision table', () => {
     }
   });
 
-  const base = { saveId: 's1', rev: 3, hash: H.base };
+  const base = { saveId: 's1', rev: 3, hash: H.base, econ: 'e-base' };
   const cloud = (rev: number, id = 's1') => ({ id, rev, hash: H.cloud, empty: false });
-  const full = { hash: H.changed, empty: false };
-  const unchanged = { hash: H.base, empty: false };
-  const empty = { hash: 'h-empty', empty: true };
+  const full = { hash: H.changed, econ: 'e-local', empty: false };
+  const mergedOnly = { hash: 'h-merged-only', econ: 'e-base', empty: false };
+  const unchanged = { hash: H.base, econ: 'e-base', empty: false };
+  const empty = { hash: 'h-empty', econ: 'e-empty', empty: true };
   const row = (owner: DecisionInput['owner'], b: DecisionInput['base'], local: DecisionInput['local'], remote: DecisionInput['remote'], held = false): DecisionInput => ({ owner, held, base: b, local, remote });
 
   it.each<[string, DecisionInput, SyncAction]>([
@@ -135,7 +143,9 @@ describe('the decision table', () => {
     ['guest progress meets different cloud progress: pick', row('none', null, full, cloud(4)), 'diverged'],
     ['same account, only the device moved (server rev == baseRev): push', row('same', base, full, cloud(3)), 'push'],
     ['same account, only the cloud moved: silent pull', row('same', base, unchanged, cloud(4)), 'pull'],
-    ['same account, both moved: pick', row('same', base, full, cloud(4)), 'diverged'],
+    ['same account, device moved, cloud at a later revision with the base content (undo elsewhere): push', row('same', base, full, { id: 's1', rev: 6, hash: H.base, empty: false }), 'push'],
+    ['same account, both economies moved: pick', row('same', base, full, cloud(4)), 'diverged'],
+    ['same account, cloud moved, device moved only in merged data (records): pull and merge', row('same', base, mergedOnly, cloud(4)), 'pull'],
     ['same account, storage wiped under a known record: take it back', row('same', base, empty, cloud(4)), 'pull'],
     ['same account, record replaced (other id): pick', row('same', base, full, cloud(4, 's2')), 'diverged'],
     ['same account, cloud behind the base (restored server): pick', row('same', base, full, cloud(2)), 'diverged'],
@@ -150,7 +160,7 @@ describe('the decision table', () => {
   });
 
   it('builds its input from the sync state, the local profile and the cloud record', () => {
-    const state: SyncState = { ...EMPTY_SYNC, owner: 'u1', saveId: 's1', rev: 3, hash: profileHash(profile(5)) };
+    const state: SyncState = { ...EMPTY_SYNC, owner: 'u1', saveId: 's1', rev: 3, hash: profileHash(profile(5)), econ: economyHash(profile(5)) };
     const remote: RemoteSave = { id: 's1', rev: 4, data: encodeCloud(profile(9), { savedAt: 1 }) };
     const input = decisionInput(state, 'u1', profile(5), remote);
     expect(input.owner).toBe('same');
@@ -164,7 +174,7 @@ describe('the decision table', () => {
 describe('sync state', () => {
   it('round-trips and tags local data with its account', () => {
     const store = memoryStore();
-    const state: SyncState = { owner: 'u1', saveId: 's1', rev: 7, hash: 'abc:1', syncedAt: 100, held: true, status: 'held' };
+    const state: SyncState = { owner: 'u1', saveId: 's1', rev: 7, hash: 'abc:1', econ: 'e:1', syncedAt: 100, held: true, status: 'held' };
     writeSync(store, state);
     expect(readSync(store)).toEqual(state);
   });
@@ -223,8 +233,8 @@ describe('the push loop', () => {
       state: () => state,
       readLocal: () => local,
       encode: (p) => encodeCloud(p, { savedAt: 0 }),
-      pushed: (remote, hash) => {
-        state = { ...state, saveId: remote.id, rev: remote.rev, hash };
+      pushed: (remote, sent) => {
+        state = { ...state, saveId: remote.id, rev: remote.rev, hash: profileHash(sent) };
         events.push(`pushed@${remote.rev}`);
       },
       conflict: (current) => events.push(`conflict@${current.rev}`),

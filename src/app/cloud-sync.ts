@@ -2,6 +2,7 @@ import type { ApiResult, RemoteSave } from '../adapters/account-api';
 import type { KeyValueStore } from '../adapters/storage';
 import { decodeCloud, type CloudData, type CloudMeta } from './cloud-payload';
 import { isEmptyProfile, profileHash, type Profile } from './profile';
+import { economyHash } from './profile-merge';
 
 /**
  * Cloud profile sync (docs/gdd.md, Cuentas): the per-device sync state, the
@@ -32,6 +33,8 @@ export interface SyncState {
   rev: number;
   /** Hash of the local profile at that push or pull (null: never synced). */
   hash: string | null;
+  /** Hash of its economy alone (profile-merge.ts `economyHash`). */
+  econ: string | null;
   /** When it last synced (ms). */
   syncedAt: number | null;
   /** "Empezar de cero": nothing is pushed or pulled until the player picks a side in the account screen. */
@@ -39,7 +42,7 @@ export interface SyncState {
   status: SyncStatus;
 }
 
-export const EMPTY_SYNC: SyncState = { owner: null, saveId: null, rev: 0, hash: null, syncedAt: null, held: false, status: 'idle' };
+export const EMPTY_SYNC: SyncState = { owner: null, saveId: null, rev: 0, hash: null, econ: null, syncedAt: null, held: false, status: 'idle' };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const OWNER = /^[a-z0-9]{1,32}$/;
@@ -56,11 +59,12 @@ export function parseSync(raw: string | null): SyncState {
   const saveId = typeof data.saveId === 'string' && OWNER.test(data.saveId) ? data.saveId : null;
   const rev = Number.isSafeInteger(data.rev) && (data.rev as number) >= 0 ? (data.rev as number) : 0;
   const hash = typeof data.hash === 'string' && data.hash.length <= 40 ? data.hash : null;
+  const econ = typeof data.econ === 'string' && data.econ.length <= 40 ? data.econ : null;
   const syncedAt = Number.isSafeInteger(data.syncedAt) && (data.syncedAt as number) >= 0 ? (data.syncedAt as number) : null;
   const status = SYNC_STATUSES.includes(data.status as SyncStatus) ? (data.status as SyncStatus) : 'idle';
   // A base needs its owner: a record without one is no base at all.
   if (!owner) return { ...EMPTY_SYNC, status: 'idle' };
-  return { owner, saveId, rev, hash, syncedAt, held: data.held === true, status };
+  return { owner, saveId, rev, hash, econ, syncedAt, held: data.held === true, status };
 }
 
 export function readSync(store: KeyValueStore): SyncState {
@@ -88,8 +92,9 @@ export interface DecisionInput {
   /** "Empezar de cero" chosen by this account on this device. */
   held: boolean;
   /** The last sync of this device for this account (null: never). */
-  base: { saveId: string | null; rev: number; hash: string | null } | null;
-  local: { hash: string; empty: boolean };
+  base: { saveId: string | null; rev: number; hash: string | null; econ: string | null } | null;
+  /** `econ`: the hash of its economy alone. */
+  local: { hash: string; econ: string; empty: boolean };
   /** The cloud record (null: the account has none). */
   remote: { id: string; rev: number; hash: string; empty: boolean } | null;
 }
@@ -97,7 +102,7 @@ export interface DecisionInput {
 /**
  * - `none`: nothing to move (already equal, or nothing anywhere).
  * - `push`: only this device moved (or the cloud holds nothing).
- * - `pull`: only the cloud moved: take it silently and say so.
+ * - `pull`: only the cloud moved (or the device moved only in what always merges): take it silently, merged, and say so.
  * - `offer-download`: a browser with no progress meets cloud progress it never synced: "Encontramos tu progreso en la nube".
  * - `diverged`: both moved, or first meeting of two different profiles: the player picks a side (economy), the rest merges.
  * - `foreign`: this browser holds another account's progress: keep it as a backup, discard it, or use it as this account's.
@@ -118,9 +123,11 @@ export function decideSync(input: DecisionInput): SyncAction {
   // An empty device never overwrites cloud progress: never synced here, offer it; synced before, its storage was wiped: take it back.
   if (local.empty) return known ? 'pull' : 'offer-download';
   if (!known) return 'diverged';
-  const localChanged = base.hash !== local.hash;
-  if (remote.rev === base.rev) return 'push';
-  return localChanged ? 'diverged' : 'pull';
+  // Only the device moved: the cloud is at the base revision, or a later one with the very same content (an undo elsewhere).
+  if (remote.rev === base.rev || remote.hash === base.hash) return 'push';
+  // The cloud moved: an unchanged device takes it; so does one whose economy did not move (its other changes merge without loss).
+  const economyMoved = base.hash !== local.hash && base.econ !== local.econ;
+  return economyMoved ? 'diverged' : 'pull';
 }
 
 /** The decision input for the local profile and a cloud record. */
@@ -130,8 +137,8 @@ export function decisionInput(state: SyncState, accountId: string, local: Profil
   return {
     owner,
     held: owner === 'same' && state.held,
-    base: owner === 'same' && state.hash !== null ? { saveId: state.saveId, rev: state.rev, hash: state.hash } : null,
-    local: { hash: profileHash(local), empty: isEmptyProfile(local) },
+    base: owner === 'same' && state.hash !== null ? { saveId: state.saveId, rev: state.rev, hash: state.hash, econ: state.econ } : null,
+    local: { hash: profileHash(local), econ: economyHash(local), empty: isEmptyProfile(local) },
     remote: remote && cloud ? { id: remote.id, rev: remote.rev, hash: profileHash(cloud), empty: isEmptyProfile(cloud) } : null,
   };
 }
@@ -179,8 +186,8 @@ export interface PusherDeps {
   readLocal(): Profile;
   /** The payload for a profile (adds the save time). */
   encode(profile: Profile): CloudData;
-  /** A push landed: the new base. */
-  pushed(remote: RemoteSave, hash: string): void;
+  /** A push landed: the new base is the profile it sent. */
+  pushed(remote: RemoteSave, profile: Profile): void;
   /** The server holds a newer revision (409): the caller decides (pull or ask). */
   conflict(current: RemoteSave): void;
   onAuthLost(): void;
@@ -242,7 +249,7 @@ export function createPusher(deps: PusherDeps): Pusher {
     if (stopped) return;
     if (result.ok) {
       retryMs = FIRST_RETRY_MS;
-      deps.pushed(result.value, hash);
+      deps.pushed(result.value, local);
       if (dirty) schedule(DEBOUNCE_MS);
       return;
     }

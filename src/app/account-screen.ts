@@ -50,8 +50,8 @@ export function setupAccount(options: { store: KeyValueStore; notify(text: strin
 
 /** A notice with "Deshacer" for UNDO_MS (the replaced profile is in the backups either way). */
 function undoToast(text: string, undo: () => void): void {
-  const root = document.getElementById('app');
-  if (!root) return;
+  // On the body, not in #app: screens replace #app's children and the notice must outlive a redraw.
+  const root = document.body;
   root.querySelector('.sync-undo')?.remove();
   const button = h('button', { type: 'button', className: 'sync-undo-button', textContent: t('sync.undo') });
   const box = h('div', { className: 'sync-undo' }, [h('span', { textContent: text }), button]);
@@ -64,6 +64,9 @@ function undoToast(text: string, undo: () => void): void {
   });
   root.append(box);
 }
+
+/** A line the next account window shows once. */
+let flash: string | null = null;
 
 export type AccountView = 'main' | 'delete' | 'wipe' | 'overwrite' | 'discard' | 'backups';
 
@@ -179,6 +182,9 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
   const { account } = options;
   const status = h('p', { className: 'lobby-error account-status' });
   status.setAttribute('role', 'status');
+  // A one-time line from the previous view ("Sesión cerrada. Tus datos siguen en este dispositivo.").
+  status.textContent = flash ?? '';
+  flash = null;
   let busy = false;
   /** Runs one request at a time; an error stays on screen, success rebuilds it. */
   const run = async (task: () => Promise<{ ok: boolean; error?: AccountError }>, after: AccountView = 'main') => {
@@ -278,11 +284,8 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
         label: t('account.logOut'),
         onConfirm: () => {
           account.logOut();
+          flash = t('sync.loggedOut');
           go('main');
-          window.setTimeout(() => {
-            const shown = document.querySelector('.account-status');
-            if (shown) shown.textContent = t('sync.loggedOut');
-          }, 0);
         },
       },
       { label: t('account.delete'), onConfirm: () => go('delete') },
