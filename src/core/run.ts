@@ -1,4 +1,7 @@
-import { isHeraldFloor } from '../data/endless';
+import { echoAt, isHeraldFloor, type EndlessDef } from '../data/endless';
+import { echoShare, echoStageAt, fightOf, type EchoStage } from './cards';
+import { ECHO_CARDS } from '../data/cards';
+import { behaviourFor } from './tricks';
 import { heraldSeed, withHerald } from './herald/floor';
 import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, type DungeonDef, type DungeonId } from '../data/dungeons';
@@ -117,6 +120,30 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
   return plan.kind === 'room' && plan.role === undefined;
 };
 
+/** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
+function guardianEncounter(endless: EndlessDef, floor: number): number {
+  const room = echoAt(endless, floor).room;
+  let n = 0;
+  for (let f = endless.echoEvery; f <= floor; f += endless.echoEvery) if (echoAt(endless, f).room === room) n++;
+  return Math.max(1, n);
+}
+
+/**
+ * A card guardian's echo holds only the HP of the cards it plays (core/cards.ts
+ * `echoShare`), at `ECHO_CARDS.hpScale` of the guardian's HP whatever the
+ * depth (`depthHp` is the depth scale it spawned with, taken back out).
+ */
+function echoHp(world: WorldState, stage: EchoStage, depthHp: number): WorldState {
+  const tier = worldDifficulty(world);
+  const enemies = world.enemies.map((e) => {
+    const fight = e.boss ? fightOf(behaviourFor(e.species, tier)) : undefined;
+    if (!fight) return e;
+    const maxHp = Math.max(1, Math.round((e.maxHp / depthHp) * ECHO_CARDS.hpScale * echoShare(fight, stage)));
+    return { ...e, maxHp, hp: maxHp };
+  });
+  return { ...world, enemies };
+}
+
 /**
  * Loads the run's current floor into the world (the heal is the caller's: none on floor 1).
  * `party`: the players present at the floor entry (core/party.ts), frozen for the floor.
@@ -128,13 +155,17 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const plan = floorPlanOf(run);
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
-  const enemyScale = endless ? depthScale(endless.scaling, run.floor, plan.kind === 'room' && plan.role === 'echo') : undefined;
+  const echo = plan.kind === 'room' && plan.role === 'echo';
+  // A card guardian's echo plays its tier's cards by depth (core/cards.ts `echoStageAt`): the stage rides on the floor's enemy scale.
+  const stage = endless && echo ? echoStageAt(run.floor, guardianEncounter(endless, run.floor)) : undefined;
+  const scaled = endless ? depthScale(endless.scaling, run.floor, echo) : undefined;
+  const enemyScale = scaled && stage ? { ...scaled, echoStage: stage } : scaled;
   // A Sima event and a gate belong to their floor (the pact outlasts it).
   // The one-hit cap's yardstick (core/fairness.ts): the level expected on this floor, the same on every peer.
   const referenceLevel = expectedLevel(run.dungeon, run.floor, worldDifficulty(world));
   const deeper: WorldState = { ...world, depth: run.floor, enemyScale, referenceLevel, simaEvent: undefined, gate: undefined };
   if (plan.kind === 'room') {
-    const room = loadRoom(deeper, plan.room);
+    const room = stage && scaled ? echoHp(loadRoom(deeper, plan.room), stage, scaled.hp) : loadRoom(deeper, plan.room);
     // A herald floor: the generated boss of this run and floor (every peer makes the same one from the run seed). Room floors never draw a gate.
     return endless && isHeraldFloor(endless, run.floor) ? withHerald(room, heraldSeed(run.seed, run.floor), run.floor) : room;
   }

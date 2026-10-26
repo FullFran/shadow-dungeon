@@ -5,6 +5,7 @@ import { MUSIC_TRACKS, type LicensedTrack, type MusicContext } from '../data/mus
 import { eventsBetween, type CueMusic, type ScoreEvent } from '../data/prologue-music';
 import { isHeavyHit } from './juice';
 import { MOVES } from '../data/moves';
+import { cardInfo } from '../data/cards';
 
 /**
  * Web Audio: retro sfx synthesised from oscillators, a noise buffer,
@@ -57,6 +58,9 @@ export const SOUND_IDS = [
   'rallyCry',
   'leaderFall',
   'gateOpen',
+  'cardDeclare',
+  'cardCapture',
+  'turnOpen',
 ] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
@@ -114,7 +118,12 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'enemyAttack':
       return 'enemyAttack';
     case 'bossStance':
-      return 'stance';
+      // A card's declaration has its sting; a boss's own moves keep the stance sound.
+      return cardInfo(event.stance) ? 'cardDeclare' : 'stance';
+    case 'cardCaptured':
+      return 'cardCapture';
+    case 'bossTurn':
+      return 'turnOpen';
     case 'levelUp':
       return 'levelUp';
     case 'itemTriggered':
@@ -580,6 +589,34 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
       noise(s, t + 0.08, { filter: 'lowpass', from: 500, to: 160, dur: 0.45, gain: 0.25 });
       tone(s, t + 0.08, { type: 'sine', from: 70, to: 52, dur: 0.45, gain: 0.25 });
       arpeggio(s, t + 0.4, 'triangle', [523, 659, 784], 0.07, 0.4, 0.08);
+    },
+  },
+  cardDeclare: {
+    ms: 900,
+    play: (s, t) => {
+      // The sting: a low hit and a dark, rising pair, then a held bell (the boss names its card).
+      tone(s, t, { type: 'sine', from: 110, to: 55, dur: 0.35, gain: 0.35 });
+      noise(s, t, { filter: 'lowpass', from: 900, to: 200, dur: 0.25, gain: 0.2 });
+      tone(s, t + 0.06, { type: 'sawtooth', from: 147, to: 220, dur: 0.3, gain: 0.08, attack: 0.02 });
+      tone(s, t + 0.06, { type: 'sawtooth', from: 156, to: 233, dur: 0.3, gain: 0.05, attack: 0.02 });
+      tone(s, t + 0.32, { type: 'triangle', from: 587, dur: 0.5, gain: 0.07, attack: 0.01 });
+    },
+  },
+  cardCapture: {
+    ms: 800,
+    play: (s, t) => {
+      // "¡Técnica dominada!": a bright rising flourish over a soft chord.
+      arpeggio(s, t, 'square', [784, 988, 1175, 1568], 0.06, 0.18, 0.06);
+      tone(s, t + 0.26, { type: 'triangle', from: 1568, dur: 0.4, gain: 0.07 });
+      tone(s, t, { type: 'sine', from: 392, dur: 0.6, gain: 0.08, attack: 0.03 });
+    },
+  },
+  turnOpen: {
+    ms: 260,
+    play: (s, t) => {
+      // "Tu turno": a soft, low breath out (the boss opens; now).
+      noise(s, t, { filter: 'bandpass', from: 600, to: 300, dur: 0.18, gain: 0.08, q: 1.5 });
+      tone(s, t, { type: 'sine', from: 330, to: 262, dur: 0.2, gain: 0.07, attack: 0.02 });
     },
   },
   collapse: {

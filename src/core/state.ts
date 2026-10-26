@@ -265,6 +265,13 @@ export interface BossState {
   card?: number;
   /** Spell-card fight: time spent in the current card, declaration excluded (host only). */
   cardMs?: number;
+  /**
+   * Hosted spell-card fight (data/cards.ts `moves`): the card in play while
+   * `stance` names the boss's own move (synced: guests read the card from it).
+   */
+  spell?: SpellCardId;
+  /** Hosted card fight: the rest its own engine had set when its "tu turno" began, given back when the turn ends (host only). */
+  restMs?: number;
   /** Spell-card fight: the HP the current card's segment ends at; hits never take the boss below it while the card plays (host only). */
   hpFloor?: number;
 }
@@ -365,6 +372,8 @@ export type GameEvent =
   | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
   | { type: 'spellCardEnd'; enemyId: string; card: CardId; outcome: Exclude<CardOutcome, 'start'> }
+  /** "Tu turno": a card boss finished a combo and opens for `durationMs` (core/cards.ts `startTurn`): no new threat, its shots fade. */
+  | { type: 'bossTurn'; enemyId: string; durationMs: number }
   /** The local player went through a spell card without being hit (every peer for itself): coins and a heal. */
   | { type: 'cardCaptured'; enemyId: string; card: CardId; heal: number }
   | { type: 'disguiseBroken' }

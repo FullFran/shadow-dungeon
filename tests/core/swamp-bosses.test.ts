@@ -1,3 +1,4 @@
+import { atCard, fightOf } from '../../src/core/cards';
 import { behaviourFor } from '../../src/core/tricks';
 import type { SpeciesId } from '../../src/data/species';
 import type { QueenDef, UltraDef } from '../../src/data/swamp-enemies';
@@ -134,7 +135,10 @@ describe('Salazzle, the den mid-boss', () => {
   });
 
   it('calls two Salandit on nightmare, never more than two at once', () => {
-    let current = immortal(room('den', 'nightmare'));
+    // On nightmare the court is in her last spell (data/hosted-cards.ts): start there.
+    const den = room('den', 'nightmare');
+    const cards = fightOf(behaviourFor('salazzle', 'nightmare'))!;
+    let current = immortal({ ...den, enemies: [atCard(boss(den), cards, cards.cards.length - 1)] });
     let seen = 0;
     for (let i = 0; i < 20000 && seen < 2; i++) {
       current = immortal(step(current, IDLE, FIXED_DT_MS));

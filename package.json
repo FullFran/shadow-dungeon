@@ -1,7 +1,7 @@
 {
   "name": "mazmorra-sombria",
   "version": "0.0.0",
-  "description": "Non-commercial Pokémon fan game: souls-like top-down combat prototype (M0).",
+  "description": "Non-commercial Pok\u00e9mon fan game: souls-like top-down combat prototype (M0).",
   "directories": {
     "doc": "docs"
   },
@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit",
-    "balance": "vite-node tools/balance.ts"
+    "balance": "vite-node tools/balance.ts",
+    "prove": "vite-node tools/prove.ts"
   },
   "license": "UNLICENSED",
   "type": "module",

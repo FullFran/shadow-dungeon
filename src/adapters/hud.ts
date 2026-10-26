@@ -8,10 +8,14 @@ import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { bossBar } from '../core/boss';
 import { cardInfo } from '../data/cards';
+import { cardTimeLeftMs, fightFor, fightOf, inTurn } from '../core/cards';
+import { behaviourFor } from '../core/tricks';
+import { worldDifficulty } from '../core/difficulty';
 import { playerStats } from '../core/items';
 import { levelProgress } from '../core/progression';
 import type { GateState } from '../core/gates';
-import type { PlayerState, Rect, WorldState } from '../core/state';
+import type { EnemyState, PlayerState, Rect, WorldState } from '../core/state';
+import { heraldCard, heraldOf } from '../core/herald/brain';
 import { drawBar, drawPanel, pixelText } from '../ui/canvas';
 import { bossRect, HUD_BOX, slotRect, statusRect } from '../ui/hud-layout';
 import { canvasFont, PALETTE, RARITY, TYPE_COLORS } from '../ui/tokens';
@@ -170,6 +174,21 @@ function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: Hud
   });
 }
 
+/** The share of the card in play's timer still to run (the clock ring), or null. */
+function cardTimerShare(state: WorldState, enemy: EnemyState): number | null {
+  // A herald's card: its own generated timer (its clock is the stance time, core/herald/brain.ts `heraldBar`).
+  const herald = heraldOf(state, enemy);
+  if (herald) {
+    const card = heraldCard(herald, enemy.boss?.stance);
+    return card && enemy.boss ? Math.max(0, Math.min(1, 1 - enemy.boss.stanceMs / card.timerMs)) : null;
+  }
+  const fight = fightFor(state, fightOf(behaviourFor(enemy.species, worldDifficulty(state))));
+  if (!fight || enemy.boss?.card === undefined) return null;
+  const card = fight.cards[enemy.boss.card];
+  const left = cardTimeLeftMs(fight, enemy);
+  return card && left !== null ? Math.max(0, Math.min(1, left / card.timerMs)) : null;
+}
+
 /** Width and height of the HUD space (src/ui/hud-layout.ts). */
 type HudSize = Pick<Rect, 'width' | 'height'>;
 
@@ -196,14 +215,41 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     pixelText(ctx, herald ? herald.label : boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
     const guarded = boss.stance === 'shield' || cardInfo(boss.stance)?.guard === 'front';
     drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), herald ? herald.colour : guarded ? '#8fb3ff' : PALETTE.eclipse);
-    // Spell cards: a notch where each card's segment ends, and the card's clock (host) on the right.
+    // Spell cards read as a souls boss's phases: a notch where each card's segment ends (the ones already passed dim),
+    // the notch of the card in play pulses during "tu turno", and the card's clock is a discreet ring by the name (host).
+    const enemy = state.enemies.find((e) => e.id === boss.enemyId);
+    const turn = enemy !== undefined && inTurn(enemy);
     if (boss.segments) {
-      ctx.fillStyle = PALETTE.text;
-      for (const at of boss.segments) ctx.fillRect(Math.round(x + (w * at) / boss.maxHp), y - 2, 1, 10);
+      const next = boss.segments.find((at) => at < boss.hp - 0.5);
+      for (const at of boss.segments) {
+        const nx = Math.round(x + (w * at) / boss.maxHp);
+        const passed = at >= boss.hp - 0.5;
+        const live = at === next;
+        ctx.globalAlpha = passed ? 0.35 : live && turn ? 0.55 + 0.45 * Math.sin(performance.now() / 90) : 1;
+        ctx.fillStyle = live ? PALETTE.cursor : PALETTE.text;
+        ctx.fillRect(nx, y - 3, 1, 12);
+        ctx.fillRect(nx - 1, y - 3, 3, 1);
+        ctx.fillRect(nx - 1, y + 8, 3, 1);
+      }
+      ctx.globalAlpha = 1;
     }
     if (boss.cardLeftMs !== undefined) {
-      const seconds = Math.ceil(boss.cardLeftMs / 1000);
-      pixelText(ctx, `${seconds}`, x + w, y - 5, seconds <= 5 ? '#ff7a6a' : PALETTE.textDim, 'right');
+      const left = enemy ? cardTimerShare(state, enemy) : null;
+      const share = left ?? 0;
+      const r = 4;
+      const cx = x + w + r + 3;
+      const cy = y + 3;
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = PALETTE.textDim;
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = boss.cardLeftMs <= 5000 ? '#ff7a6a' : PALETTE.textDim;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * share);
+      ctx.stroke();
     }
   }
 

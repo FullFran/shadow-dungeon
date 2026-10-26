@@ -26,13 +26,13 @@ import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine, drawGateNotice, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
-import { drawDungeonIntro, drawNowPlaying, drawSpellBanner, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { drawCaptureNotice, drawCardDeclaration, drawDungeonIntro, drawNowPlaying, drawSpellBanner, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
 import { floodLevel } from '../core/flood';
 import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
-import { cardGuard, fightOf } from '../core/cards';
+import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud } from './hud';
@@ -102,6 +102,8 @@ export interface RenderFrame {
   names?: ReadonlyMap<string, string>;
   /** The boss spell card just announced, while it shows. */
   spell?: SpellBanner | null;
+  /** The card this player just captured, while its notice shows. */
+  capture?: CaptureNotice | null;
   /** The endless dungeon's run clock (absent elsewhere). */
   clock?: RunClock | null;
   /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
@@ -906,6 +908,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(pos.x, pos.y, enemy.radius + 8, angle - half, angle + half);
       ctx.stroke();
     }
+    // "Tu turno": the boss lowers its guard and breathes; a soft, dimming halo under it says "now" (no new threat comes until it ends).
+    if (enemy.boss && inTurn(enemy)) {
+      const left = 1 - progress;
+      const breath = 0.5 + 0.5 * Math.sin(timeMs / 160);
+      ctx.save();
+      ctx.globalAlpha = 0.18 + 0.22 * left * breath;
+      ctx.fillStyle = 'rgba(255, 236, 170, 1)';
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y + enemy.radius * 0.6, enemy.radius + 10, (enemy.radius + 10) * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.5 * left;
+      ctx.strokeStyle = 'rgba(255, 236, 170, 1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, enemy.radius + 6 + 4 * breath, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     // A herald: its own telegraphs, from its generated def (adapters/herald-vfx.ts).
     if (enemy.herald && currentWorld) {
       const herald = heraldOf(currentWorld, enemy);
@@ -1548,7 +1568,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
-    if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
+    if (frame.spell?.declare) drawCardDeclaration(ctx, frame.spell, timeMs, hud.width, hud.height);
+    else if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
+    if (frame.capture) drawCaptureNotice(ctx, frame.capture, timeMs, hud.width, hud.height, t('card.mastered'), t('card.reward').replace('{coins}', String(frame.capture.coins)).replace('{heal}', String(frame.capture.heal)));
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
     // The floor's gate, while it holds: one line under the floor card while the card shows, then at the top under the clock.

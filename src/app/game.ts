@@ -19,6 +19,7 @@ import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progres
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
 import { atCard, fightOf } from '../core/cards';
+import { CAPTURE, cardInfo } from '../data/cards';
 import { behaviourFor } from '../core/tricks';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 import { bandLoreKey, bandStartsAt, simaBandAt, simaPalette } from '../core/sima';
@@ -28,7 +29,7 @@ import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinem
 import { CARD_MS } from './guardian-cinematic';
 import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
-import { trackNote, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
+import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
@@ -238,6 +239,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A herald (core/herald/brain.ts) starts on its card N the same way.
     world = { ...world, enemies: world.enemies.map((e) => { if (e.herald) return atHeraldCard(world, e, devCard); const fight = e.boss ? fightOf(behaviourFor(e.species, tier)) : undefined; return fight ? atCard(e, fight, devCard) : e; }) };
   }
+  // Development server only: `?cardHp=0` starts that card with only this share of its segment left (0: at its floor, so it breaks as it starts: the capture screenshot).
+  const devCardHp = import.meta.env.DEV ? Number.parseFloat(new URLSearchParams(window.location.search).get('cardHp') ?? '') : Number.NaN;
+  if (Number.isFinite(devCard) && devCardHp >= 0 && devCardHp <= 1) {
+    world = { ...world, enemies: world.enemies.map((e) => (e.boss?.hpFloor !== undefined ? { ...e, hp: Math.max(1, Math.floor(e.boss.hpFloor + (e.hp - e.boss.hpFloor) * devCardHp)) } : e)) };
+  }
   // Development server only: `?nearEvent=1` starts a Sima floor beside its event (screenshots of the shrine, the nest...).
   const devNearEvent = import.meta.env.DEV && new URLSearchParams(window.location.search).get('nearEvent') === '1';
   if (devNearEvent && world.simaEvent) world = { ...world, player: { ...world.player, pos: { x: world.simaEvent.pos.x, y: world.simaEvent.pos.y + 34 } } };
@@ -279,6 +285,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let playing: MusicContext | null = null;
   /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
   let spell: SpellBanner | null = null;
+  /** "¡Técnica dominada!": the last card this player captured, while its notice shows. */
+  let capture: CaptureNotice | null = null;
   let lastCard: string | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
   const music = () => {
@@ -772,6 +780,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
       net?.session.afterStep(world, run.floor);
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
+      const won = events.find((e) => e.type === 'cardCaptured');
+      if (won && won.type === 'cardCaptured') capture = { shownAtMs: realMs, coins: CAPTURE.coins, heal: won.heal };
       juice = applyEvents(juice, events, world.player.pos);
       audio?.handleEvents(events);
       if (isTouchUi() && options.touch?.haptics()) {
@@ -833,8 +843,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
     const cardKey = bar ? (heraldCardName(world, bar.enemyId, bar.stance) ?? spellCardKey(bar.species, bar.stance)) : null;
     const cardNow = cardKey && world.enemies.some((e) => e.id === bar!.enemyId && e.ai.mode !== 'approach' && e.ai.mode !== 'idle') ? bar!.stance : null;
-    if (cardNow && cardKey && cardNow !== lastCard) spell = { name: t(cardKey), shownAtMs: realMs };
-    if (cardNow) lastCard = cardNow;
+    // Not while the game stands still (an item pick, the menu, a cinematic): the declaration waits to be seen.
+    if (!paused && cardNow && cardKey && cardNow !== lastCard) {
+      // A card fight's declaration is a dramatic moment: the card's own name big, its Touhou name small above it (adapters/intro-card.ts).
+      const herald = heraldCardName(world, bar!.enemyId, bar!.stance);
+      const card = cardInfo(cardNow);
+      spell = herald ? { name: herald, shownAtMs: realMs, declare: true } : card ? { name: t(`boss.stance.${cardNow}`), title: t(cardKey), shownAtMs: realMs, declare: true } : { name: t(cardKey), shownAtMs: realMs };
+    }
+    if (!paused && cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
     const rumble = closeMenu || ended ? 0 : rumbleLevel(collapseProximity(world));
     audio?.setRumble(rumble);
@@ -874,6 +890,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro,
       nowPlaying,
       spell,
+      capture,
       clock: run.clockMs !== undefined ? { ms: run.clockMs, lowMs, bonus: clockBonus } : null,
       touchUi: isTouchUi(),
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),

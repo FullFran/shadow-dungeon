@@ -4,6 +4,8 @@ import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEn
 import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
+import { fightFor, hostedMoves, updateHostedCardFight } from './cards';
+import type { SpellCardDef } from '../data/cards';
 
 /**
  * The caves' bullet-hell bosses, Lanturn and Dhelmise (data/enemies.ts
@@ -255,8 +257,40 @@ function rest(enemy: EnemyState, cd: DanmakuCardDef): EnemyState {
 /** Phase 2 starts once, below `belowHp`, only between cards (never in a Sima echo: phase 1 only). */
 const awakens = (state: WorldState, enemy: EnemyState, def: DanmakuDef): boolean => !state.enemyScale?.echo && def.phase2 !== undefined && enemy.boss?.phase !== 2 && enemy.hp <= enemy.maxHp * def.phase2.belowHp;
 
+/** The patterns with every following mark locked at least `lockMs` before it bursts (cached per pattern table). */
+const lockCache = new WeakMap<object, Map<number, DanmakuDef['patterns']>>();
+function withMarkLock(patterns: DanmakuDef['patterns'], lockMs: number): DanmakuDef['patterns'] {
+  const byLock = lockCache.get(patterns) ?? new Map<number, DanmakuDef['patterns']>();
+  lockCache.set(patterns, byLock);
+  const hit = byLock.get(lockMs);
+  if (hit) return hit;
+  const out: Partial<Record<DanmakuCard, DanmakuCardDef>> = {};
+  for (const [k, cd] of Object.entries(patterns) as [DanmakuCard, DanmakuCardDef][]) {
+    const p = cd.pattern;
+    out[k] = p.kind === 'zone' && p.at === 'target' && p.lockMs < lockMs ? { ...cd, telegraphMs: Math.max(cd.telegraphMs, lockMs + 300), pattern: { ...p, lockMs } } : cd;
+  }
+  byLock.set(lockMs, out);
+  return out;
+}
+
+/** A danmaku boss restricted to a hosted card's moves: phase 1's order, or phase 2's (with its rest) for a `phase2` card; it never awakens on its own. */
+export function hostedDanmaku(def: DanmakuDef, card: SpellCardDef, phase2: boolean): DanmakuDef {
+  const moves = hostedMoves<DanmakuCard>(card, def);
+  const { spellCards: fight, phase2: p2, ...plain } = def;
+  const lock = fight?.markLockMs;
+  const base = lock ? { ...plain, patterns: withMarkLock(plain.patterns, lock) } : plain;
+  if (!phase2) return { ...base, cards: moves };
+  return { ...base, cards: moves, phase2: { belowHp: -1, transformMs: p2?.transformMs ?? 0, restMs: p2?.restMs ?? def.restMs, cards: moves } };
+}
+
 export function updateDanmaku(state: WorldState, start: EnemyState, def: DanmakuDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
   if (!start.boss) return state;
+  // Normal and harder: hosted spell cards (data/hosted-cards.ts); the patterns stay these.
+  const fight = fightFor(state, def.spellCards);
+  if (fight) {
+    const own = (card: SpellCardDef, e: EnemyState) => hostedDanmaku(def, card, card.phase2 === true || e.boss?.phase === 2);
+    return updateHostedCardFight(state, start, fight, target, ms, events, (s, e, card) => updateDanmaku(s, e, own(card, e), target, ms, events), (card) => hostedMoves<DanmakuCard>(card, def)[0]!);
+  }
   let enemy = withBoss(start, { stanceMs: start.boss.stanceMs + ms });
   const ai = enemy.ai;
   const boss = enemy.boss!;

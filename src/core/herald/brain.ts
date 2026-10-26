@@ -7,6 +7,7 @@ import type { EnemyState, GameEvent, HeraldStance, WorldState } from '../state';
 import { distance, normalize, scale, sub, vec, type Vec2 } from '../vec';
 import { spawnEnemy } from '../world';
 import { heraldDef } from './generate';
+import { startTurn, turnMsFor } from '../cards';
 import { emitBetween, outsidePockets, pocketsBurning, type EmitContext } from './patterns';
 
 /**
@@ -256,12 +257,20 @@ export function updateHerald(state: WorldState, start: EnemyState, base: HeraldB
         state = hit.state;
         enemy = { ...enemy, ai: { ...enemy.ai, contact: hit.contact } };
       }
-      if (modeOver(ai)) enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'recover', card.recoverMs), contact: 'none' } };
+      if (modeOver(ai)) {
+        // Every cycle is a combo: "tu turno" opens as its attack ends (core/cards.ts `startTurn`), at least as long as its own opening.
+        const opened = startTurn(state, enemy, Math.max(turnMsFor(state), card.recoverMs), events);
+        state = opened.state;
+        enemy = opened.enemy;
+      }
       break;
     }
-    case 'recover':
-      if (card && modeOver(ai)) enemy = { ...enemy, boss: { ...enemy.boss!, comboIndex: boss.comboIndex + 1 }, ai: { ...enterMode(ai, 'approach'), cooldownMs: card.restMs } };
+    case 'recover': {
+      if (!card || !modeOver(ai)) break;
+      const { attack: _turn, ...rest } = ai;
+      enemy = { ...enemy, boss: { ...enemy.boss!, comboIndex: boss.comboIndex + 1 }, ai: { ...enterMode(rest, 'approach'), cooldownMs: card.restMs } };
       break;
+    }
     default:
       break;
   }

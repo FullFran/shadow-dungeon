@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DHELMISE, LANTURN, spellCardKey, type DanmakuCard, type DanmakuDef } from '../../src/data/enemies';
+import { LANTURN_CARDS_NORMAL } from '../../src/data/hosted-cards';
 import { ROOMS } from '../../src/data/rooms';
 import { TUNING } from '../../src/data/tuning';
 import { DIFFICULTIES } from '../../src/data/difficulty';
@@ -86,7 +87,8 @@ describe('caves bosses: data', () => {
 
   it('adds a trick from hard on and a card on nightmare, leaving easy as written', () => {
     expect(withTricks(LANTURN, 'easy')).toBe(LANTURN);
-    expect(withTricks(LANTURN, 'normal')).toBe(LANTURN);
+    // Normal adds only the hosted spell cards (data/hosted-cards.ts); the patterns stay as written.
+    expect(withTricks(LANTURN, 'normal')).toEqual({ ...LANTURN, spellCards: LANTURN_CARDS_NORMAL });
     const lure = (d: DanmakuDef) => d.patterns.lure!.pattern;
     expect(lure(LANTURN)).toMatchObject({ arms: 2 });
     expect(lure(withTricks(LANTURN, 'hard'))).toMatchObject({ arms: 3 });

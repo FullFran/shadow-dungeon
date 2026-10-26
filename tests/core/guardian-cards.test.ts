@@ -301,7 +301,9 @@ function coverSpots(room: RoomId): Vec2[] {
 function loopMs(f: CardFightDef, index: number): number {
   const card = f.cards[index]!;
   const loop = card.steps.reduce((sum, s) => sum + s.telegraphMs + stepAttackMs(s) + s.recoverMs + card.restMs, 400);
-  return Math.min(14_000, Math.min(card.timerMs, loop + 2500));
+  // With a "tu turno" window after every two moves (core/cards.ts `COMBO_STEPS`, at most the easy length).
+  const turns = Math.ceil(card.steps.length / 2) * 1600;
+  return Math.min(20_000, Math.min(card.timerMs, loop + turns + 2500));
 }
 
 describe('guardian spell cards: a safe path through every card (simulation)', () => {
@@ -333,7 +335,7 @@ describe('guardian spell cards: the fairness check can fail', () => {
   const shot = { power: 10, type: 'ghost' as const, speed: 140, radius: 7, lifetimeMs: 6000 };
   const curtain = (gapWidth: number): CardFightDef => ({
     ...fight('aegislash', 'normal')!,
-    cards: [{ id: 'sc-test-curtain', nameKey: 'x', hpShare: 1, timerMs: 30_000, restMs: 400, steps: [{ telegraphMs: 600, recoverMs: 600, pattern: { kind: 'lanes', waves: 5, gapMs: 700, spacing: 24, gapWidth, shiftPx: 80, shot } }] }],
+    cards: [{ id: 'sc-test-curtain', nameKey: 'x', hpShare: 1, timerMs: 30_000, restMs: 400, steps: [{ telegraphMs: 600, recoverMs: 600, pattern: { kind: 'lanes', waves: 9, gapMs: 700, spacing: 24, gapWidth, shiftPx: 80, shot } }] }],
   });
 
   it('a curtain without a gap in a bare room has no way through; with a gap it has one', () => {
@@ -367,7 +369,7 @@ describe('guardian spell cards: in a run', () => {
     expect(boss.boss!.stance).toBe('sc-aeg-walls');
     const bar = bossBar(played)!;
     expect(bar.segments).toHaveLength(3);
-    expect(bar.segments![0]).toBeCloseTo(boss.maxHp * 0.75);
+    expect(bar.segments![0]).toBeCloseTo(boss.maxHp * cardFloorShare(fight('aegislash', 'normal')!, 0));
     expect(bar.cardLeftMs).toBeGreaterThan(0);
   });
 
@@ -386,9 +388,10 @@ describe('guardian spell cards: in a run', () => {
     expect(bossBar(played)!.segments).toBeUndefined();
   });
 
-  it('a Sima echo of Aegislash keeps the lighter duel on every tier', () => {
-    const echo = { ...throne('nightmare'), enemyScale: { hp: 1, damage: 1, echo: true as const } };
-    const played = runFor(echo, 2000);
-    expect(['shield', 'blade']).toContain(played.enemies[0]!.boss!.stance);
+  it('a Sima echo of Aegislash keeps the duel on easy, and plays its phase-1 cards on harder tiers (tests/core/echo-cards.test.ts)', () => {
+    const easy = runFor({ ...throne(undefined), enemyScale: { hp: 1, damage: 1, echo: true as const } }, 2000);
+    expect(['shield', 'blade']).toContain(easy.enemies[0]!.boss!.stance);
+    const night = runFor({ ...throne('nightmare'), enemyScale: { hp: 1, damage: 1, echo: true as const, echoStage: 1 as const } }, 2000);
+    expect(night.enemies[0]!.boss!.stance).toBe('sc-aeg-walls');
   });
 });

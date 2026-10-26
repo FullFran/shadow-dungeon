@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COINS } from '../../src/data/coins';
 import { CAVES, CRYPT, dungeonById, FOREST } from '../../src/data/dungeons';
 import { DHELMISE, KRABBY, LANTURN, REMORAID, SHELLOS } from '../../src/data/enemies';
+import { DHELMISE_CARDS_NORMAL, LANTURN_CARDS_NORMAL } from '../../src/data/hosted-cards';
 import { WORLD } from '../../src/data/world';
 import { coinBreakdown, emptyTally, tallyFloor } from '../../src/core/coins';
 import { isUnlocked, unlockedDungeons } from '../../src/core/dungeon-select';
@@ -80,7 +81,10 @@ describe('Flooded Caves difficulty hooks', () => {
   it('leaves easy and normal as written and adds one trick from hard on to every new enemy and boss', () => {
     for (const def of [KRABBY, REMORAID, SHELLOS, LANTURN, DHELMISE] as const) {
       expect(withTricks(def as never, 'easy')).toBe(def);
-      expect(withTricks(def as never, 'normal')).toBe(def);
+      // The bosses fight with hosted spell cards from normal on (data/hosted-cards.ts); nothing else changes on normal.
+      const cards = def === LANTURN ? LANTURN_CARDS_NORMAL : def === DHELMISE ? DHELMISE_CARDS_NORMAL : undefined;
+      if (cards) expect(withTricks(def as never, 'normal')).toEqual({ ...def, spellCards: cards });
+      else expect(withTricks(def as never, 'normal')).toBe(def);
       expect(withTricks(def as never, 'hard')).not.toBe(def);
       const species = Object.entries(ENEMY_BEHAVIOUR).find(([, d]) => d === def)![0] as SpeciesId;
       expect(CAVES_TRICKS[species]?.every((t) => t.minDifficulty === 'hard' || t.minDifficulty === 'nightmare')).toBe(true);

@@ -61,8 +61,15 @@ export interface SpellCardDef {
   phase2?: true;
   /** Pause between two moves of the card (it drifts meanwhile). */
   restMs: number;
-  /** The card's moves, played in order and looped until the card ends. */
+  /** The card's moves, played in order and looped until the card ends (empty for a hosted card). */
   steps: readonly CardStepDef[];
+  /**
+   * A hosted card (data/hosted-cards.ts): the boss's own moves, by the names
+   * its engine already knows (Sableye's `glint`, Dhelmise's `kelp`...),
+   * played by that engine in this order and looped. The patterns stay the
+   * boss's own; the card adds the segment, timer, declaration and capture.
+   */
+  moves?: readonly string[];
 }
 
 export interface CardFightDef {
@@ -79,6 +86,22 @@ export interface CardFightDef {
   keepDistance: number;
   /** Damage of every card hit (shots and melee), on top of the tier's own (the guardians hit harder on Hard and Nightmare). */
   power: number;
+  /**
+   * Hosted danmaku cards (Dhelmise's riptide): a mark that follows the player
+   * stops following at least this long before it bursts, so a walking player
+   * can always leave it (src/sim/prove.ts found 400 ms could only be rolled
+   * out of). Easy keeps the shipped lock.
+   */
+  markLockMs?: number;
+  /**
+   * The boss's HP in its card fight, as a share of what its species and tier
+   * give it (core/rooms.ts `loadRoom`): tuned so the reference player can
+   * empty every segment in its punish windows with the tier's margin
+   * (src/sim/prove.ts, kill feasibility). Absent = 1.
+   */
+  hpScale?: number;
+  /** Species the boss summons during its cards (Salazzle's court): they leave with the card when it ends, so a declaration holds no threat. */
+  dismiss?: readonly string[];
 }
 
 /**
@@ -88,6 +111,20 @@ export interface CardFightDef {
  * heal; aligned on integration: one rule, one table).
  */
 export const CAPTURE = { coins: 8, healShare: 0.12 } as const;
+
+/**
+ * Sima echoes of card guardians (user decision 2026-10-26 C; core/cards.ts
+ * `echoCards`): the first stratum (floors 5 and 15) plays the phase-1 cards
+ * only, from `phase2FromFloor` the phase-2 cards join, and from
+ * `fullFromFloor` (or on a guardian's second encounter) the survival card
+ * and the last spell too. An echo holds only the HP of the cards it plays
+ * (so every segment is the guardian's own) at `hpScale` of the guardian's
+ * HP whatever the depth (depth makes its hits harder, not its bar longer:
+ * src/sim/prove.ts found deep echoes past the reference player's reach), and
+ * its timers run `timerScale` as long, so the fight fits the Sima clock.
+ * Easy keeps the echo's duel (no cards).
+ */
+export const ECHO_CARDS = { phase2FromFloor: 25, fullFromFloor: 35, timerScale: 0.8, hpScale: 0.6 } as const;
 
 /** Where card `index` of a fight with these HP shares ends, as a share of max HP (shares are normalised; the last ends at 0). */
 export function segmentFloorShare(shares: readonly number[], index: number): number {

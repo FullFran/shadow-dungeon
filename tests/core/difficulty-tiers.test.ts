@@ -85,7 +85,8 @@ const PRE_TIER_DIGEST = '6e22f931';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
-    expect(TIERS.easy).toEqual({ hp: 1, damage: 1, telegraph: 1, extraPerRoom: 0, cooldown: 1, eliteChance: 0, restartsPerFloor: null, coins: 1, encounters: { frequency: 1, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 } });
+    expect(TIERS.easy).toEqual({ hp: 1, damage: 1, telegraph: 1, extraPerRoom: 0, cooldown: 1, eliteChance: 0, restartsPerFloor: null, coins: 1, encounters: { frequency: 1, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1600 });
+    // The turn window ("tu turno") is read only by card bosses, and on easy those are the heralds alone.
   });
 
   it('an easy run plays exactly like a run without a tier (floors, spawns, HP, AI and damage; 8 seeds, every floor)', () => {

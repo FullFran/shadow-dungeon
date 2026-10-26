@@ -579,6 +579,10 @@ export type TreantCard = 'roots' | 'spiral' | 'curse' | 'grove';
  */
 export interface TreantDef {
   kind: 'treant';
+  /** Normal and harder: the fight as hosted spell cards (data/hosted-cards.ts, patched in per tier); absent = its own cycle. */
+  spellCards?: CardFightDef;
+  /** A bigger party's area move, played once more in every hosted card's loop (data/party-tricks.ts). */
+  partyMoves?: readonly string[];
   poise: PoiseDef;
   bar: true;
   aggroRange: number;
@@ -1131,6 +1135,10 @@ export type ThiefCard = 'glint' | 'gems';
  */
 export interface ThiefDef {
   kind: 'thief';
+  /** Normal and harder: the fight as hosted spell cards (data/hosted-cards.ts, patched in per tier); absent = its own cycle. */
+  spellCards?: CardFightDef;
+  /** A bigger party's area move, played once more in every hosted card's loop (data/party-tricks.ts). */
+  partyMoves?: readonly string[];
   poise: PoiseDef;
   bar: true;
   aggroRange: number;
@@ -1437,6 +1445,10 @@ export interface DanmakuCardDef {
  */
 export interface DanmakuDef {
   kind: 'danmaku';
+  /** Normal and harder: the fight as hosted spell cards (data/hosted-cards.ts, patched in per tier); absent = its own cycle. */
+  spellCards?: CardFightDef;
+  /** A bigger party's area move, played once more in every hosted card's loop (data/party-tricks.ts). */
+  partyMoves?: readonly string[];
   poise: PoiseDef;
   bar: true;
   aggroRange: number;

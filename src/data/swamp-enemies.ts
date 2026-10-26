@@ -1,4 +1,5 @@
 import type { EnemyAttackDef, HazardDef, PoiseDef } from './enemies';
+import type { CardFightDef } from './cards';
 
 /*
  * The Toxic Swamp's new enemies (docs/gdd.md §3, Pantano Tóxico). Same souls
@@ -149,6 +150,10 @@ export type QueenCard = 'dance' | 'spiral' | 'haze' | 'escort';
  */
 export interface QueenDef {
   kind: 'queen';
+  /** Normal and harder: the fight as hosted spell cards (data/hosted-cards.ts, patched in per tier); absent = its own cycle. */
+  spellCards?: CardFightDef;
+  /** A bigger party's area move, played once more in every hosted card's loop (data/party-tricks.ts). */
+  partyMoves?: readonly string[];
   poise: PoiseDef;
   bar: true;
   aggroRange: number;
@@ -203,6 +208,10 @@ export type UltraCard = 'tendrils' | 'spores' | 'shards' | 'wormhole' | 'flood' 
  */
 export interface UltraDef {
   kind: 'ultra';
+  /** Normal and harder: the fight as hosted spell cards (data/hosted-cards.ts, patched in per tier); absent = its own cycle. */
+  spellCards?: CardFightDef;
+  /** A bigger party's area move, played once more in every hosted card's loop (data/party-tricks.ts). */
+  partyMoves?: readonly string[];
   poise: PoiseDef;
   aggroRange: number;
   floats: true;
