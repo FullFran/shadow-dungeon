@@ -1,6 +1,6 @@
 import type { SimaSync } from '../core/sima-events';
 import type { GateSync } from '../core/gates';
-import { isEliteTrait } from '../data/difficulty';
+import { isEliteTrait, toDifficulty, type Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
@@ -37,16 +37,41 @@ export interface TownPresence {
   moving: boolean;
 }
 
+/**
+ * A Santuario de los Juramentos trial for the whole room (docs/gdd.md §3):
+ * a boss species, a gauntlet id or a herald's seed, and its tier. Each peer
+ * rebuilds the arenas from it (app/shrine-route.ts `trialRequestOf`).
+ */
+export interface RoomTrial {
+  kind: 'boss' | 'gauntlet' | 'herald';
+  id: string;
+  difficulty: Difficulty;
+}
+
+const TRIAL_KINDS = new Set(['boss', 'gauntlet', 'herald']);
+const TRIAL_ID = /^[a-z0-9-]{1,40}$/;
+
+/** A room trial from the wire; null for anything malformed (an unknown tier reads as easy, like `start`). */
+export function parseRoomTrial(raw: unknown): RoomTrial | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.kind !== 'string' || !TRIAL_KINDS.has(r.kind) || typeof r.id !== 'string' || !TRIAL_ID.test(r.id)) return null;
+  return { kind: r.kind as RoomTrial['kind'], id: r.id, difficulty: toDifficulty(typeof r.difficulty === 'string' ? r.difficulty : undefined) };
+}
+
 export type NetMessage =
-  /** A tab joining the session announces its player; the host answers with `start`. */
-  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }
+  /**
+   * A tab joining the session announces its player; the host answers with `start`. Sent again in the
+   * lobby when the player picks another species. `shrine: 1` says this peer plays shrine trials (absent: an older peer).
+   */
+  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shrine?: 1 }
   /**
    * Host: the run seed, the current floor, the dungeon id (absent = the first dungeon), the difficulty tier
    * (absent or unknown = easy: an older host) and who is who (sent again whenever someone joins).
    */
-  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[] }
-  /** Host, before the run starts: who is in the room so far and the tier it picked, for the guests to see (sent again on every change). */
-  | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string }
+  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[]; trial?: RoomTrial }
+  /** Host, before the run starts: who is in the room so far, the tier and the shrine trial it picked, for the guests to see (sent again on every change). */
+  | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string; trial?: RoomTrial }
   /** Host: the room already has four players; `peer` is the one turned away. */
   | { t: 'full'; peer: string }
   /** Round-trip probe (reliable, ~1 Hz); every peer answers with `pong` to the sender. */

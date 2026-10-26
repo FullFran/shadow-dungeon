@@ -107,6 +107,46 @@ describe('shrine records reducer', () => {
     expect(readShrine(broken)).toEqual(EMPTY_SHRINE);
     expect(saveTrial(broken, result())).toBe(false);
   });
+
+  it('keeps the species of the best time, and only of the best time', () => {
+    const one = recordTrial(EMPTY_SHRINE, result({ ms: 90_000, species: 'zorua' }));
+    expect(trialBest(one.records, 'boss', 'aegislash', 'normal')?.species).toBe('zorua');
+    // Slower: the best stays Zorua's.
+    const two = recordTrial(one.records, result({ ms: 95_000, species: 'cubone' }));
+    expect(trialBest(two.records, 'boss', 'aegislash', 'normal')?.species).toBe('zorua');
+    // Faster: the best is now Litwick's.
+    const three = recordTrial(two.records, result({ ms: 60_000, species: 'litwick' }));
+    expect(trialBest(three.records, 'boss', 'aegislash', 'normal')).toMatchObject({ bestMs: 60_000, species: 'litwick', clears: 3 });
+    // A faster clear without a species (an older caller) leaves no stale species on the new best.
+    const four = recordTrial(three.records, result({ ms: 50_000 }));
+    expect(trialBest(four.records, 'boss', 'aegislash', 'normal')?.species).toBeUndefined();
+  });
+
+  it('keeps online room («En grupo») bests apart from solo ones, and round-trips them', () => {
+    const solo = recordTrial(EMPTY_SHRINE, result({ ms: 90_000, species: 'zorua' }));
+    const group = recordTrial(solo.records, result({ ms: 40_000, species: 'cubone', group: true }));
+    expect(group.firstClear).toBe(true);
+    expect(trialBest(group.records, 'boss', 'aegislash', 'normal')).toMatchObject({ bestMs: 90_000, species: 'zorua' });
+    expect(trialBest(group.records, 'boss', 'aegislash', 'normal', true)).toMatchObject({ bestMs: 40_000, species: 'cubone', clears: 1 });
+    const store = memoryStore();
+    saveTrial(store, result({ ms: 40_000, group: true }));
+    saveTrial(store, result({ kind: 'gauntlet', id: 'guardians', ms: 5, group: true }));
+    const read = readShrine(store);
+    expect(trialBest(read, 'boss', 'aegislash', 'normal')).toBeNull();
+    expect(trialBest(read, 'boss', 'aegislash', 'normal', true)?.bestMs).toBe(40_000);
+    expect(trialBest(read, 'gauntlet', 'guardians', 'normal', true)?.bestMs).toBe(5);
+    expect(parseShrine(JSON.stringify({ bosses: {}, gauntlets: {}, group: 'x' }))).toEqual(EMPTY_SHRINE);
+  });
+
+  it('reads records with or without a species (back-compatible), and drops an unknown one', () => {
+    const store = memoryStore();
+    saveTrial(store, result({ species: 'cubone' }));
+    expect(trialBest(readShrine(store), 'boss', 'aegislash', 'normal')?.species).toBe('cubone');
+    const old = JSON.stringify({ bosses: { aegislash: { normal: { clears: 1, bestMs: 5, captures: 0 } } }, gauntlets: {} });
+    expect(trialBest(parseShrine(old), 'boss', 'aegislash', 'normal')).toEqual({ clears: 1, bestMs: 5, captures: 0 });
+    const hostile = JSON.stringify({ bosses: { aegislash: { normal: { clears: 1, bestMs: 5, captures: 0, species: 'arceus' } } }, gauntlets: {} });
+    expect(trialBest(parseShrine(hostile), 'boss', 'aegislash', 'normal')).toEqual({ clears: 1, bestMs: 5, captures: 0 });
+  });
 });
 
 describe('gauntlet rewards', () => {

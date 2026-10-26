@@ -107,6 +107,8 @@ export interface WorldMap {
   waystone?: { x: number; y: number };
   /** Santuario de los Juramentos (the hub only): the altar's reading point, in tiles; it opens the boss shrine. */
   shrine?: { x: number; y: number };
+  /** The signal pillar's reading point, in tiles (the hub only): it opens the online room window (create, or join by code). */
+  beacon?: { x: number; y: number };
 }
 
 /** Rows of `fill`, then each stroke `[char, x, y, width, height]` painted over them in order. */
@@ -130,7 +132,8 @@ export const REFUGIO: WorldMap = {
   rows: TOWN.rows,
   // The waystone by the east road (a signpost): quick travel, so a stream never has to walk.
   // The Santuario de los Juramentos: an old statue on the south lawn serves as its altar.
-  props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }, { kind: 'statue', x: 21, y: 12 }],
+  // The signal pillar on the south square: online rooms start from the town too.
+  props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }, { kind: 'statue', x: 21, y: 12 }, { kind: 'pillar', x: 16, y: 12 }],
   npcs: TOWN.npcs,
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
   entrances: [],
@@ -141,6 +144,7 @@ export const REFUGIO: WorldMap = {
   board: TOWN.board,
   waystone: { x: 29, y: 8.5 },
   shrine: { x: 22, y: 15.5 },
+  beacon: { x: 16.5, y: 15.5 },
 };
 
 /** Camino de las Ruinas: graves and broken pillars around the Crypt's gate, north of the road. */

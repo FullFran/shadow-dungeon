@@ -1,5 +1,5 @@
 import { withHerald } from '../core/herald/floor';
-import { progressTrial, startTrial, trialHurt, type BossStop, type TrialState } from '../core/shrine';
+import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
@@ -128,7 +128,7 @@ export interface GameOptions {
   testSpawns?: readonly SpeciesId[];
   /** Development (`?boss=<seed>`): the start floor's herald is this seed's. */
   heraldSeed?: number;
-  /** Solo: a boss shrine trial (core/shrine.ts), these arenas in order instead of the dungeon's floors; no coins, no restarts. */
+  /** A boss shrine trial (core/shrine.ts), these arenas in order instead of the dungeon's floors; no coins, no restarts. Solo or a whole online room (party-scaled; a guest follows the host's arena). */
   trial?: readonly BossStop[];
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
@@ -233,8 +233,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
     ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
   };
-  // The boss shrine (solo only): its first arena at its expected level, no items or upgrades.
-  const trialStart = options.trial && options.trial.length > 0 && !net ? startTrial(options.seed ?? 1, runOptions, options.trial) : null;
+  // The boss shrine: its first arena at its expected level, no items or upgrades (scaled for the room's party online).
+  const trialStart = options.trial && options.trial.length > 0 ? startTrial(options.seed ?? 1, runOptions, options.trial) : null;
   const started = trialStart ?? startRun(options.seed ?? 1, runOptions, options.startFloor, options.dungeon);
   /** The shrine trial under way, and whether a hit was taken in it («Sin rasguños»). */
   let trial: TrialState | null = trialStart?.trial ?? null;
@@ -244,6 +244,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
+  // A guest joining a room's trial under way starts on the host's arena (its `start` floor is the arena, `trialEpoch`).
+  if (trial && net?.role === 'guest' && (options.startFloor ?? 1) > 1) {
+    const caught = progressSharedTrial(trial, run, world, 0, 'guest', options.startFloor ?? 1);
+    trial = caught.trial;
+    run = caught.run;
+    world = caught.world;
+  }
+  /** What goes on the wire as the floor (the snapshots' epoch): the arena in a trial, else the floor. */
+  const netFloor = (): number => (trial ? trialEpoch(trial) : run.floor);
   // Four-slots: the Boost and Area buttons only show when their slot holds a move.
   touch.setHidden('boost', !world.player.loadout[2]);
   touch.setHidden('area', !world.player.loadout[3]);
@@ -755,8 +764,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
-  function trialProgress(): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number } {
-    const p = progressTrial(trial!, run, world, FIXED_DT_MS);
+  function trialProgress(hostEpoch: number | null): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number } {
+    // Online, a guest follows the host's arena (`hostEpoch`) instead of loading the next one itself.
+    const p = net ? progressSharedTrial(trial!, run, world, FIXED_DT_MS, net.role, hostEpoch) : progressTrial(trial!, run, world, FIXED_DT_MS);
     if (trial!.pauseMs === null && p.trial.pauseMs !== null) {
       const next = p.trial.stops[p.trial.index + 1];
       if (next) say(t('shrine.next').replace('{name}', t(`species.${next.boss}`)), 'good');
@@ -787,7 +797,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       prev = world;
       let netEvents: GameEvent[] = [];
       if (net) {
-        const synced = net.session.beforeStep(world, run.floor);
+        const synced = net.session.beforeStep(world, netFloor());
         world = synced.world;
         netEvents = synced.events;
       }
@@ -813,7 +823,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       watchClock(clockBefore);
       // Captured spell cards (guardians' and heralds' alike, core/cards.ts `updateCapture`) are counted from the step's events.
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
-      net?.session.afterStep(world, run.floor);
+      net?.session.afterStep(world, netFloor());
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       const won = events.find((e) => e.type === 'cardCaptured');
       if (won && won.type === 'cardCaptured') capture = { shownAtMs: realMs, coins: CAPTURE.coins, heal: won.heal };
@@ -833,20 +843,20 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         }
       }
       if (trial && trialHurt(events)) trialHit = true;
-      const progress = trial ? trialProgress() : progressRun(run, world);
+      const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
+      const progress = trial ? trialProgress(hostFloor) : progressRun(run, world);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
       // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
       const plan = floorPlanOf(run);
       const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? 'echo' : world.simaEvent?.kind;
       watchClock(undefined, progress.bonusMs, reason);
-      const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {
         enterFloor(progress);
-        if (net) net.session.sendFloor(run.floor);
+        if (net) net.session.sendFloor(netFloor());
         if (net && run.clockMs !== undefined) net.session.sendClock(run.clockMs, run.floor);
-      } else if (hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
+      } else if (!trial && hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
       else watchSimaEvent();
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.

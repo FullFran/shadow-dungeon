@@ -32,6 +32,10 @@ export interface LoadoutOptions {
   onBack(): void;
   /** The tier row above Start (solo): the current pick and where a change goes (settings, persisted). */
   difficulty?: { value: Difficulty; onChange(next: Difficulty): void };
+  /** The Start row's label (a run's «Comenzar» when absent; the shrine's «Comenzar el juramento»). */
+  startLabel?: string;
+  /** A line under the title naming what the loadout is for (the shrine: its boss or gauntlet and tier). */
+  context?: string;
 }
 
 /** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
@@ -52,14 +56,14 @@ export function typeBadge(type: PokemonType): HTMLElement {
 }
 
 /** A species' idle animation on a small canvas, scaled by a whole number. */
-function portrait(sheets: Promise<SheetStore>, species: SpeciesId): HTMLCanvasElement {
+export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE): HTMLCanvasElement {
   const key = SPRITE_KEYS[SPECIES[species].sprite];
   const meta = SPRITES.sprites[key]?.anims.Idle;
   const canvas = h('canvas', { className: 'portrait' });
   canvas.width = meta?.frameWidth ?? 32;
   canvas.height = meta?.frameHeight ?? 48;
-  canvas.style.width = `${canvas.width * SCALE}px`;
-  canvas.style.height = `${canvas.height * SCALE}px`;
+  canvas.style.width = `${canvas.width * scale}px`;
+  canvas.style.height = `${canvas.height * scale}px`;
   void sheets.then((store) => {
     const image = meta && store.get(sheetKey(key, meta.file));
     const ctx = canvas.getContext('2d');
@@ -118,6 +122,8 @@ function speciesRow(id: SpeciesId, picked: boolean): HTMLElement {
   ]);
 }
 
+const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context ? [h('p', { className: 'dim shrine-loadout-for', textContent: options.context })] : []);
+
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
   const info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, speciesInfo(options.sheets, options.species));
   /** Shows the species under the cursor in the info window. */
@@ -147,6 +153,7 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
   });
   return [
     h('h1', { className: 'screen-title', textContent: t('loadout.pick') }),
+    ...contextLine(options),
     h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.species'), className: 'moves' }, [list.element])]),
   ];
 }
@@ -188,7 +195,7 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
         }),
       );
     }
-    out.push({ label: t('menu.start'), className: 'start-row', onConfirm: options.onStart });
+    out.push({ label: options.startLabel ?? t('menu.start'), className: 'start-row', onConfirm: options.onStart });
     out.push({ label: t('menu.back'), onConfirm: options.onBack });
     return out;
   };
@@ -198,7 +205,7 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 
   const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id));
   const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
-  return [h('h1', { className: 'screen-title', textContent: title }), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : [])])])];
+  return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : [])])])];
 }
 
 export function loadoutScreen(options: LoadoutOptions): HTMLElement[] {

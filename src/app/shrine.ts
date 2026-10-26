@@ -7,14 +7,17 @@ import type { BestiaryEntry } from '../town/bestiary';
 import { gauntletReward, gauntletUnlocked, trialBest, type ShrineRecords, type TrialBest } from '../town/shrine-records';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
+import type { SheetStore } from '../adapters/assets';
 import { coinText } from './coin-lines';
+import { portrait } from './loadout';
 import type { TrialSummary } from './game';
 
 /**
  * Santuario de los Juramentos (docs/gdd.md §3): the shrine window and its
  * result screen. «Reflejos» lists the bosses beaten on this device (and the
  * heralds met, by seed); «Desafíos» the gauntlets, locked until every boss
- * of one fell. A tier row on top picks any tier. Solo only.
+ * of one fell. A tier row on top picks any tier. Solo, or the host of an
+ * online room for the whole room (the bests «En grupo» are kept apart).
  */
 export interface TrialRequest {
   kind: 'boss' | 'gauntlet' | 'herald';
@@ -36,6 +39,12 @@ export interface ShrineOptions {
   onFight(request: TrialRequest): void;
   onBack(): void;
   view?: ShrineView;
+  /** The row to open on (a boss species, gauntlet id or herald seed): back from the loadout keeps the pick. */
+  focus?: string;
+  /** For the portrait of the species of a best time. */
+  sheets?: Promise<SheetStore>;
+  /** A line under the lists (an online room: who picks and who starts). */
+  note?: string;
 }
 
 /** "1:23.4" (minutes, seconds and tenths); "-" for none. */
@@ -53,13 +62,22 @@ export const heraldEntries = (heralds: readonly BestiaryEntry[], max = 8): Besti
 const bossName = (boss: string): string => t(`species.${boss}`);
 const gauntletName = (id: GauntletId): string => t(`shrine.gauntlet.${id}`);
 
-/** "1:23.4 · ✦3" (time and captures) for a best, "-" before the first clear. */
-function bestText(best: TrialBest | null): string {
+/** "1:23.4 · ✦3 · Zorua" (time, captures and the species of the time) for a best, "-" before the first clear. */
+export function bestText(best: TrialBest | null): string {
   if (!best) return '-';
-  return `${trialTime(best.bestMs)} · ✦${best.captures}`;
+  return [trialTime(best.bestMs), `✦${best.captures}`, ...(best.species ? [t(`species.${best.species}`)] : [])].join(' · ');
 }
 
 const MAX_HERALDS = 8;
+
+/** The cursor row of `focus` in a shrine view (row 0 is the tier row); undefined when it is not listed there. */
+export function shrineFocus(view: ShrineView, focus: string | undefined, heralds: readonly BestiaryEntry[]): number | undefined {
+  if (focus === undefined) return undefined;
+  const ids: readonly string[] | null =
+    view === 'reflections' ? SHRINE_BOSSES.map((b) => b.boss) : view === 'gauntlets' ? GAUNTLETS.map((g) => g.id) : view === 'heralds' ? heraldEntries(heralds, MAX_HERALDS).map((e) => String(e.seed)) : null;
+  const at = ids?.indexOf(focus) ?? -1;
+  return at < 0 ? undefined : at + 1;
+}
 
 export function shrineWindow(options: ShrineOptions): { element: HTMLElement; dispose(): void } {
   let view: ShrineView = options.view ?? 'main';
@@ -67,6 +85,18 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const about = h('div', { className: 'shrine-about' });
   const lines = (...nodes: (Node | string)[]) => about.replaceChildren(...nodes.map((n) => (typeof n === 'string' ? h('p', { textContent: n }) : n)));
   const reflections = SHRINE_BOSSES.filter((b) => options.beaten.has(b.boss));
+  /** The best line, with the idle sprite of the species that set it. */
+  const bestLine = (best: TrialBest | null): HTMLElement => {
+    const line = statLine(t('shrine.best'), bestText(best));
+    if (best?.species && options.sheets) line.querySelector('.md-stat-value')?.prepend(portrait(options.sheets, best.species, 1));
+    line.classList.add('shrine-best');
+    return line;
+  };
+  /** The best «En grupo» (an online room's), when there is one. */
+  const groupLine = (kind: 'boss' | 'gauntlet', id: string): HTMLElement[] => {
+    const best = trialBest(options.shrine, kind, id, tier, true);
+    return best ? [statLine(t('shrine.group'), bestText(best))] : [];
+  };
 
   const tierRow = (): ListItem => ({
     label: t('difficulty.label'),
@@ -113,9 +143,10 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
           const best = trialBest(options.shrine, 'boss', stop.boss, tier);
           lines(
             t(`shrine.role.${stop.role}`).replace('{dungeon}', t(dungeonById(stop.dungeon).lore.nameKey)),
-            statLine(t('shrine.best'), bestText(best)),
+            bestLine(best),
             statLine(t('shrine.clears'), String(best?.clears ?? 0)),
             statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
+            ...groupLine('boss', stop.boss),
           );
         }),
         ...(options.heralds.length > 0 ? [() => lines(t('shrine.heralds.text'))] : []),
@@ -141,8 +172,9 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
         const missing = g.bosses.filter((b) => !options.beaten.has(b));
         lines(
           unlocked ? g.bosses.map(bossName).join(' → ') : t('shrine.locked').replace('{count}', String(missing.length)),
-          statLine(t('shrine.best'), bestText(best)),
+          bestLine(best),
           statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
+          ...groupLine('gauntlet', g.id),
           statLine(t('shrine.reward'), best ? t('shrine.reward.taken') : coinText(gauntletReward(g.id, tier), (key) => t(key))),
           t('shrine.carry'),
         );
@@ -160,7 +192,9 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   }
 
   const describe = (index: number) => describeRow[index]?.();
-  const list = cursorList({ items: items(), onBack: () => (view === 'main' ? options.onBack() : go(view === 'heralds' ? 'reflections' : 'main')), onCursor: describe, label: t('shrine.title'), className: 'shrine-list' });
+  const first = items();
+  const initial = shrineFocus(view, options.focus, options.heralds);
+  const list = cursorList({ items: first, ...(initial !== undefined && !first[initial]?.disabled ? { initial } : {}), onBack: () => (view === 'main' ? options.onBack() : go(view === 'heralds' ? 'reflections' : 'main')), onCursor: describe, label: t('shrine.title'), className: 'shrine-list' });
   const heading = h('h3', { className: 'dim' });
 
   function refresh(): void {
@@ -178,7 +212,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const element = mdWindow({ title: t('shrine.title'), className: 'shrine wide' }, [
     heading,
     h('div', { className: 'shrine-body' }, [list.element, about]),
-    h('p', { className: 'dim shrine-solo', textContent: t('shrine.solo') }),
+    ...(options.note ? [h('p', { className: 'dim shrine-note', textContent: options.note })] : []),
   ]);
   return { element, dispose: () => list.dispose() };
 }
@@ -192,7 +226,8 @@ export interface ShrineResultOptions {
   /** Pokémonedas paid (a gauntlet's first clear on its tier), else 0. */
   coins: number;
   balance: number;
-  onRetry(): void;
+  /** Absent in an online room (the host starts the next one from the altar). */
+  onRetry?(): void;
   onBack(): void;
 }
 
@@ -209,8 +244,8 @@ export function shrineResultScreen(options: ShrineResultOptions, heraldName?: st
   const newBest = victory && (before === null || trial.ms < before.bestMs);
   const list = cursorList({
     items: [
-      { label: t('screen.retry'), onConfirm: options.onRetry },
-      { label: t('shrine.back'), onConfirm: options.onBack },
+      ...(options.onRetry ? [{ label: t('screen.retry'), onConfirm: options.onRetry }] : []),
+      { label: t(options.onRetry ? 'shrine.back' : 'shrine.room.back'), onConfirm: options.onBack },
     ],
     onBack: options.onBack,
     label: t('shrine.title'),
