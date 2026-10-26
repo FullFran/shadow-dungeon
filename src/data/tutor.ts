@@ -2,6 +2,8 @@ import { BASE_MOVE_IDS, type MoveDef, type MoveId } from './moves';
 import { LINE_MOVE_IDS } from './line-moves';
 import type { DungeonId } from './dungeons';
 import type { StarterId } from './learnsets';
+import { lineRoot } from './player-evolutions';
+import type { SpeciesId } from './species';
 
 /**
  * The move tutor (Smeargle, "Maestro de movimientos", in the Refugio;
@@ -19,8 +21,8 @@ export const TUTOR_OFFER: Readonly<Record<StarterId, readonly MoveId[]>> = {
   cubone: ['knock-off', 'fire-punch', 'thunder-punch', 'headbutt', 'low-kick', 'double-kick', 'mud-slap', 'double-edge', 'iron-head', 'earth-power', 'brick-break', 'scorching-sands', 'dig', 'focus-punch', 'swords-dance', 'focus-energy', 'belly-drum', 'iron-defense', 'rock-slide', 'ice-beam', 'flamethrower'],
 };
 
-/** The tutor's offer for any species (none for a species it does not teach). */
-export const tutorOffer = (id: string): readonly MoveId[] => (TUTOR_OFFER as Readonly<Partial<Record<string, readonly MoveId[]>>>)[id] ?? [];
+/** The tutor's offer for any species: its line's (an evolved form shares its first form's); none for a species it does not teach. */
+export const tutorOffer = (id: SpeciesId): readonly MoveId[] => (TUTOR_OFFER as Readonly<Partial<Record<string, readonly MoveId[]>>>)[lineRoot(id)] ?? [];
 
 /** Moves of the original kits the canon learnsets lack, kept so no save loses them (data/learnsets.ts). */
 export const GRANDFATHERED: Readonly<Partial<Record<StarterId, readonly MoveId[]>>> = {

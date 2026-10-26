@@ -2,6 +2,7 @@ import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { isPlayable, originalKit, SPECIES, type SpeciesId } from '../data/species';
 import { MAX_RANK, movePrice, moveTier, RANK_COSTS_BY_TIER, RANK_EFFECT, tutorOffer, unlockOf } from '../data/tutor';
 import type { DungeonId } from '../data/dungeons';
+import { awakenedMoves } from '../data/player-evolutions';
 
 /**
  * The move tutor, pure (odd/tasks/movepools.md T3): which moves a species
@@ -26,6 +27,8 @@ export interface TutorWallet {
   ranks?: RankedMoves;
   /** Dungeons cleared on this device (their guardian beaten): some Maestro moves wait for one (data/tutor.ts `MASTER_MOVES`). */
   cleared?: Iterable<string>;
+  /** Awakening steps (Mimikyu's): each makes one move known (data/player-evolutions.ts `PLAYER_AWAKENINGS`). */
+  awakened?: Readonly<Partial<Record<SpeciesId, number>>>;
 }
 
 /** The dungeon still to clear before the tutor teaches `move` to `species`, or null when it is open. */
@@ -35,11 +38,12 @@ export function tutorLock(wallet: Pick<TutorWallet, 'cleared'>, _species: Specie
   return [...(wallet.cleared ?? [])].includes(needed) ? null : needed;
 }
 
-/** Every move `species` can equip now: its original kit and what it bought, in movepool order. */
-export function knownMoves(wallet: Pick<TutorWallet, 'learned'>, species: SpeciesId): MoveId[] {
+/** Every move `species` can equip now: its original kit, what it bought and what its awakening made known, in movepool order. */
+export function knownMoves(wallet: Pick<TutorWallet, 'learned' | 'awakened'>, species: SpeciesId): MoveId[] {
   const kit = originalKit(species);
   const bought = isPlayable(species) ? (wallet.learned?.[species] ?? []) : [];
-  return SPECIES[species].movepool.filter((m) => kit.includes(m) || bought.includes(m));
+  const awake = awakenedMoves(species, wallet.awakened?.[species] ?? 0);
+  return SPECIES[species].movepool.filter((m) => kit.includes(m) || bought.includes(m) || awake.includes(m));
 }
 
 /** Price of `move` for `species`: 0 for its original kit, null when the tutor does not teach it that move. */
@@ -67,7 +71,7 @@ export function moveRank(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId,
 export const rankCostsOf = (move: MoveId): readonly number[] => RANK_COSTS_BY_TIER[moveTier(move)];
 
 /** Cost of the next rank of `move`, or null when it is maxed or not known (any known move can be ranked: odd/tasks/move-progression.md). */
-export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned'>, species: SpeciesId, move: MoveId): number | null {
+export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned' | 'awakened'>, species: SpeciesId, move: MoveId): number | null {
   if (!isPlayable(species) || !knownMoves(wallet, species).includes(move)) return null;
   return rankCostsOf(move)[moveRank(wallet, species, move)] ?? null;
 }
@@ -90,7 +94,7 @@ export function runRanks(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId)
  * The loadout a run may use: each slot keeps its move only if the species
  * knows it (a stale or edited setting), else takes the species default.
  */
-export function knownLoadout(wallet: Pick<TutorWallet, 'learned'>, species: SpeciesId, loadout: readonly (MoveId | null)[]): (MoveId | null)[] {
+export function knownLoadout(wallet: Pick<TutorWallet, 'learned' | 'awakened'>, species: SpeciesId, loadout: readonly (MoveId | null)[]): (MoveId | null)[] {
   const known = knownMoves(wallet, species);
   return loadout.map((m, i) => (m === null || known.includes(m) ? m : (SPECIES[species].defaultLoadout[i] ?? null)));
 }

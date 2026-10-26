@@ -862,25 +862,31 @@ Mimikyu atiende el puesto de la suerte en el pueblo (decisión del 26-10-2026: q
 - Si ya tienes esa línea (en cualquier forma), te devuelve 40 P.
 - Lo que sale se puede jugar en todas partes, también en cooperativo. Los cuatro iniciales siguen siempre disponibles.
 
-Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Cada línea evoluciona dos veces, con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
+Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Evolucionan las líneas del gacha y también los iniciales (decisión del 26-10-2026): Zorua en Zoroark, Litwick en Lampent y luego Chandelure, Cubone en Marowak. Se paga con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
 
 | Paso | Precio | Esencias | Bono de PS y daño |
 | --- | --- | --- | --- |
 | Primera a segunda forma | 400 P | 3 Normal y 2 Difícil | +6 % |
-| Segunda a tercera forma | 900 P | 3 Difícil y 2 Pesadilla | +12 % |
+| A la forma final | 900 P | 3 Difícil y 2 Pesadilla | +12 % |
 
-El bono tiene tope: 15 % jugando solo y 8 % en grupo. Cada forma nueva conserva el kit y las Mejoras y aprende un movimiento: Kadabra Tinieblas, Alakazam Bola Sombra, Prinplup Demolición, Empoleon Rayo Hielo, Luxio Meteoros, Luxray Trueno, Fraxure Tijera X, Haxorus Demolición. Si evolucionas el Pokémon que llevas elegido, pasas a jugar con su forma nueva.
+Una línea de un solo paso (Zorua, Cubone) va directa a la forma final, así que pide Esencias de Pesadilla. El bono tiene tope: 15 % jugando solo y 8 % en grupo. Cada forma nueva conserva el kit, la oferta del maestro, los movimientos comprados, las Mejoras y la habilidad, y aprende un movimiento: Kadabra Tinieblas, Alakazam Bola Sombra, Prinplup Demolición, Empoleon Rayo Hielo, Luxio Meteoros, Luxray Trueno, Fraxure Tijera X, Haxorus Demolición, Zoroark Tajo Umbrío, Lampent Desahogo, Chandelure Hiperrayo y Marowak Llamarada. Si evolucionas el Pokémon que llevas elegido, pasas a jugar con su forma nueva; un inicial evolucionado ocupa su sitio en la lista.
 
-Las Esencias se ganan en las mazmorras reto, una por línea. Cada una tiene tres plantas generadas y un jefe, y reutiliza enemigos, salas y música de una mazmorra principal según el tipo de la línea:
+Mimikyu no evoluciona (no tiene evolución en los juegos): **despierta** (decisión del 26-10-2026). Sigue siendo Mimikyu, con el mismo sprite, pero sube dos pasos como una línea de tres formas, con los mismos precios, Esencias y bonos. El primer despertar le enseña Mazazo y el segundo Golpe Fantasma, gratis y sin esperar a la mazmorra que los abre en el maestro. Su paso se guarda en la partida (`awakened`).
 
-| Reto | Plantas de | Jefe |
+Las Esencias se ganan en las mazmorras reto, una por línea. Cada reto es la prueba de su Pokémon, con nombre, presentación, una frase por planta y otra al ganar: tres plantas generadas y un jefe en el escenario de una mazmorra principal. Los enemigos se mezclan de varias mazmorras según la historia del reto, y casi todos (al menos el 70 % del peso) reciben daño neutro o mejor de los tipos de la línea; ninguno es inmune a todos y el jefe tampoco los resiste:
+
+| Reto | Escenario | Jefe |
 | --- | --- | --- |
-| Abra (psíquico) | Cripta | Sableye |
-| Piplup (agua) | Cuevas | Lanturn |
-| Shinx (eléctrico) | Bosque | Trevenant |
-| Axew (dragón) | Pantano | Salazzle |
+| El Sueño de Abra | Cuevas | Lanturn |
+| El Lago Helado de Piplup | Cripta | Sableye |
+| La Tormenta de Shinx | Pantano | Salazzle |
+| El Barranco de los Colmillos (Axew) | Bosque | Trevenant |
+| El Disfraz de Mimikyu | Cripta | Aegislash |
+| Las Ilusiones de Zorua | Bosque | Decidueye |
+| Las Velas de Litwick | Cuevas | Dhelmise |
+| El Hueso de Cubone | Pantano | Nihilego |
 
-Un reto se abre cuando tienes cualquier forma de su línea y sale aparte, en el grupo "Retos" de la selección de mazmorra y en la salida del pueblo. Ganarlo da 3 Esencias del nivel de su dificultad (la selección lo recuerda). En cooperativo cada jugador cobra en su propia partida guardada, y solo si tiene esa línea. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
+Las líneas del gacha usan los cuatro jefes intermedios y los iniciales los cuatro guardianes. Un reto se abre cuando tienes cualquier forma de su línea (los de los iniciales, siempre) y **solo se puede jugar con una forma de esa línea**, también en cooperativo: el anfitrión no puede empezarlo si alguien lleva otro Pokémon (decisión del 26-10-2026). Ganarlo da 3 Esencias del nivel de su dificultad. En cooperativo cada jugador cobra en su propia partida guardada. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
 
 ## 6. Muerte y revivir
 

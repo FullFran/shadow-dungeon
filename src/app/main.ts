@@ -58,7 +58,7 @@ import { openChallenges } from '../core/challenge';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
-import { rosterOf } from '../core/collection';
+import { awakenedOf, currentForm, rosterOf } from '../core/collection';
 import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
@@ -461,7 +461,8 @@ function styleHeraldLines(title: boolean, def: HeraldDef, lines: readonly HTMLEl
 /** The personality quiz over a black screen; its starter becomes the `species` setting. */
 function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
   const onDone = (starter: StarterId) => {
-    update(withStarter(settings, starter));
+    // An evolved starter plays as its current form.
+    update(withStarter(settings, currentForm(loadSave(store), starter)));
     then();
   };
   show(root, quizScreen({ seed: runSeed(), sheets: sheetsReady(), onDone, onCancel: cancel }), false);
@@ -539,10 +540,12 @@ function tutorView(species: SpeciesId): { known: MoveId[]; ranks: Partial<Record
   return { known: knownMoves(save, species), ranks: { ...runRanks(save, species) }, buildHint: buildHint(species) };
 }
 
-/** A run's Mejoras of `species` (none: no field). */
-function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>> } {
-  const ranks = runRanks(loadSave(store), species);
-  return ranks ? { moveRanks: ranks } : {};
+/** A run's Mejoras and awakening steps of `species` (none: no field). */
+function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>>; awakened?: number } {
+  const save = loadSave(store);
+  const ranks = runRanks(save, species);
+  const awakened = awakenedOf(save, species);
+  return { ...(ranks ? { moveRanks: ranks } : {}), ...(awakened > 0 ? { awakened } : {}) };
 }
 
 /** Smeargle's move tutor over the town, like the shop. */

@@ -99,7 +99,7 @@ const INTERACT_KEYS = new Set(['KeyE', 'Enter', 'NumpadEnter', 'Space']);
 const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
 /** Floaters bob over the ground. */
-const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
+const FLOATERS = new Set<string>(['gastly', 'litwick', 'lampent', 'chandelure', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
 
 type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'beacon' } | { kind: 'lore'; point: LorePoint });
 

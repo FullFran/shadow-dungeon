@@ -4,7 +4,7 @@ import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, type SpeciesId } 
 import { MAX_RANK, tutorOffer } from '../data/tutor';
 import { lineOf } from '../core/evolution';
 import type { Materials } from '../core/collection';
-import { MATERIAL_TIERS } from '../data/player-evolutions';
+import { awakeningsOf, MATERIAL_TIERS } from '../data/player-evolutions';
 import { challengeReward } from '../core/challenge';
 import type { DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
@@ -25,6 +25,8 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
 /**
  * 2: the move tutor's learned moves and Mejoras (odd/tasks/movepools.md); a v1 save reads with none.
  * 3: the gacha collection (odd/tasks/gacha-evolutions.md): owned species, materials, pity; a v2 save reads with none.
+ *    Since odd/tasks/roster-parity.md (same version, optional fields only): `owned` also holds evolved
+ *    starters, `materials` the starters' lines, and `awakened` Mimikyu's awakening steps.
  */
 export const SAVE_VERSION = 3;
 
@@ -36,8 +38,10 @@ export interface SaveData {
   learned?: LearnedMoves;
   /** Mejoras of any move, per species (absent = none). */
   ranks?: RankedMoves;
-  /** Gacha species, as their current form (absent = none; core/collection.ts). */
+  /** Gacha species and evolved starters, as their current form (absent = none; core/collection.ts). */
   owned?: SpeciesId[];
+  /** Awakening steps of the species that never evolve (absent = none; data/player-evolutions.ts `PLAYER_AWAKENINGS`). */
+  awakened?: Partial<Record<SpeciesId, number>>;
   /** Evolution materials per line and tier (absent = none). */
   materials?: Partial<Record<SpeciesId, Materials>>;
   /** Gacha pulls since the last rare (absent = 0). */
@@ -78,6 +82,7 @@ export function sanitize(raw: unknown): SaveData {
   const ranks = sanitizeRanks(raw.ranks);
   const owned = sanitizeOwned(raw.owned);
   const materials = sanitizeMaterials(raw.materials);
+  const awakened = sanitizeAwakened(raw.awakened);
   const pity = wholeCount(raw.pity);
   return {
     version: SAVE_VERSION,
@@ -87,6 +92,7 @@ export function sanitize(raw: unknown): SaveData {
     ...(ranks ? { ranks } : {}),
     ...(owned ? { owned } : {}),
     ...(materials ? { materials } : {}),
+    ...(awakened ? { awakened } : {}),
     ...(pity > 0 ? { pity } : {}),
   };
 }
@@ -94,27 +100,39 @@ export function sanitize(raw: unknown): SaveData {
 /** A whole, non-negative, safe count (anything else is 0). */
 const wholeCount = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)) : 0);
 
-/** A species the gacha can give (a playable one that is not a starter). */
-const isGacha = (id: unknown): id is SpeciesId => isPlayable(id) && !isStarter(id);
+/** A species `owned` can hold: a playable one that is not a starter (a gacha form or an evolved starter). */
+const isOwnable = (id: unknown): id is SpeciesId => isPlayable(id) && !isStarter(id);
 
-/** Owned species: gacha species only, one form per line (the first stored), in the order stored; null when none. */
+/** Owned species: gacha forms and evolved starters, one form per line (the first stored), in the order stored; null when none. */
 function sanitizeOwned(raw: unknown): SpeciesId[] | null {
   if (!Array.isArray(raw)) return null;
   const owned: SpeciesId[] = [];
-  for (const id of raw.filter(isGacha)) if (!owned.some((o) => lineOf(o) === lineOf(id))) owned.push(id);
+  for (const id of raw.filter(isOwnable)) if (!owned.some((o) => lineOf(o) === lineOf(id))) owned.push(id);
   return owned.length > 0 ? owned : null;
 }
 
+/** Awakening steps: whole, 1 up to the species' steps, of species that awaken; null when none. */
+function sanitizeAwakened(raw: unknown): Partial<Record<SpeciesId, number>> | null {
+  if (!isRecord(raw)) return null;
+  const out: Partial<Record<SpeciesId, number>> = {};
+  for (const id of PLAYABLE_SPECIES) {
+    const steps = awakeningsOf(id).length;
+    const n = wholeCount(raw[id]);
+    if (steps > 0 && n > 0) out[id] = Math.min(n, steps);
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 /**
- * Materials: keyed by a gacha line's first form, whole positive counts per
- * tier; null when none. An early v3 save kept one flat count per line: it
+ * Materials: keyed by a line's first form (a gacha line's or a starter's),
+ * whole positive counts per tier; null when none. An early v3 save kept one flat count per line: it
  * reads as Normal materials.
  */
 function sanitizeMaterials(raw: unknown): Partial<Record<SpeciesId, Materials>> | null {
   if (!isRecord(raw)) return null;
   const out: Partial<Record<SpeciesId, Materials>> = {};
   for (const [id, value] of Object.entries(raw)) {
-    if (!isGacha(id) || lineOf(id) !== id) continue;
+    if (!isPlayable(id) || lineOf(id) !== id) continue;
     const tiers = isRecord(value) ? value : { normal: value };
     const counts: Partial<Record<(typeof MATERIAL_TIERS)[number], number>> = {};
     for (const tier of MATERIAL_TIERS) if (wholeCount(tiers[tier]) > 0) counts[tier] = wholeCount(tiers[tier]);

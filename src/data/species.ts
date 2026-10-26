@@ -91,7 +91,12 @@ export type SpeciesId =
   | 'luxray'
   | 'axew'
   | 'fraxure'
-  | 'haxorus';
+  | 'haxorus'
+  // The starters' evolved forms (data/player-evolutions.ts): playable once evolved.
+  | 'zoroark'
+  | 'lampent'
+  | 'chandelure'
+  | 'marowak';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -133,7 +138,8 @@ function lineForm(id: SpeciesId & keyof typeof SPRITE_KEYS, types: readonly Poke
  * fragile, Litwick slow and fragile but ranged, Cubone slow and sturdy.
  * Enemy behaviour lives in its own data/state machines.
  */
-export const SPECIES: Record<SpeciesId, SpeciesDef> = {
+/** The starters' own definitions (their evolved forms build on them: `starterForm`). */
+const SPECIES_BASE: Record<StarterId, SpeciesDef> = {
   mimikyu: {
     id: 'mimikyu',
     types: ['ghost', 'fairy'],
@@ -178,6 +184,10 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
     defaultLoadout: ['bone-club', 'bonemerang', 'bulk-up', 'earthquake'],
     passive: 'battle-armor',
   },
+};
+
+export const SPECIES: Record<SpeciesId, SpeciesDef> = {
+  ...SPECIES_BASE,
   poochyena: {
     id: 'poochyena',
     types: ['dark'],
@@ -291,19 +301,39 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   axew: lineForm('axew', ['dragon'], 100, 1, AXEW),
   fraxure: lineForm('fraxure', ['dragon'], 100, 1, [...AXEW, 'x-scissor']),
   haxorus: lineForm('haxorus', ['dragon'], 100, 1, [...AXEW, 'x-scissor', 'brick-break']),
+  // The starters' evolved forms (odd/tasks/roster-parity.md): the starter's kit, its stage moves, then its tutor offer.
+  zoroark: starterForm('zorua', 'zoroark', ['night-slash']),
+  lampent: starterForm('litwick', 'lampent', ['lash-out']),
+  chandelure: starterForm('litwick', 'chandelure', ['lash-out', 'hyper-beam']),
+  marowak: starterForm('cubone', 'marowak', ['fire-blast']),
 };
+
+/**
+ * An evolved starter: its starter's types, HP, speed, passive and default
+ * loadout; its movepool is the starter's kit, `stageMoves` (one per
+ * evolution, known once evolved: data/player-evolutions.ts) and the
+ * starter's tutor offer. The stage bonus (core/evolution.ts) does the rest.
+ */
+function starterForm(starter: StarterId, id: SpeciesId & keyof typeof SPRITE_KEYS, stageMoves: readonly MoveId[]): SpeciesDef {
+  const base = SPECIES_BASE[starter];
+  const kit = base.movepool.filter((m) => !TUTOR_OFFER[starter].includes(m));
+  const { spentSprite: _spent, ...rest } = base;
+  return { ...rest, id, sprite: id, movepool: [...kit, ...stageMoves, ...TUTOR_OFFER[starter]] };
+}
 
 /** The starters, in picker order (Mimikyu first): always playable. */
 export const STARTER_SPECIES: readonly StarterId[] = ['mimikyu', 'zorua', 'litwick', 'cubone'];
 
 /**
- * Every species a player can play as: the starters, then the forms of the
- * gacha's evolution lines (odd/tasks/gacha-evolutions.md). Which of the
+ * Every species a player can play as: the starters, the forms of the
+ * gacha's evolution lines, then the starters' evolved forms (odd/tasks/gacha-evolutions.md). Which of the
  * latter a player has is the save's business (core/collection.ts).
  */
 export const PLAYABLE_SPECIES: readonly SpeciesId[] = [
   ...STARTER_SPECIES,
   ...(['abra', 'kadabra', 'alakazam', 'piplup', 'prinplup', 'empoleon', 'shinx', 'luxio', 'luxray', 'axew', 'fraxure', 'haxorus'] as const),
+  // The starters' evolved forms (odd/tasks/roster-parity.md): playable once a starter evolves.
+  ...(['zoroark', 'lampent', 'chandelure', 'marowak'] as const),
 ];
 
 export const isPlayable = (id: unknown): id is SpeciesId => PLAYABLE_SPECIES.some((s) => s === id);

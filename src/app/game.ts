@@ -118,6 +118,8 @@ export interface GameOptions {
   upgrades?: UpgradeLevels;
   /** The move tutor's Mejoras of the species (core/tutor.ts `runRanks`), applied at run start like the upgrades. */
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
+  /** Awakening steps of the species (Mimikyu's, core/evolution.ts `stageBonus`), counted everywhere like the Mejoras. */
+  awakened?: number;
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
@@ -244,6 +246,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
     // The Mejoras count everywhere, the pure dungeon and the shrine included (odd/tasks/move-progression.md).
     ...(options.moveRanks ? { moveRanks: options.moveRanks } : {}),
+    ...(options.awakened ? { awakened: options.awakened } : {}),
     // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
     ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
     ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),

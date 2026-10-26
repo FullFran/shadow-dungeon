@@ -178,6 +178,7 @@ export const RANK_EFFECTS: Readonly<Record<MoveId, readonly [RankEffect, RankEff
   spark: [stagger(1.3), chain(0.5, 80)],
   'dragon-claw': [crit(0.15), mark(0.3, 800)],
   'dragon-pulse': [size(1.2), split(3, 0.3)],
+  'hyper-beam': [size(1.2), stagger(1.4)],
 };
 
 /** Will-O-Wisp +2: the wisps circle the user and burn what they touch for a while. */

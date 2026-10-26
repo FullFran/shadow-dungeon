@@ -11,31 +11,44 @@ import { catalog } from '../../src/i18n';
 import { MOVES } from '../../src/data/moves';
 import { PLAYER_EVOLUTIONS, STAGE_BONUS_CAP } from '../../src/data/player-evolutions';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
-import { isPlayable, isStarter, PLAYABLE_SPECIES, SPECIES, STARTER_SPECIES, type SpeciesId } from '../../src/data/species';
+import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, SPECIES, STARTER_SPECIES, type SpeciesId } from '../../src/data/species';
+import { tutorOffer } from '../../src/data/tutor';
 import { SPRITE_KEYS, SPRITES } from '../../src/data/sprites';
 
-const LINES: readonly (readonly [SpeciesId, SpeciesId, SpeciesId])[] = [
+const GACHA_LINES: readonly (readonly SpeciesId[])[] = [
   ['abra', 'kadabra', 'alakazam'],
   ['piplup', 'prinplup', 'empoleon'],
   ['shinx', 'luxio', 'luxray'],
   ['axew', 'fraxure', 'haxorus'],
 ];
-const FIRST_FORMS = LINES.map((line) => line[0]);
-const GACHA_FORMS = LINES.flat();
+/** The starters' canon lines (odd/tasks/roster-parity.md); Mimikyu has none. */
+const STARTER_LINES: readonly (readonly SpeciesId[])[] = [
+  ['zorua', 'zoroark'],
+  ['litwick', 'lampent', 'chandelure'],
+  ['cubone', 'marowak'],
+];
+const LINES = [...GACHA_LINES, ...STARTER_LINES];
+const FIRST_FORMS = GACHA_LINES.map((line) => line[0]!);
+const GACHA_FORMS = GACHA_LINES.flat();
+const EVOLVED_STARTERS = STARTER_LINES.flatMap((line) => line.slice(1));
+const EVOLVED_FORMS = LINES.flatMap((line) => line.slice(1));
 
 describe('evolution lines: data', () => {
-  it('every form of the four lines is playable, after the starters', () => {
-    expect(PLAYABLE_SPECIES).toEqual([...STARTER_SPECIES, ...GACHA_FORMS]);
-    for (const id of GACHA_FORMS) expect(isPlayable(id) && !isStarter(id), id).toBe(true);
+  it('every form of every line is playable: the starters, the gacha lines, then the starters\' evolved forms', () => {
+    expect(PLAYABLE_SPECIES).toEqual([...STARTER_SPECIES, ...GACHA_FORMS, ...EVOLVED_STARTERS]);
+    for (const id of [...GACHA_FORMS, ...EVOLVED_STARTERS]) expect(isPlayable(id) && !isStarter(id), id).toBe(true);
   });
 
-  it('chains each line first -> second -> third, and only player lines', () => {
-    expect(PLAYER_EVOLUTIONS.map((e) => [e.from, e.to])).toEqual(LINES.flatMap(([a, b, c]) => [[a, b], [b, c]]));
-    for (const [a, b, c] of LINES) {
-      expect([lineOf(a), lineOf(b), lineOf(c)]).toEqual([a, a, a]);
-      expect([stageOf(a), stageOf(b), stageOf(c)]).toEqual([0, 1, 2]);
-      expect(evolutionOf(c)).toBeNull();
+  it('chains each line form by form, and only player lines; Mimikyu does not evolve', () => {
+    expect(PLAYER_EVOLUTIONS.map((e) => [e.from, e.to])).toEqual(LINES.flatMap((line) => line.slice(1).map((to, i) => [line[i], to])));
+    for (const line of LINES) {
+      expect(line.map(lineOf)).toEqual(line.map(() => line[0]));
+      expect(line.map(stageOf)).toEqual(line.map((_, i) => i));
+      expect(evolutionOf(line[line.length - 1]!)).toBeNull();
     }
+    expect(evolutionOf('mimikyu')).toBeNull();
+    // Every playable species is in exactly one line (or alone, like Mimikyu).
+    for (const id of PLAYABLE_SPECIES) expect(LINES.filter((l) => l.includes(id)).length, id).toBe(id === 'mimikyu' ? 0 : 1);
   });
 
   it.each(FIRST_FORMS)('%s has one move per slot, equipped by default, inside the starters\' budget', (id) => {
@@ -46,13 +59,17 @@ describe('evolution lines: data', () => {
     for (const m of species.movepool.filter((x) => MOVES[x].slot !== 'boost')) expect(budgetRatio(MOVES[m]), m).toBeLessThanOrEqual(1 + 1e-9);
   });
 
-  it('each evolution keeps the kit and loadout, and unlocks exactly its one new (non-boost) move', () => {
+  it('each evolution keeps the kit, the tutor offer, the loadout and the passive, and unlocks exactly its one new (non-boost) move', () => {
     for (const e of PLAYER_EVOLUTIONS) {
       const from = SPECIES[e.from];
       const to = SPECIES[e.to];
       expect(from.movepool).not.toContain(e.move);
-      expect(to.movepool).toEqual([...from.movepool, e.move]);
+      expect(originalKit(e.to)).toEqual([...originalKit(e.from), e.move]);
+      expect(tutorOffer(e.to)).toEqual(tutorOffer(e.from));
+      expect([...to.movepool].sort()).toEqual([...from.movepool, e.move].sort());
       expect(to.defaultLoadout).toEqual(from.defaultLoadout);
+      expect(to.passive).toBe(from.passive);
+      expect(to.speedScale).toBe(from.speedScale);
       expect(MOVES[e.move].slot, e.move).not.toBe('boost');
       expect(to.maxHp).toBe(from.maxHp);
       expect(e.coins).toBeGreaterThan(0);
@@ -60,17 +77,18 @@ describe('evolution lines: data', () => {
     }
   });
 
-  it('a later stage costs more and gives more, but never above the hard ceiling', () => {
-    for (const [, b, c] of LINES) {
-      const second = evolutionOf(lineOf(b))!;
-      const third = evolutionOf(b)!;
-      expect(third.coins).toBeGreaterThan(second.coins);
-      // User decision 2026-10-26: the first step needs Normal and Difícil, the final one Difícil and Pesadilla.
+  it('a later stage costs more and gives more, but never above the hard ceiling; a final form always needs Pesadilla', () => {
+    for (const line of LINES) {
+      const final = evolutionOf(line[line.length - 2]!)!;
+      // User decision 2026-10-26: the first step needs Normal and Difícil, the final one Difícil and Pesadilla (a one-step line's only one is final).
+      expect(final.materials).toEqual({ hard: 3, nightmare: 2 });
+      expect(stageBonus(line[line.length - 1]!, 1)).toEqual(final.bonus);
+      if (line.length < 3) continue;
+      const second = evolutionOf(line[0]!)!;
       expect(second.materials).toEqual({ normal: 3, hard: 2 });
-      expect(third.materials).toEqual({ hard: 3, nightmare: 2 });
-      expect(third.bonus.hp).toBeGreaterThan(second.bonus.hp);
-      expect(third.bonus.damage).toBeGreaterThan(second.bonus.damage);
-      expect(stageBonus(c, 1)).toEqual(third.bonus);
+      expect(final.coins).toBeGreaterThan(second.coins);
+      expect(final.bonus.hp).toBeGreaterThan(second.bonus.hp);
+      expect(final.bonus.damage).toBeGreaterThan(second.bonus.damage);
     }
     for (const e of PLAYER_EVOLUTIONS) {
       expect(e.bonus.hp, e.to).toBeLessThanOrEqual(STAGE_BONUS_CAP.solo);
@@ -79,11 +97,11 @@ describe('evolution lines: data', () => {
     expect(STAGE_BONUS_CAP.party).toBeLessThan(STAGE_BONUS_CAP.solo);
   });
 
-  it('every form has its own sprite with the core sheets, and a name in both languages', () => {
-    const sprites = new Set(GACHA_FORMS.map((id) => SPRITE_KEYS[SPECIES[id].sprite]));
-    expect(sprites.size).toBe(GACHA_FORMS.length);
+  it('every playable form has its own sprite with the core sheets, and a name in both languages', () => {
+    const sprites = new Set(PLAYABLE_SPECIES.map((id) => SPRITE_KEYS[SPECIES[id].sprite]));
+    expect(sprites.size).toBe(PLAYABLE_SPECIES.length);
     for (const key of sprites) expect(SPRITES.sprites[key], key).toBeDefined();
-    for (const lang of ['es', 'en'] as const) for (const id of GACHA_FORMS) expect(catalog(lang)[`species.${id}`], `${lang} ${id}`).toBeTruthy();
+    for (const lang of ['es', 'en'] as const) for (const id of PLAYABLE_SPECIES) expect(catalog(lang)[`species.${id}`], `${lang} ${id}`).toBeTruthy();
   });
 });
 
@@ -102,6 +120,14 @@ describe('evolution: stage bonus in a run', () => {
     expect(alakazam.maxHp).toBe(Math.round(SPECIES.alakazam.maxHp * (1 + hp)));
     expect(alakazam.maxHp).toBeGreaterThan(abra.maxHp);
     expect(playerStats(alakazam).damage).toBeCloseTo(playerStats(abra).damage * (1 + damage));
+  });
+
+  it('evolved starters play with their stage bonus too', () => {
+    for (const id of EVOLVED_STARTERS) {
+      expect(stageBonus(id, 1).hp, id).toBeGreaterThan(0);
+      expect(createPlayer(vec(0, 0), id).maxHp, id).toBeGreaterThan(SPECIES[lineOf(id)].maxHp);
+    }
+    expect(EVOLVED_FORMS.every((id) => stageBonus(id, 1).damage > 0)).toBe(true);
   });
 
   it('is capped lower in a party, so co-op stays fair', () => {
@@ -146,6 +172,25 @@ describe('evolution: evolving an owned species', () => {
     expect(evolve({ ...ready, coins: 0 }, 'abra')).toBeNull();
   });
 
+  it('a starter evolves without being stored: its evolved form replaces it in the roster, Mejoras and bought moves carried', () => {
+    const wallet = { coins: 10_000, materials: { zorua: { hard: 3, nightmare: 2 }, litwick: { normal: 3, hard: 5, nightmare: 2 } }, learned: { zorua: ['knock-off'] }, ranks: { zorua: { 'feint-attack': 1 } } } as const;
+    expect(canEvolve(wallet, 'zorua')).toBe(true);
+    expect(canEvolve(wallet, 'mimikyu')).toBe(false);
+    const zoroark = evolve(wallet, 'zorua')!;
+    expect(zoroark.owned).toEqual(['zoroark']);
+    expect(zoroark.learned).toEqual({ zoroark: ['knock-off'] });
+    expect(zoroark.ranks).toEqual({ zoroark: { 'feint-attack': 1 } });
+    expect(zoroark.materials?.zorua).toEqual({});
+    expect(rosterOf(zoroark)).toEqual(['mimikyu', 'zoroark', 'litwick', 'cubone']);
+    expect(canEvolve(zoroark, 'zorua')).toBe(false);
+    expect(evolve(zoroark, 'zoroark')).toBeNull();
+    const lampent = evolve(zoroark, 'litwick')!;
+    const chandelure = evolve(lampent, 'lampent')!;
+    expect(chandelure.owned).toEqual(['zoroark', 'chandelure']);
+    expect(rosterOf(chandelure)).toEqual(['mimikyu', 'zoroark', 'chandelure', 'cubone']);
+    expect(canEvolve(chandelure, 'cubone')).toBe(false);
+  });
+
   it('a higher tier never stands in for a lower one, and the final form needs Pesadilla', () => {
     expect(canEvolve({ ...ready, materials: { abra: { hard: 99, nightmare: 99 } } }, 'abra')).toBe(false);
     const kadabra = { coins: 10_000, owned: ['kadabra'] as SpeciesId[] };
@@ -162,6 +207,14 @@ describe('evolution: the save keeps the collection', () => {
     expect(save.owned).toEqual(['kadabra', 'axew']);
     expect(save.materials).toEqual({ abra: { normal: 3, hard: 2 }, axew: { hard: 1 } });
     expect(save.ranks).toEqual({ kadabra: { swift: 1 } });
+  });
+
+  it('keeps an evolved starter\'s form (one per line, never a base starter) and its line\'s materials under the starter', () => {
+    const save = sanitize({ coins: 0, upgrades: {}, owned: ['zorua', 'lampent', 'chandelure', 'marowak'], materials: { zorua: { nightmare: 2 }, zoroark: { hard: 1 }, mimikyu: { normal: 1 } }, learned: { zoroark: ['knock-off', 'shadow-claw', 'ember'] }, ranks: { chandelure: { 'hyper-beam': 1 } } });
+    expect(save.owned).toEqual(['lampent', 'marowak']);
+    // Mimikyu has materials too (its awakening); an evolved form's key is dropped.
+    expect(save.materials).toEqual({ zorua: { nightmare: 2 }, mimikyu: { normal: 1 } });
+    expect(save.learned).toEqual({ zoroark: ['shadow-claw', 'knock-off'] });
   });
 
   it('an early v3 save\'s flat count per line reads as Normal materials', () => {

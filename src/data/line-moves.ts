@@ -7,7 +7,7 @@ import type { MoveDef } from './moves';
  * Built like the tutor's moves, inside the original kits' budget (Básico:
  * tests/core/evolution.test.ts): their kits are as strong as a starter's.
  */
-export const LINE_MOVE_IDS = ['water-gun', 'bubble-beam', 'surf', 'spark', 'dragon-claw', 'dragon-pulse'] as const;
+export const LINE_MOVE_IDS = ['water-gun', 'bubble-beam', 'surf', 'spark', 'dragon-claw', 'dragon-pulse', 'hyper-beam'] as const;
 
 export type LineMoveId = (typeof LINE_MOVE_IDS)[number];
 
@@ -21,4 +21,6 @@ export const LINE_MOVES: Record<LineMoveId, MoveDef> = {
   // Axew
   'dragon-claw': def('dragon-claw', 'fast', 'dragon', 80, [110, 80, 200], arc(36, 90), 260, 40),
   'dragon-pulse': def('dragon-pulse', 'heavy', 'dragon', 85, [300, 60, 420], shot(180, 10, 2200), 400, 60),
+  // Chandelure's stage move (odd/tasks/roster-parity.md): a huge beam, then a long recharge.
+  'hyper-beam': def('hyper-beam', 'heavy', 'normal', 150, [420, 60, 1000], shot(320, 12, 560, { wave: true }), 480, 80, { staminaCost: 35, juice: 'heavy' }),
 };
