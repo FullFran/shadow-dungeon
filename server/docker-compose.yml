@@ -1,0 +1,29 @@
+# Dokploy compose for the Shadow Dungeon API (sd-api.fullfran.com).
+# No published ports: Traefik reaches the service over dokploy-network.
+services:
+  sd-api:
+    build: .
+    image: sd-api:local
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - pb_data:/pb_data
+    ulimits:
+      nofile: 4096
+    networks:
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.sd-api.rule=Host(`sd-api.fullfran.com`)
+      - traefik.http.routers.sd-api.entrypoints=websecure
+      - traefik.http.routers.sd-api.tls=true
+      - traefik.http.routers.sd-api.tls.certresolver=letsencrypt
+      - traefik.http.services.sd-api.loadbalancer.server.port=8090
+
+volumes:
+  pb_data: {}
+
+networks:
+  dokploy-network:
+    external: true

@@ -1,0 +1,4 @@
+pb_data
+.env
+*.md
+docker-compose.yml
