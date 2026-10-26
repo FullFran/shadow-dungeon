@@ -23,7 +23,7 @@ import { vec } from '../core/vec';
 import { createWorld } from '../core/world';
 import { createBot, BOT_PROFILES } from './bots';
 import { observe } from './observe';
-import { bossFloor, CARD_BOSSES, ECHO_BOSSES, fightIn, type BossCase } from './prove';
+import { bossFloor, CARD_BOSSES, ECHO_BOSSES, fightIn, SHADOW_BOSSES, type BossCase } from './prove';
 
 /**
  * The type-chart study (odd/tasks/type-balance.md, tools/type-balance.ts):
@@ -96,11 +96,13 @@ export const WOUND_BOSSES: readonly BossCase[] = CHALLENGES.flatMap((d) => {
   return [{ species, room: last.room as RoomId, where: { dungeon: d.id, floor: d.plan.length } }];
 });
 
-export type BossRole = 'boss' | 'echo' | 'wound';
+export type BossRole = 'boss' | 'echo' | 'wound' | 'shadow';
 export const STUDY_CASES: readonly { case: BossCase; role: BossRole }[] = [
   ...CARD_BOSSES.map((c) => ({ case: c, role: 'boss' as const })),
   ...ECHO_BOSSES.map((c) => ({ case: c, role: 'echo' as const })),
   ...WOUND_BOSSES.map((c) => ({ case: c, role: 'wound' as const })),
+  // The Sendas' shadows (src/sim/prove.ts `SHADOW_BOSSES`), each at its road's floor.
+  ...SHADOW_BOSSES.map((c) => ({ case: c, role: 'shadow' as const })),
 ];
 
 export const caseLabel = (c: BossCase): string => c.label ?? c.species;

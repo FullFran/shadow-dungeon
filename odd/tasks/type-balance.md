@@ -31,13 +31,16 @@ Owner decision: do both (1) compress the type chart and (2) a minimum duration p
 - [x] T1 Study tool + baseline report (route: inline; one module + one tool, already mapped). Commit 3f86994.
 - [x] T2 Engine: chart rule + card floor + feedback + tests (route: inline; the change was mapped in T1). Commit d616ed6.
 - [x] T3 After report, balance comparison, GDD note (route: inline). Commit: this one (see git log).
+- [x] T4 Merge into main after the starters' Sendas (route: delegated writer). Merge commit plus follow-ups (see git log): protocol 5, the new shadows retuned, the study covering the shadows.
 
 ## Parity checklist
 - [x] Card bosses with pattern cards (core/cards.ts `updateCardFight`): `holdCard` each step and at the declaration's end.
 - [x] Hosted card bosses (`updateHostedCardFight`): same.
 - [x] Heralds (core/herald/brain.ts): `holdBoss` in play and at the card's start; the hold is dropped on a new card and the awakening.
 - [x] Sima echoes: the floor follows the echo's own (scaled) timer; echo kill margins checked by the proof.
-- [x] Senda wounds: shared engine; tests/sim/wound-prove.test.ts 18/18 green under the new chart.
+- [x] Senda wounds: shared engine; tests/sim/wound-prove.test.ts 18/18 green under the new chart (after the merge: 77/77 with the three new wounds).
+- [x] Senda shadows (merge): tests/sim/story-prove-*.test.ts green after three hpScale retunes; in the study (`SHADOW_BOSSES`).
+- [x] Net protocol (merge): `PROTOCOL_VERSION` 5, GDD §7 note, tests/net/shiny-wire.test.ts pin.
 - [x] Co-op: host clamps (combat, sync claims, afflictions, rank-effect marks) all read `cardHpFloor`; `held` travels in the host snapshot (stripped on merge when absent); the host emits `cardHold` for claims too.
 - [x] Player damage paths (strike, blocked chip, projectiles through `strikeEnemy`) pass `onEnemy`; Expert Belt reads `hitEffectiveness`; enemy contact and enemy shots keep `typeEffectiveness` (test over every playable species and type).
 - [x] UI: move-info "effective against" reads the player's chart; damage-number colours unchanged in sign; "¡Aguanta!" / "It holds!" (`hud.cardHold`) with the blocked sound.
@@ -49,11 +52,15 @@ Owner decision: do both (1) compress the type chart and (2) a minimum duration p
 - T2: engine change; 8 proof margin shortfalls (all Zorua's Dark x2 on the Ghost guardians) tuned back with hpScale; solver fights re-solved (24/24).
 - T3: reports/balance/type-chart-after.md: outliers 814 → 0 cells, skipped cards 2943 → 0, prediction error 3–5 % of designed; quick balance comparison in the scratchpad (gate PASS before and after, 0 failures; warnings 39 → 39; the perfect bot at level 1 now dies in the isolated Nightmare Sableye arena, 2/2 felled → 0/2, because the fight can no longer be burst).
 
+- Merge into main (after ad00e3b, the starters' Sendas): no textual conflicts. Semantic follow-ups: `PROTOCOL_VERSION` 4 → 5 (a guest computes its own hits' damage, so chart A and chart B peers must not mix, and the snapshot carries `held`; the content hash cannot see a rule change); the Sendas' shadows, tuned under the old chart, failed three kill margins under chart B (all Zorua's Dark ×2 → ×1.6 as the worst starter) and were retuned with their per-tier `hpScale`: zorua-gengar Normal 0.54 → 0.46 (margin 1.30 → 1.53 for 1.5), cubone-haunter Nightmare 0.7 → 0.69 and zorua-houndoom Nightmare 0.7 → 0.69 (1.096 → 1.113 for 1.1); the wounds (Mimikyu and the three new ones) passed unchanged. The shadow list moved to `src/sim/prove.ts` `SHADOW_BOSSES` so the live proof and the study read one list; the after report now covers the 15 shadows and the 4 wounds (4618 fights, 0 of 2304 cells outliers). Its proof-margin section still reads only the stored witnesses (guardians and echoes); the shadows' and wounds' margins are the live proofs' (`npm run test:proofs`). The heavy proof files gained a macrotask yield after each test: with the floor the Cubone shard runs ~75 s, past vitest's 60 s RPC timeout ("Timeout calling onTaskUpdate", tests green but exit 1).
+
 ## Verification evidence
 - `npm run typecheck`: exit 0.
 - `npx vitest run --testTimeout=30000 --maxWorkers=4`: 250 files, 3115 tests passed.
 - `npm run build`: exit 0.
 - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared, exit 0; known kill gaps 23 (unchanged).
+
+- After the merge into main: `npm run typecheck` exit 0; `npx vitest run --testTimeout=30000 --maxWorkers=4` 249 files, 3123 tests passed; `npm run test:proofs` 4 files, 321 tests passed, exit 0, no unhandled errors; `npm run build` exit 0; `npm run prove` 166 cards (166 survivable), 24/24 solver fights, exit 0, reports/proof unchanged.
 
 ## Next step
 Owner playtest on Nightmare reflections (Chandelure vs the Ghost guardians, a neutral species vs Nihilego) to check the human model (×1.9) and the "¡Aguanta!" readability; a full `npm run balance` before merging if the owner wants latest.md refreshed.

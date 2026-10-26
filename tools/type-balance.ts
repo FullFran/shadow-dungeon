@@ -3,8 +3,9 @@
  * (odd/tasks/type-balance.md, src/sim/type-balance.ts). Every study species
  * (the starters' base forms and every final form) with its default build and
  * a full investment, against every card boss (guardians, mid-bosses, Sima
- * echoes, Senda wounds) on Normal, Hard and Nightmare: the perfect bot plays
- * each fight on the real engine and every card is recorded; the candidate
+ * echoes, Senda wounds and shadows) on Normal, Hard and Nightmare: the
+ * perfect bot plays each fight on the real engine and every card is
+ * recorded; the candidate
  * fixes (compressed charts, a minimum duration per card) are applied to those
  * records. The proof's kill margins (src/sim/prove.ts) are recomputed under
  * each chart from the stored witnesses' punish windows.
@@ -223,7 +224,7 @@ L.push(
   '',
   '- **Who**: the four starters in their base form, and every final form (Mimikyu after both awakenings, Zoroark, Chandelure, Marowak, Alakazam, Empoleon, Luxray, Haxorus) with its stage bonus.',
   "- **Builds**: *default* = the species' default loadout, no Mejoras. *full* = its best fast and best heavy move against that boss from its whole movepool (any tier, Maestro included; ranked by the analytic rate below under the shipped chart), the default boost and area, every move at rank +2.",
-  "- **Against**: every card boss (the 5 guardians and 3 mid-bosses at their room's floor), the 5 Sima echoes at the floor they first appear, and every Senda wound, on Normal, Hard and Nightmare, at the floor's expected level (`core/fairness.ts`): the setup of a Shrine reflection (no items, no shop upgrades).",
+  "- **Against**: every card boss (the 5 guardians and 3 mid-bosses at their room's floor), the 5 Sima echoes at the floor they first appear, every Senda wound and every Senda shadow (the starters' roads' mid-bosses, at their road's floor), on Normal, Hard and Nightmare, at the floor's expected level (`core/fairness.ts`): the setup of a Shrine reflection (no items, no shop upgrades).",
   '- **Engine bot** (the realistic number): the perfect balance bot (`src/sim/bots.ts`, no reaction lag, four slots) plays the whole fight on the real engine, unkillable (every hit still lands, nothing ends the run). Each card records its length, how it ended and the damage dealt by move type.',
   "- **Candidates** are applied to those records: a card's damage rate scales by the candidate chart's effectiveness over the recorded one (per move type), the card ends when its segment would be empty, never before `floor × timer`, never after its timer. Survival cards always last their timer. Declarations are left out of every duration (the designed duration is the sum of the timers).",
   '- **Analytic bound** (dodge-free upper bound): the build\'s best fast or heavy move hitting non-stop (`core/move-power.ts` damage rate, rank effects, STAB, level, stage).',
