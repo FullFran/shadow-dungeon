@@ -25,21 +25,22 @@ export type MimikyuBossId = 'mimikyu-wound' | 'mimikyu-ditto' | 'mimikyu-noctowl
 
 /**
  * Its shadows (data/story/kit.ts; `hpScale` per tier tuned so every card
- * meets its kill margin, tests/sim/story-prove-<line>.test.ts). Ghost and
- * Fairy reach each at least neutrally: Ditto copies Mimikyu itself, a shadow
- * of a Normal Pokémon (Jigglypuff) wears Ghost instead, Noctowl trades its
- * wings (Flying) for Ghost. None throws Normal, Fighting or Dragon at a line
- * those cannot touch.
+ * meets its kill margin, tests/sim/story-prove-<line>.test.ts; `weights` give
+ * a slow bloom card a smaller segment). Ghost and Fairy reach each at least
+ * neutrally: a shadow of a Normal Pokémon (Ditto, Jigglypuff) is Ghost
+ * instead (Fairy would turn a Dark hit aside), Noctowl trades its wings
+ * (Flying) for Ghost. None throws Normal, Fighting or Dragon at a line those
+ * cannot touch.
  */
 export const MIMIKYU_BOSSES: readonly (StoryBossDef & { id: MimikyuBossId })[] = [
-  { id: 'mimikyu-ditto', sprite: 'ditto', types: ['ghost', 'fairy'], maxHp: 520, radius: 14, shots: { a: 'ghost', b: 'fairy' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.6, 0.6, 0.7] },
-  { id: 'mimikyu-noctowl', sprite: 'noctowl', types: ['psychic', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'psychic', b: 'ghost' }, cards: ['moon', 'fan', 'drop'], hpScale: [0.5, 0.6, 0.6, 0.7] },
-  { id: 'mimikyu-jigglypuff', sprite: 'jigglypuff', types: ['fairy', 'ghost'], maxHp: 520, radius: 14, shots: { a: 'fairy', b: 'psychic' }, cards: ['bloom', 'fan', 'walls'], hpScale: [0.5, 0.6, 0.6, 0.7] },
+  { id: 'mimikyu-ditto', sprite: 'ditto', types: ['ghost'], maxHp: 520, radius: 14, shots: { a: 'ghost', b: 'fairy' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.6, 0.48, 0.52] },
+  { id: 'mimikyu-noctowl', sprite: 'noctowl', types: ['psychic', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'psychic', b: 'ghost' }, cards: ['moon', 'fan', 'drop'], hpScale: [0.5, 0.6, 0.6, 0.65] },
+  { id: 'mimikyu-jigglypuff', sprite: 'jigglypuff', types: ['ghost'], maxHp: 520, radius: 14, shots: { a: 'fairy', b: 'psychic' }, cards: ['fan', 'walls', 'bloom'], hpScale: [0.5, 0.6, 0.48, 0.5], weights: [[1, 1], [1, 1], [0.75, 1, 0.6], [0.8, 1, 0.5]] },
   { id: 'mimikyu-pikachu', sprite: 'pikachu', types: ['electric', 'ghost'], maxHp: 520, radius: 14, shots: { a: 'electric', b: 'steel' }, cards: ['rain', 'fan', 'drop'], hpScale: [0.5, 0.6, 0.6, 0.7] },
-  { id: 'mimikyu-polteageist', sprite: 'polteageist', types: ['ghost'], maxHp: 520, radius: 14, shots: { a: 'ghost', b: 'water' }, cards: ['bloom', 'walls', 'moon'], hpScale: [0.5, 0.6, 0.6, 0.7] },
+  { id: 'mimikyu-polteageist', sprite: 'polteageist', types: ['ghost'], maxHp: 520, radius: 14, shots: { a: 'ghost', b: 'water' }, cards: ['walls', 'moon', 'bloom'], hpScale: [0.5, 0.6, 0.6, 0.65], weights: [[1, 1], [1, 1], [1, 1, 0.8], [1, 1, 0.5]] },
   { id: 'mimikyu-hatterene', sprite: 'hatterene', types: ['psychic', 'fairy'], maxHp: 520, radius: 16, shots: { a: 'psychic', b: 'fairy' }, cards: ['walls', 'moon', 'bloom'], hpScale: [0.5, 0.6, 0.6, 0.7] },
   // The wound: Mimikyu Sin Disfraz (Ghost and Fairy), the busted sheet huge and corrupted: claws that tear the seam, a fall where nobody looks, what is under the rag (its phase 2), a hug that hurts.
-  { id: 'mimikyu-wound', sprite: 'mimikyuBusted', types: ['ghost', 'fairy'], maxHp: 760, radius: 20, shots: { a: 'ghost', b: 'fairy' }, cards: ['fan', 'drop', 'bloom', 'rain'], hpScale: [0.5, 0.7, 0.7, 0.85], wound: true },
+  { id: 'mimikyu-wound', sprite: 'mimikyuBusted', types: ['ghost', 'fairy'], maxHp: 760, radius: 20, shots: { a: 'ghost', b: 'fairy' }, cards: ['fan', 'drop', 'bloom', 'rain'], hpScale: [0.5, 0.7, 0.7, 0.8], weights: [[1, 1], [0.38, 0.4, 0.22], [0.27, 0.24, 0.21, 0.24], [1, 1, 1, 0.8]], wound: true },
 ];
 
 export const MIMIKYU_FIGHTS = Object.fromEntries(MIMIKYU_BOSSES.map((b) => [b.id, fightsOf(b)])) as Record<MimikyuBossId, ReturnType<typeof fightsOf>>;
