@@ -469,7 +469,8 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
 export interface TownOverlay {
   /** "E / Enter: talk" over the target in range. */
   prompt: { text: string; pos: Vec2 } | null;
-  dialog: { speaker: string; text: string; done: boolean } | null;
+  /** The dialog box; `portrait`: the speaker's sheet, shown in a framed box over it (Mystery Dungeon style). */
+  dialog: { speaker: string; text: string; done: boolean; portrait?: string } | null;
   /** The map's name on arrival, fading out. */
   banner?: { text: string; alpha: number } | null;
   /** Black over everything while changing maps (0..1). */
@@ -504,8 +505,28 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
   return lines;
 }
 
+/** A speaker's portrait over the dialog box: its idle frame, facing you, in a small framed window. */
+function drawPortrait(ctx: CanvasRenderingContext2D, sheets: SheetStore, sprite: string, x: number, y: number, timeMs: number): void {
+  const meta = SPRITES.sprites[sprite]?.anims.Idle;
+  const image = meta && sheets.get(sheetKey(sprite, meta.file));
+  const size = 46;
+  drawPanel(ctx, x, y, size, size);
+  if (!meta || !image) return;
+  const frame = frameAtTime(meta.durations, timeMs, true);
+  const scale = Math.max(1, Math.floor((size - 8) / Math.max(meta.frameWidth, meta.frameHeight)));
+  const dw = meta.frameWidth * scale;
+  const dh = meta.frameHeight * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x + 3, y + 3, size - 6, size - 6);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, frame * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, Math.round(x + size / 2 - dw / 2), Math.round(y + size / 2 - dh / 2 + 4), dw, dh);
+  ctx.restore();
+}
+
 /** Interaction prompt and the dialog box (Mystery Dungeon window language), in view pixels. */
-export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
+export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
   ctx.font = canvasFont();
   for (const label of overlay.names ?? []) nameLabel(ctx, view, label);
   if (overlay.prompt && !overlay.dialog) {
@@ -524,14 +545,14 @@ export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overl
     pixelText(ctx, text, view.width / 2, SKY_BAND + 10, PALETTE.cursor, 'center');
     ctx.globalAlpha = 1;
   }
-  drawDialog(ctx, view, overlay, timeMs);
+  drawDialog(ctx, view, overlay, timeMs, sheets);
   if (overlay.fade && overlay.fade > 0) {
     ctx.fillStyle = `rgba(0, 0, 0, ${overlay.fade})`;
     ctx.fillRect(0, 0, view.width, view.height);
   }
 }
 
-function drawDialog(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
+function drawDialog(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
   const dialog = overlay.dialog;
   if (!dialog) return;
   const x = 16;
@@ -539,6 +560,7 @@ function drawDialog(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOver
   const h = 70;
   // Clear of the fan-project notice at the bottom of the page.
   const y = view.height - h - 24;
+  if (dialog.portrait && sheets) drawPortrait(ctx, sheets, dialog.portrait, x, y - 50, timeMs);
   drawPanel(ctx, x, y, w, h);
   pixelText(ctx, dialog.speaker, x + 10, y + 15, PALETTE.cursor);
   const lines = wrapText(dialog.text, w - 24, (s) => ctx.measureText(s).width);

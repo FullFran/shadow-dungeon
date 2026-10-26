@@ -24,9 +24,9 @@ function seenSet(store: KeyValueStore): Set<string> {
   }
 }
 
-export const hasSeenSimaScene = (store: KeyValueStore, id: SimaSceneId): boolean => seenSet(store).has(id);
+export const hasSeenSimaScene = (store: KeyValueStore, id: SimaSceneId | 'plea'): boolean => seenSet(store).has(id);
 
-export function markSimaSceneSeen(store: KeyValueStore, id: SimaSceneId): void {
+export function markSimaSceneSeen(store: KeyValueStore, id: SimaSceneId | 'plea'): void {
   const seen = seenSet(store);
   if (seen.has(id)) return;
   seen.add(id);
