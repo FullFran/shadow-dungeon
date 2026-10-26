@@ -189,6 +189,13 @@
       .gacha .gacha-reveal { min-height: 1.3em; margin: 0 0 4px; cursor: pointer; }
       .gacha .gacha-reveal.is-common { color: #8fd0ff; }
       .gacha .gacha-reveal.is-rare { color: #ffd166; }
+      /* A shiny pull and a worn shiny skin (odd/tasks/shiny-echo.md): a sparkle over the portrait. */
+      .gacha .gacha-reveal.is-shiny { color: #ff9be8; text-shadow: 0 0 6px rgba(255, 155, 232, 0.8); }
+      .portrait-frame { position: relative; }
+      .portrait-frame.is-shiny { background: radial-gradient(ellipse at 50% 70%, rgba(255, 155, 232, 0.3), transparent 65%); }
+      .shiny-sparkle { position: absolute; top: 2px; right: 18%; color: #fff6b0; font-size: 1.4em; text-shadow: 0 0 8px #ff9be8; animation: shiny-twinkle 0.9s ease-in-out infinite alternate; pointer-events: none; }
+      @keyframes shiny-twinkle { from { opacity: 0.35; transform: scale(0.8) rotate(0deg); } to { opacity: 1; transform: scale(1.2) rotate(20deg); } }
+      @media (prefers-reduced-motion: reduce) { .shiny-sparkle { animation: none; } }
       .gacha .shop-effect p { margin: 0; }
       /* Achievements (src/app/achievements.ts): the cursor family's list scrolls; unlocked ones in the cursor colour; the unlock toast like the install banner. */
       .achievements .achievement-list { max-height: 40vh; overflow-y: auto; overscroll-behavior: contain; }

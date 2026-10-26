@@ -6,7 +6,7 @@ import { lineOf } from '../core/evolution';
 import type { Materials } from '../core/collection';
 import { awakeningsOf, MATERIAL_TIERS } from '../data/player-evolutions';
 import { challengeReward } from '../core/challenge';
-import { challengeShiny, SHINY_LINES } from '../core/shiny';
+import { challengeShiny, SHINY_LINES, wearShiny } from '../core/shiny';
 import { GACHA } from '../data/gacha';
 import type { DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
@@ -279,6 +279,14 @@ export function earnCoins(store: KeyValueStore, amount: number): SaveData {
   const next = sanitize({ ...save, coins: save.coins + gain, earned: (save.earned ?? 0) + gain });
   writeSave(store, next);
   return next;
+}
+
+/** Puts `species`' line skin on or off in the stored save and returns it (unchanged when the skin is locked). */
+export function wearShinyAt(store: KeyValueStore, species: SpeciesId, on: boolean): SaveData {
+  const save = loadSave(store);
+  const next = wearShiny(save, species, on);
+  if (next !== save) writeSave(store, next);
+  return loadSave(store);
 }
 
 /**

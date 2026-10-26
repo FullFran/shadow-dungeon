@@ -3,7 +3,7 @@ import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
 import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
 import { SPECIES } from '../data/species';
-import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
+import { shinyKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type ShinySpriteKey } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import type { EnemyState, PlayerState } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -14,7 +14,8 @@ import type { Vec2 } from '../core/vec';
  * `SPRITES.directions` (down, downRight, right, upRight, up, upLeft, left,
  * downLeft). Durations are in 1/60 s ticks.
  */
-export type SpriteKey = (typeof SPRITE_KEYS)[keyof typeof SPRITE_KEYS];
+/** A sheet folder: a species' own, or its shiny (odd/tasks/shiny-echo.md). */
+export type SpriteKey = BaseSpriteKey | ShinySpriteKey;
 
 /** Sheet row for a facing vector (screen y grows down). */
 export function directionRow(dir: Vec2): number {
@@ -186,10 +187,11 @@ export function attackSheet(sprite: SpriteKey, moveId: MoveId): string {
   return RELEASE_FALLBACKS.find(usable) ?? 'Attack';
 }
 
-/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form). */
-export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken'>): SpriteKey {
+/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form); its shiny when it wears the skin. */
+export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken' | 'shiny'>): SpriteKey {
   const species = SPECIES[player.species];
-  return SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
+  const key = SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
+  return player.shiny ? shinyKey(key) : key;
 }
 
 export interface PlayerAnimContext {

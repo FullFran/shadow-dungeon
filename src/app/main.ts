@@ -30,7 +30,7 @@ import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
-import { loadoutScreen } from './loadout';
+import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
@@ -51,7 +51,7 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import type { SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { earnChallengeReward, earnCoins, loadSave, writeSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast } from './achievements';
@@ -65,6 +65,7 @@ import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { awakenedOf, currentForm, rosterOf } from '../core/collection';
+import { hasShiny, wearsShiny } from '../core/shiny';
 import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
@@ -524,6 +525,7 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       roster: rosterOf(save).filter((id) => !line || lineOf(id) === line),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
+      ...skins(),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
         loadout(root, 'moves', dungeon);
@@ -577,7 +579,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -586,12 +588,32 @@ function tutorView(species: SpeciesId): { known: MoveId[]; ranks: Partial<Record
   return { known: knownMoves(save, species), ranks: { ...runRanks(save, species) }, buildHint: buildHint(species) };
 }
 
-/** A run's Mejoras and awakening steps of `species` (none: no field). */
-function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>>; awakened?: number } {
+/** A run's Mejoras, awakening steps and shiny skin of `species` (none: no field). */
+function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>>; awakened?: number; shiny?: boolean } {
   const save = loadSave(store);
   const ranks = runRanks(save, species);
   const awakened = awakenedOf(save, species);
-  return { ...(ranks ? { moveRanks: ranks } : {}), ...(awakened > 0 ? { awakened } : {}) };
+  return { ...(ranks ? { moveRanks: ranks } : {}), ...(awakened > 0 ? { awakened } : {}), ...(wearsShiny(save, species) ? { shiny: true } : {}) };
+}
+
+/** Whether `species` (the picked one by default) wears its line's shiny skin (odd/tasks/shiny-echo.md). */
+const skinOn = (species: SpeciesId = settings.species): boolean => wearsShiny(loadSave(store), species);
+
+/**
+ * The loadout's shiny skins, read from and written to the save; `after` runs
+ * after a change (a room hears it through the hello).
+ */
+function skins(after?: () => void): { skin: ShinySkins } {
+  return {
+    skin: {
+      unlocked: (species) => hasShiny(loadSave(store), species),
+      worn: (species) => skinOn(species),
+      wear: (species, on) => {
+        wearShinyAt(store, species, on);
+        after?.();
+      },
+    },
+  };
 }
 
 /** Smeargle's move tutor over the town, like the shop. */
@@ -765,12 +787,13 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       roster: rosterOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
+      ...skins(() => r?.session.repick(settings.species, settings.loadout, skinOn())),
       startLabel: t('shrine.start'),
       context: requestLine(request),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
         // The room sees the host's new species too.
-        r?.session.repick(settings.species, settings.loadout);
+        r?.session.repick(settings.species, settings.loadout, skinOn());
         shrineStep(root, from, loadoutSpecies(request));
       },
       onChange: (next) => update({ loadout: next }),
@@ -810,6 +833,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         roster: rosterOf(loadSave(store)),
         sheets: sheetsReady(),
         ...tutorView(settings.species),
+        ...skins(),
         startLabel: t('shrine.ready'),
         ...(request ? { context: requestLine(request) } : {}),
         onSpecies: (species) => {
@@ -819,7 +843,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         onChange: (next) => update({ loadout: next }),
         // Ready: the host's roster gets this species; the moves stay on this device (each player plays its own).
         onStart: () => {
-          r.session.repick(settings.species, settings.loadout);
+          r.session.repick(settings.species, settings.loadout, skinOn());
           back();
         },
         onBack: () => roomShrineGuest(root, stage === 'moves' ? 'species' : 'menu'),
@@ -851,7 +875,7 @@ function startRoomTrial(root: HTMLElement, request: TrialRequest, pick: TrialPic
   const r = liveRoom('room');
   if (!r) return titleScreen(root);
   const dungeon = request.stops[0]!.dungeon;
-  r.session.repick(pick.species, pick.loadout);
+  r.session.repick(pick.species, pick.loadout, skinOn(pick.species));
   r.session.setDifficulty(request.difficulty);
   r.session.begin(dungeon, r.seed, roomTrialOf(request));
   const group = r.session.roster().length > 1;
@@ -1003,8 +1027,8 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (!root.querySelector('canvas.town')) townLobby(root);
   });
   const name = sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() });
-  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty });
-  else session.join(settings.species, settings.loadout, name);
+  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty, shiny: skinOn() });
+  else session.join(settings.species, settings.loadout, name, skinOn());
   townLobby(root);
 }
 
@@ -1033,7 +1057,7 @@ function townLobby(root: HTMLElement): void {
     selfName: sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() }),
     code: () => (hideCode ? '•'.repeat(r.code.length) : r.code),
     players: () => session.roster().map((e) => ({ name: nameOf(e), host: e.id === 'p1', self: e.peer === session.peerId() })),
-    walkers: () => session.townWalkers().map((w) => ({ id: w.id, name: nameOf(w), species: w.species, map: w.map, pos: w.pos, facing: w.facing, moving: w.moving })),
+    walkers: () => session.townWalkers().map((w) => ({ id: w.id, name: nameOf(w), species: w.species, ...(w.shiny ? { shiny: true } : {}), map: w.map, pos: w.pos, facing: w.facing, moving: w.moving })),
     sendPresence: (presence) => session.sendPresence(presence),
     menu: (close) => [
       { label: t('lobby.copy'), onConfirm: () => void navigator.clipboard?.writeText(r.code).then(close, close) },
@@ -1073,7 +1097,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */

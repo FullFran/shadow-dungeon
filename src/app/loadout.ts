@@ -1,7 +1,7 @@
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
-import { SPRITE_KEYS, SPRITES } from '../data/sprites';
+import { shinyKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
 import type { PokemonType } from '../data/types';
 import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
@@ -50,6 +50,20 @@ export interface LoadoutOptions {
   ranks?: Readonly<Partial<Record<MoveId, number>>>;
   /** The recommended competitive build, shown under the list. */
   buildHint?: string;
+  /**
+   * Shiny skins (odd/tasks/shiny-echo.md): which lines have theirs and wear
+   * it (the portraits show it), and the moves step's on/off row for the
+   * picked species' line once unlocked. Absent: no skins.
+   */
+  skin?: ShinySkins;
+}
+
+/** The player's shiny skins, per line (any form of the line answers for it). */
+export interface ShinySkins {
+  unlocked(species: SpeciesId): boolean;
+  worn(species: SpeciesId): boolean;
+  /** Puts the line's skin on or off (persisted by the caller). */
+  wear(species: SpeciesId, on: boolean): void;
 }
 
 /** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
@@ -69,9 +83,10 @@ export function typeBadge(type: PokemonType): HTMLElement {
   return h('span', { className: `type-badge type-${type}`, textContent: t(`type.${type}`) });
 }
 
-/** A species' idle animation on a small canvas, scaled by a whole number. */
-export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE): HTMLCanvasElement {
-  const key = SPRITE_KEYS[SPECIES[species].sprite];
+/** A species' idle animation on a small canvas, scaled by a whole number; its shiny sheet with `shiny`. */
+export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE, shiny = false): HTMLCanvasElement {
+  const base = SPRITE_KEYS[SPECIES[species].sprite];
+  const key = shiny ? shinyKey(base) : base;
   const meta = SPRITES.sprites[key]?.anims.Idle;
   const canvas = h('canvas', { className: 'portrait' });
   canvas.width = meta?.frameWidth ?? 32;
@@ -97,11 +112,11 @@ export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale 
 }
 
 /** Portrait, types and passive of a species (the info window's content). */
-function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId): HTMLElement[] {
+function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId, shiny = false): HTMLElement[] {
   const species = SPECIES[id];
   const passive = species.passive;
   const out: HTMLElement[] = [
-    h('div', { className: 'portrait-frame' }, [portrait(sheets, id)]),
+    h('div', { className: `portrait-frame${shiny ? ' is-shiny' : ''}` }, [portrait(sheets, id, SCALE, shiny)]),
     h('div', { className: 'type-row' }, species.types.map(typeBadge)),
     h('p', { className: 'ability', textContent: t('loadout.ability') }),
   ];
@@ -142,13 +157,14 @@ function speciesRow(id: SpeciesId, picked: boolean): HTMLElement {
 const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context ? [h('p', { className: 'dim shrine-loadout-for', textContent: options.context })] : []);
 
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
-  const info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, speciesInfo(options.sheets, options.species));
+  const worn = (id: SpeciesId) => options.skin?.worn(id) ?? false;
+  const info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, speciesInfo(options.sheets, options.species, worn(options.species)));
   /** Shows the species under the cursor in the info window. */
   const preview = (id: SpeciesId) => {
     const title = info.querySelector('.md-window-title');
     if (title) title.textContent = t(`species.${id}`);
     for (const child of [...info.children]) if (child !== title) child.remove();
-    info.append(...speciesInfo(options.sheets, id));
+    info.append(...speciesInfo(options.sheets, id, worn(id)));
   };
   const roster = options.roster ?? STARTER_SPECIES;
   const items: ListItem[] = [
@@ -212,6 +228,16 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
         });
       }
     });
+    // The line's shiny skin, once unlocked: on or off (a confirm or ◀ ▶ flips it).
+    const skin = options.skin;
+    if (skin?.unlocked(species.id)) {
+      const flip = () => {
+        skin.wear(species.id, !skin.worn(species.id));
+        showInfo();
+        list.setItems(items());
+      };
+      out.push({ label: t('loadout.shiny'), value: t(skin.worn(species.id) ? 'menu.on' : 'menu.off'), className: 'shiny-row', onAdjust: flip, onConfirm: flip });
+    }
     if (tier && options.difficulty) {
       const pick = options.difficulty;
       out.push(
@@ -231,7 +257,13 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
   const first = items();
   const list = cursorList({ items: first, initial: first.length - 2, onBack: options.onBack, label: t('loadout.moves') });
 
-  const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id));
+  const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false));
+  /** Redraws the info window (the skin changed). */
+  function showInfo(): void {
+    const title = info.querySelector('.md-window-title');
+    for (const child of [...info.children]) if (child !== title) child.remove();
+    info.append(...speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false));
+  }
   const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
   return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : []), ...(options.buildHint ? [h('p', { className: 'dim loadout-build', textContent: options.buildHint })] : [])])])];
 }

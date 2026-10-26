@@ -27,8 +27,8 @@ Parity rule: a new system reaches every playable species, solo and co-op, save, 
 single branch `feat/shiny-echo` from main 76beb88, one commit per task; forecast ~1,200 authored lines (sheets and sprite-meta are generated); PR slicing is the user's decision.
 
 ## Tasks
-- [ ] T1 A data+core: shiny sheets, gacha shiny roll and pity, core/shiny.ts, Nightmare challenge unlock, achievements, save fields, tests. Route: inline (bounded writer delegated by the parent).
-- [ ] T2 A UI+net: loadout and Phantump toggles, gacha reveal, player/remote/town sprites, protocol v4. Route: inline.
+- [x] T1 A data+core: shiny sheets, gacha shiny roll and pity, core/shiny.ts, Nightmare challenge unlock, achievements, save fields, tests. Route: inline (bounded writer delegated by the parent). Commit 7b6e5e7.
+- [x] T2 A UI+net: loadout and Phantump toggles, gacha reveal, player/remote/town sprites, protocol v4. Route: inline. Smoke: shiny gacha reveal (shiny Shinx, sparkle, «¡Shiny! ¡Shinx! (Común)») and the loadout portrait of a shiny Zorua.
 - [ ] T3 B personal echo: echoMimic, renderer/HUD name, lore lines, tests, GDD. Route: inline.
 
 ## Acceptance
@@ -50,6 +50,8 @@ single branch `feat/shiny-echo` from main 76beb88, one commit per task; forecast
 
 ## Progress
 - Branch created from 76beb88.
+- T1: 21 shiny sheets fetched (`--only=shiny` keeps the other metas byte-identical); the shiny roll is the pull's third RNG draw, so a seed's species are unchanged. typecheck and the full suite green.
+- T2: skin flag `PlayerState.shiny` (cosmetic, set from `WorldOptions.shiny`); `hello.shiny`, roster `shiny`, state `sh` (outside the positional player array); PROTOCOL_VERSION 3 -> 4. Phantump's window: one «Shiny de X» on/off row per unlocked line; loadout: «Aspecto shiny» row in the moves step.
 
 ## Next step
-T1.
+T3.
