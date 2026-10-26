@@ -1107,7 +1107,36 @@ Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú princ
 
 Comprarlo todo cuesta unas 5000 Pokémonedas (unas 30 victorias). El gacha sigue pendiente ("Próximamente"). Las Pokémonedas también compran movimientos y Mejoras al maestro de movimientos (Smeargle, en el Refugio; sección 4, «Movimientos y maestro»).
 
-Guardado: el saldo, los niveles comprados y, desde la versión 2, los movimientos aprendidos y las Mejoras viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes.
+Guardado: el saldo, los niveles comprados y, desde la versión 2, los movimientos aprendidos y las Mejoras viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes. La versión 4 añade los logros, las Pokémonedas ganadas en total y las misiones (un guardado de la versión 3 se lee sin ninguno).
+
+### Logros *(provisional)*
+
+Metas a largo plazo que se miran al terminar cada partida y al cambiar la colección (una tirada, una evolución, una misión cobrada), nunca durante el combate. Se generan de las listas de contenido, así que una mazmorra, una especie o una evolución nuevas traen sus logros sin tocar nada a mano:
+
+| Familia | Uno por | Premio |
+|---|---|---|
+| Mazmorras superadas | Mazmorra principal o reto, y dificultad (ganar en una dificultad cuenta para las de debajo) | 0 / 20 / 40 / 80 P (Fácil a Pesadilla) |
+| Guardianes sin un rasguño | Mazmorra con guardián: ganar sin recibir ningún golpe en la planta del guardián | 50 P |
+| Profundidades de la Sima | Estrato de la Sima después del primero (plantas 11, 21, 31 y 41) | 30 P |
+| Compañeros | Especie jugable: ganar cualquier mazmorra con ella | 0 |
+| Evoluciones | Evolución de una línea (una forma posterior también la cuenta) | 20 P |
+| Puesto de Mimikyu | Primera tirada; todas las líneas del puesto | 0; 50 P |
+| En equipo | Ganar una mazmorra en grupo | 30 P |
+| Pokémonedas | 1000, 5000, 20 000 y 100 000 ganadas en total (gastar no resta) | 0 |
+| Secretos | Ocultos hasta conseguirlos (caer en la primera planta) | 10 P |
+
+Ningún logro da poder: solo unas pocas Pokémonedas. Al conseguirlos sale un aviso arriba de la pantalla; la ventana de logros (en el menú principal y desde el tablón del pueblo) enseña cada familia con su progreso. En cooperativo cada jugador mira sus logros con su propia partida y su propio guardado; las pruebas del Santuario no cuentan como partidas.
+
+### Misiones *(provisional)*
+
+El tablón del pueblo, además de los récords, tiene encargos al estilo de los tablones de Mundo Misterioso. Cada día (a las 00:00 UTC) salen de 3 a 5 misiones, las mismas para todos los jugadores porque dependen solo de la fecha, y una semanal que cambia cada lunes. Se generan de las listas de contenido:
+
+- Llegar a la planta N de una mazmorra principal (en la Sima, múltiplos de 5 hasta la 20).
+- Superar una mazmorra (también las de reto).
+- Derrotar N Pokémon de un tipo que aparezca en las mazmorras (en una o varias partidas).
+- Llegar a la planta 2 o más abajo con una línea jugable.
+
+Cada misión pide una dificultad mínima: solo cuentan las partidas en esa dificultad o más difíciles. Puedes llevar 3 a la vez (diarias y semanal juntas); al cumplirlas se cobran en el tablón. Premio: Pokémonedas según el tipo de misión y la dificultad y, a veces (siempre en la semanal), Esencias de una línea del puesto de una dificultad como mucho la de la misión y nunca de Pesadilla, para que la última evolución siga pidiendo superar su reto en Pesadilla. Las misiones de un día o una semana pasados desaparecen, cumplidas o no. En cooperativo cada jugador avanza sus propias misiones con su propia partida.
 
 ## 12. Notas técnicas
 

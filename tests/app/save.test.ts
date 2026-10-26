@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
+import { dailyMissions } from '../../src/core/missions';
+import { MISSIONS } from '../../src/data/missions';
 import { EMPTY_SAVE, earnCoins, loadSave, migrate, sanitize, SAVE_KEY, SAVE_VERSION, writeSave } from '../../src/app/save';
 
 const throwing: KeyValueStore = {
@@ -51,11 +53,50 @@ describe('save facade', () => {
     expect(sanitize(migrate({ coins: 30 }))).toEqual({ version: SAVE_VERSION, coins: 30, upgrades: {} });
   });
 
-  it('migrate brings a v2 save to v3 with everything it held', () => {
+  it('migrate brings a v2 save to the current version with everything it held', () => {
     const v2 = { version: 2, coins: 50, upgrades: { vitality: 1 }, learned: { zorua: ['swift'] }, ranks: { mimikyu: { 'shadow-claw': 1 } } };
-    expect(migrate(v2)).toEqual({ ...v2, version: 3 });
+    expect(migrate(v2)).toEqual({ ...v2, version: SAVE_VERSION });
     expect(sanitize(migrate(v2))).toEqual({ ...v2, version: SAVE_VERSION });
-    expect(SAVE_VERSION).toBe(3);
+  });
+
+  it('migrate brings a v3 save to v4: no achievements or lifetime earnings yet', () => {
+    const v3 = { version: 3, coins: 70, upgrades: {}, owned: ['abra'], materials: { abra: { normal: 2 } }, pity: 3 };
+    expect(SAVE_VERSION).toBe(4);
+    const save = sanitize(migrate(v3));
+    expect(save).toEqual({ ...v3, version: 4 });
+    expect(save.achievements).toBeUndefined();
+    expect(save.earned).toBeUndefined();
+  });
+
+  it('round-trips unlocked achievements and lifetime earnings', () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, coins: 5, achievements: { 'clear-misty-forest-easy': '2026-10-26' }, earned: 1234 });
+    expect(loadSave(store)).toMatchObject({ achievements: { 'clear-misty-forest-easy': '2026-10-26' }, earned: 1234 });
+  });
+
+  it('round-trips accepted and claimed missions', () => {
+    const store = memoryStore();
+    const [a, b] = dailyMissions('2026-10-26');
+    writeSave(store, { ...EMPTY_SAVE, missions: { accepted: [{ id: a!.id, progress: 0 }], claimed: [b!.id] } });
+    expect(loadSave(store).missions).toEqual({ accepted: [{ id: a!.id, progress: 0 }], claimed: [b!.id] });
+  });
+
+  it('sanitize keeps only real missions, once each, with whole progress up to their target, at most the limit', () => {
+    const board = dailyMissions('2026-10-26');
+    const accepted = [...board, board[0]!].map((m) => ({ id: m.id, progress: 1e9 }));
+    const save = sanitize({ coins: 0, upgrades: {}, missions: { accepted: [...accepted, { id: 'd:2026-10-26:99', progress: 1 }, 'x', { id: 7 }], claimed: ['nope', board[1]!.id, board[1]!.id, 3] } });
+    expect(save.missions!.accepted).toEqual(board.slice(0, MISSIONS.maxAccepted).map((m) => ({ id: m.id, progress: m.target })));
+    expect(save.missions!.claimed).toEqual([board[1]!.id]);
+    expect(sanitize({ coins: 0, upgrades: {}, missions: { accepted: [{ id: board[0]!.id, progress: -2.5 }] } }).missions).toEqual({ accepted: [{ id: board[0]!.id, progress: 0 }], claimed: [] });
+    expect(sanitize({ coins: 0, upgrades: {}, missions: { accepted: [], claimed: [] } }).missions).toBeUndefined();
+    expect(sanitize({ coins: 0, upgrades: {}, missions: 'all' }).missions).toBeUndefined();
+  });
+
+  it('sanitize keeps only known achievement ids with a date, and a whole lifetime count', () => {
+    const save = sanitize({ coins: 0, upgrades: {}, achievements: { 'clear-misty-forest-easy': '2026-10-26', bogus: '2026-10-26', 'coop-clear': 7, __proto__: 'x', 'gacha-first-pull': 'yesterday' }, earned: -4 });
+    expect(save.achievements).toEqual({ 'clear-misty-forest-easy': '2026-10-26' });
+    expect(save.earned).toBeUndefined();
+    expect(sanitize({ coins: 0, upgrades: {}, achievements: [1, 2] }).achievements).toBeUndefined();
   });
 
   it('sanitize keeps only gacha species in the collection: no starters, enemies, unknowns or repeats', () => {
@@ -74,5 +115,12 @@ describe('save facade', () => {
     expect(after.coins).toBe(65);
     expect(loadSave(store).coins).toBe(65);
     expect(earnCoins(store, -10).coins).toBe(65);
+  });
+
+  it('earnCoins also counts the lifetime Pokémonedas earned (spending never lowers it)', () => {
+    const store = memoryStore();
+    earnCoins(store, 40);
+    writeSave(store, { ...loadSave(store), coins: 0 });
+    expect(earnCoins(store, 25).earned).toBe(65);
   });
 });

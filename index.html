@@ -190,6 +190,17 @@
       .gacha .gacha-reveal.is-common { color: #8fd0ff; }
       .gacha .gacha-reveal.is-rare { color: #ffd166; }
       .gacha .shop-effect p { margin: 0; }
+      /* Achievements (src/app/achievements.ts): the cursor family's list scrolls; unlocked ones in the cursor colour; the unlock toast like the install banner. */
+      .achievements .achievement-list { max-height: 40vh; overflow-y: auto; overscroll-behavior: contain; }
+      .achievement p { margin: 0; }
+      .achievement { margin: 0 0 6px; }
+      .achievement.is-done > p:first-child { color: var(--md-cursor); }
+      .achievement-toast { position: fixed; left: 0; right: 0; top: max(10px, env(safe-area-inset-top)); display: flex; justify-content: center; padding: 0 16px; z-index: 16; cursor: pointer; }
+      .achievement-toast .md-window { max-width: 30rem; padding: 10px 16px 8px; font-size: 18px; }
+      .achievement-toast p { margin: 0.15em 0; }
+      /* The notice board's missions (src/app/board.ts): the cursor's mission told beside the list. */
+      .board .mission-detail p { margin: 0 0 4px; }
+      .board .mission-state { color: var(--md-cursor); }
       /* Santuario de los Juramentos (src/app/shrine.ts) */
       .shrine { min-width: 36rem; max-width: 46rem; }
       .shrine h3 { margin: 0 0 10px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
@@ -342,6 +353,7 @@
         html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
         /* The move list scrolls inside the window, so the text and balance on the left stay in view. */
         html.touch .tutor .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
+        html.touch .achievements .achievement-list { max-height: calc(100dvh - 220px); }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }
         html.touch .result h1 { font-size: 22px; }

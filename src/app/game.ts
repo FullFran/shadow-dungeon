@@ -43,6 +43,8 @@ import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon
 import type { GameEvent, LockType, PlayerInput, RemotePlayer, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { coinBreakdown, emptyTally, tallyFloor, tallyStep, type CoinBreakdown, type CoinTally } from '../core/coins';
+import { tallyKills, type KillsByType } from '../core/run-report';
+import { partySizeOf } from '../core/party';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
 import { length, vec } from '../core/vec';
@@ -104,6 +106,12 @@ export interface RunSummary {
   trial?: TrialSummary;
   /** A shared run the host cut short before it ended here (after-run.ts `CutShort`): paid as a defeat. */
   cutShort?: CutShort;
+  /** Enemies this peer saw fall, per type (achievements and missions, core/run-report.ts). */
+  kills?: KillsByType;
+  /** The guardian's floor was cleared with no hit taken on it (set on a victory only). */
+  guardianNoHit?: boolean;
+  /** Played in a party of two or more. */
+  coop?: boolean;
 }
 
 export interface TrialSummary {
@@ -310,6 +318,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Pokémonedas tally of the run, and as the current floor was entered ("Restart floor" must not pay twice). */
   let tally: CoinTally = emptyTally();
   let floorStartTally = tally;
+  /** Enemies fallen per type, as the floor was entered too, and whether a hit was taken on this floor (achievements and missions). */
+  let kills: KillsByType = {};
+  let floorStartKills = kills;
+  let floorHit = false;
   /** The run's tier, and the solo "Restart floor" uses spent on this floor (limited on hard and nightmare). */
   const difficulty = worldDifficulty(world);
   let restartsUsed = 0;
@@ -760,6 +772,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     restartsUsed += 1;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     tally = floorStartTally;
+    kills = floorStartKills;
+    floorHit = false;
     simaSpent = floorStartSpent;
     merchantBerries = 0;
     merchantSold = false;
@@ -914,6 +928,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         ...(simaLog.length > 0 ? { simaEvents: [...simaLog] } : {}),
         ...(trialSummary ? { trial: trialSummary } : {}),
         ...(cut ? { cutShort: cut } : {}),
+        kills,
+        ...(result === 'victory' && !trial ? { guardianNoHit: !floorHit } : {}),
+        ...(partySizeOf(world) > 1 ? { coop: true } : {}),
       });
     };
     finishNow = finish;
@@ -929,6 +946,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const left = floorPlanOf(run);
     tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null, left.kind === 'room' && left.role === 'midboss');
     floorStartTally = tally;
+    floorStartKills = kills;
+    floorHit = false;
     run = next.run;
     world = trial ? next.world : withFogWall(next.run, next.world);
     floorStart = world;
@@ -1014,6 +1033,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       watchClock(clockBefore);
       // Captured spell cards (guardians' and heralds' alike, core/cards.ts `updateCapture`) are counted from the step's events.
       tally = tallyStep(tally, before, world, FIXED_DT_MS);
+      kills = tallyKills(kills, before, world);
       net?.session.afterStep(world, netFloor());
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       const won = events.find((e) => e.type === 'cardCaptured');
@@ -1034,6 +1054,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         }
       }
       if (trial && trialHurt(events)) trialHit = true;
+      if (trialHurt(events)) floorHit = true;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       const progress = trial ? trialProgress(hostFloor) : progressRun(run, world, agreed);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).

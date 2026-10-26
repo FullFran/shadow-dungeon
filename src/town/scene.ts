@@ -65,6 +65,8 @@ export interface TownOptions {
   openGacha?: (parent: HTMLElement, onClose: () => void) => () => void;
   /** Opens Phantump's evolution window inside `parent`, like `openShop`. */
   openEvolve?: (parent: HTMLElement, onClose: () => void) => () => void;
+  /** Opens the notice board's missions window inside `parent` once its records are read, like `openShop`. */
+  openBoard?: (parent: HTMLElement, onClose: () => void) => () => void;
   /** The map to open (the hub, at its spawn, when absent). */
   at?: WorldMapId;
   /** The tile to start on (the map's spawn or first arrival when absent). */
@@ -217,7 +219,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pixelScale = 1;
   let stopped = false;
   let raf = 0;
-  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'tutor' | 'gacha' | 'evolve' | 'shrine' | 'online' } | null = null;
+  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'tutor' | 'gacha' | 'evolve' | 'shrine' | 'online' | 'board' } | null = null;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -316,6 +318,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
       if (!next && opens === 'gacha') openShopWindow(options.openGacha);
       if (!next && opens === 'evolve') openShopWindow(options.openEvolve);
+      if (!next && opens === 'board') openShopWindow(options.openBoard);
       if (!next && opens === 'shrine' && options.openShrine) {
         handle.stop();
         options.openShrine();
@@ -353,7 +356,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')) }
+        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')), ...(options.openBoard ? { opens: 'board' as const } : {}) }
         : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
   }
 

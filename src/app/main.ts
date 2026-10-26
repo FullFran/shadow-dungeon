@@ -53,6 +53,10 @@ import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { earnChallengeReward, earnCoins, loadSave, writeSave } from './save';
 import { gachaWindow } from './gacha';
+import { missionBoardWindow } from './board';
+import { achievementsWindow, achievementToast } from './achievements';
+import { recordRun, recordSave } from './progress';
+import { runReport } from '../core/run-report';
 import { evolveWindow } from './evolve';
 import { openChallenges } from '../core/challenge';
 import { shopWindow } from './shop';
@@ -323,6 +327,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       // Appended last so the indices above stay put.
       { label: t('title.shop'), onConfirm: () => shopScreen(root) },
       { label: t('title.shrine'), onConfirm: () => shrineScreen(root) },
+      { label: t('title.achievements'), onConfirm: () => achievementsScreen(root) },
       // Only when installable, and after every fixed entry so indices stay stable.
       ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
     ],
@@ -542,7 +547,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -578,12 +583,46 @@ function townWindow(parent: HTMLElement, open: { element: HTMLElement; dispose()
   };
 }
 
+/** Leaving a stall that changes the collection (a pull, an evolution) settles the achievements the save earns (app/progress.ts). */
+const settleOnClose = (onClose: () => void) => () => {
+  onClose();
+  achievementToast(recordSave(store, Date.now()).unlocked);
+};
+
 /** Mimikyu's gacha stall over the town. */
-const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: onClose }));
+const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: settleOnClose(onClose) }));
 
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
 const townEvolve = (parent: HTMLElement, onClose: () => void): (() => void) =>
-  townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: onClose }));
+  townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: settleOnClose(onClose) }));
+
+/**
+ * The notice board's missions over the town (after its records are read),
+ * and the achievements window in its place from there (its way back is the
+ * board).
+ */
+function townBoard(parent: HTMLElement, onClose: () => void): () => void {
+  const overlay = h('div', { className: 'town-shop' });
+  let open: { element: HTMLElement; dispose(): void } | null = null;
+  const swap = (next: { element: HTMLElement; dispose(): void }) => {
+    open?.dispose();
+    open = next;
+    overlay.replaceChildren(next.element);
+  };
+  const board = () => swap(missionBoardWindow({ store, now: () => Date.now(), play: (sound) => audio.play(sound), onAchievements: () => swap(achievementsWindow({ store, onBack: board })), onBack: onClose }));
+  board();
+  parent.append(overlay);
+  return () => {
+    open?.dispose();
+    overlay.remove();
+  };
+}
+
+/** The achievements window from the title menu. */
+function achievementsScreen(root: HTMLElement): void {
+  const open = achievementsWindow({ store, onBack: () => titleScreen(root, 8) });
+  show(root, [open.element]);
+}
 
 /** The selected species evolved: play as its new form (with that form's default loadout). */
 function followEvolution(from: SpeciesId, to: SpeciesId): void {
@@ -975,7 +1014,7 @@ function townLobby(root: HTMLElement): void {
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1153,10 +1192,13 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       const before = loadSave(store);
       const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory', summary.difficulty);
       const materials = materialsEarned(dungeonById(summary.dungeon), summary.difficulty, before, save, t);
+      // Achievements: every peer settles its own run on its own save (app/progress.ts); new ones pay into the balance shown.
+      const progress = recordRun(store, runReport(summary, result, settings.species), Date.now());
+      achievementToast(progress.unlocked);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       // A run the host cut short never reached its end: no score.
       const score = summary.clockMs !== undefined && !summary.cutShort ? endlessScore(summary) : undefined;
-      resultScreen(root, result, summary, online, save.coins, score, materials);
+      resultScreen(root, result, summary, online, progress.save.coins, score, materials);
     },
   });
 }
@@ -1212,6 +1254,13 @@ function devScreen(root: HTMLElement): boolean {
     evolve: () => {
       devCoins();
       show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: () => titleScreen(root) }).element]);
+    },
+    // The achievements window and the notice board's missions on their own (back goes to the title).
+    achievements: () => achievementsScreen(root),
+    board: () => {
+      devCoins();
+      const board = (): void => show(root, [missionBoardWindow({ store, now: () => Date.now(), play: (sound) => audio.play(sound), onAchievements: () => show(root, [achievementsWindow({ store, onBack: board }).element]), onBack: () => titleScreen(root) }).element]);
+      board();
     },
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
