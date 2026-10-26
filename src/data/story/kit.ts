@@ -35,7 +35,9 @@ export type CardTemplate =
   /** Rings whose gaps turn like the phases of a moon, over a slow counter spiral, then aimed fans. */
   | 'moon'
   /** Two walls close in from the sides with one row open, then aimed fans. */
-  | 'walls';
+  | 'walls'
+  /** A wide static fan of crescents, then a blade swung around the body (stand off), as Aegislash's midnight cut. */
+  | 'blades';
 
 /** The two of a boss's shot types: `a` its main bullets, `b` its layers and rings. */
 export interface ShotTypes {
@@ -96,6 +98,11 @@ function stepsOf(template: CardTemplate, k: Tier, t: ShotTypes, points: Points):
         },
         { telegraphMs: 700, recoverMs: 2000, pattern: { kind: 'fan', fans: 4, perFan: 3, spreadDeg: 24, gapMs: 500, aim: 'each', shot: shotOf(t.b, 18, 200) } },
       ];
+    case 'blades':
+      return [
+        { telegraphMs: 800, recoverMs: 1200, pattern: { kind: 'fan', fans: 6, perFan: ([9, 9, 11, 11] as const)[k], spreadDeg: 110, gapMs: 400, aim: 'first', shot: shotOf(t.a, 14, 120, 6, 6000) } },
+        { telegraphMs: 900, recoverMs: 1600, pattern: { kind: 'sweep', radius: 125, sweepDeg: 360, sweepMs: 700, armDeg: 32, attack: { power: 30, type: t.b, pierceRoll: true } } },
+      ];
     case 'walls':
       return [
         { telegraphMs: 1100, recoverMs: 1600, pattern: { kind: 'walls', waves: 5, gapMs: 900, spacing: 26, gapWidth: ([96, 94, 90, 86] as const)[k], shiftPx: 50, shot: shotOf(t.a, 18, ([140, 150, 150, 165] as const)[k], 6, 6000) } },
@@ -115,8 +122,29 @@ const survivalSteps = (k: Tier, t: ShotTypes, points: Points): CardStepDef[] => 
   { telegraphMs: 900, recoverMs: 600, pattern: { kind: 'turrets', points, atOnce: k >= 3 ? 2 : 1, volleys: 5, gapMs: 700, perVolley: 3, spreadDeg: 14, shot: shotOf(t.b, 16, 190) } },
 ];
 
-/** The last word's moves (Nightmare, last 9 %): a slow four-arm spiral with single shots from its points, then gapped rings over a counter spiral. */
-const lastSteps = (t: ShotTypes, points: Points): CardStepDef[] => [
+/**
+ * A last word's form: `turning` (the default: a slow four-arm spiral with
+ * single shots from its points, then gapped rings over a counter spiral),
+ * `aimed` (gapped rings over a slow counter spiral, then aimed fans) or
+ * `drop` (its mark at full strength), for a boss whose turning one the proof
+ * found no melee opening in.
+ */
+export type LastForm = 'turning' | 'aimed' | 'drop';
+
+const aimedLastSteps = (t: ShotTypes): CardStepDef[] => [
+  {
+    telegraphMs: 900,
+    recoverMs: 1600,
+    pattern: { kind: 'rings', rings: 3, perRing: 16, gap: 3, gapTurnDeg: 30, gapMs: 700, shot: shotOf(t.b, 15, 100, 6, 6000) },
+    layers: [{ kind: 'spiral', arms: 2, everyMs: 360, durationMs: 2400, turnDegPerShot: -15, shot: shotOf(t.a, 12, 72) }],
+  },
+  { telegraphMs: 800, recoverMs: 1600, pattern: { kind: 'fan', fans: 5, perFan: 3, spreadDeg: 22, gapMs: 480, aim: 'each', shot: shotOf(t.a, 18, 220) } },
+];
+
+/** The last word's moves (Nightmare, last 9 %), in its form. */
+const lastSteps = (t: ShotTypes, points: Points, form: LastForm = 'turning'): CardStepDef[] => (form === 'aimed' ? aimedLastSteps(t) : form === 'drop' ? stepsOf('drop', 3, t, points) : turningLastSteps(t, points));
+
+const turningLastSteps = (t: ShotTypes, points: Points): CardStepDef[] => [
   {
     telegraphMs: 1000,
     recoverMs: 1600,
@@ -151,6 +179,10 @@ export interface StoryBossDef {
   points?: Points;
   /** HP in its fight as a share of what its species and tier give it, per tier (the kill margin's knob). */
   hpScale: Tier4<number>;
+  /** Each signature card's HP weight per tier (equal when absent): a card with few openings owns a smaller segment. */
+  weights?: Tier4<readonly number[]>;
+  /** Its last word's form (`turning` by default). */
+  last?: LastForm;
   /** A wound: the line's last boss (two more cards per tier than a mid-boss, and the phase-2 bloom). */
   wound?: true;
 }
@@ -171,11 +203,12 @@ function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
   const points = boss.points ?? CORNERS;
   const signature = boss.cards.slice(0, signatureCount(boss, k));
   const last = k === 3 ? 0.09 : 0;
-  const share = (1 - last) / signature.length;
+  const weights = signature.map((_, i) => boss.weights?.[k][i] ?? 1);
+  const total = weights.reduce((sum, w) => sum + w, 0);
   const cards: SpellCardDef[] = signature.map((template, i) => ({
     id: cardId(boss, template),
     nameKey: spellKey(boss.id, template),
-    hpShare: share,
+    hpShare: ((1 - last) * weights[i]!) / total,
     timerMs: i < 2 ? 35_000 : 40_000,
     restMs: 600,
     ...(boss.wound && template === 'bloom' ? { phase2: true as const } : {}),
@@ -185,7 +218,7 @@ function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
     // The survival card comes after the third signature card (a wound's fourth follows it).
     cards.splice(3, 0, { id: cardId(boss, 'survival'), nameKey: spellKey(boss.id, 'survival'), hpShare: 0, timerMs: 15_000, survival: true, restMs: 500, steps: survivalSteps(k, boss.shots, points) });
   }
-  if (k === 3) cards.push({ id: cardId(boss, 'last'), nameKey: spellKey(boss.id, 'last'), hpShare: last, timerMs: 35_000, lastSpell: true, restMs: 600, steps: lastSteps(boss.shots, points) });
+  if (k === 3) cards.push({ id: cardId(boss, 'last'), nameKey: spellKey(boss.id, 'last'), hpShare: last, timerMs: 35_000, lastSpell: true, restMs: 600, steps: lastSteps(boss.shots, points, boss.last) });
   return registerCards({ ...FIGHT, maxShots: MAX_SHOTS[k], power: POWER[k], hpScale: boss.hpScale[k], cards });
 }
 
