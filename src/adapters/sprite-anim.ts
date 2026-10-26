@@ -2,7 +2,7 @@ import { heraldWear } from '../core/herald/generate';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
 import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
-import { SPECIES } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
 import { shinyKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type ShinySpriteKey } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import type { EnemyState, PlayerState } from '../core/state';
@@ -226,8 +226,9 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
   return looping(sprite, ctx.moving ? 'Walk' : 'Idle', ctx.timeMs, facing);
 }
 
-/** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation). */
-export function enemySprite(enemy: EnemyState): SpriteKey {
+/** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation; the Eco del Eclipse wears `echoMimic`'s). */
+export function enemySprite(enemy: EnemyState, echoMimic?: SpeciesId): SpriteKey {
+  if (enemy.species === 'eclipse-echo' && echoMimic) return SPRITE_KEYS[SPECIES[echoMimic].sprite];
   // A herald wears its generated sheets (the generator's first draw, the same on every peer).
   if (enemy.herald) return (SPRITE_KEYS as Record<string, SpriteKey>)[heraldWear(enemy.herald.seed).sprite] ?? SPRITE_KEYS.gastly;
   if (enemy.species !== 'aegislash') return SPRITE_KEYS[SPECIES[enemy.species].sprite];
@@ -318,10 +319,12 @@ export interface EnemyAnimContext {
   timeMs: number;
   /** Real time since it was defeated (Infinity while alive). */
   sinceDefeatMs: number;
+  /** The species the Eco del Eclipse copies on this floor (`WorldState.echoMimic`). */
+  echoMimic?: SpeciesId;
 }
 
 export function enemyAnim(enemy: EnemyState, ctx: EnemyAnimContext): AnimChoice {
-  const sprite = enemySprite(enemy);
+  const sprite = enemySprite(enemy, ctx.echoMimic);
   const { ai, facing } = enemy;
   if (!enemy.alive) return once(sprite, 'Faint', ctx.sinceDefeatMs, facing);
   if (enemy.hitstunMs > 0) return once(sprite, 'Hurt', 0, facing);

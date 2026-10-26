@@ -29,7 +29,7 @@ single branch `feat/shiny-echo` from main 76beb88, one commit per task; forecast
 ## Tasks
 - [x] T1 A data+core: shiny sheets, gacha shiny roll and pity, core/shiny.ts, Nightmare challenge unlock, achievements, save fields, tests. Route: inline (bounded writer delegated by the parent). Commit 7b6e5e7.
 - [x] T2 A UI+net: loadout and Phantump toggles, gacha reveal, player/remote/town sprites, protocol v4. Route: inline. Smoke: shiny gacha reveal (shiny Shinx, sparkle, «¡Shiny! ¡Shinx! (Común)») and the loadout portrait of a shiny Zorua.
-- [ ] T3 B personal echo: echoMimic, renderer/HUD name, lore lines, tests, GDD. Route: inline.
+- [x] T3 B personal echo: echoMimic, renderer/HUD name, lore lines, tests, GDD. Route: inline. Smoke: a Sima floor 10 as Zorua shows a dark red Zorua «Eco de Zorua · Anillo» and the log line.
 
 ## Acceptance
 - typecheck, `npx vitest run --testTimeout=30000 --maxWorkers=4`, build, `npm run prove` green.
@@ -38,20 +38,31 @@ single branch `feat/shiny-echo` from main 76beb88, one commit per task; forecast
 - Every playable species renders as an echo; the echo's patterns do not depend on the mimicked species.
 
 ## Parity checklist
-- [ ] Species: every `PLAYABLE_SPECIES` (and Busted Mimikyu) has a shiny sheet.
-- [ ] Lines: every line (gacha via pull, starters via challenge) can unlock its skin; achievement per line.
-- [ ] Dungeons: the Nightmare challenge unlock iterates `CHALLENGES`; the echo applies in the Sima (the only eclipse floor).
-- [ ] Solo + co-op: skin in hello/roster/state and town lobby; echo alternation deterministic.
-- [ ] Save: sanitize/round-trip of the new fields.
-- [ ] Net: protocol version bump.
-- [ ] i18n es/en.
-- [ ] GDD.
-- [ ] sim/prove.
+- [x] Species: every `PLAYABLE_SPECIES` sprite and spent sprite (Busted Mimikyu) has a shiny sheet with the same animation sources as its normal one, files on disk: tests/data/shiny-sprites.test.ts (20 cases); drawn in runs, remotes and the town: tests/adapters/shiny-presentation.test.ts. Every playable species renders as the echo in every pose: tests/core/echo-mimic.test.ts.
+- [x] Lines: `SHINY_LINES` covers every playable species' line; gacha lines unlock by pull, the others (starters) by their own challenge; one `shiny-<line>` achievement each: tests/core/shiny.test.ts, tests/core/achievements.test.ts (witness per rule).
+- [x] Cosmetic: every playable species plays an identical run with the skin on and off (mutation-checked: a +1 max HP on shiny fails it): tests/core/shiny.test.ts. The echo's fight is identical whoever it copies, for every playable species: tests/core/echo-mimic.test.ts.
+- [x] Dungeons: the Nightmare unlock iterates every challenge, tier and outcome (tests/core/shiny.test.ts, tests/app/save.test.ts); the echo lives only in the Sima (no shrine trial uses it; `rg eclipse src/data/shrine.ts` empty).
+- [x] Solo + co-op: skin in hello, roster entries (lobby/start), state `sh`, remote players and town walkers (tests/net/shiny-wire.test.ts); echo alternation by encounter over sorted ids, order-independent (tests/core/echo-mimic.test.ts); each peer computes it from the host's roster.
+- [x] Save: `shinies`, `shinyWorn` (subset), `shinyPity` (capped under the guarantee) sanitized and round-tripped, no SAVE_VERSION bump: tests/app/save.test.ts.
+- [x] Net: PROTOCOL_VERSION 3 -> 4 (tests/net/shiny-wire.test.ts).
+- [x] i18n es/en: achievement family and texts, gacha «¡Shiny!» and stall line, loadout and Phantump rows, «Eco de {species}» and three echo lines; no em dashes (tests/i18n.test.ts green).
+- [x] GDD: §3 Sima (Eco del Eclipse personal, alternation, name), §5 gacha shiny and «Aspectos shiny», §11 achievements table.
+- [x] sim/prove: `npm run prove` green (166 cards survivable, 24/24 fights). It proves the card guardians' echoes, not the Eco del Eclipse; the Eco's patterns are species-independent by construction (`echoMimic` is presentation only, never read by core) and tests/core/echo-mimic.test.ts plays its fight with every playable species and checks it identical.
 
 ## Progress
 - Branch created from 76beb88.
 - T1: 21 shiny sheets fetched (`--only=shiny` keeps the other metas byte-identical); the shiny roll is the pull's third RNG draw, so a seed's species are unchanged. typecheck and the full suite green.
 - T2: skin flag `PlayerState.shiny` (cosmetic, set from `WorldOptions.shiny`); `hello.shiny`, roster `shiny`, state `sh` (outside the positional player array); PROTOCOL_VERSION 3 -> 4. Phantump's window: one «Shiny de X» on/off row per unlocked line; loadout: «Aspecto shiny» row in the moves step.
 
+- T3: `WorldState.echoMimic` set at floor entry in app/game.ts from the session roster (solo: the player); renderer and HUD read it; the Mimikyu echo now wears its disguised sheet when copying Mimikyu, Busted Mimikyu only when it copies nobody.
+
+## Verification
+- `npm run typecheck`, `npx vitest run --testTimeout=30000 --maxWorkers=4`, `npm run build`, `npm run prove`: see the final report.
+- Smoke screenshots (scratchpad): shiny-gacha-reveal.png, shiny-loadout.png, echo-zorua.png, echo-haxorus.png (Haxorus not owned in that save, so the picker fell back to Mimikyu: «Eco de Mimikyu»).
+
+## Pending
+- Shiny skins bought with shards (docs/gacha-roster-plan.md §5.1 mentions it): the game has no shards yet; left pending, not dropped.
+- A skin toggled in Phantump's window while in a room reaches teammates on the next species pick (repick), not at once.
+
 ## Next step
-T3.
+Owner review; PR slicing is the user's decision.

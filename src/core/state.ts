@@ -617,6 +617,8 @@ export interface WorldState {
   referenceLevel?: number;
   /** Misty Forest: a spirit light leads to a berry cache on this floor (wisp.ts; every peer places it from the seed). */
   wisp?: { cache: Vec2 };
+  /** Sima del Eclipse: the species the Eco del Eclipse of this floor copies (core/eclipse-echo.ts `echoMimic`); presentation only. */
+  echoMimic?: SpeciesId;
   /** Sima del Eclipse: this floor's event (sima-events.ts); the host runs it, guests follow its snapshot. */
   simaEvent?: SimaEventState;
   /** Sima del Eclipse: the shrine's pact in force (it outlasts the floor). */

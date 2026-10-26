@@ -1,5 +1,7 @@
 import type { EclipseCard, EclipseEchoDef, EnemyAttackDef } from '../data/enemies';
 import { ENDLESS } from '../data/endless';
+import type { SpeciesId } from '../data/species';
+import { echoEncounter } from './eclipse-escalation';
 import { contactPlayer, enterMode, moveEnemy, replaceEnemy, rotate, spawnShot, towardTarget } from './brain';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { TUNING } from '../data/tuning';
@@ -12,7 +14,23 @@ import { add, angleOf, distance, dot, length, normalize, scale, sub, vec, type V
  * volleys are pure functions of the card, its aim and the wave, so the
  * safe path can be tested; the corona and the noose are zones checked
  * victim-side on every peer (`eclipseZoneContact`).
+ *
+ * It wears a player's shape (odd/tasks/shiny-echo.md): `echoMimic` picks
+ * whose, and the world keeps it as `echoMimic` for the renderer and the
+ * names. Nothing here reads it: its cards are the same whoever it copies.
  */
+
+/**
+ * The species the echo of floor `floor` copies: one player of the party per
+ * encounter, in turn over the player ids sorted (solo: always the player),
+ * as each one plays now (its current form). The same on every peer, which
+ * all hold the host's roster. Null with nobody to copy.
+ */
+export function echoMimic(floor: number, party: readonly { id: string; species: SpeciesId }[]): SpeciesId | null {
+  if (party.length === 0) return null;
+  const sorted = [...party].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return sorted[(echoEncounter(floor) - 1) % sorted.length]!.species;
+}
 
 const DEG = Math.PI / 180;
 const PLAYER_R = TUNING.player.radius;
