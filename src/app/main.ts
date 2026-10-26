@@ -53,6 +53,7 @@ import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { earnChallengeReward, earnCoins, loadSave, writeSave } from './save';
 import { gachaWindow } from './gacha';
+import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast } from './achievements';
 import { recordRun, recordSave } from './progress';
 import { runReport } from '../core/run-report';
@@ -534,7 +535,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -582,6 +583,28 @@ const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => to
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
 const townEvolve = (parent: HTMLElement, onClose: () => void): (() => void) =>
   townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: settleOnClose(onClose) }));
+
+/**
+ * The notice board's missions over the town (after its records are read),
+ * and the achievements window in its place from there (its way back is the
+ * board).
+ */
+function townBoard(parent: HTMLElement, onClose: () => void): () => void {
+  const overlay = h('div', { className: 'town-shop' });
+  let open: { element: HTMLElement; dispose(): void } | null = null;
+  const swap = (next: { element: HTMLElement; dispose(): void }) => {
+    open?.dispose();
+    open = next;
+    overlay.replaceChildren(next.element);
+  };
+  const board = () => swap(missionBoardWindow({ store, now: () => Date.now(), play: (sound) => audio.play(sound), onAchievements: () => swap(achievementsWindow({ store, onBack: board })), onBack: onClose }));
+  board();
+  parent.append(overlay);
+  return () => {
+    open?.dispose();
+    overlay.remove();
+  };
+}
 
 /** The achievements window from the title menu. */
 function achievementsScreen(root: HTMLElement): void {
@@ -974,7 +997,7 @@ function townLobby(root: HTMLElement): void {
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1208,6 +1231,13 @@ function devScreen(root: HTMLElement): boolean {
     evolve: () => {
       devCoins();
       show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: () => titleScreen(root) }).element]);
+    },
+    // The achievements window and the notice board's missions on their own (back goes to the title).
+    achievements: () => achievementsScreen(root),
+    board: () => {
+      devCoins();
+      const board = (): void => show(root, [missionBoardWindow({ store, now: () => Date.now(), play: (sound) => audio.play(sound), onAchievements: () => show(root, [achievementsWindow({ store, onBack: board }).element]), onBack: () => titleScreen(root) }).element]);
+      board();
     },
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {

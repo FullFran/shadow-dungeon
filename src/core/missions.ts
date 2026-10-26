@@ -228,3 +228,16 @@ export function payMissionReward<C extends Collection & { earned?: number }>(col
   const have = collection.materials?.[mat.line] ?? {};
   return { ...paid, materials: { ...collection.materials, [mat.line]: { ...have, [mat.tier]: (have[mat.tier] ?? 0) + mat.count } } };
 }
+
+/** Where a mission of the board stands for a player: open to take, taken (with progress), complete to claim, or claimed. */
+export type MissionStatus = 'open' | 'accepted' | 'done' | 'claimed';
+
+export function missionStatus(state: MissionState, mission: Mission): MissionStatus {
+  if (state.claimed.includes(mission.id)) return 'claimed';
+  const held = state.accepted.find((a) => a.id === mission.id);
+  if (!held) return 'open';
+  return held.progress >= mission.target ? 'done' : 'accepted';
+}
+
+/** Progress of a taken mission (0 when not taken). */
+export const missionProgressOf = (state: MissionState, mission: Mission): number => state.accepted.find((a) => a.id === mission.id)?.progress ?? 0;

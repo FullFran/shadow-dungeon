@@ -9,6 +9,7 @@ import {
   missionBoard,
   missionById,
   missionProgress,
+  missionStatus,
   payMissionReward,
   pruneMissions,
   weekKey,
@@ -185,5 +186,15 @@ describe('progress, accepting and claiming', () => {
     expect(pruneMissions(state, NOW)).toEqual(state);
     expect(pruneMissions(state, NOW + DAY)).toEqual({ accepted: [{ id: weekly.id, progress: 0 }], claimed: [] });
     expect(pruneMissions(state, NOW + 7 * DAY)).toEqual({ accepted: [], claimed: [] });
+  });
+});
+
+describe('mission status', () => {
+  it('open, accepted, done, claimed', () => {
+    const m = missionBoard(NOW)[0]!;
+    expect(missionStatus({ accepted: [], claimed: [] }, m)).toBe('open');
+    expect(missionStatus({ accepted: [{ id: m.id, progress: 0 }], claimed: [] }, m)).toBe('accepted');
+    expect(missionStatus({ accepted: [{ id: m.id, progress: m.target }], claimed: [] }, m)).toBe('done');
+    expect(missionStatus({ accepted: [], claimed: [m.id] }, m)).toBe('claimed');
   });
 });
