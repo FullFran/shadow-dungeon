@@ -155,7 +155,11 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto.
 
 ### Guardianes con cartas de hechizo (Normal y superiores)
 
-Desde Normal, Aegislash y Decidueye pelean como un jefe de Touhou (`src/data/cards.ts`, `src/core/cards.ts`; datos en `src/data/aegislash-cards.ts` y `src/data/decidueye-cards.ts`). En Fácil siguen como siempre (el duelo de posturas de Aegislash y las cartas de Decidueye), y sus ecos de la Sima también, más ligeros y solo con la fase 1.
+Desde Normal, Aegislash y Decidueye pelean como un jefe de Touhou (`src/data/cards.ts`, `src/core/cards.ts`; datos en `src/data/aegislash-cards.ts` y `src/data/decidueye-cards.ts`). En Fácil siguen como siempre (el duelo de posturas de Aegislash y las cartas de Decidueye), y sus ecos de la Sima también.
+
+**Ecos de la Sima con cartas** (`ECHO_CARDS`): desde Normal, un eco juega las cartas de su nivel según la profundidad. En el primer estrato (plantas 5 y 15) solo juega las de la fase 1. Desde la 25 se suman las de la fase 2, y desde la 35 (o al volver a encontrarse con ese guardián) también la de supervivencia y la última. Tiene solo la vida de las cartas que juega, al 60 % de la vida del guardián sin crecer con la profundidad, y sus tiempos duran un 80 %. Así, en el peor caso, un eco del primer estrato dura unos 64 s si se agotan todos sus tiempos, y uno completo de Pesadilla unos 4 min (la Sima da 60 s por eco).
+
+**Presentación** («Touhou por dentro, souls/Mystery Dungeon por fuera»): las marcas de la barra se leen como las fases de un jefe de souls. Las ya pasadas se apagan, y la de la carta en juego es dorada y late durante el «tu turno». La declaración es un momento: la pantalla se oscurece un poco, el nombre de la carta sale grande y serio en el centro con su línea Touhou («Signo X «…»») pequeña encima, y suena un golpe grave. Una captura dice «¡Técnica dominada!» con su recompensa y una floritura. El tiempo de la carta es un anillo discreto junto a la barra, no un contador. En el «tu turno», el jefe respira con un halo suave y suena un soplo bajo. No hay puntuación ni roce.
 
 - **Cartas:** el combate es una lista de cartas con nombre. Cada carta tiene su tramo de la barra de vida (las marcas de la barra) y su tiempo (los segundos a la derecha de la barra). La carta acaba al vaciar su tramo (rota) o al agotarse el tiempo (se pierde el resto del tramo, sin premio; si es la última, el jefe cae). Los golpes nunca bajan al jefe por debajo del final del tramo en juego.
 - **Declaración:** entre carta y carta el jefe anuncia la siguiente (su nombre en pantalla). Mientras la anuncia no ataca ni recibe daño, y desaparecen todas sus balas. La primera carta de la fase 2 se anuncia durante más tiempo (el Rey desenvaina, el Arquero entra en la niebla).
@@ -184,9 +188,9 @@ Desde Normal, Aegislash y Decidueye pelean como un jefe de Touhou (`src/data/car
 | Sableye | Destello del Ladrón, Gemas Robadas | + Bóveda sin Fondo (12 s) | + Última Gema «El Ladrón de Sombras» (15 %) |
 | Trevenant | Raíz Hambrienta, Bosque que Llora, Viajeros Perdidos | + Mil Ramas (14 s) | + Última Raíz «El Bosque no Olvida» (15 %) |
 | Lanturn | Fondo Callado, Señuelo | + Luz que no Llega (12 s) | + Último Farol «Mar de Faroles» (15 %) |
-| Dhelmise | Resaca, Laberinto de Látigos, Corriente del Pecio (fase 2), Juramentos Hundidos | + La Marea no Perdona (15 s) | + Vórtice sin Orilla, Último Juramento «Pecio sin Nombre» (12 %) |
+| Dhelmise | Resaca, Laberinto de Látigos, Corriente del Pecio (fase 2), Juramentos Hundidos | + La Marea no Perdona (15 s) | + Vórtice sin Orilla, Último Juramento «Pecio sin Nombre» (5 %) |
 | Salazzle | Danza de la Salamandra, Humo Dulce, Neblina de la Reina | + Humo de la Corte (12 s) | + Último Baile «Cortejo de la Reina» (15 %) |
-| Nihilego | Nervios Ajenos, Joya Rota, Agujero Ultra (fase 2), Marea de Neurotoxina | + El Cielo se Abre (15 s) | + Aguacero, Última Grieta «La que Cayó del Cielo» (12 %) |
+| Nihilego | Nervios Ajenos, Joya Rota, Agujero Ultra (fase 2), Marea de Neurotoxina | + El Cielo se Abre (15 s) | + Aguacero, Última Grieta «La que Cayó del Cielo» (15 %) |
 
 En partida de tres o más, el movimiento de área de grupo (sección 8) entra una vez más en cada vuelta de cada carta.
 
@@ -657,7 +661,7 @@ De ahí salen las reglas de este juego:
 4. **Todo ataque nuevo se avisa y deja castigar:** aviso de al menos 280 ms y una recuperación después.
 5. **La voltereta no lo arregla todo:** los ataques de zona (`pierceRoll`: zonas en el suelo, muros que barren, carriles) atraviesan la invulnerabilidad de la voltereta y nunca cuentan como esquiva perfecta; hay que salir de su área andando o rodando hacia fuera, no a través. Se avisan distinto: un doble borde blanco y violeta que late sobre la zona, un «!» violeta sobre el enemigo y un sonido propio.
 6. **Ningún golpe quita más del 35 % de la vida de referencia** (`MAX_HIT_SHARE`, `src/core/fairness.ts`): la vida máxima que tendría tu Pokémon al nivel esperado en esa planta (el que da la experiencia de despejar todas las plantas anteriores, sin objetos ni mejoras). El tope se aplica al daño final de cada golpe enemigo (contacto, disparo o zona), después de todos los multiplicadores (nivel, profundidad, grupo, élites, pactos), en el lado de la víctima, así que solitario, anfitrión e invitados coinciden. No es sobre tu vida real: si vas al nivel esperado, un golpe nunca te mata con la vida llena; si no has subido de nivel, sí puede quitarte toda la vida de un golpe; si vas por encima, recibes el mismo daño (una parte menor de tu vida). El derrumbe, el gas y la niebla quedan fuera: no matan por diseño.
-7. **Ritmo por turnos:** Dark Souls es un juego de ritmo por turnos; este es un juego de ritmo danmaku por turnos, pero con turnos minúsculos. Tras cada combo, todo jefe con cartas (guardianes, jefes intermedios, heraldos y ecos) abre una ventana «tu turno»: se queda quieto, no empieza ninguna amenaza nueva y las balas que quedan se desvanecen en 0,35 s, así que se puede entrar a pegar sin miedo. Un combo es una pasada de los movimientos de la carta, dos como mucho; en las cartas alojadas, cada movimiento propio (que ya es un combo: tres destellos, cuatro anillos). La duración está en la tabla de niveles (`TIERS.turnMs`, `TURN_FLOOR`): acortarla es una de las palancas principales de la dificultad. Un pacto de la Sima que acelera a los enemigos la alarga en su reloj, así que en tiempo real dura lo mismo. Tests en `tests/core/turn-windows.test.ts`.
+7. **Ritmo por turnos:** Dark Souls es un juego de ritmo por turnos; este es un juego de ritmo danmaku por turnos, pero con turnos minúsculos. Tras cada combo, todo jefe con cartas (guardianes, jefes intermedios, heraldos y ecos) abre una ventana «tu turno»: se queda quieto, no empieza ninguna amenaza nueva y las balas que quedan se desvanecen en 0,35 s, así que se puede entrar a pegar sin miedo. El turno se abre tras cada movimiento: en las cartas de patrones, cada movimiento de la carta; en las alojadas, cada movimiento propio del jefe (que ya es un combo: tres destellos, cuatro anillos). Empieza en cuanto acaba el ataque y dura al menos lo que duraba la recuperación del movimiento. La duración está en la tabla de niveles (`TIERS.turnMs`, `TURN_FLOOR`): acortarla es una de las palancas principales de la dificultad. Un pacto de la Sima que acelera a los enemigos la alarga en su reloj, así que en tiempo real dura lo mismo. Tests en `tests/core/turn-windows.test.ts`.
 8. **Más difícil paga más:** Pokémonedas multiplicadas (también por minuto jugado) y récords propios por nivel.
 
 ### La tabla
@@ -710,6 +714,59 @@ La dificultad se mide con bots que juegan solos (`src/sim`, `docs/souls-difficul
 - **Prueba de que puede fallar.** Un test mete un patrón imposible (una ráfaga de zona sin aviso sobre el jugador cada 300 ms): el perfecto muere y la puerta falla.
 - **Uso.** `npm test` corre el subconjunto de CI (todas las mazmorras, Fácil y Pesadilla, tres bots, en solitario, dos semillas; unos 12 s). `npm run balance` corre el barrido completo (5 mazmorras × 4 niveles × 4 bots × grupos de 1 a 4 × 3 semillas, más cada arena aislada; unos 5 min) y escribe `reports/balance/latest.md` (se guarda en el repositorio para comparar) y `latest.json`. Para reequilibrar: informe antes, cambiar los números, informe después, comparar los dos informes y anotar el antes y el después en el documento de la tarea. Al arreglar contenido, borrar su entrada de `KNOWN_VIOLATIONS` para que no vuelva.
 - **Límites conocidos.** Las arenas aisladas empiezan con el inicial a nivel 1 y sin objetos (más duro que llegar jugando). Los bots solo usan el ataque rápido salvo con `npm run balance -- --slots`, donde el perfecto y el medio también usan la potenciación (ante un jefe o un grupo de 3) y el área (sobre 2 enemigos o un jefe a su alcance); el barrido solo juega con Mimikyu. Conocen el plano de la planta (como el minimapa), no sufren la niebla y en las plantas urgentes van directos a la escalera. Un jefe que muere en segundos o un perfecto que muere pueden deberse al contenido o al bot: el informe lo señala, y hay que mirarlo antes de tocar números.
+
+### Garantía de que todo se puede pasar
+
+La pregunta de la jugadora: «¿cómo demostramos que es posible pasárselos?». La respuesta tiene cuatro partes. Las cuatro se comprueban en la CI, sobre el motor de verdad (`src/core/step.ts`), no sobre un modelo aparte.
+
+**1. Cada carta se puede sobrevivir andando.** Para cada carta de cada jefe con cartas (los ocho jefes y los ecos de la Sima), en Normal, Difícil y Pesadilla, y desde tres posiciones de salida, hay un *testigo*: una lista de movimientos, uno cada 100 ms (quieto o andar en una de 8 direcciones; sin voltereta y sin atacar), que atraviesa la carta entera hasta que se acaba su tiempo sin recibir un solo golpe. El testigo se juega en el motor real, con todo lo que tiene: balas apuntadas al jugador según se mueve de verdad, zonas de `pierceRoll`, barridos, marcas que siguen al jugador, el tirón del agujero de gusano, el séquito de Salazzle y la cobertura de cada sala. El motor es determinista, así que repetir el testigo es una demostración: si pasa una vez, pasa siempre.
+
+- **Cómo se encuentra** (`src/sim/prove.ts`). Generaliza el barrido de celdas seguras de los heraldos (`core/herald/fairness.ts`) a patrones que dependen de dónde está el jugador. Primero una búsqueda en profundidad que prueba antes los movimientos más despejados (distancia a cada bala en el próximo 1,2 s y a las zonas marcadas) y retrocede al encontrar un callejón sin salida. Si no basta, una búsqueda en haz que guarda en cada fotograma los mejores estados, uno por celda de 16 px, para que las alternativas sigan repartidas por la sala. Encontrar es caro (unos minutos con `npm run prove`); comprobar es barato. Los testigos se guardan en `reports/proof/witnesses.json` y la CI los repite todos.
+- **Puede fallar.** Un muro de balas sin hueco no tiene testigo; con hueco, sí. Quedarse quieto no sirve de testigo en una carta de verdad, y el testigo de un muro no vale para el otro (`tests/sim/prove-invariants.test.ts`).
+
+**2. Si se sobrevive, se gana sin hacer daño (vivacidad).** El marco de cartas garantiza, con tests para cada jefe y nivel:
+
+- cada carta tiene un tiempo finito y acaba cuando se agota;
+- si se agota, la carta pierde su tramo de vida, y si era la última, el jefe cae;
+- una carta de supervivencia no tiene tramo y el jefe no recibe daño durante ella;
+- una declaración es una pausa invulnerable y sin amenazas: no hay balas, no hay golpes y el séquito se va.
+
+Por tanto un combate dura como mucho la suma de sus tiempos y declaraciones, y sobrevivir cada carta basta para ganarlo con cero daño.
+
+**3. Al jefe se le puede hacer daño (ventanas de castigo y tiempo para romper).** Sobrevivir solo demuestra que se puede ganar esperando. Así que, además, en cada «tu turno» que aparece en el testigo, una sonda sale del camino seguro, va derecha al jefe (por la espalda si guarda el frente, como las cartas de Escudo de Aegislash) y se queda a su lado hasta que el jefe empieza a preparar su siguiente ataque, la carta acaba o le llega un golpe (lo que pase antes). El motor vuelve a comprobarlo todo. Cuenta como ventana de castigo cada tramo de al menos 600 ms en el alcance del ataque rápido (34 px más allá del cuerpo, cuerpo a cuerpo) o con línea de tiro limpia (200 px, sin cobertura en medio, a distancia).
+
+- **Estimación de muerte.** Jugador de referencia: el nivel esperado en esa planta y nivel de dificultad (`expectedLevel`; en los ecos, el de su planta de la Sima). Para cada inicial se toma el mejor de sus movimientos rápido y fuerte por defecto (daño por segundo con su ciclo completo y la eficacia de tipo contra el jefe), y solo cuentan sus ventanas: cuerpo a cuerpo para Mimikyu, Zorua y Cubone, línea de tiro para Litwick. Margen = daño en las ventanas ÷ vida del tramo, para el peor inicial. El objetivo es ≥ 1,5 en Fácil y Normal, ≥ 1,3 en Difícil y ≥ 1,1 en Pesadilla. Un emparejamiento con inmunidad de tipo (todos sus movimientos por defecto a ×0,25 o menos) se informa aparte y no cuenta.
+- La estimación toma cada turno por separado: supone que después de castigar se puede volver a una línea segura. Eso lo demuestra la parte 4 de forma constructiva.
+
+**4. Un bot que se lo pasa (prueba constructiva).** El bot resolutor juega el combate entero en Pesadilla desde la entrada de la sala, con información perfecta y Mimikyu al nivel esperado. Busca carta a carta un camino sin un solo golpe que además ataca con el movimiento rápido cuando el jefe está abierto y a su alcance. Sus combates (tres semillas por jefe) también se guardan y la CI los repite.
+
+**Ritmo por turnos.** Las ventanas de castigo salen sobre todo de la regla 7 de §9: tras cada movimiento de un jefe con cartas, su «tu turno».
+
+**Resultado** (`reports/proof/latest.md`, 2026-10-26): 166 cartas (los 8 jefes y los 5 ecos de la Sima en Normal, Difícil y Pesadilla), 498 testigos (3 salidas por carta). Las 166 cartas se sobreviven andando desde las tres salidas. El bot resolutor gana los 8 combates en Pesadilla con las tres semillas sin recibir un golpe, en 78 s (Sableye) a 262 s (Aegislash). El bot prioriza no recibir golpes: rompe entre 0 y 4 cartas por combate y deja que el tiempo acabe el resto, así que demuestra la vivacidad más que el daño. La parte de daño la cubre la estimación. Las ventanas de castigo y el margen se cumplen en 123 de las 146 cartas que se pueden dañar. Las otras 23 son huecos conocidos, cada uno con su motivo (`src/sim/kill-gaps.ts`): no se ocultan, y la CI falla si aparece uno nuevo o si uno deja de fallar.
+
+**Lo que la prueba encontró y se arregló:**
+
+- **Marcas imposibles de esquivar andando.** Tres ataques de zona que siguen al jugador solo se podían esquivar rodando. En Pesadilla, el Tajo Real de Aegislash dejaba de seguir 0,44 s antes de caer, y hacen falta 0,6 s para salir andando de un radio de 70 px. Arreglos: Tajo Real a 760 ms de fijación (aviso 1250 ms); Picado de Decidueye a 700 ms (aviso 1200 ms); Corriente del Pecio de Dhelmise a 760 ms en sus cartas (`markLockMs`; Fácil sigue igual).
+- **Ventanas que no llegaban.** El «tu turno» empezaba después de la recuperación del jefe, cuando sus balas seguían en el aire. Ahora empieza en cuanto acaba el ataque: las balas se desvanecen ahí y el turno dura al menos lo que duraba la recuperación. Además hay un turno tras **cada** movimiento (antes, tras cada dos). En las cartas alojadas, el descanso propio del jefe (Salazzle, Nihilego) se respeta después del turno.
+- **Tramos demasiado largos.** El reparto de vida entre cartas y la vida total de algunas peleas con cartas se ajustaron con la estimación (`hpShare`, `hpScale`):
+
+  | Jefe | Cambio |
+  |---|---|
+  | Aegislash (Normal) | Muralla 9 %, Abanico 34,5 %, Espadas 21 %, Cien Espadas 35,5 % |
+  | Sableye | vida ×0,94 / ×0,77 / ×0,98; Destello 53 % (Normal y Difícil) |
+  | Lanturn | vida ×0,58 / ×0,5 / ×0,54 (sus anillos echan muy lejos a un inicial cuerpo a cuerpo) |
+  | Dhelmise (Pesadilla) | Último Juramento 5 % y el resto repartido |
+  | Salazzle | Neblina 25 % / 20 % / 22 %; vida ×0,98 en Difícil y Pesadilla |
+  | Nihilego | Joya Rota 9 % / 28 % / 8 %; vida ×0,9 / ×0,97 |
+  | Ecos de la Sima | vida = 60 % de la del guardián sin crecer con la profundidad (la profundidad hace sus golpes más fuertes, no su barra más larga) |
+
+**Límites:**
+
+- La parte 1 es un testigo por salida, no todas las salidas posibles. Tres salidas por sala (la de la sala y dos laterales) son el mismo criterio que usan los heraldos.
+- La parte 3 es una estimación por turnos, no un combate completo, y ve el daño en solitario. Los emparejamientos con desventaja de tipo se informan aparte (por ejemplo, Cubone contra Decidueye).
+- Los 23 huecos conocidos son sobre todo cartas de Escudo de Aegislash, las andanadas de Decidueye y los anillos de Joya Rota de Nihilego: un inicial cuerpo a cuerpo no llega al jefe dentro del turno. A distancia (Litwick) sí hay línea de tiro. Son la lista de trabajo para el próximo ajuste.
+- Los heraldos tienen su propia prueba (`core/herald/fairness.ts`), aplicada antes de jugar cada carta generada. Las peleas de Fácil sin cartas y el juego en grupo quedan fuera de esta prueba.
+- Un cambio en un patrón invalida sus testigos: la CI falla y hay que volver a correr `npm run prove`, que conserva los que siguen valiendo.
 
 ### Récords
 

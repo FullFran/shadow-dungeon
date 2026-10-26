@@ -17,8 +17,9 @@ import { registerCards, type CardFightDef, type SpellCardDef, type SpellCardId }
  * - Hard: the same cards (with the tier's own tricks) and one survival card.
  * - Nightmare: one or two more cards and a last spell of at most 15 % HP.
  *
- * Timers leave room to break every segment with the reference damage
- * (src/sim/prove.ts, kill feasibility); values are provisional.
+ * HP shares and `hpScale` are tuned by the beatability proof (src/sim/prove.ts,
+ * kill feasibility: the reference player empties every segment in its punish
+ * windows with the tier's margin); values are provisional.
  */
 
 const FIGHT = { aggroRange: 900, breakMs: 1200, phase2BreakMs: 1800, maxShots: 140, walkSpeed: 0, keepDistance: 0, power: 1 } as const;
@@ -56,9 +57,9 @@ const SAB_GLINT = (hpShare: number): CardSpec => ({ id: 'sc-sab-glint', moves: [
 const SAB_GEMS = (hpShare: number): CardSpec => ({ id: 'sc-sab-gems', moves: ['gems', 'glint'], hpShare, timerMs: 35_000 });
 const SAB_VAULT = survival('sc-sab-vault', ['gems'], 12_000);
 
-export const SABLEYE_CARDS_NORMAL = fight('sableye', [SAB_GLINT(0.5), SAB_GEMS(0.5)]);
-export const SABLEYE_CARDS_HARD = fight('sableye', [SAB_GLINT(0.5), SAB_VAULT, SAB_GEMS(0.5)]);
-export const SABLEYE_CARDS_NIGHTMARE = fight('sableye', [SAB_GLINT(0.45), SAB_VAULT, SAB_GEMS(0.4), { id: 'sc-sab-lastword', moves: ['glint', 'gems'], hpShare: 0.15, timerMs: 30_000, lastSpell: true }]);
+export const SABLEYE_CARDS_NORMAL = fight('sableye', [SAB_GLINT(0.53), SAB_GEMS(0.47)], { hpScale: 0.94 });
+export const SABLEYE_CARDS_HARD = fight('sableye', [SAB_GLINT(0.53), SAB_VAULT, SAB_GEMS(0.47)], { hpScale: 0.77 });
+export const SABLEYE_CARDS_NIGHTMARE = fight('sableye', [SAB_GLINT(0.48), SAB_VAULT, SAB_GEMS(0.37), { id: 'sc-sab-lastword', moves: ['glint', 'gems'], hpShare: 0.15, timerMs: 30_000, lastSpell: true }], { hpScale: 0.98 });
 
 // --- Trevenant (Misty Forest mid-boss): it walks in to slam between moves -------
 
@@ -83,9 +84,10 @@ const LAN_BUBBLES = (hpShare: number): CardSpec => ({ id: 'sc-lan-bubbles', move
 const LAN_LURE = (hpShare: number): CardSpec => ({ id: 'sc-lan-lure', moves: ['lure', 'surge'], hpShare, timerMs: 35_000 });
 const LAN_ABYSS = survival('sc-lan-abyss', ['bubbles', 'lure'], 12_000);
 
-export const LANTURN_CARDS_NORMAL = fight('lanturn', [LAN_BUBBLES(0.5), LAN_LURE(0.5)]);
-export const LANTURN_CARDS_HARD = fight('lanturn', [LAN_BUBBLES(0.5), LAN_ABYSS, LAN_LURE(0.5)]);
-export const LANTURN_CARDS_NIGHTMARE = fight('lanturn', [LAN_BUBBLES(0.45), LAN_ABYSS, LAN_LURE(0.4), { id: 'sc-lan-lastword', moves: ['deep', 'surge'], hpShare: 0.15, timerMs: 30_000, lastSpell: true }]);
+/** Lanturn's rings push a melee starter far out: less HP, so its turns are enough (src/sim/prove.ts, kill feasibility). */
+export const LANTURN_CARDS_NORMAL = fight('lanturn', [LAN_BUBBLES(0.53), LAN_LURE(0.47)], { hpScale: 0.58 });
+export const LANTURN_CARDS_HARD = fight('lanturn', [LAN_BUBBLES(0.49), LAN_ABYSS, LAN_LURE(0.51)], { hpScale: 0.5 });
+export const LANTURN_CARDS_NIGHTMARE = fight('lanturn', [LAN_BUBBLES(0.43), LAN_ABYSS, LAN_LURE(0.42), { id: 'sc-lan-lastword', moves: ['deep', 'surge'], hpShare: 0.15, timerMs: 30_000, lastSpell: true }], { hpScale: 0.54 });
 
 // --- Dhelmise, el Ancla de los Juramentos Hundidos (Flooded Caves guardian) -----
 
@@ -95,17 +97,20 @@ const DHE_RIPTIDE = (hpShare: number): CardSpec => ({ id: 'sc-dhe-riptide', move
 const DHE_BELL = (hpShare: number): CardSpec => ({ id: 'sc-dhe-bell', moves: ['bell', 'undertow'], hpShare, timerMs: 45_000 });
 const DHE_TIDE = survival('sc-dhe-tide', ['whirlpool', 'kelp'], 15_000);
 
-export const DHELMISE_CARDS_NORMAL = fight('dhelmise', [DHE_UNDERTOW(0.25), DHE_KELP(0.25), DHE_RIPTIDE(0.25), DHE_BELL(0.25)]);
-export const DHELMISE_CARDS_HARD = fight('dhelmise', [DHE_UNDERTOW(0.27), DHE_KELP(0.27), DHE_RIPTIDE(0.23), DHE_TIDE, DHE_BELL(0.23)]);
+/** The riptide's mark stops following 760 ms before it bursts (400 ms could only be rolled out of: src/sim/prove.ts). */
+const WRECK = { markLockMs: 760 } as const;
+
+export const DHELMISE_CARDS_NORMAL = fight('dhelmise', [DHE_UNDERTOW(0.25), DHE_KELP(0.25), DHE_RIPTIDE(0.25), DHE_BELL(0.25)], WRECK);
+export const DHELMISE_CARDS_HARD = fight('dhelmise', [DHE_UNDERTOW(0.27), DHE_KELP(0.27), DHE_RIPTIDE(0.23), DHE_TIDE, DHE_BELL(0.23)], WRECK);
 export const DHELMISE_CARDS_NIGHTMARE = fight('dhelmise', [
   DHE_UNDERTOW(0.18),
-  DHE_KELP(0.18),
-  DHE_RIPTIDE(0.18),
+  DHE_KELP(0.19),
+  DHE_RIPTIDE(0.22),
   DHE_TIDE,
   DHE_BELL(0.18),
-  { id: 'sc-dhe-maelstrom', moves: ['maelstrom', 'riptide'], hpShare: 0.16, timerMs: 45_000 },
-  { id: 'sc-dhe-lastword', moves: ['bell', 'maelstrom'], hpShare: 0.12, timerMs: 40_000, lastSpell: true },
-]);
+  { id: 'sc-dhe-maelstrom', moves: ['maelstrom', 'riptide'], hpShare: 0.18, timerMs: 45_000 },
+  { id: 'sc-dhe-lastword', moves: ['bell', 'maelstrom'], hpShare: 0.05, timerMs: 40_000, lastSpell: true },
+], WRECK);
 
 // --- Salazzle, la reina del humo (Toxic Swamp mid-boss) ------------------------
 
@@ -116,12 +121,12 @@ const SAL_COURT = survival('sc-sal-court', ['spiral', 'haze'], 12_000);
 /** Her retinue leaves with each card (no Salandit lingers into a declaration). */
 const COURT = { dismiss: ['salandit'] } as const;
 
-export const SALAZZLE_CARDS_NORMAL = fight('salazzle', [SAL_DANCE(0.35), SAL_SPIRAL(0.35), SAL_HAZE(0.3)], COURT);
-export const SALAZZLE_CARDS_HARD = fight('salazzle', [SAL_DANCE(0.35), SAL_SPIRAL(0.35), SAL_COURT, SAL_HAZE(0.3)], COURT);
+export const SALAZZLE_CARDS_NORMAL = fight('salazzle', [SAL_DANCE(0.4), SAL_SPIRAL(0.35), SAL_HAZE(0.25)], COURT);
+export const SALAZZLE_CARDS_HARD = fight('salazzle', [SAL_DANCE(0.44), SAL_SPIRAL(0.36), SAL_COURT, SAL_HAZE(0.2)], { ...COURT, hpScale: 0.98 });
 export const SALAZZLE_CARDS_NIGHTMARE = fight(
   'salazzle',
-  [SAL_DANCE(0.3), SAL_SPIRAL(0.3), SAL_COURT, SAL_HAZE(0.25), { id: 'sc-sal-lastword', moves: ['escort', 'dance', 'haze'], hpShare: 0.15, timerMs: 35_000, lastSpell: true }],
-  COURT,
+  [SAL_DANCE(0.32), SAL_SPIRAL(0.31), SAL_COURT, SAL_HAZE(0.22), { id: 'sc-sal-lastword', moves: ['escort', 'dance', 'haze'], hpShare: 0.15, timerMs: 35_000, lastSpell: true }],
+  { ...COURT, hpScale: 0.98 },
 );
 
 // --- Nihilego, la que cayó por la grieta del cielo (Toxic Swamp guardian) -------
@@ -132,16 +137,16 @@ const NIH_WORMHOLE = (hpShare: number): CardSpec => ({ id: 'sc-nih-wormhole', mo
 const NIH_FLOOD = (hpShare: number): CardSpec => ({ id: 'sc-nih-flood', moves: ['flood', 'shards'], hpShare, timerMs: 45_000 });
 const NIH_RIFT = survival('sc-nih-rift', ['spores', 'tendrils'], 15_000);
 
-export const NIHILEGO_CARDS_NORMAL = fight('nihilego', [NIH_TENDRILS(0.25), NIH_SHARDS(0.25), NIH_WORMHOLE(0.25), NIH_FLOOD(0.25)]);
-export const NIHILEGO_CARDS_HARD = fight('nihilego', [NIH_TENDRILS(0.27), NIH_SHARDS(0.27), NIH_WORMHOLE(0.23), NIH_RIFT, NIH_FLOOD(0.23)]);
+export const NIHILEGO_CARDS_NORMAL = fight('nihilego', [NIH_TENDRILS(0.36), NIH_SHARDS(0.09), NIH_WORMHOLE(0.27), NIH_FLOOD(0.28)], { hpScale: 0.9 });
+export const NIHILEGO_CARDS_HARD = fight('nihilego', [NIH_TENDRILS(0.25), NIH_SHARDS(0.28), NIH_WORMHOLE(0.235), NIH_RIFT, NIH_FLOOD(0.235)], { hpScale: 0.97 });
 export const NIHILEGO_CARDS_NIGHTMARE = fight('nihilego', [
-  NIH_TENDRILS(0.18),
-  NIH_SHARDS(0.18),
-  NIH_WORMHOLE(0.18),
+  NIH_TENDRILS(0.19),
+  NIH_SHARDS(0.08),
+  NIH_WORMHOLE(0.19),
   NIH_RIFT,
-  NIH_FLOOD(0.18),
-  { id: 'sc-nih-downpour', moves: ['downpour', 'spores'], hpShare: 0.16, timerMs: 45_000 },
-  { id: 'sc-nih-lastword', moves: ['flood', 'downpour'], hpShare: 0.12, timerMs: 40_000, lastSpell: true },
+  NIH_FLOOD(0.2),
+  { id: 'sc-nih-downpour', moves: ['downpour', 'spores'], hpShare: 0.19, timerMs: 45_000 },
+  { id: 'sc-nih-lastword', moves: ['flood', 'downpour'], hpShare: 0.15, timerMs: 40_000, lastSpell: true },
 ]);
 
 /** Every hosted fight per species and tier (Normal, Hard, Nightmare). */

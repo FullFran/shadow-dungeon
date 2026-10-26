@@ -53,10 +53,11 @@ const leavesSteps = (perFan: number, ringLayer: boolean): CardStepDef[] => [
     pattern: { kind: 'fan', fans: 5, perFan, spreadDeg: 100, gapMs: 450, aim: 'first', shot: leaf(16, 115) },
     ...(ringLayer ? { layers: [{ kind: 'rings', rings: 2, perRing: 12, gap: 3, gapTurnDeg: 30, gapMs: 1000, shot: leaf(13, 80) }] as const } : {}),
   },
+  // The lock lets a walking player leave the mark on every tier (src/sim/prove.ts).
   {
-    telegraphMs: 1100,
+    telegraphMs: 1200,
     recoverMs: 1300,
-    pattern: { kind: 'zone', at: 'target', radius: 60, lockMs: 520, impactMs: 220, attack: { power: 32, type: 'flying', pierceRoll: true }, ring: { count: 12, gap: 3, shot: leaf(14, 105) } },
+    pattern: { kind: 'zone', at: 'target', radius: 60, lockMs: 700, impactMs: 220, attack: { power: 32, type: 'flying', pierceRoll: true }, ring: { count: 12, gap: 3, shot: leaf(14, 105) } },
   },
 ];
 

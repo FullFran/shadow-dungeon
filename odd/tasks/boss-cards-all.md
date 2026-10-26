@@ -34,9 +34,37 @@ User decisions 2026-10-26 (A, B, C, D), plus two additions during the work: the 
   - Pattern cards: a turn after every pass of a card's moves, two moves at most (`COMBO_STEPS`). Hosted cards: after each of the boss's own moves, absorbing its own rest. Heralds: after every cycle. Sima pacts that speed up enemies lengthen the turn in enemy time, so it lasts the same in real time.
   - Tests: `tests/core/turn-windows.test.ts` (8 bosses × 3 tiers × every card, plus a herald). guardian-cards `loopMs` now counts turns (cap 20 s).
   - Evidence: `npm test` 1714 passed, `npm run build` ok, `npm run balance -- --quick` 0 failures.
-- [ ] D Proof pipeline + solver bot + GDD guarantee
-- [ ] C Sima echoes on cards by depth
-- [ ] B Presentation pass + screenshots
+- [x] C Sima echoes on cards by depth (route: inline; committed before D because the proof covers echoes)
+  - `ECHO_CARDS`: phase 2 from floor 25, everything from 35 or on a second encounter, timers ×0.8.
+  - `core/cards.ts` gains `echoStageAt`, `echoCards`, `echoShare` and `fightFor`. `run.ts` sets `EnemyScale.echoStage`.
+  - An echo keeps only the HP of the cards it plays. Every card engine reads `fightFor`. Easy keeps the duel.
+  - Tests: `tests/core/echo-cards.test.ts`. Tests that reached the native duel through an echo now drive the native engine directly.
+- [x] D Proof pipeline + solver bot + GDD guarantee (route: inline; the searches ran as parallel `npm run prove` workers)
+  - `src/sim/prove.ts`:
+    - walk-only witness search on the real engine (depth-first, then beams of 24/96/192, one state per 16 px cell) and witness replay;
+    - `turnPunish` probe (melee within 34 px, line of fire within 200 px, windows of at least 600 ms);
+    - reference DPS at `expectedLevel` and the kill margin;
+    - the solver bot, `solveFight`.
+  - `tools/prove.ts` runs it as `npm run prove` (flags `--judge`, `--fresh`, `--boss`). Witnesses go to `reports/proof/witnesses.json` and the table to `reports/proof/latest.md`.
+  - CI replays every witness: `tests/sim/prove-witness-{1,2,3}.test.ts`. The liveness invariants and the falsification test live in `tests/sim/prove-invariants.test.ts`.
+  - Fixed by the proof:
+    - mark locks: Tajo Real 520→760 ms, Picado 520→700 ms, Corriente 760 ms through `markLockMs`;
+    - the turn now opens at the end of the attack and lasts at least as long as the recovery (`COMBO_STEPS` 1);
+    - the boss's own rest is kept after the turn (`BossState.restMs`);
+    - HP shares and `hpScale` for Aegislash (Normal), Sableye, Lanturn, Dhelmise (Nightmare), Salazzle and Nihilego;
+    - echoes at 60 % of the guardian's HP, with no growth from depth.
+  - Known damage gaps: 23, each with its reason, in `src/sim/kill-gaps.ts`. Most are Aegislash's Shield cards, Decidueye's volleys and Nihilego's shard rings, where a melee starter cannot reach the boss within its turn. The tests fail on any new gap and on any stale entry.
+  - Result: all 166 cards survivable from 3 starts (498 witnesses). The solver clears 24/24 Nightmare fights without a hit, in 78–262 s. It breaks 0–4 cards per fight; the rest time out.
+- [x] B Presentation pass + screenshots (route: inline)
+  - Declaration (`drawCardDeclaration`): the screen darkens, the card's name shows big with the small Touhou line above it, and the `cardDeclare` sting plays.
+  - Capture: «¡Técnica dominada!» and its reward, with a flourish and the `cardCapture` sound.
+  - Bar: the timer is a ring next to it. Notches read as phases: passed ones dim, and the live one turns gold and pulses during the turn.
+  - Turn: a breathing halo and the `turnOpen` sound.
+  - The banner waits while the game is paused. New dev param: `?cardHp=`.
+  - Screenshots (silent headless Firefox over BiDi), in `/tmp/boss-cards-all/`: `01-declaration-dhelmise-nightmare.png`, `02-tecnica-dominada-lanturn.png`, `03-dhelmise-segmented-bar.png`, `04-salazzle-segmented-bar.png`, `05b-sima-echo-nightmare-playing.png`.
 
 ## Progress / evidence
-(filled per task)
+- `npm run build`: ok.
+- `npm run balance -- --quick`: 0 failures, 39 warnings (report not committed).
+- `npm run prove -- --judge`: 166 cards, all survivable; 24/24 solver fights cleared.
+- Next: close the 23 known damage gaps (longer turns, or openings closer to the boss, for melee starters on the Shield cards and volleys). Decide whether the solver bot should attack more.

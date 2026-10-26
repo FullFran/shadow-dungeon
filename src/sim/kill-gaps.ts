@@ -1,0 +1,34 @@
+import type { Difficulty } from '../data/difficulty';
+
+/**
+ * The damage gaps the beatability proof still finds (src/sim/prove.ts
+ * `KNOWN_KILL_GAPS`, reports/proof/latest.md), each with its reason: cards a
+ * melee starter cannot be shown to break in time from its turns. They are
+ * survivable like every card, and the fight is still won (the timer ends
+ * them). The tests fail on any new gap and on an entry that stops failing.
+ */
+export const KILL_GAPS: readonly { boss: string; tier: Difficulty; card: string; why: string }[] = [
+  { boss: 'aegislash', tier: 'hard', card: 'sc-aeg-walls', why: 'Shield card (front guard): the closing walls leave the player far out at each turn, too far to reach its back before it guards again; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'aegislash', tier: 'hard', card: 'sc-aeg-swords', why: 'Shield card (front guard) with corner swords firing on the player: no turn long enough to reach its back; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'aegislash', tier: 'nightmare', card: 'sc-aeg-walls', why: 'Shield card (front guard): the closing walls leave the player far out at each turn, too far to reach its back before it guards again; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'aegislash', tier: 'nightmare', card: 'sc-aeg-swords', why: 'Shield card (front guard) with corner swords firing on the player: no turn long enough to reach its back; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'aegislash', tier: 'nightmare', card: 'sc-aeg-lastword', why: 'Last word: spiral and corner swords keep a melee starter out of reach in every turn; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'decidueye', tier: 'normal', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.5 (mimikyu)
+  { boss: 'decidueye', tier: 'hard', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'decidueye', tier: 'hard', card: 'sc-dec-feathers', why: 'Feather spiral and clone crossfire: the turn ends before a melee starter reaches it; line of fire is open.' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'decidueye', tier: 'nightmare', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'decidueye', tier: 'nightmare', card: 'sc-dec-moonless', why: 'Last arrow: no turn long enough for a melee starter to reach it; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'nihilego', tier: 'hard', card: 'sc-nih-shards', why: 'Shard rings: every turn finds the player outside the next ring; melee starters get no 600 ms window, line of fire is open.' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'aegislash-echo', tier: 'normal', card: 'sc-aeg-walls', why: 'Shield card (front guard): the closing walls leave the player far out at each turn, too far to reach its back before it guards again; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.5 (mimikyu)
+  { boss: 'aegislash-echo', tier: 'hard', card: 'sc-aeg-walls', why: 'Shield card (front guard): the closing walls leave the player far out at each turn, too far to reach its back before it guards again; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'aegislash-echo', tier: 'nightmare', card: 'sc-aeg-walls', why: 'Shield card (front guard): the closing walls leave the player far out at each turn, too far to reach its back before it guards again; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'decidueye-echo', tier: 'normal', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.5 (mimikyu)
+  { boss: 'decidueye-echo', tier: 'hard', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'decidueye-echo', tier: 'hard', card: 'sc-dec-feathers', why: 'Feather spiral and clone crossfire: the turn ends before a melee starter reaches it; line of fire is open.' },  // kill margin 1.17 < 1.3 (zorua)
+  { boss: 'decidueye-echo', tier: 'nightmare', card: 'sc-dec-volley', why: 'Decidueye stays at the far edge of the roost behind its clones; the trees block the walk in during its turns; line of fire is open (Litwick).' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'decidueye-echo', tier: 'nightmare', card: 'sc-dec-rain', why: "Deep echo only: the rain lanes keep the player at the far end at each turn; the guardian's own card meets its target." },  // kill margin 0.78 < 1.1 (zorua)
+  { boss: 'dhelmise-echo', tier: 'nightmare', card: 'sc-dhe-lastword', why: "Echo only: the last word's bell and maelstrom keep a melee starter out; line of fire is open." },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+  { boss: 'nihilego-echo', tier: 'normal', card: 'sc-nih-shards', why: 'Shard rings: every turn finds the player outside the next ring; melee starters get no 600 ms window, line of fire is open.' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.5 (mimikyu)
+  { boss: 'nihilego-echo', tier: 'hard', card: 'sc-nih-shards', why: 'Shard rings: every turn finds the player outside the next ring; melee starters get no 600 ms window, line of fire is open.' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.3 (mimikyu)
+  { boss: 'nihilego-echo', tier: 'nightmare', card: 'sc-nih-shards', why: 'Shard rings: every turn finds the player outside the next ring; melee starters get no 600 ms window, line of fire is open.' },  // no melee punish window ≥ 600 ms; kill margin 0.00 < 1.1 (mimikyu)
+];

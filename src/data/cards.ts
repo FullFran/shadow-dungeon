@@ -86,6 +86,20 @@ export interface CardFightDef {
   keepDistance: number;
   /** Damage of every card hit (shots and melee), on top of the tier's own (the guardians hit harder on Hard and Nightmare). */
   power: number;
+  /**
+   * Hosted danmaku cards (Dhelmise's riptide): a mark that follows the player
+   * stops following at least this long before it bursts, so a walking player
+   * can always leave it (src/sim/prove.ts found 400 ms could only be rolled
+   * out of). Easy keeps the shipped lock.
+   */
+  markLockMs?: number;
+  /**
+   * The boss's HP in its card fight, as a share of what its species and tier
+   * give it (core/rooms.ts `loadRoom`): tuned so the reference player can
+   * empty every segment in its punish windows with the tier's margin
+   * (src/sim/prove.ts, kill feasibility). Absent = 1.
+   */
+  hpScale?: number;
   /** Species the boss summons during its cards (Salazzle's court): they leave with the card when it ends, so a declaration holds no threat. */
   dismiss?: readonly string[];
 }

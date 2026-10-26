@@ -335,7 +335,7 @@ describe('guardian spell cards: the fairness check can fail', () => {
   const shot = { power: 10, type: 'ghost' as const, speed: 140, radius: 7, lifetimeMs: 6000 };
   const curtain = (gapWidth: number): CardFightDef => ({
     ...fight('aegislash', 'normal')!,
-    cards: [{ id: 'sc-test-curtain', nameKey: 'x', hpShare: 1, timerMs: 30_000, restMs: 400, steps: [{ telegraphMs: 600, recoverMs: 600, pattern: { kind: 'lanes', waves: 5, gapMs: 700, spacing: 24, gapWidth, shiftPx: 80, shot } }] }],
+    cards: [{ id: 'sc-test-curtain', nameKey: 'x', hpShare: 1, timerMs: 30_000, restMs: 400, steps: [{ telegraphMs: 600, recoverMs: 600, pattern: { kind: 'lanes', waves: 9, gapMs: 700, spacing: 24, gapWidth, shiftPx: 80, shot } }] }],
   });
 
   it('a curtain without a gap in a bare room has no way through; with a gap it has one', () => {
@@ -369,7 +369,7 @@ describe('guardian spell cards: in a run', () => {
     expect(boss.boss!.stance).toBe('sc-aeg-walls');
     const bar = bossBar(played)!;
     expect(bar.segments).toHaveLength(3);
-    expect(bar.segments![0]).toBeCloseTo(boss.maxHp * 0.75);
+    expect(bar.segments![0]).toBeCloseTo(boss.maxHp * cardFloorShare(fight('aegislash', 'normal')!, 0));
     expect(bar.cardLeftMs).toBeGreaterThan(0);
   });
 

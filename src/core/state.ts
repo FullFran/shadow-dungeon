@@ -270,6 +270,8 @@ export interface BossState {
    * `stance` names the boss's own move (synced: guests read the card from it).
    */
   spell?: SpellCardId;
+  /** Hosted card fight: the rest its own engine had set when its "tu turno" began, given back when the turn ends (host only). */
+  restMs?: number;
   /** Spell-card fight: the HP the current card's segment ends at; hits never take the boss below it while the card plays (host only). */
   hpFloor?: number;
 }

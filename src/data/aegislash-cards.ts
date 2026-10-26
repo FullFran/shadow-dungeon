@@ -63,11 +63,12 @@ const fansSteps = (perFan: number, ringLayer: boolean, aimed: boolean): CardStep
     pattern: { kind: 'rings', rings: 3, perRing: 18, gap: 3, gapTurnDeg: 25, gapMs: 500, shot: steel(15, 115) },
     ...(aimed ? { layers: [{ kind: 'fan', fans: 3, perFan: 3, spreadDeg: 24, gapMs: 500, aim: 'each', shot: steel(14, 150) }] as const } : {}),
   },
-  // Tajo Real: the King marks where the player stands, the mark stops following for the last half second, and it lands there cutting (positional), throwing a ring of blades.
+  // Tajo Real: the King marks where the player stands, the mark stops following for the last 0.76 s, and it lands there cutting (positional), throwing a ring of blades.
+  // The lock lets a walking player leave the mark on every tier (src/sim/prove.ts: 520 ms could only be rolled out of on nightmare).
   {
-    telegraphMs: 1100,
+    telegraphMs: 1250,
     recoverMs: 1300,
-    pattern: { kind: 'zone', at: 'target', radius: 70, lockMs: 520, impactMs: 220, attack: { power: 32, type: 'ghost', pierceRoll: true }, ring: { count: 16, gap: 3, shot: steel(14, 110) } },
+    pattern: { kind: 'zone', at: 'target', radius: 70, lockMs: 760, impactMs: 220, attack: { power: 32, type: 'ghost', pierceRoll: true }, ring: { count: 16, gap: 3, shot: steel(14, 110) } },
   },
 ];
 
@@ -180,7 +181,8 @@ export const AEGISLASH_CARDS_NORMAL: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 120,
   power: 1,
-  cards: [walls(wallsSteps(120, false, false), 0.25), fans(fansSteps(9, false, false), 0.25), swords(swordsSteps(6, false, false), 0.25), hundred(hundredSteps(150, 100, false), 0.25)],
+  // Shares tuned by the beatability proof (src/sim/prove.ts): the walls give the fewest openings, the fans and the curtain the most.
+  cards: [walls(wallsSteps(120, false, false), 0.09), fans(fansSteps(9, false, false), 0.345), swords(swordsSteps(6, false, false), 0.21), hundred(hundredSteps(150, 100, false), 0.355)],
 });
 
 /** Hard: walls x1.15 speed, fans x1.22 density + a static ring layer, swords +2 volleys and a slow ring layer, curtain x1.1 speed; the survival card in phase 2. */

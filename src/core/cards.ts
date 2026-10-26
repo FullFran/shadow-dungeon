@@ -63,8 +63,8 @@ export function startTurn(state: WorldState, enemy: EnemyState, durationMs: numb
   return { state: { ...state, projectiles }, enemy: withAi(enemy, { ...enterMode(ai, 'recover', durationMs), attack: TURN, contact: 'none' }) };
 }
 
-/** A pattern card's combo: at most this many of its moves in a row before "tu turno". */
-export const COMBO_STEPS = 2;
+/** A pattern card's combo: at most this many of its moves in a row before "tu turno" (one: every move is its own combo, the souls rhythm in tiny turns). */
+export const COMBO_STEPS = 1;
 
 /** Pause between a declaration and the card's first move. */
 export const FIRST_MOVE_MS = 400;
@@ -276,21 +276,23 @@ function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, car
           const from = enemy.ai.aimPoint ?? enemy.pos;
           for (const dir of ringDirections(toPlayer, p.ring.count, p.ring.gap, 0, 0)) state = shoot(state, enemy, fight.maxShots, p.ring.shot, dir, add(from, scale(dir, enemy.radius + p.ring.shot.radius)), fight.power);
         }
-        enemy = withAi(withBoss(enemy, { combosDone: boss.combosDone + 1 }), { ...enterMode(enemy.ai, 'recover', step.recoverMs), contact: 'none' });
+        // A combo is `COMBO_STEPS` of the card's moves (or the rest of a pass): "tu turno" opens as it ends (its opening, at least as long as the move's own).
+        const done = boss.combosDone + 1;
+        const combo = done % card.steps.length === 0 || (done % card.steps.length) % COMBO_STEPS === 0;
+        const turn = combo ? turnMsFor(state, card) : 0;
+        enemy = withAi(withBoss(enemy, { combosDone: done }), { ...enterMode(enemy.ai, 'recover', step.recoverMs), contact: 'none' });
+        if (turn > 0) {
+          const opened = startTurn(state, enemy, Math.max(turn, step.recoverMs), events);
+          state = opened.state;
+          enemy = opened.enemy;
+        }
       }
       break;
     }
     case 'recover': {
       if (!modeOver(ai)) break;
-      // A combo is a pass of the card's moves, two at most: "tu turno" before the next one.
-      const done = boss.combosDone;
-      const combo = done % card.steps.length === 0 || (done % card.steps.length) % COMBO_STEPS === 0;
-      const turn = ai.attack !== TURN && combo ? turnMsFor(state, card) : 0;
-      if (turn > 0) {
-        const opened = startTurn(state, enemy, turn, events);
-        state = opened.state;
-        enemy = opened.enemy;
-      } else enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: card.restMs, strafeSign: ai.strafeSign === 1 ? -1 : 1 });
+      const { attack: _turn, ...rest } = ai;
+      enemy = withAi(enemy, { ...enterMode(rest, 'approach'), cooldownMs: card.restMs, strafeSign: ai.strafeSign === 1 ? -1 : 1 });
       break;
     }
     default:
@@ -416,19 +418,22 @@ export function updateHostedCardFight(state: WorldState, start: EnemyState, figh
   const floor = enemy.boss!.hpFloor ?? 0;
   const broken = !card.survival && enemy.hp <= floor;
   if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
-  // "Tu turno": its engine waits; then it goes on from its own rest (the turn absorbs it).
+  // "Tu turno": its engine waits; then it takes up its own recovery, already over (it rests and goes on as it always did).
+  let playing = enemy;
   if (inTurn(enemy)) {
     if (!modeOver(ai)) return replaceEnemy(state, enemy);
     const { attack: _turn, ...rest } = enemy.ai;
-    return replaceEnemy(state, withAi(enemy, { ...enterMode(rest, 'approach'), contact: 'none' }));
+    const { restMs, ...boss } = enemy.boss!;
+    playing = { ...enemy, boss, ai: { ...rest, mode: 'recover', modeMs: 0, modeDurationMs: 0, contact: 'none', cooldownMs: Math.max(rest.cooldownMs, restMs ?? 0) } };
   }
-  const played = play(state, enemy, card);
-  // Each of its own moves is a combo: when its engine leaves a recovery for its rest, the turn opens.
+  const played = play(state, playing, card);
+  // Each of its own moves is a combo: as its engine enters a recovery, the turn opens (at least as long as that recovery).
   const after = played.enemies.find((e) => e.id === enemy.id);
-  const turn = after?.alive && ai.mode === 'recover' && after.ai.mode === 'approach' ? turnMsFor(state, card) : 0;
+  const turn = after?.alive && playing.ai.mode !== 'recover' && after.ai.mode === 'recover' ? turnMsFor(state, card) : 0;
   if (!after || turn <= 0) return played;
-  const opened = startTurn(played, after, turn, events);
-  return replaceEnemy(opened.state, opened.enemy);
+  const opened = startTurn(played, after, Math.max(turn, after.ai.modeDurationMs), events);
+  // The rest its engine already set (Salazzle, Nihilego) waits for the turn to end.
+  return replaceEnemy(opened.state, after.ai.cooldownMs > 0 ? withBoss(opened.enemy, { restMs: after.ai.cooldownMs }) : opened.enemy);
 }
 
 /** The moves a hosted card plays at this party size: its own, then the party's area move (data/party-tricks.ts `partyMoves`) once per loop. */

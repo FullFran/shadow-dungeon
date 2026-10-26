@@ -3,6 +3,9 @@ import { insideRect } from './geometry';
 import type { WorldState } from './state';
 import { vec } from './vec';
 import { enterRoom, spawnEnemy } from './world';
+import { fightOf } from './cards';
+import { worldDifficulty } from './difficulty';
+import { behaviourFor } from './tricks';
 
 /** Enters a room: resets per-room state (Disguise), sets the arena and player start, spawns its enemies. */
 export function loadRoom(state: WorldState, roomId: RoomId): WorldState {
@@ -15,7 +18,19 @@ export function loadRoom(state: WorldState, roomId: RoomId): WorldState {
     player: { ...entered.player, pos: vec(room.playerStart.x, room.playerStart.y), roll: null, facing: vec(1, 0) },
   };
   for (const spawn of room.spawns) next = spawnEnemy(next, spawn.species, vec(spawn.x, spawn.y));
-  return next;
+  return cardBossHp(next);
+}
+
+/** A boss that fights with spell cards at this tier has its fight's HP share (data/cards.ts `hpScale`). */
+function cardBossHp(state: WorldState): WorldState {
+  const tier = worldDifficulty(state);
+  const enemies = state.enemies.map((e) => {
+    const scale = e.boss ? fightOf(behaviourFor(e.species, tier))?.hpScale : undefined;
+    if (scale === undefined || scale === 1) return e;
+    const maxHp = Math.max(1, Math.round(e.maxHp * scale));
+    return { ...e, maxHp, hp: maxHp };
+  });
+  return { ...state, enemies };
 }
 
 export function roomCleared(state: WorldState): boolean {

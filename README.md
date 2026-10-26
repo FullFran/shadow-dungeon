@@ -18,6 +18,7 @@ npm run typecheck  # app + DOM-free core
 npm run build      # typecheck + production build to dist/
 node tools/fetch-sprites.mjs   # re-download sprites and regenerate meta + CREDITS.md
 npm run balance    # balance sweep with bots, writes reports/balance/latest.md (~5 min; -- --quick ~15 s)
+npm run prove      # beatability proof: finds the walk-only witnesses and solver fights, writes reports/proof/ (minutes; -- --judge re-judges only)
 ```
 
 ### Balance harness
@@ -29,6 +30,8 @@ npm run balance    # balance sweep with bots, writes reports/balance/latest.md (
 3. When content is fixed, delete its `KNOWN_VIOLATIONS` entry in `src/sim/bands.ts`, so the gate keeps it fixed.
 
 Options: `-- --quick` (CI subset), `-- --seeds=1,2`, `-- --dungeon=<id>`, `-- --tier=<tier>`, `-- --slots` (the perfect and average bots also use the boost before a boss or a crowd and the area move on clusters; off by default, so the committed report keeps measuring the fast slot alone; `reports/balance/four-slots-ttk.md` compares the two). Details in docs/gdd.md §9.
+
+**Beatability proof** (docs/gdd.md §9 "Garantía de que todo se puede pasar"): `src/sim/prove.ts` proves that every spell card of every card boss (and Sima echo) on Normal, Hard and Nightmare can be got through by walking alone, from three starts, on the real engine; that the card framework ends every fight even with zero damage dealt; that every card that can be hurt gives punish windows in its "tu turno" openings, enough for the reference player to empty its segment in time; and a solver bot clears every whole fight on Nightmare. `npm run prove` searches the witnesses (minutes) and stores them in `reports/proof/witnesses.json` with the table in `reports/proof/latest.md`; `npm test` replays them all (`tests/sim/prove-*.test.ts`). A pattern change that breaks a witness fails the tests: run `npm run prove` again (it keeps the witnesses that still hold).
 
 Deploy: `.github/workflows/deploy.yml` runs the tests, builds `dist/` and publishes it to GitHub Pages on every push to `main` (or manually). Enable Pages with source "GitHub Actions" in the repository settings.
 
