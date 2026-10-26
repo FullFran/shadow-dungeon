@@ -11,7 +11,7 @@ import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { originalKit, SPECIES } from '../../src/data/species';
-import { movePrice, RANK_COSTS } from '../../src/data/tutor';
+import { movePrice, RANK_COSTS, RANK_COSTS_BY_TIER } from '../../src/data/tutor';
 import { IDLE } from './helpers';
 
 describe('move tutor: learning', () => {
@@ -55,15 +55,18 @@ describe('move tutor: learning', () => {
 });
 
 describe('move tutor: Mejoras', () => {
-  it('ranks an original move up twice, then it is maxed; tutor moves cannot be ranked', () => {
+  it('ranks a move up twice, then it is maxed; rank prices scale with the tier', () => {
     let wallet: TutorWallet = { coins: RANK_COSTS[0]! + RANK_COSTS[1]! };
     wallet = rankUp(wallet, 'cubone', 'bone-club')!;
     wallet = rankUp(wallet, 'cubone', 'bone-club')!;
     expect(wallet.coins).toBe(0);
     expect(moveRank(wallet, 'cubone', 'bone-club')).toBe(2);
     expect(rankUp({ ...wallet, coins: 9999 }, 'cubone', 'bone-club')).toBeNull();
+    // Only a known move can be ranked: an unlearned tutor move cannot, a learned one can (at its tier's price).
     expect(rankUp({ coins: 9999 }, 'cubone', 'knock-off')).toBeNull();
+    expect(rankUp({ coins: 9999, learned: { cubone: ['knock-off'] } }, 'cubone', 'knock-off')?.coins).toBe(9999 - RANK_COSTS_BY_TIER.advanced[0]!);
     expect(runRanks(wallet, 'cubone')).toEqual({ 'bone-club': 2 });
+    expect(rankUp({ coins: 9999, learned: { cubone: ['focus-punch'] } }, 'cubone', 'focus-punch')?.coins).toBe(9999 - RANK_COSTS_BY_TIER.master[0]!);
     expect(runRanks(wallet, 'mimikyu')).toBeUndefined();
   });
 
@@ -116,18 +119,18 @@ describe('save v2: learned moves and ranks', () => {
     expect(sanitize(migrate(v1))).toEqual({ version: 2, coins: 300, upgrades: { vitality: 2 } });
   });
 
-  it('keeps only moves the tutor teaches that species, and only ranks of original moves', () => {
+  it('keeps only moves the tutor teaches that species, and only ranks of moves it can know', () => {
     const save = parseSave(
       JSON.stringify({
         version: 2,
         coins: 10,
         upgrades: {},
         learned: { mimikyu: ['wood-hammer', 'earthquake', 'shadow-claw', 'wood-hammer', 42], zorua: 'x', bogus: ['slash'] },
-        ranks: { cubone: { 'bone-club': 9, 'knock-off': 1, bonemerang: 1.5, earthquake: 1 }, litwick: [] },
+        ranks: { cubone: { 'bone-club': 9, 'knock-off': 1, slash: 1, bonemerang: 1.5, earthquake: 1 }, litwick: [] },
       }),
     );
     expect(save.learned).toEqual({ mimikyu: ['wood-hammer'] });
-    expect(save.ranks).toEqual({ cubone: { 'bone-club': 2, earthquake: 1 } });
+    expect(save.ranks).toEqual({ cubone: { 'bone-club': 2, earthquake: 1, 'knock-off': 1 } });
   });
 
   it('a purchase through the window helper persists, and a refused one writes nothing', () => {

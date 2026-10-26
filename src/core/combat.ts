@@ -17,6 +17,8 @@ import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from '
 import { buffCrit, buffDamage, castBuff, cooldownLeft, spendBuffHit, startCooldown, tickBoosts } from './boosts';
 import { afterHit, applyDot, hitEffects, payHpCost, tickDots } from './afflictions';
 import { rankDamage } from './tutor';
+import { childEffects, healOnUse, markAndWeaken, playerMove, rankHitEffects, splitShots, startWard, tickRankStatus, tickWard, zoneProjectile } from './rank-effects';
+import { nextRandom } from './rng';
 import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, HitEffects, PlayerInput, PlayerState, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
@@ -77,7 +79,8 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
   if (player.action || player.roll) return state;
   const slotIndex = player.loadout.findIndex((moveId, i) => moveId !== null && input.slots[i] && !player.slotsHeld[i]);
   if (slotIndex < 0) return state;
-  const move = MOVES[player.loadout[slotIndex]!];
+  // The player's version of the move: its Mejoras folded in (core/rank-effects.ts).
+  const move = playerMove(player, player.loadout[slotIndex]!);
   const cost = move.staminaCost * playerStats(player).staminaCost;
   if (player.stamina < cost || cooldownLeft(player, move.id) > 0) {
     events.push({ type: 'moveDenied', moveId: move.id });
@@ -101,7 +104,8 @@ function tryStartAction(state: WorldState, input: PlayerInput, events: GameEvent
     ...(boosted ? { boost: TUNING.passives.flashFireBoost } : {}),
   };
   const paid = cost > 0 ? { stamina: player.stamina - cost, staminaRegenDelayMs: TUNING.stamina.regenDelayMs } : {};
-  return { ...state, player: startCooldown({ ...player, ...paid, action, ...(boosted ? { flashFire: false } : {}) }, move) };
+  // A ranked move with super-armor takes it from its start.
+  return { ...state, player: startWard(startCooldown({ ...player, ...paid, action, ...(boosted ? { flashFire: false } : {}) }, move), move) };
 }
 
 type StrikeHit = {
@@ -117,8 +121,10 @@ type StrikeHit = {
   /** The move that landed it, and whether this is the last part of a multi-hit move (game feel only). */
   moveId?: MoveDef['id'];
   finisher?: boolean;
-  /** Drain, recoil, damage over time and crit bonus of the move (core/afflictions.ts). */
+  /** Drain, recoil, damage over time and crit bonus of the move (core/afflictions.ts), and its rank effects (core/rank-effects.ts). */
   effects?: HitEffects;
+  /** A zone's tick or a chained jump: a small number, no hitstop, no move look. */
+  minor?: boolean;
 };
 
 /**
@@ -207,7 +213,8 @@ function strikeEnemy(
     hp,
     alive: hp > 0,
     hitstunMs: Math.max(enemy.hitstunMs, hit.hitstunMs * poise.hitstunScale),
-    knockback: scale(length(pushDir) > 0 ? pushDir : state.player.facing, hit.knockback * poise.knockbackScale),
+    // A push-less hit (a zone's tick) leaves the running knockback alone.
+    knockback: hit.knockback > 0 ? scale(length(pushDir) > 0 ? pushDir : state.player.facing, hit.knockback * poise.knockbackScale) : enemy.knockback,
   };
   events.push({
     type: 'enemyHit',
@@ -215,18 +222,44 @@ function strikeEnemy(
     damage,
     effectiveness,
     pos: enemy.pos,
-    ...(hit.moveId ? { moveId: hit.moveId } : {}),
+    ...(hit.moveId && !hit.minor ? { moveId: hit.moveId } : {}),
     ...(hit.finisher ? { finisher: true } : {}),
+    ...(hit.minor ? { minor: true as const } : {}),
   });
-  // A burning or poisoning move leaves its damage over time on a survivor.
-  const struck = hit.effects?.dot && reacted.alive ? applyDot(reacted, hit.effects.dot, damage) : reacted;
+  // A burning or poisoning move leaves its damage over time on a survivor (a ranked chance rolls for it).
+  let dotTakes = Boolean(hit.effects?.dot && reacted.alive);
+  if (dotTakes && hit.effects?.dotChance !== undefined && hit.effects.dotChance < 1) {
+    const roll = nextRandom(state.rng);
+    state = { ...state, rng: roll.state };
+    dotTakes = roll.value < hit.effects.dotChance;
+  }
+  const dotted = dotTakes ? applyDot(reacted, hit.effects!.dot!, damage) : reacted;
+  // Rank effects (core/rank-effects.ts), on the host and solo: a mark that bursts later, a weakening.
+  const host = state.role !== 'guest';
+  const struck = host ? markAndWeaken(dotted, hit.effects, damage) : dotted;
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
   claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
-  return {
+  let next: WorldState = {
     ...state,
     player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), hit.effects, damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
+  if (!host || !hit.effects) return next;
+  // A zone left where the hit landed (embers, a toxic puddle, falling rocks).
+  if (hit.effects.zone) next = zoneProjectile(next, hit.effects.zone, enemy.pos, { type: hit.type, multiplier: hit.multiplier, moveId: hit.moveId ?? 'ember' });
+  // A chain: the hit jumps to the nearest other living enemy in range (once; what it carries on spawns nothing more).
+  const chain = hit.effects.chain;
+  if (chain) {
+    const other = next.enemies
+      .filter((e) => e.alive && e.id !== enemy.id && distance(e.pos, enemy.pos) <= chain.range + e.radius)
+      .reduce<EnemyState | null>((best, e) => (best === null || distance(e.pos, enemy.pos) < distance(best.pos, enemy.pos) ? e : best), null);
+    if (other) {
+      const carried = childEffects(hit.effects);
+      const { effects: _own, finisher: _finisher, ...plain } = hit;
+      next = strikeEnemy(next, other, { ...plain, multiplier: hit.multiplier * chain.share, from: enemy.pos, source: `${hit.source}c`, minor: true, ...(carried ? { effects: carried } : {}) }, events);
+    }
+  }
+  return next;
 }
 
 /** Melee hit test for the active frames of arc and dash moves. */
@@ -299,9 +332,24 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     ...(move.hitbox.linger ? { pierce: true, wave: true, linger: move.hitbox.linger, lingerMs: move.hitbox.linger } : {}),
     ...(move.hitbox.homing ? { homing: move.hitbox.homing } : {}),
     ...withEffects(move),
+    // Rank effects: a shot that splits on impact, a boomerang thrown out again.
+    ...(move.split && !move.hitbox.wave && !move.hitbox.boomerang && !move.hitbox.linger ? { split: move.split } : {}),
+    ...(move.rethrow && move.hitbox.boomerang ? { rethrow: { left: move.rethrow.times, share: move.rethrow.share, lifetimeMs: move.hitbox.lifetimeMs, dir: action.aimDir } } : {}),
     moveId: move.id,
   };
-  return { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
+  let next: WorldState = { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
+  // A wave with a `line` zone leaves it along its path, each part armed as the wave goes by.
+  if (move.zone?.at === 'line' && move.hitbox.wave && state.role !== 'guest') {
+    const reach = (move.hitbox.speed * charge.speedMultiplier * move.hitbox.lifetimeMs) / 1000;
+    const parts = Math.max(1, Math.floor(reach / (move.zone.radius * 2)));
+    for (let i = 0; i < parts; i++) {
+      const d = (reach * (i + 0.5)) / parts;
+      const at = add(projectile.pos, scale(action.aimDir, d));
+      if (!insideArena(next, at)) break;
+      next = zoneProjectile(next, move.zone, at, { type: move.type, multiplier: projectile.damageMultiplier, moveId: move.id }, (move.zone.delayMs ?? 0) + (d / (move.hitbox.speed * charge.speedMultiplier)) * 1000);
+    }
+  }
+  return next;
 }
 
 const withAction = (state: WorldState, action: ActionState | null): WorldState => ({
@@ -336,7 +384,7 @@ function runActive(state: WorldState, move: MoveDef, active: ActionState, ms: nu
 function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   let action = state.player.action;
   if (!action) return state;
-  const move = MOVES[action.moveId];
+  const move = playerMove(state.player, action.moveId);
   let current = state;
 
   if (action.phase === 'charging') {
@@ -374,6 +422,11 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
       if (next === 'active') current = spawnPlayerProjectile(current, move, action);
       // A boost move takes hold as its active phase starts.
       if (next === 'active' && move.buff) current = { ...current, player: castBuff(payHpCost(current.player, move), move, events) };
+      // Rank effects: a heal as the move takes hold; an aftershock (or the wisps) around the player as its active phase ends.
+      if (next === 'active' && move.heal) current = { ...current, player: healOnUse(current.player, move) };
+      if (next === 'recovery' && move.zone?.at === 'self' && current.role !== 'guest') {
+        current = zoneProjectile(current, move.zone, current.player.pos, { type: move.type, multiplier: moveMultiplier(playerStats(current.player), move, action, current.player.moveRanks), moveId: move.id });
+      }
     }
   }
   return withAction(current, action);
@@ -382,7 +435,7 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
 function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   const wasIdle = !state.player.action;
   // Cooldowns and boost buffs run on the player's clock (no slow-mo).
-  const ticked = tickBoosts(state.player, dtMs);
+  const ticked = tickWard(tickBoosts(state.player, dtMs), dtMs);
   let current = tryStartAction(ticked === state.player ? state : { ...state, player: ticked }, input, events);
   // A move started this tick begins counting from the next tick.
   if (!(wasIdle && current.player.action)) current = advanceAction(current, input, dtMs, events);
@@ -414,8 +467,8 @@ function steerShot(state: WorldState, p: ProjectileState, ms: number): Projectil
 
 /** The move's hit effects as an optional field (moves without any add nothing). */
 function withEffects(move: MoveDef): { effects?: HitEffects } {
-  const effects = hitEffects(move);
-  return effects ? { effects } : {};
+  const effects = { ...hitEffects(move), ...rankHitEffects(move) };
+  return Object.keys(effects).length > 0 ? { effects } : {};
 }
 
 /** A homing player shot (Swift) turns towards the nearest living enemy, at most `homing` degrees per second. */
@@ -434,6 +487,24 @@ function rearmZone(p: ProjectileState, ms: number): ProjectileState {
   return lingerMs > 0 ? { ...p, lingerMs } : { ...p, lingerMs: lingerMs + p.linger, hitIds: [] };
 }
 
+/** A ranked boomerang back home (Bonemerang ++): thrown out again from the player along the first throw, weaker; null when it has no throws left. */
+function rethrown(p: ProjectileState, from: Vec2): ProjectileState | null {
+  const again = p.rethrow;
+  if (!again || again.left <= 0) return null;
+  const { rethrow: _spent, ...plain } = p;
+  return {
+    ...plain,
+    id: `${p.id}t`,
+    pos: from,
+    vel: scale(again.dir, length(p.vel)),
+    remainingMs: again.lifetimeMs,
+    returnAtMs: again.lifetimeMs / 2,
+    hitIds: [],
+    damageMultiplier: p.damageMultiplier * again.share,
+    ...(again.left > 1 ? { rethrow: { ...again, left: again.left - 1 } } : {}),
+  };
+}
+
 /** Moves projectiles (enemy ones at the slow-mo time scale), resolves hits and expiry. */
 function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   let current = state;
@@ -446,7 +517,22 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       pos: add(projectile.pos, scale(steered.vel, ms / 1000)),
       remainingMs: projectile.remainingMs - ms,
     };
-    if (moved.remainingMs <= 0 || !insideArena(current, moved.pos)) continue;
+    if (moved.remainingMs <= 0 || !insideArena(current, moved.pos)) {
+      // A ranked boomerang that ran out on its way home is thrown again all the same.
+      const again = moved.owner === 'player' && moved.returnAtMs === undefined ? rethrown(moved, current.player.pos) : null;
+      if (again) survivors.push(again);
+      continue;
+    }
+    // A zone not armed yet (an aftershock's moment, a flame line before the wave passes) hits nothing.
+    if (moved.armMs !== undefined) {
+      const armMs = moved.armMs - ms;
+      const { armMs: _armed, ...armed } = moved;
+      if (armMs > 0) {
+        survivors.push({ ...moved, armMs });
+        continue;
+      }
+      moved = armed;
+    }
     if (moved.returnAtMs !== undefined && moved.remainingMs <= moved.returnAtMs) {
       // A boomerang turns back and may hit everything again on the way home.
       const { returnAtMs: _turned, ...rest } = moved;
@@ -457,7 +543,12 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
     if (returning && moved.owner === 'player') {
       // On the way home a boomerang steers to where the player is now, and is caught on reaching them.
       const home = sub(current.player.pos, moved.pos);
-      if (length(home) <= PLAYER.radius + moved.radius) continue;
+      if (length(home) <= PLAYER.radius + moved.radius) {
+        // A ranked boomerang (Bonemerang ++) is thrown out again along the first throw, weaker.
+        const again = rethrown(moved, current.player.pos);
+        if (again) survivors.push(again);
+        continue;
+      }
       moved = { ...moved, vel: scale(normalize(home), length(moved.vel)) };
     }
 
@@ -480,9 +571,12 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             ...(moved.bonus ? { bonus: moved.bonus } : {}),
             ...(moved.moveId ? { moveId: moved.moveId } : {}),
             ...(moved.effects ? { effects: moved.effects } : {}),
+            ...(moved.zone ? { minor: true } : {}),
           },
           events,
         );
+        // A split shot bursts into smaller ones past its target (host and solo).
+        if (moved.split && !moved.pierce && current.role !== 'guest') current = splitShots(current, moved, target.pos, normalize(moved.vel), target.id);
         moved = moved.pierce ? { ...moved, hitIds: [...moved.hitIds, target.id] } : null;
       }
     } else if (!moved.hitIds.includes(PLAYER_ID) && distance(current.player.pos, moved.pos) <= PLAYER.radius + moved.radius) {
@@ -502,7 +596,9 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
     }
     if (moved) survivors.push(moved);
   }
-  return { ...current, projectiles: survivors };
+  // Shots and zones spawned by this step's hits (rank effects) join from the next step.
+  const spawned = current.projectiles.slice(state.projectiles.length).filter((p) => p.owner === 'player' && (p.zone || p.hitIds.length > 0));
+  return { ...current, projectiles: spawned.length > 0 ? [...survivors, ...spawned] : survivors };
 }
 
 /** Ticks enemy stagger and eases out knockback, at the enemy time scale. */
@@ -534,5 +630,6 @@ export function updateCombat(state: WorldState, input: PlayerInput, dtMs: number
   let current = updatePlayerAction(state, input, dtMs, events);
   current = updateProjectiles(current, dtMs, events);
   // Burns and poisons tick on the host, like the rest of the enemies' reactions.
-  return current.role === 'guest' ? current : tickDots(updateEnemyReactions(current, dtMs), dtMs, events);
+  // ...and so do the rank effects' marks and weakenings.
+  return current.role === 'guest' ? current : tickRankStatus(tickDots(updateEnemyReactions(current, dtMs), dtMs, events), dtMs, events);
 }

@@ -27,7 +27,7 @@ export function damageRate(move: MoveDef): number {
  * again and again), a crit bonus its expected extra damage.
  */
 export function effectFactor(move: MoveDef): number {
-  const dot = move.dot ? DOTS[move.dot].share * 0.5 : 0;
+  const dot = move.dot ? DOTS[move.dot].share * 0.5 * (move.dotChance ?? 1) : 0;
   const crit = (move.critBonus ?? 0) * (ITEM_EFFECTS.critMultiplier - 1);
   return (1 + dot) * (1 + crit);
 }
@@ -54,6 +54,36 @@ export const SLOW_WINDUP = 1.25;
 const slowestWindup = (slot: SlotKind): number => Math.max(...KIT.filter((b) => b.slot === slot).map((b) => b.windupMs));
 
 export type MoveCost = 'recoil' | 'hp' | 'cooldown' | 'stamina' | 'windup';
+
+/**
+ * Expected extra single-target damage of a move's rank effects, as a share of
+ * its hit (conservative): a mark bursts for its share, a zone deals all its
+ * ticks to a target that stays in it (one part of a line), a boomerang's extra
+ * throws count at their share. Splits and chains hit other enemies only.
+ */
+export function extraShare(move: MoveDef): number {
+  const mark = move.mark?.share ?? 0;
+  const zone = move.zone && move.power > 0 ? (move.zone.power * (move.zone.every ? Math.ceil(move.zone.lifetimeMs / move.zone.every) : 1)) / move.power : 0;
+  const rethrow = move.rethrow ? move.rethrow.times * move.rethrow.share : 0;
+  return mark + zone + rethrow;
+}
+
+/** A move's effective damage at `rank` (rank damage and effects included), against its slot/shape baseline. */
+export function rankedRatio(move: MoveDef, rankDamage: number): number {
+  return budgetRatio(move) * rankDamage * (1 + extraShare(move));
+}
+
+/**
+ * What a boost is worth per second of cooldown: a power buff its extra hits'
+ * damage, focus its extra damage over its duration, haste its expected extra
+ * crits, guard the damage it saves, kindle one Flash Fire.
+ */
+export function buffValue(move: MoveDef, cooldownMs = move.cooldownMs ?? 1): number {
+  const b = move.buff;
+  if (!b) return 0;
+  const per = b.kind === 'power' ? (b.multiplier - 1) * b.hits : b.kind === 'focus' ? ((b.multiplier - 1) * b.durationMs) / 1000 : b.kind === 'haste' ? (b.critChance * (ITEM_EFFECTS.critMultiplier - 1) + (b.speed - 1)) * (b.durationMs / 1000) : b.kind === 'guard' ? ((1 - b.damageTaken) * b.durationMs) / 1000 : 1;
+  return per / (cooldownMs / 1000);
+}
 
 /** The real costs a move pays: recoil, an HP cost, a cooldown on a heavy move, extra stamina, a slow wind-up. */
 export function costsOf(move: MoveDef): MoveCost[] {

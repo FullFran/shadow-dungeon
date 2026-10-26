@@ -1,7 +1,7 @@
 import type { StarterId } from '../data/learnsets';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { isPlayable, originalKit, SPECIES, type SpeciesId } from '../data/species';
-import { MAX_RANK, movePrice, moveTier, RANK_COSTS, RANK_EFFECT, TUTOR_OFFER, unlockOf } from '../data/tutor';
+import { MAX_RANK, movePrice, moveTier, RANK_COSTS_BY_TIER, RANK_EFFECT, TUTOR_OFFER, unlockOf } from '../data/tutor';
 import type { DungeonId } from '../data/dungeons';
 
 /**
@@ -62,20 +62,23 @@ export function buyMove(wallet: TutorWallet, species: SpeciesId, move: MoveId): 
   return { ...wallet, coins: wallet.coins - price, learned };
 }
 
-/** The rank of an original move (0 = none). */
+/** The rank of a move (0 = none). */
 export function moveRank(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId, move: MoveId): number {
   const starter = asStarter(species);
   const rank = starter ? (wallet.ranks?.[starter]?.[move] ?? 0) : 0;
   return Math.min(MAX_RANK, Math.max(0, Math.floor(rank)));
 }
 
-/** Cost of the next rank of `move`, or null when it is maxed or not an original move. */
-export function rankCost(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId, move: MoveId): number | null {
-  if (!asStarter(species) || !originalKit(species).includes(move)) return null;
-  return RANK_COSTS[moveRank(wallet, species, move)] ?? null;
+/** The cost of each rank of `move`, by its tier (Básico, Avanzado, Maestro). */
+export const rankCostsOf = (move: MoveId): readonly number[] => RANK_COSTS_BY_TIER[moveTier(move)];
+
+/** Cost of the next rank of `move`, or null when it is maxed or not known (any known move can be ranked: odd/tasks/move-progression.md). */
+export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned'>, species: SpeciesId, move: MoveId): number | null {
+  if (!asStarter(species) || !knownMoves(wallet, species).includes(move)) return null;
+  return rankCostsOf(move)[moveRank(wallet, species, move)] ?? null;
 }
 
-/** The wallet after one more rank of `move`, or null when maxed, not original or unaffordable. */
+/** The wallet after one more rank of `move`, or null when maxed, not known or unaffordable. */
 export function rankUp(wallet: TutorWallet, species: SpeciesId, move: MoveId): TutorWallet | null {
   const starter = asStarter(species);
   const cost = rankCost(wallet, species, move);
@@ -103,8 +106,9 @@ export function knownLoadout(wallet: Pick<TutorWallet, 'learned'>, species: Spec
 /** In a run: the damage factor of a ranked move (1 unranked). */
 export const rankDamage = (ranks: MoveRanks | undefined, move: MoveDef): number => 1 + RANK_EFFECT.damage * (ranks?.[move.id] ?? 0);
 
-/** In a run: the cooldown of a ranked boost or area move (its own unranked). */
-export const rankCooldown = (ranks: MoveRanks | undefined, move: MoveDef): number => (move.cooldownMs ?? 0) * (1 - RANK_EFFECT.cooldown * (ranks?.[move.id] ?? 0));
+/** In a run: the cooldown of a ranked boost (shorter per rank); other moves keep theirs (area ranks add effects instead). */
+export const rankCooldown = (ranks: MoveRanks | undefined, move: MoveDef): number =>
+  (move.cooldownMs ?? 0) * (move.slot === 'boost' ? 1 - RANK_EFFECT.cooldown * (ranks?.[move.id] ?? 0) : 1);
 
 const TIER_TAG = { basic: '', advanced: ':A', master: ':M' } as const;
 

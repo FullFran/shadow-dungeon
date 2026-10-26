@@ -8,6 +8,7 @@ import { absorbsFire, armorCovers, breakIllusion } from './passives';
 import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
 import { buffDamageTaken } from './boosts';
+import { moveIframes, wardDamageTaken } from './rank-effects';
 
 const PERFECT = TUNING.perfectDodge;
 const PASSIVES = TUNING.passives;
@@ -37,6 +38,14 @@ export function landHitOnPlayer(
   // A guard buff (Bulk Up, the boost slot) takes the edge off before the cap (never below 1): the cap stays the last word.
   const guard = buffDamageTaken(player);
   if (guard !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * guard)) };
+  // A ranked move's super-armor (core/rank-effects.ts) too.
+  const ward = wardDamageTaken(player);
+  if (ward !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * ward)) };
+  // A ranked move with i-frames: an ordinary hit passes through its active phase (a positional one does not).
+  if (!hit.pierceRoll && moveIframes(player)) {
+    events.push({ type: 'hitDodged' });
+    return { state, outcome: 'dodged' };
+  }
   // The one-hit cap (P5.6), last of all the multipliers: no single hit takes more than a share of the HP a player of the
   // floor's expected level would have (core/fairness.ts). An under-levelled player can still be one-shot; a levelled one never.
   const cap = hitCap(speciesMaxHpAt(player.species, state.referenceLevel ?? 1));

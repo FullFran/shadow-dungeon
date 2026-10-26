@@ -150,6 +150,43 @@ export interface MoveDef {
   critBonus?: number;
   /** Boost moves: share of max HP paid on the cast, never below 1 HP (Curse, Belly Drum). */
   hpCost?: number;
+  // Effects the tutor's ranks add (data/rank-effects.ts, core/rank-effects.ts); any move may carry them.
+  /** Chance (0..1) that `dot` takes hold on a hit; absent = always. */
+  dotChance?: number;
+  /** The enemy hit carries a mark that bursts after `delayMs` for `share` of that hit's damage (one mark at a time per enemy). */
+  mark?: { share: number; delayMs: number };
+  /** A shot bursts on its first hit into `count` smaller shots of `share` power, fanning out past the target. */
+  split?: { count: number; share: number };
+  /** The enemy hit deals `factor` times its damage for `durationMs`. */
+  weaken?: { factor: number; durationMs: number };
+  /** A lingering zone the move leaves behind (see `ZoneDef`). */
+  zone?: ZoneDef;
+  /** A boomerang caught again is thrown out `times` more times, each throw at `share` power. */
+  rethrow?: { times: number; share: number };
+  /** A hit jumps to the nearest other enemy within `range` px for `share` of its damage. */
+  chain?: { share: number; range: number };
+  /** Super-armor: from the move's start, the damage taken is scaled by `damageTaken` for `durationMs`. */
+  ward?: { damageTaken: number; durationMs: number };
+  /** Untouchable during the active phase: ordinary (non-positional) hits pass through. */
+  iframes?: boolean;
+  /** Heals this share of max HP as the move takes hold (its active phase starts). */
+  heal?: number;
+}
+
+/**
+ * A lingering zone of the player's: `impact` where a hit lands, `self`
+ * around the player as the active phase ends (an aftershock), `line` along a
+ * wave's path. It deals `power` (the move's multipliers apply) to what is in
+ * it, once or every `every` ms, for `lifetimeMs`, after `delayMs`.
+ */
+export interface ZoneDef {
+  at: 'impact' | 'self' | 'line';
+  power: number;
+  radius: number;
+  lifetimeMs: number;
+  every?: number;
+  delayMs?: number;
+  dot?: DotKind;
 }
 
 /**

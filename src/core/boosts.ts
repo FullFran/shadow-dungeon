@@ -1,6 +1,7 @@
-import { MOVES, type BuffDef, type MoveDef, type MoveId } from '../data/moves';
+import type { BuffDef, MoveDef, MoveId } from '../data/moves';
 import type { GameEvent, PlayerState } from './state';
 import { rankCooldown } from './tutor';
+import { playerMove } from './rank-effects';
 
 /**
  * Boost-slot buffs and the cooldowns of boost and area moves (four-slots).
@@ -19,8 +20,9 @@ export function startCooldown(player: PlayerState, move: MoveDef): PlayerState {
 }
 
 /** The running buff's definition, if any. */
-export function activeBuff(player: Pick<PlayerState, 'buff'>): BuffDef | null {
-  return player.buff ? (MOVES[player.buff.moveId].buff ?? null) : null;
+export function activeBuff(player: Pick<PlayerState, 'buff' | 'moveRanks'>): BuffDef | null {
+  // A ranked boost's buff is the stronger one (core/rank-effects.ts).
+  return player.buff ? (playerMove(player, player.buff.moveId).buff ?? null) : null;
 }
 
 /** A boost move takes hold: `kindle` lights Flash Fire at once, the others start their buff (replacing a running one). */
@@ -52,7 +54,7 @@ export function tickBoosts(player: PlayerState, dtMs: number): PlayerState {
 }
 
 /** Damage multiplier of the player's next hit from a `power` buff, or of every hit under `focus` (1 without). */
-export function buffDamage(player: Pick<PlayerState, 'buff'>): number {
+export function buffDamage(player: Pick<PlayerState, 'buff' | 'moveRanks'>): number {
   const def = activeBuff(player);
   return def?.kind === 'power' || def?.kind === 'focus' ? def.multiplier : 1;
 }
@@ -68,19 +70,19 @@ export function spendBuffHit(player: PlayerState): PlayerState {
 }
 
 /** Extra crit chance from a `haste` buff (0 without). */
-export function buffCrit(player: Pick<PlayerState, 'buff'>): number {
+export function buffCrit(player: Pick<PlayerState, 'buff' | 'moveRanks'>): number {
   const def = activeBuff(player);
   return def?.kind === 'haste' ? def.critChance : 0;
 }
 
 /** Walking speed factor from a `haste` buff (1 without). */
-export function buffSpeed(player: Pick<PlayerState, 'buff'>): number {
+export function buffSpeed(player: Pick<PlayerState, 'buff' | 'moveRanks'>): number {
   const def = activeBuff(player);
   return def?.kind === 'haste' ? def.speed : 1;
 }
 
 /** Damage-taken factor from a `guard` or `focus` buff (1 without). */
-export function buffDamageTaken(player: Pick<PlayerState, 'buff'>): number {
+export function buffDamageTaken(player: Pick<PlayerState, 'buff' | 'moveRanks'>): number {
   const def = activeBuff(player);
   return def?.kind === 'guard' || def?.kind === 'focus' ? def.damageTaken : 1;
 }

@@ -60,7 +60,8 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     type: shot.type,
     attackerTypes: enemy.types,
     power: shot.power,
-    damageMultiplier: 1,
+    // A rank effect's weakening (core/rank-effects.ts) takes the edge off its shots.
+    damageMultiplier: enemy.weakened?.factor ?? 1,
     pos: at ?? add(enemy.pos, scale(dir, enemy.radius + shot.radius)),
     vel: shot.speed === 0 ? vec(0, 0) : scale(dir, shot.speed),
     radius: shot.radius,
@@ -120,6 +121,7 @@ export function contactPlayer(
     moveType: attack.type,
     attackerTypes: enemy.types,
     defenderTypes: state.player.types,
+    ...(enemy.weakened ? { multiplier: enemy.weakened.factor } : {}),
   });
   const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(attack.pierceRoll || enemy.pierceRoll ? { pierceRoll: true } : {}) }, events);
   if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);

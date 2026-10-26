@@ -79,7 +79,7 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
     switch (event.type) {
       case 'enemyHit': {
         // A burn or poison tick: a small number, no hitstop.
-        if (event.dot) {
+        if (event.dot || event.minor) {
           next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: 'normal', big: false, ageMs: 0 }] };
           break;
         }

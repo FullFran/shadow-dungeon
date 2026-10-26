@@ -41,7 +41,7 @@ export const TIER_BUDGET: Readonly<Record<MoveTier, number>> = { basic: 1, advan
  * effects' expected extra damage included), against the baseline: player
  * damage only; enemy fairness (the one-hit cap, telegraphs) is untouched.
  */
-export const HARD_CEILING = 1.75;
+export const HARD_CEILING = 1.9;
 
 /**
  * The Maestro moves, each optionally unlocked only after clearing a dungeon
@@ -97,11 +97,22 @@ export function movePrice(move: MoveDef): number {
   return move.power < cut[0]! ? low : move.power < cut[1]! ? mid : high;
 }
 
-/** Mejoras of the original kit's moves: the cost of each rank (rank 2 is the last, shown as "+"). */
+/** Mejoras of the original kit's moves (Básico): the cost of each rank (rank 2 is the last, shown as "++"). */
 export const RANK_COSTS: readonly number[] = [150, 350];
 export const MAX_RANK = RANK_COSTS.length;
 
-/** Per rank: +10 % damage, and boost/area cooldowns 10 % shorter. */
+/** Mejoras of any move, by its tier: every move can be ranked up twice (odd/tasks/move-progression.md T2). */
+export const RANK_COSTS_BY_TIER: Readonly<Record<MoveTier, readonly number[]>> = {
+  basic: RANK_COSTS,
+  advanced: [250, 500],
+  master: [400, 750],
+};
+
+/**
+ * Per rank: +10 % damage, and boost cooldowns 10 % shorter (area moves keep
+ * theirs since move-progression: their ranks add effects instead, under the
+ * hard ceiling). Each rank also adds its designed effect (data/rank-effects.ts).
+ */
 export const RANK_EFFECT = { damage: 0.1, cooldown: 0.1 } as const;
 
 /**

@@ -26,7 +26,7 @@ export interface SaveData {
   upgrades: UpgradeLevels;
   /** Moves bought at the move tutor, per starter (absent = none). */
   learned?: LearnedMoves;
-  /** Mejoras of original moves, per starter (absent = none). */
+  /** Mejoras of any move, per starter (absent = none). */
   ranks?: RankedMoves;
 }
 
@@ -80,7 +80,7 @@ function sanitizeLearned(raw: unknown): LearnedMoves | null {
   return Object.keys(out).length > 0 ? out : null;
 }
 
-/** Mejoras: per starter, whole ranks 1..MAX_RANK of its original moves only; null when none. */
+/** Mejoras: per starter, whole ranks 1..MAX_RANK of moves it can know; null when none. */
 function sanitizeRanks(raw: unknown): RankedMoves | null {
   if (!isRecord(raw)) return null;
   const out: Partial<Record<StarterId, Partial<Record<MoveId, number>>>> = {};
@@ -88,7 +88,8 @@ function sanitizeRanks(raw: unknown): RankedMoves | null {
     const table = raw[id];
     if (!isRecord(table)) continue;
     const ranks: Partial<Record<MoveId, number>> = {};
-    for (const move of originalKit(id)) {
+    // Any move the species can know (its kit and the tutor's offer): every move can be ranked (move-progression).
+    for (const move of [...originalKit(id), ...TUTOR_OFFER[id]]) {
       const rank = table[move];
       if (typeof rank === 'number' && Number.isInteger(rank) && rank > 0) ranks[move] = Math.min(rank, MAX_RANK);
     }

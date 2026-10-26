@@ -5,7 +5,7 @@ import type { CardId, CardOutcome, HeraldCardId, SpellCardId } from '../data/car
 import type { UpgradeLevels } from '../data/upgrades';
 import type { QueenCard, UltraCard } from '../data/swamp-enemies';
 import type { ItemId } from '../data/items';
-import type { DotKind, MoveBonus, MoveId } from '../data/moves';
+import type { DotKind, MoveBonus, MoveId, ZoneDef } from '../data/moves';
 import type { PassiveId, SpeciesId } from '../data/species';
 import type { PokemonType } from '../data/types';
 import type { CollapseState } from './collapse';
@@ -174,6 +174,8 @@ export interface PlayerState {
   buff?: ActiveBuff;
   /** Mejoras bought at the move tutor (core/tutor.ts): rank per original move, fixed for the run; absent = none. */
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
+  /** Super-armor from a ranked move (core/rank-effects.ts): damage taken scaled by `damageTaken` for `remainingMs`; absent = none. */
+  ward?: { damageTaken: number; remainingMs: number };
 }
 
 /** A running boost buff: its move (whose `MoveDef.buff` says what it does), time left and, for `power`, hits left. */
@@ -203,6 +205,10 @@ export interface EnemyState {
   alive: boolean;
   /** A burn or poison left by a tutor move (core/afflictions.ts); absent = none. */
   dot?: EnemyDot;
+  /** A rank effect's mark, bursting later (core/rank-effects.ts); absent = none. */
+  mark?: EnemyMark;
+  /** A rank effect's weakening: the enemy's hits deal less (core/rank-effects.ts); absent = none. */
+  weakened?: EnemyWeaken;
   /** While > 0 the enemy is staggered and cannot act. */
   hitstunMs: number;
   /** Knockback displacement still to be applied. */
@@ -356,6 +362,13 @@ export interface ProjectileState {
   homing?: number;
   /** Player shots: the effects of the move that fired it (drain, recoil, damage over time, crit bonus). */
   effects?: HitEffects;
+  /** Rank effects (core/rank-effects.ts): a zone left by a move (drawn on the ground; its hits are minor), armed after `armMs`. */
+  zone?: true;
+  armMs?: number;
+  /** A shot that splits on its first hit. */
+  split?: { count: number; share: number };
+  /** A boomerang thrown out again when caught: `left` more throws along `dir`, each at `share` power, of `lifetimeMs`. */
+  rethrow?: { left: number; share: number; lifetimeMs: number; dir: Vec2 };
 }
 
 /** What a player's hit does beyond its damage (data/moves.ts `MoveDef`). */
@@ -364,6 +377,24 @@ export interface HitEffects {
   recoil?: number;
   dot?: DotKind;
   critBonus?: number;
+  /** The rank effects a hit carries (data/moves.ts `MoveDef`, core/rank-effects.ts). */
+  dotChance?: number;
+  mark?: { share: number; delayMs: number };
+  weaken?: { factor: number; durationMs: number };
+  chain?: { share: number; range: number };
+  zone?: ZoneDef;
+}
+
+/** A mark on an enemy (a rank effect): it bursts for `damage` once `ms` run out. */
+export interface EnemyMark {
+  damage: number;
+  ms: number;
+}
+
+/** A weakened enemy (a rank effect): its hits deal `factor` times their damage for `ms` more. */
+export interface EnemyWeaken {
+  factor: number;
+  ms: number;
 }
 
 /** A damage over time on an enemy: `damage` per tick, `ticksLeft` more ticks, the next in `nextMs`. */
@@ -413,7 +444,7 @@ export type GameEvent =
   | { type: 'buffStarted'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
-  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean; dot?: DotKind }
+  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean; dot?: DotKind; minor?: true; burst?: true }
   | { type: 'enemyDefeated'; enemyId: string }
   /** A leader winds up its rally cry (`windup`) or calls it (`cry`) (core/leaders.ts). */
   | { type: 'leaderRally'; enemyId: string; phase: 'windup' | 'cry' }
