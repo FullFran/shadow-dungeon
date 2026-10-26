@@ -1,6 +1,28 @@
 # La Sima del Eclipse: una vuelta al lore
 
-*(propuesta para el dueño, 26-10-2026; nada de esto está implementado)*
+*(propuesta para el dueño, 26-10-2026; implementada en la rama `feat/sima-lore` con las decisiones de abajo; el resumen vivo está en `docs/gdd.md`, «El lore de la Sima»)*
+
+## Decisiones del dueño (26-10-2026)
+
+1. **Razón: A**, a por los que no volvieron. Vuelves porque contestaste a la voz y tu sombra tira de ti hacia arriba.
+2. **«Lucidez» en el HUD** («Lucidity» en inglés); las cantidades no cambian (el equilibrio, más adelante). A las 0:00 «te pierdes» y tu sombra te sube al borde del cráter (el mismo final por tiempo, con las mismas recompensas).
+3. **Sendas sin cerrar: sin nombre** («Sombra de alguien», «Una herida que no es tuya»); cerradas, con nombre y una línea de reconocimiento. La memoria solo cambia nombres y textos, nunca qué jefe o qué suceso se genera (test: misma semilla y distinto progreso dan las mismas plantas).
+4. **La Sima sigue abierta desde el principio**, y la narración tiene que ser fuerte: una secuencia de súplicas al estilo de Mundo Misterioso en el pueblo antes de la primera bajada, y una escena clave la primera vez que te pierdes (caes, se apaga todo, tu sombra te sube y despiertas en el borde con Phantump, que explica el resto). Más el resto de cinemáticas de la sección 5. Solo jugando sola, una vez por dispositivo, se saltan, con el reloj parado; en compartida, una línea en el registro.
+5. **Los Caminantes de la Sima** (nombre elegido por el dueño, guiño a los Vigilantes del Abismo de Dark Souls 3; clave `lore.reborn.name`): no eres el único que vuelve. Todo Pokémon jugable es una persona que renació como Pokémon (la premisa de Mundo Misterioso), y cada uno contestó a la voz. Un Caminante despierta dentro de un Pokémon con sus recuerdos y sus heridas: por eso las Sendas son el pasado del propio Pokémon.
+6. **Figuraciones: sí** (solo presentación, nunca tocan la simulación; ajuste de accesibilidad y respeto a «reducir movimiento»).
+
+## Lo implementado y lo que cambió por el camino
+
+- Textos (sección 5, tabla final), lucidez, estratos como etapas, cinemáticas 5.1 a 5.7, súplicas, guardián sin rostro, heridas, Sombra extraviada y Figuraciones: hechos. Detalle en `docs/gdd.md` y en `odd/tasks/sima-lore.md`.
+- **Sombra extraviada**: en vez de una sala dentro de una planta generada, la planta entera es la antesala de la sala de la sombra, con su muro de niebla y una escalera al lado (sigue siendo optativa). Motivo: las cartas de las Sendas se dibujan sobre su propia arena (sus torretas y muros usan las medidas de la sala), y así el muro de niebla ya viaja por la red como el de cualquier jefe. Probabilidad: un 7 % por planta desde la 12, por semilla, nunca en planta de eco ni de heraldo.
+- **Heridas**: el turno de los guardianes se salta las plantas de herida (35, 55, 75...), así que los cinco guardianes siguen saliendo: Dhelmise pasa a la 45 y Nihilego a la 65 (sus pruebas de eco, también).
+- **Fuerza en la Sima**: un jefe de Senda juega la pelea entera de su nivel con el 60 % de la vida de su Senda, sin crecer con la profundidad (solo crece su daño), para que la prueba en su primera planta valga para todas.
+- **Vistas guardadas por dispositivo**, con su clave propia fuera de la partida guardada (como el prólogo y las cinemáticas de guardián): no son progreso, no van con la economía ni con la nube. No hay campo nuevo en `SaveData`.
+- Pendiente: volver a ver las cinemáticas de la Sima desde el menú, junto al Prólogo (propuesto en la sección 5; no pedido en las decisiones); las cifras de reloj y premios, para el equilibrio.
+
+---
+
+*Texto original de la propuesta:*
 
 Palabras del dueño: «Creo que tenemos que meter estos jefes [las sombras y las heridas de las Sendas] en la Sima del Eclipse, pero no sé cómo. A la Sima hay que darle una vuelta para que tenga sentido y hacerle un lore, con cinemáticas. Se me ocurre que sean ilusiones: Pokémon que entraron y se volvieron sombras, y paranoias que se monta tu cabeza resistiéndose a volverse loca por el eclipse. Y tiene que haber una razón por la que entramos ahí, no sé.»
 
@@ -324,4 +346,4 @@ Orden sugerido: T1 y T7 (se nota enseguida y no rompe nada), T2, T3, T4, T5, y T
 2. **¿El reloj se llama «lucidez» en el HUD, o solo en los textos?** El número no cambia; solo cómo se lee.
 3. **Las Sendas sin cerrar en la Sima: ¿sombra sin nombre, o mejor que no salgan sus heridas hasta que hayas cerrado al menos una Senda?** (Lo segundo sigue siendo justo para el diario si la condición es solo de texto, pero no si quita jefes.)
 4. **¿La Sima sigue abierta desde el principio?** Con la razón A tiene más fuerza abrirla tras vencer al primer guardián (ya hay una sombra que no volvió que buscar), pero el directo pedía tenerla desde el minuto uno.
-5. **¿Figuraciones sí o no?** Es la única mecánica nueva; todo lo demás reutiliza lo que hay.
+5. **¿Figuraciones sí o no?** Es la única mecánica nueva; todo lo demás reutiliza lo que hay. *(Decidido: sí.)*
