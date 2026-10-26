@@ -7,6 +7,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
 import { isTouchUi } from '../adapters/touch-mode';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave, wearShinyAt, writeSave, type SaveData } from './save';
@@ -153,14 +154,15 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
   };
 
   const list = cursorList({ items: [], onBack: options.onBack, onCursor: describe, label: t('evolve.title'), className: 'shop-list' });
+  const desc = description(list, { describe, children: [effect] });
 
   function refresh(): void {
     balance.replaceChildren(statLine(t('screen.coins.balance'), coinText(save.coins, (k) => t(k))));
     list.setItems(items());
-    describe(list.index());
+    desc.update();
   }
 
   refresh();
-  const element = mdWindow({ title: t('evolve.title'), className: 'shop gacha' }, [h('p', { textContent: t('evolve.text') }), balance, list.element, effect]);
+  const element = mdWindow({ title: t('evolve.title'), className: 'shop gacha' }, [h('p', { textContent: t('evolve.text') }), balance, describedMenu(list.element, desc.element)]);
   return { element, dispose: () => list.dispose() };
 }

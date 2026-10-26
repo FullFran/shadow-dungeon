@@ -39,6 +39,8 @@ export interface CursorListOptions {
 export interface CursorList {
   element: HTMLElement;
   index(): number;
+  /** The current rows (`describe.ts` reserves room for the description of each). */
+  items(): readonly ListItem[];
   /** Replaces the rows, keeping the cursor where it was when possible. */
   setItems(items: ListItem[]): void;
   dispose(): void;
@@ -203,6 +205,7 @@ export function cursorList(options: CursorListOptions): CursorList {
   return {
     element,
     index: () => index,
+    items: () => items,
     setItems,
     dispose() {
       const at = stack.indexOf(registered);

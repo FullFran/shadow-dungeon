@@ -8,6 +8,7 @@ import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { stepDifficulty, type Difficulty } from '../data/difficulty';
+import { description } from '../ui/describe';
 import { h, mdWindow } from '../ui/window';
 import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
@@ -158,14 +159,6 @@ const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context
 
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
   const worn = (id: SpeciesId) => options.skin?.worn(id) ?? false;
-  const info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, speciesInfo(options.sheets, options.species, worn(options.species)));
-  /** Shows the species under the cursor in the info window. */
-  const preview = (id: SpeciesId) => {
-    const title = info.querySelector('.md-window-title');
-    if (title) title.textContent = t(`species.${id}`);
-    for (const child of [...info.children]) if (child !== title) child.remove();
-    info.append(...speciesInfo(options.sheets, id, worn(id)));
-  };
   const roster = options.roster ?? STARTER_SPECIES;
   const items: ListItem[] = [
     ...roster.map((id) => ({
@@ -179,12 +172,22 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
     items,
     initial: Math.max(0, roster.indexOf(options.species)),
     onBack: options.onBack,
-    onCursor: (index) => {
-      const id = roster[index];
-      if (id) preview(id);
-    },
+    onCursor: (index) => preview(index),
     label: t('loadout.pick'),
   });
+  // The info window keeps the size of the largest species card (src/ui/describe.ts): the list beside it never moves.
+  let info: HTMLElement | null = null;
+  /** Shows the species under the cursor in the info window. */
+  function preview(index: number): void {
+    const id = roster[index];
+    if (!id) return;
+    const title = info?.querySelector('.md-window-title');
+    if (title) title.textContent = t(`species.${id}`);
+    desc.live.replaceChildren(...speciesInfo(options.sheets, id, worn(id)));
+  }
+  const desc = description(list, { describe: preview, children: speciesInfo(options.sheets, options.species, worn(options.species)) });
+  info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, [desc.element]);
+  desc.update();
   return [
     h('h1', { className: 'screen-title', textContent: t('loadout.pick') }),
     ...contextLine(options),

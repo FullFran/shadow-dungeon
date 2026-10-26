@@ -41,7 +41,9 @@
       .md-window .dim { color: var(--md-text-dim); }
       .md-stat { display: flex; justify-content: space-between; gap: 2em; padding: 2px 0; }
       .md-stat-value { color: var(--md-cursor); }
-      .md-list { display: flex; flex-direction: column; gap: 2px; outline: none; }
+      .md-list { display: flex; flex-direction: column; gap: 2px; outline: none; scrollbar-color: var(--md-border-shade) transparent; }
+      /* A list that scrolls inside its window never squeezes a row: two-line rows keep their height instead of overlapping. */
+      .md-list > .md-item, .md-list > .md-list-header { flex-shrink: 0; }
       .md-list.horizontal { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 18px; }
       .md-item { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 1.6em; padding: 3px 12px 3px 6px; border-radius: 6px; cursor: pointer; color: var(--md-text); }
       .md-item:focus-visible { outline: 3px solid var(--md-cursor); }
@@ -59,6 +61,14 @@
       .md-arrow:hover { filter: brightness(1.6); }
       .md-list-header { margin: 12px 0 2px; padding-left: 6px; color: var(--md-text-dim); }
       .md-list-header:first-child { margin-top: 0; }
+      /* A list and the description of its cursor row (src/ui/describe.ts): the description on the right, in a box as large as its largest
+         text (every row's text sits in the same grid cell, all but the live one hidden), so no window resizes and no row moves when the cursor does. */
+      .md-menu { display: grid; grid-template-columns: minmax(0, 1fr) var(--md-desc-width, 15em); gap: 0 24px; align-items: start; }
+      .md-desc { display: grid; min-width: 0; }
+      .md-desc > * { grid-area: 1 / 1; min-width: 0; }
+      .md-desc-ghost { visibility: hidden; pointer-events: none; }
+      /* Too narrow for two columns (a phone held upright): the box goes under the list, still as tall as its largest text. */
+      @media (max-width: 640px) { .md-menu { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
       @keyframes md-open { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
       @keyframes md-bob { 0% { transform: translateX(0); } 50% { transform: translateX(3px); } }
       @media (prefers-reduced-motion: reduce) { .md-window, .md-item.is-active .md-cursor { animation: none; } }
@@ -98,6 +108,7 @@
       .type-rock { background: #9a8458; } .type-psychic { background: #d9507f; } .type-ice { background: #4fa8b8; } .type-flying { background: #6f8fc8; } .type-water { background: #3f74c8; }
       .species .goal { margin-top: 12px; color: var(--md-cursor); }
       .moves { width: 33rem; max-width: 100%; }
+      .dungeon-about { width: 20em; max-width: 100%; box-sizing: border-box; }
       .move-row { padding-top: 6px; padding-bottom: 6px; }
       .move-card { display: flex; flex-direction: column; gap: 2px; }
       .move-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -191,8 +202,9 @@
         .result .md-stat { padding: 0; line-height: 1.25; }
         .result-actions { flex-direction: row; justify-content: center; gap: 24px; margin-top: 10px; }
       }
-      .shop { min-width: 30rem; max-width: 36rem; }
-      .shop .shop-effect { min-height: 2.6em; margin: 10px 0 0; }
+      .shop { width: 52rem; max-width: 100%; }
+      .shop.tutor { width: 60rem; }
+      .shop .shop-effect { margin: 0; }
       .shop .shop-balance { margin-bottom: 8px; }
       /* The move tutor: its long list scrolls inside the window; the build hint in the cursor colour. */
       .tutor .shop-list { max-height: 44vh; overflow-y: auto; }
@@ -359,16 +371,19 @@
         html.touch #app:has(.dungeons) > .screen-title { display: none; }
         html.touch #app:has(.dungeons) .screen-row { flex-wrap: nowrap; gap: 16px; align-items: stretch; }
         html.touch .dungeon-about { flex: 1 1 18rem; min-width: 0; font-size: 15px; }
-        /* Shop: description on the left, the rows (and Volver) on the right, so nothing scrolls off a phone in landscape. */
         html.touch .shop { width: min(52rem, 100%); max-width: 100%; padding-top: 18px; padding-bottom: 12px; }
         /* Keep the window clear of the fixed "Atrás" button in the top-left corner (centred: same room on the right). */
         html.touch #app:has(.shop), html.touch .town-shop { padding-left: max(96px, env(safe-area-inset-left)); padding-right: max(96px, env(safe-area-inset-right)); }
-        html.touch .shop .md-window-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'text list' 'balance list' 'effect list'; gap: 0 20px; }
+        /* Shop: the rows (and Volver) on the left, the text, balance and description on the right, so nothing scrolls off a phone in landscape. */
+        html.touch .shop .md-window-body { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'list text' 'list balance' 'list effect'; gap: 0 20px; }
+        html.touch .shop .md-menu { display: contents; }
         html.touch .shop .md-window-body > p:first-child { grid-area: text; font-size: 15px; }
         html.touch .shop .shop-balance { grid-area: balance; margin: 8px 0; }
         html.touch .shop .shop-list { grid-area: list; }
-        html.touch .shop .shop-effect { grid-area: effect; margin: 0; }
-        html.touch .tutor .md-window-body { grid-template-rows: auto auto auto 1fr; grid-template-areas: 'text list' 'balance list' 'build list' 'effect list'; }
+        html.touch .shop .md-desc { grid-area: effect; font-size: 15px; }
+        /* Mimikyu's stall: two rows only, so its rates go under them and the reveal's reserved room beside them (the window stays short). */
+        html.touch .stall .md-window-body { grid-template-rows: auto 1fr; grid-template-areas: 'list text' 'balance effect'; }
+        html.touch .tutor .md-window-body { grid-template-rows: auto auto auto 1fr; grid-template-areas: 'list text' 'list balance' 'list build' 'list effect'; }
         html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
         /* The move list scrolls inside the window, so the text and balance on the left stay in view. */
         html.touch .tutor .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }

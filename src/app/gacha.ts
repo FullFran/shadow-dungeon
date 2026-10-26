@@ -5,6 +5,7 @@ import type { SheetStore } from '../adapters/assets';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
+import { describedMenu, ghost, reservedBox } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { portrait } from './loadout';
@@ -89,14 +90,31 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
   };
   reveal.addEventListener('click', finishReveal);
 
+  const revealFrame = (sprite: HTMLElement) => {
+    const frame = h('div', { className: 'portrait-frame' }, [sprite]);
+    frame.style.cssText = 'border: 2px solid currentColor; background: none';
+    return frame;
+  };
+  // The reveal's room is kept from the start, one ghost per species of the pool (src/ui/describe.ts): a pull never resizes the window under the Pull row.
+  const reserved = GACHA_POOL.map((entry) =>
+    ghost([
+      h('div', { className: 'shop-effect' }, [
+        h('div', { className: 'gacha-reveal' }, [
+          h('div', {}, [revealFrame(portrait(options.sheets, entry.species))]),
+          h('p', { textContent: revealText({ species: entry.species, rarity: entry.rarity, duplicate: true, refund: GACHA.cost, shiny: true }) }),
+        ]),
+        h('p', { className: 'dim', textContent: t('gacha.text') }),
+      ]),
+    ]),
+  );
+
   const startReveal = (result: PullResult) => {
     finishReveal();
     reveal.className = `gacha-reveal is-${result.rarity}`;
     // The frame takes the rarity's colour from the reveal (`currentColor`).
     const sprite = portrait(options.sheets, result.species, undefined, result.shiny);
     sprite.style.filter = 'brightness(0)';
-    const frame = h('div', { className: 'portrait-frame' }, [sprite]);
-    frame.style.cssText = 'border: 2px solid currentColor; background: none';
+    const frame = revealFrame(sprite);
     art.replaceChildren(frame);
     text.textContent = t('gacha.reveal.wait');
     shown = () => {
@@ -143,7 +161,7 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
   }
 
   refresh();
-  const element = mdWindow({ title: t('gacha.title'), className: 'shop gacha' }, [h('p', { textContent: t('gacha.intro') }), balance, list.element, effect]);
+  const element = mdWindow({ title: t('gacha.title'), className: 'shop gacha stall' }, [h('p', { textContent: t('gacha.intro') }), balance, describedMenu(list.element, reservedBox([effect], reserved))]);
   return {
     element,
     dispose: () => {

@@ -3,6 +3,7 @@ import { dungeonById, type DungeonDef, type DungeonId } from '../data/dungeons';
 import type { Records } from '../town/records';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description } from '../ui/describe';
 import { h, mdWindow } from '../ui/window';
 
 /**
@@ -59,12 +60,13 @@ export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[
         },
   );
   const list = cursorList({ items, onBack: options.onBack, onCursor: describe, label: t('select.title') });
-  describe(list.index());
+  const desc = description(list, { describe, children: [subtitle, legend, best] });
+  desc.update();
   return [
     h('h1', { className: 'screen-title', textContent: t('select.title') }),
     h('div', { className: 'screen-row' }, [
       mdWindow({ title: t('select.title'), className: 'dungeons' }, [list.element]),
-      mdWindow({ title: t('select.about'), className: 'dungeon-about' }, [subtitle, legend, best]),
+      mdWindow({ title: t('select.about'), className: 'dungeon-about' }, [desc.element]),
     ]),
   ];
 }
