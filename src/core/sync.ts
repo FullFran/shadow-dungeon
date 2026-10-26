@@ -11,11 +11,15 @@ import { hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import { answerGuardedHit } from './roster';
 import { noteAggroDamage } from './aggro';
+import { applyDot } from './afflictions';
+import { markAndWeaken } from './rank-effects';
 import type {
   ActionPhase,
   AiMode,
   BossStance,
+  EnemyMark,
   EnemyState,
+  EnemyWeaken,
   GameEvent,
   HitClaim,
   PlayerState,
@@ -78,6 +82,9 @@ export interface EnemySnapshot {
   elite?: EliteTrait;
   armor?: true;
   pierceRoll?: true;
+  /** Rank effects the host keeps on it (core/rank-effects.ts): a pending mark, a weakening (the guest draws them; a weakened enemy's contact hits it softer). */
+  mark?: EnemyMark;
+  weakened?: EnemyWeaken;
 }
 
 /** A projectile in flight: the host's enemy ones (simulated by guests), or a player's own (drawn only by the others). */
@@ -92,6 +99,8 @@ export interface ProjectileSnapshot {
   remainingMs: number;
   /** Enemy shots only: positional (rolling through it does not help). */
   pierceRoll?: boolean;
+  /** Enemy shots only: the damage multiplier when it is not 1 (a weakened enemy's shot, core/brain.ts `spawnShot`). */
+  mult?: number;
 }
 
 export interface HostSnapshot {
@@ -109,7 +118,18 @@ export interface HostSnapshot {
 }
 
 function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
-  return { id: p.id, type: p.type, attackerTypes: p.attackerTypes, power: p.power, pos: p.pos, vel: p.vel, radius: p.radius, remainingMs: p.remainingMs, ...(p.pierceRoll ? { pierceRoll: true } : {}) };
+  return {
+    id: p.id,
+    type: p.type,
+    attackerTypes: p.attackerTypes,
+    power: p.power,
+    pos: p.pos,
+    vel: p.vel,
+    radius: p.radius,
+    remainingMs: p.remainingMs,
+    ...(p.pierceRoll ? { pierceRoll: true } : {}),
+    ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
+  };
 }
 
 export function playerSnapshot(state: WorldState): PlayerSnapshot {
@@ -190,6 +210,8 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       ...(e.elite ? { elite: e.elite } : {}),
       ...(e.armor ? { armor: true as const } : {}),
       ...(e.pierceRoll ? { pierceRoll: true as const } : {}),
+      ...(e.mark ? { mark: e.mark } : {}),
+      ...(e.weakened ? { weakened: e.weakened } : {}),
     })),
     projectiles: state.projectiles.filter((p) => p.owner === 'enemy').map(projectileSnapshot),
     ...(simaSync(state) ? { sima: simaSync(state)! } : {}),
@@ -255,7 +277,8 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       const maxHp = e.maxHp * partyHpScale(counted, s.species);
       return { ...e, maxHp, hp: maxHp };
     };
-    const base = rescaled ?? fresh();
+    // The burn, the mark and the weakening are the host's: the latest snapshot says which hold (absent = none).
+    const { dot: _dot, mark: _mark, weakened: _weakened, ...base } = rescaled ?? fresh();
     const contact = local && sameAttack(local, s) ? local.ai.contact : 'none';
     return {
       ...base,
@@ -271,6 +294,8 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
       elite: s.elite,
       armor: s.armor,
       pierceRoll: s.pierceRoll,
+      ...(s.mark ? { mark: s.mark } : {}),
+      ...(s.weakened ? { weakened: s.weakened } : {}),
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');
@@ -279,7 +304,7 @@ export function applyHostSnapshot(state: WorldState, snapshot: HostSnapshot): Wo
     return {
       ...s,
       owner: 'enemy',
-      damageMultiplier: 1,
+      damageMultiplier: s.mult ?? 1,
       hitstunMs: 0,
       knockback: 0,
       hitIds: local?.hitIds ?? [],
@@ -327,7 +352,10 @@ export function applyHitClaims(state: WorldState, claims: readonly HitClaim[]): 
         hitstunMs: Math.max(enemy.hitstunMs, claim.hitstunMs),
         knockback: claim.knockback,
       };
-      events.push({ type: 'enemyHit', enemyId: enemy.id, damage: claim.damage, effectiveness: claim.effectiveness, pos: enemy.pos });
+      // The burn that took on the guest's roll, its mark and its weakening: the host keeps and ticks them, once.
+      if (claim.dot && struck.alive) struck = applyDot(struck, claim.dot, claim.damage);
+      struck = markAndWeaken(struck, { ...(claim.mark ? { mark: claim.mark } : {}), ...(claim.weaken ? { weaken: claim.weaken } : {}) }, claim.damage);
+      events.push({ type: 'enemyHit', enemyId: enemy.id, damage: claim.damage, effectiveness: claim.effectiveness, pos: enemy.pos, ...(claim.minor ? { minor: true as const } : {}) });
       if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
     }
     enemies = enemies.map((e) => (e.id === enemy.id ? struck : e));

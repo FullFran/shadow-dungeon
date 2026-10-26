@@ -829,7 +829,9 @@ Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
 
 Build recomendado: Desarme · Huesomerang · Danza Espada · Terremoto.
 
-**Pendiente:** en una sala en línea, la quemadura o el veneno que aplica un invitado no viaja en su reclamación de golpe, así que el anfitrión no la aplica; Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma solo te hace invulnerable con su rango +2 (y solo en el golpe, no mientras desapareces). Los efectos de rango que crean algo (zonas, divisiones, cadenas, marcas, debilitar) solo los resuelve el anfitrión o la partida en solitario: un invitado ve su golpe, pero no esos efectos.
+**Pendiente:** Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma solo te hace invulnerable con su rango +2 (y solo en el golpe, no mientras desapareces).
+
+**En una sala en línea** (cuando el golpe es de un invitado): la quemadura o el veneno que prende en su tirada, la marca y el debilitar viajan en su reclamación de golpe; el anfitrión los aplica una sola vez, los hace correr y los manda en su instantánea, así que el invitado ve la marca y el debilitar, y un enemigo debilitado también le pega más flojo (sus disparos llevan el factor). Las zonas, las divisiones, las cadenas y los relanzamientos son golpes del propio invitado: los crea en su lado y reclama cada golpe como cualquier otro (cada pasada de una zona que dura, como Giro Fuego, es su propia reclamación). Sus i-frames y su superarmadura le protegen en su pantalla, donde se juzgan los golpes que recibe. El anfitrión dibuja las zonas de un invitado como sus proyectiles, no como un círculo en el suelo.
 
 ### Contenido del primer prototipo (M0)
 

@@ -208,13 +208,14 @@ function decodeEnemy(w: unknown[]): EnemySnapshot {
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
-  // Optional positional flag, last (an older peer ignores it).
-  if (p.pierceRoll) out.push(1);
+  // Optional positional flag, then the damage multiplier of a weakened enemy's shot (an older peer ignores both).
+  if (p.pierceRoll || p.mult !== undefined) out.push(p.pierceRoll ? 1 : 0);
+  if (p.mult !== undefined) out.push(r3(p.mult));
   return out;
 }
 
 function decodeProjectile(w: unknown[]): ProjectileSnapshot {
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -226,8 +227,46 @@ function decodeProjectile(w: unknown[]): ProjectileSnapshot {
     number,
     number,
     number | undefined,
+    unknown,
   ];
-  return { id, type, attackerTypes, power, pos: { x, y }, vel: { x: vx, y: vy }, radius, remainingMs, ...(pierce === 1 ? { pierceRoll: true } : {}) };
+  return {
+    id,
+    type,
+    attackerTypes,
+    power,
+    pos: { x, y },
+    vel: { x: vx, y: vy },
+    radius,
+    remainingMs,
+    ...(pierce === 1 ? { pierceRoll: true } : {}),
+    ...(finite(mult) && mult > 0 && mult <= MAX_SHOT_MULT ? { mult } : {}),
+  };
+}
+
+/** The largest damage multiplier an enemy shot may carry on the wire (a weakening only lowers it). */
+const MAX_SHOT_MULT = 1;
+
+/** Rank-effect statuses of the snap's enemies on the wire: [id, mark damage, mark ms, weaken factor, weaken ms] (null where absent), only enemies that have one. */
+type StatusWire = [string, number | null, number | null, number | null, number | null];
+
+function encodeStatuses(enemies: readonly EnemySnapshot[]): StatusWire[] {
+  return enemies
+    .filter((e) => e.mark || e.weakened)
+    .map((e) => [e.id, e.mark ? ri(e.mark.damage) : null, e.mark ? ri(e.mark.ms) : null, e.weakened ? r3(e.weakened.factor) : null, e.weakened ? ri(e.weakened.ms) : null]);
+}
+
+/** The snap's enemies with the statuses from the wire laid on (malformed entries are dropped; an older host sends none). */
+function withStatuses(enemies: EnemySnapshot[], wire: unknown): EnemySnapshot[] {
+  if (!Array.isArray(wire)) return enemies;
+  const byId = new Map<string, Pick<EnemySnapshot, 'mark' | 'weakened'>>();
+  for (const entry of wire) {
+    if (!Array.isArray(entry) || entry.length !== 5 || typeof entry[0] !== 'string') continue;
+    const [id, damage, ms, factor, weakMs] = entry as unknown[];
+    const mark = finite(damage) && finite(ms) && damage >= 0 && ms >= 0 ? { damage, ms } : undefined;
+    const weakened = finite(factor) && finite(weakMs) && factor > 0 && factor <= 1 && weakMs >= 0 ? { factor, ms: weakMs } : undefined;
+    byId.set(id as string, { ...(mark ? { mark } : {}), ...(weakened ? { weakened } : {}) });
+  }
+  return enemies.map((e) => (byId.has(e.id) ? { ...e, ...byId.get(e.id) } : e));
 }
 
 /** A gate's progress on the wire: [done, outcome, key x, key y] (key and outcome optional). */
@@ -263,6 +302,8 @@ export function encodeMessage(message: NetMessage): string {
         ...(message.s.party !== undefined ? { n: message.s.party } : {}),
         // The floor's gate (optional): done flag, outcome, the dropped key's position.
         ...(message.s.gate ? { g: encodeGate(message.s.gate) } : {}),
+        // Rank-effect marks and weakenings on enemies (optional: an older guest ignores them).
+        ...(encodeStatuses(message.s.enemies).length > 0 ? { x: encodeStatuses(message.s.enemies) } : {}),
       };
       break;
     case 'town':
@@ -305,7 +346,7 @@ export function decodeMessage(text: string): NetMessage | null {
       s: {
         tick: wire.k as number,
         berries: Array.isArray(wire.b) ? (wire.b as string[]) : [],
-        enemies: (wire.e as unknown[][]).map(decodeEnemy),
+        enemies: withStatuses((wire.e as unknown[][]).map(decodeEnemy), wire.x),
         projectiles: (wire.p as unknown[][]).map(decodeProjectile),
         ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
         ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),

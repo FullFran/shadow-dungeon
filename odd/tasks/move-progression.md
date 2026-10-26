@@ -63,9 +63,26 @@ Parent: review the four work-unit commits; push/PR are the user's decision. Foll
 Branch `fix/move-progression-followups` from main b9c1cdf. Route: one bounded writer, inline per task (the parent delegated both tasks). Defaults untouched: golden digest and the default balance report must stay unchanged.
 
 - [x] F1 HUD rank pips: the in-run move slot windows show the equipped move's rank.
-- [ ] F2 Guest co-op rank effects: deterministic loopback tests for a guest using ranked moves; fix what they find.
+- [x] F2 Guest co-op rank effects: deterministic loopback tests for a guest using ranked moves; fix what they find.
+
+Commits: F1 cfa4fe0 (feat(hud)), F2 the fix(net) commit after it on this branch.
 
 ### F1 evidence
 - RED: tests/adapters/hud-rank-pips.test.ts, 4 of 4 failed (`slotRankPips` and `TIER_COLORS` missing); GREEN after the change.
 - adapters/hud.ts `slotRankPips` (pure layout): MAX_RANK diamonds at the top right of the slot window (the key-hint line), bought ranks filled first, in the move's tier colour (ui/tokens.ts `TIER_COLORS`: Básico pale, Avanzado blue, Maestro gold, the DOM badge colours), hollow pips for ranks still to buy; the cooldown label moves left of them. Null for an unranked move, so a plain run's HUD is unchanged. Pixelify Sans has no ★, so the pips are drawn shapes like the cursor.
 - Silent screenshot (headless Firefox WebDriver BiDi, profile user.js `media.volume_scale` 0, localStorage `muted: true`; only the vite and firefox PIDs the script started were killed): /tmp/move-followups/hud-stars.png — Garra Umbría ◆◆ (Básico, pale), Mazazo ◆◆ (Maestro, gold), Afilagarras ◆◇ (Avanzado, blue) with its «12 s» cooldown left of the pips, Brillo Mágico unranked (no pips).
+
+### F2 evidence
+- Decision revised (2026-10-26, this writer, within the T2 rule's intent): enemy statuses (burn/poison, mark, weakening) stay host-only and the host ticks them; but zones, split shots, chained jumps and rethrows are the striker's own hits, so a guest now spawns them on its side and claims what they hit, like its ordinary projectiles. Resolving them on the host instead would strike with the host player's stats, items and STAB and credit the host.
+- RED (tests/net/coop-rank-effects.test.ts over tests/net/coop-loop.ts, lagged loopback 80 ± 15 ms, fake clock): before the fix 8 of 13 failed (burn never reached the host, burn chance ignored, no mark, no weakening, no split, no ember zone, no chain, and the extra-hit case); crit, size, return, i-frames and super-armor already held. The extra-hit failure was a test bug (Fury Swipes' extra hit is rank +2, and a Gastly dummy is immune to a Normal move). GREEN after the fix: 14 of 14 (one Fire Spin case added), plus tests/net/rank-status-wire.test.ts 2 of 2.
+- Bugs and root causes:
+  1. Guest burn/poison lost (the known open issue): `HitClaim` carried only damage, effectiveness, stagger and knockback, and `applyHitClaims` never applied a damage over time; the guest applied the burn only to its local copy, which it never ticks and the snapshot never cleared. Fix: the guest rolls the chance, the claim carries `dot` when it took, the host applies it once (claim ids are deduped) and ticks it; the guest no longer keeps a local burn. Test: the burn ticks exactly `DOTS.burn.ticks` times on the host for `hit + ticks × perTick`, both screens end at the same HP, and with a chance the host burns exactly when the guest's roll took (8 seeds, both outcomes seen).
+  2. Guest marks and weakenings dropped: core/combat.ts applied them on the host only and the claim did not carry them. Fix: the claim carries `mark` and `weaken`; `applyHitClaims` runs `markAndWeaken`. The host's snap now carries each enemy's mark and weakening (wire key `x`, optional, validated) so the guest draws them and a weakened enemy's contact hits the guest softer.
+  3. A weakened enemy's shots hit guests at full damage: the snap's projectiles dropped `damageMultiplier` (the guest set 1). Fix: an enemy shot carries `mult` when it is not 1 (validated 0 < mult ≤ 1).
+  4. A guest's zones, split shots and chains never happened (role gates in core/combat.ts). Fix: the gates are gone; their hits are claimed (`minor` travels so the host shows a small number).
+  5. Pre-existing, found by the zone test: a guest's lingering zone (Fire Spin, unranked) landed only its first tick on the host, because every tick reused the claim id `p2:<projectile>:<enemy>` and the host dropped the rest as resends. Fix: a lingering projectile's hit source includes the time it had left. RED observed by reverting only this line: the Fire Spin test got 1 host hit for 4 guest hits (the ember test 2 of 5).
+- Guest-local checks: i-frames of a ranked Shadow Sneak and super-armor of a ranked Swords Dance protect the guest in its own world (its hits are judged there).
+- Defaults: solo and host paths unchanged (golden digest green in npm test); `npm run balance -- --quick --slots` report byte-identical (`cmp`) to the same run on an exported copy of main b9c1cdf (0 failures, 42 warnings, 71 passes). The committed reports/balance/latest.md is an older full run and was left untouched.
+- Not verified: a real two-browser session (Trystero or `?net=local`); the host draws a guest's zone as one of its projectiles, not as a ground disc (cosmetic, noted in the GDD).
+- Docs: GDD «Movimientos y maestro» pending note replaced by a co-op paragraph.
+- Checks: npm test 197 files / 2410 tests passed; npm run build ok.

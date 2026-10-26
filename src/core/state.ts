@@ -530,6 +530,16 @@ export interface HitClaim {
   knockback: Vec2;
   /** Stopped by a guard: chip damage only, no stagger. */
   blocked: boolean;
+  /**
+   * What the host resolves on its enemy with the claim, once (it ticks them;
+   * odd/tasks/move-progression.md F2): the burn or poison that took on the
+   * guest's roll, and a rank effect's mark and weakening.
+   */
+  dot?: DotKind;
+  mark?: { share: number; delayMs: number };
+  weaken?: { factor: number; durationMs: number };
+  /** A zone's tick or a chained jump: a small number on the host too. */
+  minor?: true;
 }
 
 export interface WorldState {

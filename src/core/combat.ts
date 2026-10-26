@@ -233,18 +233,36 @@ function strikeEnemy(
     state = { ...state, rng: roll.state };
     dotTakes = roll.value < hit.effects.dotChance;
   }
-  const dotted = dotTakes ? applyDot(reacted, hit.effects!.dot!, damage) : reacted;
-  // Rank effects (core/rank-effects.ts), on the host and solo: a mark that bursts later, a weakening.
+  // The burn and the rank effects' mark and weakening (core/rank-effects.ts) are the host's (and solo's) to keep and tick:
+  // a guest rolls for the burn and sends what took with its claim (sync.ts `applyHitClaims`).
   const host = state.role !== 'guest';
+  const dotted = dotTakes && host ? applyDot(reacted, hit.effects!.dot!, damage) : reacted;
   const struck = host ? markAndWeaken(dotted, hit.effects, damage) : dotted;
   if (!struck.alive) events.push({ type: 'enemyDefeated', enemyId: enemy.id });
-  claim(state, enemy, hit, { damage, effectiveness, hitstunMs: hit.hitstunMs * poise.hitstunScale, knockback: struck.knockback, blocked: false }, events);
+  claim(
+    state,
+    enemy,
+    hit,
+    {
+      damage,
+      effectiveness,
+      hitstunMs: hit.hitstunMs * poise.hitstunScale,
+      knockback: struck.knockback,
+      blocked: false,
+      ...(dotTakes ? { dot: hit.effects!.dot! } : {}),
+      ...(hit.effects?.mark ? { mark: hit.effects.mark } : {}),
+      ...(hit.effects?.weaken ? { weaken: hit.effects.weaken } : {}),
+      ...(hit.minor ? { minor: true as const } : {}),
+    },
+    events,
+  );
   let next: WorldState = {
     ...state,
     player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), damage)), hit.effects, damage), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
-  if (!host || !hit.effects) return next;
+  // Zones, split shots and chained jumps are the striker's own hits: a guest spawns them on its side and claims what they hit.
+  if (!hit.effects) return next;
   // A zone left where the hit landed (embers, a toxic puddle, falling rocks).
   if (hit.effects.zone) next = zoneProjectile(next, hit.effects.zone, enemy.pos, { type: hit.type, multiplier: hit.multiplier, moveId: hit.moveId ?? 'ember' });
   // A chain: the hit jumps to the nearest other living enemy in range (once; what it carries on spawns nothing more).
@@ -339,7 +357,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
   };
   let next: WorldState = { ...state, nextId: state.nextId + 1, projectiles: [...state.projectiles, projectile] };
   // A wave with a `line` zone leaves it along its path, each part armed as the wave goes by.
-  if (move.zone?.at === 'line' && move.hitbox.wave && state.role !== 'guest') {
+  if (move.zone?.at === 'line' && move.hitbox.wave) {
     const reach = (move.hitbox.speed * charge.speedMultiplier * move.hitbox.lifetimeMs) / 1000;
     const parts = Math.max(1, Math.floor(reach / (move.zone.radius * 2)));
     for (let i = 0; i < parts; i++) {
@@ -424,7 +442,7 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
       if (next === 'active' && move.buff) current = { ...current, player: castBuff(payHpCost(current.player, move), move, events) };
       // Rank effects: a heal as the move takes hold; an aftershock (or the wisps) around the player as its active phase ends.
       if (next === 'active' && move.heal) current = { ...current, player: healOnUse(current.player, move) };
-      if (next === 'recovery' && move.zone?.at === 'self' && current.role !== 'guest') {
+      if (next === 'recovery' && move.zone?.at === 'self') {
         current = zoneProjectile(current, move.zone, current.player.pos, { type: move.type, multiplier: moveMultiplier(playerStats(current.player), move, action, current.player.moveRanks), moveId: move.id });
       }
     }
@@ -567,7 +585,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
             hitstunMs: moved.hitstunMs,
             knockback: moved.knockback,
             from: moved.pos,
-            source: returning ? `${moved.id}r` : moved.id,
+            // A lingering zone hits again every `linger` ms: each tick is its own claim (the time left tells them apart).
+            source: returning ? `${moved.id}r` : moved.linger ? `${moved.id}@${Math.round(moved.remainingMs)}` : moved.id,
             ...(moved.bonus ? { bonus: moved.bonus } : {}),
             ...(moved.moveId ? { moveId: moved.moveId } : {}),
             ...(moved.effects ? { effects: moved.effects } : {}),
@@ -575,8 +594,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
           },
           events,
         );
-        // A split shot bursts into smaller ones past its target (host and solo).
-        if (moved.split && !moved.pierce && current.role !== 'guest') current = splitShots(current, moved, target.pos, normalize(moved.vel), target.id);
+        // A split shot bursts into smaller ones past its target (a guest's too: their hits are its claims).
+        if (moved.split && !moved.pierce) current = splitShots(current, moved, target.pos, normalize(moved.vel), target.id);
         moved = moved.pierce ? { ...moved, hitIds: [...moved.hitIds, target.id] } : null;
       }
     } else if (!moved.hitIds.includes(PLAYER_ID) && distance(current.player.pos, moved.pos) <= PLAYER.radius + moved.radius) {
