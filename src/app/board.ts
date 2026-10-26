@@ -4,6 +4,7 @@ import { dungeonById } from '../data/dungeons';
 import { MISSIONS } from '../data/missions';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { achievementToast } from './achievements';
 import { coinText } from './coin-lines';
@@ -133,15 +134,16 @@ export function missionBoardWindow(options: BoardOptions): { element: HTMLElemen
     describe(index);
   };
   const list = cursorList({ items: items(), onBack: options.onBack, onCursor, label: tr('mission.title'), className: 'shop-list' });
+  const desc = description(list, { describe, children: [detail] });
 
   function refresh(): void {
     board = missionBoard(options.now());
     header.replaceChildren(statLine(tr('mission.accepted'), `${state().accepted.length}/${MISSIONS.maxAccepted}`), statLine(tr('screen.coins.balance'), coinText(loadSave(options.store).coins, tr)));
     list.setItems(items());
-    describe(list.index());
+    desc.update();
   }
 
   refresh();
-  const element = mdWindow({ title: tr('mission.title'), className: 'shop board' }, [h('p', { textContent: tr('mission.intro') }), header, list.element, detail]);
+  const element = mdWindow({ title: tr('mission.title'), className: 'shop board' }, [h('p', { textContent: tr('mission.intro') }), header, describedMenu(list.element, desc.element)]);
   return { element, dispose: () => list.dispose() };
 }

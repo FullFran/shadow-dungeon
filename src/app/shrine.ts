@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import type { BestiaryEntry } from '../town/bestiary';
 import { gauntletReward, gauntletUnlocked, trialBest, type ShrineRecords, type TrialBest } from '../town/shrine-records';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import type { SheetStore } from '../adapters/assets';
 import { coinText } from './coin-lines';
@@ -195,12 +196,13 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const first = items();
   const initial = shrineFocus(view, options.focus, options.heralds);
   const list = cursorList({ items: first, ...(initial !== undefined && !first[initial]?.disabled ? { initial } : {}), onBack: () => (view === 'main' ? options.onBack() : go(view === 'heralds' ? 'reflections' : 'main')), onCursor: describe, label: t('shrine.title'), className: 'shrine-list' });
+  const desc = description(list, { describe, children: [about] });
   const heading = h('h3', { className: 'dim' });
 
   function refresh(): void {
     list.setItems(items());
     heading.textContent = view === 'main' ? t('shrine.subtitle') : t(`shrine.${view}`);
-    describe(list.index());
+    desc.update();
   }
 
   function go(next: ShrineView): void {
@@ -211,7 +213,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   refresh();
   const element = mdWindow({ title: t('shrine.title'), className: 'shrine wide' }, [
     heading,
-    h('div', { className: 'shrine-body' }, [list.element, about]),
+    h('div', { className: 'shrine-body' }, [list.element, desc.element]),
     ...(options.note ? [h('p', { className: 'dim shrine-note', textContent: options.note })] : []),
   ]);
   return { element, dispose: () => list.dispose() };

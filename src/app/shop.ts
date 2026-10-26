@@ -4,6 +4,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
 import { isTouchUi } from '../adapters/touch-mode';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave, writeSave, type SaveData } from './save';
@@ -98,15 +99,16 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
   ];
 
   const list = cursorList({ items: items(), onBack: options.onBack, onCursor: describe, label: t('shop.title'), className: 'shop-list' });
+  const desc = description(list, { describe, children: [effect] });
 
   function refresh(): void {
     rows = shopRows(save);
     balance.replaceChildren(statLine(t('screen.coins.balance'), coinText(save.coins, (key) => t(key))));
     list.setItems(items());
-    describe(list.index());
+    desc.update();
   }
 
   refresh();
-  const element = mdWindow({ title: t('shop.title'), className: 'shop' }, [h('p', { textContent: t('shop.text') }), balance, list.element, effect]);
+  const element = mdWindow({ title: t('shop.title'), className: 'shop' }, [h('p', { textContent: t('shop.text') }), balance, describedMenu(list.element, desc.element)]);
   return { element, dispose: () => list.dispose() };
 }

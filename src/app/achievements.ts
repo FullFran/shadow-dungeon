@@ -5,6 +5,7 @@ import { dungeonById, guardianOf } from '../data/dungeons';
 import { awakeningsOf } from '../data/player-evolutions';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave } from './save';
@@ -119,12 +120,12 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
     label: t('achievement.title'),
     className: 'shop-list',
   });
-  describe(list.index());
+  const desc = description(list, { describe, children: [detail] });
+  desc.update();
   const element = mdWindow({ title: t('achievement.title'), className: 'shop achievements' }, [
     h('p', { textContent: t('achievement.intro') }),
     h('div', { className: 'shop-balance' }, [statLine(t('achievement.total'), `${total}/${ACHIEVEMENTS.length}`)]),
-    list.element,
-    detail,
+    describedMenu(list.element, desc.element),
   ]);
   return { element, dispose: () => list.dispose() };
 }

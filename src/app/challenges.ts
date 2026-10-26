@@ -5,6 +5,7 @@ import type { SpeciesId } from '../data/species';
 import type { SheetStore } from '../adapters/assets';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow } from '../ui/window';
 import { portrait } from './loadout';
 
@@ -85,9 +86,8 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
     { label: t('menu.back'), onConfirm: options.onBack },
   ];
   const list = cursorList({ items, onBack: options.onBack, onCursor: describe, label: t('challenges.title'), className: 'shop-list' });
-  // Two-line names keep their height in the scrolling list (the tutor's rows are one line).
-  for (const row of list.element.querySelectorAll<HTMLElement>('.md-item')) row.style.flexShrink = '0';
-  describe(list.index());
-  const element = mdWindow({ title: t('challenges.title'), className: 'shop gacha tutor challenges' }, [h('p', { textContent: t('challenges.text') }), list.element, h('div', { className: 'shop-effect' }, [frame, state, intro, drops])]);
+  const desc = description(list, { describe, children: [h('div', { className: 'shop-effect' }, [frame, state, intro, drops])] });
+  desc.update();
+  const element = mdWindow({ title: t('challenges.title'), className: 'shop gacha tutor challenges' }, [h('p', { textContent: t('challenges.text') }), describedMenu(list.element, desc.element)]);
   return { element, dispose: () => list.dispose() };
 }

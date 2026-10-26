@@ -11,6 +11,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { isTouchUi } from '../adapters/touch-mode';
 import { getLanguage, t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
+import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { moveInfoLines } from './move-info';
@@ -280,6 +281,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     label: t('tutor.title'),
     className: 'shop-list',
   });
+  const desc = description(list, { describe: (index) => describe(rowAt[index]), children: [effect] });
 
   function switchSpecies(delta: -1 | 1): void {
     const roster = rosterOf(save);
@@ -297,10 +299,10 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     let r = 0;
     for (const item of next) rowAt.push(item.onConfirm && item.className?.startsWith('shop-row') ? (rows[r++] ?? null) : null);
     list.setItems(next);
-    describe(rowAt[list.index()]);
+    desc.update();
   }
 
   refresh();
-  const element = mdWindow({ title: t('tutor.title'), className: 'shop tutor' }, [h('p', { textContent: t('tutor.text') }), balance, build, list.element, effect]);
+  const element = mdWindow({ title: t('tutor.title'), className: 'shop tutor' }, [h('p', { textContent: t('tutor.text') }), balance, build, describedMenu(list.element, desc.element)]);
   return { element, dispose: () => list.dispose() };
 }
