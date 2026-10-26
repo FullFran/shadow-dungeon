@@ -261,8 +261,8 @@ func TestApplyMail(t *testing.T) {
 				users.ConfirmEmailChangeTemplate != EmailChangeTemplate || users.OTP.EmailTemplate != OTPTemplate {
 				t.Fatal("email templates not applied")
 			}
-			if users.AuthAlert.Enabled != tc.enabled {
-				t.Fatalf("auth alert enabled = %v, want %v", users.AuthAlert.Enabled, tc.enabled)
+			if users.AuthAlert.Enabled {
+				t.Fatal("the new-login alert must stay off")
 			}
 			if users.AuthRule == nil || *users.AuthRule != "" {
 				t.Fatalf("authRule changed: %v", users.AuthRule)

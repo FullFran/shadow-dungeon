@@ -85,14 +85,15 @@ func applyMail(settings *core.Settings, m Mail) {
 }
 
 // applyMailTemplates writes the bilingual email templates of the users
-// collection. It does not save it. The login alert is sent only with SMTP on.
-func applyMailTemplates(users *core.Collection, smtpEnabled bool) {
+// collection. It does not save it. The new-login alert stays off: players on
+// mobile networks change IP often and would get one on almost every login.
+func applyMailTemplates(users *core.Collection) {
 	users.VerificationTemplate = VerificationTemplate
 	users.ResetPasswordTemplate = ResetPasswordTemplate
 	users.ConfirmEmailChangeTemplate = EmailChangeTemplate
 	users.OTP.EmailTemplate = OTPTemplate
 	users.AuthAlert.EmailTemplate = AuthAlertTemplate
-	users.AuthAlert.Enabled = smtpEnabled
+	users.AuthAlert.Enabled = false
 }
 
 // The links point at PocketBase's built-in confirmation pages under /_/,

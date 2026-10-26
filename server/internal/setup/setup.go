@@ -111,7 +111,7 @@ func Apply(app core.App, cfg Config) error {
 		})
 	}
 	users.OAuth2.Enabled = len(users.OAuth2.Providers) > 0
-	applyMailTemplates(users, cfg.Mail.SMTPEnabled())
+	applyMailTemplates(users)
 	return app.Save(users)
 }
 
