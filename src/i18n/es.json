@@ -2316,5 +2316,10 @@
   "sima.plea.hermit.3": "Baja. Pero cuenta las veces, y no tientes a tu sombra. Te lo pido por favor.",
   "sima.plea.oracle.1": "Cada uno te ha dado un nombre. No los cargues todos a la vez: llévalos de uno en uno.",
   "sima.plea.oracle.2": "Tú puedes volver. Tu sombra tira de ti cuando te pierdes. Ellos no tuvieron esa suerte.",
-  "sima.plea.oracle.3": "Baja. Y si te pierdes, te espero aquí, en el borde."
+  "sima.plea.oracle.3": "Baja. Y si te pierdes, te espero aquí, en el borde.",
+  "menu.accessibility": "Accesibilidad",
+  "menu.figurations": "Figuraciones (Sima)",
+  "menu.figurations.on": "Sí",
+  "menu.figurations.reduced": "Reducidas",
+  "menu.figurations.off": "No"
 }

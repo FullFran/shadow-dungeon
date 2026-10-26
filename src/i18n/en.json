@@ -2316,5 +2316,10 @@
   "sima.plea.hermit.3": "Go down. But count the times, and do not tempt your shadow. Please, I am asking you.",
   "sima.plea.oracle.1": "Each of them has given you a name. Do not carry them all at once: take them one at a time.",
   "sima.plea.oracle.2": "You can come back. Your shadow pulls you up when you get lost. They did not have that luck.",
-  "sima.plea.oracle.3": "Go down. And if you get lost, I will be waiting here, on the rim."
+  "sima.plea.oracle.3": "Go down. And if you get lost, I will be waiting here, on the rim.",
+  "menu.accessibility": "Accessibility",
+  "menu.figurations": "Figurations (Sima)",
+  "menu.figurations.on": "On",
+  "menu.figurations.reduced": "Reduced",
+  "menu.figurations.off": "Off"
 }

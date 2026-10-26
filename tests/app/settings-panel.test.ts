@@ -18,9 +18,20 @@ function harness(initial: Partial<Settings> = {}) {
 }
 
 describe('settings rows', () => {
-  it('lists language, lock type, click-to-lock, three volumes and mute', () => {
+  it('lists language, lock type, click-to-lock, three volumes, mute and the figuraciones', () => {
     setLanguage('es');
-    expect(harness().rows().map((r) => r.id)).toEqual(['language', 'lockType', 'clickToLock', 'masterVolume', 'musicVolume', 'sfxVolume', 'muted', 'touchMode', 'autoAim', 'haptics', 'touchSize', 'touchOpacity', 'touchLeftHanded']);
+    expect(harness().rows().map((r) => r.id)).toEqual(['language', 'lockType', 'clickToLock', 'masterVolume', 'musicVolume', 'sfxVolume', 'muted', 'figurations', 'touchMode', 'autoAim', 'haptics', 'touchSize', 'touchOpacity', 'touchLeftHanded']);
+  });
+
+  it('cycles the Sima\'s figuraciones on, reduced, off (accessibility)', () => {
+    const h = harness();
+    expect(h.settings().figurations).toBe('on');
+    h.row('figurations').adjust(1);
+    expect(h.settings().figurations).toBe('reduced');
+    h.row('figurations').confirm();
+    expect(h.settings().figurations).toBe('off');
+    h.row('figurations').adjust(1);
+    expect(h.settings().figurations).toBe('on');
   });
 
   it('cycles the language both ways and applies it to the page', () => {

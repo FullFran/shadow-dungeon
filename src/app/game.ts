@@ -1,3 +1,5 @@
+import { figurationsAt, type FigurationMode } from '../adapters/figurations';
+import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
 import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
@@ -215,7 +217,12 @@ export interface GameOptions {
    * the run stands still meanwhile). A shared run logs its line instead.
    */
   simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
+  /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
+  figurations?(): FigurationMode;
 }
+
+/** The shapes figuraciones take: the shadows of those who did not come back. The player's own joins them per run. */
+const LOST_SHAPES: readonly string[] = [...new Set(SIMA_SHADOWS.map((b) => SPRITE_KEYS[b.sprite as keyof typeof SPRITE_KEYS]).filter(Boolean))];
 
 /** What a fainted player sends in a shared run: nothing (an ally standing by gets it up: core/revive.ts). */
 function idleInput(from: PlayerInput): PlayerInput {
@@ -1390,6 +1397,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       memory: memory ? memory.pos : null,
       shownAs,
       silhouettes,
+      // Under low lucidity, shapes that are not there (presentation only: the world never sees them).
+      figurations:
+        run.clockMs !== undefined && options.figurations
+          ? figurationsAt({ mode: options.figurations(), clockMs: run.clockMs, timeMs: realMs, view, player: world.player.pos, sprites: [...LOST_SHAPES, SPRITE_KEYS[SPECIES[world.player.species].sprite]], salt: run.floor })
+          : [],
       spectating: watched && net ? t('spectate.watching').replace('{name}', rosterNames(net.session.roster()).get(watched.id) ?? t(`species.${watched.player.species}`)) : null,
     });
     if (perf) {

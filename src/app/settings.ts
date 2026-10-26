@@ -1,3 +1,4 @@
+import type { FigurationMode } from '../adapters/figurations';
 import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
@@ -43,7 +44,12 @@ export interface Settings {
   nickname: string;
   /** The last difficulty tier picked (solo, and the host's for a room); normal for new players (data/difficulty.ts). */
   difficulty: Difficulty;
+  /** The Sima's figuraciones (adapters/figurations.ts): on, reduced (rarer, fainter, still) or off. Reduced motion turns «on» down to reduced. */
+  figurations: FigurationMode;
 }
+
+/** The figuraciones settings, in the order the row cycles them. */
+export const FIGURATION_MODES: readonly FigurationMode[] = ['on', 'reduced', 'off'];
 
 const KEY = 'mazmorra-sombria.settings';
 
@@ -57,7 +63,7 @@ export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 't
 const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on' };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -131,6 +137,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
     touchLeftHanded: typeof stored.touchLeftHanded === 'boolean' ? stored.touchLeftHanded : fallback.touchLeftHanded,
     nickname: typeof stored.nickname === 'string' ? sanitizeNickname(stored.nickname) : fallback.nickname,
     difficulty: isDifficulty(stored.difficulty) ? stored.difficulty : fallback.difficulty,
+    figurations: FIGURATION_MODES.find((m) => m === stored.figurations) ?? fallback.figurations,
   };
 }
 

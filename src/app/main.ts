@@ -1,3 +1,4 @@
+import { figurationMode } from '../adapters/figurations';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
@@ -1372,6 +1373,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     // The Sima as this player remembers it (names only; every peer reads its own: app/sima-lore.ts).
     ...(sima
       ? {
+          figurations: () => figurationMode(settings.figurations, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false),
           simaMemory: readSimaMemory(store),
           simaScenes: { seen: (id: SimaSceneId) => hasSeenSimaScene(store, id), play: (id: SimaSceneId, info: SimaSceneInfo, onDone: () => void) => simaScene(root, id, info, onDone, true) },
         }
