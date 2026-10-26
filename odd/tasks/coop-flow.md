@@ -38,7 +38,7 @@ New branch `feat/coop-flow` from main after the gacha merge; one commit per task
 
 ## Tasks
 - [x] T1 Version gate + wire validation.
-- [ ] T2 Payout on host leave + reopen race.
+- [x] T2 Payout on host leave + reopen race.
 - [ ] T3 Stairs confirm + gather + AFK exclusion + room exits.
 - [ ] T4 Fog gate before bosses.
 - [ ] T5 Mid-boss bonfire respawn + join points.
@@ -49,7 +49,8 @@ New branch `feat/coop-flow` from main after the gacha merge; one commit per task
 - Loopback net tests (tests/net/coop-loop.ts) cover: mismatch refused, guest paid on host leave, stairs need all active players, AFK excluded, fog starts the fight only when all crossed, wipe after mid-boss respawns at the bonfire, Sima unaffected.
 
 ## Progress / evidence
-- T1 (route: delegated writer, single bounded writer for T1–T3). hello, lobby and start carry `v` (PROTOCOL_VERSION 2) and `c` (FNV-1a of the sorted species, move, item, room and dungeon ids, src/net/version.ts). The host answers another version with `full` + `reason: 'version'` (an older peer reads it as a full room) and fires `onVersionRefused` (toast); a guest refuses a lobby/start of another version itself. The decoder drops enemies of unknown species, projectiles of unknown types, malformed states, actions of unknown moves (action null), unknown AI modes (idle), starts of unknown dungeons, roster entries without a p1..p4 id, malformed hit claims and non-whole floors. The shrine flag and `oldPeers` were removed: the gate supersedes them. RED: tests/net/version.test.ts failed (module missing) on the base; GREEN after. Checks: typecheck ok; vitest 215 files / 2608 tests passed; build ok; prove 166/166 cards, 24/24 fights.
+- T1 (route: delegated writer, single bounded writer for T1–T3). hello, lobby and start carry `v` (PROTOCOL_VERSION 2) and `c` (FNV-1a of the sorted species, move, item, room and dungeon ids, src/net/version.ts). The host answers another version with `full` + `reason: 'version'` (an older peer reads it as a full room) and fires `onVersionRefused` (toast); a guest refuses a lobby/start of another version itself. The decoder drops enemies of unknown species, projectiles of unknown types, malformed states, actions of unknown moves (action null), unknown AI modes (idle), starts of unknown dungeons, roster entries without a p1..p4 id, malformed hit claims and non-whole floors. The shrine flag and `oldPeers` were removed: the gate supersedes them. RED: tests/net/version.test.ts failed (module missing) on the base; GREEN after. Checks: typecheck ok; vitest 215 files / 2608 tests passed; build ok; prove 166/166 cards, 24/24 fights. Commit 1c0797f.
+- T2 (route: delegated writer). `RunningGame.cutShort('hostLeft' | 'closed')`: a run still going ends now as a defeat (defeatShare 0.75 of what was earned), an end already decided shows its screen now, a finished one does nothing (`cutShortAction`, src/app/after-run.ts); `onEnd` is guarded so it runs exactly once (the last-hit timer and the guardian card cannot run it twice). main.ts: host left mid-run → cutShort('hostLeft') then `leaveNet` in onEnd, end screen line `net.cutShort.hostLeft`, back to the hub (backToRoom falls back to the town, not the title); host reopened the lobby while the guest's run is still going → cutShort('closed'), the guest's end screen leads back to the room's town. No Sima score for a cut run. RED: `cutShortAction is not a function` (tests/app/after-run.test.ts); GREEN after, plus a session loopback (room closes once, host leaves once). Checks: typecheck ok; vitest 215 files / 2610 tests passed; build ok; prove 166/166, 24/24.
 
 ## Next step
 Merge and deploy gacha-evolutions, then T1.

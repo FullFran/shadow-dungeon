@@ -30,6 +30,24 @@ export type TownReturn = 'room' | 'hub';
 export const townOf = (run: { inRoom: boolean }): TownReturn => (run.inRoom ? 'room' : 'hub');
 
 /**
+ * A shared run the host cut short: it left mid-run (`hostLeft`), or brought
+ * the room back to the town before this peer's run ended (`closed`). Either
+ * way this peer's end runs exactly once, so nobody loses what they earned.
+ */
+export type CutShort = 'hostLeft' | 'closed';
+
+/**
+ * What a run does when the host cuts it short: `end` it now (paid like a
+ * defeat: what was earned, with its cut, docs/gdd.md §11), `finish` an end
+ * already decided whose screen is still waiting (the last hit, the guardian's
+ * card), or `none` when its end already ran.
+ */
+export function cutShortAction(run: { ended: boolean; finished: boolean }): 'end' | 'finish' | 'none' {
+  if (!run.ended) return 'end';
+  return run.finished ? 'none' : 'finish';
+}
+
+/**
  * The end screen's materials line: "+3 Esencias de Abra (Normal)", the
  * materials a challenge clear added to the save (`before` and `after` the
  * reward), or null when it added none (a main dungeon, Easy, a defeat, a

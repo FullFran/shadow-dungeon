@@ -899,6 +899,7 @@ Un reto se abre cuando tienes cualquier forma de su línea y sale aparte, en el 
 - La dificultad la elige el anfitrión para todo el grupo.
 - Botín y reclutas: un premio por jugador, para que nadie del chat sienta que ha ido de relleno.
 - Quien levanta a quién lo decide el propio jugador caído (igual que el daño, en el lado de la víctima): su pestaña ve a los compañeros, cuenta los 3 s y manda el progreso para que los demás vean el anillo verde.
+- Si el anfitrión se va a mitad de partida, cada invitado cobra lo que llevaba ganado como en una derrota (con su recorte) y vuelve al pueblo; la pantalla final dice por qué ha acabado. Si el anfitrión vuelve al pueblo antes de que la partida de un invitado haya terminado en su pantalla, esa partida acaba en ese momento con la misma regla. Cada jugador cobra una sola vez por partida.
 - Misma versión: al entrar, cada jugador manda la versión del protocolo y una huella de su contenido (las listas de Pokémon, movimientos, objetos, salas y mazmorras). Si no coinciden, el anfitrión no lo deja pasar y los dos lo ven: el que entra lee «Versión distinta: recarga la página» y el anfitrión, que alguien lo ha intentado con otra versión. Lo que llega por la red con un nombre que esta versión no conoce (una especie, un movimiento, un tipo, una mazmorra) se descarta, nunca se usa a ciegas.
 
 ## 8. Escalado según el número de jugadores (n de 1 a 4)

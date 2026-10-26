@@ -237,6 +237,8 @@
   "net.fainted": "fainted",
   "net.connecting": "Looking for a game in other tabs…",
   "net.hostLeft": "The host left.",
+  "net.cutShort.hostLeft": "The host left: you keep what you earned, with a defeat's cut.",
+  "net.cutShort.closed": "The host closed the run before yours ended: you keep what you earned, with a defeat's cut.",
   "net.version": "Different version: reload the page.",
   "net.versionRefused": "Someone tried to join with another version of the game: they should reload the page.",
   "lobby.online": "Play online",

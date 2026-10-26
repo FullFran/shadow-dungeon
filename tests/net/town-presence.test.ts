@@ -130,6 +130,19 @@ describe('town lobby session', () => {
     ]);
   });
 
+  it('a guest hears the room close once and then the host leave once, so its run ends (and is paid) exactly once', () => {
+    const { host, guest } = room();
+    let left = 0;
+    guest.session.onHostLeft(() => left++);
+    host.session.begin('crypt-of-the-sword-king');
+    host.session.reopenLobby(77);
+    // A lobby again (a tier change, a repick) is not another run closing.
+    host.session.setDifficulty('hard');
+    host.session.leave();
+    expect(guest.relobbies).toBe(1);
+    expect(left).toBe(1);
+  });
+
   it("a Sima round's clock and seed never leak into the next round from the town", () => {
     const { host, guest } = room();
     host.session.begin('eclipse-chasm', 9001);

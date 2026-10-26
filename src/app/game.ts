@@ -28,6 +28,7 @@ import { tickDue, type RunClock } from '../adapters/clock-hud';
 import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
+import { cutShortAction, type CutShort } from './after-run';
 import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
@@ -98,6 +99,8 @@ export interface RunSummary {
   simaEvents?: readonly SimaRecord[];
   /** A boss shrine trial (core/shrine.ts): its stops, how many fell, the fight time, captures and whether no hit was taken. */
   trial?: TrialSummary;
+  /** A shared run the host cut short before it ended here (after-run.ts `CutShort`): paid as a defeat. */
+  cutShort?: CutShort;
 }
 
 export interface TrialSummary {
@@ -174,6 +177,8 @@ function idleInput(from: PlayerInput): PlayerInput {
 export interface RunningGame {
   /** Applies changed lock settings mid-run (from the Esc menu). */
   setLock(settings: { lockType: LockType; clickToLock: boolean }): void;
+  /** The host cut the shared run short: it ends now (paid as a defeat), or its end screen due shows now; `onEnd` runs once either way. */
+  cutShort(reason: CutShort): void;
   stop(): void;
 }
 
@@ -312,6 +317,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let pixelScale = 1;
   let hudScale = 1;
   let ended = false;
+  /** `onEnd` ran (exactly once per run), and the end screen waiting to run it. */
+  let finished = false;
+  let finishNow: (() => void) | null = null;
+  let endTimer = 0;
   let raf = 0;
   /** The guardian cinematic on screen (solo), while it plays. */
   let closeCinematic: (() => void) | null = null;
@@ -725,7 +734,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
-  function end(result: GameResult): void {
+  function end(result: GameResult, cut?: CutShort): void {
     if (ended) return;
     ended = true;
     hidePick();
@@ -736,7 +745,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const trialSummary: TrialSummary | null = trial
       ? { stops: trial.stops, beaten: trial.index + (result === 'victory' ? 1 : 0), ms: tally.playedMs, captures: tally.captures ?? 0, noHit: !trialHit }
       : null;
-    const finish = () =>
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(endTimer);
       options.onEnd(result, {
         dungeon: run.dungeon,
         floor: run.floor,
@@ -748,9 +760,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         ...(run.clockMs !== undefined ? { clockMs: run.clockMs } : {}),
         ...(simaLog.length > 0 ? { simaEvents: [...simaLog] } : {}),
         ...(trialSummary ? { trial: trialSummary } : {}),
+        ...(cut ? { cutShort: cut } : {}),
       });
+    };
+    finishNow = finish;
+    if (cut) return finish();
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
-    window.setTimeout(() => {
+    endTimer = window.setTimeout(() => {
       if (result !== 'victory' || !guardianHere()) return finish();
       guardianMoment('post', () => (net || !options.playCinematic ? window.setTimeout(finish, CARD_MS) : finish()));
     }, 700);
@@ -994,6 +1010,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     setLock(settings) {
       lockSettings = settings;
       world = { ...world, lock: configureLock(world.lock, settings) };
+    },
+    cutShort(reason) {
+      const action = cutShortAction({ ended, finished });
+      if (action === 'end') end('defeat', reason);
+      else if (action === 'finish') finishNow?.();
     },
     stop() {
       closeMenu?.();

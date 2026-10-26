@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endActions, materialsEarned, returnPlace, townOf } from '../../src/app/after-run';
+import { cutShortAction, endActions, materialsEarned, returnPlace, townOf } from '../../src/app/after-run';
 import { dungeonById } from '../../src/data/dungeons';
 import { setLanguage, t } from '../../src/i18n';
 
@@ -25,6 +25,15 @@ describe('after a run', () => {
   it("a room's run brings everyone back to the room's town; any other run comes back to the hub", () => {
     expect(townOf({ inRoom: true })).toBe('room');
     expect(townOf({ inRoom: false })).toBe('hub');
+  });
+
+  it('a run the host cuts short (it left, or reopened the town first) ends now as a defeat, flushes an end already due, or does nothing twice', () => {
+    // Still playing: it ends at once, paid like a defeat.
+    expect(cutShortAction({ ended: false, finished: false })).toBe('end');
+    // Ended, its end screen waiting on the last-hit delay or the guardian card: shown now.
+    expect(cutShortAction({ ended: true, finished: false })).toBe('finish');
+    // Its end already ran (onEnd paid): nothing more.
+    expect(cutShortAction({ ended: true, finished: true })).toBe('none');
   });
 });
 

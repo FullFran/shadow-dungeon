@@ -199,9 +199,11 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
   const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
-  // The host left: the run ends with a notice and the way back to the town (a lobby: to the menu).
+  // The host left: a run still going ends here, paid as a defeat (its end screen says why); elsewhere a notice and the way back to the menu.
   session.onHostLeft(() => {
-    if (current === session) messageScreen(root, t('net.hostLeft'), returnPlace(running ? 'hostLeft' : 'lobby'));
+    if (current !== session) return;
+    if (running) return running.cutShort('hostLeft');
+    messageScreen(root, t('net.hostLeft'), returnPlace('lobby'));
   });
   return session;
 }
@@ -901,9 +903,12 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (!request) return messageScreen(root, t('shrine.unknown'));
     void play(root, join, request.stops[0]!.dungeon, undefined, { request, from: 'room', pick: { species: settings.species, loadout: [...settings.loadout] }, group: session.roster().length > 1 });
   });
-  // The host brought the room back to the town after a run: follow it there (unless already walking it).
+  // The host brought the room back to the town after a run: a run still going here ends first (its end runs once, paid);
+  // its end screen then leads back to the town. Anywhere else, follow it there (unless already walking it).
   session.onLobby(() => {
-    if (current === session && !root.querySelector('canvas.town')) townLobby(root);
+    if (current !== session) return;
+    if (running) return running.cutShort('closed');
+    if (!root.querySelector('canvas.town')) townLobby(root);
   });
   const name = sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() });
   if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty });
@@ -971,7 +976,8 @@ function townLobby(root: HTMLElement): void {
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
 function backToRoom(root: HTMLElement): void {
-  if (!room || current !== room.session) return titleScreen(root);
+  // The room is gone (the host left): back to the hub, alone.
+  if (!room || current !== room.session) return townScreen(root);
   if (room.asHost) {
     room.seed = runSeed();
     room.session.reopenLobby(room.seed);
@@ -1030,6 +1036,8 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
       h('h1', { textContent: t(`screen.${result}.title`) }),
       // Victory names the dungeon's guardian, defeat the player's Pokémon.
       h('p', { textContent: t(`screen.${result}.text`).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) }),
+      // The host cut the run short: why it ended, and what was kept.
+      ...(summary.cutShort ? [h('p', { className: 'dim', textContent: t(`net.cutShort.${summary.cutShort}`) })] : []),
       // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
       h('div', { className: 'result-columns' }, [
         h('div', {}, [
@@ -1129,6 +1137,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     onEnd: (result, summary) => {
+      // The host left mid-run: the room is gone, this peer goes back to the hub alone (after being paid below).
+      if (summary.cutShort === 'hostLeft') leaveNet();
       // A shrine trial keeps its own records and never counts as a run (no dungeon records, no run coins).
       if (trial && summary.trial) return trialEnd(root, trial, result, summary);
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
@@ -1140,7 +1150,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory', summary.difficulty);
       const materials = materialsEarned(dungeonById(summary.dungeon), summary.difficulty, before, save, t);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
-      const score = summary.clockMs !== undefined ? endlessScore(summary) : undefined;
+      // A run the host cut short never reached its end: no score.
+      const score = summary.clockMs !== undefined && !summary.cutShort ? endlessScore(summary) : undefined;
       resultScreen(root, result, summary, online, save.coins, score, materials);
     },
   });

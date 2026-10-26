@@ -237,6 +237,8 @@
   "net.fainted": "debilitado",
   "net.connecting": "Buscando partida en otras pestañas…",
   "net.hostLeft": "El anfitrión se ha ido.",
+  "net.cutShort.hostLeft": "El anfitrión se ha ido: te llevas lo ganado, con el recorte de una derrota.",
+  "net.cutShort.closed": "El anfitrión ha cerrado la partida antes de que acabara la tuya: te llevas lo ganado, con el recorte de una derrota.",
   "net.version": "Versión distinta: recarga la página.",
   "net.versionRefused": "Alguien ha intentado entrar con otra versión del juego: que recargue la página.",
   "lobby.online": "Jugar en línea",
