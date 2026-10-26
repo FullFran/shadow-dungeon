@@ -10,7 +10,7 @@ import { atCard, cardGuard, echoShare, echoStageAt, fightFor, fightOf, inTurn, i
 import { depthScale } from '../core/endless';
 import { ENDLESS } from '../data/endless';
 import { ECHO_CARDS } from '../data/cards';
-import { computeDamage, typeEffectiveness } from '../core/damage';
+import { computeDamage, hitEffectiveness } from '../core/damage';
 import { expectedLevel } from '../core/fairness';
 import { levelDamage } from '../core/progression';
 import { loadRoom } from '../core/rooms';
@@ -503,7 +503,7 @@ export function referenceDps(player: SpeciesId, boss: SpeciesId, level: number):
   for (const id of def.defaultLoadout.slice(0, 2)) {
     if (!id) continue;
     const move = MOVES[id];
-    const { damage } = computeDamage({ power: move.power, moveType: move.type, attackerTypes: def.types, defenderTypes: SPECIES[boss].types, multiplier: levelDamage(level) });
+    const { damage } = computeDamage({ power: move.power, moveType: move.type, attackerTypes: def.types, defenderTypes: SPECIES[boss].types, multiplier: levelDamage(level), onEnemy: true });
     const cycle = move.windupMs + move.activeMs + move.recoveryMs + (move.cooldownMs ?? 0);
     const dps = (damage * 1000) / cycle;
     if (!best || dps > best.dps) best = { dps, move };
@@ -515,7 +515,7 @@ export function referenceDps(player: SpeciesId, boss: SpeciesId, level: number):
 /** Whether a starter is at a type disadvantage on a boss: none of its default fast and heavy moves does neutral damage or better (a resistance or an immunity). */
 export function typeWalled(player: SpeciesId, boss: SpeciesId): boolean {
   const def = SPECIES[player];
-  return def.defaultLoadout.slice(0, 2).every((id) => !id || typeEffectiveness(MOVES[id].type, SPECIES[boss].types) < 1);
+  return def.defaultLoadout.slice(0, 2).every((id) => !id || hitEffectiveness(MOVES[id].type, SPECIES[boss].types) < 1);
 }
 
 /** The proof's reach for melee windows (Mimikyu's Shadow Claw, the shortest fast move) and its line-of-fire range. */

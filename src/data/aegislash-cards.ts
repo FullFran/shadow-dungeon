@@ -181,6 +181,8 @@ export const AEGISLASH_CARDS_NORMAL: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 120,
   power: 1,
+  // The compressed chart (data/types.ts PLAYER_HIT_LEVELS) cut Zorua's Dark x2 margin on the walls and swords (1.25 < 1.5): HP x0.8 restores it (odd/tasks/type-balance.md).
+  hpScale: 0.8,
   // Shares tuned by the beatability proof (src/sim/prove.ts): the walls give the fewest openings, the fans and the curtain the most.
   cards: [walls(wallsSteps(120, false, false), 0.09), fans(fansSteps(9, false, false), 0.345), swords(swordsSteps(6, false, false), 0.21), hundred(hundredSteps(150, 100, false), 0.355)],
 });
@@ -190,6 +192,8 @@ export const AEGISLASH_CARDS_HARD: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 150,
   power: 1.12,
+  // The compressed chart cut Zorua's margin on the fans (1.21 < 1.3): HP x0.9 restores it (odd/tasks/type-balance.md).
+  hpScale: 0.9,
   cards: [
     walls(wallsSteps(138, true, false), 0.27),
     fans(fansSteps(11, true, false), 0.27),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MOVES, type MoveId } from '../../src/data/moves';
 import { TUNING } from '../../src/data/tuning';
+import { PLAYER_HIT_LEVELS } from '../../src/data/types';
 import { computeDamage } from '../../src/core/damage';
 import type { PlayerInput, WorldState } from '../../src/core/state';
 import { hitPlayer, step } from '../../src/core/step';
@@ -149,16 +150,16 @@ describe('fast move phases (Shadow Claw)', () => {
 });
 
 describe('type effectiveness in combat', () => {
-  it('Shadow Claw hurts Gastly twice as much as base and Poochyena half', () => {
+  it('Shadow Claw hurts Gastly super-effectively and Poochyena not very (the player\'s chart)', () => {
     const vsGastly = use(arena(['shadow-claw', 'play-rough'], [['gastly', vec(425, 300)]]), 0, FIXED_DT_MS, totalMs('shadow-claw'));
     const vsPoochyena = use(arena(['shadow-claw', 'play-rough'], [['poochyena', vec(425, 300)]]), 0, FIXED_DT_MS, totalMs('shadow-claw'));
     const [gastlyHit] = enemyHits(vsGastly.events);
     const [poochHit] = enemyHits(vsPoochyena.events);
-    expect(gastlyHit).toMatchObject({ effectiveness: 2 });
-    expect(poochHit).toMatchObject({ effectiveness: 0.5 });
+    expect(gastlyHit).toMatchObject({ effectiveness: PLAYER_HIT_LEVELS.superEffective });
+    expect(poochHit).toMatchObject({ effectiveness: PLAYER_HIT_LEVELS.resisted });
     if (gastlyHit?.type !== 'enemyHit' || poochHit?.type !== 'enemyHit') throw new Error('expected both hits');
-    // 4x apart, up to integer rounding of each hit.
-    expect(gastlyHit.damage / poochHit.damage).toBeCloseTo(4, 0);
+    // x1.6 / x0.75 apart, up to integer rounding of each hit.
+    expect(gastlyHit.damage / poochHit.damage).toBeCloseTo(PLAYER_HIT_LEVELS.superEffective / PLAYER_HIT_LEVELS.resisted, 0);
   });
 });
 
@@ -258,7 +259,7 @@ describe('perfect-dodge damage buff', () => {
       return hit?.type === 'enemyHit' ? hit.damage : 0;
     };
     const claw = MOVES['shadow-claw'];
-    const expected = computeDamage({ power: claw.power, moveType: claw.type, attackerTypes: ['ghost', 'fairy'], defenderTypes: ['steel', 'ghost'], multiplier: 1.5 });
+    const expected = computeDamage({ power: claw.power, moveType: claw.type, attackerTypes: ['ghost', 'fairy'], defenderTypes: ['steel', 'ghost'], multiplier: 1.5, onEnemy: true });
     expect(dmg(boosted.events)).toBe(expected.damage);
     expect(dmg(boosted.events)).toBeGreaterThan(dmg(normal.events));
     expect(boosted.state.player.nextHitBuff).toBeNull();

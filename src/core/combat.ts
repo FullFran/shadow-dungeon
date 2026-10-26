@@ -1,11 +1,11 @@
 import { UNKILLABLE } from '../data/sima';
-import { cardHpFloor } from './cards';
+import { cardHolds, cardHpFloor } from './cards';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
 import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged, rotateToward } from './boss';
-import { computeDamage, typeEffectiveness } from './damage';
+import { computeDamage, hitEffectiveness } from './damage';
 import { confineCircle, insideRect, sweepCircle } from './geometry';
 import { partyStaggerOf, presentPlayers } from './party';
 import { noteAggroDamage } from './aggro';
@@ -150,6 +150,7 @@ function blockedStrike(state: WorldState, enemy: EnemyState, hit: StrikeHit, eve
     attackerTypes: state.player.types,
     defenderTypes: enemy.types,
     multiplier: hit.multiplier,
+    onEnemy: true,
   });
   const chip = Math.round(damage * chipFactor);
   events.push({ type: 'hitBlocked', enemyId: enemy.id, pos: enemy.pos });
@@ -189,7 +190,7 @@ function strikeEnemy(
   // ...and so does a high-crit move (Slash).
   const rolled = rollCrit(state, stats.critChance + buffCrit(state.player) + (hit.effects?.critBonus ?? 0));
   state = rolled.state;
-  const superEffective = typeEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
+  const superEffective = hitEffectiveness(hit.type, enemy.types) > 1 ? stats.superEffective : 1;
   const fromIllusion = illusionActive(state.player);
   const crit = rolled.crit || fromIllusion ? ITEM_EFFECTS.critMultiplier : 1;
   const bonus = bonusMultiplier(hit.bonus, enemy, state.player);
@@ -201,9 +202,12 @@ function strikeEnemy(
     // A Sima pact's blessing may sharpen the player's hits.
     // A power buff (Swords Dance) adds to the next hits.
     multiplier: hit.multiplier * (buff?.multiplier ?? 1) * superEffective * crit * bonus * buffDamage(state.player) * (state.simaPact?.playerDamage ?? 1),
+    // The player's hits on enemies use the compressed chart (data/types.ts `PLAYER_HIT_LEVELS`).
+    onEnemy: true,
   });
-  // A spell card's segment ends at its floor: the overflow of a hit is lost (core/cards.ts).
+  // A spell card's segment ends at its floor: the overflow of a hit is lost (core/cards.ts); so is what passes its hold while the card floor holds.
   const hp = Math.max(Math.min(cardHpFloor(enemy), enemy.hp), enemy.hp - damage);
+  if (enemy.boss && cardHolds(enemy, damage)) events.push({ type: 'cardHold', enemyId: enemy.id, pos: enemy.pos });
   // A boss takes less stagger in a bigger party (core/party.ts): four players cannot stunlock it.
   const party = partyStaggerOf(state, enemy);
   const base = poiseOf(enemy.species);

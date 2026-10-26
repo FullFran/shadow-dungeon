@@ -101,7 +101,8 @@ const DHE_TIDE = survival('sc-dhe-tide', ['whirlpool', 'kelp'], 15_000);
 const WRECK = { markLockMs: 760 } as const;
 
 export const DHELMISE_CARDS_NORMAL = fight('dhelmise', [DHE_UNDERTOW(0.25), DHE_KELP(0.25), DHE_RIPTIDE(0.25), DHE_BELL(0.25)], WRECK);
-export const DHELMISE_CARDS_HARD = fight('dhelmise', [DHE_UNDERTOW(0.27), DHE_KELP(0.27), DHE_RIPTIDE(0.23), DHE_TIDE, DHE_BELL(0.23)], WRECK);
+// The compressed chart (data/types.ts PLAYER_HIT_LEVELS) cut Zorua's margin on the undertow (1.12 < 1.3) and, on Nightmare, the last word (1.02 < 1.1): HP x0.84 and x0.9 restore them (odd/tasks/type-balance.md).
+export const DHELMISE_CARDS_HARD = fight('dhelmise', [DHE_UNDERTOW(0.27), DHE_KELP(0.27), DHE_RIPTIDE(0.23), DHE_TIDE, DHE_BELL(0.23)], { ...WRECK, hpScale: 0.84 });
 export const DHELMISE_CARDS_NIGHTMARE = fight('dhelmise', [
   DHE_UNDERTOW(0.18),
   DHE_KELP(0.19),
@@ -110,7 +111,7 @@ export const DHELMISE_CARDS_NIGHTMARE = fight('dhelmise', [
   DHE_BELL(0.18),
   { id: 'sc-dhe-maelstrom', moves: ['maelstrom', 'riptide'], hpShare: 0.18, timerMs: 45_000 },
   { id: 'sc-dhe-lastword', moves: ['bell', 'maelstrom'], hpShare: 0.05, timerMs: 40_000, lastSpell: true },
-], WRECK);
+], { ...WRECK, hpScale: 0.9 });
 
 // --- Salazzle, la reina del humo (Toxic Swamp mid-boss) ------------------------
 
