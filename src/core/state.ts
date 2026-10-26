@@ -186,6 +186,8 @@ export interface PlayerState {
   buff?: ActiveBuff;
   /** Mejoras bought at the move tutor (core/tutor.ts): rank per original move, fixed for the run; absent = none. */
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
+  /** An evolved gacha form's damage multiplier (core/evolution.ts `stageBonus`), fixed for the run; absent = 1. */
+  stageDamage?: number;
   /**
    * Super-armor from a ranked move (core/rank-effects.ts): damage taken scaled by `damageTaken` while `remainingMs` runs, then
    * `restMs` before another can start (at most half the time under it); absent = none.

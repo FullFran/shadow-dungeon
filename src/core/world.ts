@@ -7,6 +7,7 @@ import { ELITE_TRAIT_DEFS, type Difficulty, type EliteTrait } from '../data/diff
 import { LEADER } from '../data/encounters';
 import { eliteHp, rollTierOf, tierOf } from './difficulty';
 import { upgradeBonuses } from './upgrades';
+import { stageBonus } from './evolution';
 import { padLoadout, validateLoadout } from './loadout';
 import { hasBossState, initialBoss } from './boss';
 import { returnStolen } from './stolen';
@@ -41,9 +42,11 @@ export interface WorldOptions {
   party?: number;
 }
 
-export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels): PlayerState {
+/** `party`: players at the run's start (an evolved form's stage bonus is capped lower in a party; core/evolution.ts). */
+export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadout?: readonly (MoveId | null)[], upgrades?: UpgradeLevels, party = 1): PlayerState {
   const species = SPECIES[speciesId];
-  const maxHp = species.maxHp + upgradeBonuses(upgrades).maxHp;
+  const stage = stageBonus(speciesId, party);
+  const maxHp = Math.round(species.maxHp * (1 + stage.hp)) + upgradeBonuses(upgrades).maxHp;
   // An older two-slot loadout (save or peer) gets the species defaults in the new slots.
   const equipped = padLoadout(species, loadout ?? species.defaultLoadout);
   const errors = validateLoadout(species, PLAYER_SLOT_LAYOUT, equipped);
@@ -71,6 +74,7 @@ export function createPlayer(pos: Vec2, speciesId: SpeciesId = 'mimikyu', loadou
     items: [],
     itemUses: {},
     ...(upgrades ? { upgrades } : {}),
+    ...(stage.damage > 0 ? { stageDamage: 1 + stage.damage } : {}),
   };
 }
 
@@ -95,7 +99,7 @@ export function createWorld({
   difficulty,
   party,
 }: WorldOptions): WorldState {
-  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades), difficulty);
+  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1), difficulty);
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),

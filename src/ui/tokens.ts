@@ -71,6 +71,7 @@ export const TYPE_COLORS: Record<PokemonType, TypeColors> = {
   rock: { core: '#b8a07a', glow: '#f0e2c0', edge: '#5c4a2c' },
   psychic: { core: '#ff5f9e', glow: '#ffc2dc', edge: '#9e2457' },
   ice: { core: '#8fe3f0', glow: '#e4fbff', edge: '#3d8a99' },
+  dragon: { core: '#6a5cf0', glow: '#b8b0ff', edge: '#2c2280' },
 };
 
 /**

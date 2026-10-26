@@ -45,11 +45,11 @@ export interface PlayerStats {
 
 const MULTIPLIERS = ['damage', 'heavyDamage', 'superEffective', 'staminaCost', 'actionTime', 'reach'] as const;
 
-/** The player's numbers after level, permanent upgrades and held items. */
-export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgrades'>): PlayerStats {
+/** The player's numbers after level, an evolved form's stage, permanent upgrades and held items. */
+export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgrades' | 'stageDamage'>): PlayerStats {
   const bonus = upgradeBonuses(player.upgrades);
   const stats: PlayerStats = {
-    damage: levelDamage(player.level),
+    damage: levelDamage(player.level) * (player.stageDamage ?? 1),
     heavyDamage: 1,
     superEffective: 1,
     staminaCost: 1,

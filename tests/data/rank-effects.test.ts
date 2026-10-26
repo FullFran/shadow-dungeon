@@ -6,8 +6,9 @@ import { BASE_MOVE_IDS, MOVES, type MoveId } from '../../src/data/moves';
 import { RANK_EFFECTS, type RankEffect } from '../../src/data/rank-effects';
 import { HARD_CEILING, MAX_RANK } from '../../src/data/tutor';
 import { TUTOR_MOVE_IDS } from '../../src/data/tutor-moves';
+import { LINE_MOVE_IDS } from '../../src/data/line-moves';
 
-const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS];
+const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS, ...LINE_MOVE_IDS];
 const full = { rank: MAX_RANK };
 
 /** Effects that only make sense on some shapes. */

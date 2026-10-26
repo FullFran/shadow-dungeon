@@ -84,8 +84,8 @@ export type TutorMoveId = (typeof TUTOR_MOVE_IDS)[number];
 
 type Extra = Omit<Partial<MoveDef>, 'id' | 'slot' | 'type' | 'power' | 'hitbox'>;
 
-/** One move: wind-up, active and recovery in ms; heavy moves charge like the original ones. */
-function def(id: TutorMoveId, slot: SlotKind, type: PokemonType, power: number, timing: readonly [number, number, number], hitbox: HitboxDef, hitstunMs: number, knockback: number, extra: Extra = {}): MoveDef {
+/** One move: wind-up, active and recovery in ms; heavy moves charge like the original ones (also data/line-moves.ts). */
+export function def(id: MoveDef['id'], slot: SlotKind, type: PokemonType, power: number, timing: readonly [number, number, number], hitbox: HitboxDef, hitstunMs: number, knockback: number, extra: Extra = {}): MoveDef {
   const [windupMs, activeMs, recoveryMs] = timing;
   return {
     id,
@@ -106,9 +106,9 @@ function def(id: TutorMoveId, slot: SlotKind, type: PokemonType, power: number, 
   };
 }
 
-const arc = (range: number, arcDegrees: number): HitboxDef => ({ kind: 'arc', range, arcDegrees });
-const dash = (distance: number, radius: number): HitboxDef => ({ kind: 'dash', distance, radius });
-const shot = (speed: number, radius: number, lifetimeMs: number, more: { wave?: boolean; homing?: number; linger?: number } = {}): HitboxDef => ({
+export const arc = (range: number, arcDegrees: number): HitboxDef => ({ kind: 'arc', range, arcDegrees });
+export const dash = (distance: number, radius: number): HitboxDef => ({ kind: 'dash', distance, radius });
+export const shot = (speed: number, radius: number, lifetimeMs: number, more: { wave?: boolean; homing?: number; linger?: number } = {}): HitboxDef => ({
   kind: 'projectile',
   speed,
   radius,

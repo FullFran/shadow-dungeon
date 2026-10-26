@@ -2,6 +2,7 @@ import { UPGRADE_IDS, UPGRADES, type UpgradeId, type UpgradeLevels } from '../da
 import type { MoveId } from '../data/moves';
 import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
 import { MAX_RANK, tutorOffer } from '../data/tutor';
+import { lineOf } from '../core/evolution';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 
@@ -91,18 +92,19 @@ const wholeCount = (value: unknown): number => (typeof value === 'number' && Num
 /** A species the gacha can give (a playable one that is not a starter). */
 const isGacha = (id: unknown): id is SpeciesId => isPlayable(id) && !isStarter(id);
 
-/** Owned species: gacha species only, once each, in the order stored; null when none. */
+/** Owned species: gacha species only, one form per line (the first stored), in the order stored; null when none. */
 function sanitizeOwned(raw: unknown): SpeciesId[] | null {
   if (!Array.isArray(raw)) return null;
-  const owned = [...new Set(raw.filter(isGacha))];
+  const owned: SpeciesId[] = [];
+  for (const id of raw.filter(isGacha)) if (!owned.some((o) => lineOf(o) === lineOf(id))) owned.push(id);
   return owned.length > 0 ? owned : null;
 }
 
-/** Materials: whole positive counts of gacha species' lines; null when none. */
+/** Materials: whole positive counts, keyed by a gacha line's first form; null when none. */
 function sanitizeMaterials(raw: unknown): Partial<Record<SpeciesId, number>> | null {
   if (!isRecord(raw)) return null;
   const out: Partial<Record<SpeciesId, number>> = {};
-  for (const [id, count] of Object.entries(raw)) if (isGacha(id) && wholeCount(count) > 0) out[id] = wholeCount(count);
+  for (const [id, count] of Object.entries(raw)) if (isGacha(id) && lineOf(id) === id && wholeCount(count) > 0) out[id] = wholeCount(count);
   return Object.keys(out).length > 0 ? out : null;
 }
 

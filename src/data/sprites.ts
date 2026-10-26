@@ -113,4 +113,17 @@ export const SPRITE_KEYS = {
   houndoom: '0229/0000',
   // The Refugio's move tutor (odd/tasks/movepools.md).
   smeargle: '0235/0000',
+  // The gacha's evolution lines (odd/tasks/gacha-evolutions.md).
+  abra: '0063/0000',
+  kadabra: '0064/0000',
+  alakazam: '0065/0000',
+  piplup: '0393/0000',
+  prinplup: '0394/0000',
+  empoleon: '0395/0000',
+  shinx: '0403/0000',
+  luxio: '0404/0000',
+  luxray: '0405/0000',
+  axew: '0610/0000',
+  fraxure: '0611/0000',
+  haxorus: '0612/0000',
 } as const;

@@ -171,6 +171,13 @@ export const RANK_EFFECTS: Readonly<Record<MoveId, readonly [RankEffect, RankEff
   'iron-defense': [buff({ durationMs: 1500 }), heal(0.08)],
   'rock-slide': [stagger(1.3), zone({ at: 'impact', power: 15, radius: 20, lifetimeMs: 200, delayMs: 400 })],
   'ice-beam': [size(1.15), weaken(0.75, 3000)],
+  // --- The gacha lines' own moves (data/line-moves.ts) ---
+  'water-gun': [size(1.3), split(2, 0.4)],
+  'bubble-beam': [size(1.2), weaken(0.8, 3000)],
+  surf: [size(1.15), weaken(0.75, 3000)],
+  spark: [stagger(1.3), chain(0.5, 80)],
+  'dragon-claw': [crit(0.15), mark(0.3, 800)],
+  'dragon-pulse': [size(1.2), split(3, 0.3)],
 };
 
 /** Will-O-Wisp +2: the wisps circle the user and burn what they touch for a while. */

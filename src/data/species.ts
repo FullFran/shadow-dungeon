@@ -78,7 +78,20 @@ export type SpeciesId =
   // Its own boss, a corrupted shadow of Mimikyu (the busted form's full sheet set, tinted in the eclipse's colours).
   | 'eclipse-echo'
   // The Heralds of the Eclipse (data/herald.ts): one technical species; each herald's look, types and patterns are generated.
-  | 'sima-herald';
+  | 'sima-herald'
+  // The gacha's evolution lines (data/player-evolutions.ts): playable once owned.
+  | 'abra'
+  | 'kadabra'
+  | 'alakazam'
+  | 'piplup'
+  | 'prinplup'
+  | 'empoleon'
+  | 'shinx'
+  | 'luxio'
+  | 'luxray'
+  | 'axew'
+  | 'fraxure'
+  | 'haxorus';
 export type PassiveId = 'disguise' | 'illusion' | 'flash-fire' | 'battle-armor';
 
 export interface SpeciesDef {
@@ -101,6 +114,17 @@ export interface SpeciesDef {
   /** Default loadout, aligned with the slot layout (fast, heavy, boost, area; null = empty slot). */
   defaultLoadout: readonly (MoveId | null)[];
   passive?: PassiveId;
+}
+
+/** The first forms' kits (fast, heavy, boost, area): only moves inside the original kits' budget. */
+const ABRA: readonly MoveId[] = ['swift', 'psychic', 'calm-mind', 'dazzling-gleam'];
+const PIPLUP: readonly MoveId[] = ['water-gun', 'bubble-beam', 'swords-dance', 'surf'];
+const SHINX: readonly MoveId[] = ['spark', 'thunderbolt', 'agility', 'snarl'];
+const AXEW: readonly MoveId[] = ['dragon-claw', 'dragon-pulse', 'swords-dance', 'earthquake'];
+
+/** A form of a gacha line: its sprite has its own name, its default loadout is the first form's kit. */
+function lineForm(id: SpeciesId & keyof typeof SPRITE_KEYS, types: readonly PokemonType[], maxHp: number, speedScale: number, movepool: readonly MoveId[]): SpeciesDef {
+  return { id, types, maxHp, radius: 10, sprite: id, speedScale, movepool, defaultLoadout: movepool.slice(0, 4) };
 }
 
 /**
@@ -253,6 +277,20 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
   // Its sheets and types come from the generated herald (core/herald); the radius is HERALD_RADIUS.
   'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },
+  // The gacha's evolution lines (odd/tasks/gacha-evolutions.md): a first form with one move per slot, all equipped; each
+  // evolution keeps the line's HP and speed and unlocks one more move (data/player-evolutions.ts adds its stage bonus).
+  abra: lineForm('abra', ['psychic'], 90, 1.05, ABRA),
+  kadabra: lineForm('kadabra', ['psychic'], 90, 1.05, [...ABRA, 'night-shade']),
+  alakazam: lineForm('alakazam', ['psychic'], 90, 1.05, [...ABRA, 'night-shade', 'shadow-ball']),
+  piplup: lineForm('piplup', ['water'], 105, 0.95, PIPLUP),
+  prinplup: lineForm('prinplup', ['water'], 105, 0.95, [...PIPLUP, 'brick-break']),
+  empoleon: lineForm('empoleon', ['water', 'steel'], 105, 0.95, [...PIPLUP, 'brick-break', 'ice-beam']),
+  shinx: lineForm('shinx', ['electric'], 95, 1.1, SHINX),
+  luxio: lineForm('luxio', ['electric'], 95, 1.1, [...SHINX, 'swift']),
+  luxray: lineForm('luxray', ['electric'], 95, 1.1, [...SHINX, 'swift', 'thunder']),
+  axew: lineForm('axew', ['dragon'], 100, 1, AXEW),
+  fraxure: lineForm('fraxure', ['dragon'], 100, 1, [...AXEW, 'x-scissor']),
+  haxorus: lineForm('haxorus', ['dragon'], 100, 1, [...AXEW, 'x-scissor', 'brick-break']),
 };
 
 /** The starters, in picker order (Mimikyu first): always playable. */
@@ -263,7 +301,10 @@ export const STARTER_SPECIES: readonly StarterId[] = ['mimikyu', 'zorua', 'litwi
  * gacha's evolution lines (odd/tasks/gacha-evolutions.md). Which of the
  * latter a player has is the save's business (core/collection.ts).
  */
-export const PLAYABLE_SPECIES: readonly SpeciesId[] = [...STARTER_SPECIES];
+export const PLAYABLE_SPECIES: readonly SpeciesId[] = [
+  ...STARTER_SPECIES,
+  ...(['abra', 'kadabra', 'alakazam', 'piplup', 'prinplup', 'empoleon', 'shinx', 'luxio', 'luxray', 'axew', 'fraxure', 'haxorus'] as const),
+];
 
 export const isPlayable = (id: unknown): id is SpeciesId => PLAYABLE_SPECIES.some((s) => s === id);
 export const isStarter = (id: unknown): id is StarterId => STARTER_SPECIES.some((s) => s === id);

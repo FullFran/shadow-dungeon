@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UPGRADE_IDS, UPGRADES } from '../../src/data/upgrades';
 import { RUN } from '../../src/data/dungeon';
+import { stageBonus } from '../../src/core/evolution';
 import { PLAYABLE_SPECIES, SPECIES } from '../../src/data/species';
 import { TUNING } from '../../src/data/tuning';
 import { playerStats } from '../../src/core/items';
@@ -61,7 +62,8 @@ describe('upgrades at run start', () => {
   it('raises max HP (full) for every playable species', () => {
     for (const species of PLAYABLE_SPECIES) {
       const player = createPlayer(vec(0, 0), species, undefined, { vitality: 3 });
-      expect(player.maxHp).toBe(SPECIES[species].maxHp + 3 * UPGRADES.vitality.perLevel);
+      // On top of the species' HP (an evolved form's stage bonus included: core/evolution.ts).
+      expect(player.maxHp).toBe(Math.round(SPECIES[species].maxHp * (1 + stageBonus(species, 1).hp)) + 3 * UPGRADES.vitality.perLevel);
       expect(player.hp).toBe(player.maxHp);
     }
     const started = startRun(7, { species: 'zorua', upgrades: all }).world.player;

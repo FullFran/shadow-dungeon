@@ -2,9 +2,10 @@ import type { SlotKind } from './slots';
 import type { PokemonType } from './types';
 import { HEAVY_CHARGE } from './charge';
 import { TUTOR_MOVES, type TutorMoveId } from './tutor-moves';
+import { LINE_MOVES, type LineMoveId } from './line-moves';
 
-/** Every move: the starters' original kits and the move tutor's (data/tutor-moves.ts). */
-export type MoveId = BaseMoveId | TutorMoveId;
+/** Every move: the starters' original kits, the move tutor's (data/tutor-moves.ts) and the gacha lines' own (data/line-moves.ts). */
+export type MoveId = BaseMoveId | TutorMoveId | LineMoveId;
 
 export type BaseMoveId =
   | 'shadow-claw'
@@ -619,7 +620,7 @@ const BASE_MOVES: Record<BaseMoveId, MoveDef> = {
   },
 };
 
-export const MOVES: Record<MoveId, MoveDef> = { ...BASE_MOVES, ...TUTOR_MOVES };
+export const MOVES: Record<MoveId, MoveDef> = { ...BASE_MOVES, ...TUTOR_MOVES, ...LINE_MOVES };
 
 /** The original kits' moves (free and known from the start; the tutor's Mejoras rank them up). */
 export const BASE_MOVE_IDS = Object.keys(BASE_MOVES) as BaseMoveId[];

@@ -1,6 +1,7 @@
 import { heraldWear } from '../core/herald/generate';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
+import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
 import { SPECIES } from '../data/species';
 import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
 import { TUNING } from '../data/tuning';
@@ -117,7 +118,7 @@ export interface MoveAnim {
   turnAround?: boolean;
 }
 
-const BASE_ANIMS: Record<Exclude<MoveId, TutorMoveId>, MoveAnim> = {
+const BASE_ANIMS: Record<Exclude<MoveId, TutorMoveId | LineMoveId>, MoveAnim> = {
   'shadow-claw': { attack: 'Attack' },
   'shadow-sneak': { attack: 'Strike' },
   'play-rough': { charge: 'Charge', attack: 'Double' },
@@ -168,7 +169,7 @@ export function tutorAnim(move: MoveDef): MoveAnim {
 
 export const MOVE_ANIMS: Record<MoveId, MoveAnim> = {
   ...BASE_ANIMS,
-  ...(Object.fromEntries(TUTOR_MOVE_IDS.map((id) => [id, tutorAnim(MOVES[id])])) as Record<TutorMoveId, MoveAnim>),
+  ...(Object.fromEntries([...TUTOR_MOVE_IDS, ...LINE_MOVE_IDS].map((id) => [id, tutorAnim(MOVES[id])])) as Record<TutorMoveId | LineMoveId, MoveAnim>),
 };
 
 /** Release sheets tried, in order, when a move's own sheet is missing or only a copy of Charge. */
@@ -237,7 +238,8 @@ export function enemySprite(enemy: EnemyState): SpriteKey {
   return (transforming ? next : now) === 'shield' ? SPRITE_KEYS.aegislashShield : SPRITE_KEYS.aegislashBlade;
 }
 
-const ENEMY_ATTACK_ANIM: Record<EnemyState['species'], string> = {
+/** The attack sheet per enemy species (the gacha lines' forms are never enemies: they fall back to Attack). */
+const ENEMY_ATTACK_ANIM: Readonly<Partial<Record<EnemyState['species'], string>>> = {
   mimikyu: 'Attack',
   zorua: 'Attack',
   litwick: 'Shoot',
@@ -326,7 +328,7 @@ export function enemyAnim(enemy: EnemyState, ctx: EnemyAnimContext): AnimChoice 
       return looping(sprite, 'Charge', ai.modeMs, facing);
     case 'attack': {
       const blade = enemy.boss?.stance === 'blade';
-      const anim = blade ? 'Swing' : ENEMY_ATTACK_ANIM[enemy.species];
+      const anim = blade ? 'Swing' : (ENEMY_ATTACK_ANIM[enemy.species] ?? 'Attack');
       const meta = animMeta(sprite, anim);
       if (!meta) return looping(sprite, 'Idle', ctx.timeMs, facing);
       const progress = ai.modeDurationMs > 0 ? ai.modeMs / ai.modeDurationMs : 1;

@@ -1,4 +1,5 @@
 import { BASE_MOVE_IDS, type MoveDef, type MoveId } from './moves';
+import { LINE_MOVE_IDS } from './line-moves';
 import type { DungeonId } from './dungeons';
 import type { StarterId } from './learnsets';
 
@@ -70,9 +71,9 @@ export const MASTER_MOVES: Readonly<Partial<Record<MoveId, { unlockedBy?: Dungeo
   'belly-drum': {},
 };
 
-/** The tier of a move: the original kits are Básico, the Maestro list Maestro, every other tutor move Avanzado. */
+/** The tier of a move: the original kits (the gacha lines' own moves too) are Básico, the Maestro list Maestro, every other tutor move Avanzado. */
 export function moveTier(id: MoveId): MoveTier {
-  if ((BASE_MOVE_IDS as readonly MoveId[]).includes(id)) return 'basic';
+  if ((BASE_MOVE_IDS as readonly MoveId[]).includes(id) || (LINE_MOVE_IDS as readonly MoveId[]).includes(id)) return 'basic';
   return MASTER_MOVES[id] ? 'master' : 'advanced';
 }
 

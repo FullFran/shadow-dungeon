@@ -115,6 +115,19 @@ const TARGETS = [
   { dex: '0229', form: '0000', species: 'houndoom', formName: 'base' },
   // The Refugio's move tutor (tracker.json 2026-10-26: full sheet set, CHUNSOFT + PMDCollab).
   { dex: '0235', form: '0000', species: 'smeargle', formName: 'base' },
+  // Gacha evolution lines (odd/tasks/gacha-evolutions.md T3).
+  { dex: '0063', form: '0000', species: 'abra', formName: 'base' },
+  { dex: '0064', form: '0000', species: 'kadabra', formName: 'base' },
+  { dex: '0065', form: '0000', species: 'alakazam', formName: 'base' },
+  { dex: '0393', form: '0000', species: 'piplup', formName: 'base' },
+  { dex: '0394', form: '0000', species: 'prinplup', formName: 'base' },
+  { dex: '0395', form: '0000', species: 'empoleon', formName: 'base' },
+  { dex: '0403', form: '0000', species: 'shinx', formName: 'base' },
+  { dex: '0404', form: '0000', species: 'luxio', formName: 'base' },
+  { dex: '0405', form: '0000', species: 'luxray', formName: 'base' },
+  { dex: '0610', form: '0000', species: 'axew', formName: 'base' },
+  { dex: '0611', form: '0000', species: 'fraxure', formName: 'base' },
+  { dex: '0612', form: '0000', species: 'haxorus', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.
