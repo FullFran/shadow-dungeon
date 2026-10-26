@@ -591,7 +591,7 @@ El sonido del M0 es procedural (Web Audio, sin ficheros de audio): cada evento d
 - Cada Pokémon tiene su propio Q y su propio E. Conseguir uno nuevo en el gacha cambia cómo juegas.
 - Cada Pokémon tiene un repertorio de movimientos y lleva equipados cuatro: rápida (clic izquierdo), fuerte (clic derecho), potenciación (R) y área (F). Cada movimiento pertenece a una sola ranura, para que la rápida siempre se sienta rápida, la fuerte siempre tenga su arranque y las dos nuevas no se puedan repetir.
 - Los movimientos se cambian desde el menú, entre partidas, nunca en mitad del combate.
-- Desbloquear movimientos del repertorio puede ser una de las mejoras que se compran con Pokémonedas (por decidir).
+- Cada inicial empieza con su kit original (siete movimientos, gratis) y aprende el resto de su repertorio canónico pagando Pokémonedas al maestro de movimientos (ver «Movimientos y maestro»).
 - El número de ranuras va en los datos (`PLAYER_SLOT_LAYOUT`), no metido a mano en el código. Las ranuras de potenciación y área pueden quedar vacías si un Pokémon no tiene movimientos para ellas.
 
 Repertorio de Mimikyu en el M0:
@@ -621,10 +621,186 @@ Potenciación y área de los iniciales (la primera de cada área es la que viene
 
 Los de área no se cargan, tardan en salir y siempre dan la pausa y la sacudida fuertes al golpear. Pulso Noche se queda en la ranura fuerte de Zorua (pasarlo a área cambiaría su equipo por defecto; Pulso Umbrío cubre el anillo). Bomba Fango queda para más adelante (pide un proyectil que estalle al chocar).
 
-Sin estados alterados todavía: lo que en el juego original depende de la quemadura aquí depende del aturdimiento. Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego también se carga con los golpes de Fuego del propio Litwick (cuatro golpes potencian el siguiente movimiento fuerte).
+Sin estados alterados completos: lo que en el juego original depende de la quemadura aquí depende del aturdimiento (los movimientos del maestro añaden quemadura y veneno como daño a lo largo del tiempo, nada más). Ningún enemigo actual ataca con Fuego, así que Absorbe Fuego también se carga con los golpes de Fuego del propio Litwick (cuatro golpes potencian el siguiente movimiento fuerte).
 - La efectividad de tipos se aplica a E (y a las debilidades de los jefes). La pantalla de movimientos dice, para cada uno, su coste de estamina, su forma (arco corto, anillo 360°, proyectil lento...) y contra qué enemigos de la Cripta es eficaz o poco eficaz.
 - Cada ataque, del jugador o enemigo, se pinta con el color de su tipo (una sola paleta); los avisos enemigos conservan el borde rojo. El último golpe de un movimiento de varios golpes y los movimientos marcados como pesados dan la pausa, la sacudida y el sonido fuertes.
 - Los kits son datos: un movimiento es una entrada de tabla con daño, arranque, fotogramas activos, recuperación, coste de estamina, forma del golpe y niveles de carga.
+
+### Movimientos y maestro *(provisional)*
+
+Cada inicial puede aprender los movimientos que aprende en los juegos originales (por nivel, MT/DT, tutor y huevo; aprendizajes de PokeAPI, todas las generaciones, en `src/data/learnsets.ts`), rediseñados para el combate en tiempo real. Se eligieron los que importan: todos los de daño relevantes y los de estado clave (Danza Espada, Maquinación, Paz Mental, Fuego Fatuo, Corpulencia, Maldición, Tambor...). Entre 23 y 28 por especie. Golpe Umbrío de Mimikyu y Corpulencia de Cubone no están en sus aprendizajes canónicos, pero se quedan porque ya eran parte del kit.
+
+**Cómo se adaptan.** La potencia es la oficial; los tiempos se ajustan para que ningún movimiento comprado supere al mejor movimiento original de su ranura y su forma (un test lo comprueba): lo más fuerte es más lento, gasta más estamina o PS, o retrocede. Los estados se simplifican:
+
+| En los juegos | Aquí |
+|---|---|
+| Quemadura, veneno | Daño a lo largo del tiempo: una parte del golpe (40 % quemadura en 4 ticks, 50 % veneno en 5) se repite en el enemigo, sin pausa de golpe |
+| Retroceso (Mazazo, Envite Ígneo, Doble Filo, Derribo) | Pierdes esa parte del daño que haces, nunca por debajo de 1 PS |
+| Drenaje (Puño Drenaje, Gigadrenado, Beso Drenaje, Chupavidas) | Te curas esa parte del daño que haces (los rápidos drenan menos que en el original) |
+| Retroceder, parálisis, congelación | Más aturdimiento al golpear |
+| Prioridad (Golpe Bajo) | Arranque más corto |
+| Índice crítico alto (Cuchillada, Tajo Umbrío) | +25 % de probabilidad de crítico |
+| Potencia por peso (Hierba Lazo, Patada Baja), daño fijo (Tinieblas) | Una potencia fija |
+| Bajar tus propias estadísticas (Sofoco) | Enfriamiento de 7 s en un movimiento fuerte |
+| Paz Mental, Maldición, Tambor, Defensa Férrea... | Potenciaciones: daño y defensa durante unos segundos, o pagar PS por golpes mucho más fuertes |
+
+Formas nuevas, todas genéricas: el **remolino** (Giro Fuego: una zona que se queda delante de ti y vuelve a golpear cada 600 ms) y el **disparo teledirigido** (Meteoros: se curva hacia el enemigo más cercano). Ideas tomadas de PokeSurvivor (solo mecánicas, nada de su código): sus zonas en el suelo y sus disparos teledirigidos, y su «evolución» de movimientos al nivel máximo, que aquí son las Mejoras.
+
+**Precios** (Pokémonedas): rápidos 120 / 200 / 300 (potencia < 60, < 75, más); fuertes 220 / 380 / 560 y de área 300 / 450 / 650 (< 80, < 100, más); potenciaciones 350. El kit original es gratis.
+
+**Mejoras.** Los siete movimientos originales se pueden mejorar dos veces («Garra Umbría +», «++»): 150 y 350 Pokémonedas; cada rango da +10 % de daño y, en potenciación y área, un 10 % menos de enfriamiento. Así los movimientos de siempre siguen valiendo. Las Mejoras no entran en el Santuario ni en el modo puro (como las mejoras de Poochyena); los movimientos aprendidos sí.
+
+**El maestro.** Smeargle, «Maestro de movimientos», está en el Refugio, en el césped del oeste junto a la casa de piedra. Su ventana es como la tienda de Poochyena: arriba el saldo y el equipo recomendado; una fila elige el Pokémon (◀ ▶, empieza en el tuyo), otra filtra por ranura (Todos, Rápida, Fuerte, Potenciación, Área); luego los movimientos a la venta (precio, o «Aprendido») y las Mejoras (rango y precio). La línea de abajo explica la fila del cursor. Lo comprado se guarda en `mazmorra-sombria.save` (versión 2; un guardado de la versión 1 se lee sin nada aprendido). En la pantalla de equipo solo aparecen los movimientos aprendidos de cada ranura, con el mismo filtro, los nombres con sus «+» y el equipo recomendado debajo; un movimiento no aprendido nunca llega a una partida (se cambia por el de por defecto de su ranura).
+
+**Equipos recomendados** (siguen los sets competitivos de Smogon, exportados por data.pkmn.cc; fuentes en `src/data/learnsets.ts`):
+
+| Pokémon | Rápida | Fuerte | Potenciación | Área | Referencia |
+|---|---|---|---|---|---|
+| Mimikyu | Sombra Vil | Carantoña | Danza Espada | Golpe Fantasma | Danza Espada / Carantoña / Garra Umbría / Sombra Vil (OU/UU Gen 9), Golpe Fantasma (BSS Gen 8) |
+| Zorua | Desarme | Bomba Lodo | Maquinación | Pulso Umbrío | Maquinación / Pulso Umbrío / Bomba Lodo (Zoroark UU Gen 7), Desarme (Zorua LC Gen 7 y 9) |
+| Litwick | Ascuas | Bola Sombra | Paz Mental | Lanzallamas | Paz Mental / Llamarada o Lanzallamas / Bola Sombra / Energibola (Lampent NFE, Chandelure NU Gen 9) |
+| Cubone | Desarme | Huesomerang | Danza Espada | Terremoto | Danza Espada / Huesomerang / Terremoto / Desarme (Marowak ZU Gen 8; Cubone LC Gen 7) |
+
+Zorua no aprende Lanzallamas ni Onda Certera (los aprende Zoroark): su cobertura es Bomba Lodo, Hierba Lazo y Envidia Ardiente. La alternativa de Litwick en la ranura fuerte es Llamarada o Energibola.
+
+**Arnés:** `npm run balance -- --quick --slots --build=<especie>` juega con el equipo recomendado (`--species=<especie>` con el de por defecto). Antes y después en `reports/balance/movepools-builds.md`: ningún equipo rompe una invariante de justicia y ninguno supera claramente al de por defecto con los bots.
+
+Repertorio completo (precio «inicial» = kit original; est. = estamina; enfr. = enfriamiento):
+
+#### Mimikyu
+
+| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
+|---|---|---|---|---|---|
+| Garra Umbría | Rápido | Fantasma | 70 | arco corto | inicial (gratis; Mejoras 150 / 350) |
+| Sombra Vil | Rápido | Fantasma | 40 | embestida | inicial (gratis; Mejoras 150 / 350) |
+| Impresionar | Rápido | Fantasma | 30 | arco corto, aturde mucho | 120 P |
+| Cuchillada | Rápido | Normal | 70 | arco corto, +25 % crítico | 200 P |
+| Tajo Umbrío | Rápido | Siniestro | 70 | arco corto, +25 % crítico | 200 P |
+| Tijera X | Rápido | Bicho | 80 | arco corto | 300 P |
+| Chupavidas | Rápido | Bicho | 80 | arco corto, drena 25 % | 300 P |
+| Beso Drenaje | Rápido | Hada | 50 | arco corto, drena 40 % | 120 P |
+| Carantoña | Fuerte | Hada | 90 | arco amplio, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Puño Drenaje | Fuerte | Lucha | 75 | arco amplio, drena 50 %, est. 30 | 220 P |
+| Mazazo | Fuerte | Planta | 120 | arco amplio, retroceso 33 %, est. 35 | 560 P |
+| Gigadrenado | Fuerte | Planta | 75 | proyectil rápido, drena 50 %, est. 30 | 220 P |
+| Rayo | Fuerte | Eléctrico | 90 | proyectil rápido, est. 30 | 380 P |
+| Derribo | Fuerte | Normal | 90 | embestida, retroceso 25 %, est. 30 | 380 P |
+| Infortunio | Fuerte | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | 220 P |
+| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | inicial (gratis; Mejoras 150 / 350) |
+| Afilagarras | Potenciación | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P |
+| Maldición | Potenciación | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 350 P |
+| Corpulencia | Potenciación | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | 350 P |
+| Fuego Fatuo | Potenciación | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | 350 P |
+| Brillo Mágico | Área | Hada | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
+| Golpe Umbrío | Área | Fantasma | 120 | cono amplio, enfr. 10 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
+| Golpe Fantasma | Área | Fantasma | 90 | embestida, enfr. 8 s, est. 35 | 450 P |
+| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
+| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
+| Trueno | Área | Eléctrico | 110 | anillo 360°, enfr. 11 s, est. 40 | 650 P |
+
+Build recomendado: Sombra Vil · Carantoña · Danza Espada · Golpe Fantasma.
+
+#### Zorua
+
+| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
+|---|---|---|---|---|---|
+| Golpes Furia | Rápido | Normal | 25 | arco corto, ×5 | inicial (gratis; Mejoras 150 / 350) |
+| Finta | Rápido | Siniestro | 60 | embestida | inicial (gratis; Mejoras 150 / 350) |
+| Garra Umbría | Rápido | Fantasma | 70 | arco corto | 200 P |
+| Golpe Bajo | Rápido | Siniestro | 70 | embestida, ×1.5 si el enemigo ataca, prioridad | 200 P |
+| Desarme | Rápido | Siniestro | 65 | arco corto | 200 P |
+| Ida y Vuelta | Rápido | Bicho | 70 | embestida | 200 P |
+| Desahogo | Rápido | Siniestro | 75 | arco corto, ×1.5 si fallaste antes | 300 P |
+| Meteoros | Rápido | Normal | 60 | proyectil rápido, teledirigido | 200 P |
+| Pulso Noche | Fuerte | Siniestro | 85 | anillo 360°, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Juego Sucio | Fuerte | Siniestro | 95 | embestida, ×1.5 si el enemigo ataca, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Bomba Lodo | Fuerte | Veneno | 90 | proyectil rápido, envenena, est. 30 | 380 P |
+| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | 380 P |
+| Paranormal | Fuerte | Psíquico | 80 | proyectil rápido, est. 30 | 380 P |
+| Hierba Lazo | Fuerte | Planta | 80 | arco amplio, est. 30 | 380 P |
+| Maquinación | Potenciación | Siniestro | — | sobre ti, velocidad ×1.3, +35 % crítico, 5 s, enfr. 14 s | inicial (gratis; Mejoras 150 / 350) |
+| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P |
+| Paz Mental | Potenciación | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P |
+| Afilagarras | Potenciación | Siniestro | — | sobre ti, velocidad ×1.1, +30 % crítico, 6 s, enfr. 13 s | 350 P |
+| Agilidad | Potenciación | Psíquico | — | sobre ti, velocidad ×1.5, +0 % crítico, 5 s, enfr. 12 s | 350 P |
+| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
+| Alarido | Área | Siniestro | 55 | cono amplio, enfr. 6 s, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Vozarrón | Área | Normal | 90 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
+| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
+
+Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
+
+#### Litwick
+
+| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
+|---|---|---|---|---|---|
+| Ascuas | Rápido | Fuego | 50 | proyectil rápido | inicial (gratis; Mejoras 150 / 350) |
+| Impresionar | Rápido | Fantasma | 30 | arco corto, aturde mucho | inicial (gratis; Mejoras 150 / 350) |
+| Tinieblas | Rápido | Fantasma | 50 | proyectil rápido | 120 P |
+| Polución | Rápido | Veneno | 30 | proyectil rápido, envenena | 120 P |
+| Niebla Clara | Rápido | Veneno | 50 | proyectil rápido | 120 P |
+| Nitrocarga | Rápido | Fuego | 50 | embestida | 120 P |
+| Infortunio | Fuerte | Fantasma | 65 | proyectil lento, ×2 si está aturdido, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Infierno | Fuerte | Fuego | 100 | proyectil lento, est. 35 | inicial (gratis; Mejoras 150 / 350) |
+| Bola Sombra | Fuerte | Fantasma | 80 | proyectil rápido, est. 30 | 380 P |
+| Llamarada | Fuerte | Fuego | 110 | proyectil lento, quema, est. 40 | 560 P |
+| Energibola | Fuerte | Planta | 90 | proyectil rápido, est. 30 | 380 P |
+| Sofoco | Fuerte | Fuego | 130 | proyectil rápido, enfr. 7 s, est. 40 | 560 P |
+| Envite Ígneo | Fuerte | Fuego | 120 | embestida, retroceso 33 %, quema, est. 35 | 560 P |
+| Poltergeist | Fuerte | Fantasma | 110 | arco amplio, est. 35 | 560 P |
+| Psíquico | Fuerte | Psíquico | 90 | proyectil rápido, est. 30 | 380 P |
+| Rayo Solar | Fuerte | Planta | 120 | onda en línea (atraviesa), est. 35 | 560 P |
+| Cólera Ardiente | Fuerte | Fuego | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | 220 P |
+| Fuego Fatuo | Potenciación | Fuego | — | sobre ti, activa Absorbe Fuego, enfr. 16 s | inicial (gratis; Mejoras 150 / 350) |
+| Paz Mental | Potenciación | Psíquico | — | sobre ti, daño ×1.25, recibido ×0.8, 7 s, enfr. 15 s | 350 P |
+| Maldición | Potenciación | Fantasma | — | sobre ti, cuesta 15 % PS, 4 golpes ×1.6, 10 s, enfr. 16 s | 350 P |
+| Armadura Ácida | Potenciación | Veneno | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P |
+| Reducción | Potenciación | Normal | — | sobre ti, velocidad ×1.25, +10 % crítico, 4 s, enfr. 12 s | 350 P |
+| Lanzallamas | Área | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | inicial (gratis; Mejoras 150 / 350) |
+| Onda Ígnea | Área | Fuego | 95 | cono amplio, enfr. 9 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
+| Giro Fuego | Área | Fuego | 30 | proyectil lento, zona que repite cada 600 ms, quema, enfr. 10 s, est. 35 | 300 P |
+| Pulso Umbrío | Área | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P |
+| Envidia Ardiente | Área | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P |
+
+Build recomendado: Ascuas · Bola Sombra · Paz Mental · Lanzallamas.
+
+#### Cubone
+
+| Movimiento | Hueco | Tipo | Potencia | Efecto | Precio |
+|---|---|---|---|---|---|
+| Hueso Palo | Rápido | Tierra | 65 | arco corto | inicial (gratis; Mejoras 150 / 350) |
+| Ataque Óseo | Rápido | Tierra | 30 | embestida, ×3 | inicial (gratis; Mejoras 150 / 350) |
+| Desarme | Rápido | Siniestro | 65 | arco corto | 200 P |
+| Puño Fuego | Rápido | Fuego | 75 | arco corto, quema | 300 P |
+| Puño Trueno | Rápido | Eléctrico | 75 | arco corto | 300 P |
+| Golpe Cabeza | Rápido | Normal | 70 | embestida, aturde mucho | 200 P |
+| Patada Baja | Rápido | Lucha | 60 | arco corto | 200 P |
+| Doble Patada | Rápido | Lucha | 30 | arco corto, ×2 | 120 P |
+| Bofetón Lodo | Rápido | Tierra | 20 | proyectil rápido, aturde mucho | 120 P |
+| Huesomerang | Fuerte | Tierra | 50 | bumerán (vuelve a ti), est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Pataleta | Fuerte | Tierra | 75 | anillo 360°, ×2 si fallaste antes, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Doble Filo | Fuerte | Normal | 120 | embestida, retroceso 33 %, est. 35 | 560 P |
+| Cabeza de Hierro | Fuerte | Acero | 80 | embestida, est. 30 | 380 P |
+| Tierra Viva | Fuerte | Tierra | 90 | onda en línea (atraviesa), est. 30 | 380 P |
+| Demolición | Fuerte | Lucha | 75 | arco amplio, est. 30 | 220 P |
+| Arenas Ardientes | Fuerte | Tierra | 70 | proyectil rápido, quema, est. 30 | 220 P |
+| Excavar | Fuerte | Tierra | 80 | embestida, est. 30 | 380 P |
+| Puño Certero | Fuerte | Lucha | 150 | arco amplio, est. 40 | 560 P |
+| Corpulencia | Potenciación | Lucha | — | sobre ti, daño recibido ×0.6, 6 s, enfr. 16 s | inicial (gratis; Mejoras 150 / 350) |
+| Danza Espada | Potenciación | Normal | — | sobre ti, 3 golpes ×1.5, 9 s, enfr. 15 s | 350 P |
+| Foco Energía | Potenciación | Normal | — | sobre ti, velocidad ×1, +50 % crítico, 6 s, enfr. 15 s | 350 P |
+| Tambor | Potenciación | Normal | — | sobre ti, cuesta 50 % PS, 3 golpes ×2, 10 s, enfr. 22 s | 350 P |
+| Defensa Férrea | Potenciación | Acero | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P |
+| Terremoto | Área | Tierra | 100 | anillo 360°, enfr. 10 s, est. 40 | inicial (gratis; Mejoras 150 / 350) |
+| Terratemblor | Área | Tierra | 60 | anillo 360°, enfr. 6 s, est. 30 | inicial (gratis; Mejoras 150 / 350) |
+| Avalancha | Área | Roca | 75 | cono amplio, enfr. 7 s, est. 35 | 300 P |
+| Rayo Hielo | Área | Hielo | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P |
+| Lanzallamas | Área | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | 450 P |
+
+Build recomendado: Desarme · Huesomerang · Danza Espada · Terremoto.
+
+**Pendiente:** en una sala en línea, la quemadura o el veneno que aplica un invitado no viaja en su reclamación de golpe, así que el anfitrión no la aplica; Ida y Vuelta no te devuelve atrás; Nitrocarga no sube la velocidad; Golpe Fantasma no te hace invulnerable mientras desapareces.
 
 ### Contenido del primer prototipo (M0)
 
@@ -858,9 +1034,9 @@ Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú princ
 | Reflejos | +8 ms de ventana de esquiva perfecta (base 120 ms) | 120, 260, 480 |
 | Estudio | +5 % de experiencia | 90, 180, 320, 520 |
 
-Comprarlo todo cuesta unas 5000 Pokémonedas (unas 30 victorias). El gacha sigue pendiente ("Próximamente").
+Comprarlo todo cuesta unas 5000 Pokémonedas (unas 30 victorias). El gacha sigue pendiente ("Próximamente"). Las Pokémonedas también compran movimientos y Mejoras al maestro de movimientos (Smeargle, en el Refugio; sección 4, «Movimientos y maestro»).
 
-Guardado: el saldo y los niveles comprados viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes.
+Guardado: el saldo, los niveles comprados y, desde la versión 2, los movimientos aprendidos y las Mejoras viven en una sola clave local (`mazmorra-sombria.save`) con versión, `migrate()` y `sanitize()` (sección 12): un dato roto o manipulado se lee como un guardado vacío y nunca rompe el juego. Los ajustes y los récords del tablón siguen en sus claves de antes.
 
 ## 12. Notas técnicas
 
