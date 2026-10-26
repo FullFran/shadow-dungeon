@@ -23,8 +23,10 @@ interface StoredAccount {
 
 export type AccountState = { kind: 'guest' } | { kind: 'signed-in'; email: string };
 /** Player-facing events: a cloud save was taken at login, a newer one replaced the local save, the session expired, a choice is waiting. */
-export type Notice = 'cloud-loaded' | 'adopted' | 'expired' | 'choose';
-export type AccountError = Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email';
+export const NOTICES = ['cloud-loaded', 'adopted', 'expired', 'choose'] as const;
+export type Notice = (typeof NOTICES)[number];
+export const ACCOUNT_ERRORS = ['offline', 'unauthorized', 'rejected', 'rate-limited', 'server', 'too-short', 'invalid-email'] as const satisfies readonly (Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email')[];
+export type AccountError = (typeof ACCOUNT_ERRORS)[number];
 export type SaveSummary = ReturnType<typeof saveSummary>;
 export type AuthOutcome = { ok: true } | { ok: true; choose: { device: SaveSummary; cloud: SaveSummary } } | { ok: false; error: AccountError };
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountApi, ApiError, ApiResult, AuthSession, RemoteSave } from '../../src/adapters/account-api';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
-import { ACCOUNT_KEY, createAccount, type Notice } from '../../src/app/account';
+import { ACCOUNT_ERRORS, ACCOUNT_KEY, createAccount, NOTICES, type Notice } from '../../src/app/account';
+import { catalog, LANGUAGES } from '../../src/i18n';
 import { DEBOUNCE_MS, observeKey, type Timers } from '../../src/app/cloud-sync';
 import { EMPTY_SAVE, loadSave, SAVE_KEY, writeSave, type SaveData } from '../../src/app/save';
 
@@ -361,5 +362,18 @@ describe('storage that fails', () => {
     await d.account.start();
     expect(d.account.state()).toEqual({ kind: 'guest' });
     expect(backend.calls).toEqual([]);
+  });
+});
+
+describe('account strings', () => {
+  it('every notice and error has a line in each language, without em dashes', () => {
+    const keys = [...NOTICES.map((n) => `account.notice.${n}`), ...ACCOUNT_ERRORS.map((e) => `account.error.${e}`), 'account.forgot', 'account.privacy', 'title.account'];
+    for (const language of LANGUAGES) {
+      const lines = catalog(language);
+      expect(keys.filter((key) => !lines[key])).toEqual([]);
+      expect(Object.entries(lines).filter(([key, text]) => (key.startsWith('account.') || key === 'title.account') && text.includes('—'))).toEqual([]);
+    }
+    expect(catalog('es')['account.notice.adopted']).toBe('Se cargó una partida más reciente de tu cuenta.');
+    expect(catalog('es')['account.forgot']).toContain('Si olvidas la contraseña, escríbenos');
   });
 });
