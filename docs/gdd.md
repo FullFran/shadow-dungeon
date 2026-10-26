@@ -1019,6 +1019,10 @@ Las Esencias se ganan en las mazmorras reto, una por línea. Cada reto es la pru
 
 Las líneas del gacha usan los cuatro jefes intermedios y los iniciales los cuatro guardianes. Los retos no llenan la selección de mazmorra: una sola entrada **Desafíos** abre su propio menú (decisión del 26-10-2026), al que también se llega desde la salida del pueblo y desde la ventana de Phantump. El menú enseña cada reto con el retrato de la forma que tienes de su línea, su presentación, qué dificultad da qué Esencia, si tienes la línea y si tu Pokémon puede entrar; los que no se pueden jugar salen en gris («Juega con Kadabra.», «Aún no tienes esta línea.»). Elegido desde el pueblo, el equipo solo ofrece las formas de esa línea y empieza con la que tienes. Al ganar, la pantalla final cierra con la frase del reto. Un reto se abre cuando tienes cualquier forma de su línea (los de los iniciales, siempre) y **solo se puede jugar con una forma de esa línea**, también en cooperativo: el anfitrión no puede empezarlo si alguien lleva otro Pokémon (decisión del 26-10-2026). Ganarlo da 3 Esencias del nivel de su dificultad. En cooperativo cada jugador cobra en su propia partida guardada. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
 
+#### Sendas (misiones de historia) *(provisional)*
+
+Cada mazmorra reto es también la **Senda** de su línea: tres capítulos, uno por nivel de material (I en Normal, II en Difícil, III en Pesadilla; cada uno se abre al cerrar el anterior), con una cinemática antes y otra después, la voz del Pokémon durante la partida, un fragmento de memoria que se recoge en una planta, el jefe como figura de su herida y una línea de vínculo por capítulo en la ventana de Phantump. El III termina en el despertar o la evolución final. Tono souls con la cercanía de Genshin. Diseño completo y esquema de las ocho en `docs/story-quests.md`; la de Mimikyu (La Senda del Disfraz) es el piloto y está completa. Código: `src/data/story-quests.ts`, `src/core/story.ts`, `src/adapters/story-scenes.ts`; progreso en el campo opcional `story` de la partida.
+
 ## 6. Muerte y revivir
 
 | Situación | Regla |
