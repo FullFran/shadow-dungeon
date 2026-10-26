@@ -136,12 +136,15 @@
       .lobby { min-width: 22rem; max-width: 32rem; }
       /* Account screen (src/app/account-screen.ts): email and password keep their case; long emails wrap. */
       .md-window.account { max-width: 34rem; }
-      input.code-input.account-input { width: 12em; max-width: 100%; text-transform: none; letter-spacing: normal; }
+      input.code-input.account-input { width: 14em; max-width: 100%; text-transform: none; letter-spacing: normal; }
+      .account-row .md-label { flex: 1 1 auto; min-width: 0; }
       .account-email { color: var(--md-cursor); overflow-wrap: anywhere; }
       .account-note { margin: 8px 0 0; font-size: 16px; }
+      .account-summary { font-size: 16px; }
       @media (max-width: 560px) {
         .account .md-item { flex-wrap: wrap; row-gap: 2px; }
-        .account .md-value { min-width: 0; max-width: 100%; margin-left: auto; }
+        .account .md-item.account-row { flex-wrap: nowrap; }
+        .account .md-value { min-width: 0; max-width: 100%; margin-left: auto; white-space: normal; }
       }
       /* Capitals and digits only (no lowercase "e" to fill in): the one place the real 700 weight stays. */
       .room-code { font-size: var(--md-title); font-weight: 700; letter-spacing: 0.25em; color: var(--md-cursor); margin: 6px 0 4px; text-shadow: 0 4px 0 var(--md-ink); user-select: all; }

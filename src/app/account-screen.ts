@@ -38,7 +38,8 @@ export interface AccountScreenOptions {
   onBack(): void;
 }
 
-const summaryText = (summary: SaveSummary): string => t('account.summary').replace('{coins}', String(summary.coins)).replace('{owned}', String(summary.owned));
+const summaryText = (summary: SaveSummary): HTMLElement =>
+  h('span', { className: 'account-summary', textContent: t('account.summary').replace('{coins}', String(summary.coins)).replace('{owned}', String(summary.owned)) });
 
 /** A text field in the room-code field's look, without its capitals. */
 function field(type: 'email' | 'password', autocomplete: AutoFill, label: string): HTMLInputElement {
@@ -113,8 +114,9 @@ export function accountWindow(options: AccountScreenOptions, confirmDelete = fal
     });
     body = [h('p', { textContent: t('account.guestIntro') })];
     items = [
-      { label: t('account.email'), value: email, className: 'join-row account-row', onConfirm: () => email.focus() },
-      { label: t('account.password'), value: password, className: 'join-row account-row', onConfirm: () => password.focus() },
+      // The fields are the rows (their placeholder names them): two lines less on a phone.
+      { label: email, className: 'account-row', onConfirm: () => email.focus() },
+      { label: password, className: 'account-row', onConfirm: () => password.focus() },
       { label: t('account.logIn'), onConfirm: logIn },
       { label: t('account.register'), onConfirm: register },
       { label: t('menu.back'), onConfirm: options.onBack },
@@ -126,8 +128,7 @@ export function accountWindow(options: AccountScreenOptions, confirmDelete = fal
     ...body,
     list.element,
     status,
-    h('p', { className: 'dim account-note', textContent: t('account.privacy') }),
-    state.kind === 'guest' ? h('p', { className: 'dim account-note', textContent: t('account.forgot') }) : null,
+    h('p', { className: 'dim account-note', textContent: state.kind === 'guest' ? `${t('account.privacy')} ${t('account.forgot')}` : t('account.privacy') }),
   ]);
   function deleteView(): void {
     panel.replaceWith(accountWindow(options, true));

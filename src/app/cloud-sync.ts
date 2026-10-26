@@ -60,7 +60,10 @@ export type Resume = 'adopt' | 'push' | 'none' | 'upload';
 export function resumeDecision(local: SaveData, remote: RemoteSave | null, link: SyncLink): Resume {
   if (!remote) return 'upload';
   if (remote.id !== link.saveId || remote.rev > link.rev) return 'adopt';
-  return sameSave(local, readRemote(remote.data)) ? 'none' : 'push';
+  const cloud = readRemote(remote.data);
+  if (sameSave(local, cloud)) return 'none';
+  // An empty device save under a live session means its storage was wiped, not that the player lost everything: keep the cloud.
+  return isEmptySave(local) ? 'adopt' : 'push';
 }
 
 /** A store that calls `onWrite` after each successful write of `watched` (the save facade's key). */

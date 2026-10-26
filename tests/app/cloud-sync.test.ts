@@ -101,6 +101,9 @@ describe('resuming a linked session', () => {
   it('pushes progress made offline on top of the known revision', () => {
     expect(resumeDecision(local, remote(save({ coins: 9 }), 3), link)).toBe('push');
   });
+  it('never pushes an empty device save over cloud progress (storage wiped under a live session)', () => {
+    expect(resumeDecision(EMPTY_SAVE, remote(save({ coins: 9 }), 3), link)).toBe('adopt');
+  });
   it('does nothing when both agree', () => {
     expect(resumeDecision(local, remote(local, 3), link)).toBe('none');
   });

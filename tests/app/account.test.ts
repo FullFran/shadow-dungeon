@@ -374,6 +374,6 @@ describe('account strings', () => {
       expect(Object.entries(lines).filter(([key, text]) => (key.startsWith('account.') || key === 'title.account') && text.includes('—'))).toEqual([]);
     }
     expect(catalog('es')['account.notice.adopted']).toBe('Se cargó una partida más reciente de tu cuenta.');
-    expect(catalog('es')['account.forgot']).toContain('Si olvidas la contraseña, escríbenos');
+    expect(catalog('es')['account.forgot']).toMatch(/si olvidas la contraseña, escríbenos/i);
   });
 });

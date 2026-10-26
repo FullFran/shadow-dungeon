@@ -1237,6 +1237,7 @@ function devScreen(root: HTMLElement): boolean {
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
     shrine: () => shrineScreen(root, 'title', (new URLSearchParams(window.location.search).get('view') ?? undefined) as ShrineView | undefined),
     online: () => onlineScreen(root),
+    account: () => accountScreen(root, () => titleScreen(root)),
     // `&guest=1`: join the preview room instead of creating it (two windows walk the town together).
     lobby: () => void openLobby(root, 'K7M2Q', new URLSearchParams(window.location.search).get('guest') !== '1', () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
