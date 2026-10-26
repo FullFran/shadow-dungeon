@@ -56,7 +56,7 @@ describe('evolution lines: data', () => {
       expect(MOVES[e.move].slot, e.move).not.toBe('boost');
       expect(to.maxHp).toBe(from.maxHp);
       expect(e.coins).toBeGreaterThan(0);
-      expect(e.materials).toBeGreaterThan(0);
+      expect(Object.values(e.materials).reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
     }
   });
 
@@ -65,7 +65,9 @@ describe('evolution lines: data', () => {
       const second = evolutionOf(lineOf(b))!;
       const third = evolutionOf(b)!;
       expect(third.coins).toBeGreaterThan(second.coins);
-      expect(third.materials).toBeGreaterThan(second.materials);
+      // User decision 2026-10-26: the first step needs Normal and Difícil, the final one Difícil and Pesadilla.
+      expect(second.materials).toEqual({ normal: 3, hard: 2 });
+      expect(third.materials).toEqual({ hard: 3, nightmare: 2 });
       expect(third.bonus.hp).toBeGreaterThan(second.bonus.hp);
       expect(third.bonus.damage).toBeGreaterThan(second.bonus.damage);
       expect(stageBonus(c, 1)).toEqual(third.bonus);
@@ -116,14 +118,14 @@ describe('evolution: stage bonus in a run', () => {
 });
 
 describe('evolution: evolving an owned species', () => {
-  const ready = { coins: 10_000, owned: ['shinx', 'abra'] as SpeciesId[], materials: { abra: 20 } };
+  const ready = { coins: 10_000, owned: ['shinx', 'abra'] as SpeciesId[], materials: { abra: { normal: 20, hard: 20, nightmare: 20 } } };
 
   it('pays its Pokémonedas and materials and replaces the form where it was', () => {
     const cost = evolutionOf('abra')!;
     const next = evolve(ready, 'abra')!;
     expect(next.owned).toEqual(['shinx', 'kadabra']);
     expect(next.coins).toBe(ready.coins - cost.coins);
-    expect(next.materials?.abra).toBe(20 - cost.materials);
+    expect(next.materials?.abra).toEqual({ normal: 20 - cost.materials.normal!, hard: 20 - cost.materials.hard!, nightmare: 20 });
     expect(rosterOf(next)).toEqual([...STARTER_SPECIES, 'shinx', 'kadabra']);
     const final = evolve(next, 'kadabra')!;
     expect(final.owned).toEqual(['shinx', 'alakazam']);
@@ -143,13 +145,26 @@ describe('evolution: evolving an owned species', () => {
     expect(canEvolve(ready, 'mimikyu')).toBe(false);
     expect(evolve({ ...ready, coins: 0 }, 'abra')).toBeNull();
   });
+
+  it('a higher tier never stands in for a lower one, and the final form needs Pesadilla', () => {
+    expect(canEvolve({ ...ready, materials: { abra: { hard: 99, nightmare: 99 } } }, 'abra')).toBe(false);
+    const kadabra = { coins: 10_000, owned: ['kadabra'] as SpeciesId[] };
+    expect(canEvolve({ ...kadabra, materials: { abra: { normal: 999, hard: 999 } } }, 'kadabra')).toBe(false);
+    expect(canEvolve({ ...kadabra, materials: { abra: { hard: 3, nightmare: 1 } } }, 'kadabra')).toBe(false);
+    expect(canEvolve({ ...kadabra, materials: { abra: { hard: 3, nightmare: 2 } } }, 'kadabra')).toBe(true);
+    expect(evolve({ ...kadabra, materials: { abra: { hard: 3, nightmare: 2 } } }, 'kadabra')!.materials).toEqual({ abra: {} });
+  });
 });
 
 describe('evolution: the save keeps the collection', () => {
-  it('keeps owned forms (one per line), their Mejoras, and materials of first forms only', () => {
-    const save = sanitize({ coins: 0, upgrades: {}, owned: ['kadabra', 'abra', 'axew'], materials: { abra: 3, kadabra: 2, axew: 1.5 }, ranks: { kadabra: { swift: 1 } } });
+  it('keeps owned forms (one per line), their Mejoras, and materials of first forms only, per tier', () => {
+    const save = sanitize({ coins: 0, upgrades: {}, owned: ['kadabra', 'abra', 'axew'], materials: { abra: { normal: 3, hard: 2, easy: 4, nightmare: -1 }, kadabra: { normal: 2 }, axew: { hard: 1.5 }, shinx: {} }, ranks: { kadabra: { swift: 1 } } });
     expect(save.owned).toEqual(['kadabra', 'axew']);
-    expect(save.materials).toEqual({ abra: 3, axew: 1 });
+    expect(save.materials).toEqual({ abra: { normal: 3, hard: 2 }, axew: { hard: 1 } });
     expect(save.ranks).toEqual({ kadabra: { swift: 1 } });
+  });
+
+  it('an early v3 save\'s flat count per line reads as Normal materials', () => {
+    expect(sanitize({ coins: 0, upgrades: {}, materials: { abra: 3, piplup: 0 } }).materials).toEqual({ abra: { normal: 3 } });
   });
 });

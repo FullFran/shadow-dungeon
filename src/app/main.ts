@@ -1094,8 +1094,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
       // Every peer earns its own Pokémonedas, guests too.
       earnCoins(store, summary.coins.total);
-      // A challenge dungeon's victory pays its line's materials, to every peer that owns the line.
-      const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory');
+      // A challenge dungeon's victory pays its line's materials of the run's tier, to every peer that owns the line.
+      const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory', summary.difficulty);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       const score = summary.clockMs !== undefined ? endlessScore(summary) : undefined;
       resultScreen(root, result, summary, online, save.coins, score);

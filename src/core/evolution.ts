@@ -1,4 +1,4 @@
-import { PLAYER_EVOLUTIONS, STAGE_BONUS_CAP, type PlayerEvolution } from '../data/player-evolutions';
+import { MATERIAL_TIERS, PLAYER_EVOLUTIONS, STAGE_BONUS_CAP, type PlayerEvolution } from '../data/player-evolutions';
 import type { SpeciesId } from '../data/species';
 import type { Collection } from './collection';
 import type { RankedMoves } from './tutor';
@@ -37,11 +37,12 @@ export function stageBonus(species: SpeciesId, party: number): { hp: number; dam
   return { hp: Math.min(bonus.hp, cap), damage: Math.min(bonus.damage, cap) };
 }
 
-/** Whether `species` is owned, can evolve, and the wallet pays its Pokémonedas and materials. */
+/** Whether `species` is owned, can evolve, and the wallet pays its Pokémonedas and every tier of materials. */
 export function canEvolve(wallet: EvolutionWallet, species: SpeciesId): boolean {
   const next = evolutionOf(species);
   if (!next || !(wallet.owned ?? []).includes(species)) return false;
-  return wallet.coins >= next.coins && (wallet.materials?.[lineOf(species)] ?? 0) >= next.materials;
+  const have = wallet.materials?.[lineOf(species)] ?? {};
+  return wallet.coins >= next.coins && MATERIAL_TIERS.every((tier) => (have[tier] ?? 0) >= (next.materials[tier] ?? 0));
 }
 
 /** The wallet after `species` evolves (the new form takes its place and its Mejoras), or null (nothing changes) when it cannot. */
@@ -49,12 +50,14 @@ export function evolve(wallet: EvolutionWallet, species: SpeciesId): EvolutionWa
   const next = evolutionOf(species);
   if (!next || !canEvolve(wallet, species)) return null;
   const line = lineOf(species);
+  const have = wallet.materials?.[line] ?? {};
+  const left = Object.fromEntries(MATERIAL_TIERS.map((tier) => [tier, (have[tier] ?? 0) - (next.materials[tier] ?? 0)]).filter(([, n]) => (n as number) > 0));
   const { [species]: ranks, ...otherRanks } = wallet.ranks ?? {};
   return {
     ...wallet,
     coins: wallet.coins - next.coins,
     owned: (wallet.owned ?? []).map((id) => (id === species ? next.to : id)),
-    materials: { ...wallet.materials, [line]: (wallet.materials?.[line] ?? 0) - next.materials },
+    materials: { ...wallet.materials, [line]: left },
     ...(wallet.ranks ? { ranks: { ...otherRanks, ...(ranks ? { [next.to]: ranks } : {}) } } : {}),
   };
 }

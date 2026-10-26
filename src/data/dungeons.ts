@@ -81,7 +81,7 @@ export interface DungeonDef {
   toxicPools?: true;
   /** Mandatory kills on some generated floors (core/gates.ts): a sealed stairs, a locked door, a wave room. */
   gates?: GateTuning;
-  /** A challenge dungeon only (`CHALLENGES`): the gacha line it belongs to (its first form) and the materials a clear pays. */
+  /** A challenge dungeon only (`CHALLENGES`): the gacha line it belongs to (its first form) and the materials a clear pays (core/challenge.ts). */
   challenge?: { line: SpeciesId; materials: number };
 }
 
@@ -437,7 +437,7 @@ export function planAt(dungeon: DungeonDef, floor: number): FloorPlan | undefine
 /** Floors of a dungeon; the endless one never runs out. */
 export const floorsOf = (dungeon: DungeonDef): number => (dungeon.endless ? Number.POSITIVE_INFINITY : dungeon.plan.length);
 
-/** Materials a challenge dungeon's clear pays (provisional; evolving costs 3, then 6). */
+/** Materials a challenge dungeon's clear pays, of the tier of its difficulty (Easy pays none; provisional). */
 export const CHALLENGE_MATERIALS = 3;
 
 /**

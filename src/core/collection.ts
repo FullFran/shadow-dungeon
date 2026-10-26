@@ -1,3 +1,4 @@
+import type { MaterialTier } from '../data/player-evolutions';
 import { isPlayable, isStarter, STARTER_SPECIES, type SpeciesId } from '../data/species';
 
 /**
@@ -11,11 +12,14 @@ export interface Collection {
   coins: number;
   /** Gacha species, as their current form, in the order obtained. */
   owned?: readonly SpeciesId[];
-  /** Evolution materials per line, keyed by the line's first form. */
-  materials?: Readonly<Partial<Record<SpeciesId, number>>>;
+  /** Evolution materials per line (keyed by the line's first form) and tier. */
+  materials?: Readonly<Partial<Record<SpeciesId, Materials>>>;
   /** Gacha pulls since the last rare (the pity counter). */
   pity?: number;
 }
+
+/** A line's materials, per tier. */
+export type Materials = Readonly<Partial<Record<MaterialTier, number>>>;
 
 /** Everyone a player can play as: the starters, then the owned species. */
 export function rosterOf(collection: Pick<Collection, 'owned'>): SpeciesId[] {

@@ -3,8 +3,11 @@ import type { MoveId } from '../data/moves';
 import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
 import { MAX_RANK, tutorOffer } from '../data/tutor';
 import { lineOf } from '../core/evolution';
+import type { Materials } from '../core/collection';
+import { MATERIAL_TIERS } from '../data/player-evolutions';
 import { challengeReward } from '../core/challenge';
 import type { DungeonDef } from '../data/dungeons';
+import type { Difficulty } from '../data/difficulty';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 
@@ -35,8 +38,8 @@ export interface SaveData {
   ranks?: RankedMoves;
   /** Gacha species, as their current form (absent = none; core/collection.ts). */
   owned?: SpeciesId[];
-  /** Evolution materials per line (absent = none). */
-  materials?: Partial<Record<SpeciesId, number>>;
+  /** Evolution materials per line and tier (absent = none). */
+  materials?: Partial<Record<SpeciesId, Materials>>;
   /** Gacha pulls since the last rare (absent = 0). */
   pity?: number;
 }
@@ -102,11 +105,21 @@ function sanitizeOwned(raw: unknown): SpeciesId[] | null {
   return owned.length > 0 ? owned : null;
 }
 
-/** Materials: whole positive counts, keyed by a gacha line's first form; null when none. */
-function sanitizeMaterials(raw: unknown): Partial<Record<SpeciesId, number>> | null {
+/**
+ * Materials: keyed by a gacha line's first form, whole positive counts per
+ * tier; null when none. An early v3 save kept one flat count per line: it
+ * reads as Normal materials.
+ */
+function sanitizeMaterials(raw: unknown): Partial<Record<SpeciesId, Materials>> | null {
   if (!isRecord(raw)) return null;
-  const out: Partial<Record<SpeciesId, number>> = {};
-  for (const [id, count] of Object.entries(raw)) if (isGacha(id) && lineOf(id) === id && wholeCount(count) > 0) out[id] = wholeCount(count);
+  const out: Partial<Record<SpeciesId, Materials>> = {};
+  for (const [id, value] of Object.entries(raw)) {
+    if (!isGacha(id) || lineOf(id) !== id) continue;
+    const tiers = isRecord(value) ? value : { normal: value };
+    const counts: Partial<Record<(typeof MATERIAL_TIERS)[number], number>> = {};
+    for (const tier of MATERIAL_TIERS) if (wholeCount(tiers[tier]) > 0) counts[tier] = wholeCount(tiers[tier]);
+    if (Object.keys(counts).length > 0) out[id] = counts;
+  }
   return Object.keys(out).length > 0 ? out : null;
 }
 
@@ -176,9 +189,9 @@ export function earnCoins(store: KeyValueStore, amount: number): SaveData {
 }
 
 /** Pays a run's challenge materials (core/challenge.ts) into the stored save and returns it; any other run changes nothing. */
-export function earnChallengeReward(store: KeyValueStore, dungeon: DungeonDef, victory: boolean): SaveData {
+export function earnChallengeReward(store: KeyValueStore, dungeon: DungeonDef, victory: boolean, difficulty: Difficulty): SaveData {
   const save = loadSave(store);
-  const next = challengeReward(save, dungeon, victory);
+  const next = challengeReward(save, dungeon, victory, difficulty);
   if (next !== save) writeSave(store, next);
   return next;
 }

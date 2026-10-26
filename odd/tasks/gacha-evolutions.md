@@ -31,6 +31,9 @@ Out of scope: banners, spark, shards, shiny skins, vitamins, mints, server-side 
 - 2026-10-26 (user): simple and clean; backend later in Go (PocketBase as a Go framework), so keep the gacha core pure and portable.
 - 2026-10-26 (T1): the save keeps owned gacha species as their *current form* (`owned: ['kadabra']`); an evolution replaces the id, so the stage is implied by the form and can never disagree with it. Materials are keyed by the line's first form; `pity` counts pulls since the last rare. Starters are always owned and never stored.
 - 2026-10-26 (T1): `STARTER_SPECIES` (the 4 starters) and `PLAYABLE_SPECIES` (starters + every gacha form). Starter-specific tests and `npm run prove` iterate the starters; generic ones (slots, boosts, upgrades, fairness, sprites) iterate every playable species.
+- 2026-10-26 (user, during T4): materials differ by difficulty. A material's tier is the difficulty its challenge was cleared on (Normal, Difícil, Pesadilla; Fácil pays coins only). Save shape `materials[lineRoot][tier]` (SAVE_VERSION stays 3; an early flat count reads as Normal). Stage 1 costs 3 Normal + 2 Difícil, the final stage 3 Difícil + 2 Pesadilla; a higher tier never stands in for a lower one, so the final evolution is impossible without clearing at Pesadilla. Coins unchanged; a clear pays 3 of its tier.
+- 2026-10-26 (user, during T5): the gacha stall NPC is Mimikyu ("para que haga amigos"), pulls only; evolution is a separate town NPC, Phantump (`opens: 'evolve'`), with its own window.
+- 2026-10-26 (T4): challenge dungeons are `CHALLENGES` in data/dungeons.ts (not in `DUNGEONS`, so the main select, shrine, sweeps and prove never list them); `dungeonById` resolves both. Each borrows a main dungeon's spawns, palette and music and one of its arenas as the boss: Abra/Crypt/Sableye, Piplup/Caves/Lanturn, Shinx/Forest/Trevenant, Axew/Swamp/Salazzle.
 - 2026-10-26 (T3): committed before T2 because the gacha pool needs the species ids. Kits: one move per slot, all equipped, every damaging one at or under the starters' budget (`budgetRatio <= 1`). New: a `dragon` type (no enemy has it) and six Básico moves in `data/line-moves.ts` (Water Gun, Bubble Beam, Surf, Spark, Dragon Claw, Dragon Pulse). Evolved forms keep HP and speed; the stage bonus (+6 % / +12 % HP and damage) lives in `data/player-evolutions.ts`, capped at 15 % solo and 8 % in a party (`core/evolution.ts` `stageBonus`, applied in `createPlayer` and `playerStats`). Evolution keeps the Mejoras (moved to the new form).
 
 ## Delivery strategy
@@ -40,7 +43,7 @@ single branch `feat/gacha-evolutions`, one commit per task; forecast ~2,000–2,
 - [x] T1 Roster seam + save v3 (owned species, gacha pity, per-species stage, materials) + net fallback. Route: delegated.
 - [x] T2 Gacha core + data + tests. Route: delegated.
 - [x] T3 Species and evolution lines: sprites, kits, stage stats/moves, i18n, budget/ceiling tests. Route: delegated.
-- [ ] T4 Challenge dungeons + material reward. Route: delegated.
+- [x] T4 Challenge dungeons + material reward (then tiered by difficulty). Route: delegated.
 - [ ] T5 UI: stall, evolve, loadout; GDD section. Route: delegated.
 
 ## Acceptance
@@ -52,8 +55,11 @@ single branch `feat/gacha-evolutions`, one commit per task; forecast ~2,000–2,
 - T3: 12 playable forms (Abra, Piplup, Shinx, Axew lines) with PMDCollab sprites (fetch-sprites: only additions, CREDITS regenerated), `PLAYER_EVOLUTIONS`, pure `canEvolve`/`evolve`/`stageBonus`/`lineOf`/`stageOf`, save keeps one form per line and materials by first form. RED observed (missing core/evolution), then GREEN. typecheck ok; vitest 210 files / 2569 tests ok (fairness, boosts, sprites and anims now also cover the 12 forms); build ok; prove 166 cards survivable, 24/24 fights (unchanged). Commit 202aded.
 - T2: `data/gacha.ts` (100 P, rare 15 %, hard pity 10, duplicate refund 40; Piplup and Shinx common, Abra and Axew rare) and pure seeded `core/gacha.ts` `pull(collection, rng) -> { result, state, rng } | null` (null without the Pokémonedas; a duplicate is any owned form of the line). RED observed (missing core/gacha), then GREEN; the pity sweep (500 seeds x 200 pulls) fails when the pity is disabled (mutation checked). typecheck ok; vitest 211 files / 2577 tests ok; build ok; prove 166 cards survivable, 24/24 fights. Commit 0bac607.
 
+- T4: `CHALLENGES` (4 dungeons: 3 generated floors + a borrowed arena boss), `core/challenge.ts` (`challengeOpen`, `openChallenges`, `challengeReward`), `earnChallengeReward` in app/save.ts called next to `earnCoins` in `onEnd` (every peer, own save, only if it owns the line); fairness-floors expected-level tests now also iterate the challenges. RED observed (missing core/challenge), then GREEN. typecheck ok; vitest 212 files / 2585 tests ok; build ok; prove 166 cards survivable, 24/24 fights. Commit 172c428.
+- T4b (user scope change): tiered materials (`MaterialTier`, per-tier costs, per-tier `canEvolve`/`evolve`, reward of the run's difficulty, Easy pays none, flat v3 counts read as Normal). Tests updated first for the new shape; mutation checks: dropping the Easy guard fails challenge.test, summing tiers instead of per-tier fails evolution.test. typecheck ok; vitest 212 files / 2587 tests ok; build ok; prove 166 cards survivable, 24/24 fights. Commit: see git log (feat(evolution): tiered materials).
+
 ## Next step
-T4 (challenge dungeons + material reward), then T5 (stall, evolve and loadout UI; GDD section).
+T5: Mimikyu's gacha stall (pulls), Phantump's evolve window (per-tier materials), Retos group in the dungeon select and the town exit with the drop tier per difficulty, GDD section.
 
 ## Open decisions
 - Luxray and Empoleon unlock Maestro moves (Thunder, Ice Beam) by evolving, without the tutor's dungeon lock; evolving already costs a challenge dungeon's materials.

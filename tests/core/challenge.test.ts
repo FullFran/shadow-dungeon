@@ -62,27 +62,32 @@ describe('challenge unlock', () => {
   });
 });
 
-describe('challenge reward', () => {
-  const owner = { coins: 0, owned: ['kadabra' as const], materials: { abra: 2 } };
+describe('challenge reward (tier = the difficulty it was cleared on)', () => {
+  const owner = { coins: 0, owned: ['kadabra' as const], materials: { abra: { normal: 2 } } };
+  const pays = ABRA.challenge!.materials;
 
-  it('a victory adds the line\'s materials under its first form', () => {
-    expect(challengeReward(owner, ABRA, true).materials).toEqual({ abra: 2 + ABRA.challenge!.materials });
+  it('a victory adds the line\'s materials of its difficulty under the first form', () => {
+    expect(challengeReward(owner, ABRA, true, 'normal').materials).toEqual({ abra: { normal: 2 + pays } });
+    expect(challengeReward(owner, ABRA, true, 'hard').materials).toEqual({ abra: { normal: 2, hard: pays } });
+    expect(challengeReward(owner, ABRA, true, 'nightmare').materials).toEqual({ abra: { normal: 2, nightmare: pays } });
   });
 
-  it('a defeat, a main dungeon or a line the player does not own pays nothing', () => {
-    expect(challengeReward(owner, ABRA, false)).toBe(owner);
-    expect(challengeReward(owner, CRYPT, true)).toBe(owner);
+  it('an Easy clear, a defeat, a main dungeon or a line the player does not own pays nothing', () => {
+    expect(challengeReward(owner, ABRA, true, 'easy')).toBe(owner);
+    expect(challengeReward(owner, ABRA, false, 'nightmare')).toBe(owner);
+    expect(challengeReward(owner, CRYPT, true, 'hard')).toBe(owner);
     const guest = { coins: 0, owned: ['piplup' as const] };
-    expect(challengeReward(guest, ABRA, true)).toBe(guest);
+    expect(challengeReward(guest, ABRA, true, 'hard')).toBe(guest);
   });
 
   it('the save keeps it (each peer pays its own save)', () => {
     const store = memoryStore();
     writeSave(store, { ...EMPTY_SAVE, coins: 50, owned: ['abra'] });
-    expect(earnChallengeReward(store, ABRA, true).materials).toEqual({ abra: ABRA.challenge!.materials });
-    expect(loadSave(store).materials).toEqual({ abra: ABRA.challenge!.materials });
+    expect(earnChallengeReward(store, ABRA, true, 'hard').materials).toEqual({ abra: { hard: pays } });
+    expect(loadSave(store).materials).toEqual({ abra: { hard: pays } });
     expect(loadSave(store).coins).toBe(50);
-    earnChallengeReward(store, ABRA, false);
-    expect(loadSave(store).materials).toEqual({ abra: ABRA.challenge!.materials });
+    earnChallengeReward(store, ABRA, false, 'hard');
+    earnChallengeReward(store, ABRA, true, 'easy');
+    expect(loadSave(store).materials).toEqual({ abra: { hard: pays } });
   });
 });
