@@ -1,5 +1,5 @@
 import { MAX_HIT_SHARE, type Difficulty } from '../data/difficulty';
-import { dungeonById, floorsOf, planAt, type DungeonId } from '../data/dungeons';
+import { dungeonById, floorsOf, planAt, roadFor, type DungeonId } from '../data/dungeons';
 import { LEADER } from '../data/encounters';
 import { PROGRESSION } from '../data/progression';
 import { ROOMS } from '../data/rooms';
@@ -35,7 +35,8 @@ const xpOf = (species: SpeciesId, floor: number, leader?: true): number =>
 
 /** The experience of clearing floor `floor` of `dungeon` at tier `d` (mean over the reference seeds on generated floors). */
 export function expectedFloorXp(dungeon: DungeonId, floor: number, d: Difficulty): number {
-  const def = dungeonById(dungeon);
+  // A Senda's challenge on Hard or Nightmare is that chapter's road (data/dungeons.ts `roadFor`), as a run walks it.
+  const def = roadFor(dungeonById(dungeon), d);
   const plan = planAt(def, floor);
   if (!plan) return 0;
   if (plan.kind === 'room') return ROOMS[plan.room].spawns.reduce((sum, s) => sum + xpOf(s.species, floor), 0);
@@ -52,7 +53,7 @@ export function expectedLevel(dungeon: DungeonId, floor: number, d: Difficulty):
   const key = `${dungeon}/${d}`;
   const memo = levels.get(key) ?? { byFloor: [1], xp: 0 };
   levels.set(key, memo);
-  const def = dungeonById(dungeon);
+  const def = roadFor(dungeonById(dungeon), d);
   const last = def.endless ? Number.POSITIVE_INFINITY : floorsOf(def);
   const target = Math.max(1, Math.min(Math.floor(floor), last));
   while (memo.byFloor.length < target) {

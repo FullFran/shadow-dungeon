@@ -131,6 +131,14 @@ export const SPRITE_KEYS = {
   lampent: '0608/0000',
   chandelure: '0609/0000',
   marowak: '0105/0000',
+  // The starters' Sendas' new bosses (docs/story-quests.md).
+  mandibuzz: '0630/0000',
+  kangaskhan: '0115/0000',
+  dusknoir: '0477/0000',
+  banette: '0354/0000',
+  mismagius: '0429/0000',
+  kecleon: '0352/0000',
+  spiritomb: '0442/0000',
 } as const;
 
 /** A sheet folder of this build: a SPRITE_KEYS value. */

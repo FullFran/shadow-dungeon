@@ -10,7 +10,7 @@ import { COOP_REVIVE } from '../data/party-scaling';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
 import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
-import { isWound, WOUND_SCALE } from '../data/story-quests';
+import { isWound, woundScale } from '../data/story-quests';
 import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
@@ -1622,7 +1622,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
           // The Eco del Eclipse and a Senda's wound: the eclipse's corruption on a Pokémon's own sheet (a wound drawn huge).
           if (enemy.species === 'eclipse-echo' || isWound(enemy.species)) ctx.filter = ECHO_FILTER;
-          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? WOUND_SCALE : 1));
+          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? woundScale(worldDifficulty(current)) : 1));
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
           if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);

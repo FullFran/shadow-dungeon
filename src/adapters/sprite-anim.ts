@@ -5,6 +5,7 @@ import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { shinyKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type ShinySpriteKey } from '../data/sprites';
 import { TUNING } from '../data/tuning';
+import { STORY_BOSSES } from '../data/story/bosses';
 import type { EnemyState, PlayerState } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -313,6 +314,7 @@ const ENEMY_ATTACK_ANIM: Readonly<Partial<Record<EnemyState['species'], string>>
   'eclipse-hunter': 'Attack',
   'eclipse-echo': 'Shoot',
   'mimikyu-wound': 'Shoot',
+  ...Object.fromEntries(STORY_BOSSES.map((b) => [b.id, 'Shoot' as const])),
   'sima-herald': 'Shoot',
 };
 

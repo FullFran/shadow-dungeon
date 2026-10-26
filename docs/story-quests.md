@@ -45,6 +45,14 @@ El último jefe es una especie propia (`mimikyu-wound`, «Mimikyu Sin Disfraz»)
 
 **Se puede ganar, demostrado**: `tests/sim/wound-prove.test.ts` busca en vivo, con el mismo demostrador de `npm run prove`, un camino sin golpes para cada carta de cada herida en cada nivel desde tres salidas distintas, con ventanas de castigo y el margen de daño del nivel, y el bot resuelve el combate entero en Pesadilla con tres semillas. Una herida nueva entra en la prueba solo por estar en los datos.
 
+### Un camino por capítulo *(dueño, 26-10-2026: «los tres capítulos no pueden sentirse iguales»; «pon más jefes, que estos están muy quemados»)*
+
+Desde Cubone, Litwick y Zorua, cada capítulo recorre **su propio camino**: siete plantas con el aspecto, la decoración y la música de otra mazmorra, y dos jefes intermedios propios. El camino del I es el reto mismo (también en Fácil, sin historia); en Difícil y Pesadilla el reto recorre el del II o el del III (`roadFor` en `src/data/dungeons.ts`; `challenge-<línea>-2` y `-3`, que al acabar cuentan como el reto: registros, misiones, logros y repetir). Todos los pares calculan el mismo camino a partir de la mazmorra y el nivel del anfitrión.
+
+Los jefes intermedios son casi siempre **sombras nuevas**, Pokémon que encajan con el canon de la línea y con el capítulo, hechas jefe con el kit de `src/data/story/kit.ts`: la hoja del Pokémon (las que faltaban, bajadas con `tools/fetch-sprites.mjs` con sus animaciones propias), sus tipos (una sombra no vuela: un jefe con alas cambia Volador por Fantasma, para que la línea siempre pueda alcanzarlo), su sala con salida y tres cartas de firma. Un jefe viejo repite solo cuando la historia lo pide (Lanturn, «la otra luz» de Litwick; Nihilego, lo que bebe la luz; Decidueye, el único que vio pasar la manada de Zorua).
+
+**Touhou por dentro.** Las cartas se llaman a la manera de Touhou, Signo Movimiento «Nombre», y cada jefe tiene su firma con patrones que ya se usan y están demostrados: abanicos apuntados, anillos con hueco, espirales que florecen, una marca que cae donde estabas, la cortina que camina, anillos cuyos huecos giran como las fases de una luna, dos muros que se cierran con una fila libre, y torretas. Una sombra juega 2 cartas en Fácil y Normal, 3 y la de **supervivencia** en Difícil, y además su **última palabra** en Pesadilla. La herida crece de capítulo en capítulo: 2 cartas en Fácil, 3 en el I (una forma menor, dibujada 1,35 veces), 5 en el II con su cuarta carta y la de supervivencia (1,55 veces) y 6 en el III con su última palabra (1,8 veces). La vida de cada jefe por nivel (`hpScale`) está ajustada para que toda carta cumpla su margen de muerte. `tests/sim/story-prove-<línea>.test.ts` demuestra cada carta de cada sombra en cada nivel desde tres salidas y el bot resuelve los combates de Pesadilla; la herida, en `tests/sim/wound-prove.test.ts`.
+
 ### Lo que los retos mandan tiene que poder hacerte daño
 
 Prueba del dueño (26-10-2026): en el reto de Litwick, Absorbe Fuego se tragaba todo lo que hacían los enemigos de fuego, y el reto era trivial. Regla, en `tests/core/challenge.test.ts`, para todos los retos: como mucho un 10 % del peso de aparición puede ser incapaz de dañar alguna forma de la línea (por tipo, o por su pasiva: Absorbe Fuego), en cada nivel; y todo jefe tiene al menos un ataque que la daña. Los ataques de cada especie se leen de sus datos (`attackTypesOf` en `src/core/challenge.ts`). Arreglados: Litwick (fuera Duskull y Dusclops; entran Phantump, Golett y Haunter) y Piplup (fuera Salandit, cuyo veneno no toca a Empoleon; entra Krabby). Dar a los enemigos más de un ataque es otra tarea, futura.
@@ -62,7 +70,7 @@ Prueba del dueño (26-10-2026): en el reto de Litwick, Absorbe Fuego se tragaba 
 
 `STORY_QUESTS` en `src/data/story-quests.ts` guarda solo la estructura (cuadros y poses, plantas con fragmento, líneas por jefe); los textos son claves `story.<línea>.<capítulo>.*` en `es.json` y `en.json`. El progreso es el campo opcional `story` de la partida (capítulos cerrados por línea), saneado. Las reglas (qué capítulo toca, qué se abre, dónde cae un fragmento) viven en `src/core/story.ts`, puras. `tests/data/story-quests.test.ts` comprueba que toda Senda de la tabla está completa en los dos idiomas, sin rayas, con sus jefes y fragmentos en plantas válidas, así que llenar las otras siete queda vigilado.
 
-Para añadir una Senda: una entrada en `STORY_QUESTS`, sus textos, el `sendaPlan` de su reto (dos jefes intermedios y su sala de herida), su especie de herida con sus cartas y su sala en `src/data/rooms.ts`. La prueba de la herida y la de alcance se aplican solas.
+Para añadir una Senda: un fichero `src/data/story/<línea>.ts` con su estructura, sus jefes (kit) y sus tres caminos, su entrada en `STORY_QUESTS` y en `src/data/story/bosses.ts`, el reto con `senda()` en `src/data/dungeons.ts`, sus cuadros nuevos en `src/adapters/story/` y sus textos. Las pruebas de herida, sombras, caminos y alcance se aplican solas. (El piloto, Mimikyu, usa aún `sendaPlan` y `src/data/wound-cards.ts`.)
 
 ## Las ocho Sendas
 
@@ -78,35 +86,37 @@ Jefes: Sableye (los ojos de gema que miran), Aegislash (su juramento es que ante
 
 El texto completo está en `src/i18n/es.json` (`story.mimikyu.*`).
 
-### Cubone: La Senda del Hueso
+### Cubone: La Senda del Hueso *(completa)*
 
-Inspiración: el pequeño que lleva el cráneo de su madre y llora dentro de él, de modo que el llanto suena como una canción triste; la luna llena que le recuerda su cara; la torre de los muertos donde un espíritu protector por fin descansa al ser abrazado; la danza del hueso en llamas entre túmulos. Aquí: tras el Eclipse, su madre bajó a las mazmorras a buscar luz para el lago y volvió como sombra. Cubone pesca en el embarcadero del Lago Negro y no mira el agua, porque el agua ya no refleja nada.
+Inspiración: el pequeño que lleva el cráneo de su madre y llora dentro de él, de modo que el llanto suena como una canción; la luna llena que le recuerda su cara; la torre de los muertos donde un espíritu descansa al ser abrazado; el llanto que atrae a los carroñeros; la danza del hueso en llamas entre túmulos. Aquí: la noche del Eclipse su madre bajó a las cuevas a buscar luz para el lago y volvió su cráneo, en brazos de otros. Cubone pesca en el embarcadero del Lago Negro sin cebo y sin mirar el agua.
 
-Jefes sugeridos: Trevenant (el árbol que guarda a los muertos), Dhelmise (lo que se hunde y no vuelve) y **Cubone Sin Luna**, un hueso enorme con una llama que no se apaga: el duelo que no se suelta.
+Herida: **Marowak Sin Lágrimas**, un Marowak de hueso y humo con un hueso que arde (Fuego y Fantasma), el duelo que dejó de llorar. Cartas: Signo Luna «Fases del Duelo», Signo Huesomerang «Lo que Vuelve», Signo Danza del Hueso «Fuego entre Túmulos», Signo Ataque Óseo «Nana Rota»; supervivencia Signo Cráneo Vacío «Que No Se Oiga»; última palabra «Luna Llena».
 
-- **I. El casco**: Cubone llora de noche dentro del hueso para que no se oiga. Cuadros: el embarcadero, el lago sin cielo, la luna roja en las cuencas del cráneo. Fragmentos: una espina de pez tallada como juguete; una piedra lisa con la forma de una mano grande. Final: te deja sujetar su caña un rato.
-- **II. La que volvió**: entre las sombras hay una con la forma de su madre. Cubone duda. Fragmentos: una nana grabada en un hueso pequeño; un nudo de pesca que solo ella sabía hacer. Final: no era ella; Cubone no sabe si eso le alivia.
-- **III. Lo que se lleva puesto**: en una torre sin techo, el hueso deja de ser una máscara para llorar y pasa a ser un nombre que se lleva. Abraza a la sombra, y la sombra descansa. Phantump: el hueso ya no esconde lágrimas, lleva un nombre. Evolución a Marowak.
+- **I. El casco** (Normal; camino del Pantano): llora de noche dentro del hueso para que no se oiga; baja contigo «porque ahí abajo no se ve la luna». Jefes: Haunter, *el que se ríe del llanto*, y Mandibuzz, *la que oye llorar* (las sombras no vuelan). Fragmentos: una espina tallada con forma de Magikarp; una piedra tibia por un lado. Final: no pesca para comer, pesca por si alguien sube del fondo; te deja sujetar la caña.
+- **II. La que volvió** (Difícil; camino de las Cuevas): una sombra con la forma de su madre tararea entre túmulos. Jefes: Dusclops, *el que se lleva a los muertos dentro*, y Kangaskhan, *la madre del bolsillo vacío*, que quiere quedárselo. Fragmentos: el hueso de la nana de tres notas; el nudo de pesca que solo sabía hacer ella. La herida es «la sombra con su forma». Final: no era ella, era lo que Cubone guardaba de ella; la nana le sale entera por primera vez.
+- **III. Lo que se lleva puesto** (Pesadilla; camino de la Cripta, la torre sin techo): sube a mirar la luna llena. Jefes: Bisharp, *el que guarda la escalera*, y Dusknoir, *el que guía a los muertos* («¿vienes a irte o a despedir?»). Fragmentos: dos huellas, la grande se acaba; medio hueso partido «para cuando no esté». Final: abraza al Marowak de humo y descansa; llora fuera del hueso, donde se oye; evoluciona a Marowak. Phantump: el hueso ya no esconde lágrimas, lleva un nombre.
 
-### Litwick: La Senda de la Llama
+### Litwick: La Senda de la Llama *(completa)*
 
-Inspiración: la vela que se ofrece de guía a los perdidos y se alimenta de su vida; los niños llevados de la mano hacia el otro lado; las mansiones donde arden lámparas y no vive nadie; la llama de los funerales que no se apaga. Aquí: en el pueblo guarda la llama que guía a los perdidos. Nadie le pregunta de qué come. Teme ser lo mismo que se bebió el sol.
+Inspiración: la vela que se ofrece de guía a los perdidos y se alimenta de su vida; los niños llevados de la mano; las mansiones donde arden lámparas y no vive nadie; la lámpara de difuntos que no se apaga. Aquí: antes del Eclipse llevó de la mano a un niño perdido en las cuevas hasta su casa, comiendo un poco por el camino; el niño llegó con frío y no se le pasó nunca, y desde entonces Litwick enciende cada noche todas las lámparas de la casa grande vacía. Teme ser un trocito de lo que se bebió el sol.
 
-Jefes sugeridos: Lanturn (otra luz que atrae a los que se pierden), Dhelmise (el ancla de los que siguieron una luz hasta el fondo) y **Litwick Sin Mecha**, una lámpara colgante enorme, llena de llamas que no son suyas.
+Herida: **Chandelure de Llamas Ajenas**, un candelabro con todas las almas que pudo comerse (Fantasma y Fuego; sus llamas son almas, Fantasma, porque Absorbe Fuego se bebería el fuego de verdad). Cartas: Signo Fuego Fatuo «Sígueme», Signo Infortunio «La Mano del Niño», Signo Bola Sombra «Mil Nombres», Signo Maldición «Cera que Sube»; supervivencia Signo Sofoco «No Te Acerques»; última palabra «Apágame».
 
-- **I. La vela que guía**: te pide que no te acerques demasiado. Fragmentos: un cabo de vela con marcas de dientes pequeños; un guante de niño, sin pareja. Final: confiesa que tiene hambre cuando estás triste.
-- **II. Lo que cuesta una luz**: la tripulación del pecio siguió una luz como la suya. Fragmentos: un farol apagado por dentro; un registro de nombres que termina a mitad. Final: Litwick apaga su llama un momento para que veas que aún te ve.
-- **III. Arder sin quemar**: aprende a dar luz de su propia cera. Evolución a Chandelure; Phantump: ahora alumbra sin cobrar.
+- **I. La vela que guía** (Normal; camino de las Cuevas): te pide que no te acerques demasiado. Jefes: Drifblim, *el que se lleva a los niños de la mano*, y Lanturn, *la otra luz*. Fragmentos: un cabo de vela mordido; un guante de niño sin pareja, con el índice chamuscado. Final: confiesa que tiene hambre cuando estás triste; se queda a un paso exacto toda la noche.
+- **II. Lo que cuesta una luz** (Difícil; camino de la Cripta, la casa grande): la historia del niño. Jefes: Banette, *el juguete que nadie recogió* (la muñeca del niño), y Mismagius, *la que canta en el pasillo*, que quiere la casa encendida para siempre. Fragmentos: un farol apagado por dentro; el libro de visitas con un solo nombre. La herida tiene una llama con cara de niño, y Litwick la devuelve. Final: todas las lámparas se apagan; Litwick apaga su llama para que veas que aún te ve.
+- **III. Arder sin quemar** (Pesadilla; camino del Pantano bajo el cielo rasgado): aprende a dar luz de su propia cera. Jefes: Muk, *el que se come lo que toca*, y Nihilego, *lo que bebe la luz*. Fragmentos: una gota de cera que cayó hacia abajo; una lámpara de difuntos que arde de su mecha. Final: evoluciona a Chandelure, «no te he quitado nada; puedes acercarte del todo». Phantump: ahora alumbra sin cobrar.
 
-### Zorua: La Senda del Reflejo
+### Zorua: La Senda del Reflejo *(completa)*
 
-Inspiración: el zorro que, de miedo, toma la forma de un niño callado y no la suelta cuando está solo; las ilusiones que protegen a los suyos; los paisajes falsos; el camino del bosque que siempre vuelve al mismo sitio; el rencor como una niebla blanca. Aquí: cuando llegó el Eclipse, su manada cruzó el Bosque Brumoso y lo dejó atrás; Zorua lleva la cara de los que se fueron para no estar solo.
+Inspiración: el zorro que de miedo toma la forma de un niño callado y no la suelta cuando está solo; las ilusiones que protegen a los suyos; el camino que vuelve al mismo sitio; el rencor como una niebla blanca (Hisui). Aquí: la noche del Eclipse su manada cruzó el Bosque Brumoso por un camino que solo veían los suyos; Zorua se asustó, se hizo niño, y la manada pasó a su lado sin reconocerlo.
 
-Jefes sugeridos: Trevenant (el bosque que no deja salir), Decidueye (el arquero que nunca falla ve a través de las ilusiones) y **Zorua de Niebla Blanca**, el rencor del abandono hecho zorro.
+Herida: **Zoroark de Niebla Blanca**, el rencor del que se quedó atrás, con las caras de toda la manada (Fantasma). Cartas: Signo Tajo Umbrío «La Cara de Otro», Signo Juego Sucio «El que Se Quedó», Signo Pulso Noche «El Sendero que Vuelve», Signo Rencor Amargo «Niebla Blanca»; supervivencia Signo Ilusión «Nadie Se Fue»; última palabra «Soy Solo Yo».
 
-- **I. La forma prestada**: se te aparece con tu propia cara para hacerte reír. Fragmentos: una pluma clavada en un tronco a la altura de un Zorua; un reflejo en un charco que no coincide. Final: te pregunta si te importa que a veces sea otro.
-- **II. El bosque que no contesta**: llama a los suyos con voces que no son la suya; el camino vuelve siempre al mismo árbol. Final: una flecha le roza y no rompe la ilusión; la rompe él, para que lo veas.
-- **III. Sin máscara**: confía en que te quedes aunque sea solo él. Evolución a Zoroark; Phantump: ya no se disfraza de los que se fueron.
+- **I. La forma prestada** (Normal; camino de las Cuevas, agua quieta que devuelve caras): en la fuente de la aldea, el reflejo del niño callado es un zorro. Jefes: Kecleon, *el que también cambia de color*, y Gengar, *la sombra que te copia*. Fragmentos: una pluma que señala hacia donde no fue el camino; un charco con la cara de alguien grande. Final: «¿te importa que a veces sea otro?»; el niño de la fuente se ríe en voz alta.
+- **II. El bosque que no contesta** (Difícil; camino del Bosque): el sendero vuelve al mismo árbol. Jefes: Mightyena, *el que guía la manada* («una manada no mira atrás»), y Decidueye, *el que vio pasar la manada*. Fragmentos: un mechón rojo en una zarza; la corteza llena de marcas, una por vuelta. Final: era Zorua quien volvía; fue el miedo, no fueron ellos; rompe él la ilusión para que lo veas.
+- **III. Sin máscara** (Pesadilla; camino del Pantano, la niebla blanca): baja siendo solo él. Jefes: Houndoom, *el cazador de la niebla*, y Spiritomb, *ciento ocho rencores*. Fragmentos: la máscara de corteza del niño, gastada por dentro; una piedra del camino con una marca de garra que apunta a casa. Final: la manada de niebla se da la vuelta; su reflejo es grande y es el suyo; evoluciona a Zoroark. Phantump: se ha quedado con lo único que nunca le quitaron.
+
+El texto completo está en `src/i18n/es.json` (`story.cubone.*`, `story.litwick.*`, `story.zorua.*`, `challenge.<línea>.*`).
 
 ### Abra: La Senda del Sueño
 
@@ -150,7 +160,10 @@ Jefes sugeridos: Trevenant (el árbol viejo cuyas raíces lo sujetaron al caer),
 
 ## Pendiente
 
-- El texto, los jefes intermedios y la herida (especie, cartas, sala) de las otras siete Sendas (Cubone, Litwick, Zorua, Abra, Piplup, Shinx, Axew), según estos esquemas. Mientras no estén en `STORY_QUESTS`, sus retos se juegan como hasta ahora (cuatro plantas).
+- El texto, los jefes y la herida de Abra, Piplup, Shinx y Axew (en otra rama), según estos esquemas. Mientras no estén en `STORY_QUESTS`, sus retos se juegan como hasta ahora (cuatro plantas).
+- Mimikyu aún recorre el mismo camino en sus tres capítulos con Sableye y Aegislash: pasarlo a caminos y sombras propios es decisión del dueño (su texto nombra a esos jefes).
+- Patrones nuevos de inspiración Touhou que el motor aún no tiene (cuchillos que se quedan quietos y luego caen, balas que se ven tarde, alas de fénix que renacen): las cartas actuales se hacen con los patrones demostrados; añadirlos pide su prueba de justicia en `src/sim/prove.ts`.
+- Las sombras nuevas no están aún en el Santuario de los Juramentos ni en la Sima.
 - Fondos propios por Senda (el piloto usa los genéricos).
 - Cinemáticas en cooperativo (ahora: solo voz, fragmentos y jefes).
 - Más de un ataque para los enemigos (otra tarea, futura).

@@ -1,6 +1,7 @@
 import type { MoveId } from './moves';
 import type { SPRITE_KEYS } from './sprites';
 import type { PokemonType } from './types';
+import { STORY_BOSSES, type StoryBossId } from './story/bosses';
 import type { StarterId } from './learnsets';
 import { TUTOR_OFFER, tutorOffer } from './tutor';
 
@@ -79,6 +80,8 @@ export type SpeciesId =
   | 'eclipse-echo'
   // The Sendas' last bosses (docs/story-quests.md): a line's own Pokémon, its wound made flesh (huge, in the eclipse's corruption).
   | 'mimikyu-wound'
+  // The starters' Sendas' shadows and wounds (data/story/<line>.ts).
+  | StoryBossId
   // The Heralds of the Eclipse (data/herald.ts): one technical species; each herald's look, types and patterns are generated.
   | 'sima-herald'
   // The gacha's evolution lines (data/player-evolutions.ts): playable once owned.
@@ -292,6 +295,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
   'mimikyu-wound': { id: 'mimikyu-wound', types: ['ghost', 'fairy'], maxHp: 760, radius: 20, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
+  // The starters' Sendas' shadows and wounds (data/story/<line>.ts): a sheet in the eclipse's corruption, no moves.
+  ...(Object.fromEntries(STORY_BOSSES.map((b): [StoryBossId, SpeciesDef] => [b.id, { id: b.id, types: b.types, maxHp: b.maxHp, radius: b.radius, sprite: b.sprite, movepool: [], defaultLoadout: [] }])) as Record<StoryBossId, SpeciesDef>),
   'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
   // Its sheets and types come from the generated herald (core/herald); the radius is HERALD_RADIUS.
   'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },

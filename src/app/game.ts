@@ -34,7 +34,7 @@ import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
 import { cutShortAction, type CutShort } from './after-run';
-import { dungeonById, musicFor, type DungeonId } from '../data/dungeons';
+import { challengeOfRoad, dungeonById, musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
@@ -1016,7 +1016,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       finished = true;
       window.clearTimeout(endTimer);
       options.onEnd(result, {
-        dungeon: run.dungeon,
+        // A Senda's later road counts as its challenge (records, missions, achievements, a retry).
+        dungeon: challengeOfRoad(dungeonById(run.dungeon)).id,
         floor: run.floor,
         seed: run.seed,
         level: world.player.level,

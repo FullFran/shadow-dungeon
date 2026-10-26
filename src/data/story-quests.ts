@@ -1,4 +1,9 @@
 import type { ChallengeLine } from './dungeons';
+import type { Difficulty } from './difficulty';
+import type { SpeciesId } from './species';
+import { CUBONE_QUEST } from './story/cubone';
+import { LITWICK_QUEST } from './story/litwick';
+import { ZORUA_QUEST } from './story/zorua';
 
 /**
  * The Sendas (docs/story-quests.md): each line's challenge as a story in
@@ -9,7 +14,27 @@ import type { ChallengeLine } from './dungeons';
  * entry plus its strings (and, for its last boss, a wound: data/wound-cards.ts).
  * A line absent here plays its challenge without a story.
  */
-export type StoryScene = 'rag' | 'candle' | 'plaza' | 'eclipse' | 'dark' | 'phantump' | 'pose';
+export type StoryScene =
+  | 'rag'
+  | 'candle'
+  | 'plaza'
+  | 'eclipse'
+  | 'dark'
+  | 'phantump'
+  | 'pose'
+  // Cubone's (adapters/story/cubone-scenes.ts): the full moon, the black lake's dock, the roofless tower, the grave mounds.
+  | 'moon'
+  | 'dock'
+  | 'tower'
+  | 'graves'
+  // Litwick's (adapters/story/litwick-scenes.ts): the big house's corridor, its hall of chandeliers, a child's hand reaching for a light.
+  | 'corridor'
+  | 'chandeliers'
+  | 'hand'
+  // Zorua's (adapters/story/zorua-scenes.ts): the village fountain with a fox's reflection, the forest path that loops, the grudge's white fog.
+  | 'fountain'
+  | 'loop'
+  | 'fog';
 
 /** The line's own sprite on a tableau, in one pose (Mimikyu's busted form for a broken disguise). */
 export interface StoryFigure {
@@ -17,6 +42,8 @@ export interface StoryFigure {
   busted?: boolean;
   /** Where it stands on the stage (0..1 across; centre by default). */
   x?: number;
+  /** A later form of the line in its place (the last chapter's evolution). */
+  form?: SpeciesId;
 }
 
 /** One tableau of a story cinematic: its scene, the figure on it (none: the scene alone) and a line of text. */
@@ -94,6 +121,10 @@ export const STORY_QUESTS: Partial<Record<ChallengeLine, StoryQuest>> = {
       },
     ],
   },
+  // The starters' Sendas (data/story/<line>.ts): each line's structure, wound and arena in its own file.
+  cubone: CUBONE_QUEST,
+  litwick: LITWICK_QUEST,
+  zorua: ZORUA_QUEST,
 };
 
 /** The Senda of a line, if it has one. */
@@ -141,5 +172,5 @@ export function storyKeyList(quest: StoryQuest): string[] {
 
 /** A Senda's last boss: the line's own Pokémon as its wound (data/wound-cards.ts), drawn huge and corrupted. */
 export const isWound = (species: string): boolean => species.endsWith('-wound');
-/** How much bigger a wound is drawn than its sheet. */
-export const WOUND_SCALE = 1.7;
+/** How much bigger a wound is drawn than its sheet: it grows chapter by chapter (owner 2026-10-26), a lesser form on chapter I's tier, the whole of it on chapter III's. */
+export const woundScale = (difficulty: Difficulty): number => ({ easy: 1.7, normal: 1.7, hard: 1.95, nightmare: 2.2 })[difficulty];

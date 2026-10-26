@@ -3,6 +3,7 @@ import { DECIDUEYE_CARDS_HARD, DECIDUEYE_CARDS_NIGHTMARE, DECIDUEYE_CARDS_NORMAL
 import type { Trick } from './forest-tricks';
 import { HOSTED_FIGHTS } from './hosted-cards';
 import { WOUND_MIMIKYU_HARD, WOUND_MIMIKYU_NIGHTMARE, WOUND_MIMIKYU_NORMAL } from './wound-cards';
+import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
 import type { CardFightDef } from './cards';
 import type { SpeciesId } from './species';
 
@@ -19,6 +20,9 @@ const hosted = ([normal, hard, nightmare]: readonly [CardFightDef, CardFightDef,
   { minDifficulty: 'hard', patch: { spellCards: hard } },
   { minDifficulty: 'nightmare', patch: { spellCards: nightmare } },
 ];
+
+/** A Senda boss (data/story/kit.ts): its Normal, Hard and Nightmare fights as tricks (Easy is its behaviour's own). */
+const story = ([, normal, hard, nightmare]: readonly [CardFightDef, CardFightDef, CardFightDef, CardFightDef]): readonly Trick[] => hosted([normal, hard, nightmare]);
 
 export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   sableye: hosted(HOSTED_FIGHTS.sableye),
@@ -37,6 +41,8 @@ export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
     { minDifficulty: 'hard', patch: { spellCards: WOUND_MIMIKYU_HARD } },
     { minDifficulty: 'nightmare', patch: { spellCards: WOUND_MIMIKYU_NIGHTMARE } },
   ],
+  // The starters' Sendas' shadows and wounds: their Normal, Hard and Nightmare fights.
+  ...Object.fromEntries(STORY_BOSSES.map((b) => [b.id, story(STORY_FIGHTS[b.id])])),
   decidueye: [
     { minDifficulty: 'normal', patch: { spellCards: DECIDUEYE_CARDS_NORMAL } },
     { minDifficulty: 'hard', patch: { spellCards: DECIDUEYE_CARDS_HARD } },

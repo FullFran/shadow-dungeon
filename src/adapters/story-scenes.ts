@@ -4,6 +4,9 @@ import { SPRITE_KEYS } from '../data/sprites';
 import type { StoryFigure, StoryScene } from '../data/story-quests';
 import type { StoryPanel } from '../app/story';
 import { drawEclipse, hash01 } from '../ui/eclipse';
+import { CUBONE_SCENES } from './story/cubone-scenes';
+import { LITWICK_SCENES } from './story/litwick-scenes';
+import { ZORUA_SCENES } from './story/zorua-scenes';
 import { BLEED, embers, fillAll, glow, gradient, silhouette, STAGE, stars, vignette, type SceneTime } from './prologue-scenes';
 
 /**
@@ -15,28 +18,29 @@ import { BLEED, embers, fillAll, glow, gradient, silhouette, STAGE, stars, vigne
  * red ring, the dark, and Phantump by the black lake.
  */
 const { w: W, h: H } = STAGE;
-const GROUND = 134;
+/** The stage's ground line (the per-line scene files draw on it too). */
+export const GROUND = 134;
 
 const spriteFor = (panel: StoryPanel, figure: StoryFigure): string => {
-  const sprite = SPECIES[panel.line].sprite;
+  const sprite = SPECIES[figure.form ?? panel.line].sprite;
   const busted = `${sprite}Busted` as keyof typeof SPRITE_KEYS;
   return SPRITE_KEYS[figure.busted && busted in SPRITE_KEYS ? busted : sprite];
 };
 
 /** The line's Pokémon in its pose: its own colours under `shade` of the scene's dark, with a rim of the scene's light. */
-function figure(ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel, rim: string, shade: number, scale = 2.4): void {
+export function figure(ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel, rim: string, shade: number, scale = 2.4, y = GROUND + 4): void {
   const f = panel.figure;
   if (!f) return;
-  silhouette(ctx, t.sheets, t.localMs, { sprite: spriteFor(panel, f), anim: f.anim, once: f.anim === 'Faint', row: 0, x: W * (f.x ?? 0.5), y: GROUND + 4, scale, fill: '#05030a', rim, shade });
+  silhouette(ctx, t.sheets, t.localMs, { sprite: spriteFor(panel, f), anim: f.anim, once: f.anim === 'Faint', row: 0, x: W * (f.x ?? 0.5), y, scale, fill: '#05030a', rim, shade });
 }
 
-function floorBand(ctx: CanvasRenderingContext2D, color: string): void {
+export function floorBand(ctx: CanvasRenderingContext2D, color: string): void {
   ctx.fillStyle = gradient(ctx, GROUND - 6, H + BLEED, [[0, color], [1, '#000000']]);
   ctx.fillRect(-BLEED, GROUND - 6, W + BLEED * 2, H);
 }
 
 /** A candle's flame and its breathing light. */
-function candleAt(ctx: CanvasRenderingContext2D, x: number, ms: number, size = 1): void {
+export function candleAt(ctx: CanvasRenderingContext2D, x: number, ms: number, size = 1): void {
   const flicker = Math.sin(ms / 110) * 0.8 + Math.sin(ms / 53) * 0.5;
   glow(ctx, x, GROUND - 16, 70 * size, '#ffb45a', 0.32 + 0.04 * flicker);
   ctx.fillStyle = '#d9d0bc';
@@ -190,7 +194,11 @@ function pose(ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel): v
   embers(ctx, t.localMs, 10, 0.25);
 }
 
-const SCENES: Record<StoryScene, (ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel) => void> = { rag, candle, plaza, eclipse, dark, phantump, pose };
+/** How a tableau is drawn. */
+export type SceneDraw = (ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel) => void;
+
+// Each Senda's own tableaux live beside its data (adapters/story/<line>-scenes.ts).
+const SCENES: Record<StoryScene, SceneDraw> = { rag, candle, plaza, eclipse, dark, phantump, pose, ...CUBONE_SCENES, ...LITWICK_SCENES, ...ZORUA_SCENES };
 
 /** Draws one moment of a Senda cinematic on a STAGE-sized context (the prologue's camera, vignette and fade). */
 export function drawStoryScene(ctx: CanvasRenderingContext2D, panel: StoryPanel, time: SceneTime, camera: Shot, alpha: number): void {

@@ -7,7 +7,8 @@ import { dungeonChoices } from '../../src/core/dungeon-select';
 import { evolutionOf, lineOf } from '../../src/core/evolution';
 import { awakeningsOf } from '../../src/data/player-evolutions';
 import { floorCount, isBossFloor, startRun } from '../../src/core/run';
-import { CHALLENGES, CRYPT, DUNGEONS, dungeonById, guardianOf } from '../../src/data/dungeons';
+import { challengeOfRoad, CHALLENGES, CRYPT, DUNGEONS, dungeonById, guardianOf, roadFor, SENDA_ROADS } from '../../src/data/dungeons';
+import { STORY_BOSSES } from '../../src/data/story/bosses';
 import { GACHA_POOL } from '../../src/data/gacha';
 import { ROOMS } from '../../src/data/rooms';
 import type { Collection } from '../../src/core/collection';
@@ -204,5 +205,68 @@ describe('challenge reward (tier = the difficulty it was cleared on)', () => {
     earnChallengeReward(store, ABRA, false, 'hard');
     earnChallengeReward(store, ABRA, true, 'easy');
     expect(loadSave(store).materials).toEqual({ abra: { hard: pays } });
+  });
+});
+
+describe('Senda roads: each chapter walks its own road (owner 2026-10-26)', () => {
+  const SENDAS = CHALLENGES.filter((d) => d.roads);
+  const roadsOf = (d: (typeof CHALLENGES)[number]) => [d, dungeonById(d.roads!.hard), dungeonById(d.roads!.nightmare)];
+  const midsOf = (d: (typeof CHALLENGES)[number]): SpeciesId[] => d.plan.flatMap((p) => (p.kind === 'room' && p.role === 'midboss' ? [ROOMS[p.room].spawns[0]!.species] : []));
+  const NEW_SHADOWS = new Set<string>(STORY_BOSSES.filter((b) => !b.wound).map((b) => b.id));
+  const TIERS = ['easy', 'normal', 'hard', 'nightmare'] as const;
+  const stab = (line: SpeciesId): PokemonType[] => [...new Set(PLAYABLE_SPECIES.filter((id) => lineOf(id) === line).flatMap((id) => SPECIES[id].types))];
+
+  it('the starters\' Sendas have three roads; Easy and Normal walk the challenge, Hard the second, Nightmare the third', () => {
+    expect(SENDAS.map((d) => d.challenge!.line).sort()).toEqual(['cubone', 'litwick', 'zorua']);
+    for (const d of SENDAS) {
+      expect(roadFor(d, 'easy')).toBe(d);
+      expect(roadFor(d, 'normal')).toBe(d);
+      expect(roadFor(d, 'hard').id).toBe(`${d.id}-2`);
+      expect(roadFor(d, 'nightmare').id).toBe(`${d.id}-3`);
+      for (const road of roadsOf(d)) {
+        expect(road.challenge!.line, road.id).toBe(d.challenge!.line);
+        expect(challengeOfRoad(road)).toBe(d);
+        expect(dungeonById(road.id)).toBe(road);
+        expect(CHALLENGES.includes(road), road.id).toBe(road === d);
+      }
+    }
+    for (const road of SENDA_ROADS) expect(roadFor(road, 'nightmare')).toBe(road);
+  });
+
+  it('a run of the challenge on Hard or Nightmare walks that road from its first floor', () => {
+    for (const d of SENDAS) {
+      expect(startRun(7, { difficulty: 'hard' }, 1, d.id).run.dungeon).toBe(`${d.id}-2`);
+      expect(startRun(7, { difficulty: 'nightmare' }, 3, d.id).run.dungeon).toBe(`${d.id}-3`);
+      expect(startRun(7, { difficulty: 'normal' }, 1, d.id).run.dungeon).toBe(d.id);
+    }
+  });
+
+  it.each(SENDAS.map((d) => [d.id, d] as const))('%s: seven floors on every road, mid-bosses with a way on, the same wound last, six different mid-bosses, a new shadow and its own look in every chapter', (_, d) => {
+    const roads = roadsOf(d);
+    for (const road of roads) {
+      expect(road.plan.map((p) => (p.kind === 'room' ? (p.role ?? 'boss') : 'generated')), road.id).toEqual(['generated', 'generated', 'midboss', 'generated', 'generated', 'midboss', 'boss']);
+      for (const p of road.plan) if (p.kind === 'room' && p.role === 'midboss') expect(ROOMS[p.room].exit, `${road.id} ${p.room}`).not.toBeNull();
+      expect(guardianOf(road)).toBe(guardianOf(d));
+      expect(midsOf(road).some((s) => NEW_SHADOWS.has(s)), road.id).toBe(true);
+      expect(road.lore.floorKeys).toHaveLength(7);
+      for (const lang of ['es', 'en'] as const) for (const key of road.lore.floorKeys!) expect(catalog(lang)[key], `${lang} ${key}`).toBeTruthy();
+    }
+    expect(new Set(roads.flatMap(midsOf)).size).toBe(6);
+    expect(new Set(roads.map((r) => r.palette)).size).toBe(3);
+  });
+
+  it.each(SENDA_ROADS.map((d) => [d.id, d] as const))('%s: the pool stays the line\'s, and every boss can hurt every form of the line on every tier', (_, road) => {
+    expect(road.spawns.pool).toBe(challengeOfRoad(road).spawns.pool);
+    for (const tier of TIERS) for (const p of road.plan) if (p.kind === 'room') expect(canHurtLine(ROOMS[p.room].spawns[0]!.species, road.challenge!.line, tier), `${p.room} ${tier}`).toBe(true);
+  });
+
+  it.each([...SENDAS, ...SENDA_ROADS].map((d) => [d.id, d] as const))('%s: the line\'s own types reach every boss of the road at least neutrally (a shadow does not fly)', (_, road) => {
+    const line = road.challenge!.line;
+    for (const p of road.plan) {
+      if (p.kind !== 'room') continue;
+      const boss = ROOMS[p.room].spawns[0]!.species;
+      const best = Math.max(...stab(line).map((t) => SPECIES[boss].types.reduce((m, d) => m * (TYPE_CHART[t][d] ?? 1), 1)));
+      expect(best, `${road.id} ${boss}`).toBeGreaterThanOrEqual(1);
+    }
   });
 });
