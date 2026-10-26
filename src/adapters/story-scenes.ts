@@ -7,6 +7,10 @@ import { drawEclipse, hash01 } from '../ui/eclipse';
 import { CUBONE_SCENES } from './story/cubone-scenes';
 import { LITWICK_SCENES } from './story/litwick-scenes';
 import { ZORUA_SCENES } from './story/zorua-scenes';
+import { ABRA_SCENES } from './story/abra-scenes';
+import { PIPLUP_SCENES } from './story/piplup-scenes';
+import { SHINX_SCENES } from './story/shinx-scenes';
+import { AXEW_SCENES } from './story/axew-scenes';
 import { BLEED, embers, fillAll, glow, gradient, silhouette, STAGE, stars, vignette, type SceneTime } from './prologue-scenes';
 
 /**
@@ -31,7 +35,28 @@ const spriteFor = (panel: StoryPanel, figure: StoryFigure): string => {
 export function figure(ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel, rim: string, shade: number, scale = 2.4, y = GROUND + 4): void {
   const f = panel.figure;
   if (!f) return;
-  silhouette(ctx, t.sheets, t.localMs, { sprite: spriteFor(panel, f), anim: f.anim, once: f.anim === 'Faint', row: 0, x: W * (f.x ?? 0.5), y, scale, fill: '#05030a', rim, shade });
+  const x = W * (f.x ?? 0.5);
+  const alpha = f.vanish ? vanishAlpha(t.localMs) : 1;
+  if (f.vanish && alpha < 1) {
+    // The shimmer of a teleport: motes rising where it was.
+    const p = (t.localMs % 4200) / 4200;
+    const burst = p >= 0.45 && p < 0.7 ? 1 - (p - 0.45) / 0.25 : 0;
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = `rgba(232, 200, 255, ${burst * (0.4 + 0.6 * hash01(i + 70))})`;
+      ctx.fillRect(Math.round(x - 14 + hash01(i + 11) * 28), Math.round(y - 8 - hash01(i + 31) * 40 - (1 - burst) * 16), 1, 2);
+    }
+  }
+  if (alpha <= 0) return;
+  silhouette(ctx, t.sheets, t.localMs, { sprite: spriteFor(panel, f), anim: f.anim, once: f.anim === 'Faint', row: f.back ? 4 : 0, x, y, scale, fill: '#05030a', rim, shade, alpha });
+}
+
+/** How present a vanishing figure is at `ms` (a sleeper that teleports away and comes back): whole, a quick fade out, gone, a fade back in. */
+export function vanishAlpha(ms: number): number {
+  const p = (ms % 4200) / 4200;
+  if (p < 0.45) return 1;
+  if (p < 0.52) return 1 - (p - 0.45) / 0.07;
+  if (p < 0.8) return 0;
+  return Math.min(1, (p - 0.8) / 0.12);
 }
 
 export function floorBand(ctx: CanvasRenderingContext2D, color: string): void {
@@ -198,7 +223,7 @@ function pose(ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel): v
 export type SceneDraw = (ctx: CanvasRenderingContext2D, t: SceneTime, panel: StoryPanel) => void;
 
 // Each Senda's own tableaux live beside its data (adapters/story/<line>-scenes.ts).
-const SCENES: Record<StoryScene, SceneDraw> = { rag, candle, plaza, eclipse, dark, phantump, pose, ...CUBONE_SCENES, ...LITWICK_SCENES, ...ZORUA_SCENES };
+const SCENES: Record<StoryScene, SceneDraw> = { rag, candle, plaza, eclipse, dark, phantump, pose, ...CUBONE_SCENES, ...LITWICK_SCENES, ...ZORUA_SCENES, ...ABRA_SCENES, ...PIPLUP_SCENES, ...SHINX_SCENES, ...AXEW_SCENES };
 
 /** Draws one moment of a Senda cinematic on a STAGE-sized context (the prologue's camera, vignette and fade). */
 export function drawStoryScene(ctx: CanvasRenderingContext2D, panel: StoryPanel, time: SceneTime, camera: Shot, alpha: number): void {

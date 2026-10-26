@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHALLENGES, guardianOf } from '../../src/data/dungeons';
+import { CHALLENGES, guardianOf, roadFor } from '../../src/data/dungeons';
 import { ROOMS, type RoomId } from '../../src/data/rooms';
 import type { Difficulty } from '../../src/data/difficulty';
 import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, startsOf, type BossCase } from '../../src/sim/prove';
@@ -23,9 +23,15 @@ const WOUNDS: readonly BossCase[] = CHALLENGES.flatMap((d) => {
 
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
+/** A wound on a tier: at the end of the road that tier plays (a Senda's chapter road: its reference level is that road's). */
+const onTier = (w: BossCase, tier: Difficulty): BossCase => {
+  const road = roadFor(CHALLENGES.find((d) => d.id === w.where!.dungeon)!, tier);
+  return { ...w, where: { dungeon: road.id, floor: road.plan.length } };
+};
+
 describe('the wounds are beatable', () => {
-  it('every Senda with a wound is listed (Mimikyu at least)', () => {
-    expect(WOUNDS.map((w) => w.species)).toContain('mimikyu-wound');
+  it('every Senda with a wound is listed (Mimikyu and the gacha lines at least)', () => {
+    expect(WOUNDS.map((w) => w.species)).toEqual(expect.arrayContaining(['mimikyu-wound', 'abra-wound', 'piplup-wound', 'shinx-wound', 'axew-wound']));
     for (const w of WOUNDS) expect(ROOMS[w.room].spawns[0]!.species).toBe(w.species);
   });
 
@@ -34,14 +40,14 @@ describe('the wounds are beatable', () => {
       const fight = fightIn(cardWorld(w, tier, 0), w.species)!;
       fight.cards.forEach((card, index) => {
         it(`${w.species} ${tier} ${card.id}: survivable from every start, with punish windows and its kill margin`, () => {
-          const proof = proveCard(w, tier, index, startsOf(w));
+          const proof = proveCard(onTier(w, tier), tier, index, startsOf(w));
           expect(proof.starts).toBeGreaterThanOrEqual(3);
           expect(proofFailures([proof]), JSON.stringify(proofFailures([proof]))).toEqual([]);
         }, 300_000);
       });
     }
     it(`${w.species} nightmare: the solver bot clears the whole fight without a hit (seeds ${FIGHT_SEEDS.join(', ')})`, () => {
-      for (const seed of FIGHT_SEEDS) expect(solveFight(w, 'nightmare', seed).cleared, `seed ${seed}`).toBe(true);
+      for (const seed of FIGHT_SEEDS) expect(solveFight(onTier(w, 'nightmare'), 'nightmare', seed).cleared, `seed ${seed}`).toBe(true);
     }, 600_000);
   }
 });

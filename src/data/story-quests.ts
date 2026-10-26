@@ -4,6 +4,10 @@ import type { SpeciesId } from './species';
 import { CUBONE_QUEST } from './story/cubone';
 import { LITWICK_QUEST } from './story/litwick';
 import { ZORUA_QUEST } from './story/zorua';
+import { ABRA_QUEST } from './story/abra';
+import { PIPLUP_QUEST } from './story/piplup';
+import { SHINX_QUEST } from './story/shinx';
+import { AXEW_QUEST } from './story/axew';
 
 /**
  * The Sendas (docs/story-quests.md): each line's challenge as a story in
@@ -34,7 +38,23 @@ export type StoryScene =
   // Zorua's (adapters/story/zorua-scenes.ts): the village fountain with a fox's reflection, the forest path that loops, the grudge's white fog.
   | 'fountain'
   | 'loop'
-  | 'fog';
+  | 'fog'
+  // Abra's (adapters/story/abra-scenes.ts): the moss bed where it sleeps, a bent spoon in a cone of light, the boy who woke up as Kadabra.
+  | 'sleep'
+  | 'spoon'
+  | 'boy'
+  // Piplup's (adapters/story/piplup-scenes.ts): the ice shelf with a refused berry, the dusk sea, the dark water under the ice.
+  | 'ice'
+  | 'sea'
+  | 'underice'
+  // Shinx's (adapters/story/shinx-scenes.ts): golden eyes in a dark cave, the pack at the storm's edge, a shape seen through a wall.
+  | 'cave'
+  | 'storm'
+  | 'wall'
+  // Axew's (adapters/story/axew-scenes.ts): a tusk regrowing through a crack of light, the old clawed tree, the burning sky.
+  | 'crack'
+  | 'tree'
+  | 'burning';
 
 /** The line's own sprite on a tableau, in one pose (Mimikyu's busted form for a broken disguise). */
 export interface StoryFigure {
@@ -44,6 +64,10 @@ export interface StoryFigure {
   x?: number;
   /** A later form of the line in its place (the last chapter's evolution). */
   form?: SpeciesId;
+  /** Seen from behind (facing away, towards the sea or the storm). */
+  back?: true;
+  /** Fades out and back in with a shimmer, as a sleeper that teleports away. */
+  vanish?: true;
 }
 
 /** One tableau of a story cinematic: its scene, the figure on it (none: the scene alone) and a line of text. */
@@ -125,6 +149,11 @@ export const STORY_QUESTS: Partial<Record<ChallengeLine, StoryQuest>> = {
   cubone: CUBONE_QUEST,
   litwick: LITWICK_QUEST,
   zorua: ZORUA_QUEST,
+  // The gacha lines' Sendas (data/story/<line>.ts).
+  abra: ABRA_QUEST,
+  piplup: PIPLUP_QUEST,
+  shinx: SHINX_QUEST,
+  axew: AXEW_QUEST,
 };
 
 /** The Senda of a line, if it has one. */
