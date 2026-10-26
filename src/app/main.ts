@@ -98,8 +98,8 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
 applyTokens(document.documentElement);
-/** Where the open account screen goes back to (its redraws keep it); declared before the account, whose start may report a change at once. */
-let accountBack: (() => void) | null = null;
+/** Redraws the open account window in place (the screen or the town's overlay) and the view it shows; declared before the account, whose start may report a change at once. */
+let accountRedraw: (() => void) | null = null;
 let accountView: AccountView | null = null;
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
 const { account, store } = setupAccount({
@@ -111,7 +111,7 @@ const { account, store } = setupAccount({
   // Sync moved (status, a choice, another tab): a signed-in account screen shows it at once; the title redraws for a replaced profile.
   onChange: () => {
     const app = document.getElementById('app');
-    if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountBack) accountScreen(app, accountBack);
+    if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
   },
   onReplaced: () => {
     // The picked species must still be in the (possibly new) roster.
@@ -677,9 +677,31 @@ function settingsScreen(root: HTMLElement): void {
 
 /** The account screen (log in, sign up, log out, delete; cloud sync choices, status and backups), from the title or Settings. */
 function accountScreen(root: HTMLElement, back: () => void, view: AccountView = 'main'): void {
-  accountBack = back;
+  accountRedraw = () => accountScreen(root, back);
   accountView = view;
   show(root, [accountWindow({ account, refresh: (next) => accountScreen(root, back, next), onBack: back }, view)]);
+}
+
+/** The account window over the town (its Esc menu, solo or in a room): the town, the room and its session stay underneath. */
+function townAccount(parent: HTMLElement, onClose: () => void): () => void {
+  const overlay = h('div', { className: 'town-shop' });
+  let closed = false;
+  const render = (view: AccountView = 'main'): void => {
+    if (closed) return;
+    accountRedraw = () => render('main');
+    accountView = view;
+    overlay.replaceChildren(accountWindow({ account, refresh: render, onBack: onClose }, view));
+  };
+  render();
+  parent.append(overlay);
+  return () => {
+    closed = true;
+    if (overlay.isConnected) {
+      accountRedraw = null;
+      accountView = null;
+    }
+    overlay.remove();
+  };
 }
 
 /**
@@ -698,7 +720,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: (here) => accountScreen(root, () => townScreen(root, here)), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => !hasSeenSimaScene(store, 'plea'), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => !hasSeenSimaScene(store, 'plea'), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1235,7 +1257,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1464,13 +1486,13 @@ function devStoryDone(): boolean {
   return import.meta.env.DEV && new URLSearchParams(window.location.search).get('storySkip') === '1';
 }
 
-/** Development server only: the `map`, `tile` and `window` (travel or menu) query of `?screen=town`. */
+/** Development server only: the `map`, `tile` and `window` (travel or menu) query of `?screen=town` (window: travel, menu or account). */
 function devTownPlace(): TownPlace {
   const params = new URLSearchParams(window.location.search);
   const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
   const at = (params.get('map') ?? undefined) as TownOptions['at'];
   const window_ = params.get('window');
-  const startWindow = window_ === 'travel' || window_ === 'menu' ? window_ : undefined;
+  const startWindow = window_ === 'travel' || window_ === 'menu' || window_ === 'account' ? window_ : undefined;
   return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}) };
 }
 

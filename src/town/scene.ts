@@ -111,10 +111,10 @@ export interface TownOptions {
   openAchievements?: TownWindowOpener;
   /** The settings over the town (its Esc menu), like `openShop`. */
   openSettings?: TownWindowOpener;
-  /** The account screen from the town's Esc menu (it leaves the town; `here` is where to come back). */
-  openAccount?: (here: { at: WorldMapId; tile: { x: number; y: number } }) => void;
-  /** Development (`?screen=town&window=travel|menu`): a window open from the start, for screenshots and the menu geometry check. */
-  startWindow?: 'travel' | 'menu';
+  /** The account window over the town (its Esc menu), like `openShop`: in a room the room stays. */
+  openAccount?: TownWindowOpener;
+  /** Development (`?screen=town&window=travel|menu|account`): a window open from the start, for screenshots and the menu geometry check. */
+  startWindow?: 'travel' | 'menu' | 'account';
   /**
    * The villagers' pleas before the first descent into the Sima (data/sima-plea.ts):
    * alone, the first time the player heads for `dungeon`, the scene moves to
@@ -684,11 +684,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return leaveTown(options.openShrine);
       case 'online':
         return leaveTown(options.openOnline);
-      case 'account': {
-        const tile = tileOf(walker.pos);
-        const here = { at: map.id, tile: { x: tile.x, y: tile.y } };
-        return leaveTown(options.openAccount && (() => options.openAccount!(here)));
-      }
+      case 'account':
+        return openShopWindow(options.openAccount);
     }
   }
 
@@ -855,6 +852,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   resize();
   if (options.startWindow === 'travel') openShopWindow(openTravel);
   if (options.startWindow === 'menu') openMenu();
+  if (options.startWindow === 'account') openShopWindow(options.openAccount);
   raf = requestAnimationFrame(frame);
   return handle;
 }

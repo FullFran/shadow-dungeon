@@ -46,6 +46,7 @@ const SCREENS = [
   ['account', 'screen=account', 1500],
   ['travel', 'screen=town&window=travel', 3000, undefined, ALL_MAPS],
   ['town-menu', 'screen=town&window=menu', 3000],
+  ['town-account', 'screen=town&window=account', 3000],
   ['options', '', 1500, 'options'],
   ['item-pick', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500],
   ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, 'menu'],
@@ -54,9 +55,12 @@ const SCREENS = [
   ['eclipse', 'screen=eclipse', 1200],
 ].filter(([name]) => !only || only.split(',').includes(name));
 
-// Boxes in page coordinates (a keyboard move may scroll the page: that is not a resize).
+// Boxes in content coordinates: a keyboard move may scroll the page, or the
+// overlay a window over the town sits in (too tall for a landscape phone, the
+// overlay scrolls, index.html): neither is a resize.
 const MEASURE = `(() => {
-  const box = (el) => { const r = el.getBoundingClientRect(); return [r.left + scrollX, r.top + scrollY, r.width, r.height].map((v) => Math.round(v * 10) / 10); };
+  const scrolled = (el) => { let x = scrollX, y = scrollY; for (let a = el.parentElement; a && a !== document.scrollingElement; a = a.parentElement) { x += a.scrollLeft; y += a.scrollTop; } return [x, y]; };
+  const box = (el) => { const r = el.getBoundingClientRect(); const [x, y] = scrolled(el); return [r.left + x, r.top + y, r.width, r.height].map((v) => Math.round(v * 10) / 10); };
   const lists = [...document.querySelectorAll('.md-list[role=menu]')].filter((l) => !l.closest('.md-desc-ghost') && l.getClientRects().length > 0);
   const list = lists.at(-1);
   const out = {};

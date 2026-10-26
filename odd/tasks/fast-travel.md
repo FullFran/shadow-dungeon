@@ -40,7 +40,7 @@ The town is the interface for everything; the title only starts play.
 - [x] GDD (docs/gdd.md, El mundo).
 - [x] Menu geometry: `travel` added to tools/mobile/menu-geometry.mjs.
 - [x] Title: exactly three entries (TITLE_ENTRIES; test reads titleScreen and finds one generated row).
-- [x] Town Esc menu lists every town service: every NPC `opens` kind in `TOWN` and `WORLD` and every readable place (board, waystone, altar, beacon) on every map maps to a menu row (tests iterate them); the scene has a `case` per service; solo wires every opener, the room all but online and account.
+- [x] Town Esc menu lists every town service: every NPC `opens` kind in `TOWN` and `WORLD` and every readable place (board, waystone, altar, beacon) on every map maps to a menu row (tests iterate them); the scene has a `case` per service; solo wires every opener, the room all but online (account too since the account became a window over the town).
 - [x] Options holds settings, account, achievements, prologue, credits and the install offer (test).
 - [x] Dev `?screen=` hooks kept (`town&window=travel|menu` added); online room flow untouched (lobby rows close the town menu).
 - [x] Touch: "Menú" button in the top corner over the bare town, "Atrás" back over its windows.
@@ -49,7 +49,7 @@ The town is the interface for everything; the title only starts play.
 
 ## Pending (not dropped)
 
-- Account from the room town's menu: left out because the account screen leaves the town and would drop the room's town view; reachable from the title's Opciones and the solo town.
+- Account from the room town's menu: done after the merge into main (2026-10-27): the account opens as a window over the town (`townAccount` in src/app/main.ts), so the room's town view and session stay; the room menu lists it (tests/town/town-menu.test.ts; menu geometry `town-account`).
 - Phone portrait (390x844) shows the rotate hint over the windows, as every other window does; the long town menu scrolls there.
 
 ## Checks

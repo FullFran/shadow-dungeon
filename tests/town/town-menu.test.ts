@@ -45,6 +45,16 @@ describe('town Esc menu', () => {
     expect(scene).toMatch(/if \(dialog\) dialog = null;\s*else openMenu\(\);/);
   });
 
+  it('the account is a window over the town like the others: it never leaves the town (nor the room)', () => {
+    const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
+    expect(scene).toMatch(/case 'account':\s*return openShopWindow\(options\.openAccount\);/);
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    expect(main.match(/openAccount: townAccount/g)).toHaveLength(2);
+    const overlay = main.slice(main.indexOf('function townAccount('), main.indexOf('function townAccount(') + 1200);
+    expect(overlay).not.toContain('show(');
+    expect(overlay).toContain("h('div', { className: 'town-shop' })");
+  });
+
   it('every way into a dungeon (the Esc menu, the waystone, the entrances, the windows) goes through depart, where the Sima pleas wait', () => {
     const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
     // The pleas are checked first thing in depart (alone, the first time, heading to the Sima).
@@ -64,7 +74,7 @@ describe('town Esc menu', () => {
     expect(scene).toMatch(/function openMenu\(\): void \{\s*if \(exitWindow \|\| closeShop \|\| fade \|\| plea \|\| stopped\) return;/);
   });
 
-  it('the solo town wires every service, the room town all but the account (it leaves the room) and online', () => {
+  it('the solo town wires every service, the room town all but online (the account opens over the town, so the room stays)', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
     const solo = main.slice(main.indexOf('function townScreen('), main.indexOf('function tutorView('));
     const keys: Record<Exclude<TownService, 'travel' | 'dungeons'>, string> = {
@@ -82,7 +92,7 @@ describe('town Esc menu', () => {
     };
     for (const [service, key] of Object.entries(keys)) expect(solo, service).toContain(`${key}:`);
     const room = main.slice(main.indexOf('function townLobby('), main.indexOf('function backToRoom('));
-    for (const [service, key] of Object.entries(keys)) if (service !== 'online' && service !== 'account') expect(room, service).toContain(`${key}:`);
+    for (const [service, key] of Object.entries(keys)) if (service !== 'online') expect(room, service).toContain(`${key}:`);
   });
 
   for (const language of LANGUAGES) {
