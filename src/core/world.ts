@@ -33,6 +33,8 @@ export interface WorldOptions {
   role?: PeerRole;
   /** Permanent upgrade levels of the local player (default none). */
   upgrades?: UpgradeLevels;
+  /** The move tutor's Mejoras of the local player's species (core/tutor.ts `runRanks`; default none). */
+  moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
   /** The run's tier, the host's for every peer (absent = easy, data/difficulty.ts). */
   difficulty?: Difficulty;
   /** Co-op: the room's roster size when the run starts (core/party.ts; absent or 1 = solo). */
@@ -89,9 +91,11 @@ export function createWorld({
   localId = 'p1',
   role = 'host',
   upgrades,
+  moveRanks,
   difficulty,
   party,
 }: WorldOptions): WorldState {
+  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades), difficulty);
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),
@@ -106,7 +110,7 @@ export function createWorld({
     rng: seedRng(seed),
     nextId: 1,
     arena,
-    player: withRollTier(createPlayer(playerPos, species, loadout, upgrades), difficulty),
+    player: moveRanks ? { ...player, moveRanks } : player,
     enemies: [],
     projectiles: [],
     berries: [],

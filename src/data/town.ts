@@ -130,7 +130,7 @@ export interface TownProp {
   y: number;
 }
 
-export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle' | 'hermit';
+export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle' | 'hermit' | 'tutor';
 
 /** Species an NPC or a wandering Pokémon can use: any existing sprite (public/sprites). */
 export type NpcSpecies = keyof typeof SPRITE_KEYS;
@@ -147,8 +147,8 @@ export interface TownNpc {
   lines: readonly string[];
   /** One line per talk, in turn, instead of all of them. */
   rotate?: boolean;
-  /** A window opens when the dialog ends (Poochyena's upgrade shop). */
-  opens?: 'shop';
+  /** A window opens when the dialog ends (Poochyena's upgrade shop, Smeargle's move tutor). */
+  opens?: 'shop' | 'tutor';
 }
 
 export interface TownMap {

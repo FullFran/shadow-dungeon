@@ -134,7 +134,8 @@ export const REFUGIO: WorldMap = {
   // The Santuario de los Juramentos: an old statue on the south lawn serves as its altar.
   // The signal pillar on the south square: online rooms start from the town too.
   props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }, { kind: 'statue', x: 21, y: 12 }, { kind: 'pillar', x: 16, y: 12 }],
-  npcs: TOWN.npcs,
+  // Smeargle, the move tutor (odd/tasks/movepools.md), by the stone house on the west lawn.
+  npcs: [...TOWN.npcs, { id: 'tutor', role: 'tutor', species: 'smeargle', x: 6, y: 11, lines: ['town.tutor.1', 'town.tutor.open'], opens: 'tutor' }],
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
   entrances: [],
   lore: [],

@@ -1169,5 +1169,20 @@
   "move.rock-slide.description": "Rocas caen en un cono delante de ti y aturden.",
   "move.ice-beam.description": "Rayo helado en línea recta que atraviesa a todos.",
   "type.psychic": "Psíquico",
-  "type.ice": "Hielo"
+  "type.ice": "Hielo",
+  "tutor.title": "Maestro de movimientos",
+  "tutor.text": "Smeargle enseña los movimientos que tu Pokémon aprende en su tierra natal, y pule los que ya sabe.",
+  "tutor.hint": "Elige un movimiento y pulsa Enter para aprenderlo. ◀ ▶ cambian de Pokémon y de filtro.",
+  "tutor.species": "Pokémon",
+  "tutor.filter": "Hueco",
+  "tutor.filter.all": "Todos",
+  "tutor.moves": "Movimientos",
+  "tutor.ranks": "Mejoras",
+  "tutor.learned": "Aprendido",
+  "tutor.rank.effect": "Mejora un movimiento inicial: +{pct} % de daño por rango (2 rangos, «+» y «++»).",
+  "tutor.rank.cooldown": "Su enfriamiento baja un {pct} % por rango.",
+  "tutor.build": "Recomendado (competitivo): {moves}",
+  "town.name.tutor": "Smeargle · Maestro de movimientos",
+  "town.tutor.1": "Cada Pokémon guarda en su sangre los movimientos de su tierra. Yo sé pintarlos de nuevo.",
+  "town.tutor.open": "Elige qué aprender. Paga con Pokémonedas."
 }

@@ -49,9 +49,12 @@ import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinem
 import { drawGuardianScene } from '../adapters/guardian-scenes';
 import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
 import type { SpeciesId } from '../data/species';
+import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
+import { buildHint, tutorWindow } from './tutor';
+import { knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { coinLines } from './coin-lines';
 import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
@@ -455,6 +458,7 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       species: settings.species,
       loadout: settings.loadout,
       sheets: sheetsReady(),
+      ...tutorView(settings.species),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
         loadout(root, 'moves', dungeon);
@@ -508,7 +512,30 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+}
+
+/** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
+function tutorView(species: SpeciesId): { known: MoveId[]; ranks: Partial<Record<MoveId, number>>; buildHint: string } {
+  const save = loadSave(store);
+  return { known: knownMoves(save, species), ranks: { ...runRanks(save, species) }, buildHint: buildHint(species) };
+}
+
+/** A run's Mejoras of `species` (none: no field). */
+function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>> } {
+  const ranks = runRanks(loadSave(store), species);
+  return ranks ? { moveRanks: ranks } : {};
+}
+
+/** Smeargle's move tutor over the town, like the shop. */
+function townTutor(parent: HTMLElement, onClose: () => void): () => void {
+  const tutor = tutorWindow({ store, species: settings.species, play: (sound) => audio.play(sound), onBack: onClose });
+  const overlay = h('div', { className: 'town-shop' }, [tutor.element]);
+  parent.append(overlay);
+  return () => {
+    tutor.dispose();
+    overlay.remove();
+  };
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -596,6 +623,7 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       species: settings.species,
       loadout: settings.loadout,
       sheets: sheetsReady(),
+      ...tutorView(settings.species),
       startLabel: t('shrine.start'),
       context: requestLine(request),
       onSpecies: (species) => {
@@ -639,6 +667,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         species: settings.species,
         loadout: settings.loadout,
         sheets: sheetsReady(),
+        ...tutorView(settings.species),
         startLabel: t('shrine.ready'),
         ...(request ? { context: requestLine(request) } : {}),
         onSpecies: (species) => {
@@ -887,7 +916,7 @@ function townLobby(root: HTMLElement): void {
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openShrine: () => shrineScreen(root, 'room'), lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1026,10 +1055,12 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   root.querySelector('.notice')?.classList.add('in-game');
   running = startGame(canvas, sheets!, {
     species: trial?.pick.species ?? settings.species,
-    loadout: trial?.pick.loadout ?? settings.loadout,
+    // Only moves the species knows reach a run (the tutor's, once bought); its Mejoras go with it.
+    loadout: knownLoadout(loadSave(store), trial?.pick.species ?? settings.species, trial?.pick.loadout ?? settings.loadout),
     lockType: settings.lockType,
     clickToLock: settings.clickToLock,
     upgrades: loadSave(store).upgrades,
+    ...ranksOf(trial?.pick.species ?? settings.species),
     ...shared,
     ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
     ...(trial ? { trial: trial.request.stops } : {}),
@@ -1093,6 +1124,11 @@ function devScreen(root: HTMLElement): boolean {
     // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
     town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),
+    // Smeargle's move tutor on its own (back goes to the title).
+    tutor: () => {
+      const tutor = tutorWindow({ store, species: settings.species, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
+      show(root, [tutor.element]);
+    },
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
     shrine: () => shrineScreen(root, 'title', (new URLSearchParams(window.location.search).get('view') ?? undefined) as ShrineView | undefined),
     online: () => onlineScreen(root),

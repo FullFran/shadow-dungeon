@@ -1169,5 +1169,20 @@
   "move.rock-slide.description": "Rocks fall in a cone in front of you and stagger.",
   "move.ice-beam.description": "An icy beam in a straight line, through everyone.",
   "type.psychic": "Psychic",
-  "type.ice": "Ice"
+  "type.ice": "Ice",
+  "tutor.title": "Move tutor",
+  "tutor.text": "Smeargle teaches the moves your Pokémon learns back home, and polishes the ones it already knows.",
+  "tutor.hint": "Pick a move and press Enter to learn it. ◀ ▶ change the Pokémon and the filter.",
+  "tutor.species": "Pokémon",
+  "tutor.filter": "Slot",
+  "tutor.filter.all": "All",
+  "tutor.moves": "Moves",
+  "tutor.ranks": "Upgrades",
+  "tutor.learned": "Learned",
+  "tutor.rank.effect": "Upgrade a starting move: +{pct}% damage per rank (2 ranks, \"+\" and \"++\").",
+  "tutor.rank.cooldown": "Its cooldown drops {pct}% per rank.",
+  "tutor.build": "Recommended (competitive): {moves}",
+  "town.name.tutor": "Smeargle · Move tutor",
+  "town.tutor.1": "Every Pokémon keeps the moves of its homeland in its blood. I know how to paint them again.",
+  "town.tutor.open": "Choose what to learn. Pay with Pokémonedas."
 }

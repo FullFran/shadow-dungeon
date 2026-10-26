@@ -16,7 +16,8 @@ import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
 import { buffCrit, buffDamage, castBuff, cooldownLeft, spendBuffHit, startCooldown, tickBoosts } from './boosts';
 import { afterHit, applyDot, hitEffects, payHpCost, tickDots } from './afflictions';
-import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, HitEffects, PlayerInput, ProjectileState, WorldState } from './state';
+import { rankDamage } from './tutor';
+import type { ActionPhase, ActionState, EnemyState, GameEvent, HitClaim, HitEffects, PlayerInput, PlayerState, ProjectileState, WorldState } from './state';
 import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
 import { add, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
@@ -60,8 +61,8 @@ function phaseDuration(move: MoveDef, phase: ActionPhase, actionTime: number): n
 }
 
 /** Damage multiplier of the player's items, level and passive boost for a move (heavy-slot bonus included). */
-const moveMultiplier = (stats: PlayerStats, move: MoveDef, action: ActionState): number =>
-  stats.damage * (move.slot === 'heavy' ? stats.heavyDamage : 1) * (action.boost ?? 1);
+const moveMultiplier = (stats: PlayerStats, move: MoveDef, action: ActionState, ranks?: PlayerState['moveRanks']): number =>
+  stats.damage * (move.slot === 'heavy' ? stats.heavyDamage : 1) * (action.boost ?? 1) * rankDamage(ranks, move);
 
 const NEXT_PHASE: Record<ActionPhase, ActionPhase | null> = {
   charging: 'windup',
@@ -256,7 +257,7 @@ function resolveMelee(state: WorldState, move: MoveDef, action: ActionState, eve
       {
         power: move.power,
         type: move.type,
-        multiplier: charge.damageMultiplier * moveMultiplier(stats, move, action),
+        multiplier: charge.damageMultiplier * moveMultiplier(stats, move, action, state.player.moveRanks),
         hitstunMs: move.hitstunMs,
         knockback: move.knockback,
         from: origin,
@@ -283,7 +284,7 @@ function spawnPlayerProjectile(state: WorldState, move: MoveDef, action: ActionS
     type: move.type,
     attackerTypes: state.player.types,
     power: move.power,
-    damageMultiplier: charge.damageMultiplier * moveMultiplier(stats, move, action),
+    damageMultiplier: charge.damageMultiplier * moveMultiplier(stats, move, action, state.player.moveRanks),
     pos: add(state.player.pos, scale(action.aimDir, PLAYER.radius + radius)),
     vel: scale(action.aimDir, move.hitbox.speed * charge.speedMultiplier),
     radius,

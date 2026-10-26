@@ -113,6 +113,8 @@ const TARGETS = [
   { dex: '0089', form: '0000', species: 'muk', formName: 'base' },
   { dex: '0454', form: '0000', species: 'toxicroak', formName: 'base' },
   { dex: '0229', form: '0000', species: 'houndoom', formName: 'base' },
+  // The Refugio's move tutor (tracker.json 2026-10-26: full sheet set, CHUNSOFT + PMDCollab).
+  { dex: '0235', form: '0000', species: 'smeargle', formName: 'base' },
 ];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.

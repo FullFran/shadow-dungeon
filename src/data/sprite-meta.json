@@ -19918,6 +19918,318 @@
           }
         }
       }
+    },
+    "0235/0000": {
+      "species": "smeargle",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            36,
+            16
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            8,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 42.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 72,
+          "frameHeight": 72,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 4,
+          "anchor": {
+            "x": 35.5,
+            "y": 37.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 56,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 28.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 31.5
+          }
+        },
+        "Faint": {
+          "file": "Faint-Anim.png",
+          "source": "Faint",
+          "frameWidth": 40,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            4,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 23.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 42.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 35.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "SpAttack": {
+          "file": "SpAttack-Anim.png",
+          "source": "SpAttack",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        }
+      }
     }
   }
 }

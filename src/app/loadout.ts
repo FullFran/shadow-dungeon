@@ -11,6 +11,7 @@ import { stepDifficulty, type Difficulty } from '../data/difficulty';
 import { h, mdWindow } from '../ui/window';
 import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
+import { rankedName, slotFilterRow, type SlotFilter } from './tutor';
 
 /**
  * The loadout picker before a run, in two steps. `species`: a cursor list of
@@ -36,6 +37,16 @@ export interface LoadoutOptions {
   startLabel?: string;
   /** A line under the title naming what the loadout is for (the shrine: its boss or gauntlet and tier). */
   context?: string;
+  /**
+   * The move tutor (app/tutor.ts): only these moves are offered (the original
+   * kit and the bought ones), with a slot filter row on top; absent = the
+   * whole movepool, no filter.
+   */
+  known?: readonly MoveId[];
+  /** Mejoras per move: the card names show "+" per rank. */
+  ranks?: Readonly<Partial<Record<MoveId, number>>>;
+  /** The recommended competitive build, shown under the list. */
+  buildHint?: string;
 }
 
 /** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
@@ -96,12 +107,12 @@ function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId): HTMLElement[] 
   return out;
 }
 
-function moveCard(id: MoveId, equipped: boolean): HTMLElement {
+function moveCard(id: MoveId, equipped: boolean, rank = 0): HTMLElement {
   const move = MOVES[id];
   const [stats, matchup] = moveInfoLines(id);
   return h('div', { className: 'move-card' }, [
     h('div', { className: 'move-head' }, [
-      h('strong', { textContent: t(`move.${id}`) }),
+      h('strong', { textContent: rankedName(id, rank) }),
       typeBadge(move.type),
       equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
     ]),
@@ -163,18 +174,28 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
   let tier = options.difficulty?.value;
   const hint = h('p', { className: 'dim difficulty-hint', textContent: tier ? t(`difficulty.${tier}.hint`) : '' });
   const species = SPECIES[options.species];
+  let filter: SlotFilter = 'all';
 
   const items = (): ListItem[] => {
     const out: ListItem[] = [];
+    // With the tutor's moves: a ◀ ▶ filter to one slot kind (the lists grow long).
+    if (options.known)
+      out.push(
+        slotFilterRow(filter, (next) => {
+          filter = next;
+          list.setItems(items());
+        }),
+      );
     PLAYER_SLOT_LAYOUT.forEach((kind, slot) => {
+      if (filter !== 'all' && filter !== kind) return;
       // A slot the species has no move for (boost or area) is left out and stays empty.
-      const choices = slotOptions(kind, species.id);
+      const choices = slotOptions(kind, species.id, options.known);
       if (choices.length === 0) return;
       out.push({ header: true, label: t(`slot.${kind}`) });
       for (const id of choices) {
         const equipped = loadout[slot] === id;
         out.push({
-          label: moveCard(id, equipped),
+          label: moveCard(id, equipped, options.ranks?.[id] ?? 0),
           className: equipped ? 'move-row is-equipped' : 'move-row',
           onConfirm: () => {
             loadout = loadout.map((m, i) => (i === slot ? id : m));
@@ -205,7 +226,7 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 
   const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id));
   const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
-  return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : [])])])];
+  return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : []), ...(options.buildHint ? [h('p', { className: 'dim loadout-build', textContent: options.buildHint })] : [])])])];
 }
 
 export function loadoutScreen(options: LoadoutOptions): HTMLElement[] {

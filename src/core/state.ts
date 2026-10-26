@@ -172,6 +172,8 @@ export interface PlayerState {
   cooldowns?: Readonly<Partial<Record<MoveId, number>>>;
   /** The boost move's buff running now (core/boosts.ts); absent = none. */
   buff?: ActiveBuff;
+  /** Mejoras bought at the move tutor (core/tutor.ts): rank per original move, fixed for the run; absent = none. */
+  moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
 }
 
 /** A running boost buff: its move (whose `MoveDef.buff` says what it does), time left and, for `power`, hits left. */

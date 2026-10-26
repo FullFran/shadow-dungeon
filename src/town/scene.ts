@@ -58,6 +58,8 @@ export interface TownOptions {
   onQuit: () => void;
   /** Opens the upgrade shop window inside `parent` (Poochyena's stall); returns a function that closes it. `onClose` runs when the player leaves it. */
   openShop?: (parent: HTMLElement, onClose: () => void) => () => void;
+  /** Opens Smeargle's move tutor window inside `parent`, like `openShop`. */
+  openTutor?: (parent: HTMLElement, onClose: () => void) => () => void;
   /** The map to open (the hub, at its spawn, when absent). */
   at?: WorldMapId;
   /** The tile to start on (the map's spawn or first arrival when absent). */
@@ -210,7 +212,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pixelScale = 1;
   let stopped = false;
   let raf = 0;
-  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'shrine' | 'online' } | null = null;
+  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'tutor' | 'shrine' | 'online' } | null = null;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -306,6 +308,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const opens = dialog.opens;
       dialog = next ? { ...dialog, state: next } : null;
       if (!next && opens === 'shop') openShopWindow();
+      if (!next && opens === 'tutor') openShopWindow(options.openTutor);
       if (!next && opens === 'shrine' && options.openShrine) {
         handle.stop();
         options.openShrine();
@@ -347,13 +350,14 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
   }
 
-  function openShopWindow(): void {
+  /** Opens a stall window (the shop, or the move tutor's: `open`) over the town. */
+  function openShopWindow(open = options.openShop): void {
     const parent = canvas.parentElement;
-    if (!options.openShop || !parent) return;
+    if (!open || !parent) return;
     held.clear();
     // The joystick and "Hablar" step aside while the shop window takes the taps.
     touch.setSuspended(true);
-    closeShop = options.openShop(parent, () => {
+    closeShop = open(parent, () => {
       closeShop?.();
       closeShop = null;
       held.clear();

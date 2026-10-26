@@ -171,6 +171,9 @@
       .shop { min-width: 30rem; max-width: 36rem; }
       .shop .shop-effect { min-height: 2.6em; margin: 10px 0 0; }
       .shop .shop-balance { margin-bottom: 8px; }
+      /* The move tutor: its long list scrolls inside the window; the build hint in the cursor colour. */
+      .tutor .shop-list { max-height: 44vh; overflow-y: auto; }
+      .tutor .tutor-build, .loadout-build { margin: 0 0 8px; color: var(--md-cursor); }
       /* Santuario de los Juramentos (src/app/shrine.ts) */
       .shrine { min-width: 36rem; max-width: 46rem; }
       .shrine h3 { margin: 0 0 10px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
@@ -300,6 +303,9 @@
         html.touch .shop .shop-balance { grid-area: balance; margin: 8px 0; }
         html.touch .shop .shop-list { grid-area: list; }
         html.touch .shop .shop-effect { grid-area: effect; margin: 0; }
+        html.touch .tutor .md-window-body { grid-template-rows: auto auto auto 1fr; grid-template-areas: 'text list' 'balance list' 'build list' 'effect list'; }
+        html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
+        html.touch .tutor .shop-list { max-height: none; }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }
         html.touch .result h1 { font-size: 26px; }

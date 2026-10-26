@@ -1,5 +1,6 @@
 import { MOVES, type BuffDef, type MoveDef, type MoveId } from '../data/moves';
 import type { GameEvent, PlayerState } from './state';
+import { rankCooldown } from './tutor';
 
 /**
  * Boost-slot buffs and the cooldowns of boost and area moves (four-slots).
@@ -13,7 +14,8 @@ export const cooldownLeft = (player: Pick<PlayerState, 'cooldowns'>, moveId: Mov
 /** The player with `move`'s cooldown started (moves without one: unchanged). */
 export function startCooldown(player: PlayerState, move: MoveDef): PlayerState {
   if (!move.cooldownMs) return player;
-  return { ...player, cooldowns: { ...player.cooldowns, [move.id]: move.cooldownMs } };
+  // A ranked move (the tutor's Mejoras) comes back sooner.
+  return { ...player, cooldowns: { ...player.cooldowns, [move.id]: rankCooldown(player.moveRanks, move) } };
 }
 
 /** The running buff's definition, if any. */

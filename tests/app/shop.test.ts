@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
 import { UPGRADE_IDS, UPGRADES } from '../../src/data/upgrades';
-import { loadSave, writeSave, EMPTY_SAVE } from '../../src/app/save';
+import { loadSave, writeSave, EMPTY_SAVE, SAVE_VERSION } from '../../src/app/save';
 import { bonusText, purchase, shopRows } from '../../src/app/shop';
 import { setLanguage } from '../../src/i18n';
 
@@ -31,8 +31,8 @@ describe('purchase', () => {
   it('saves the bought level and the new balance, or refuses and changes nothing', () => {
     const store = memoryStore();
     writeSave(store, { ...EMPTY_SAVE, coins: 70 });
-    expect(purchase(store, 'vitality')).toEqual({ version: 1, coins: 10, upgrades: { vitality: 1 } });
-    expect(loadSave(store)).toEqual({ version: 1, coins: 10, upgrades: { vitality: 1 } });
+    expect(purchase(store, 'vitality')).toEqual({ version: SAVE_VERSION, coins: 10, upgrades: { vitality: 1 } });
+    expect(loadSave(store)).toEqual({ version: SAVE_VERSION, coins: 10, upgrades: { vitality: 1 } });
     expect(purchase(store, 'vitality')).toBeNull();
     expect(loadSave(store).coins).toBe(10);
   });

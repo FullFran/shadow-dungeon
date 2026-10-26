@@ -111,4 +111,6 @@ export const SPRITE_KEYS = {
   muk: '0089/0000',
   toxicroak: '0454/0000',
   houndoom: '0229/0000',
+  // The Refugio's move tutor (odd/tasks/movepools.md).
+  smeargle: '0235/0000',
 } as const;

@@ -113,6 +113,8 @@ export interface GameOptions {
   loadout: readonly (MoveId | null)[];
   /** Permanent upgrade levels of the local player (the shop's), applied at run start. */
   upgrades?: UpgradeLevels;
+  /** The move tutor's Mejoras of the species (core/tutor.ts `runRanks`), applied at run start like the upgrades. */
+  moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
@@ -229,6 +231,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     clickToLock: options.clickToLock,
     // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
     ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
+    // The Mejoras follow the same rule (none in a pure dungeon).
+    ...(options.moveRanks && !dungeonById(options.dungeon).endless?.pure ? { moveRanks: options.moveRanks } : {}),
     // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
     ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
     ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
