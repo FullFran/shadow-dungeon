@@ -1,12 +1,17 @@
 import { IDLE_TOUCH, joystickVector, swipeSteps, type TouchFrame } from '../adapters/touch';
 import type { Vec2 } from '../core/vec';
+import { onTouchPrefs, touchPrefs } from '../adapters/touch-mode';
+import { combatLayout, type Insets } from './touch-layout';
 import { h } from './window';
 
 /**
  * On-screen touch controls (shown only with `html.touch`, see index.html):
- * a floating joystick in the left half (it appears where the thumb lands),
- * free taps in the right half (in canvas pixels of `tapTarget`), and a
- * cluster of buttons. Pointer events with pointer capture, so several
+ * a floating joystick in one half (it appears where the thumb lands; the
+ * left half, the right one when left-handed), free taps in the other half (in
+ * canvas pixels of `tapTarget`), and the buttons placed by the pure layout in
+ * src/ui/touch-layout.ts (main attack in the thumb corner, an arc around it,
+ * Pause and Map in the top corners; safe areas, size, opacity and hand from
+ * the touch preferences). Pointer events with pointer capture, so several
  * fingers work at once (move + attack); buttons show a pressed state.
  * Button ids `roll`, `fast`, `heavy`, `boost`, `area` and `lock` feed the `TouchFrame`
  * (src/adapters/touch.ts maps it onto PlayerInput); others only call
@@ -41,6 +46,8 @@ export interface TouchControls {
   setLabel(id: string, label: string): void;
   /** Suspended (a menu is open): everything is released and new touches are ignored. */
   setSuspended(suspended: boolean): void;
+  /** Places the buttons again (after a resize or a preference change; also done on its own). */
+  relayout(): void;
   dispose(): void;
 }
 
@@ -56,9 +63,8 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   const stick = h('div', { className: 'touch-stick' }, [knob]);
   const stickZone = h('div', { className: 'touch-zone touch-zone-left' });
   const tapZone = h('div', { className: 'touch-zone touch-zone-right' });
-  const cluster = h('div', { className: 'touch-cluster' });
-  const corner = h('div', { className: 'touch-corner' });
-  const element = h('div', { className: ['touch-layer', options.className ?? ''].filter(Boolean).join(' ') }, [stickZone, tapZone, stick, cluster, corner]);
+  const insetProbe = h('div', { className: 'touch-insets' });
+  const element = h('div', { className: ['touch-layer', options.className ?? ''].filter(Boolean).join(' ') }, [stickZone, tapZone, stick, insetProbe]);
   element.addEventListener('contextmenu', (e) => e.preventDefault());
 
   let suspended = false;
@@ -174,8 +180,40 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
       if (e.pointerId === pointer) release();
     });
     // Keyboard and mouse clicks do nothing extra: the pointer events above are the input.
-    (spec.className?.includes('top') ? corner : cluster).append(button);
+    element.append(button);
   }
+
+  /** Safe-area insets as the CSS sees them (`env()` is only readable through a styled element). */
+  const readInsets = (): Insets => {
+    const style = getComputedStyle(insetProbe);
+    const px = (v: string) => Number.parseFloat(v) || 0;
+    return { top: px(style.paddingTop), right: px(style.paddingRight), bottom: px(style.paddingBottom), left: px(style.paddingLeft) };
+  };
+  const place = (el: HTMLElement, x: number, y: number, width: number, height: number) => {
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.width = `${width}px`;
+    el.style.height = `${height}px`;
+  };
+  const relayout = () => {
+    if (!element.isConnected) return;
+    const prefs = touchPrefs();
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const layout = combatLayout(viewport, readInsets(), [...buttons.keys()], prefs);
+    for (const [id, button] of buttons) {
+      const at = layout.buttons[id];
+      if (at) place(button, at.x - at.width / 2, at.y - at.height / 2, at.width, at.height);
+    }
+    const zone = layout.stickZone;
+    place(stickZone, zone.x, zone.y, zone.width, zone.height);
+    place(tapZone, zone.x === 0 ? zone.width : 0, 0, viewport.width - zone.width, viewport.height);
+    element.style.setProperty('--touch-alpha', String(prefs.opacity));
+  };
+  const onResize = () => relayout();
+  window.addEventListener('resize', onResize);
+  const stopPrefs = onTouchPrefs(() => relayout());
+  // Placed once attached (the insets and the viewport need the document).
+  requestAnimationFrame(relayout);
 
   const releaseAll = () => {
     releaseStick();
@@ -216,8 +254,11 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
       suspended = next;
       releaseAll();
     },
+    relayout,
     dispose() {
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('resize', onResize);
+      stopPrefs();
       element.remove();
     },
   };

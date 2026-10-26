@@ -24,7 +24,7 @@ Touch controls, PWA and a fit-to-screen canvas landed in `mobile-touch` / `integ
 
 ## Tasks
 - [x] M1 Benchmark + baseline (route: inline; small tooling + a dev-only probe; percentile helper test-first: RED missing module, then GREEN 4 tests).
-- [ ] C1 Combat layout model (route: inline; pure, test-first).
+- [x] C1 Combat layout model (route: inline; pure, test-first). RED: missing module; GREEN 9 tests (5 viewports x 3 scales x 2 hands: on screen inside safe insets, >= 4 px apart, >= 44 px, main 88 px, mirror, Talk in the main spot, hit test). touch-controls places buttons and the joystick/tap halves from it (relayout on resize and on preference change; insets read from an `env()` probe). The old CSS-regex layout test read NaN from the removed `.touch-cluster` rule and still passed (a gate that could not fail): it now checks the model's buttons against the HUD slot windows. In-run fan notice hidden on touch (it sat under the thumbs). Screens: /tmp/mobile/c1/.
 - [ ] C2 Drag-to-aim + aim preview (route: inline; pure mapping test-first).
 - [ ] C3 Cooldown sweep / rank pips on buttons; HUD clear of thumbs (route: inline).
 - [ ] C4 Touch button size / opacity / left-handed settings (route: inline; settings parse test-first).
