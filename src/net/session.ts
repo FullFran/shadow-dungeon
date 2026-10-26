@@ -6,7 +6,7 @@ import { applyBerryClaims, berryGranted, type BerryClaim } from '../core/berries
 import { applyHitClaims, applyHostSnapshot, applyRemotePlayers, hostSnapshot, playerSnapshot, removeRemote, type HostSnapshot, type PlayerSnapshot } from '../core/sync';
 import { applyHolds, holdClaimedHits, type HpHold } from './hold';
 import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from './interpolation';
-import { decodeMessage, encodeMessage, type NetMessage, type RosterEntry, type TownPresence } from './protocol';
+import { decodeMessage, encodeMessage, parseRoomTrial, type NetMessage, type RoomTrial, type RosterEntry, type TownPresence } from './protocol';
 import { sanitizeNickname } from './nickname';
 import { createStatsTracker, type StatsSummary } from './stats';
 import type { Scheduler, Transport } from './transport';
@@ -59,6 +59,8 @@ export interface StartInfo {
   /** The host's tier; absent = easy (an easy host, or an older one, sends none). */
   difficulty?: Difficulty;
   localId: string;
+  /** A shrine trial for the whole room instead of a dungeon run (absent: a run). */
+  trial?: RoomTrial;
 }
 
 export interface NetStats {
@@ -83,8 +85,16 @@ export interface NetSession {
   difficulty(): Difficulty;
   /** Host: true while waiting in the lobby for `begin`. */
   inLobby(): boolean;
-  /** Host: leaves the lobby and starts every admitted player with its seed (or `runSeed`: the endless dungeon's mode picks it at Start) and `dungeon`, if given. */
-  begin(dungeon?: string, runSeed?: number): void;
+  /** Host: leaves the lobby and starts every admitted player with its seed (or `runSeed`: the endless dungeon's mode picks it at Start) and `dungeon`, if given; with `trial`, a shrine trial instead of a run. */
+  begin(dungeon?: string, runSeed?: number, trial?: RoomTrial): void;
+  /** Host in the lobby: the shrine trial picked at the altar (or none), shown to the guests read-only. */
+  setTrial(trial: RoomTrial | null): void;
+  /** The room's shrine trial: the host's pick, or as a guest the latest the host sent (null: none). */
+  trial(): RoomTrial | null;
+  /** In the room: this player picked another species (and moves) in the loadout; the roster follows (an older host keeps the first). */
+  repick(species: SpeciesId, loadout: readonly (MoveId | null)[]): void;
+  /** Host: the players on an older version (their hello has no shrine flag), who cannot play a trial. */
+  oldPeers(): readonly RosterEntry[];
   /** Asks the session's host to let this player in; `onStart` fires when it answers. */
   join(species: SpeciesId, loadout: readonly (MoveId | null)[], name?: string): void;
   /** Host in the lobby: it may lead the room into a dungeon (guests never can). */
@@ -192,6 +202,11 @@ export function createSession(options: SessionOptions): NetSession {
   let left = false;
   let lobby = false;
   let joining: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string } | null = null;
+  /** The shrine trial picked in the lobby (shown to guests), and the one under way (sent with `start`). */
+  let picked: RoomTrial | null = null;
+  let running: RoomTrial | null = null;
+  /** Host: the peers whose hello said they play shrine trials. */
+  const shrinePeers = new Set<string>();
   let admitted = false;
   let full = false;
   const startHandlers: Array<(start: StartInfo) => void> = [];
@@ -203,7 +218,7 @@ export function createSession(options: SessionOptions): NetSession {
   const walkers = new Map<string, InterpBuffer<TownPresence>>();
   let hostGone = false;
   /** Hellos heard before this peer started or hosted (local election; admitted at once if it hosts). */
-  const pending = new Map<string, { species: SpeciesId; name: string }>();
+  const pending = new Map<string, { species: SpeciesId; name: string; shrine: boolean }>();
   let holds: HpHold[] = [];
   const tracker = createStatsTracker();
   const offsets = new Map<string, number>();
@@ -248,11 +263,16 @@ export function createSession(options: SessionOptions): NetSession {
     return at + offset;
   }
 
-  const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}) });
+  const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}), shrine: 1 });
 
   /** Host: gives `peer` a player id; false when the room is full. */
   function admit(peer: string, species: SpeciesId, name = ''): boolean {
-    if (roster.some((r) => r.peer === peer)) return true;
+    const known = roster.find((r) => r.peer === peer);
+    if (known) {
+      // A hello again: the player picked another species in the room.
+      if (known.species !== species) setRoster(roster.map((r) => (r === known ? { ...r, species } : r)));
+      return true;
+    }
     const taken = new Set(roster.map((r) => r.id));
     let id: string | null = null;
     for (let n = 1; n <= MAX_PLAYERS && !id; n++) if (!taken.has(`p${n}`)) id = `p${n}`;
@@ -266,6 +286,7 @@ export function createSession(options: SessionOptions): NetSession {
     tracker.forget(peer);
     pending.delete(peer);
     walkers.delete(peer);
+    shrinePeers.delete(peer);
     if (!entry) return;
     if (entry.id === 'p1') hostLeft();
     setRoster(roster.filter((r) => r !== entry));
@@ -275,8 +296,8 @@ export function createSession(options: SessionOptions): NetSession {
 
   /** The tier goes on the wire only when it is not the default (absent reads as easy, as for an older host). */
   const tierField = (): { difficulty?: Difficulty } => (tier === DEFAULT_DIFFICULTY ? {} : { difficulty: tier });
-  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), ...tierField(), players: roster });
-  const lobbyMessage = (): NetMessage => ({ t: 'lobby', players: roster, ...tierField() });
+  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), ...tierField(), players: roster, ...(running ? { trial: running } : {}) });
+  const lobbyMessage = (): NetMessage => ({ t: 'lobby', players: roster, ...tierField(), ...(picked ? { trial: picked } : {}) });
 
   transport.onMessage((from, wire) => {
     tracker.received(wire.length, scheduler.now());
@@ -286,9 +307,17 @@ export function createSession(options: SessionOptions): NetSession {
       case 'hello': {
         const name = sanitizeNickname(message.name);
         if (role !== 'host') {
-          if (!started) pending.set(from, { species: message.species, name });
+          if (!started) pending.set(from, { species: message.species, name, shrine: message.shrine === 1 });
           return;
         }
+        const current = message.shrine === 1;
+        // An older peer would play a dungeon run in a trial's arena: it is turned away while one runs.
+        if (running && !lobby && !current && !roster.some((r) => r.peer === from)) {
+          send({ t: 'full', peer: from }, true);
+          return;
+        }
+        if (current) shrinePeers.add(from);
+        else shrinePeers.delete(from);
         if (!admit(from, message.species, name)) send({ t: 'full', peer: from }, true);
         else if (lobby) send(lobbyMessage(), true);
         else send(startMessage(), true);
@@ -298,6 +327,7 @@ export function createSession(options: SessionOptions): NetSession {
         if (role === 'host') return;
         pending.delete(from);
         tier = toDifficulty(message.difficulty);
+        picked = parseRoomTrial(message.trial);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         if (started && roster.some((r) => r.peer === transport.selfId)) {
           // The host brought the room back to the town after a run: wait for its next start.
@@ -333,7 +363,8 @@ export function createSession(options: SessionOptions): NetSession {
         localId = me.id;
         seed = message.seed;
         tier = toDifficulty(message.difficulty);
-        for (const handler of startHandlers) handler({ seed, floor: message.floor, ...(typeof message.dungeon === 'string' ? { dungeon: message.dungeon } : {}), ...tierField(), localId: me.id });
+        running = parseRoomTrial(message.trial);
+        for (const handler of startHandlers) handler({ seed, floor: message.floor, ...(typeof message.dungeon === 'string' ? { dungeon: message.dungeon } : {}), ...tierField(), localId: me.id, ...(running ? { trial: running } : {}) });
         return;
       }
       case 'state': {
@@ -418,7 +449,10 @@ export function createSession(options: SessionOptions): NetSession {
       const name = sanitizeNickname(hostOptions?.name);
       setRoster([{ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }]);
       // Tabs that knocked while this one was still searching are let in now (local election).
-      for (const [peer, theirs] of pending) admit(peer, theirs.species, theirs.name);
+      for (const [peer, theirs] of pending) {
+        if (theirs.shrine) shrinePeers.add(peer);
+        admit(peer, theirs.species, theirs.name);
+      }
       pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
       if (lobby) send(lobbyMessage(), true);
@@ -431,13 +465,33 @@ export function createSession(options: SessionOptions): NetSession {
       if (lobby) send(lobbyMessage(), true);
     },
     difficulty: () => tier,
-    begin(chosen, runSeed) {
+    begin(chosen, runSeed, trial) {
       if (role !== 'host' || !lobby) return;
       lobby = false;
       if (chosen !== undefined) dungeon = chosen;
       if (runSeed !== undefined) seed = runSeed;
+      running = trial ?? null;
       send(startMessage(), true);
     },
+    setTrial(next) {
+      if (role !== 'host' || !lobby) return;
+      picked = next;
+      send(lobbyMessage(), true);
+    },
+    trial: () => picked,
+    repick(species, loadout) {
+      if (role === 'host') {
+        const me = roster.find((r) => r.id === 'p1');
+        if (!me || me.species === species) return;
+        setRoster(roster.map((r) => (r === me ? { ...r, species } : r)));
+        if (lobby) send(lobbyMessage(), true);
+        return;
+      }
+      if (!joining) return;
+      joining = { ...joining, species, loadout };
+      send(helloOf(joining), true);
+    },
+    oldPeers: () => (role === 'host' ? roster.filter((r) => r.peer !== transport.selfId && !shrinePeers.has(r.peer)) : []),
     join(species, loadout, name) {
       const clean = sanitizeNickname(name);
       joining = { species, loadout, ...(clean ? { name: clean } : {}) };
@@ -449,6 +503,7 @@ export function createSession(options: SessionOptions): NetSession {
       lobby = true;
       seed = nextSeed;
       hostFloor = 1;
+      running = null;
       resetRun();
       send(lobbyMessage(), true);
     },

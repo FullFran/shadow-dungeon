@@ -22,6 +22,9 @@ export function entranceAction(state: EntranceState, lobby: { isHost: boolean } 
   return lobby && !lobby.isHost ? 'host-only' : 'enter';
 }
 
+/** The signal pillar: alone it opens the online room window; in a room it says so (the room menu is on Esc). */
+export const beaconAction = (lobby: { isHost: boolean } | null): 'open' | 'in-room' => (lobby ? 'in-room' : 'open');
+
 /** The waystone's quick travel starts a run too: the host's alone in a room. */
 export const canTravel = (lobby: { isHost: boolean } | null): boolean => !lobby || lobby.isHost;
 

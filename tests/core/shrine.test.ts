@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { expectedLevel } from '../../src/core/fairness';
 import { levelMaxHp } from '../../src/core/progression';
 import { roomCleared } from '../../src/core/rooms';
-import { atLevel, bossStop, gauntletStops, heraldStop, progressTrial, SHRINE_BOSSES, startTrial, trialHurt, type TrialProgress } from '../../src/core/shrine';
+import { atLevel, bossStop, gauntletStops, heraldStop, progressSharedTrial, progressTrial, SHRINE_BOSSES, startTrial, trialEpoch, trialHurt, type TrialProgress } from '../../src/core/shrine';
 import { DIFFICULTIES } from '../../src/data/difficulty';
 import { floorsOf, dungeonById } from '../../src/data/dungeons';
 import { GAUNTLETS, SHRINE } from '../../src/data/shrine';
@@ -133,5 +133,45 @@ describe('no-hit', () => {
     expect(trialHurt([{ type: 'disguiseBroken' }])).toBe(true);
     expect(trialHurt([{ type: 'playerHurt', damage: 3 }])).toBe(true);
     expect(trialHurt([{ type: 'levelUp', level: 2 }])).toBe(false);
+  });
+});
+
+describe('shared trials (an online room)', () => {
+  const start = (party = 1) => startTrial(9, { difficulty: 'normal', party, localId: 'p2', role: 'guest' }, gauntletStops('guardians'));
+
+  it('scales the boss for the party like a run does', () => {
+    const solo = bossOf(startTrial(9, { difficulty: 'normal' }, gauntletStops('guardians')).world)!;
+    const three = bossOf(start(3).world)!;
+    expect(three.maxHp).toBeGreaterThan(solo.maxHp);
+    expect(trialEpoch(start(3).trial)).toBe(1);
+  });
+
+  it('the host progresses alone; a guest waits for the host to load the next arena', () => {
+    const s = start(2);
+    const down = fell(s.world);
+    // A step as long as the pause loads the next arena at once.
+    const hostNext = progressSharedTrial(s.trial, s.run, down, SHRINE.pauseMs + 100, 'host', null);
+    expect(hostNext.entered).toBe(true);
+    expect(trialEpoch(hostNext.trial)).toBe(2);
+    let guest = progressSharedTrial(s.trial, s.run, down, SHRINE.pauseMs + 100, 'guest', null);
+    guest = progressSharedTrial(guest.trial, guest.run, down, SHRINE.pauseMs + 100, 'guest', null);
+    expect(guest.entered).toBe(false);
+    expect(guest.trial.index).toBe(0);
+    const followed = progressSharedTrial(guest.trial, guest.run, down, 10, 'guest', trialEpoch(hostNext.trial));
+    expect(followed.entered).toBe(true);
+    expect(followed.trial.index).toBe(1);
+    expect(bossOf(followed.world)?.species).toBe('decidueye');
+    // HP is carried per player: this guest was at full, so it stays full.
+    expect(followed.world.player.hp).toBe(followed.world.player.maxHp);
+  });
+
+  it('a guest behind by several arenas catches up at once; a stale epoch does nothing', () => {
+    const s = start(2);
+    const caught = progressSharedTrial(s.trial, s.run, s.world, 10, 'guest', 3);
+    expect(caught.trial.index).toBe(2);
+    expect(bossOf(caught.world)?.species).toBe('dhelmise');
+    expect(progressSharedTrial(caught.trial, caught.run, caught.world, 10, 'guest', 2).entered).toBe(false);
+    // Never past the last arena.
+    expect(progressSharedTrial(s.trial, s.run, s.world, 10, 'guest', 99).trial.index).toBe(3);
   });
 });

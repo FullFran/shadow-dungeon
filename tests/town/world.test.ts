@@ -89,6 +89,7 @@ describe('world maps', () => {
         }
         if (map.board) expect(reachableNear(map, map.board)).toBe(true);
         if (map.waystone) expect(reachableNear(map, map.waystone)).toBe(true);
+        if (map.beacon) expect(reachableNear(map, map.beacon)).toBe(true);
         for (const point of map.lore) expect(reachableNear(map, point), point.id).toBe(true);
       });
 
