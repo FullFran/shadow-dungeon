@@ -25,8 +25,8 @@ The town is the interface for everything; the title only starts play.
 
 ## Tasks
 
-- [x] T1 Fast travel (route: inline; one writer thread, the parent is this worker). Evidence: tests/town/travel.test.ts, menu-geometry `travel` stable at 1280x800, 844x390, 390x844.
-- [ ] T2 Title menu and town Esc menu.
+- [x] T1 Fast travel (route: inline; this worker is the single writer). Commit 93c4680. Evidence: tests/town/travel.test.ts; menu-geometry `travel` stable at 1280x800, 844x390, 390x844; browser round trip Refugio to Lago (lands under the waystone) and the Phantump shortcut (lands beside him, "hablar" prompt).
+- [x] T2 Title menu and town Esc menu (route: inline, same writer). Commit: see Progress. Evidence: tests/app/title-menu.test.ts, tests/town/town-menu.test.ts; menu-geometry `title`, `options`, `town-menu`, `travel` stable at all three sizes.
 
 ## Parity checklist
 
@@ -39,13 +39,29 @@ The town is the interface for everything; the title only starts play.
 - [x] No travel during runs: only `src/town/scene.ts` imports the travel module (test).
 - [x] GDD (docs/gdd.md, El mundo).
 - [x] Menu geometry: `travel` added to tools/mobile/menu-geometry.mjs.
-- [ ] Title: exactly three entries (T2).
-- [ ] Town Esc menu lists every town service (T2).
+- [x] Title: exactly three entries (TITLE_ENTRIES; test reads titleScreen and finds one generated row).
+- [x] Town Esc menu lists every town service: every NPC `opens` kind in `TOWN` and `WORLD` and every readable place (board, waystone, altar, beacon) on every map maps to a menu row (tests iterate them); the scene has a `case` per service; solo wires every opener, the room all but online and account.
+- [x] Options holds settings, account, achievements, prologue, credits and the install offer (test).
+- [x] Dev `?screen=` hooks kept (`town&window=travel|menu` added); online room flow untouched (lobby rows close the town menu).
+- [x] Touch: "Menú" button in the top corner over the bare town, "Atrás" back over its windows.
+- [x] i18n es/en for every new row and description (tests, no em dash).
+- [x] GDD: El mundo (Viaje rápido) and the menus paragraph; old "menú principal" mentions moved to Opciones / menú del pueblo.
+
+## Pending (not dropped)
+
+- Account from the room town's menu: left out because the account screen leaves the town and would drop the room's town view; reachable from the title's Opciones and the solo town.
+- Phone portrait (390x844) shows the rotate hint over the windows, as every other window does; the long town menu scrolls there.
 
 ## Checks
 
-`npm run typecheck`, `npx vitest run --testTimeout=30000 --maxWorkers=4`, `npm run build`, `npm run prove`, `node tools/mobile/menu-geometry.mjs --only=travel`.
+`npm run typecheck`, `npx vitest run --testTimeout=30000 --maxWorkers=4`, `npm run build`, `npm run prove`, `node tools/mobile/menu-geometry.mjs --only=title,options,town-menu,travel`.
 
 ## Progress
 
-- T1 done; commit recorded below.
+- T1 done: 93c4680 feat(town): fast travel between visited maps from a waystone on every map.
+- T2 done: feat(app): town-first title and the town Esc menu (commit after 93c4680 on feat/fast-travel).
+- Gotcha found: the town's Esc handler ran before the shared cursor-list key listener when the town was the first screen (dev `?screen=town`), so the menu it opened read the same Esc as "back" and closed at once; the scene now calls `preventDefault()` on Esc, which the cursor list honours.
+
+## Next step
+
+Owner review of the title and the town menu; merge after feat/sima-lore (both touch src/town/scene.ts and the i18n files).

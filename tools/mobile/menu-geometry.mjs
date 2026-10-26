@@ -26,7 +26,7 @@ const VIEWPORTS = [
 /** Every overworld map visited on this device (the travel window lists them all). */
 const ALL_MAPS = { 'mazmorra-sombria.visitedMaps': JSON.stringify(['refugio', 'ruinas', 'mirador', 'crater', 'lago', 'cienaga']) };
 
-/** [name, query, settle ms, step, local storage]: step 'pick' takes the first item card of a run, 'menu' then opens the pause menu; the storage entries are set before the page opens. */
+/** [name, query, settle ms, step, local storage]: step 'pick' takes the first item card of a run, 'menu' then opens the pause menu, 'options' opens the title's Opciones; the storage entries are set before the page opens. */
 const SCREENS = [
   ['title', '', 1500],
   ['settings', 'screen=settings', 1200],
@@ -45,6 +45,8 @@ const SCREENS = [
   ['online', 'screen=online', 1200],
   ['account', 'screen=account', 1500],
   ['travel', 'screen=town&window=travel', 3000, undefined, ALL_MAPS],
+  ['town-menu', 'screen=town&window=menu', 3000],
+  ['options', '', 1500, 'options'],
   ['item-pick', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500],
   ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, 'menu'],
   ['victory', 'screen=victory', 1200],
@@ -82,6 +84,14 @@ try {
         await wait(700);
         await page.evaluate(key('Escape'));
         await wait(700);
+      }
+      if (step === 'options') {
+        // The title's third entry, "Opciones".
+        for (const code of ['ArrowDown', 'ArrowDown', 'Enter']) {
+          await page.evaluate(key(code));
+          await wait(150);
+        }
+        await wait(600);
       }
       const first = await page.evaluate(MEASURE);
       if (!first.rows) {

@@ -202,7 +202,7 @@ En el servidor de desarrollo, `?card=N` empieza el combate en la carta N (para c
 
 ### El Santuario de los Juramentos *(provisional)*
 
-Un altar en el Refugio del Ocaso (y la última entrada del menú de título): «Donde los guardianes vuelven a jurar». Inspirado en los Reflejos de Fuerza y los Desafíos de *Sekiro*. Código: `src/core/shrine.ts` (puro), `src/data/shrine.ts`, `src/town/shrine-records.ts`, `src/app/shrine.ts`.
+Un altar en el Refugio del Ocaso (y la fila Santuario del menú del pueblo): «Donde los guardianes vuelven a jurar». Inspirado en los Reflejos de Fuerza y los Desafíos de *Sekiro*. Código: `src/core/shrine.ts` (puro), `src/data/shrine.ts`, `src/town/shrine-records.ts`, `src/app/shrine.ts`.
 
 - **Reflejos.** Volver a luchar contra un jefe ya vencido (los ocho: Sableye, Aegislash, Trevenant, Decidueye, Lanturn, Dhelmise, Salazzle, Nihilego), en su propia sala y planta, en cualquier nivel de dificultad. Se lucha al nivel esperado de esa planta (`expectedLevel`, el mismo que fija el tope de un golpe), sin objetos ni mejoras de la tienda: el combate es el de verdad, no uno inflado. Los heraldos ya vistos se pueden repetir por su semilla (en la planta 22 de la Sima, sin reloj).
 - **Desafíos.** Jefes seguidos: «Guardianes» (Aegislash → Decidueye → Dhelmise → Nihilego) y «Todos los juramentos» (los ocho en orden de mazmorra). Los PS pasan de un combate al siguiente (como parte de los PS máximos, al nivel del siguiente jefe) más un respiro del 30 %, tras una pausa de 2,5 s que anuncia el siguiente juramento. Se abren cuando todos sus jefes han caído.
@@ -215,7 +215,7 @@ Un altar en el Refugio del Ocaso (y la última entrada del menú de título): «
 
 ### Prólogo y trasfondo *(provisional)*
 
-El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde el menú principal (entrada Prólogo).
+El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde Opciones (entrada Prólogo).
 
 Lo que cuenta:
 
@@ -506,6 +506,8 @@ Fuera de las mazmorras hay un mundo pequeño que se recorre andando, siempre al 
 - **Ciénaga del Cielo Roto**: al este del lago, donde cayó la primera luz del eclipse. Charcas negras, árboles muertos, un cristal caído que zumba (dice más al caer los guardianes) y, entre dos columnas rotas, la boca del **Pantano Tóxico**. Un Croagunk ermitaño vive junto al camino; Skrelp y Venipede pasean por la orilla.
 
 **Viaje rápido** (`src/town/travel.ts`): cada mapa tiene una piedra guía (un poste junto a la llegada). Al leerla se abre la ventana «Viajar» con los mapas ya visitados en este dispositivo (una marca local, no forma parte del perfil sincronizado) y lo que hay en cada uno («Phantump: evolucionar, despertar y desafíos», «Smeargle: tutor de movimientos», «Santuario de los Juramentos», las bocas de mazmorra...); al elegir uno, un fundido te deja junto a su piedra. La del Refugio sigue listando las mazmorras abiertas y añade la fila «Viajar». Hay un atajo directo a Phantump, que te deja a su lado. En una sala en línea cada jugador viaja por su cuenta: la presencia ya lleva el mapa, así que los demás te ven desaparecer de su mapa y aparecer en el nuevo. Solo existe en el mundo, nunca durante una partida.
+
+**Menús: el pueblo es la interfaz** (propietario, 2026-10-26). El menú de título tiene solo tres entradas: **Jugar** (la primera vez, prólogo y test de personalidad como siempre; luego, al pueblo), **Jugar en línea** (crear sala o unirse con código, y al pueblo de la sala) y **Opciones** (Ajustes, Cuenta, Logros, Prólogo, Créditos e Instalar cuando se puede), con la lista y la descripción de cada fila al lado. En el pueblo, Esc (o el botón «Menú» en táctil, en la esquina que deja «Atrás») abre el menú del pueblo: Viajar, Mazmorras, Desafíos, Phantump, Tienda, Tutor, Gacha, Tablón, Logros, Santuario, Jugar en línea, Cuenta, Ajustes y Volver al inicio. Cada fila abre la misma ventana que el PNJ o el lugar, sin andar; andar hasta ellos sigue funcionando igual. En una sala en línea el menú lista lo mismo salvo Jugar en línea y Cuenta (saldrían de la sala) y cierra con las filas de la sala (copiar u ocultar el código, salir); Mazmorras y Desafíos siguen siendo cosa del anfitrión. El equipo de cada partida se elige al salir hacia una mazmorra, y su «Volver» lleva al pueblo. Código: `src/app/title-menu.ts`, `src/town/town-menu.ts`, `src/ui/menu-window.ts`.
 
 Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún está sellada, una línea dice qué guardián hay que vencer; si no existe todavía, que algo allí abajo no ha terminado de despertar. Las estatuas, el poste y el ídolo dicen una línea más al vencer al guardián de cada mazmorra (récords de este dispositivo). Por el mundo pasean Pokémon inofensivos (Pumpkaboo, Hoothoot, Foongus, Spinarak) con los sprites que ya tiene el juego. Cada mapa tiene su luz (más roja en el cráter, más fría en el lago), niebla, hojas que caen, pájaros que cruzan el cielo y agua con reflejos rojos. Suena el mismo tema del título (Lonely Village) en todo el mundo.
 
@@ -1236,7 +1238,7 @@ Una victoria completa en la Cripta da unas 165 Pokémonedas; el Bosque Brumoso p
 
 ### Mejoras permanentes *(provisional)*
 
-Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú principal) y se aplican al empezar cada partida, a cualquier especie. Los saltos son pequeños a propósito: el juego tiene que seguir siendo difícil.
+Se compran en el puesto de Poochyena en el pueblo (o en "Tienda" del menú del pueblo) y se aplican al empezar cada partida, a cualquier especie. Los saltos son pequeños a propósito: el juego tiene que seguir siendo difícil.
 
 | Mejora | Efecto por nivel | Niveles y precios |
 |---|---|---|
@@ -1267,7 +1269,7 @@ Metas a largo plazo que se miran al terminar cada partida y al cambiar la colecc
 | Pokémonedas | 1000, 5000, 20 000 y 100 000 ganadas en total (gastar no resta) | 0 |
 | Secretos | Ocultos hasta conseguirlos (caer en la primera planta) | 10 P |
 
-Ningún logro da poder: solo unas pocas Pokémonedas. Al conseguirlos sale un aviso arriba de la pantalla; la ventana de logros (en el menú principal y desde el tablón del pueblo) enseña cada familia con su progreso. En cooperativo cada jugador mira sus logros con su propia partida y su propio guardado; las pruebas del Santuario no cuentan como partidas.
+Ningún logro da poder: solo unas pocas Pokémonedas. Al conseguirlos sale un aviso arriba de la pantalla; la ventana de logros (en Opciones, en el menú del pueblo y desde el tablón) enseña cada familia con su progreso. En cooperativo cada jugador mira sus logros con su propia partida y su propio guardado; las pruebas del Santuario no cuentan como partidas.
 
 Logros retroactivos: al abrir el juego se conceden, una sola vez y sin avisos uno a uno, los logros que ya demuestra el progreso guardado de antes de que existieran: las mazmorras ganadas por dificultad (récords del tablón; un récord de antes de las dificultades cuenta como Fácil), la profundidad de la Sima (récords y clasificación de la Sima), la colección, las evoluciones, los despertares, los shiny y las Pokémonedas ganadas. Un guardado anterior a la versión 4 no tiene el total ganado: se rellena con un mínimo (el saldo más lo que costaron las mejoras, los movimientos del tutor y las Mejoras, cada uno a su precio más barato), y nunca baja. Sale un único aviso con el número de logros. Pagan su premio una vez, como cualquier logro (queda guardado y no se repite). Los que solo puede demostrar una partida (guardián sin un rasguño, ganar con cada especie, cooperativo y el secreto) siguen esperando a la siguiente partida.
 
@@ -1293,7 +1295,7 @@ Cada misión pide una dificultad mínima: solo cuentan las partidas en esa dific
   - Si se va el anfitrión, la partida se acaba para los invitados con un aviso y el botón de volver al menú (no hay migración de anfitrión en el prototipo).
 - Contenido como datos: especies, movimientos (los kits de Q y E), enemigos, jefes, tipos de planta y tablas de dificultad en ficheros de datos, igual que hace PokéSurvivor con `js/data`.
 - Guardado: una sola fachada de guardado con `migrate()` y `sanitize()` versionados (el patrón de `G.DB` de PokéSurvivor merece la pena).
-- Cuentas y guardado en la nube (v1, `odd/tasks/accounts-client.md`): **opcionales**. Sin cuenta se juega exactamente igual que siempre y el juego no hace ninguna petición. Desde el título o Ajustes, «Cuenta» permite crear una cuenta con correo y contraseña (mínimo 8 caracteres), iniciar y cerrar sesión, y borrar la cuenta (con confirmación; borra también su partida en la nube, la de este dispositivo se queda).
+- Cuentas y guardado en la nube (v1, `odd/tasks/accounts-client.md`): **opcionales**. Sin cuenta se juega exactamente igual que siempre y el juego no hace ninguna petición. Desde Opciones, el menú del pueblo o Ajustes, «Cuenta» permite crear una cuenta con correo y contraseña (mínimo 8 caracteres), iniciar y cerrar sesión, y borrar la cuenta (con confirmación; borra también su partida en la nube, la de este dispositivo se queda).
   - Servidor: PocketBase en `https://sd-api.fullfran.com` (`server/README.md`); el cliente usa `fetch` sin SDK (`src/adapters/account-api.ts`) y la dirección sale de `VITE_API_URL`. La sesión (el token) se guarda en el navegador y se renueva al abrir el juego; si el almacenamiento falla, la sesión dura lo que la página.
   - Sincronización del perfil completo (v2, `odd/tasks/cloud-sync.md`): se sincroniza todo el progreso, no solo la partida: la fachada de guardado, los récords del tablón, los del santuario, la clasificación de la Sima y el bestiario de heraldos (`src/app/profile.ts`). Los ajustes, los avisos ya vistos (prólogo, cinemáticas) y el aviso de instalar siguen siendo de cada dispositivo. En la nube va un solo JSON: la partida tal cual arriba (el servidor exige `version` y `coins` arriba) y el resto en `profile` (`src/app/cloud-payload.ts`); si pasara de 60 KB se recortan primero los heraldos más antiguos.
   - Cada dispositivo recuerda la revisión de la nube que sincronizó por última vez (baseRev) y una huella de su perfil en ese momento, y de su economía aparte (`src/app/cloud-sync.ts`, tabla de decisiones probada caso a caso):

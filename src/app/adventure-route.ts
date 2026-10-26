@@ -18,3 +18,12 @@ export function nextAdventureScreen(progress: AdventureProgress): AdventureScree
   if (!progress.starterChosen) return 'quiz';
   return 'loadout';
 }
+
+/** The screens "Play" on the title goes through: the first-time prologue and quiz, then the town (the hub is where every run starts). */
+export type PlayScreen = 'prologue' | 'quiz' | 'town';
+
+/** Where the title's "Play" goes next: the same first-time steps as a new adventure, then the town instead of the loadout. */
+export function nextPlayScreen(progress: AdventureProgress): PlayScreen {
+  const next = nextAdventureScreen(progress);
+  return next === 'loadout' ? 'town' : next;
+}
