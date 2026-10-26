@@ -1,4 +1,4 @@
-import { CAPTURE, cardInfo, ECHO_CARDS, segmentFloorShare, type CardFightDef, type CardId, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
+import { CAPTURE, CARD_FLOOR, cardInfo, ECHO_CARDS, segmentFloorShare, type CardFightDef, type CardId, type CardOutcome, type CardStepDef, type SpellCardDef } from '../data/cards';
 import type { DanmakuPattern, EnemyAttackDef } from '../data/enemies';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, towardTarget } from './brain';
 import { crossed, firePattern, laneGapOf, patternAttackMs, patternMelee, patternParts, ringDirections, shoot } from './danmaku';
@@ -21,7 +21,10 @@ import { worldDifficulty } from './difficulty';
  *
  * Every step the card's clock runs (`boss.cardMs`, host only); the card ends
  * when the boss's HP reaches the card's floor (`boss.hpFloor`: hits never go
- * below it while the card plays) or when the timer runs out (the rest of the
+ * below it while the card plays; and the segment's last HP holds,
+ * `boss.holdFloor`, until the card floor's share of the timer: data/cards.ts
+ * `CARD_FLOOR`)
+ * or when the timer runs out (the rest of the
  * segment is lost; on the last card that is the boss's end). A survival card
  * only ends with its timer. Ending clears every enemy shot and declares the
  * next card. Captures are judged by each peer for its own player
@@ -111,8 +114,56 @@ export function cardStep(fight: CardFightDef, enemy: Pick<EnemyState, 'boss' | '
   return found && Number.isInteger(index) ? found.card.steps[index] : undefined;
 }
 
-/** The lowest HP a hit may leave the boss at: the floor of the card in play (0 outside a card fight). */
-export const cardHpFloor = (enemy: Pick<EnemyState, 'boss'>): number => enemy.boss?.hpFloor ?? 0;
+/** The lowest HP a hit may leave the boss at: the floor of the card in play, raised by its hold while the card floor holds (0 outside a card fight). */
+export const cardHpFloor = (enemy: Pick<EnemyState, 'boss'>): number => Math.max(enemy.boss?.hpFloor ?? 0, enemy.boss?.holdFloor ?? 0);
+
+/** HP of its segment a card keeps while the card floor holds: the boss stays this far above the segment's floor. */
+export const HOLD_HP = 1;
+
+/**
+ * The hold of a card (data/cards.ts `CARD_FLOOR`): until `share × timer` of
+ * the card has run, the segment keeps its last `HOLD_HP` (the boss cannot be
+ * broken yet); the segment's floor itself from then on (or with no card
+ * floor). Hits that would go past it are absorbed: "¡Aguanta!". A player
+ * who would not empty the segment before then never meets it.
+ */
+export function holdFloor(top: number, floor: number, cardMs: number, timerMs: number, share: number): number {
+  const holdMs = share * timerMs;
+  if (holdMs <= 0 || cardMs >= holdMs) return floor;
+  return floor + Math.min(HOLD_HP, Math.max(0, top - floor));
+}
+
+/** The card floor share of the world's tier. */
+export const cardFloorOf = (state: Pick<WorldState, 'difficulty'>): number => CARD_FLOOR[worldDifficulty(state)];
+
+/**
+ * A card boss after its clock moved (host): its hold for the card in play
+ * (`holdFloor`, absent once the card floor stops holding or on a survival
+ * card) and whether it sits on it now (`held`, synced for the guests'
+ * feedback).
+ */
+export function holdBoss(state: Pick<WorldState, 'difficulty'>, enemy: EnemyState, top: number, floor: number, cardMs: number, card: Pick<SpellCardDef, 'timerMs' | 'survival'>): EnemyState {
+  const { holdFloor: _last, held: _held, ...boss } = enemy.boss!;
+  const hold = card.survival ? floor : holdFloor(top, floor, cardMs, card.timerMs, cardFloorOf(state));
+  if (hold <= floor) return enemy.boss!.holdFloor === undefined && !enemy.boss!.held ? enemy : { ...enemy, boss };
+  return { ...enemy, boss: { ...boss, holdFloor: hold, ...(enemy.hp <= hold ? { held: true as const } : {}) } };
+}
+
+/**
+ * Whether a hit of `damage` on `enemy` meets its card floor (the "¡Aguanta!"
+ * feedback): on the host, it would take the boss under its hold; on a guest
+ * (no hold in the snapshot), the boss sits on it.
+ */
+export function cardHolds(enemy: Pick<EnemyState, 'boss' | 'hp'>, damage: number): boolean {
+  if (damage <= 0) return false;
+  const hold = enemy.boss?.holdFloor;
+  if (hold !== undefined) return enemy.hp - damage < hold;
+  return enemy.boss?.held === true;
+}
+
+/** `holdBoss` for card `index` of a card fight. */
+const holdCard = (state: WorldState, enemy: EnemyState, fight: CardFightDef, index: number, cardMs: number): EnemyState =>
+  holdBoss(state, enemy, enemy.maxHp * (index === 0 ? 1 : cardFloorShare(fight, index - 1)), enemy.maxHp * cardFloorShare(fight, index), cardMs, fight.cards[index]!);
 
 /**
  * How a spell card guards (combat.ts asks before a hit lands): `all` while it
@@ -153,7 +204,9 @@ function declare(enemy: EnemyState, fight: CardFightDef, index: number, outcome:
   events.push({ type: 'enemyTelegraph', enemyId: enemy.id, attack: 'declare', durationMs: ms });
   const hpFloor = enemy.maxHp * cardFloorShare(fight, index);
   const { aimPoint: _aim, chain: _chain, ...ai } = enemy.ai;
-  const next = withBoss(enemy, { stance: card.id, ...(card.moves ? { spell: card.id } : {}), card: index, cardMs: 0, hpFloor, comboIndex: 0, combosDone: 0, stanceMs: 0, stanceDamage: 0 });
+  // A new card starts without the last one's hold.
+  const { holdFloor: _pace, held: _held, ...fresh } = enemy.boss!;
+  const next = withBoss({ ...enemy, boss: fresh }, { stance: card.id, ...(card.moves ? { spell: card.id } : {}), card: index, cardMs: 0, hpFloor, comboIndex: 0, combosDone: 0, stanceMs: 0, stanceDamage: 0 });
   return withAi(next, { ...enterMode(ai, 'transform', ms), contact: 'none', attack: outcome });
 }
 
@@ -321,7 +374,8 @@ export function updateCardFight(state: WorldState, start: EnemyState, fight: Car
   const found = currentCard(fight, enemy.boss!);
   if (!found) return replaceEnemy(state, declare(enemy, fight, 0, 'start', events));
   if (ai.mode === 'transform') {
-    if (modeOver(ai)) enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: FIRST_MOVE_MS, contact: 'none' });
+    // The card starts: hurtable from now, so its hold applies from now too.
+    if (modeOver(ai)) enemy = holdCard(state, withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: FIRST_MOVE_MS, contact: 'none' }), fight, found.index, 0);
     return replaceEnemy(state, enemy);
   }
   const { card, index } = found;
@@ -330,7 +384,7 @@ export function updateCardFight(state: WorldState, start: EnemyState, fight: Car
   const floor = enemy.boss!.hpFloor ?? 0;
   const broken = !card.survival && enemy.hp <= floor;
   if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
-  return playCard(state, enemy, fight, card, target, ms, events);
+  return playCard(state, holdCard(state, enemy, fight, index, cardMs), fight, card, target, ms, events);
 }
 
 /** A Sima echo's stage of a card fight (data/cards.ts `ECHO_CARDS`). */
@@ -411,13 +465,15 @@ export function updateHostedCardFight(state: WorldState, start: EnemyState, figh
     const stance = opening(card) as BossState['stance'];
     const boss = withBoss(enemy, { stance, spell: card.id, stanceMs: 0, comboIndex: 0, combosDone: 0, ...(card.phase2 || enemy.boss!.phase === 2 ? { phase: 2 as const } : {}) });
     const { aimPoint: _aim, attack: _outcome, ...rest } = ai;
-    return replaceEnemy(state, withAi(boss, { ...enterMode(rest, 'approach'), cooldownMs: FIRST_MOVE_MS, contact: 'none' }));
+    // Hurtable from now: its hold applies from now too.
+    return replaceEnemy(state, holdCard(state, withAi(boss, { ...enterMode(rest, 'approach'), cooldownMs: FIRST_MOVE_MS, contact: 'none' }), fight, index, 0));
   }
   const cardMs = (enemy.boss!.cardMs ?? 0) + ms;
   enemy = withBoss(enemy, { cardMs, card: index });
   const floor = enemy.boss!.hpFloor ?? 0;
   const broken = !card.survival && enemy.hp <= floor;
   if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
+  enemy = holdCard(state, enemy, fight, index, cardMs);
   // "Tu turno": its engine waits; then it takes up its own recovery, already over (it rests and goes on as it always did).
   let playing = enemy;
   if (inTurn(enemy)) {

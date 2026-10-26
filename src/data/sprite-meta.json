@@ -27272,6 +27272,5632 @@
         }
       }
     },
+    "0517/0000": {
+      "species": "munna",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 24,
+          "frameHeight": 40,
+          "frameCount": 6,
+          "rows": 8,
+          "durations": [
+            24,
+            8,
+            8,
+            24,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 11.5,
+            "y": 23.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 24,
+          "frameHeight": 40,
+          "frameCount": 8,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10,
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 11.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 72,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            4,
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            4
+          ],
+          "rushFrame": 2,
+          "hitFrame": 4,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 35.5,
+            "y": 39.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 7,
+          "anchor": {
+            "x": 20.5,
+            "y": 26.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 24,
+          "frameHeight": 32,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 12.5,
+            "y": 19.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 35.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 24,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 11.5,
+            "y": 43.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 24,
+          "frameHeight": 32,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 11.5,
+            "y": 19.5
+          }
+        },
+        "SpAttack": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 24,
+          "frameHeight": 32,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 12.5,
+            "y": 19.5
+          }
+        }
+      }
+    },
+    "0096/0000": {
+      "species": "drowzee",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            40,
+            10,
+            6,
+            10
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            8,
+            12
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 80,
+          "frameHeight": 72,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 4,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 39.5,
+            "y": 37.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 27.5,
+            "y": 30.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 40,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 23.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 72,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 39.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        }
+      }
+    },
+    "0122/0000": {
+      "species": "mr-mime",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            20,
+            12
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            8,
+            12
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 15,
+          "rows": 8,
+          "durations": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            2,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 10,
+          "anchor": {
+            "x": 27.5,
+            "y": 31.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 40,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 23.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0097/0000": {
+      "species": "hypno",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 8,
+          "rows": 8,
+          "durations": [
+            30,
+            1,
+            2,
+            3,
+            3,
+            3,
+            2,
+            1
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 42.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 48,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 3,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 27.5,
+            "y": 26.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 40,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 23.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 29.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 29.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 64,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 35.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "SpAttack": {
+          "file": "SpAttack-Anim.png",
+          "source": "SpAttack",
+          "frameWidth": 48,
+          "frameHeight": 40,
+          "frameCount": 22,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "hitFrame": 6,
+          "returnFrame": 14,
+          "anchor": {
+            "x": 23.5,
+            "y": 23.5
+          }
+        }
+      }
+    },
+    "0518/0000": {
+      "species": "musharna",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 6,
+          "rows": 8,
+          "durations": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 31.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 64,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 35.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2,
+            2,
+            3
+          ],
+          "rushFrame": 2,
+          "hitFrame": 6,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            3,
+            3,
+            3,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            4
+          ],
+          "hitFrame": 4,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 31.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 25.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 25.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2,
+            2,
+            3
+          ],
+          "rushFrame": 2,
+          "hitFrame": 6,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 104,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 55.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 19.5,
+            "y": 31.5
+          }
+        }
+      }
+    },
+    "0362/0000": {
+      "species": "glalie",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 64,
+          "frameCount": 8,
+          "rows": 8,
+          "durations": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 35.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 64,
+          "frameCount": 8,
+          "rows": 8,
+          "durations": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 35.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 3,
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 31.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 35.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 35.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 31.5
+          }
+        }
+      }
+    },
+    "0461/0000": {
+      "species": "weavile",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            60,
+            20
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            8,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            4,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 31.5,
+            "y": 45.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 32,
+          "frameHeight": 64,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            1,
+            2,
+            3,
+            3,
+            2,
+            1,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 15.5,
+            "y": 35.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "SpAttack": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 32,
+          "frameHeight": 64,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            1,
+            2,
+            3,
+            3,
+            2,
+            1,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 15.5,
+            "y": 35.5
+          }
+        }
+      }
+    },
+    "0473/0000": {
+      "species": "mamoswine",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 48,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            30,
+            2,
+            8,
+            2,
+            4,
+            2,
+            4,
+            2,
+            20
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 48,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            12,
+            12,
+            12,
+            12
+          ],
+          "hitFrame": 1,
+          "anchor": {
+            "x": 23.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 80,
+          "frameHeight": 72,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 39.5,
+            "y": 37.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 27.5,
+            "y": 30.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 24.5,
+            "y": 31.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 80,
+          "frameHeight": 72,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 39.5,
+            "y": 37.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 72,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 39.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 72,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 35.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 56,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 27.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 48,
+          "frameHeight": 40,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 23.5,
+            "y": 23.5
+          }
+        },
+        "SpAttack": {
+          "file": "RearUp-Anim.png",
+          "source": "RearUp",
+          "frameWidth": 56,
+          "frameHeight": 48,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            8,
+            2,
+            2,
+            2,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 0,
+          "returnFrame": 3,
+          "anchor": {
+            "x": 27.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0478/0000": {
+      "species": "froslass",
+      "form": "base",
+      "shadowSize": 0,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 8,
+          "rows": 8,
+          "durations": [
+            6,
+            4,
+            8,
+            10,
+            6,
+            4,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 32,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            2,
+            2
+          ],
+          "hitFrame": 0,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 15.5,
+            "y": 31.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 96,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 51.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 24,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 11.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0131/0000": {
+      "species": "lapras",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            40,
+            12,
+            16,
+            12
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            10,
+            12,
+            10,
+            12
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 88,
+          "frameHeight": 88,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 4,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 43.5,
+            "y": 45.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 64,
+          "frameHeight": 72,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 31.5,
+            "y": 37.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 24.5,
+            "y": 39.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 96,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 47.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 96,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 47.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 88,
+          "frameHeight": 88,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 4,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 43.5,
+            "y": 45.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 35.5,
+            "y": 47.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 56,
+          "frameHeight": 112,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 27.5,
+            "y": 59.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        }
+      }
+    },
+    "0181/0000": {
+      "species": "ampharos",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 32,
+          "frameHeight": 64,
+          "frameCount": 7,
+          "rows": 8,
+          "durations": [
+            8,
+            8,
+            4,
+            6,
+            4,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 35.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 56,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 31.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 88,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 6,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 31.5,
+            "y": 46.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            2,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 4,
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 35.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 35.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 88,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 6,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 31.5,
+            "y": 46.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 48,
+          "frameHeight": 80,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 43.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 96,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 51.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 31.5
+          }
+        },
+        "SpAttack": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            2,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 4,
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        }
+      }
+    },
+    "0310/0000": {
+      "species": "manectric",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            60,
+            10,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 88,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 5,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 31.5,
+            "y": 44.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 3,
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 96,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 51.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0359/0000": {
+      "species": "absol",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            30,
+            30
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 1,
+          "returnFrame": 3,
+          "anchor": {
+            "x": 23.5,
+            "y": 29.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 29.5
+          }
+        },
+        "Faint": {
+          "file": "Faint-Anim.png",
+          "source": "Faint",
+          "frameWidth": 48,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            4,
+            10
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 27.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 96,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 51.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 96,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 51.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "SpAttack": {
+          "file": "SpAttack-Anim.png",
+          "source": "SpAttack",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 27.5,
+            "y": 34.5
+          }
+        }
+      }
+    },
+    "0466/0000": {
+      "species": "electivire",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 7,
+          "rows": 8,
+          "durations": [
+            40,
+            12,
+            2,
+            3,
+            6,
+            2,
+            4
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 31.5,
+            "y": 41.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 27.5,
+            "y": 30.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 33.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 33.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 88,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 43.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 72,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 39.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 48,
+          "frameHeight": 96,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 23.5,
+            "y": 51.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0197/0000": {
+      "species": "umbreon",
+      "form": "base",
+      "shadowSize": 1,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 24,
+          "frameHeight": 48,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            60,
+            10,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            10
+          ],
+          "anchor": {
+            "x": 11.5,
+            "y": 27.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            8,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 72,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            4
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 31.5,
+            "y": 38.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 32,
+          "frameHeight": 48,
+          "frameCount": 11,
+          "rows": 8,
+          "durations": [
+            6,
+            2,
+            6,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 4,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 15.5,
+            "y": 27.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 16.5,
+            "y": 23.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 31.5
+          }
+        },
+        "Faint": {
+          "file": "Faint-Anim.png",
+          "source": "Faint",
+          "frameWidth": 32,
+          "frameHeight": 40,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            4,
+            10
+          ],
+          "anchor": {
+            "x": 15.5,
+            "y": 23.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 64,
+          "frameHeight": 72,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            4
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 31.5,
+            "y": 38.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 35.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 32,
+          "frameHeight": 88,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 15.5,
+            "y": 47.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 24,
+          "frameHeight": 40,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 11.5,
+            "y": 23.5
+          }
+        }
+      }
+    },
+    "0621/0000": {
+      "species": "druddigon",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 6,
+          "rows": 8,
+          "durations": [
+            40,
+            1,
+            2,
+            4,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 35.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            10,
+            8,
+            10
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 6,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 27.5,
+            "y": 34.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 48,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 24.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 37.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 56,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 37.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 6,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 35.5,
+            "y": 46.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 88,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 43.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 48,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 23.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "SpAttack": {
+          "file": "RearUp-Anim.png",
+          "source": "RearUp",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        }
+      }
+    },
+    "0445/0000": {
+      "species": "garchomp",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 48,
+          "frameHeight": 56,
+          "frameCount": 6,
+          "rows": 8,
+          "durations": [
+            40,
+            2,
+            12,
+            10,
+            12,
+            2
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 31.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            10,
+            10,
+            10,
+            10
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 64,
+          "frameCount": 17,
+          "rows": 8,
+          "durations": [
+            1,
+            2,
+            4,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 2,
+          "returnFrame": 11,
+          "anchor": {
+            "x": 27.5,
+            "y": 35.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 48,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 24.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 37.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 37.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 2,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 56,
+          "frameHeight": 88,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 47.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 19.5,
+            "y": 27.5
+          }
+        },
+        "SpAttack": {
+          "file": "RearUp-Anim.png",
+          "source": "RearUp",
+          "frameWidth": 40,
+          "frameHeight": 64,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 4,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 20.5,
+            "y": 35.5
+          }
+        }
+      }
+    },
+    "0373/0000": {
+      "species": "salamence",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 14,
+          "rows": 8,
+          "durations": [
+            60,
+            10,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            10
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 31.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 56,
+          "frameHeight": 80,
+          "frameCount": 6,
+          "rows": 8,
+          "durations": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 43.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            4,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 56,
+          "frameHeight": 80,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            1,
+            2,
+            2,
+            4,
+            4,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 4,
+          "returnFrame": 8,
+          "anchor": {
+            "x": 27.5,
+            "y": 43.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 56,
+          "frameHeight": 56,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 28.5,
+            "y": 31.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 35.5,
+            "y": 39.5
+          }
+        },
+        "Faint": {
+          "file": "Faint-Anim.png",
+          "source": "Faint",
+          "frameWidth": 56,
+          "frameHeight": 48,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            4,
+            10
+          ],
+          "anchor": {
+            "x": 27.5,
+            "y": 27.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            4,
+            6,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 2,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 43.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 104,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 51.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 80,
+          "frameHeight": 88,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 39.5,
+            "y": 47.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 56,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 27.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 56,
+          "frameHeight": 48,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 27.5,
+            "y": 27.5
+          }
+        }
+      }
+    },
+    "0149/0000": {
+      "species": "dragonite",
+      "form": "base",
+      "shadowSize": 2,
+      "anims": {
+        "Idle": {
+          "file": "Idle-Anim.png",
+          "source": "Idle",
+          "frameWidth": 40,
+          "frameHeight": 64,
+          "frameCount": 7,
+          "rows": 8,
+          "durations": [
+            40,
+            2,
+            2,
+            3,
+            3,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 35.5
+          }
+        },
+        "Walk": {
+          "file": "Walk-Anim.png",
+          "source": "Walk",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 4,
+          "rows": 8,
+          "durations": [
+            8,
+            12,
+            8,
+            12
+          ],
+          "anchor": {
+            "x": 19.5,
+            "y": 31.5
+          }
+        },
+        "Attack": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Shoot": {
+          "file": "Shoot-Anim.png",
+          "source": "Shoot",
+          "frameWidth": 48,
+          "frameHeight": 64,
+          "frameCount": 12,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            6,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 3,
+          "returnFrame": 7,
+          "anchor": {
+            "x": 23.5,
+            "y": 33.5
+          }
+        },
+        "Charge": {
+          "file": "Charge-Anim.png",
+          "source": "Charge",
+          "frameWidth": 40,
+          "frameHeight": 48,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 5,
+          "returnFrame": 9,
+          "anchor": {
+            "x": 20.5,
+            "y": 27.5
+          }
+        },
+        "Hurt": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 37.5
+          }
+        },
+        "Faint": {
+          "file": "Hurt-Anim.png",
+          "source": "Hurt",
+          "frameWidth": 48,
+          "frameHeight": 72,
+          "frameCount": 2,
+          "rows": 8,
+          "durations": [
+            2,
+            8
+          ],
+          "anchor": {
+            "x": 23.5,
+            "y": 37.5
+          }
+        },
+        "Strike": {
+          "file": "Attack-Anim.png",
+          "source": "Attack",
+          "frameWidth": 72,
+          "frameHeight": 80,
+          "frameCount": 13,
+          "rows": 8,
+          "durations": [
+            2,
+            4,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "rushFrame": 1,
+          "hitFrame": 3,
+          "returnFrame": 6,
+          "anchor": {
+            "x": 35.5,
+            "y": 41.5
+          }
+        },
+        "Swing": {
+          "file": "Swing-Anim.png",
+          "source": "Swing",
+          "frameWidth": 72,
+          "frameHeight": 88,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            2,
+            3,
+            2,
+            2,
+            1,
+            1
+          ],
+          "hitFrame": 5,
+          "returnFrame": 5,
+          "anchor": {
+            "x": 35.5,
+            "y": 47.5
+          }
+        },
+        "Double": {
+          "file": "Double-Anim.png",
+          "source": "Double",
+          "frameWidth": 64,
+          "frameHeight": 80,
+          "frameCount": 16,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            3,
+            3,
+            3,
+            2,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "anchor": {
+            "x": 31.5,
+            "y": 43.5
+          }
+        },
+        "Hop": {
+          "file": "Hop-Anim.png",
+          "source": "Hop",
+          "frameWidth": 40,
+          "frameHeight": 104,
+          "frameCount": 10,
+          "rows": 8,
+          "durations": [
+            2,
+            1,
+            2,
+            3,
+            4,
+            4,
+            3,
+            2,
+            1,
+            2
+          ],
+          "hitFrame": 9,
+          "anchor": {
+            "x": 19.5,
+            "y": 55.5
+          }
+        },
+        "Rotate": {
+          "file": "Rotate-Anim.png",
+          "source": "Rotate",
+          "frameWidth": 40,
+          "frameHeight": 56,
+          "frameCount": 9,
+          "rows": 8,
+          "durations": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "hitFrame": 8,
+          "anchor": {
+            "x": 19.5,
+            "y": 31.5
+          }
+        }
+      }
+    },
     "0778/0000/0001": {
       "species": "mimikyu",
       "form": "disguised-shiny",

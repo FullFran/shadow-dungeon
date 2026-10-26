@@ -1,10 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { CHALLENGES, SENDA_ROADS, type ChallengeLine } from '../../src/data/dungeons';
-import { ROOMS, type RoomId } from '../../src/data/rooms';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { ChallengeLine } from '../../src/data/dungeons';
 import type { Difficulty } from '../../src/data/difficulty';
-import { STORY_BOSSES } from '../../src/data/story/bosses';
-import { isWound } from '../../src/data/story-quests';
-import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, startsOf, type BossCase } from '../../src/sim/prove';
+import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, SHADOW_BOSSES, solveFight, startsOf, type BossCase } from '../../src/sim/prove';
 
 /**
  * The Sendas' new shadows are beatable (docs/story-quests.md, docs/gdd.md
@@ -14,18 +11,10 @@ import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, 
  * shadow fights with cards on every tier), from every start: got through
  * without a hit, with punish windows and the tier's kill margin; the solver
  * bot clears the whole Nightmare fight. A new shadow is covered by being on
- * a road; the shards (story-prove-<line>.test.ts) split the work per line.
+ * a road (src/sim/prove.ts `SHADOW_BOSSES`); the shards
+ * (story-prove-<line>.test.ts) split the work per line.
  */
-const STORY_IDS = new Set<string>(STORY_BOSSES.map((b) => b.id));
-
-/** Every new shadow on a road, where it stands (its first road and floor). */
-export const SHADOWS: readonly BossCase[] = [...CHALLENGES, ...SENDA_ROADS].flatMap((d) =>
-  d.plan.flatMap((p, i) => {
-    if (p.kind !== 'room' || p.role !== 'midboss') return [];
-    const species = ROOMS[p.room].spawns[0]!.species;
-    return STORY_IDS.has(species) && !isWound(species) ? [{ species, room: p.room as RoomId, where: { dungeon: d.id, floor: i + 1 } }] : [];
-  }),
-);
+export const SHADOWS: readonly BossCase[] = SHADOW_BOSSES;
 
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
@@ -33,6 +22,8 @@ const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 export function proveShadows(line: ChallengeLine): void {
   const cases = SHADOWS.filter((s) => s.species.startsWith(`${line}-`));
   describe(`${line}'s shadows are beatable`, () => {
+    // Back-to-back synchronous proofs never let the worker read its RPC replies ("Timeout calling onTaskUpdate" once a file runs past 60 s): yield a macrotask after each.
+    afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
     it('it has its shadows on its roads', () => expect(cases.length).toBeGreaterThan(0));
     for (const s of cases) {
       for (const tier of TIERS) {

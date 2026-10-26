@@ -11,6 +11,10 @@ import { LITWICK_ROADS } from './story/litwick';
 import type { SendaRoad } from './story/roads';
 import { ZORUA_ROADS } from './story/zorua';
 import { SIMA_STORY, simaStoryBossOf } from './sima-story';
+import { ABRA_ROADS } from './story/abra';
+import { PIPLUP_ROADS } from './story/piplup';
+import { SHINX_ROADS } from './story/shinx';
+import { AXEW_ROADS } from './story/axew';
 
 /**
  * Every dungeon as data (docs/gdd.md §3): its name and lore, its floors
@@ -532,11 +536,17 @@ const ZORUA_SENDA = senda('zorua', ZORUA_ROADS, [at('drifloon', 3, 2, 2), at('ph
 const LITWICK_SENDA = senda('litwick', LITWICK_ROADS, [at('phantump', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
 const CUBONE_SENDA = senda('cubone', CUBONE_ROADS, [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
 
+// The gacha lines' Sendas, one road per chapter (data/story/<line>.ts); chapter I's is the line's challenge.
+const ABRA_SENDA = senda('abra', ABRA_ROADS, [at('hoothoot', 3, 2, 2), at('gastly', 2, 2, 2), at('drifloon', 1, 2, 2), at('koffing', 1, 1, 2), at('haunter', 0, 0, 1)]);
+const PIPLUP_SENDA = senda('piplup', PIPLUP_ROADS, [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('krabby', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]);
+const SHINX_SENDA = senda('shinx', SHINX_ROADS, [at('zubat', 3, 2, 2), at('drifloon', 2, 2, 2), at('krabby', 2, 2, 2), at('hoothoot', 1, 2, 2), at('chinchou', 0, 1, 2), at('golbat', 0, 0, 1)]);
+const AXEW_SENDA = senda('axew', AXEW_ROADS, [at('poochyena', 3, 3, 2), at('ekans', 2, 2, 2), at('corphish', 1, 2, 2), at('croagunk', 0, 1, 2), at('mightyena', 0, 0, 1)]);
+
 export const CHALLENGES: readonly DungeonDef[] = [
-  challenge('abra', CAVES, 'grotto', [at('hoothoot', 3, 2, 2), at('gastly', 2, 2, 2), at('drifloon', 1, 2, 2), at('koffing', 1, 1, 2), at('haunter', 0, 0, 1)]),
-  challenge('piplup', CRYPT, 'vault', [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('krabby', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]),
-  challenge('shinx', SWAMP, 'den', [at('zubat', 3, 2, 2), at('drifloon', 2, 2, 2), at('krabby', 2, 2, 2), at('hoothoot', 1, 2, 2), at('chinchou', 0, 1, 2), at('golbat', 0, 0, 1)]),
-  challenge('axew', FOREST, 'hollow', [at('poochyena', 3, 3, 2), at('ekans', 2, 2, 2), at('corphish', 1, 2, 2), at('croagunk', 0, 1, 2), at('mightyena', 0, 0, 1)]),
+  ABRA_SENDA[0],
+  PIPLUP_SENDA[0],
+  SHINX_SENDA[0],
+  AXEW_SENDA[0],
   // Mimikyu's Senda: Sableye's eyes that look, Aegislash who forbids hiding, then Mimikyu Sin Disfraz.
   challenge('mimikyu', CRYPT, 'wound-mimikyu', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)], sendaPlan('vault', 'throne', 'wound-mimikyu')),
   ZORUA_SENDA[0],
@@ -545,7 +555,7 @@ export const CHALLENGES: readonly DungeonDef[] = [
 ];
 
 /** The Sendas' second and third chapter roads (kept apart from `CHALLENGES`: one challenge per line). */
-export const SENDA_ROADS: readonly DungeonDef[] = [ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
+export const SENDA_ROADS: readonly DungeonDef[] = [ABRA_SENDA, PIPLUP_SENDA, SHINX_SENDA, AXEW_SENDA, ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
 
 const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES, ...SENDA_ROADS];
 

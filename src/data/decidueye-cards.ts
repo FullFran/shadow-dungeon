@@ -181,6 +181,8 @@ export const DECIDUEYE_CARDS_NIGHTMARE: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 140,
   power: 1.22,
+  // The compressed chart cut Zorua's margin on the rain and the stitch (1.09, 1.10 < 1.1; the echo's feathers too): HP x0.95 restores it (odd/tasks/type-balance.md).
+  hpScale: 0.95,
   cards: [
     volley(volleySteps(230, true), 0.18),
     leaves(leavesSteps(11, true), 0.18),

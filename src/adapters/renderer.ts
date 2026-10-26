@@ -202,6 +202,7 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   normal: '#ffffff',
   weak: '#9aa0a6',
   blocked: '#8fb3ff',
+  hold: '#c9a8ff',
   hurt: '#ff5a5a',
   heal: '#6ee07a',
 };
@@ -1546,7 +1547,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.globalAlpha = 1 - life * life;
       ctx.font = canvasFont(n.big ? 16 : FONT.hudPx, true);
       // Fraction-of-max-HP hazards (collapse, fog chill) are not whole numbers: show them rounded.
-      const text = n.style === 'blocked' ? t('hud.blocked') : String(Math.round(n.value));
+      const text = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
       ctx.fillStyle = '#000000';
