@@ -17,8 +17,9 @@ import type { GateState } from '../core/gates';
 import type { EnemyState, PlayerState, Rect, WorldState } from '../core/state';
 import { heraldCard, heraldOf } from '../core/herald/brain';
 import { drawBar, drawPanel, pixelText } from '../ui/canvas';
-import { bossRect, HUD_BOX, slotRect, statusRect } from '../ui/hud-layout';
-import { canvasFont, PALETTE, RARITY, TYPE_COLORS } from '../ui/tokens';
+import { bossRect, HUD_BOX, slotRect, statusRect, type HudBox } from '../ui/hud-layout';
+import { canvasFont, PALETTE, RARITY, TIER_COLORS, TYPE_COLORS } from '../ui/tokens';
+import { MAX_RANK, moveTier } from '../data/tutor';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
 /** Fraction of a bar to fill, clamped to [0, 1]. */
@@ -141,6 +142,54 @@ export function slotCooldown(player: Pick<PlayerState, 'cooldowns'>, moveId: Mov
 /** How many slot windows the HUD lays out: two while the boost and area slots are empty (the M0 look), else four. */
 export const slotCount = (loadout: readonly (string | null)[]): number => (loadout.slice(2).some((m) => m !== null) ? PLAYER_SLOT_LAYOUT.length : 2);
 
+/** One rank pip of a slot window: a small diamond, filled once that Mejora is bought. */
+export interface RankPip {
+  x: number;
+  y: number;
+  size: number;
+  filled: boolean;
+}
+
+/** Pip size and step (HUD px): Pixelify Sans has no ★, so the ranks are drawn as shapes, like the cursor. */
+const PIP = { size: 5, gap: 2, inset: 6, top: 5 } as const;
+
+/**
+ * The rank of the move in a slot window, as pure layout: MAX_RANK diamonds at
+ * the top right (the key-hint line), the bought ranks filled first, in the
+ * move's tier colour; `cooldownRight` is where the cooldown label ends so it
+ * clears them. Null for an unranked move, so a plain run's HUD is unchanged.
+ */
+export function slotRankPips(player: Pick<PlayerState, 'moveRanks'>, moveId: MoveId, slot: Pick<HudBox, 'x' | 'y' | 'width'>): { pips: RankPip[]; colour: string; cooldownRight: number } | null {
+  const rank = Math.min(MAX_RANK, Math.max(0, Math.floor(player.moveRanks?.[moveId] ?? 0)));
+  if (rank <= 0) return null;
+  const step = PIP.size + PIP.gap;
+  const left = slot.x + slot.width - PIP.inset - MAX_RANK * step + PIP.gap;
+  const pips = Array.from({ length: MAX_RANK }, (_, i) => ({ x: left + i * step, y: slot.y + PIP.top, size: PIP.size, filled: i < rank }));
+  return { pips, colour: TIER_COLORS[moveTier(moveId)], cooldownRight: left - 3 };
+}
+
+/** Draws a pip: a diamond with a dark outline, filled or hollow. */
+function drawPip(ctx: CanvasRenderingContext2D, pip: RankPip, colour: string): void {
+  const r = pip.size / 2;
+  const cx = pip.x + r;
+  const cy = pip.y + r;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r - 0.5);
+  ctx.lineTo(cx + r + 0.5, cy);
+  ctx.lineTo(cx, cy + r + 0.5);
+  ctx.lineTo(cx - r - 0.5, cy);
+  ctx.closePath();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.stroke();
+  ctx.fillStyle = pip.filled ? colour : PALETTE.barBack;
+  ctx.fill();
+  if (!pip.filled) {
+    ctx.strokeStyle = PALETTE.disabled;
+    ctx.stroke();
+  }
+}
+
 /** Move slots at the bottom right: key hint, move name (red when unaffordable) and the charge bar. */
 function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: HudSize, touch: boolean): void {
   const { player } = state;
@@ -155,15 +204,18 @@ function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: Hud
     const busy = player.action?.slotIndex === index;
     const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
     const cooling = slotCooldown(player, moveId);
+    const ranked = slotRankPips(player, moveId, { x, y, width: w });
     // A boost whose buff is running glows in its type colour.
     const glowing = player.buff?.moveId === moveId;
     drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : glowing ? TYPE_COLORS[move.type].core : PALETTE.border });
     ctx.font = canvasFont();
     pixelText(ctx, t(SLOT_KEYS[index] ?? ''), x + 6, y + 12, PALETTE.textDim);
     pixelText(ctx, t(`move.${moveId}`), x + 6, y + 24, cooling ? PALETTE.disabled : affordable ? PALETTE.text : PALETTE.danger);
+    // Mejoras: one diamond per rank, top right, in the move's tier colour.
+    if (ranked) for (const pip of ranked.pips) drawPip(ctx, pip, ranked.colour);
     if (cooling) {
-      // The cooldown: seconds left top right and a bar that empties as it runs out.
-      pixelText(ctx, cooling.label, x + w - 6, y + 12, PALETTE.cursor, 'right');
+      // The cooldown: seconds left top right (left of the rank pips) and a bar that empties as it runs out.
+      pixelText(ctx, cooling.label, ranked ? ranked.cooldownRight : x + w - 6, y + 12, PALETTE.cursor, 'right');
       drawBar(ctx, x + 4, y + 30 - 4, w - 8, 2, cooling.fill, PALETTE.textDim);
     }
     const action = player.action;

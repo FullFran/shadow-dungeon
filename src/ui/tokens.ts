@@ -1,5 +1,6 @@
 import type { Rarity } from '../data/items';
 import type { PokemonType } from '../data/types';
+import type { MoveTier } from '../data/tutor';
 
 /**
  * Design tokens of the Mystery Dungeon-inspired UI, the one place colours,
@@ -36,6 +37,9 @@ export const PALETTE = {
 } as const;
 
 export const RARITY: Record<Rarity, string> = { common: '#c9d2ee', uncommon: '#5ab0ff', rare: '#ffd447' };
+
+/** Move power tiers (data/tutor.ts): the HUD rank pips; the DOM badges use the same blue and gold (index.html `.tier-badge`). */
+export const TIER_COLORS: Record<MoveTier, string> = { basic: '#f5f7ff', advanced: '#8fb3d9', master: '#e0b84f' };
 
 /** Colours of one Pokémon type on the canvas: `core` fill, `glow` halo and highlight, `edge` outline. */
 export interface TypeColors {

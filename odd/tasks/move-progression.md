@@ -58,3 +58,14 @@ npm test, npm run build, npm run balance -- --quick --slots (default and --build
 
 ## Next step
 Parent: review the four work-unit commits; push/PR are the user's decision. Follow-ups: carry rank effects (zones, marks, weakenings, chains, splits) in a guest's hit claim for co-op; bots that use the heavy slot and the zones on purpose (Litwick's gain is measured low); show rank stars in the in-run HUD slots; a ranking board per build if scores ever become online.
+
+## Follow-ups
+Branch `fix/move-progression-followups` from main b9c1cdf. Route: one bounded writer, inline per task (the parent delegated both tasks). Defaults untouched: golden digest and the default balance report must stay unchanged.
+
+- [x] F1 HUD rank pips: the in-run move slot windows show the equipped move's rank.
+- [ ] F2 Guest co-op rank effects: deterministic loopback tests for a guest using ranked moves; fix what they find.
+
+### F1 evidence
+- RED: tests/adapters/hud-rank-pips.test.ts, 4 of 4 failed (`slotRankPips` and `TIER_COLORS` missing); GREEN after the change.
+- adapters/hud.ts `slotRankPips` (pure layout): MAX_RANK diamonds at the top right of the slot window (the key-hint line), bought ranks filled first, in the move's tier colour (ui/tokens.ts `TIER_COLORS`: Básico pale, Avanzado blue, Maestro gold, the DOM badge colours), hollow pips for ranks still to buy; the cooldown label moves left of them. Null for an unranked move, so a plain run's HUD is unchanged. Pixelify Sans has no ★, so the pips are drawn shapes like the cursor.
+- Silent screenshot (headless Firefox WebDriver BiDi, profile user.js `media.volume_scale` 0, localStorage `muted: true`; only the vite and firefox PIDs the script started were killed): /tmp/move-followups/hud-stars.png — Garra Umbría ◆◆ (Básico, pale), Mazazo ◆◆ (Maestro, gold), Afilagarras ◆◇ (Avanzado, blue) with its «12 s» cooldown left of the pips, Brillo Mágico unranked (no pips).
