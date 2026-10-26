@@ -1,6 +1,7 @@
 import { awakeningsOf, MATERIAL_TIERS, type MaterialTier } from '../data/player-evolutions';
 import type { SpeciesId } from '../data/species';
 import { awakenedOf, rosterOf } from '../core/collection';
+import { hasShiny, wearsShiny } from '../core/shiny';
 import { canEvolve, evolutionOf, evolve, lineOf, nextStep } from '../core/evolution';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
@@ -8,7 +9,7 @@ import { isTouchUi } from '../adapters/touch-mode';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
-import { loadSave, writeSave, type SaveData } from './save';
+import { loadSave, wearShinyAt, writeSave, type SaveData } from './save';
 
 /**
  * Phantump's evolutions (odd/tasks/gacha-evolutions.md T5,
@@ -19,7 +20,8 @@ import { loadSave, writeSave, type SaveData } from './save';
  * (owned/needed, named by the difficulty that drops them), and Evolve (or
  * Awaken). A step is saved at once. Costs come from
  * data/player-evolutions.ts. A "Desafíos" row opens the challenges menu
- * (app/challenges.ts), where the materials are won.
+ * (app/challenges.ts), where the materials are won. A line with its shiny
+ * skin unlocked gets an on/off row (odd/tasks/shiny-echo.md).
  */
 export interface EvolveRow {
   species: SpeciesId;
@@ -131,6 +133,15 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
         },
       });
       describeAt.push(rowText(row));
+    }
+    // The shiny skins, one row per line the player has with its skin unlocked.
+    for (const species of rosterOf(save).filter((id) => hasShiny(save, id))) {
+      const flip = () => {
+        save = wearShinyAt(options.store, species, !wearsShiny(save, species));
+        refresh();
+      };
+      out.push({ label: t('evolve.shiny.row').replace('{species}', t(`species.${species}`)), value: t(wearsShiny(save, species) ? 'menu.on' : 'menu.off'), onAdjust: flip, onConfirm: flip });
+      describeAt.push(t('evolve.shiny.text'));
     }
     if (options.onChallenges) {
       out.push({ label: t('challenges.title'), onConfirm: options.onChallenges });

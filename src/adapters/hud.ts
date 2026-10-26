@@ -1,4 +1,5 @@
 import { heraldBarText } from './herald-vfx';
+import { echoName } from './eclipse-echo-view';
 import type { ItemId, Rarity } from '../data/items';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { MOVES, type MoveId } from '../data/moves';
@@ -261,7 +262,7 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const box = bossRect(screen);
     const { x, width: w } = box;
     const y = box.y + HUD_BOX.bossNameHeight;
-    const name = t(`species.${boss.species}`);
+    const name = boss.species === 'eclipse-echo' ? echoName(state.echoMimic) : t(`species.${boss.species}`);
     ctx.font = canvasFont();
     // A herald names itself and its card count (adapters/herald-vfx.ts) and wears its theme's colour; every card boss shares the notches and the clock.
     const herald = heraldBarText(state, boss.enemyId);

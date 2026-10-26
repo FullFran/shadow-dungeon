@@ -1597,7 +1597,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(ELITE_TRAIT_DEFS[enemy.elite].tint);
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
           if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
-          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs }), pos, fade, heraldScale(enemy));
+          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy));
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
           if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);

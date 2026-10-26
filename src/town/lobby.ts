@@ -39,6 +39,8 @@ export interface TownLobbyWalker {
   name: string;
   /** A SPRITE_KEYS name (unknown ones draw as Mimikyu). */
   species: string;
+  /** Wears its line's shiny skin. */
+  shiny?: boolean;
   map: string;
   pos: Vec2;
   facing: Vec2;

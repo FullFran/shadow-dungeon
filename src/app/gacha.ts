@@ -17,13 +17,17 @@ import { loadSave, writeSave, type SaveData } from './save';
  * once and plays a short reveal in the rarity's colour (a tap on it or the
  * next pull ends it early): the species' idle sprite in a frame of that
  * colour, a silhouette until the name shows. The numbers come from data/gacha.ts. Evolving
- * is Phantump's window (app/evolve.ts).
+ * is Phantump's window (app/evolve.ts). A shiny pull (odd/tasks/shiny-echo.md)
+ * reveals the shiny sheet with a sparkle and "¡Shiny!"; the window also shows
+ * the shiny rate and the pulls left to a sure one.
  */
 export interface StallInfo {
   cost: number;
   canPull: boolean;
   /** Pulls until a rare is sure (the hard pity). */
   pityLeft: number;
+  /** The shiny chance per pull (%) and the pulls until a shiny is sure. */
+  shiny: { percent: number; pityLeft: number };
   rates: { rarity: GachaRarity; percent: number; species: SpeciesId[] }[];
 }
 
@@ -33,6 +37,7 @@ export function stallInfo(save: SaveData): StallInfo {
     cost: GACHA.cost,
     canPull: save.coins >= GACHA.cost,
     pityLeft: GACHA.hardPity - (save.pity ?? 0),
+    shiny: { percent: GACHA.shinyRate * 100, pityLeft: GACHA.shinyPity - (save.shinyPity ?? 0) },
     rates: (['common', 'rare'] as const).map((rarity) => ({ rarity, percent: rate(rarity), species: GACHA_POOL.filter((e) => e.rarity === rarity).map((e) => e.species) })),
   };
 }
@@ -46,10 +51,10 @@ export function pullAt(store: KeyValueStore, rng: number): { result: PullResult;
   return { result: pulled.result, save: loadSave(store) };
 }
 
-/** "¡Abra! (rara)", or a duplicate with its refund. */
+/** "¡Abra! (rara)", or a duplicate with its refund; a shiny starts with "¡Shiny!". */
 export function revealText(result: PullResult): string {
   const key = result.duplicate ? 'gacha.reveal.duplicate' : 'gacha.reveal.new';
-  return t(key)
+  return (result.shiny ? `${t('gacha.reveal.shiny')} ` : '') + t(key)
     .replace('{species}', t(`species.${result.species}`))
     .replace('{rarity}', t(`gacha.rarity.${result.rarity}`))
     .replace('{refund}', coinText(result.refund, (k) => t(k)));
@@ -88,7 +93,7 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
     finishReveal();
     reveal.className = `gacha-reveal is-${result.rarity}`;
     // The frame takes the rarity's colour from the reveal (`currentColor`).
-    const sprite = portrait(options.sheets, result.species);
+    const sprite = portrait(options.sheets, result.species, undefined, result.shiny);
     sprite.style.filter = 'brightness(0)';
     const frame = h('div', { className: 'portrait-frame' }, [sprite]);
     frame.style.cssText = 'border: 2px solid currentColor; background: none';
@@ -97,6 +102,11 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
     shown = () => {
       sprite.style.filter = '';
       text.textContent = revealText(result);
+      // A shiny: the sparkle over the frame (index.html `.is-shiny`).
+      if (result.shiny) {
+        reveal.classList.add('is-shiny');
+        frame.append(h('span', { className: 'shiny-sparkle', textContent: '✦' }));
+      }
     };
     timer = setTimeout(finishReveal, REVEAL_MS);
   };
@@ -109,6 +119,7 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
       statLine(t('screen.coins.balance'), coinText(save.coins, (k) => t(k))),
       ...info.rates.map((r) => statLine(`${t(`gacha.rarity.${r.rarity}`)} ${r.percent} %`, r.species.map((s) => t(`species.${s}`)).join(', '))),
       statLine(t('gacha.pity'), t('gacha.pulls').replace('{n}', String(info.pityLeft))),
+      statLine(`${t('gacha.shiny')} ${String(info.shiny.percent).replace('.', t('gacha.decimal'))} %`, t('gacha.pulls').replace('{n}', String(info.shiny.pityLeft))),
     );
     list.setItems([
       {

@@ -63,6 +63,8 @@ export interface PlayerSnapshot {
   hidden?: boolean;
   /** Fainted and being revived: ms an ally has stood by so far (core/revive.ts), for the others to draw. */
   revive?: number;
+  /** Wears its line's shiny skin (cosmetic; odd/tasks/shiny-echo.md). */
+  shiny?: boolean;
 }
 
 export interface EnemySnapshot {
@@ -150,6 +152,7 @@ export function playerSnapshot(state: WorldState): PlayerSnapshot {
     projectiles: state.projectiles.filter((p) => p.owner === 'player').map(projectileSnapshot),
     ...(illusionActive(p) ? { hidden: true } : {}),
     ...(p.hp <= 0 && state.revive && state.revive.ms > 0 ? { revive: state.revive.ms } : {}),
+    ...(p.shiny ? { shiny: true } : {}),
   };
 }
 
@@ -168,6 +171,7 @@ function remoteFrom(snapshot: PlayerSnapshot, previous: PlayerState | undefined)
     roll: snapshot.roll,
     action,
     illusionBroken: !snapshot.hidden,
+    shiny: snapshot.shiny ? true : undefined,
   };
 }
 

@@ -1,6 +1,6 @@
 import { bestiaryLines } from './bestiary';
 import { devPerfProbe } from '../adapters/perf-probe';
-import { SPRITE_KEYS } from '../data/sprites';
+import { shinyKey, SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
@@ -56,6 +56,8 @@ export interface TownOptions {
   sheets: Promise<SheetStore>;
   /** Player species (a SPRITE_KEYS name); unknown names fall back to Mimikyu. */
   species: string;
+  /** The player wears its line's shiny skin (odd/tasks/shiny-echo.md). */
+  shiny?: boolean;
   /** Replaces the page with the town's nodes (no menu backdrop). */
   show: (nodes: Node[]) => void;
   /** The dungeons open on this device, in select order (the exit window lists them). */
@@ -141,8 +143,10 @@ export async function loadTownImages(): Promise<TownImages> {
 
 export const tileCentre = (x: number, y: number): Vec2 => ({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE });
 
-export function playerSprite(species: string): string {
-  return (SPRITE_KEYS as Record<string, string>)[species] ?? SPRITE_KEYS.mimikyu;
+/** A walker's sheet: its species' (Mimikyu for an unknown name), or its shiny. */
+export function playerSprite(species: string, shiny = false): string {
+  const key = Object.hasOwn(SPRITE_KEYS, species) ? SPRITE_KEYS[species as keyof typeof SPRITE_KEYS] : SPRITE_KEYS.mimikyu;
+  return shiny ? shinyKey(key) : key;
 }
 
 /**
@@ -247,7 +251,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** When the current map's name banner started (view time). */
   let bannerAt = 0;
 
-  const sprite = playerSprite(options.species);
+  const sprite = playerSprite(options.species, options.shiny);
   const lobby = options.lobby ?? null;
   let presenceAt: number | null = null;
   /** The room window in a corner (lobby only): code and players, redrawn when they change. */
@@ -528,7 +532,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const state = wanderers.get(w.id);
       return state ? [{ sprite: npcSprite(w.species), pos: state.pos, facing: state.facing, moving: state.target !== null && state.waitMs <= 0, floats: FLOATERS.has(w.species) }] : [];
     });
-    const others = (lobby?.walkers() ?? []).filter((w) => w.map === map.id).map((w): TownCharacter => ({ sprite: playerSprite(w.species), pos: w.pos, facing: w.facing, moving: w.moving }));
+    const others = (lobby?.walkers() ?? []).filter((w) => w.map === map.id).map((w): TownCharacter => ({ sprite: playerSprite(w.species, w.shiny), pos: w.pos, facing: w.facing, moving: w.moving }));
     return [...npcs, ...roaming, ...others, { sprite, pos: walker.pos, facing: walker.facing, moving }];
   }
 

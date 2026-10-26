@@ -3,6 +3,8 @@ import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, 
 import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
+import { echoMimic } from '../core/eclipse-echo';
+import { echoLine, echoName } from '../adapters/eclipse-echo-view';
 import { heraldCardName, heraldHere, heraldIntro } from './herald-run';
 import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
 import { addTime } from '../core/endless';
@@ -134,6 +136,8 @@ export interface GameOptions {
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
   /** Awakening steps of the species (Mimikyu's, core/evolution.ts `stageBonus`), counted everywhere like the Mejoras. */
   awakened?: number;
+  /** The local player wears its line's shiny skin (cosmetic; odd/tasks/shiny-echo.md). */
+  shiny?: boolean;
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
@@ -263,6 +267,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // The Mejoras count everywhere, the pure dungeon and the shrine included (odd/tasks/move-progression.md).
     ...(options.moveRanks ? { moveRanks: options.moveRanks } : {}),
     ...(options.awakened ? { awakened: options.awakened } : {}),
+    ...(options.shiny ? { shiny: true } : {}),
     // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
     ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
     ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
@@ -467,6 +472,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (world.wisp) say(t('forest.wisp.appear'), 'info');
     // A Sima floor event makes itself known (not the monster house or the ambush: those are surprises).
     if (world.simaEvent && announcedOnEntry(world.simaEvent.kind)) say(t(`sima.log.${world.simaEvent.kind}.here`), 'warn');
+    // The Eco del Eclipse copies a player of the party (core/eclipse-echo.ts `echoMimic`): the same pick on every peer (the host's roster).
+    const party = net ? net.session.roster().map((r) => ({ id: r.id, species: r.species })) : [{ id: world.localId, species: world.player.species }];
+    const mimic = world.enemies.some((e) => e.species === 'eclipse-echo') ? echoMimic(run.floor, party) : null;
+    const { echoMimic: _old, ...plain } = world;
+    world = mimic ? { ...plain, echoMimic: mimic } : plain;
+    prev = { ...prev, ...(mimic ? { echoMimic: mimic } : {}) };
+    if (mimic) say(echoLine(mimic, run.floor), 'warn');
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
     const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
@@ -481,8 +493,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // The echo's name card replaces the floor card (they would overlap).
       // The Sima's own boss has its own line under its name.
       const subtitle = echo.species === 'eclipse-echo' ? 'sima.echo.subtitle' : 'endless.echo';
-      // The Eclipse Echo's title counts its encounters («Eco del Eclipse · III»).
-      const name = echo.species === 'eclipse-echo' ? echoTitle(t(`species.${echo.species}`), run.floor) : t(`species.${echo.species}`);
+      // The Eclipse Echo's title names who it copies and counts its encounters («Eco de Zorua · III»).
+      const name = echo.species === 'eclipse-echo' ? echoTitle(echoName(world.echoMimic), run.floor) : t(`species.${echo.species}`);
       intro = { name, subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
       card = null;
     }

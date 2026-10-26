@@ -48,8 +48,8 @@ describe('pull at the stall', () => {
 
   it('reveals the species, its rarity and any refund in words', () => {
     setLanguage('es');
-    expect(revealText({ species: 'abra', rarity: 'rare', duplicate: false, refund: 0 })).toContain('Abra');
-    const dup = revealText({ species: 'piplup', rarity: 'common', duplicate: true, refund: 40 });
+    expect(revealText({ species: 'abra', rarity: 'rare', duplicate: false, refund: 0, shiny: false })).toContain('Abra');
+    const dup = revealText({ species: 'piplup', rarity: 'common', duplicate: true, refund: 40, shiny: false });
     expect(dup).toContain('Piplup');
     expect(dup).toContain('40');
   });

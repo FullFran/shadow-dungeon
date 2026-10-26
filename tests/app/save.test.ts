@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import { dailyMissions } from '../../src/core/missions';
 import { MISSIONS } from '../../src/data/missions';
-import { EMPTY_SAVE, earnCoins, loadSave, migrate, sanitize, SAVE_KEY, SAVE_VERSION, writeSave } from '../../src/app/save';
+import { shinyChallenges } from '../../src/core/shiny';
+import { GACHA } from '../../src/data/gacha';
+import { EMPTY_SAVE, earnChallengeReward, earnCoins, loadSave, migrate, sanitize, SAVE_KEY, SAVE_VERSION, writeSave } from '../../src/app/save';
 
 const throwing: KeyValueStore = {
   get: () => {
@@ -123,5 +125,32 @@ describe('save facade', () => {
     earnCoins(store, 40);
     writeSave(store, { ...loadSave(store), coins: 0 });
     expect(earnCoins(store, 25).earned).toBe(65);
+  });
+});
+
+describe('save: shiny skins (odd/tasks/shiny-echo.md)', () => {
+  it('keeps unlocked lines (first forms, once each), worn ones among them, and the shiny pity under its guarantee', () => {
+    const save = sanitize({ version: SAVE_VERSION, coins: 0, upgrades: {}, shinies: ['zorua', 'zorua', 'kadabra', 'abra', 'gastly', 7], shinyWorn: ['abra', 'cubone', 'zorua'], shinyPity: 500 });
+    expect(save.shinies).toEqual(['zorua', 'abra']);
+    expect(save.shinyWorn).toEqual(['abra', 'zorua']);
+    expect(save.shinyPity).toBe(GACHA.shinyPity - 1);
+    expect(sanitize({ coins: 0, upgrades: {}, shinyWorn: ['abra'] }).shinyWorn).toBeUndefined();
+  });
+
+  it('round-trips, and a v4 save without them reads with none (no version bump)', () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, shinies: ['litwick'], shinyWorn: ['litwick'], shinyPity: 12 });
+    expect(loadSave(store)).toMatchObject({ shinies: ['litwick'], shinyWorn: ['litwick'], shinyPity: 12 });
+    expect(SAVE_VERSION).toBe(4);
+    expect(loadSave(memoryStore())).toEqual(EMPTY_SAVE);
+  });
+
+  it('a starter line skin is paid by its challenge won on Pesadilla', () => {
+    for (const dungeon of shinyChallenges()) {
+      const store = memoryStore();
+      earnChallengeReward(store, dungeon, true, 'hard');
+      expect(loadSave(store).shinies, dungeon.id).toBeUndefined();
+      expect(earnChallengeReward(store, dungeon, true, 'nightmare').shinies, dungeon.id).toEqual([dungeon.challenge!.line]);
+    }
   });
 });

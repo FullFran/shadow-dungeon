@@ -89,3 +89,52 @@ describe('gacha: a pull', () => {
     expect(share).toBeLessThan(GACHA.rareRate * 1.6);
   });
 });
+
+describe('gacha: shiny (odd/tasks/shiny-echo.md)', () => {
+  it('has a rare shiny chance and its own, longer pity', () => {
+    expect(GACHA.shinyRate).toBe(0.025);
+    expect(GACHA.shinyPity).toBe(80);
+  });
+
+  it(`guarantees a shiny within ${GACHA.shinyPity} pulls, on every seed, and counts its own pity`, () => {
+    for (let seed = 0; seed < 200; seed++) {
+      const { results, state } = pulls(rich(), seedRng(seed), 400);
+      let since = 0;
+      for (const r of results) {
+        since = r.shiny ? 0 : since + 1;
+        expect(since, `seed ${seed}`).toBeLessThan(GACHA.shinyPity);
+      }
+      expect(state.shinyPity ?? 0, `seed ${seed}`).toBe(since);
+    }
+  });
+
+  it('gives shinies near their rate over many pulls', () => {
+    const { results } = pulls(rich(10_000_000), seedRng(13), 40_000);
+    const share = results.filter((r) => r.shiny).length / results.length;
+    expect(share).toBeGreaterThan(GACHA.shinyRate * 0.9);
+    expect(share).toBeLessThan(GACHA.shinyRate * 1.4);
+  });
+
+  it('a shiny unlocks (and wears) its line skin, even on a duplicate that still refunds', () => {
+    // Every line owned and the pity at its last pull: the next pull is a shiny duplicate, whatever the seed.
+    for (let seed = 0; seed < 20; seed++) {
+      const state: Collection = { coins: 1000, owned: GACHA_POOL.map((e) => e.species), shinyPity: GACHA.shinyPity - 1 };
+      const next = pull(state, seedRng(seed))!;
+      expect(next.result.shiny).toBe(true);
+      expect(next.result.duplicate).toBe(true);
+      expect(next.state.coins).toBe(1000 - GACHA.cost + GACHA.duplicateRefund);
+      expect(next.state.shinies).toEqual([lineOf(next.result.species)]);
+      expect(next.state.shinyWorn).toEqual([lineOf(next.result.species)]);
+      expect(next.state.shinyPity ?? 0).toBe(0);
+    }
+  });
+
+  it('a shiny of a line already unlocked changes no skin', () => {
+    const owned = GACHA_POOL.map((e) => e.species);
+    const state: Collection = { coins: 1000, owned, shinies: owned, shinyWorn: [], shinyPity: GACHA.shinyPity - 1 };
+    const next = pull(state, seedRng(1))!;
+    expect(next.result.shiny).toBe(true);
+    expect(next.state.shinies).toEqual(owned);
+    expect(next.state.shinyWorn).toEqual([]);
+  });
+});

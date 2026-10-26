@@ -2,19 +2,35 @@ import { coronaPockets, eclipseCentre, laneGaps, nooseRadius } from '../core/ecl
 import type { EnemyState, WorldState } from '../core/state';
 import { angleOf, type Vec2 } from '../core/vec';
 import { ECLIPSE_ECHO } from '../data/enemies';
+import { echoEncounter } from '../core/eclipse-escalation';
+import type { SpeciesId } from '../data/species';
+import { t } from '../i18n';
 
 /**
- * The Eclipse Echo on screen (presentation only): a corrupted shadow of
- * Mimikyu (its sheets through a dark red filter, a slow pulsing halo), and
+ * The Eclipse Echo on screen (presentation only): a corrupted shadow of the
+ * player it copies (`WorldState.echoMimic`, odd/tasks/shiny-echo.md: that
+ * species' sheets through a dark red filter, a slow pulsing halo; Busted
+ * Mimikyu's when it copies nobody), its name «Eco de <especie>», and
  * the ground marks of its cards: the corona's burning arena with its three
  * pockets, the noose's closing ring and its gap, the lanes' first gap and a
  * ring of light while any other card winds up.
  */
 
-/** Its look: Mimikyu's busted form gone black and red. */
+/** Its look: the copied species gone black and red. */
 export const ECHO_FILTER = 'brightness(0.3) contrast(1.6) sepia(1) hue-rotate(-40deg) saturate(3) drop-shadow(0 0 2px #ff2a3a) drop-shadow(0 0 4px #000000)';
 
 const def = ECLIPSE_ECHO;
+
+/** Its name: «Eco de Zorua» for the species it copies, «Eco del Eclipse» when it copies nobody. */
+export const echoName = (mimic: SpeciesId | undefined, tr: (key: string) => string = t): string =>
+  mimic ? tr('sima.echo.of').replace('{species}', tr(`species.${mimic}`)) : tr('species.eclipse-echo');
+
+/** Lore lines when it shows up, one per encounter in turn (`sima.echo.line.1..ECHO_LINES`). */
+export const ECHO_LINES = 3;
+
+/** The line the echo of `floor` says, copying `mimic`. */
+export const echoLine = (mimic: SpeciesId, floor: number, tr: (key: string) => string = t): string =>
+  tr(`sima.echo.line.${((echoEncounter(floor) - 1) % ECHO_LINES) + 1}`).replace('{species}', tr(`species.${mimic}`));
 
 /** Ground marks of its card in play (world units, under the actors). */
 export function drawEclipseZones(ctx: CanvasRenderingContext2D, state: WorldState, enemy: EnemyState, pos: Vec2, timeMs: number): void {

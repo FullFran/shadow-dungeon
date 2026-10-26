@@ -2,8 +2,8 @@ import { heraldWear } from '../core/herald/generate';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
 import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
-import { SPECIES } from '../data/species';
-import { SPRITE_KEYS, SPRITES, type AnimMeta } from '../data/sprites';
+import { SPECIES, type SpeciesId } from '../data/species';
+import { shinyKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type ShinySpriteKey } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import type { EnemyState, PlayerState } from '../core/state';
 import type { Vec2 } from '../core/vec';
@@ -14,7 +14,8 @@ import type { Vec2 } from '../core/vec';
  * `SPRITES.directions` (down, downRight, right, upRight, up, upLeft, left,
  * downLeft). Durations are in 1/60 s ticks.
  */
-export type SpriteKey = (typeof SPRITE_KEYS)[keyof typeof SPRITE_KEYS];
+/** A sheet folder: a species' own, or its shiny (odd/tasks/shiny-echo.md). */
+export type SpriteKey = BaseSpriteKey | ShinySpriteKey;
 
 /** Sheet row for a facing vector (screen y grows down). */
 export function directionRow(dir: Vec2): number {
@@ -186,10 +187,11 @@ export function attackSheet(sprite: SpriteKey, moveId: MoveId): string {
   return RELEASE_FALLBACKS.find(usable) ?? 'Attack';
 }
 
-/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form). */
-export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken'>): SpriteKey {
+/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form); its shiny when it wears the skin. */
+export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken' | 'shiny'>): SpriteKey {
   const species = SPECIES[player.species];
-  return SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
+  const key = SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
+  return player.shiny ? shinyKey(key) : key;
 }
 
 export interface PlayerAnimContext {
@@ -224,8 +226,9 @@ export function playerAnim(player: PlayerState, ctx: PlayerAnimContext): AnimCho
   return looping(sprite, ctx.moving ? 'Walk' : 'Idle', ctx.timeMs, facing);
 }
 
-/** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation). */
-export function enemySprite(enemy: EnemyState): SpriteKey {
+/** Sprite sheet of an enemy (Aegislash switches form with its stance, halfway through the transformation; the Eco del Eclipse wears `echoMimic`'s). */
+export function enemySprite(enemy: EnemyState, echoMimic?: SpeciesId): SpriteKey {
+  if (enemy.species === 'eclipse-echo' && echoMimic) return SPRITE_KEYS[SPECIES[echoMimic].sprite];
   // A herald wears its generated sheets (the generator's first draw, the same on every peer).
   if (enemy.herald) return (SPRITE_KEYS as Record<string, SpriteKey>)[heraldWear(enemy.herald.seed).sprite] ?? SPRITE_KEYS.gastly;
   if (enemy.species !== 'aegislash') return SPRITE_KEYS[SPECIES[enemy.species].sprite];
@@ -316,10 +319,12 @@ export interface EnemyAnimContext {
   timeMs: number;
   /** Real time since it was defeated (Infinity while alive). */
   sinceDefeatMs: number;
+  /** The species the Eco del Eclipse copies on this floor (`WorldState.echoMimic`). */
+  echoMimic?: SpeciesId;
 }
 
 export function enemyAnim(enemy: EnemyState, ctx: EnemyAnimContext): AnimChoice {
-  const sprite = enemySprite(enemy);
+  const sprite = enemySprite(enemy, ctx.echoMimic);
   const { ai, facing } = enemy;
   if (!enemy.alive) return once(sprite, 'Faint', ctx.sinceDefeatMs, facing);
   if (enemy.hitstunMs > 0) return once(sprite, 'Hurt', 0, facing);

@@ -132,3 +132,12 @@ export const SPRITE_KEYS = {
   chandelure: '0609/0000',
   marowak: '0105/0000',
 } as const;
+
+/** A sheet folder of this build: a SPRITE_KEYS value. */
+export type BaseSpriteKey = (typeof SPRITE_KEYS)[keyof typeof SPRITE_KEYS];
+
+/** A shiny sheet folder: SpriteCollab's shiny of a form lives in its `0001` subfolder (odd/tasks/shiny-echo.md). */
+export type ShinySpriteKey = `${BaseSpriteKey}/0001`;
+
+/** The shiny sheet of `key` (playable species only have one: tests/data/shiny.test.ts). */
+export const shinyKey = (key: BaseSpriteKey): ShinySpriteKey => `${key}/0001`;

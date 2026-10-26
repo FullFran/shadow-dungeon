@@ -42,7 +42,22 @@ export interface TownWalker extends TownPresence {
   id: string;
   species: SpeciesId;
   name?: string;
+  /** Wears its line's shiny skin (odd/tasks/shiny-echo.md). */
+  shiny?: boolean;
 }
+/** What a knocking peer asks to play with (its hello). */
+interface Knock {
+  species: SpeciesId;
+  name: string;
+  shiny?: boolean;
+}
+
+/** A roster entry with its skin flag set (absent when off, as from an older peer). */
+function withSkin(entry: RosterEntry, shiny: boolean | undefined): RosterEntry {
+  const { shiny: _old, ...rest } = entry;
+  return shiny ? { ...rest, shiny: true } : rest;
+}
+
 export interface SessionOptions {
   transport: Transport<string>;
   scheduler: Pick<Scheduler, 'now'>;
@@ -82,7 +97,7 @@ export interface NetSession {
   peerId(): string;
   roster(): readonly RosterEntry[];
   /** This tab runs the run: player p1. */
-  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string; name?: string; difficulty?: Difficulty }): void;
+  host(seed: number, floor: number, species: SpeciesId, options?: { lobby?: boolean; dungeon?: string; name?: string; difficulty?: Difficulty; shiny?: boolean }): void;
   /** Host: picks the room's tier (sent to the guests at once while in the lobby, and with every `start`). */
   setDifficulty(difficulty: Difficulty): void;
   /** The room's tier: the host's own choice, or as a guest the latest the host sent (easy before any). */
@@ -96,9 +111,9 @@ export interface NetSession {
   /** The room's shrine trial: the host's pick, or as a guest the latest the host sent (null: none). */
   trial(): RoomTrial | null;
   /** In the room: this player picked another species (and moves) in the loadout; the roster follows (an older host keeps the first). */
-  repick(species: SpeciesId, loadout: readonly (MoveId | null)[]): void;
+  repick(species: SpeciesId, loadout: readonly (MoveId | null)[], shiny?: boolean): void;
   /** Asks the session's host to let this player in; `onStart` fires when it answers. */
-  join(species: SpeciesId, loadout: readonly (MoveId | null)[], name?: string): void;
+  join(species: SpeciesId, loadout: readonly (MoveId | null)[], name?: string, shiny?: boolean): void;
   /** Host in the lobby: it may lead the room into a dungeon (guests never can). */
   canLead(): boolean;
   /** Host, after a shared run: back to the town lobby with a new seed; guests are told (`onLobby`). */
@@ -223,7 +238,7 @@ export function createSession(options: SessionOptions): NetSession {
   let ticks = 0;
   let left = false;
   let lobby = false;
-  let joining: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string } | null = null;
+  let joining: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean } | null = null;
   /** The shrine trial picked in the lobby (shown to guests), and the one under way (sent with `start`). */
   let picked: RoomTrial | null = null;
   let running: RoomTrial | null = null;
@@ -239,7 +254,7 @@ export function createSession(options: SessionOptions): NetSession {
   const walkers = new Map<string, InterpBuffer<TownPresence>>();
   let hostGone = false;
   /** Hellos heard before this peer started or hosted (local election; admitted at once if it hosts). */
-  const pending = new Map<string, { species: SpeciesId; name: string }>();
+  const pending = new Map<string, Knock>();
   let holds: HpHold[] = [];
   const tracker = createStatsTracker();
   const offsets = new Map<string, number>();
@@ -257,7 +272,7 @@ export function createSession(options: SessionOptions): NetSession {
    * heard meanwhile wait here (`wait`) and are let in at the next one.
    */
   let joinOpen = true;
-  const held = new Map<string, { species: SpeciesId; name: string }>();
+  const held = new Map<string, Knock>();
   const waitHandlers: Array<() => void> = [];
   let clock: { ms: number; floor: number } | null = null;
   /** This player's gather status (sent with its state), and the others' as last heard. */
@@ -296,7 +311,7 @@ export function createSession(options: SessionOptions): NetSession {
     return at + offset;
   }
 
-  const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}), ...VERSION });
+  const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}), ...(j.shiny ? { shiny: true } : {}), ...VERSION });
 
   /** Guest: turned away (or the host runs another version); fires once. */
   const refused = (reason: RefusedReason) => {
@@ -306,18 +321,18 @@ export function createSession(options: SessionOptions): NetSession {
   };
 
   /** Host: gives `peer` a player id; false when the room is full. */
-  function admit(peer: string, species: SpeciesId, name = ''): boolean {
+  function admit(peer: string, { species, name, shiny }: Knock): boolean {
     const known = roster.find((r) => r.peer === peer);
     if (known) {
-      // A hello again: the player picked another species in the room.
-      if (known.species !== species) setRoster(roster.map((r) => (r === known ? { ...r, species } : r)));
+      // A hello again: the player picked another species (or put its skin on or off) in the room.
+      if (known.species !== species || (known.shiny === true) !== shiny) setRoster(roster.map((r) => (r === known ? withSkin({ ...r, species }, shiny) : r)));
       return true;
     }
     const taken = new Set(roster.map((r) => r.id));
     let id: string | null = null;
     for (let n = 1; n <= MAX_PLAYERS && !id; n++) if (!taken.has(`p${n}`)) id = `p${n}`;
     if (!id) return false;
-    setRoster([...roster, { peer, id, species, ...(name ? { name } : {}) }]);
+    setRoster([...roster, withSkin({ peer, id, species, ...(name ? { name } : {}) }, shiny)]);
     return true;
   }
 
@@ -325,7 +340,7 @@ export function createSession(options: SessionOptions): NetSession {
   function openJoin(): void {
     joinOpen = true;
     if (held.size === 0) return;
-    for (const [peer, theirs] of held) if (!admit(peer, theirs.species, theirs.name)) send({ t: 'full', peer }, true);
+    for (const [peer, theirs] of held) if (!admit(peer, theirs)) send({ t: 'full', peer }, true);
     held.clear();
     send(startMessage(), true);
   }
@@ -358,7 +373,7 @@ export function createSession(options: SessionOptions): NetSession {
         const name = sanitizeNickname(message.name);
         const same = sameVersion(message.v, message.c);
         if (role !== 'host') {
-          if (!started && same) pending.set(from, { species: message.species, name });
+          if (!started && same) pending.set(from, { species: message.species, name, shiny: message.shiny === true });
           return;
         }
         // Another version would desync the run (or crash on content it does not know): turned away, on both screens.
@@ -369,11 +384,11 @@ export function createSession(options: SessionOptions): NetSession {
         }
         // Mid-run, between join points: a new player waits for the next floor (a known one just picked again).
         if (!lobby && !joinOpen && !roster.some((r) => r.peer === from)) {
-          held.set(from, { species: message.species, name });
+          held.set(from, { species: message.species, name, shiny: message.shiny === true });
           send({ t: 'wait', peer: from }, true);
           return;
         }
-        if (!admit(from, message.species, name)) send({ t: 'full', peer: from }, true);
+        if (!admit(from, { species: message.species, name, shiny: message.shiny === true })) send({ t: 'full', peer: from }, true);
         else if (lobby) send(lobbyMessage(), true);
         else send(startMessage(), true);
         return;
@@ -513,10 +528,10 @@ export function createSession(options: SessionOptions): NetSession {
       tier = hostOptions?.difficulty ?? DEFAULT_DIFFICULTY;
       lobby = hostOptions?.lobby ?? false;
       const name = sanitizeNickname(hostOptions?.name);
-      setRoster([{ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }]);
+      setRoster([withSkin({ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }, hostOptions?.shiny === true)]);
       joinOpen = true;
       // Tabs that knocked while this one was still searching are let in now (local election).
-      for (const [peer, theirs] of pending) admit(peer, theirs.species, theirs.name);
+      for (const [peer, theirs] of pending) admit(peer, theirs);
       pending.clear();
       // Anyone already in the room who knocked before this tab hosted knocks again on seeing the roster.
       if (lobby) send(lobbyMessage(), true);
@@ -544,21 +559,21 @@ export function createSession(options: SessionOptions): NetSession {
       send(lobbyMessage(), true);
     },
     trial: () => picked,
-    repick(species, loadout) {
+    repick(species, loadout, shiny = false) {
       if (role === 'host') {
         const me = roster.find((r) => r.id === 'p1');
-        if (!me || me.species === species) return;
-        setRoster(roster.map((r) => (r === me ? { ...r, species } : r)));
+        if (!me || (me.species === species && (me.shiny === true) === shiny)) return;
+        setRoster(roster.map((r) => (r === me ? withSkin({ ...r, species }, shiny) : r)));
         if (lobby) send(lobbyMessage(), true);
         return;
       }
       if (!joining) return;
-      joining = { ...joining, species, loadout };
+      joining = { ...joining, species, loadout, shiny };
       send(helloOf(joining), true);
     },
-    join(species, loadout, name) {
+    join(species, loadout, name, shiny = false) {
       const clean = sanitizeNickname(name);
-      joining = { species, loadout, ...(clean ? { name: clean } : {}) };
+      joining = { species, loadout, ...(clean ? { name: clean } : {}), shiny };
       send(helloOf(joining), true);
     },
     canLead: () => role === 'host' && lobby,
@@ -570,7 +585,7 @@ export function createSession(options: SessionOptions): NetSession {
       running = null;
       resetRun();
       // Players held during the last run come into the room now.
-      for (const [peer, theirs] of held) if (!admit(peer, theirs.species, theirs.name)) send({ t: 'full', peer }, true);
+      for (const [peer, theirs] of held) if (!admit(peer, theirs)) send({ t: 'full', peer }, true);
       held.clear();
       send(lobbyMessage(), true);
     },
@@ -583,7 +598,7 @@ export function createSession(options: SessionOptions): NetSession {
       return roster.flatMap((r): TownWalker[] => {
         const buffer = r.peer === transport.selfId ? undefined : walkers.get(r.peer);
         const value = buffer && sampleAt(buffer, renderAt, mixPresence, { maxExtrapolateMs: 0 });
-        return value ? [{ ...value, peer: r.peer, id: r.id, species: r.species, ...(r.name ? { name: r.name } : {}) }] : [];
+        return value ? [{ ...value, peer: r.peer, id: r.id, species: r.species, ...(r.name ? { name: r.name } : {}), ...(r.shiny ? { shiny: true } : {}) }] : [];
       });
     },
     townDelayMs: () => TOWN_DELAY_MS,
