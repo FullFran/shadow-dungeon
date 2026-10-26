@@ -910,7 +910,7 @@
   "boss.stance.sc-dec-stitch": "Stitch of Shadows",
   "boss.stance.sc-dec-moonless": "Moonless Night",
   "sima.herald.subtitle": "Herald of the Eclipse · Floor {floor}",
-  "card.captured": "Card captured! +{coins} Poké Coins",
+  "card.captured": "Technique mastered! +{coins} Poké Coins",
   "card.timeout": "The card ran out of time",
   "sima.herald.awaken": "The herald awakens",
   "town.board.heralds": "Heralds of the Eclipse met: {count}",
@@ -977,5 +977,7 @@
   "spell.nihilego.card-downpour": "Rain Sign \"Venoshock Downpour\"",
   "boss.stance.sc-nih-downpour": "Downpour",
   "spell.nihilego.card-lastword": "Last Rift \"She Who Fell from the Sky\"",
-  "boss.stance.sc-nih-lastword": "She Who Fell"
+  "boss.stance.sc-nih-lastword": "She Who Fell",
+  "card.mastered": "Technique mastered!",
+  "card.reward": "+{coins} Poké Coins · +{heal} HP"
 }

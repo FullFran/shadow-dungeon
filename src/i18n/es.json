@@ -910,7 +910,7 @@
   "boss.stance.sc-dec-stitch": "Costura de Sombras",
   "boss.stance.sc-dec-moonless": "Noche sin Luna",
   "sima.herald.subtitle": "Heraldo del Eclipse · Planta {floor}",
-  "card.captured": "¡Carta capturada! +{coins} Pokémonedas",
+  "card.captured": "¡Técnica dominada! +{coins} Pokémonedas",
   "card.timeout": "Se agotó el tiempo de la carta",
   "sima.herald.awaken": "El heraldo despierta",
   "town.board.heralds": "Heraldos del Eclipse vistos: {count}",
@@ -977,5 +977,7 @@
   "spell.nihilego.card-downpour": "Signo Lluvia «Aguacero de Venoshock»",
   "boss.stance.sc-nih-downpour": "Aguacero",
   "spell.nihilego.card-lastword": "Última Grieta «La que Cayó del Cielo»",
-  "boss.stance.sc-nih-lastword": "La que Cayó"
+  "boss.stance.sc-nih-lastword": "La que Cayó",
+  "card.mastered": "¡Técnica dominada!",
+  "card.reward": "+{coins} Pokémonedas · +{heal} PS"
 }

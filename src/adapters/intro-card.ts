@@ -73,10 +73,85 @@ export function drawDungeonIntro(ctx: CanvasRenderingContext2D, intro: DungeonIn
   ctx.globalAlpha = 1;
 }
 
-/** A boss spell card announced on screen (Touhou style): its full name, for a couple of seconds. */
+/**
+ * A boss spell card announced on screen. Easy's own cycles keep the strip
+ * across the top; a card fight's declaration (`declare`) is a dramatic
+ * moment instead ("Touhou inside, souls outside"): the screen darkens a
+ * little, the card's name stands big and serious in the middle, and its full
+ * Touhou name («Signo X «…»», `title`) sits small above it.
+ */
 export interface SpellBanner {
   name: string;
   shownAtMs: number;
+  /** The full Touhou-style name, small above the big one (a declaration). */
+  title?: string;
+  declare?: true;
+}
+
+/** How long a declaration holds the screen (it lasts about as long as the boss's break). */
+export const DECLARE = { fadeInMs: 160, holdMs: 1100, fadeOutMs: 420, dim: 0.32 } as const;
+
+export const declareAlpha = (spell: Pick<SpellBanner, 'shownAtMs'>, nowMs: number): number => fadeAlpha(nowMs - spell.shownAtMs, DECLARE.fadeInMs, DECLARE.holdMs, DECLARE.fadeOutMs);
+
+/** A card's declaration: the darkened screen, the big name and the small Touhou line above it. */
+export function drawCardDeclaration(ctx: CanvasRenderingContext2D, spell: SpellBanner, nowMs: number, width: number, height: number): void {
+  const alpha = declareAlpha(spell, nowMs);
+  if (alpha <= 0) return;
+  ctx.globalAlpha = alpha * DECLARE.dim;
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, width, height);
+  const cy = Math.round(height * 0.3);
+  // The name settles from a little larger, like a seal pressed down.
+  const settle = Math.max(0, 1 - (nowMs - spell.shownAtMs) / 260);
+  ctx.globalAlpha = alpha;
+  if (spell.title) {
+    ctx.font = canvasFont();
+    pixelText(ctx, spell.title, width / 2, cy - 22, PALETTE.textDim, 'center');
+  }
+  ctx.font = canvasFont(Math.round(24 + 6 * settle), true);
+  pixelText(ctx, spell.name, width / 2, cy, PALETTE.text, 'center');
+  ctx.fillStyle = PALETTE.eclipseGlow;
+  const rule = Math.round(Math.min(width - 60, 260) * Math.min(1, alpha * 1.3));
+  ctx.fillRect(Math.round(width / 2 - rule / 2), cy + 8, rule, 1);
+  ctx.globalAlpha = 1;
+}
+
+/** A card captured ("¡Técnica dominada!") and what it gave, with a short flourish. */
+export interface CaptureNotice {
+  shownAtMs: number;
+  coins: number;
+  heal: number;
+}
+
+export const CAPTURE_NOTICE = { fadeInMs: 120, holdMs: 1600, fadeOutMs: 500 } as const;
+
+export function drawCaptureNotice(ctx: CanvasRenderingContext2D, notice: CaptureNotice, nowMs: number, width: number, height: number, title: string, reward: string): void {
+  const age = nowMs - notice.shownAtMs;
+  const alpha = fadeAlpha(age, CAPTURE_NOTICE.fadeInMs, CAPTURE_NOTICE.holdMs, CAPTURE_NOTICE.fadeOutMs);
+  if (alpha <= 0) return;
+  const cx = width / 2;
+  // Above the next declaration (it follows a broken card at once).
+  const cy = Math.round(height * 0.15);
+  // The flourish: eight short rays opening out once.
+  const burst = Math.min(1, age / 420);
+  ctx.globalAlpha = alpha * (1 - burst * 0.7);
+  ctx.strokeStyle = PALETTE.cursor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 + Math.PI / 8;
+    const r0 = 18 + 40 * burst;
+    const r1 = r0 + 10;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0 * 2.2, cy - 4 + Math.sin(a) * r0 * 0.6);
+    ctx.lineTo(cx + Math.cos(a) * r1 * 2.2, cy - 4 + Math.sin(a) * r1 * 0.6);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.font = canvasFont(16, true);
+  pixelText(ctx, title, cx, cy, PALETTE.cursor, 'center');
+  ctx.font = canvasFont();
+  pixelText(ctx, reward, cx, cy + 14, PALETTE.text, 'center');
+  ctx.globalAlpha = 1;
 }
 
 export const SPELL = { fadeInMs: 250, holdMs: 2200, fadeOutMs: 500 } as const;
