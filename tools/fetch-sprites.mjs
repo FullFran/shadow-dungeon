@@ -7,6 +7,8 @@
 //   node tools/fetch-sprites.mjs
 //   node tools/fetch-sprites.mjs --only=shiny   (only the shiny sheets; the
 //     rest of sprite-meta.json is kept, CREDITS.md is regenerated in full)
+//   node tools/fetch-sprites.mjs --add=drowzee,hypno   (only those species'
+//     sheets; the rest of sprite-meta.json is kept, CREDITS.md in full)
 //
 // SpriteCollab layout: sprite/<dex4>/ is the base form, sprite/<dex4>/<form4>/
 // an alternate form and sprite/<dex4>/<form4>/0001/ its shiny (local folder
@@ -145,6 +147,27 @@ const TARGETS = [
   { dex: '0608', form: '0000', species: 'lampent', formName: 'base' },
   { dex: '0609', form: '0000', species: 'chandelure', formName: 'base' },
   { dex: '0105', form: '0000', species: 'marowak', formName: 'base' },
+  // The gacha lines' Senda bosses (docs/story-quests.md; AnimData 2026-10-26: Idle, Walk, Attack, Shoot, Charge and Hurt
+  // are their own sheets, no CopyOf; Bisharp's lord wears the regular Bisharp's sheets).
+  { dex: '0517', form: '0000', species: 'munna', formName: 'base' },
+  { dex: '0096', form: '0000', species: 'drowzee', formName: 'base' },
+  { dex: '0122', form: '0000', species: 'mr-mime', formName: 'base' },
+  { dex: '0097', form: '0000', species: 'hypno', formName: 'base' },
+  { dex: '0518', form: '0000', species: 'musharna', formName: 'base' },
+  { dex: '0362', form: '0000', species: 'glalie', formName: 'base' },
+  { dex: '0461', form: '0000', species: 'weavile', formName: 'base' },
+  { dex: '0473', form: '0000', species: 'mamoswine', formName: 'base' },
+  { dex: '0478', form: '0000', species: 'froslass', formName: 'base' },
+  { dex: '0131', form: '0000', species: 'lapras', formName: 'base' },
+  { dex: '0181', form: '0000', species: 'ampharos', formName: 'base' },
+  { dex: '0310', form: '0000', species: 'manectric', formName: 'base' },
+  { dex: '0359', form: '0000', species: 'absol', formName: 'base' },
+  { dex: '0466', form: '0000', species: 'electivire', formName: 'base' },
+  { dex: '0197', form: '0000', species: 'umbreon', formName: 'base' },
+  { dex: '0621', form: '0000', species: 'druddigon', formName: 'base' },
+  { dex: '0445', form: '0000', species: 'garchomp', formName: 'base' },
+  { dex: '0373', form: '0000', species: 'salamence', formName: 'base' },
+  { dex: '0149', form: '0000', species: 'dragonite', formName: 'base' },
 ];
 
 // Every playable sprite also has a shiny (odd/tasks/shiny-echo.md; AnimData 2026-10-26: all 21 have
@@ -256,11 +279,14 @@ async function collectCredits(targets, names) {
 
 async function main() {
   const onlyShiny = process.argv.includes('--only=shiny');
-  const kept = onlyShiny ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
+  const added = new Set((process.argv.find((a) => a.startsWith('--add='))?.slice('--add='.length) ?? '').split(',').filter(Boolean));
+  const partial = onlyShiny || added.size > 0;
+  const kept = partial ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
   const meta = { directions: DIRECTIONS, ticksPerSecond: 60, sprites: {} };
   for (const target of ALL_TARGETS) {
     const key = localKey(target);
-    meta.sprites[key] = onlyShiny && !target.shiny && kept[key] ? kept[key] : await downloadTarget(target);
+    const fresh = added.size > 0 ? added.has(target.species) : target.shiny;
+    meta.sprites[key] = partial && !fresh && kept[key] ? kept[key] : await downloadTarget(target);
   }
   await writeFile(OUT_META, `${JSON.stringify(meta, null, 2)}\n`);
 

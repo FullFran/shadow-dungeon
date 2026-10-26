@@ -217,7 +217,7 @@ describe('Senda roads: each chapter walks its own road (owner 2026-10-26)', () =
   const stab = (line: SpeciesId): PokemonType[] => [...new Set(PLAYABLE_SPECIES.filter((id) => lineOf(id) === line).flatMap((id) => SPECIES[id].types))];
 
   it('the starters\' Sendas have three roads; Easy and Normal walk the challenge, Hard the second, Nightmare the third', () => {
-    expect(SENDAS.map((d) => d.challenge!.line).sort()).toEqual(['cubone', 'litwick', 'zorua']);
+    expect(SENDAS.map((d) => d.challenge!.line).sort()).toEqual(['abra', 'axew', 'cubone', 'litwick', 'piplup', 'shinx', 'zorua']);
     for (const d of SENDAS) {
       expect(roadFor(d, 'easy')).toBe(d);
       expect(roadFor(d, 'normal')).toBe(d);

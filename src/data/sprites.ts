@@ -139,6 +139,26 @@ export const SPRITE_KEYS = {
   mismagius: '0429/0000',
   kecleon: '0352/0000',
   spiritomb: '0442/0000',
+  // The gacha lines' Sendas' shadows (data/story/<line>.ts).
+  munna: '0517/0000',
+  drowzee: '0096/0000',
+  mrMime: '0122/0000',
+  hypno: '0097/0000',
+  musharna: '0518/0000',
+  glalie: '0362/0000',
+  weavile: '0461/0000',
+  mamoswine: '0473/0000',
+  froslass: '0478/0000',
+  lapras: '0131/0000',
+  ampharos: '0181/0000',
+  manectric: '0310/0000',
+  absol: '0359/0000',
+  electivire: '0466/0000',
+  umbreon: '0197/0000',
+  druddigon: '0621/0000',
+  garchomp: '0445/0000',
+  salamence: '0373/0000',
+  dragonite: '0149/0000',
 } as const;
 
 /** A sheet folder of this build: a SPRITE_KEYS value. */

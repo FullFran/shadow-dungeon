@@ -3,7 +3,7 @@ import { memoryStore } from '../../src/adapters/storage';
 import { chapterOfDifficulty, chapterOpen, closeChapter, fragmentSpot, sanitizeStory, storyRunFor } from '../../src/core/story';
 import { bondLine, recordStory, storyPanels } from '../../src/app/story';
 import { loadSave, parseSave, writeSave, EMPTY_SAVE } from '../../src/app/save';
-import { CHALLENGES, CRYPT, guardianOf, type ChallengeLine } from '../../src/data/dungeons';
+import { CHALLENGES, CRYPT, guardianOf, roadFor, type ChallengeLine } from '../../src/data/dungeons';
 import { CHAPTERS, chapterOf, isWound, STORY_MID_FLOOR, STORY_QUESTS, storyKeyList, storyKeys, type StoryQuest } from '../../src/data/story-quests';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { totalMs } from '../../src/ui/cinematic';
@@ -13,8 +13,18 @@ const QUESTS = Object.values(STORY_QUESTS) as StoryQuest[];
 
 /** The Sendas (docs/story-quests.md): every entry in the table is a whole story in both languages, so filling the other seven is guarded. */
 describe('every Senda in STORY_QUESTS is complete', () => {
-  it('Mimikyu has its Senda (the pilot)', () => {
+  it('Mimikyu has its Senda (the pilot), and so do the gacha lines', () => {
     expect(STORY_QUESTS.mimikyu).toBeDefined();
+    for (const line of ['abra', 'piplup', 'shinx', 'axew'] as const) expect(STORY_QUESTS[line]?.line, line).toBe(line);
+  });
+
+  it('a gacha line\'s chapter plays on its own road: the Hard run of the challenge is chapter II on the hidden road', () => {
+    const abra = CHALLENGES.find((d) => d.challenge?.line === 'abra')!;
+    const hard = roadFor(abra, 'hard');
+    expect(hard.id).toBe('challenge-abra-2');
+    expect(storyRunFor(hard, 'hard', { abra: 1 })).toEqual({ line: 'abra', chapter: 2 });
+    expect(storyRunFor(roadFor(abra, 'nightmare'), 'nightmare', { abra: 2 })).toEqual({ line: 'abra', chapter: 3 });
+    expect(storyRunFor(hard, 'hard', undefined)).toBeNull();
   });
 
   it.each(QUESTS.map((q) => [q.line, q] as const))('%s: every text exists in every language, short and without em dashes', (_, quest) => {
