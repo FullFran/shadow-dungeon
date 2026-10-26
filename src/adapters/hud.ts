@@ -253,7 +253,8 @@ type HudSize = Pick<Rect, 'width' | 'height'>;
 export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, floor: number, coins?: number, touch = false): void {
   const { player } = state;
   statusPanel(ctx, state, floor, coins, touch);
-  moveSlots(ctx, state, screen, touch);
+  // Touch: the slot buttons show the moves (src/adapters/touch-slots.ts); no slot windows under the thumbs.
+  if (!touch) moveSlots(ctx, state, screen, touch);
 
   const boss = bossBar(state);
   if (boss) {

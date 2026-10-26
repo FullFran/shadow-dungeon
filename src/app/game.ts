@@ -58,6 +58,7 @@ import { holdWakeLock } from '../adapters/wake-lock';
 import { mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
 import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
+import { slotButtonState } from '../adapters/touch-slots';
 import { devPerfProbe } from '../adapters/perf-probe';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
@@ -927,6 +928,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       clickLockActive(world.lock) && !closeMenu && lastInput
         ? enemyUnderCursor({ playerPos: world.player.pos, cursor: lastInput.aim, view: lastInput.view, enemies: world.enemies })
         : null;
+    if (isTouchUi()) {
+      // The slot buttons carry the move names, cooldowns and ranks (the canvas slot windows stay off the thumbs).
+      (['fast', 'heavy', 'boost', 'area'] as const).forEach((id, i) => {
+        const moveId = world.player.loadout[i];
+        touch.setSlot(id, moveId ? t(`move.${moveId}`) : '', slotButtonState(world.player, i));
+      });
+    }
     const drawAt = perf ? performance.now() : 0;
     renderer.draw({
       prev,

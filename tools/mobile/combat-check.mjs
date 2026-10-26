@@ -82,6 +82,8 @@ try {
       await lift;
       await wait(60);
       const cast = await action();
+      await wait(250);
+      await page.screenshot(`${dir}/combat-cooldown-${tag}.png`);
       check(`${tag} release-cast: nothing while held, cast leftwards on lift`, whileHeld === null && cast?.slot === 3 && cast.dir.x < -0.9, { whileHeld, cast });
       await ready();
     }

@@ -347,6 +347,24 @@
       .touch-button.small { width: 52px; height: 52px; font-size: 12px; }
       .touch-button { opacity: var(--touch-alpha, 1); }
       .touch-button.is-pressed { opacity: 1; background: rgba(255, 212, 71, 0.85); color: var(--md-ink); transform: scale(0.94); }
+      /* Slot buttons (src/adapters/touch-slots.ts): move name, cooldown sweep and seconds, rank pips, charge ring. */
+      .touch-button > span { pointer-events: none; }
+      .touch-label { position: relative; z-index: 1; display: block; padding: 0 3px; -webkit-hyphens: auto; hyphens: auto; }
+      .touch-lock .touch-label { font-size: 11px; padding: 0; }
+      .touch-fast .touch-label, .touch-heavy .touch-label, .touch-boost .touch-label, .touch-area .touch-label { font-size: 10px; line-height: 1.05; }
+      .touch-fast .touch-label { font-size: 13px; }
+      :is(.touch-fast, .touch-heavy, .touch-boost, .touch-area)::before { content: ''; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none;
+        background: conic-gradient(rgba(5, 6, 13, 0.72) calc(var(--cd, 0) * 360deg), transparent 0); }
+      :is(.touch-fast, .touch-heavy, .touch-boost, .touch-area)::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; pointer-events: none; opacity: calc(var(--charge, 0) * 8);
+        background: conic-gradient(var(--md-cursor) calc(var(--charge, 0) * 360deg), transparent 0);
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px)); }
+      .touch-cd { position: absolute; z-index: 1; left: 0; right: 0; bottom: 3px; font-size: 12px; line-height: 1; color: var(--md-cursor); }
+      .touch-pips { position: absolute; z-index: 1; left: 0; right: 0; top: 10%; display: flex; justify-content: center; gap: 3px; }
+      .touch-pips i { width: 5px; height: 5px; transform: rotate(45deg); background: rgba(5, 6, 13, 0.9); box-shadow: 0 0 0 1px rgba(245, 247, 255, 0.6); }
+      .touch-pips i.on { background: var(--md-cursor); }
+      .touch-button.is-cooling .touch-label { opacity: 0.55; }
+      .touch-button.is-starved .touch-label { color: #ff7a6a; }
+      .touch-button.is-active { border-color: var(--md-cursor); }
       .touch-button.top { padding: 0 6px; border-radius: 9px; background: rgba(15, 26, 69, 0.7); }
       .touch-fast { font-size: 17px; }
       .touch-roll { border-color: rgba(143, 211, 255, 0.85); }

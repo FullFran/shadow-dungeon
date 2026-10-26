@@ -1,5 +1,6 @@
 import { dragAim, IDLE_TOUCH, joystickVector, swipeSteps, type CastMode, type TouchFrame } from '../adapters/touch';
 import type { Vec2 } from '../core/vec';
+import type { SlotButtonState } from '../adapters/touch-slots';
 import { onTouchPrefs, touchPrefs } from '../adapters/touch-mode';
 import { combatLayout, hitButton, type Insets, type TouchLayout } from './touch-layout';
 import { h } from './window';
@@ -50,6 +51,8 @@ export interface TouchControls {
   move(): Vec2;
   setHidden(id: string, hidden: boolean): void;
   setLabel(id: string, label: string): void;
+  /** A slot button's move: its name as the label, the cooldown sweep and seconds, rank pips, ready / running / charge (src/adapters/touch-slots.ts). */
+  setSlot(id: string, name: string, state: SlotButtonState | null): void;
   /** Suspended (a menu is open): everything is released and new touches are ignored. */
   setSuspended(suspended: boolean): void;
   /** The direction of a slot button being dragged to aim (for the aim preview), or null. */
@@ -100,6 +103,7 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   const buttons = new Map<string, HTMLButtonElement>();
   const specs = new Map<string, TouchButtonSpec>();
   const gestures = new Map<number, Gesture>();
+  const slotKeys = new Map<string, string>();
 
   const showStick = (visible: boolean) => stick.classList.toggle('is-visible', visible);
   const placeKnob = (offset: Vec2) => {
@@ -197,7 +201,11 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   };
 
   for (const spec of options.buttons) {
-    const button = h('button', { type: 'button', className: ['touch-button', `touch-${spec.id}`, spec.className ?? ''].filter(Boolean).join(' '), textContent: spec.label });
+    const button = h('button', { type: 'button', className: ['touch-button', `touch-${spec.id}`, spec.className ?? ''].filter(Boolean).join(' ') }, [
+      h('span', { className: 'touch-label', textContent: spec.label }),
+      h('span', { className: 'touch-cd' }),
+      h('span', { className: 'touch-pips' }),
+    ]);
     button.setAttribute('aria-label', spec.label);
     buttons.set(spec.id, button);
     specs.set(spec.id, spec);
@@ -314,9 +322,32 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     },
     setLabel(id, label) {
       const button = buttons.get(id);
-      if (button && button.textContent !== label) {
-        button.textContent = label;
+      const text = button?.querySelector('.touch-label');
+      if (button && text && text.textContent !== label) {
+        text.textContent = label;
         button.setAttribute('aria-label', label);
+      }
+    },
+    setSlot(id, name, state) {
+      const button = buttons.get(id);
+      if (!button) return;
+      // Written only when something shown changes (this runs every frame).
+      const key = state ? `${name}|${state.cooldown.toFixed(2)}|${state.seconds}|${state.rank}|${state.ready}|${state.active}|${state.charge.toFixed(2)}` : '';
+      if (slotKeys.get(id) === key) return;
+      slotKeys.set(id, key);
+      if (!state) return;
+      this.setLabel(id, name);
+      button.style.setProperty('--cd', state.cooldown.toFixed(3));
+      button.style.setProperty('--charge', state.charge.toFixed(3));
+      button.classList.toggle('is-cooling', state.seconds !== null);
+      button.classList.toggle('is-starved', !state.ready && state.seconds === null);
+      button.classList.toggle('is-active', state.active);
+      button.querySelector('.touch-cd')!.textContent = state.seconds === null ? '' : String(state.seconds);
+      const pips = button.querySelector('.touch-pips')!;
+      const want = state.rank > 0 ? `${state.rank}/${state.maxRank}` : '';
+      if (pips.getAttribute('data-rank') !== want) {
+        pips.setAttribute('data-rank', want);
+        pips.replaceChildren(...(state.rank > 0 ? Array.from({ length: state.maxRank }, (_, i) => h('i', { className: i < state.rank ? 'on' : '' })) : []));
       }
     },
     setSuspended(next) {
