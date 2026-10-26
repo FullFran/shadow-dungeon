@@ -36,6 +36,11 @@ User request 2026-10-26: a quick, solid boss rematch plus boss rush modes with a
 - [x] T4 Docs, HUD coin fix, screenshots (route: inline)
   - GDD §3 «El Santuario de los Juramentos» + §9 Récords note, README. HUD coins read 0 in a trial. Best-time and «Sin rasguños» on separate lines. Dev `?trialSkip=1`.
   - Screenshots in `/tmp/boss-shrine/` (shrine reflections and gauntlets, Aegislash rematch, gauntlet pause and next arena, result, town altar).
+- [x] T5 Pick species and moves before a trial (route: delegated writer; user request 2026-10-26 «te tiene que dejar elegir Pokémon y sus ataques») — commit in branch `fix/shrine-loadout`
+  - Shrine pick → the run's loadout screen (species, then moves) with «Comenzar el juramento» and a context line (boss/gauntlet · tier); Back: moves → species → the shrine on the same view, row and tier. Routing is pure in `src/app/shrine-route.ts`; `loadoutScreen` only gained `startLabel` and `context`.
+  - Decision: the shrine uses the same persisted `species`/`loadout` settings as a run (one remembered pick, no second loadout to keep valid). The trial is started with an explicit copy of the pick (`play(..., { pick })`).
+  - Records: `TrialBest.species` (optional, the species of the best time; dropped unless playable), shown with its idle sprite and name next to the best time. Old records read unchanged.
+  - Tests: `tests/app/shrine-route.test.ts` (routing, focus row), records with species, `bestText`. RED observed (missing module, species undefined) before the code.
 
 ## Decisions
 - Name: «Santuario de los Juramentos» / "Sanctum of Oaths"; Reflejos/Reflections, Desafíos/Trials.

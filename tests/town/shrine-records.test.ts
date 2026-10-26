@@ -107,6 +107,30 @@ describe('shrine records reducer', () => {
     expect(readShrine(broken)).toEqual(EMPTY_SHRINE);
     expect(saveTrial(broken, result())).toBe(false);
   });
+
+  it('keeps the species of the best time, and only of the best time', () => {
+    const one = recordTrial(EMPTY_SHRINE, result({ ms: 90_000, species: 'zorua' }));
+    expect(trialBest(one.records, 'boss', 'aegislash', 'normal')?.species).toBe('zorua');
+    // Slower: the best stays Zorua's.
+    const two = recordTrial(one.records, result({ ms: 95_000, species: 'cubone' }));
+    expect(trialBest(two.records, 'boss', 'aegislash', 'normal')?.species).toBe('zorua');
+    // Faster: the best is now Litwick's.
+    const three = recordTrial(two.records, result({ ms: 60_000, species: 'litwick' }));
+    expect(trialBest(three.records, 'boss', 'aegislash', 'normal')).toMatchObject({ bestMs: 60_000, species: 'litwick', clears: 3 });
+    // A faster clear without a species (an older caller) leaves no stale species on the new best.
+    const four = recordTrial(three.records, result({ ms: 50_000 }));
+    expect(trialBest(four.records, 'boss', 'aegislash', 'normal')?.species).toBeUndefined();
+  });
+
+  it('reads records with or without a species (back-compatible), and drops an unknown one', () => {
+    const store = memoryStore();
+    saveTrial(store, result({ species: 'cubone' }));
+    expect(trialBest(readShrine(store), 'boss', 'aegislash', 'normal')?.species).toBe('cubone');
+    const old = JSON.stringify({ bosses: { aegislash: { normal: { clears: 1, bestMs: 5, captures: 0 } } }, gauntlets: {} });
+    expect(trialBest(parseShrine(old), 'boss', 'aegislash', 'normal')).toEqual({ clears: 1, bestMs: 5, captures: 0 });
+    const hostile = JSON.stringify({ bosses: { aegislash: { normal: { clears: 1, bestMs: 5, captures: 0, species: 'arceus' } } }, gauntlets: {} });
+    expect(trialBest(parseShrine(hostile), 'boss', 'aegislash', 'normal')).toEqual({ clears: 1, bestMs: 5, captures: 0 });
+  });
 });
 
 describe('gauntlet rewards', () => {

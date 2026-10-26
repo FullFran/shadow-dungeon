@@ -1033,6 +1033,7 @@
   "shrine.captures": "Cards captured",
   "shrine.newBest": "New best!",
   "shrine.back": "Back to the sanctum",
+  "shrine.start": "Begin the oath",
   "shrine.next": "Next oath: {name}",
   "shrine.board": "Sanctum: {open}/{total} reflections, {won}/{gauntlets} trials beaten.",
   "shrine.room": "The sanctum takes no parties: come back alone.",

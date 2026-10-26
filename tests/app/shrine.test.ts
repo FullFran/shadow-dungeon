@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { heraldEntries, requestName, trialTime } from '../../src/app/shrine';
+import { bestText, heraldEntries, requestName, trialTime } from '../../src/app/shrine';
 import { gauntletStops } from '../../src/core/shrine';
 import { REFUGIO } from '../../src/data/world';
 import { setLanguage } from '../../src/i18n';
@@ -24,6 +24,13 @@ describe('shrine window helpers', () => {
     setLanguage('es');
     expect(requestName({ kind: 'gauntlet', id: 'oaths', stops: gauntletStops('oaths'), difficulty: 'easy' })).toBe('Todos los juramentos');
     expect(requestName({ kind: 'herald', id: '5', stops: [], difficulty: 'easy' }, 'Vigía Umbrío')).toBe('Vigía Umbrío');
+  });
+
+  it('names the species of a best time next to it (older records show none)', () => {
+    setLanguage('es');
+    expect(bestText({ clears: 1, bestMs: 83_456, captures: 2, species: 'zorua' })).toBe('1:23.4 · ✦2 · Zorua');
+    expect(bestText({ clears: 1, bestMs: 83_456, captures: 2 })).toBe('1:23.4 · ✦2');
+    expect(bestText(null)).toBe('-');
   });
 
   it('puts the altar in the Refugio', () => {

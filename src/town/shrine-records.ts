@@ -3,7 +3,7 @@ import { SHRINE_BOSSES } from '../core/shrine';
 import { COINS } from '../data/coins';
 import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
 import { gauntletById, GAUNTLETS, type GauntletId } from '../data/shrine';
-import type { SpeciesId } from '../data/species';
+import { isPlayable, type SpeciesId } from '../data/species';
 import { clearedDungeons, tierRecord, type Records } from './records';
 
 /**
@@ -24,6 +24,8 @@ export interface TrialBest {
   captures: number;
   /** Present once a clear took no hit. */
   noHit?: true;
+  /** The species of the best time (absent in records from before it was kept). */
+  species?: SpeciesId;
 }
 
 type ByTier = Partial<Record<Difficulty, TrialBest>>;
@@ -43,6 +45,8 @@ export interface TrialResult {
   ms: number;
   noHit: boolean;
   captures: number;
+  /** The species played (kept with a new best time). */
+  species?: SpeciesId;
 }
 
 export const EMPTY_SHRINE: ShrineRecords = { bosses: {}, gauntlets: {} };
@@ -81,11 +85,14 @@ export function recordTrial(records: ShrineRecords, result: TrialResult): { reco
   if (!result.victory || (result.kind === 'gauntlet' && !isGauntlet(result.id)) || !ID.test(result.id)) return { records, firstClear: false };
   const before = trialBest(records, result.kind, result.id, result.difficulty);
   const ms = Math.max(0, Math.round(result.ms));
+  const faster = before === null || ms < before.bestMs;
+  const species = faster ? result.species : before.species;
   const now: TrialBest = {
     clears: (before?.clears ?? 0) + 1,
     bestMs: before ? Math.min(before.bestMs, ms) : ms,
     captures: Math.max(before?.captures ?? 0, Math.max(0, Math.floor(result.captures))),
     ...(before?.noHit || result.noHit ? { noHit: true as const } : {}),
+    ...(species && isPlayable(species) ? { species } : {}),
   };
   const next =
     result.kind === 'boss'
@@ -108,7 +115,7 @@ function parseTiers(raw: unknown): ByTier | null {
     const clears = count(f.clears, 1);
     const bestMs = count(f.bestMs, 0);
     const captures = count(f.captures, 0);
-    if (clears !== null && bestMs !== null && captures !== null) out[d] = { clears, bestMs, captures, ...(f.noHit === true ? { noHit: true as const } : {}) };
+    if (clears !== null && bestMs !== null && captures !== null) out[d] = { clears, bestMs, captures, ...(f.noHit === true ? { noHit: true as const } : {}), ...(isPlayable(f.species) ? { species: f.species } : {}) };
   }
   return Object.keys(out).length > 0 ? out : null;
 }

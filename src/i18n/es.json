@@ -1033,6 +1033,7 @@
   "shrine.captures": "Cartas capturadas",
   "shrine.newBest": "¡Nueva mejor marca!",
   "shrine.back": "Volver al santuario",
+  "shrine.start": "Comenzar el juramento",
   "shrine.next": "Siguiente juramento: {name}",
   "shrine.board": "Santuario: {open}/{total} reflejos, {won}/{gauntlets} desafíos superados.",
   "shrine.room": "El santuario no admite grupos: vuelve en solitario.",
