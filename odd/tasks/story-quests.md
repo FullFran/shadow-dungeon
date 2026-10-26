@@ -42,6 +42,12 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
   - `npm run build`: built.
   - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports/proof/latest.md unchanged.
   - tests/sim/story-prove-{cubone,litwick,zorua}.test.ts + wound-prove: 283 tests (every card of 15 shadows and 4 wounds on Easy..Nightmare from three starts; solver clears every Nightmare fight on seeds 1-3).
+- Gacha lines (T10, 2026-10-26), on `feat/sendas-gacha` after merging main 49e9637:
+  - `npm run typecheck`: clean (both configs).
+  - `npx vitest run --testTimeout=30000 --maxWorkers=4`: 259 files, 3884 tests passed, no unhandled errors (the wound proof is sharded: tests/sim/wound-prove.ts with wound-prove.test.ts for the pilot and starters, wound-prove-gacha{,-2}.test.ts for the gacha lines; the long single test had starved a worker's RPC).
+  - `npm run build`: built.
+  - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports/proof untouched.
+  - Gacha proofs: story-prove-{abra,piplup,shinx,axew} (every card of 21 shadows on Easy..Nightmare from three starts, solver on Nightmare seeds 1-3), wound-prove-gacha shards (4 wounds, each tier at its own road's level), story-prove-reused (Nihilego and Trevenant replaying their stored witnesses at the gacha roads' levels).
 
 ## Parity checklist
 - [x] Every challenge line: reach rule applied to all eight (test iterates CHALLENGES on every tier). Mimikyu's Senda complete.
@@ -60,4 +66,4 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
 - Shrine/Sima/main dungeons: not concerned (the wound is not in the shrine's reflections yet: pending decision).
 
 ## Next step
-Owner review of the three starters' texts and the shadows' feel; decide Mimikyu's per-chapter roads; merge with the parallel branch (both touch STORY_QUESTS, RoomId, SpeciesId, the i18n tail and docs/story-quests.md).
+Owner review of the seven Sendas' texts (the gacha four in the scratchpad screenshots senda-<line>-*.png) and the shadows' feel; decide Mimikyu's per-chapter roads; shadows in the shrine and the Sima are pending.
