@@ -40,8 +40,11 @@ describe('the wounds are beatable', () => {
         }, 300_000);
       });
     }
-    it(`${w.species} nightmare: the solver bot clears the whole fight without a hit (seeds ${FIGHT_SEEDS.join(', ')})`, () => {
-      for (const seed of FIGHT_SEEDS) expect(solveFight(w, 'nightmare', seed).cleared, `seed ${seed}`).toBe(true);
-    }, 600_000);
+    // One test per seed: a single long synchronous test starves the worker's RPC ("Timeout calling onTaskUpdate").
+    for (const seed of FIGHT_SEEDS) {
+      it(`${w.species} nightmare: the solver bot clears the whole fight without a hit (seed ${seed})`, () => {
+        expect(solveFight(w, 'nightmare', seed).cleared).toBe(true);
+      }, 600_000);
+    }
   }
 });
