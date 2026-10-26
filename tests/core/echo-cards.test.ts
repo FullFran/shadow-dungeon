@@ -25,8 +25,8 @@ const ECHO_GUARDIANS = [
   { species: 'aegislash', floor: 5 },
   { species: 'trevenant', floor: 15 },
   { species: 'decidueye', floor: 25 },
-  { species: 'dhelmise', floor: 35 },
-  { species: 'nihilego', floor: 45 },
+  { species: 'dhelmise', floor: 45 },
+  { species: 'nihilego', floor: 65 },
 ] as const;
 
 describe('echo cards: the stages', () => {

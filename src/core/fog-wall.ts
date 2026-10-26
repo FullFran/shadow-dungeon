@@ -46,7 +46,9 @@ export function crossFogWall(world: WorldState): WorldState {
   const wall = world.fogWall;
   if (!wall) return world;
   const { fogWall: _wall, ...rest } = world;
-  return { ...rest, arena: { ...world.arena, height: wall.line }, enemies: wall.enemies, player: { ...world.player, pos: wall.start } };
+  // A Sima stray floor's way past (stairs in the antechamber) is left behind with it.
+  const { stairs: _stairs, ...arena } = world.arena;
+  return { ...rest, arena: { ...arena, height: wall.line }, enemies: wall.enemies, player: { ...world.player, pos: wall.start } };
 }
 
 /** Whether `pos` touches the fog (from the antechamber). */

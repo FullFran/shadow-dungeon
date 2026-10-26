@@ -19,14 +19,14 @@ import {
   tickClock,
   utcDateKey,
 } from '../../src/core/endless';
-import { floorKind, floorSeed, isBossFloor, progressRun, setClock, startRun, tickRunClock, type RunProgress } from '../../src/core/run';
+import { floorKind, floorPlanOf, floorSeed, isBossFloor, progressRun, setClock, startRun, tickRunClock, type RunProgress } from '../../src/core/run';
 import type { WorldState } from '../../src/core/state';
 import { hitPlayer } from '../../src/core/step';
 import { vec } from '../../src/core/vec';
 import { createPlayer } from '../../src/core/world';
 import { CRYPT, dungeonById, ECLIPSE, FOREST, musicFor, planAt } from '../../src/data/dungeons';
 import { EXPERIMENTAL_ENEMIES } from '../../src/data/enemies';
-import { ENDLESS, ENDLESS_POOL, echoAt, isEchoFloor } from '../../src/data/endless';
+import { ENDLESS, ENDLESS_POOL, echoAt, isEchoFloor, isWoundFloor } from '../../src/data/endless';
 import { SPECIES } from '../../src/data/species';
 
 const SEED = 4242;
@@ -38,7 +38,7 @@ const toEchoExit = (w: WorldState): WorldState => ({ ...w, player: { ...w.player
 
 /** Takes the way down of the current floor (stairs, or the echo's exit once it fell). */
 function down(p: RunProgress): RunProgress {
-  const plan = planAt(ECLIPSE, p.run.floor)!;
+  const plan = floorPlanOf(p.run);
   if (plan.kind === 'generated') return progressRun(p.run, toStairs(p.world));
   const cleared = progressRun(p.run, killAll(p.world));
   return progressRun(cleared.run, toEchoExit(cleared.world));
@@ -54,9 +54,11 @@ describe('the Sima del Eclipse (data)', () => {
 
   it('puts an echo on every 5th floor: the Eclipse Echo on every 10th, the guardians (Aegislash, Trevenant, Decidueye, Dhelmise, Nihilego) in turn between', () => {
     expect([1, 2, 3, 4, 5, 6, 9, 10, 15, 20].map((f) => isEchoFloor(ENDLESS, f))).toEqual([false, false, false, false, true, false, false, true, true, true]);
-    expect([5, 10, 15, 20, 25, 35, 45, 55].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'wreck', 'rift', 'boss']);
+    // The Sendas' wounds take 35, 55, 75... (core/sima-story.ts): the guardians' turn skips them.
+    expect([5, 10, 15, 20, 25, 45, 65, 85].map((f) => echoAt(ENDLESS, f).room)).toEqual(['boss', 'eclipse', 'hollow', 'eclipse', 'roost', 'wreck', 'rift', 'boss']);
+    expect([35, 45, 55, 65, 75].map((f) => isWoundFloor(ENDLESS, f))).toEqual([true, false, true, false, true]);
     expect(planAt(ECLIPSE, 7)).toEqual({ kind: 'generated' });
-    expect(planAt(ECLIPSE, 65)).toEqual({ kind: 'room', room: 'hollow', role: 'echo' });
+    expect(planAt(ECLIPSE, 65)).toEqual({ kind: 'room', room: 'rift', role: 'echo' });
     expect(planAt(ECLIPSE, 50)).toEqual({ kind: 'room', room: 'eclipse', role: 'echo' });
   });
 
@@ -222,7 +224,8 @@ describe('endless run', () => {
       expect(p.run.floor).toBe(floor);
       // The map is the generator's; the Sima may swap a room's enemies for a squad, so only the grid is compared.
       // A key gate keeps the stairs room's doorways shut (core/gates.ts).
-      if (planAt(ECLIPSE, floor)!.kind === 'generated') {
+      // A lost shadow's floor (core/sima-story.ts) is its arena instead.
+      if (floorPlanOf(p.run).kind === 'generated') {
         const drawn = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor));
         const doors = p.world.gate?.doors;
         expect(p.world.arena.tiles!.tiles).toEqual(doors ? withDoors(drawn, doors, true).tiles : drawn.tiles);

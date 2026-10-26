@@ -1,4 +1,4 @@
-import { echoAt, isHeraldFloor, type EndlessDef } from '../data/endless';
+import { echoAt, isHeraldFloor, isWoundFloor, type EndlessDef } from '../data/endless';
 import { echoShare, echoStageAt, fightOf, type EchoStage } from './cards';
 import { ECHO_CARDS } from '../data/cards';
 import { behaviourFor } from './tricks';
@@ -26,7 +26,9 @@ import { wispCache } from './wisp';
 import { partyDefeated, partyField, partySizeOf, presentPartySize } from './party';
 import { deriveSeed, nextRandom } from './rng';
 import { loadRoom, roomCleared } from './rooms';
-import { atFogWall, closeFogWall, crossFogWall } from './fog-wall';
+import { atFogWall, closeFogWall, crossFogWall, FOG_ANTE } from './fog-wall';
+import { runPlanAt } from './sima-story';
+import { SIMA_STORY, simaStoryBossOf } from '../data/sima-story';
 import type { WorldState } from './state';
 import { vec, type Vec2 } from './vec';
 import { createWorld, type WorldOptions } from './world';
@@ -84,7 +86,14 @@ export const floorSeed = (runSeed: number, floor: number): number => deriveSeed(
 
 export const dungeonOf = (run: Pick<RunState, 'dungeon'>): DungeonDef => dungeonById(run.dungeon);
 
-export const floorPlanOf = (run: Pick<RunState, 'floor' | 'dungeon'>): FloorPlan => planAt(dungeonOf(run), run.floor)!;
+/** The plan of the run's floor; with the run seed, the Sima's Senda bosses too (core/sima-story.ts: a wound on its echo floors, a lost shadow on a stray floor). */
+export const floorPlanOf = (run: Pick<RunState, 'floor' | 'dungeon'> & Partial<Pick<RunState, 'seed'>>): FloorPlan => runPlanAt(dungeonOf(run), run.floor, run.seed)!;
+
+/** The Sima's lost shadow («Sombra extraviada») of this floor, if it is a stray floor (docs/sima-redesign.md §4). */
+export function strayHere(run: Pick<RunState, 'floor' | 'dungeon'> & Partial<Pick<RunState, 'seed'>>): boolean {
+  const plan = floorPlanOf(run);
+  return plan.kind === 'room' && dungeonOf(run).endless !== undefined && simaStoryBossOf(plan.room)?.wound === false;
+}
 
 /** Number of floors of the run's dungeon (the last is its guardian); infinite for the endless dungeon. */
 export const floorCount = (run: Pick<RunState, 'dungeon'>): number => floorsOf(dungeonOf(run));
@@ -107,7 +116,7 @@ const URGENT_SALT = 0x51ab;
  * far); fixed rooms are normal.
  */
 export function floorKind(runSeed: number, floor: number, dungeon: DungeonDef = CRYPT): FloorKind {
-  if (planAt(dungeon, floor)?.kind !== 'generated') return 'normal';
+  if (runPlanAt(dungeon, floor, runSeed)?.kind !== 'generated') return 'normal';
   const roll = nextRandom(deriveSeed(runSeed, floor + URGENT_SALT)).value;
   let threshold = 0;
   for (const urgent of dungeon.urgent) {
@@ -128,19 +137,37 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
  * and guardian room of the main and challenge dungeons; never the Sima (its
  * echoes and heralds) nor the shrine (its trials load their arenas apart).
  */
-export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'>): boolean {
+export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'> & Partial<Pick<RunState, 'seed'>>): boolean {
   const plan = floorPlanOf(run);
-  return plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless;
+  return (plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless) || strayHere(run);
 }
 
-/** The floor as the party meets it: a boss room behind its fog when it has one (the game; the harnesses skip the wall). */
-export const withFogWall = (run: RunState, world: WorldState): WorldState => (fogWallFloor(run) && !world.fogWall ? closeFogWall(world) : world);
+/** The way down past a lost shadow's fog: stairs in the antechamber's left corner (the shadow is optional). */
+const STRAY_STAIRS = { x: 40, width: 40, height: 40 } as const;
+
+/** The stairs of a stray floor still behind its fog (in the antechamber), or none. */
+export function strayStairs(world: WorldState): WorldState['arena']['stairs'] {
+  if (!world.fogWall) return undefined;
+  return { x: STRAY_STAIRS.x, y: world.fogWall.line + Math.round((FOG_ANTE - STRAY_STAIRS.height) / 2), width: STRAY_STAIRS.width, height: STRAY_STAIRS.height };
+}
+
+/**
+ * The floor as the party meets it: a boss room behind its fog when it has
+ * one (the game; the harnesses skip the wall). A Sima stray floor also puts
+ * a way down in the antechamber: walking past the shadow is allowed.
+ */
+export function withFogWall(run: RunState, world: WorldState): WorldState {
+  if (!fogWallFloor(run) || world.fogWall) return world;
+  const closed = closeFogWall(world);
+  return strayHere(run) ? { ...closed, arena: { ...closed.arena, stairs: strayStairs(closed) } } : closed;
+}
 
 /** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
 function guardianEncounter(endless: EndlessDef, floor: number): number {
   const room = echoAt(endless, floor).room;
   let n = 0;
-  for (let f = endless.echoEvery; f <= floor; f += endless.echoEvery) if (echoAt(endless, f).room === room) n++;
+  // A wound's floor is not a meeting with the guardian it replaced.
+  for (let f = endless.echoEvery; f <= floor; f += endless.echoEvery) if (echoAt(endless, f).room === room && !isWoundFloor(endless, f)) n++;
   return Math.max(1, n);
 }
 
@@ -171,10 +198,13 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const plan = floorPlanOf(run);
   const endless = dungeonOf(run).endless;
   // The endless dungeon scales its enemies with depth (core/endless.ts); elsewhere they are as the data says.
-  const echo = plan.kind === 'room' && plan.role === 'echo';
+  // A Senda boss in the Sima (a wound, a lost shadow) plays its whole tier's fight at a fixed share of its HP; only its damage grows with depth.
+  const story = endless && plan.kind === 'room' ? simaStoryBossOf(plan.room) : undefined;
+  const echo = plan.kind === 'room' && plan.role === 'echo' && !story;
   // A card guardian's echo plays its tier's cards by depth (core/cards.ts `echoStageAt`): the stage rides on the floor's enemy scale.
   const stage = endless && echo ? echoStageAt(run.floor, guardianEncounter(endless, run.floor)) : undefined;
-  const scaled = endless ? depthScale(endless.scaling, run.floor, echo) : undefined;
+  const depth = endless ? depthScale(endless.scaling, run.floor, echo) : undefined;
+  const scaled = depth && story ? { hp: SIMA_STORY.hp, damage: depth.damage } : depth;
   const enemyScale = scaled && stage ? { ...scaled, echoStage: stage } : scaled;
   // A Sima event and a gate belong to their floor (the pact outlasts it).
   // The one-hit cap's yardstick (core/fairness.ts): the level expected on this floor, the same on every peer.
@@ -293,7 +323,8 @@ function payEcho(run: RunState, world: WorldState): { run: RunState; bonusMs: nu
   const endless = dungeonOf(run).endless;
   const plan = floorPlanOf(run);
   if (!endless || run.echoPaid || run.clockMs === undefined || plan.kind !== 'room' || plan.role !== 'echo' || !roomCleared(world)) return { run, bonusMs: 0 };
-  const clockMs = addTime(run.clockMs, endless.clock.echoMs);
+  // A lost shadow pays less than an echo (it was optional), and an item pick (the game offers it).
+  const clockMs = addTime(run.clockMs, strayHere(run) ? SIMA_STORY.strays.bonusMs : endless.clock.echoMs);
   return { run: { ...run, clockMs, echoPaid: true }, bonusMs: clockMs - run.clockMs };
 }
 
@@ -314,7 +345,7 @@ function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: n
  */
 export function atLeavingPoint(run: RunState, world: WorldState, pos: Vec2): boolean {
   // A boss room still behind its fog: touching the fog is the way on.
-  if (world.fogWall) return atFogWall(world, pos);
+  if (world.fogWall) return atFogWall(world, pos) || onStairs(world, pos);
   if (run.floor >= floorCount(run)) return false;
   const plan = floorPlanOf(run);
   if (plan.kind === 'generated') return onStairs(world, pos) && !gateShut(world);
@@ -343,7 +374,9 @@ export function progressRun(current: RunState, world: WorldState, agreed?: boole
   const bonus = paid.bonusMs > 0 ? { bonusMs: paid.bonusMs } : {};
   if (world.role === 'guest') return { run, world, entered: false, outcome: null, ...bonus };
   const leaving = agreed ?? atLeavingPoint(run, world, world.player.pos);
-  if (world.fogWall) return { run, world: leaving ? crossFogWall(world) : world, entered: false, outcome: null, ...bonus, ...(leaving ? { crossed: true } : {}) };
+  // A stray floor's antechamber has its own way down: the host on those stairs takes the party past the shadow.
+  const past = leaving && world.fogWall !== undefined && onStairs(world, world.player.pos);
+  if (world.fogWall && !past) return { run, world: leaving ? crossFogWall(world) : world, entered: false, outcome: null, ...bonus, ...(leaving ? { crossed: true } : {}) };
   if (last || !leaving) return { run, world, entered: false, outcome: null, ...bonus };
   const down = goDown(run, world, run.floor + 1);
   const total = paid.bonusMs + down.bonusMs;
