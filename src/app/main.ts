@@ -28,6 +28,7 @@ import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
+import { accountWindow, setupAccount } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
 import { loadoutScreen } from './loadout';
@@ -86,7 +87,15 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
 applyTokens(document.documentElement);
-const store = browserStore();
+// Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
+const { account, store } = setupAccount({
+  store: browserStore(),
+  notify: (text) => {
+    const app = document.getElementById('app');
+    if (app) toast(app, text);
+  },
+  onChange: () => {},
+});
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 const audio = createAudio(settings);
 // Touch UI (html.touch): Auto turns it on at the first touch; the chrome adds "Atrás" and the rotate hint.
@@ -330,6 +339,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
       { label: t('title.shop'), onConfirm: () => shopScreen(root) },
       { label: t('title.shrine'), onConfirm: () => shrineScreen(root) },
       { label: t('title.achievements'), onConfirm: () => achievementsScreen(root) },
+      { label: t('title.account'), onConfirm: () => accountScreen(root, () => titleScreen(root, 9)) },
       // Only when installable, and after every fixed entry so indices stay stable.
       ...(pwa.offer() !== 'none' ? [{ label: t('pwa.install'), onConfirm: () => pwa.install(root) }] : []),
     ],
@@ -550,7 +560,8 @@ function settingsScreen(root: HTMLElement): void {
   const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
   const retake = () => quiz(root, () => titleScreen(root, 0), () => settingsScreen(root));
   const nickname = nicknameRow();
-  const refresh = () => list.setItems([...settingItems(access, refresh), nickname, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
+  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root)) };
+  const refresh = () => list.setItems([...settingItems(access, refresh), nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
   refresh();
   show(root, [
     h('h1', { className: 'screen-title', textContent: t('title.settings') }),
@@ -559,6 +570,11 @@ function settingsScreen(root: HTMLElement): void {
       mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
     ]),
   ]);
+}
+
+/** The account screen (log in, sign up, log out, delete; the first-login save choice), from the title or Settings. */
+function accountScreen(root: HTMLElement, back: () => void): void {
+  show(root, [accountWindow({ account, refresh: () => accountScreen(root, back), onBack: back })]);
 }
 
 /**
@@ -1333,6 +1349,7 @@ function devScreen(root: HTMLElement): boolean {
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
     shrine: () => shrineScreen(root, 'title', (new URLSearchParams(window.location.search).get('view') ?? undefined) as ShrineView | undefined),
     online: () => onlineScreen(root),
+    account: () => accountScreen(root, () => titleScreen(root)),
     // `&guest=1`: join the preview room instead of creating it (two windows walk the town together).
     lobby: () => void openLobby(root, 'K7M2Q', new URLSearchParams(window.location.search).get('guest') !== '1', () => new BroadcastChannelTransport()),
     victory: () => resultScreen(root, 'victory', summary, false, loadSave(store).coins),
