@@ -119,5 +119,26 @@ export function progressTrial(trial: TrialState, run: RunState, world: WorldStat
   return nextArena(trial, run, world);
 }
 
+/** A trial's net epoch (what a run sends as its floor): the arena, 1-based, so it only grows even when the next arena is on a lower floor. */
+export const trialEpoch = (trial: TrialState): number => trial.index + 1;
+
+/**
+ * A trial in an online room (docs/gdd.md §12): the host progresses it as
+ * solo; a guest never loads the next arena on its own (its pause just runs
+ * out) and follows the host's arena (`hostEpoch`, from its floor messages)
+ * instead, catching up several at once if it fell behind. Each player
+ * carries its own HP share; defeat and victory are read from the synced
+ * world like a run's.
+ */
+export function progressSharedTrial(trial: TrialState, run: RunState, world: WorldState, dtMs: number, role: 'host' | 'guest', hostEpoch: number | null): TrialProgress {
+  if (role === 'guest' && hostEpoch !== null && hostEpoch > trialEpoch(trial) && trial.index < trial.stops.length - 1) {
+    let p = nextArena(trial, run, world);
+    while (trialEpoch(p.trial) < hostEpoch && p.trial.index < p.trial.stops.length - 1) p = nextArena(p.trial, p.run, p.world);
+    return p;
+  }
+  const p = progressTrial(trial, run, world, dtMs);
+  return role === 'guest' && p.entered ? { trial, run, world, entered: false, outcome: null } : p;
+}
+
 /** «Sin rasguños»: any hit taken (a hurt, or Mimikyu's disguise broken) spoils it. */
 export const trialHurt = (events: readonly GameEvent[]): boolean => events.some((e) => e.type === 'playerHurt' || e.type === 'disguiseBroken');

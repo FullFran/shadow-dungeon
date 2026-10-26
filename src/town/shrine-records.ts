@@ -30,10 +30,15 @@ export interface TrialBest {
 
 type ByTier = Partial<Record<Difficulty, TrialBest>>;
 
-export interface ShrineRecords {
+interface ShrineTables {
   /** By boss species (`sima-herald` is never kept: heralds are by seed and not recorded). */
   bosses: Readonly<Record<string, ByTier>>;
   gauntlets: Readonly<Partial<Record<GauntletId, ByTier>>>;
+}
+
+export interface ShrineRecords extends ShrineTables {
+  /** The same tables for trials played in an online room («En grupo»), kept apart from solo; absent until the first. */
+  group?: ShrineTables;
 }
 
 export interface TrialResult {
@@ -47,6 +52,8 @@ export interface TrialResult {
   captures: number;
   /** The species played (kept with a new best time). */
   species?: SpeciesId;
+  /** Played in an online room: kept in `group`, apart from solo. */
+  group?: boolean;
 }
 
 export const EMPTY_SHRINE: ShrineRecords = { bosses: {}, gauntlets: {} };
@@ -73,8 +80,9 @@ export const gauntletUnlocked = (id: GauntletId, beaten: ReadonlySet<string>): b
 /** Pokémonedas of a gauntlet's first clear on tier `d` (its reward times the tier's multiplier); reflections pay none. */
 export const gauntletReward = (id: GauntletId, d: Difficulty): number => Math.floor(gauntletById(id).reward * COINS.difficulty[d]);
 
-export function trialBest(records: ShrineRecords, kind: TrialResult['kind'], id: string, d: Difficulty): TrialBest | null {
-  const table = kind === 'boss' ? records.bosses[id] : records.gauntlets[id as GauntletId];
+export function trialBest(records: ShrineRecords, kind: TrialResult['kind'], id: string, d: Difficulty, group = false): TrialBest | null {
+  const tables: ShrineTables = group ? (records.group ?? EMPTY_SHRINE) : records;
+  const table = kind === 'boss' ? tables.bosses[id] : tables.gauntlets[id as GauntletId];
   return table?.[d] ?? null;
 }
 
@@ -83,7 +91,8 @@ const isGauntlet = (id: string): id is GauntletId => GAUNTLETS.some((g) => g.id 
 /** Pure: the records after one more trial, and whether it was the first clear of that trial on that tier. */
 export function recordTrial(records: ShrineRecords, result: TrialResult): { records: ShrineRecords; firstClear: boolean } {
   if (!result.victory || (result.kind === 'gauntlet' && !isGauntlet(result.id)) || !ID.test(result.id)) return { records, firstClear: false };
-  const before = trialBest(records, result.kind, result.id, result.difficulty);
+  const group = result.group === true;
+  const before = trialBest(records, result.kind, result.id, result.difficulty, group);
   const ms = Math.max(0, Math.round(result.ms));
   const faster = before === null || ms < before.bestMs;
   const species = faster ? result.species : before.species;
@@ -94,10 +103,12 @@ export function recordTrial(records: ShrineRecords, result: TrialResult): { reco
     ...(before?.noHit || result.noHit ? { noHit: true as const } : {}),
     ...(species && isPlayable(species) ? { species } : {}),
   };
-  const next =
+  const tables: ShrineTables = group ? (records.group ?? { bosses: {}, gauntlets: {} }) : records;
+  const written: ShrineTables =
     result.kind === 'boss'
-      ? { ...records, bosses: { ...records.bosses, [result.id]: { ...records.bosses[result.id], [result.difficulty]: now } } }
-      : { ...records, gauntlets: { ...records.gauntlets, [result.id]: { ...records.gauntlets[result.id as GauntletId], [result.difficulty]: now } } };
+      ? { bosses: { ...tables.bosses, [result.id]: { ...tables.bosses[result.id], [result.difficulty]: now } }, gauntlets: tables.gauntlets }
+      : { bosses: tables.bosses, gauntlets: { ...tables.gauntlets, [result.id]: { ...tables.gauntlets[result.id as GauntletId], [result.difficulty]: now } } };
+  const next: ShrineRecords = group ? { ...records, group: written } : { ...records, ...written };
   return { records: next, firstClear: before === null };
 }
 
@@ -139,7 +150,12 @@ export function parseShrine(raw: string | null): ShrineRecords {
   }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return EMPTY_SHRINE;
   const record = data as Record<string, unknown>;
-  return { bosses: parseTable(record.bosses, () => true), gauntlets: parseTable(record.gauntlets, isGauntlet) };
+  const group = typeof record.group === 'object' && record.group !== null && !Array.isArray(record.group) ? (record.group as Record<string, unknown>) : null;
+  return {
+    bosses: parseTable(record.bosses, () => true),
+    gauntlets: parseTable(record.gauntlets, isGauntlet),
+    ...(group ? { group: { bosses: parseTable(group.bosses, () => true), gauntlets: parseTable(group.gauntlets, isGauntlet) } } : {}),
+  };
 }
 
 export function readShrine(store: KeyValueStore): ShrineRecords {

@@ -1,9 +1,14 @@
 import type { Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
+import { bossStop, gauntletStops, heraldStop } from '../core/shrine';
+import { GAUNTLETS, type GauntletId } from '../data/shrine';
 import type { SpeciesId } from '../data/species';
+import type { RoomTrial } from '../net/protocol';
 import type { ShrineView, TrialRequest } from './shrine';
 
 export { shrineFocus } from './shrine';
+
+const isGauntletId = (id: string): id is GauntletId => GAUNTLETS.some((g) => g.id === id);
 
 /**
  * The shrine's screens before a trial (docs/gdd.md §3): the shrine window
@@ -17,6 +22,20 @@ export type ShrineStep =
   | { screen: 'shrine'; view: ShrineView; focus: string; difficulty: Difficulty }
   | { screen: 'loadout'; stage: 'species' | 'moves'; request: TrialRequest }
   | { screen: 'trial'; request: TrialRequest; species: SpeciesId; loadout: (MoveId | null)[] };
+
+/** The wire form of a request, for an online room's `lobby` and `start` (net/protocol.ts). */
+export const roomTrialOf = (request: TrialRequest): RoomTrial => ({ kind: request.kind, id: request.id, difficulty: request.difficulty });
+
+/** A room's trial as a request with its arenas; null when this build does not know its boss or gauntlet. */
+export function trialRequestOf(trial: RoomTrial): TrialRequest | null {
+  if (trial.kind === 'boss') {
+    const stop = bossStop(trial.id);
+    return stop ? { kind: 'boss', id: trial.id, stops: [stop], difficulty: trial.difficulty } : null;
+  }
+  if (trial.kind === 'gauntlet') return isGauntletId(trial.id) ? { kind: 'gauntlet', id: trial.id, stops: gauntletStops(trial.id), difficulty: trial.difficulty } : null;
+  const seed = /^\d{1,10}$/.test(trial.id) ? Number(trial.id) : Number.NaN;
+  return Number.isSafeInteger(seed) ? { kind: 'herald', id: trial.id, stops: [heraldStop(seed)], difficulty: trial.difficulty } : null;
+}
 
 /** The shrine view a request was picked from. */
 export const viewOf = (request: TrialRequest): ShrineView => (request.kind === 'gauntlet' ? 'gauntlets' : request.kind === 'herald' ? 'heralds' : 'reflections');

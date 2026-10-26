@@ -7,7 +7,7 @@ import { readBestiary, recordHerald } from '../town/bestiary';
 import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest } from '../town/shrine-records';
 import type { GauntletId } from '../data/shrine';
 import { requestName, shrineResultScreen, shrineWindow, type ShrineView, type TrialRequest } from './shrine';
-import { loadoutBack, loadoutSpecies, loadoutStart, shrineFight, viewOf, type ShrineStep } from './shrine-route';
+import { loadoutBack, loadoutSpecies, loadoutStart, roomTrialOf, shrineFight, trialRequestOf, viewOf, type ShrineStep } from './shrine-route';
 import { simaEventLines } from './sima-summary';
 import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
@@ -516,32 +516,49 @@ function townShop(parent: HTMLElement, onClose: () => void): () => void {
   };
 }
 
-/** Where the shrine sends the player back: the title menu (its entry) or the Refugio, beside the altar. */
-type ShrineFrom = 'title' | 'town';
+/** Where the shrine sends the player back: the title menu (its entry), the Refugio beside the altar, or an online room's town. */
+type ShrineFrom = 'title' | 'town' | 'room';
 
 /** The Refugio tile in front of the altar (data/world.ts `REFUGIO.shrine`). */
 const SHRINE_TILE = { at: 'refugio', tile: { x: 22, y: 15 } } as const;
 
-/** Santuario de los Juramentos (app/shrine.ts): the window, then the loadout, then a trial (solo only). */
+/** The online room, when this screen belongs to it (the session is still the current one). */
+const liveRoom = (from: ShrineFrom) => (from === 'room' && room && current === room.session ? room : null);
+
+/**
+ * Santuario de los Juramentos (app/shrine.ts): the window, then the loadout,
+ * then a trial. Alone, or the host of an online room for the whole room
+ * (guests get `roomShrineGuest`).
+ */
 function shrineScreen(root: HTMLElement, from: ShrineFrom = 'title', view?: ShrineView, focus?: string): void {
-  leaveNet();
+  const r = liveRoom(from);
+  if (from === 'room' && !r) return titleScreen(root);
+  if (r && !r.asHost) return roomShrineGuest(root);
+  if (!r) leaveNet();
   applyLanguage(settings.language);
-  const back = () => (from === 'town' ? townScreen(root, SHRINE_TILE) : titleScreen(root, 7));
+  const back = () => (r ? townLobby(root) : from === 'town' ? townScreen(root, SHRINE_TILE) : titleScreen(root, 7));
   const shrine = shrineWindow({
     shrine: readShrine(store),
     beaten: beatenBosses(readRecords(store)),
     heralds: readBestiary(store),
-    difficulty: settings.difficulty,
+    // A room's tier is the host's for the room (the town's tier row too).
+    difficulty: r ? r.session.difficulty() : settings.difficulty,
     sheets: sheetsReady(),
-    onTier: (difficulty) => update({ difficulty }),
+    onTier: (difficulty) => {
+      r?.session.setDifficulty(difficulty);
+      update({ difficulty });
+    },
     onFight: (request) => {
       shrine.dispose();
+      // The guests see the pick at once (read-only) and choose their own Pokémon.
+      r?.session.setTrial(roomTrialOf(request));
       shrineStep(root, from, shrineFight(request));
     },
     onBack: () => {
       shrine.dispose();
       back();
     },
+    ...(r ? { note: t('shrine.room.host') } : {}),
     ...(view ? { view } : {}),
     ...(focus ? { focus } : {}),
   });
@@ -551,18 +568,21 @@ function shrineScreen(root: HTMLElement, from: ShrineFrom = 'title', view?: Shri
 /** A herald's name from the bestiary (its request id is its seed). */
 const heraldName = (request: TrialRequest): string | undefined => (request.kind === 'herald' ? readBestiary(store).find((e) => String(e.seed) === request.id)?.name : undefined);
 
+const requestLine = (request: TrialRequest): string => `${requestName(request, heraldName(request))} · ${t(`difficulty.${request.difficulty}`)}`;
+
 /**
  * One step of the shrine's way to a trial (app/shrine-route.ts): the shrine
  * window, the run's loadout picker (species, then moves; the same persisted
  * settings as a run, so the last pick is remembered for both) or the trial.
  */
 function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void {
+  const r = liveRoom(from);
   if (step.screen === 'shrine') {
     // The tier picked is already the remembered one (`onTier`); kept explicit.
     if (step.difficulty !== settings.difficulty) update({ difficulty: step.difficulty });
     return shrineScreen(root, from, step.view, step.focus);
   }
-  if (step.screen === 'trial') return void playTrial(root, step.request, from, step);
+  if (step.screen === 'trial') return r ? startRoomTrial(root, step.request, step) : void playTrial(root, step.request, from, step);
   const { request, stage } = step;
   show(root, [
     ...loadoutScreen({
@@ -571,9 +591,11 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       loadout: settings.loadout,
       sheets: sheetsReady(),
       startLabel: t('shrine.start'),
-      context: `${requestName(request, heraldName(request))} · ${t(`difficulty.${request.difficulty}`)}`,
+      context: requestLine(request),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
+        // The room sees the host's new species too.
+        r?.session.repick(settings.species, settings.loadout);
         shrineStep(root, from, loadoutSpecies(request));
       },
       onChange: (next) => update({ loadout: next }),
@@ -586,28 +608,103 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
 /** The species and moves a trial is played with. */
 type TrialPick = Pick<Extract<ShrineStep, { screen: 'trial' }>, 'species' | 'loadout'>;
 
+/** A trial under way: what was asked, where it returns, the pick, and whether it was played by a group (an online room of two or more). */
+interface TrialRun {
+  request: TrialRequest;
+  from: ShrineFrom;
+  pick: TrialPick;
+  group?: boolean;
+}
+
 /** A shrine trial: its first arena's dungeon, the request's tier, a fresh seed, the picked species and moves. */
 const playTrial = (root: HTMLElement, request: TrialRequest, from: ShrineFrom, pick: TrialPick): Promise<void> => play(root, undefined, request.stops[0]!.dungeon, undefined, { request, from, pick });
 
-/** A trial ended: its record (heralds are not kept), a gauntlet's first-clear reward, and the shrine's result screen. */
-function trialEnd(root: HTMLElement, request: TrialRequest, from: ShrineFrom, pick: TrialPick, result: GameResult, summary: RunSummary): void {
+/** The online room's guest at the altar: the host's pick (read-only) and its own Pokémon and moves; the host begins. */
+function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' = 'menu'): void {
+  const r = liveRoom('room');
+  if (!r) return titleScreen(root);
+  const back = () => townLobby(root);
+  const picked = r.session.trial();
+  const request = picked ? trialRequestOf(picked) : null;
+  if (stage !== 'menu') {
+    show(root, [
+      ...loadoutScreen({
+        stage,
+        species: settings.species,
+        loadout: settings.loadout,
+        sheets: sheetsReady(),
+        startLabel: t('shrine.ready'),
+        ...(request ? { context: requestLine(request) } : {}),
+        onSpecies: (species) => {
+          update(withSpecies(settings, species));
+          roomShrineGuest(root, 'moves');
+        },
+        onChange: (next) => update({ loadout: next }),
+        // Ready: the host's roster gets this species; the moves stay on this device (each player plays its own).
+        onStart: () => {
+          r.session.repick(settings.species, settings.loadout);
+          back();
+        },
+        onBack: () => roomShrineGuest(root, stage === 'moves' ? 'species' : 'menu'),
+      }),
+    ]);
+    return;
+  }
+  const status = picked && !request ? t('shrine.unknown') : request ? t('shrine.room.pick').replace('{name}', requestName(request, heraldName(request))).replace('{tier}', t(`difficulty.${request.difficulty}`)) : t('shrine.room.wait');
+  const list = cursorList({
+    onBack: back,
+    label: t('shrine.title'),
+    items: [
+      { label: t('shrine.room.loadout'), onConfirm: () => roomShrineGuest(root, 'species') },
+      { label: t('shrine.room.back'), onConfirm: back },
+    ],
+  });
+  show(root, [
+    mdWindow({ title: t('shrine.title'), className: 'shrine' }, [
+      h('h3', { className: 'dim', textContent: t('shrine.subtitle') }),
+      h('p', { className: 'shrine-room-pick', textContent: status }),
+      h('p', { className: 'dim', textContent: t('shrine.room.guest') }),
+      list.element,
+    ]),
+  ]);
+}
+
+/** The room's host begins the trial for everyone: never with a player on an older version (it would play a dungeon run instead). */
+function startRoomTrial(root: HTMLElement, request: TrialRequest, pick: TrialPick): void {
+  const r = liveRoom('room');
+  if (!r) return titleScreen(root);
+  const old = r.session.oldPeers();
+  if (old.length > 0) {
+    const line = t('shrine.oldVersion').replace('{names}', old.map(nameOf).join(', '));
+    show(root, [mdWindow({ title: t('shrine.title'), className: 'shrine' }, [h('p', { textContent: line }), single(t('menu.back'), () => shrineStep(root, 'room', loadoutSpecies(request)))])]);
+    return;
+  }
+  const dungeon = request.stops[0]!.dungeon;
+  r.session.repick(pick.species, pick.loadout);
+  r.session.setDifficulty(request.difficulty);
+  r.session.begin(dungeon, r.seed, roomTrialOf(request));
+  const group = r.session.roster().length > 1;
+  void play(root, { session: r.session, role: 'host', localId: 'p1', seed: r.seed, floor: 1, dungeon, difficulty: request.difficulty, online: true }, dungeon, undefined, { request, from: 'room', pick, group });
+}
+
+/** A trial ended: its record (heralds are not kept; a group's apart), a gauntlet's first solo clear reward, and the shrine's result screen. */
+function trialEnd(root: HTMLElement, run: TrialRun, result: GameResult, summary: RunSummary): void {
+  const { request, from, pick } = run;
+  const group = run.group === true;
   const trial = summary.trial!;
   const victory = result === 'victory';
   const kind = request.kind === 'gauntlet' ? 'gauntlet' : 'boss';
   const kept = request.kind !== 'herald';
-  const before = kept ? trialBest(readShrine(store), kind, request.id, request.difficulty) : null;
-  const first = kept && saveTrial(store, { kind, id: request.id, difficulty: request.difficulty, victory, ms: trial.ms, noHit: trial.noHit, captures: trial.captures, species: pick.species });
-  // No farming: reflections pay nothing, a gauntlet pays once per tier.
-  const coins = first && request.kind === 'gauntlet' ? gauntletReward(request.id as GauntletId, request.difficulty) : 0;
+  const before = kept ? trialBest(readShrine(store), kind, request.id, request.difficulty, group) : null;
+  const first = kept && saveTrial(store, { kind, id: request.id, difficulty: request.difficulty, victory, ms: trial.ms, noHit: trial.noHit, captures: trial.captures, species: pick.species, ...(group ? { group } : {}) });
+  // No farming: reflections pay nothing, a gauntlet pays once per tier, and only alone.
+  const coins = first && !group && request.kind === 'gauntlet' ? gauntletReward(request.id as GauntletId, request.difficulty) : 0;
   const balance = coins > 0 ? earnCoins(store, coins).coins : loadSave(store).coins;
   const view = viewOf(request);
   const herald = heraldName(request);
-  show(
-    root,
-    [shrineResultScreen({ request, victory, trial, before, coins, balance, onRetry: () => void playTrial(root, request, from, pick), onBack: () => shrineScreen(root, from, view, request.id) }, herald)],
-    true,
-    victory ? 'victory' : 'defeat',
-  );
+  // An online room goes back to its town (the host reopens it, the guests follow); no retry from here.
+  const actions = from === 'room' ? { onBack: () => backToRoom(root) } : { onRetry: () => void playTrial(root, request, from, pick), onBack: () => shrineScreen(root, from, view, request.id) };
+  show(root, [shrineResultScreen({ request, victory, trial, before, coins, balance, ...actions }, herald)], true, victory ? 'victory' : 'defeat');
 }
 
 /** The upgrade shop from the title menu (its last entry). */
@@ -711,7 +808,13 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (current === session) messageScreen(root, t('lobby.full'));
   });
   session.onStart((start) => {
-    if (current === session) void play(root, { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), ...(start.difficulty ? { difficulty: start.difficulty } : {}), online: true });
+    if (current !== session) return;
+    const join: NetJoin = { session, role: 'guest', localId: start.localId, seed: start.seed, floor: start.floor, ...(start.dungeon !== undefined ? { dungeon: start.dungeon } : {}), ...(start.difficulty ? { difficulty: start.difficulty } : {}), online: true };
+    if (!start.trial) return void play(root, join);
+    // The host began a shrine trial for the room: its arenas, with this player's own Pokémon and moves.
+    const request = trialRequestOf(start.trial);
+    if (!request) return messageScreen(root, t('shrine.unknown'));
+    void play(root, join, request.stops[0]!.dungeon, undefined, { request, from: 'room', pick: { species: settings.species, loadout: [...settings.loadout] }, group: session.roster().length > 1 });
   });
   // The host brought the room back to the town after a run: follow it there (unless already walking it).
   session.onLobby(() => {
@@ -777,7 +880,7 @@ function townLobby(root: HTMLElement): void {
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -886,7 +989,7 @@ function endlessScore(summary: RunSummary): EndScore {
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: { request: TrialRequest; from: ShrineFrom; pick: TrialPick }): Promise<void> {
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun): Promise<void> {
   if (!sheets) {
     waitScreen(root, t('app.loading'));
     await sheetsReady();
@@ -928,13 +1031,13 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     openMenu: (actions, held) => openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, actions, held),
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
-    onQuit: () => (trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : townScreen(root)),
+    onQuit: () => (trial?.from === 'room' ? backToRoom(root) : trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : townScreen(root)),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     onEnd: (result, summary) => {
       // A shrine trial keeps its own records and never counts as a run (no dungeon records, no run coins).
-      if (trial && summary.trial) return trialEnd(root, trial.request, trial.from, trial.pick, result, summary);
+      if (trial && summary.trial) return trialEnd(root, trial, result, summary);
       // Solo and hosted runs count for the notice board; a guest's run is the host's.
       if (shared.net?.role !== 'guest') saveRun(store, { dungeon: summary.dungeon, floor: summary.floor, level: summary.level, species: settings.species, victory: result === 'victory', difficulty: summary.difficulty });
       // Every peer earns its own Pokémonedas, guests too.

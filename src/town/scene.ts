@@ -70,7 +70,7 @@ export interface TownOptions {
   lobby?: TownLobby;
   /** The tier picked now (solo: the player's last; a room: the host's), for the notice board's records. */
   difficulty?: () => Difficulty;
-  /** The hub's altar: opens the Santuario de los Juramentos (solo only; a room gets a line instead). */
+  /** The hub's altar: opens the Santuario de los Juramentos (alone, or the room's shared trial in a lobby). */
   openShrine?: () => void;
 }
 
@@ -318,10 +318,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       return;
     }
     if (target.kind === 'shrine') {
-      // Solo only: a room hears why; alone, the altar speaks, then the shrine opens.
-      dialog = lobby
-        ? { speaker: t('world.lore.shrine.name'), state: openDialog([t('shrine.room')]) }
-        : { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
+      // The altar speaks, then the shrine opens (in a room: the host's pick for everyone, main.ts).
+      dialog = { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
       return;
     }
     if (target.kind === 'lore') {

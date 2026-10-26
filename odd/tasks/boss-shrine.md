@@ -41,13 +41,18 @@ User request 2026-10-26: a quick, solid boss rematch plus boss rush modes with a
   - Decision: the shrine uses the same persisted `species`/`loadout` settings as a run (one remembered pick, no second loadout to keep valid). The trial is started with an explicit copy of the pick (`play(..., { pick })`).
   - Records: `TrialBest.species` (optional, the species of the best time; dropped unless playable), shown with its idle sprite and name next to the best time. Old records read unchanged.
   - Tests: `tests/app/shrine-route.test.ts` (routing, focus row), records with species, `bestText`. RED observed (missing module, species undefined) before the code.
+- [x] T6 Trials in online rooms (route: same delegated writer; user scope addition 2026-10-26) — second commit in `fix/shrine-loadout`
+  - Protocol (additive): `hello.shrine: 1` (capability, also re-sent to repick species), `lobby.trial` (the host's pick, read-only for guests), `start.trial` (`RoomTrial`: kind, id, tier; `parseRoomTrial`). Session: `setTrial`, `trial`, `repick`, `oldPeers`, `begin(dungeon, seed, trial)`.
+  - Core: `trialEpoch` (net floor = arena index + 1) and `progressSharedTrial` (host as solo; a guest follows the host's arena, catching up). Party scaling from the roster at start, HP carry per player, revives as in runs, everyone returns via `backToRoom`.
+  - Records: optional `group` tables («En grupo»), shown under the solo best; group clears pay no gauntlet reward. Old peers block the start («Versión antigua») and are turned away from a trial under way. The «solo only» line and the altar's room refusal are gone.
+  - Tests: `tests/net/shrine-room.test.ts` (loopback: pick → repick → start with trial → same scaled boss → back to town; old peers; wire validation), `tests/core/shrine.test.ts` shared trials, group records. RED observed for the group records and the shared-trial core tests (the net test was written first but run only after the session code).
 
 ## Decisions
 - Name: «Santuario de los Juramentos» / "Sanctum of Oaths"; Reflejos/Reflections, Desafíos/Trials.
 - No per-boss flags: unlocks derive from dungeon records (guardian = dungeon cleared; mid-boss = cleared or best floor past its arena), so no migration is needed.
 - Any tier is allowed; level = `expectedLevel(dungeon, floor, tier)`; shop upgrades are dropped in trials.
 - Coins: 0 for reflections; a gauntlet pays its reward × tier multiplier once per tier. Heralds are fightable but not recorded.
-- Solo only (the altar says so in a room). «Eco infinito» skipped.
+- Solo or a whole online room (T6; the room trial is the host's). «Eco infinito» skipped.
 - Gauntlet time includes the 2.5 s pauses between arenas (simulated play time).
 
 ## Acceptance criteria
