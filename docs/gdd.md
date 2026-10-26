@@ -61,6 +61,8 @@ Una partida es una mazmorra que bajas planta a planta. Sin días y sin reloj glo
 - Cada planta empieza con una tarjeta (el nombre de la mazmorra y "Planta 2") que aparece y se va en un par de segundos sin parar el juego; la planta 1 enseña en su lugar el título de la mazmorra (ver "Mazmorras").
 - Minimapa arriba a la derecha, como en Mundo Misterioso: se descubre lo que ves (la sala entera al entrar, los pasillos a tu alrededor), las escaleras salen cuando las has visto y los enemigos solo si están en pantalla. Tab lo muestra u oculta.
 - Los enemigos despiertos te persiguen rodeando paredes (siguen el camino andando hacia ti cuando no te ven).
+- Los que flotan o vuelan (Gastly, Duskull, Drifloon, Zubat, Koffing, sus evoluciones…) pasan por encima de obstáculos bajos, charcas y escombro, pero las paredes los paran como a todos: siempre están en un sitio donde puedes alcanzarlos, y solo lanzan sus ataques desde suelo que te ve. Decisión del 26-10-2026 (prueba de juego): meterse en la roca y disparar desde dentro, donde nada les pega, estaba roto.
+- **Fantasmas y paredes (idea para más adelante, no activada).** El guiño de que un fantasma atraviese una pared podría volver así: una fase corta y avisada a través de una pared fina (un tile), saliendo solo a suelo alcanzable y sin atacar nunca desde dentro de la roca. El punto donde engancharía es `pathDirection` (`src/core/brain.ts`); hoy ninguna especie cruza paredes.
 - Sin reloj. Solo un aviso suave si el grupo se queda muchísimo tiempo (la idea del viento de Mundo Misterioso), para cortar el quedarse farmeando, nunca para castigar a quien juega normal.
 
 ### Encuentros con sentido
@@ -91,7 +93,7 @@ Decisión del 25-10-2026: muchos enemigos hacían pesado matarlos, así que se s
 
 Una línea en pantalla dice qué cierra la escalera mientras dura. El enemigo marcado da un 50 % más de experiencia. **Seguridad**: si el enemigo marcado, vivo, queda fuera del alcance de todos los jugadores durante 60 s seguidos (atrapado fuera del mapa o tras una pared), el sello se rompe solo y no da la recompensa. En cooperativo manda el anfitrión: todos colocan el mismo sello desde la semilla y la instantánea del anfitrión dice cuándo se abre y cuándo se abren las puertas (una instantánea antigua con una llave en el suelo cuenta como abierta). El sello de la escalera funciona igual: el enemigo marcado cae donde sea, aunque esté fuera de la vista o dentro de un peligro, y la escalera se abre en ese paso.
 
-Esa seguridad convive con la red de seguridad contra enemigos fuera del mapa (`core/bounds.ts`): la red devuelve cada paso a cualquier enemigo que anda (no flota) a una casilla alcanzable, así que los 60 s del sello solo llegan a contar para lo que la red no puede mover (un enemigo que flota fuera de alcance). La sala de la escalera cerrada con llave no cuenta como "fuera de alcance" para la red: sus enemigos esperan dentro. La sala de oleadas de la Sima tiene su propia salida de 60 s sin daño a la oleada, y al acabar así también abre su sello.
+Esa seguridad convive con la red de seguridad contra enemigos fuera del mapa (`core/bounds.ts`): la red devuelve cada paso a cualquier enemigo, ande o flote, a una casilla alcanzable, así que los 60 s del sello solo llegan a contar para lo que la red no puede mover (un portador caído donde no hay suelo, uno fuera del mapa). La sala de la escalera cerrada con llave no cuenta como "fuera de alcance" para la red: sus enemigos esperan dentro. La sala de oleadas de la Sima tiene su propia salida de 60 s sin daño a la oleada, y al acabar así también abre su sello.
 
 **Sonidos.** Efectos cortos sintetizados como el resto (sección del sonido): el grito de mando suena como un cuerno de dos toques (la carga solo se ve, el aro crece), la caída de un líder como una corona que tintinea y tres notas que bajan, abrirse un sello o una puerta como un cerrojo, piedra que roza y un acorde claro (la llave ya no cae: se consigue con la caída de su portador y suena la puerta).
 
@@ -242,8 +244,8 @@ Cada mazmorra es un conjunto de datos (`src/data/dungeons.ts`): su nombre y su l
 | Enemigo | Cómo juega |
 |---|---|
 | Poochyena | Acecha, avisa y embiste en línea recta; si la esquivas se queda vendido |
-| Gastly | Flota sobre todo y lanza una bola lenta |
-| Duskull | Lento, atraviesa las paredes para seguirte y lanza un fuego fatuo que se curva hacia ti durante un par de segundos (desde la planta 2) |
+| Gastly | Flota sobre obstáculos (nunca dentro de las paredes) y lanza una bola lenta |
+| Duskull | Lento, flota rodeando las paredes para seguirte y lanza un fuego fatuo que se curva hacia ti durante un par de segundos (desde la planta 2) |
 | Pawniard | Sale en parejas; rápido y frágil, corta dos veces: tras el primer tajo apunta de nuevo y vuelve a lanzarse, así que rodar hacia él se paga (desde la planta 2) |
 | Golett | Tanque lento al que casi no se le mueve; avisa un segundo y golpea el suelo delante de sí con la puntería fijada al empezar el aviso: rodéalo (desde la planta 4) |
 
@@ -279,7 +281,7 @@ Las primeras plantas son más suaves que el final de la Cripta (un presupuesto d
 
 | Enemigo | Cómo juega |
 |---|---|
-| Phantump | Atraviesa los árboles; se acerca despacio, avisa y agarra, y al agarrar recupera vida |
+| Phantump | Flota sobre raíces y troncos, no dentro de las paredes; se acerca despacio, avisa y agarra, y al agarrar recupera vida |
 | Pumpkaboo pequeño | Sale en grupos de tres; rápido, frágil, embestidas cortas |
 | Pumpkaboo enorme | Tanque lento; avisa mucho y golpea el suelo a su alrededor (sal del círculo o rueda) |
 | Foongus | No se mueve; si te acercas suelta una nube de esporas que se queda un rato en el sitio |
@@ -443,7 +445,7 @@ Catorce enemigos nuevos para probar en la Sima del Eclipse antes de darles mazmo
 
 | Enemigo (tipo) | Cómo juega | Cómo se esquiva | Planta mínima |
 |---|---|---|---|
-| Zubat (Veneno/Volador) | En grupos de tres; vuela por encima de las paredes haciendo eses y se lanza en picado | Rodar o apartarse cuando cae; se queda abierto si falla | 1 |
+| Zubat (Veneno/Volador) | En grupos de tres; vuela haciendo eses (rodea las paredes) y se lanza en picado | Rodar o apartarse cuando cae; se queda abierto si falla | 1 |
 | Stunky (Veneno/Siniestro) | En parejas; se da la vuelta y rocía un cono corto que deja una nube | Salir del cono durante el aviso | 1 |
 | Ekans (Veneno) | Se enrosca y embiste muy lejos en línea recta; la línea deja de seguirte en el último tercio del aviso (se vuelve sólida) | Apartarse de lado cuando la línea se fija; si falla, se queda mucho rato abierto | 2 |
 | Litleo (Fuego/Normal) | Guarda la distancia y lanza bolas de fuego rápidas | Moverse de lado o rodar | 2 |

@@ -48,7 +48,7 @@ not float (their own movement already confines them to floor).
 
 - [x] T1 Floaters confined by wall tiles, pathing on the flow field (geometry, brain, enemies, roster) and the bounds safety net snapping a buried floater to reachable floor; tests first. Route: inline (small call sites, the parent context already held the map; no second non-trivial file needing research).
 - [x] T2 Sealing wave doors and the wave-room herd treat floaters as walkers (no drift over the walls); tests first. Route: inline.
-- [ ] T3 Docs (GDD future idea, Arena comment), golden digest / balance / prove check. Route: inline.
+- [x] T3 Docs (GDD future idea, Arena comment), golden digest / balance / prove check. Route: inline.
 
 ## Checks
 
@@ -59,3 +59,12 @@ not float (their own movement already confines them to floor).
 
 - T1: RED observed (18 of 22 new tests failed: every floater entered rock at the wall column, e.g. Gastly seed 1 tick 132 at x 351.7). GREEN after the change: 22/22, full suite 2412/2412 after rewriting the two tests that asserted the old wall-crossing (floor.test.ts, pathfinding.test.ts). Found on the way: the walkers' strafe slide held a floater against a wall corner of a one-tile corridor; floaters keep no strafe slide (only the wall's push), walkers unchanged. Golden digest unchanged (`6e22f931`). Assessed tier / RDD: left to the parent.
 - T2: RED observed (the wave-room Gastly drifted from (592, 592) to (460, 492) against the rock instead of waiting on its floor). GREEN: doorway sealing moves a floater into the room like a walker (now tested for Spinarak and Gastly), the floater drift and `TUNING.bounds.floaterPullSpeed` are gone; full suite 2413/2413.
+- T3: GDD (Spanish) gains the floater rule and the future idea "Fantasmas y paredes" (not enabled); the Gastly, Duskull, Phantump and Zubat rows, the safety-net paragraph, the README line and the `Arena.tiles` comment no longer say they cross walls. Passive docs: no RED applies.
+  - Golden digest: unchanged (`6e22f931`, scripted Easy runs).
+  - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports/proof unchanged byte for byte (the stored witnesses still replay). Heralds, Nihilego and the Eclipse Echo float but fight on open floor.
+  - `npm run balance -- --quick --slots`: before 0 failures, 42 warnings, 71 passes (9 known fairness violations, 33 performance warnings); after 0 failures, 41 warnings, 72 passes (8 known, 33 performance). New warning after: misty-forest/easy/average clears 0% of 2 (both seeds die at F8 Decidueye, not a floater). Checked with 8 seeds (`--dungeon=misty-forest --tier=easy --seeds=1,...,8`): before average 7/8, after 6/8 (one more Decidueye death); perfect and masher 8/8 both. The committed reports/balance/latest.md is left as is (it does not match a quick run on main either).
+  - Full suite: 2413/2413 green in a quiet run after T2; under machine load (load average 35, another writer) a few unrelated generator tests time out at 5 s and pass when rerun in isolation.
+
+## Next step
+
+Playtest a Crypt floor 2+ (Duskull) and the forest (Drifloon, Phantump) to feel the new chase; then decide whether the "guiño" (a telegraphed phase through a one-tile wall, emerging only onto reachable floor) is worth building.

@@ -410,7 +410,7 @@ export interface Arena {
   height: number;
   /** Solid blocks for walkers; floaters ignore them, and projectiles too unless the block is `cover`. */
   obstacles?: readonly Obstacle[];
-  /** Generated floors: wall tiles block walkers and stop projectiles; floaters pass them. */
+  /** Generated floors: wall tiles block every body (floaters too: always on usable floor) and stop projectiles. */
   tiles?: TileGrid;
   /** Generated floors: stepping here goes down to the next floor. */
   stairs?: Rect;
