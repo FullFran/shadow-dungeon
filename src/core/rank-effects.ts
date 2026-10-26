@@ -211,20 +211,31 @@ export function tickRankStatus(state: WorldState, dtMs: number, events: GameEven
   return { ...state, enemies };
 }
 
-/** A ranked move with super-armor starts it as the move starts. */
+/**
+ * A ranked move with super-armor starts it as the move starts, unless one is
+ * still running or resting: after a ward runs out, another can only start
+ * once as long again has passed, so super-armor covers at most half the
+ * fight (odd/tasks/degenerate-builds.md B2: a heavy move's 2 s ward used to
+ * be renewed by every swing, 90–99 % of the time).
+ */
 export const startWard = (player: PlayerState, move: MoveDef): PlayerState =>
-  move.ward ? { ...player, ward: { damageTaken: move.ward.damageTaken, remainingMs: move.ward.durationMs } } : player;
+  move.ward && !player.ward ? { ...player, ward: { damageTaken: move.ward.damageTaken, remainingMs: move.ward.durationMs, restMs: move.ward.durationMs } } : player;
 
-/** Super-armor runs down on the player's clock (the field is dropped when spent). */
+/** Super-armor runs down on the player's clock, then its rest (the field is dropped when both are spent). */
 export function tickWard(player: PlayerState, dtMs: number): PlayerState {
   if (!player.ward) return player;
-  const remainingMs = player.ward.remainingMs - dtMs;
+  const { ward } = player;
+  const active = Math.max(0, ward.remainingMs - dtMs);
+  const restMs = ward.remainingMs > 0 ? ward.restMs - Math.max(0, dtMs - ward.remainingMs) : ward.restMs - dtMs;
   const { ward: _spent, ...rest } = player;
-  return remainingMs > 0 ? { ...player, ward: { ...player.ward, remainingMs } } : rest;
+  return active > 0 || restMs > 0 ? { ...player, ward: { ...ward, remainingMs: active, restMs } } : rest;
 }
 
-/** Damage-taken factor of the running super-armor (1 without). */
-export const wardDamageTaken = (player: Pick<PlayerState, 'ward'>): number => player.ward?.damageTaken ?? 1;
+/** Super-armor is running (not resting). */
+export const wardActive = (player: Pick<PlayerState, 'ward'>): boolean => (player.ward?.remainingMs ?? 0) > 0;
+
+/** Damage-taken factor of the running super-armor (1 without, or while it rests). */
+export const wardDamageTaken = (player: Pick<PlayerState, 'ward'>): number => (wardActive(player) ? player.ward!.damageTaken : 1);
 
 /** The player is in the active phase of a ranked move with i-frames. */
 export const moveIframes = (player: Pick<PlayerState, 'action' | 'moveRanks'>): boolean =>

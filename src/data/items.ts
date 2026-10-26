@@ -51,7 +51,8 @@ export interface ItemDef {
 
 export const ITEMS: Record<ItemId, ItemDef> = {
   'choice-band': { id: 'choice-band', rarity: 'rare', maxStacks: 1, stats: { damage: 1.3, staminaCost: 1.3 } },
-  leftovers: { id: 'leftovers', rarity: 'uncommon', maxStacks: 3 },
+  // Two stacks at most (odd/tasks/degenerate-builds.md B2): three regenerated 3 % max HP/s, more than a face-tanked Nightmare card deals.
+  leftovers: { id: 'leftovers', rarity: 'uncommon', maxStacks: 2 },
   'quick-claw': { id: 'quick-claw', rarity: 'uncommon', maxStacks: 2, stats: { actionTime: 0.85 } },
   'sitrus-berry': { id: 'sitrus-berry', rarity: 'common', maxStacks: 2 },
   'scope-lens': { id: 'scope-lens', rarity: 'common', maxStacks: 3, stats: { critChance: 0.1 } },
@@ -75,7 +76,7 @@ export const ITEM_EFFECTS = {
    * Bell's budget), as a max HP fraction per second: Shell Bell's rate fills
    * only what Leftovers leaves under it (odd/tasks/degenerate-builds.md B1).
    */
-  sustainPerSecond: 0.03,
+  sustainPerSecond: 0.02,
   /** Sitrus Berry: below this HP fraction, heal `sitrusHeal` of max HP; one use per stack per floor. */
   sitrusThreshold: 0.5,
   sitrusHeal: 0.25,

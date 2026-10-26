@@ -4,7 +4,8 @@ import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
-import { DOTS, MOVES, type MoveId } from '../../src/data/moves';
+import { DOTS, DRAIN_BUDGET, MOVES, type MoveId } from '../../src/data/moves';
+import { afterHit, refillDrain } from '../../src/core/afflictions';
 import type { SpeciesId } from '../../src/data/species';
 import { IDLE } from './helpers';
 
@@ -55,6 +56,19 @@ describe('tutor effects: drain and recoil', () => {
     const damage = hits(used.events)[0]!.damage;
     expect(damage).toBeGreaterThan(0);
     expect(used.state.player.hp).toBeCloseTo(40 + damage * MOVES['drain-punch'].drain!, 5);
+  });
+
+  it('drain heals within its per-second budget, on the HP the hit really took (degenerate-builds B2)', () => {
+    const player = { ...world([null, 'drain-punch', null, null]).player, hp: 1, maxHp: 200 };
+    const budget = DRAIN_BUDGET.perSecond * 200 * DRAIN_BUDGET.burstSeconds;
+    // A huge draining hit heals only the budget; the next heals nothing until it refills.
+    const once = afterHit(player, { drain: 0.5 }, 10_000, 10_000);
+    expect(once.hp).toBeCloseTo(1 + budget);
+    expect(afterHit(once, { drain: 0.5 }, 10_000, 10_000).hp).toBeCloseTo(once.hp);
+    expect(afterHit(refillDrain(once, 1000), { drain: 0.5 }, 10_000, 10_000).hp).toBeCloseTo(once.hp + DRAIN_BUDGET.perSecond * 200);
+    // Overflow a spell card's floor throws away heals nothing.
+    expect(afterHit(player, { drain: 0.5 }, 40, 0)).toBe(player);
+    expect(refillDrain(once, DRAIN_BUDGET.burstSeconds * 1000 + 50).drained).toBeUndefined();
   });
 
   it('a drain never heals past max HP', () => {

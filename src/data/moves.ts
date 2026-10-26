@@ -96,6 +96,14 @@ export type DotKind = 'burn' | 'poison';
  * leaves `share` of its damage on the enemy, dealt in `ticks` equal parts
  * every `everyMs` (core/afflictions.ts). A new one replaces the running one.
  */
+/**
+ * Drain's budget (odd/tasks/degenerate-builds.md B2): a draining hit heals
+ * its share of the HP it really took, but never more than `perSecond` of max
+ * HP per second, holding at most `burstSeconds` of it. A drain move still
+ * pays (a big hit heals at once) without out-healing a boss.
+ */
+export const DRAIN_BUDGET = { perSecond: 0.01, burstSeconds: 3 } as const;
+
 export const DOTS: Record<DotKind, { share: number; ticks: number; everyMs: number }> = {
   burn: { share: 0.4, ticks: 4, everyMs: 750 },
   poison: { share: 0.5, ticks: 5, everyMs: 800 },

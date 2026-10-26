@@ -1,18 +1,20 @@
 import type { Difficulty } from '../data/difficulty';
 import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
-import type { SpeciesId } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
+import type { StarterId } from '../data/learnsets';
+import { FULL_BUILD, MAX_RANK } from '../data/tutor';
 import { expectedLevel, speciesMaxHpAt } from '../core/fairness';
 import { atCard } from '../core/cards';
 import { addItem } from '../core/items';
-import { moveIframes } from '../core/rank-effects';
+import { moveIframes, wardActive } from '../core/rank-effects';
 import { loadRoom } from '../core/rooms';
 import type { PlayerInput, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { FIXED_DT_MS } from '../core/timestep';
 import { distance, normalize, sub, vec } from '../core/vec';
 import { createWorld } from '../core/world';
-import { bossFloor, fightIn, type BossCase } from './prove';
+import { bossFloor, CARD_BOSSES, fightIn, type BossCase } from './prove';
 
 /**
  * The tank bot (odd/tasks/degenerate-builds.md B2): the degenerate-build
@@ -140,7 +142,7 @@ export function tankFight(c: BossCase, tier: Difficulty, build: TankBuild, maxMs
     const gain = s.player.hp - before + Math.min(hurt, before);
     if (gain > 0) healed += gain;
     if (moveIframes(s.player)) iframeMs += FIXED_DT_MS;
-    if (s.player.ward) wardMs += FIXED_DT_MS;
+    if (wardActive(s.player)) wardMs += FIXED_DT_MS;
     if (s.player.hp <= 0) return result('died');
     if (held) s = { ...s, enemies: s.enemies.map((e) => (e.id === held.id && e.boss ? { ...e, hp: held.hp, alive: true, boss: { ...e.boss, cardMs: Math.min(e.boss.cardMs ?? 0, HELD_CARD_MS) } } : e)) };
     else if (!bossAlive(s)) return result('won');
@@ -150,3 +152,103 @@ export function tankFight(c: BossCase, tier: Difficulty, build: TankBuild, maxMs
 
 /** A held card's clock is put back here (past the declaration, well inside every card's timer). */
 const HELD_CARD_MS = 2000;
+
+/** A build the degenerate-build audit plays: a starter, its four moves (fast, heavy, boost, area), all at rank +2. */
+export interface AuditBuild {
+  id: string;
+  species: StarterId;
+  loadout: readonly MoveId[];
+}
+
+/**
+ * The audited builds (odd/tasks/degenerate-builds.md B2): each starter's
+ * full-investment build and default kit, plus the combos most likely to be
+ * degenerate: i-frame moves in every slot, super-armor on the spammable
+ * slots with a guard boost, drain moves, weakening on the fast slot.
+ */
+export const AUDIT_BUILDS: readonly AuditBuild[] = [
+  // Zorua's full build is its kit, so it is played once.
+  ...(['mimikyu', 'zorua', 'litwick', 'cubone'] as const).flatMap((s) => {
+    const kit = SPECIES[s].defaultLoadout.filter((m): m is MoveId => m !== null);
+    const full = { id: `${s}-full`, species: s, loadout: FULL_BUILD[s] };
+    return kit.join() === FULL_BUILD[s].join() ? [full] : [full, { id: `${s}-kit`, species: s, loadout: kit }];
+  }),
+  { id: 'mimikyu-iframes', species: 'mimikyu', loadout: ['shadow-sneak', 'take-down', 'swords-dance', 'phantom-force'] },
+  { id: 'mimikyu-drain', species: 'mimikyu', loadout: ['draining-kiss', 'drain-punch', 'bulk-up', 'phantom-force'] },
+  { id: 'mimikyu-armor', species: 'mimikyu', loadout: ['shadow-claw', 'wood-hammer', 'curse', 'phantom-force'] },
+  { id: 'zorua-iframes', species: 'zorua', loadout: ['sucker-punch', 'foul-play', 'calm-mind', 'hyper-voice'] },
+  { id: 'zorua-uturn', species: 'zorua', loadout: ['u-turn', 'night-daze', 'nasty-plot', 'snarl'] },
+  { id: 'zorua-weaken', species: 'zorua', loadout: ['knock-off', 'night-daze', 'calm-mind', 'snarl'] },
+  { id: 'litwick-armor', species: 'litwick', loadout: ['flame-charge', 'flare-blitz', 'acid-armor', 'fire-spin'] },
+  { id: 'cubone-armor', species: 'cubone', loadout: ['headbutt', 'double-edge', 'bulk-up', 'earthquake'] },
+  { id: 'cubone-iframes', species: 'cubone', loadout: ['bone-rush', 'dig', 'iron-defense', 'earthquake'] },
+];
+
+/** The defensive item set of the audit (every sustain and survival item at its cap). */
+export const TANK_ITEMS: readonly ItemId[] = ['leftovers', 'leftovers', 'shell-bell', 'shell-bell', 'sitrus-berry', 'sitrus-berry', 'focus-sash', 'rocky-helmet', 'rocky-helmet', 'rocky-helmet'];
+
+/** How long a held card is played before the build counts as out-healing it. */
+export const IMMORTAL_MS = 180_000;
+
+/** A card a bare, unranked default kit loses within this long counts as a fast killer: out-healing it is degenerate, not a margin. */
+export const FAST_CARD_MS = 60_000;
+
+export interface AuditResult {
+  cards: number;
+  /** Cards still standing after `IMMORTAL_MS`. */
+  immortal: number;
+  /** Immortal cards that kill the starter's bare, unranked default kit within `FAST_CARD_MS`: the build flipped a lethal card. */
+  flipped: number;
+  medianMs: number;
+  /** Shares of all the fight time (every card together) spent in rank i-frames and under super-armor. */
+  iframeShare: number;
+  wardShare: number;
+  /** HP healed per second over all the fight time, as a share of max HP. */
+  healPerSecond: number;
+  results: { boss: SpeciesId; card: number; result: TankResult }[];
+}
+
+const playAll = (tank: TankBuild, tier: Difficulty): AuditResult['results'] => {
+  const results: AuditResult['results'] = [];
+  for (const c of CARD_BOSSES) {
+    const cards = fightIn(tankWorld(c, tier, tank), c.species)?.cards.length ?? 1;
+    for (let card = 0; card < cards; card++) results.push({ boss: c.species, card, result: tankFight(c, tier, tank, IMMORTAL_MS, 1, card) });
+  }
+  return results;
+};
+
+const baselines = new Map<string, AuditResult['results']>();
+/** The starter's bare, unranked default kit on every card (cached per starter and tier). */
+function baselineOf(species: StarterId, tier: Difficulty): AuditResult['results'] {
+  const key = `${species}:${tier}`;
+  let found = baselines.get(key);
+  if (!found) {
+    found = playAll({ species, loadout: SPECIES[species].defaultLoadout }, tier);
+    baselines.set(key, found);
+  }
+  return found;
+}
+
+/** `build` at rank +2 with `items`, face-tanking every Nightmare card of every card boss (`CARD_BOSSES`), each held. */
+export function auditBuild(build: AuditBuild, items: readonly ItemId[] = [], tier: Difficulty = 'nightmare'): AuditResult {
+  const tank: TankBuild = { species: build.species, loadout: build.loadout, moveRanks: Object.fromEntries(build.loadout.map((m) => [m, MAX_RANK])), items };
+  const results = playAll(tank, tier);
+  const base = baselineOf(build.species, tier);
+  const times = results.map((r) => r.result.ms).sort((a, b) => a - b);
+  const totalMs = results.reduce((t, r) => t + r.result.ms, 0);
+  const weighted = (f: (r: TankResult) => number) => results.reduce((t, r) => t + f(r.result) * r.result.ms, 0) / Math.max(1, totalMs);
+  const immortal = results.filter((r) => r.result.outcome === 'alive');
+  return {
+    cards: results.length,
+    immortal: immortal.length,
+    flipped: immortal.filter((r) => {
+      const b = base.find((x) => x.boss === r.boss && x.card === r.card)?.result;
+      return b !== undefined && b.outcome === 'died' && b.ms <= FAST_CARD_MS;
+    }).length,
+    medianMs: times[Math.floor(times.length / 2)] ?? 0,
+    iframeShare: weighted((r) => r.iframeShare),
+    wardShare: weighted((r) => r.wardShare),
+    healPerSecond: results.reduce((t, r) => t + r.result.healed / r.result.maxHp, 0) / Math.max(1, totalMs / 1000),
+    results,
+  };
+}

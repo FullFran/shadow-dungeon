@@ -202,10 +202,19 @@ describe('item effects', () => {
     expect(onHitDealt(player, 40, true).hp).toBeGreaterThan(10);
   });
 
-  it('Shell Bell and Leftovers share one sustain ceiling: with three Leftovers the bell heals nothing more', () => {
-    const player: PlayerState = { ...arena(['leftovers', 'leftovers', 'leftovers', 'shell-bell']).player, hp: 10 };
-    expect(3 * ITEM_EFFECTS.leftoversPerSecond).toBeGreaterThanOrEqual(ITEM_EFFECTS.sustainPerSecond);
+  it('Shell Bell and Leftovers share one sustain ceiling: with two Leftovers the bell heals nothing more', () => {
+    const player: PlayerState = { ...arena(['leftovers', 'leftovers', 'shell-bell']).player, hp: 10 };
+    expect(ITEMS.leftovers.maxStacks * ITEM_EFFECTS.leftoversPerSecond).toBeLessThanOrEqual(ITEM_EFFECTS.sustainPerSecond);
+    expect(2 * ITEM_EFFECTS.leftoversPerSecond).toBeGreaterThanOrEqual(ITEM_EFFECTS.sustainPerSecond);
     expect(onHitDealt(player, 40, true).hp).toBe(10);
+    // One Leftovers leaves the bell the rest of the ceiling.
+    const one: PlayerState = { ...arena(['leftovers', 'shell-bell', 'shell-bell']).player, hp: 10, maxHp: 200 };
+    const budget = (ITEM_EFFECTS.sustainPerSecond - ITEM_EFFECTS.leftoversPerSecond) * 200 * ITEM_EFFECTS.shellBellBurstSeconds;
+    expect(onHitDealt(one, 10_000, true).hp).toBeCloseTo(10 + budget);
+  });
+
+  it('Leftovers stops at two stacks (three regenerated more than a face-tanked Nightmare card deals)', () => {
+    expect(itemCount(arena(['leftovers', 'leftovers', 'leftovers']).player, 'leftovers')).toBe(2);
   });
 
   it('Muscle Band: only the heavy slot hits harder', () => {

@@ -15,7 +15,7 @@ import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
 import { buffCrit, buffDamage, castBuff, cooldownLeft, spendBuffHit, startCooldown, tickBoosts } from './boosts';
-import { afterHit, applyDot, hitEffects, payHpCost, tickDots } from './afflictions';
+import { afterHit, applyDot, hitEffects, payHpCost, refillDrain, tickDots } from './afflictions';
 import { rankDamage } from './tutor';
 import { childEffects, healOnUse, markAndWeaken, playerMove, rankHitEffects, splitShots, startWard, tickRankStatus, tickWard, zoneProjectile } from './rank-effects';
 import { nextRandom } from './rng';
@@ -261,7 +261,7 @@ function strikeEnemy(
   let next: WorldState = {
     ...state,
     // Shell Bell heals on the HP the hit really took, and only for a direct hit (no zone tick, chain jump, split shard or rethrow).
-    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), enemy.hp - hp, !hit.minor && !hit.secondary)), hit.effects, damage), nextHitBuff: null },
+    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), enemy.hp - hp, !hit.minor && !hit.secondary)), hit.effects, damage, enemy.hp - hp), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
   // Zones, split shots and chained jumps are the striker's own hits: a guest spawns them on its side and claims what they hit.
@@ -456,7 +456,7 @@ function advanceAction(state: WorldState, input: PlayerInput, dtMs: number, even
 function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   const wasIdle = !state.player.action;
   // Cooldowns and boost buffs run on the player's clock (no slow-mo).
-  const ticked = tickWard(tickBoosts(state.player, dtMs), dtMs);
+  const ticked = refillDrain(tickWard(tickBoosts(state.player, dtMs), dtMs), dtMs);
   let current = tryStartAction(ticked === state.player ? state : { ...state, player: ticked }, input, events);
   // A move started this tick begins counting from the next tick.
   if (!(wasIdle && current.player.action)) current = advanceAction(current, input, dtMs, events);

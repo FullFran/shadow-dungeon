@@ -186,8 +186,13 @@ export interface PlayerState {
   buff?: ActiveBuff;
   /** Mejoras bought at the move tutor (core/tutor.ts): rank per original move, fixed for the run; absent = none. */
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
-  /** Super-armor from a ranked move (core/rank-effects.ts): damage taken scaled by `damageTaken` for `remainingMs`; absent = none. */
-  ward?: { damageTaken: number; remainingMs: number };
+  /**
+   * Super-armor from a ranked move (core/rank-effects.ts): damage taken scaled by `damageTaken` while `remainingMs` runs, then
+   * `restMs` before another can start (at most half the time under it); absent = none.
+   */
+  ward?: { damageTaken: number; remainingMs: number; restMs: number };
+  /** Drain (core/afflictions.ts): HP drained from its per-second budget, refilling over time; absent = the budget is full. */
+  drained?: number;
   /** Shell Bell (items.ts): HP its heal has drawn from its per-second budget, refilling over time; absent = the budget is full. */
   shellBell?: number;
 }

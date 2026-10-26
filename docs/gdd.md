@@ -132,7 +132,7 @@ Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sec
 | Objeto | Rareza | Efecto | Tope |
 |---|---|---|---|
 | Cinta Elegida | Rara | Un 30 % más de daño, pero los movimientos y rodar gastan un 30 % más de estamina | 1 |
-| Restos | Poco común | Recuperas un 1 % de la vida máxima por segundo | 3 |
+| Restos | Poco común | Recuperas un 1 % de la vida máxima por segundo | 2 |
 | Garra Rápida | Poco común | Los movimientos arrancan y se recuperan un 15 % antes | 2 |
 | Baya Zidra | Común | Al bajar de la mitad de la vida curas un 25 % de golpe, una vez por planta | 2 |
 | Periscopio | Común | Un 10 % de golpes críticos (daño ×1,5) | 3 |
@@ -144,7 +144,7 @@ Todo lo de esta sección se pierde al acabar la partida; lo permanente es la sec
 | Lupa | Común | Los golpes alcanzan un 15 % más y los proyectiles son un 15 % más grandes | 2 |
 | Casco Dentado | Poco común | Quien te alcanza cuerpo a cuerpo recibe 8 de daño | 3 |
 
-Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto. Lo que curan los objetos con el tiempo (Restos y Campana Concha) tiene un techo común: un 3 % de la vida máxima por segundo; con tres Restos la Campana ya no cura más. Así una build que pega mucho no puede curarse más rápido de lo que un jefe la daña (ver "Builds degeneradas" en el arnés de balance).
+Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto. Lo que curan los objetos con el tiempo (Restos y Campana Concha) tiene un techo común: un 2 % de la vida máxima por segundo; con dos Restos la Campana ya no cura más. Así una build que pega mucho no puede curarse más rápido de lo que un jefe la daña (ver "Builds degeneradas" en el arnés de balance).
 
 **Bayas Aranja.** En las plantas generadas, cada sala menos la de entrada tiene un 35 % de llevar una Baya Aranja en el suelo (se decide con la semilla, así que la misma semilla pone las mismas bayas). Pasar por encima cura 20 PS. El minimapa enseña las bayas que has visto. En partida compartida manda el anfitrión: quien la pisa la pide, el anfitrión se la da al primero que la pidió y las instantáneas dicen qué bayas quedan.
 
@@ -638,7 +638,7 @@ Cada inicial puede aprender los movimientos que aprende en los juegos originales
 |---|---|
 | Quemadura, veneno | Daño a lo largo del tiempo: una parte del golpe (40 % quemadura en 4 ticks, 50 % veneno en 5) se repite en el enemigo, sin pausa de golpe |
 | Retroceso (Mazazo, Envite Ígneo, Doble Filo, Derribo) | Pierdes esa parte del daño que haces, nunca por debajo de 1 PS |
-| Drenaje (Puño Drenaje, Gigadrenado, Beso Drenaje, Chupavidas) | Te curas esa parte del daño que haces (los rápidos drenan menos que en el original) |
+| Drenaje (Puño Drenaje, Gigadrenado, Beso Drenaje, Chupavidas) | Te curas esa parte del daño que haces de verdad (los rápidos drenan menos que en el original), hasta un 1 % de la vida máxima por segundo entre todos (se guardan hasta 3 s de cura: un golpe grande cura un 3 % de golpe). Sin ese tope, Juego Sucio +2 o Puño Drenaje curaban más rápido de lo que un jefe de Pesadilla hace daño |
 | Retroceder, parálisis, congelación | Más aturdimiento al golpear |
 | Prioridad (Golpe Bajo) | Arranque más corto |
 | Índice crítico alto (Cuchillada, Tajo Umbrío) | +25 % de probabilidad de crítico |
@@ -674,7 +674,7 @@ Los Maestro: Mazazo, Golpe Fantasma (tras la Cripta), Trueno (tras el Bosque Bru
 | Golpes | un golpe más en los de varios | Golpes Furia +2, Doble Patada +2 |
 | Regreso | el bumerán vuelve a lanzarse | Huesomerang +2 (una vez más, al 50 %) |
 | Cadena | el golpe salta al enemigo más cercano | Rayo +2, Trueno +2, Puño Trueno +2 |
-| Superarmadura | menos daño recibido desde que empieza el movimiento (no hay aturdimiento del jugador contra el que armarse) | Danza Espada +2, Mazazo +2 |
+| Superarmadura | menos daño recibido desde que empieza el movimiento (no hay aturdimiento del jugador contra el que armarse); al acabar descansa lo mismo que ha durado antes de poder volver, así que cubre como mucho la mitad del combate (antes un fuerte con superarmadura la renovaba en cada golpe y cubría el 90-99 %) | Danza Espada +2, Mazazo +2 |
 | Invulnerable | i-frames en la fase activa (los ataques posicionales sí te dan) | Sombra Vil +2, Golpe Fantasma +2, Excavar +1 |
 | Potenciación | más golpes, duración, crítico o defensa | Danza Espada +1, Maquinación +1/+2 |
 | Drenaje, aturdir, perseguir, curar | más drenaje; más aturdimiento y empuje; el proyectil se curva; cura PS al lanzarse | Juego Sucio +2, Carantoña +1, Infortunio +1, Corpulencia +2 |
@@ -967,6 +967,7 @@ La dificultad se mide con bots que juegan solos (`src/sim`, `docs/souls-difficul
 - **Prueba de que puede fallar.** Un test mete un patrón imposible (una ráfaga de zona sin aviso sobre el jugador cada 300 ms): el perfecto muere y la puerta falla.
 - **Uso.** `npm test` corre el subconjunto de CI (todas las mazmorras, Fácil y Pesadilla, tres bots, en solitario, dos semillas; unos 12 s). `npm run balance` corre el barrido completo (5 mazmorras × 4 niveles × 4 bots × grupos de 1 a 4 × 3 semillas, más cada arena aislada; unos 5 min) y escribe `reports/balance/latest.md` (se guarda en el repositorio para comparar) y `latest.json`. Para reequilibrar: informe antes, cambiar los números, informe después, comparar los dos informes y anotar el antes y el después en el documento de la tarea. Al arreglar contenido, borrar su entrada de `KNOWN_VIOLATIONS` para que no vuelva.
 - **Límites conocidos.** Las arenas aisladas empiezan con el inicial a nivel 1 y sin objetos (más duro que llegar jugando). Los bots solo usan el ataque rápido salvo con `npm run balance -- --slots`, donde el perfecto y el medio también usan la potenciación (ante un jefe o un grupo de 3) y el área (sobre 2 enemigos o un jefe a su alcance); el barrido solo juega con Mimikyu. Conocen el plano de la planta (como el minimapa), no sufren la niebla y en las plantas urgentes van directos a la escalera. Un jefe que muere en segundos o un perfecto que muere pueden deberse al contenido o al bot: el informe lo señala, y hay que mirarlo antes de tocar números.
+- **Builds degeneradas** (`src/sim/tank.ts`, `npx vite-node tools/degenerate-builds.ts`, informe en `reports/balance/degenerate-builds-audit.md`). El *bot tanque* no rueda nunca: va derecho al jefe y usa el mejor movimiento que tenga listo, al nivel esperado, con la build que se prueba (inicial, movimientos al rango +2, objetos). Cada carta de los ocho jefes con cartas en Pesadilla se juega *congelada* (su reloj y la vida del jefe se reponen cada paso), así que solo acaba si el jugador cae; si sigue en pie a los 180 s, la build se cura más rápido de lo que la carta la daña: es inmortal en esa carta. Se cuentan además las cartas *volteadas* (inmortal en una carta que al kit por defecto sin rangos ni objetos lo mata en menos de 60 s), el tiempo con invulnerabilidad de rango, el tiempo con superarmadura y la cura por segundo. Los tests (`tests/sim/degenerate-builds.test.ts`) exigen que los casos que antes eran inmortales caigan en menos de 150 s, que la superarmadura cubra como mucho la mitad del combate y la invulnerabilidad de rango como mucho un 25 %. Topes que salieron de aquí: Campana Concha y Restos un 1 % de la vida por segundo por copia y entre los dos un 2 % (Restos tope 2), el drenaje un 1 % por segundo, la superarmadura descansa lo que dura y guardia × superarmadura nunca bajan de la mitad del golpe.
 
 ### Garantía de que todo se puede pasar
 

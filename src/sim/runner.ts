@@ -2,8 +2,10 @@ import type { FloorKind } from '../data/dungeon';
 import type { Difficulty } from '../data/difficulty';
 import { dungeonById, floorsOf, planAt, type DungeonId } from '../data/dungeons';
 import { ROOMS } from '../data/rooms';
+import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
+import { addItem } from '../core/items';
 import { chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock, type RunState } from '../core/run';
 import type { Rect, WorldState } from '../core/state';
 import { step } from '../core/step';
@@ -57,6 +59,8 @@ export interface RunOptions {
   loadout?: readonly (MoveId | null)[];
   /** The tutor's Mejoras of the bots' moves (`npm run balance -- --ranks=2`); absent = none. */
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
+  /** Held items the bots start with (the degenerate-build audit, odd/tasks/degenerate-builds.md); absent = none. */
+  items?: readonly ItemId[];
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -113,7 +117,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   const build = { ...(options.species ? { species: options.species } : {}), ...(options.loadout ? { loadout: options.loadout } : {}), ...(options.moveRanks ? { moveRanks: options.moveRanks } : {}) };
   const started = startRun(s.seed, { difficulty: s.tier, ...(s.party > 1 ? { party: s.party } : {}), ...build }, startFloor, s.dungeon);
   let run = started.run;
-  let world = applyParty(started.world, s.party);
+  let world = applyParty(options.items ? { ...started.world, player: options.items.reduce(addItem, started.world.player) } : started.world, s.party);
   const floors: FloorResult[] = [];
   let meta = floorMeta(run);
   let recorder = new FloorRecorder(world);

@@ -45,6 +45,13 @@ export type RankEffect =
 
 export type RankEffectKind = RankEffect['kind'];
 
+/**
+ * The least share of a hit the player's own defences let through together: a
+ * guard buff (Bulk Up, Iron Defense...) and a ranked move's super-armor
+ * multiply, but never below this (odd/tasks/degenerate-builds.md B2).
+ */
+export const DAMAGE_TAKEN_FLOOR = 0.5;
+
 const crit = (bonus: number): RankEffect => ({ kind: 'crit', bonus });
 const size = (multiplier: number): RankEffect => ({ kind: 'size', multiplier });
 const dot = (kind: DotKind, chance: number): RankEffect => ({ kind: 'dot', dot: kind, chance });

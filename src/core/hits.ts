@@ -9,6 +9,7 @@ import { classifyHit } from './player';
 import type { GameEvent, IncomingHit, WorldState } from './state';
 import { buffDamageTaken } from './boosts';
 import { moveIframes, wardDamageTaken } from './rank-effects';
+import { DAMAGE_TAKEN_FLOOR } from '../data/rank-effects';
 
 const PERFECT = TUNING.perfectDodge;
 const PASSIVES = TUNING.passives;
@@ -38,8 +39,10 @@ export function landHitOnPlayer(
   // A guard buff (Bulk Up, the boost slot) takes the edge off before the cap (never below 1): the cap stays the last word.
   const guard = buffDamageTaken(player);
   if (guard !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * guard)) };
-  // A ranked move's super-armor (core/rank-effects.ts) too.
-  const ward = wardDamageTaken(player);
+  // A ranked move's super-armor (core/rank-effects.ts) too, but guard and super-armor together never take off more
+  // than `DAMAGE_TAKEN_FLOOR` allows (odd/tasks/degenerate-builds.md B2: Bulk Up ++ under a heavy's ward took a third).
+  const armor = wardDamageTaken(player);
+  const ward = armor < 1 ? Math.max(armor, Math.min(1, DAMAGE_TAKEN_FLOOR / guard)) : 1;
   if (ward !== 1 && hit.damage > 0) hit = { ...hit, damage: Math.max(1, Math.round(hit.damage * ward)) };
   // A ranked move with i-frames: an ordinary hit passes through its active phase (a positional one does not).
   if (!hit.pierceRoll && moveIframes(player)) {

@@ -1,4 +1,4 @@
-import { DOTS, type DotKind, type MoveDef } from '../data/moves';
+import { DOTS, DRAIN_BUDGET, type DotKind, type MoveDef } from '../data/moves';
 import { onBossDamaged } from './boss';
 import { cardHpFloor } from './cards';
 import type { EnemyState, GameEvent, HitEffects, PlayerState, WorldState } from './state';
@@ -23,13 +23,37 @@ export function hitEffects(move: MoveDef): HitEffects | undefined {
   return Object.keys(effects).length > 0 ? effects : undefined;
 }
 
-/** After a landed hit of `damage`: drain heals (up to max HP), recoil hurts (down to 1 HP at worst). */
-export function afterHit(player: PlayerState, effects: HitEffects | undefined, damage: number): PlayerState {
+/**
+ * After a landed hit of `damage` that really took `dealt` HP: drain heals its
+ * share of `dealt` (up to max HP, within `DRAIN_BUDGET`), recoil hurts by its
+ * share of `damage` (down to 1 HP at worst).
+ */
+export function afterHit(player: PlayerState, effects: HitEffects | undefined, damage: number, dealt = damage): PlayerState {
   if (!effects || player.hp <= 0) return player;
   let hp = player.hp;
-  if (effects.drain) hp = Math.min(player.maxHp, hp + damage * effects.drain);
+  let drained = player.drained;
+  if (effects.drain && dealt > 0 && hp < player.maxHp) {
+    const spent = drained ?? 0;
+    const heal = Math.min(dealt * effects.drain, drainBudget(player) - spent, player.maxHp - hp);
+    if (heal > 0) {
+      hp += heal;
+      drained = spent + heal;
+    }
+  }
   if (effects.recoil) hp = Math.max(1, hp - damage * effects.recoil);
-  return hp === player.hp ? player : { ...player, hp };
+  if (hp === player.hp) return player;
+  return drained === undefined ? { ...player, hp } : { ...player, hp, drained };
+}
+
+const drainRate = (player: PlayerState): number => DRAIN_BUDGET.perSecond * player.maxHp;
+const drainBudget = (player: PlayerState): number => drainRate(player) * DRAIN_BUDGET.burstSeconds;
+
+/** Drain's budget refills on the player's clock (the field is dropped once full). */
+export function refillDrain(player: PlayerState, dtMs: number): PlayerState {
+  if (player.drained === undefined) return player;
+  const spent = player.drained - (drainRate(player) * dtMs) / 1000;
+  const { drained: _full, ...rest } = player;
+  return spent > 0 ? { ...player, drained: spent } : rest;
 }
 
 /** A boost with `hpCost` takes that share of max HP as it is cast (never below 1 HP). */

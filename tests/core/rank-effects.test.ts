@@ -7,7 +7,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
-import { RANK_EFFECTS } from '../../src/data/rank-effects';
+import { DAMAGE_TAKEN_FLOOR, RANK_EFFECTS } from '../../src/data/rank-effects';
 import type { SpeciesId } from '../../src/data/species';
 import { IDLE } from './helpers';
 
@@ -172,7 +172,22 @@ describe('rank effects: on the user', () => {
     const plainHit = hitPlayer(world([null, null, null, null]), { damage: 20 });
     const wardHit = hitPlayer(cast.state, { damage: 20 });
     expect(cast.state.player.hp - wardHit.player.hp).toBeLessThan(plainHit.player.maxHp - plainHit.player.hp);
-    expect(runFor(cast.state, 3100).state.player.ward).toBeUndefined();
+    // Spent after its 3 s, then 3 s of rest before another can start (at most half the time under super-armor).
+    const spent = runFor(cast.state, 3100).state.player;
+    expect(spent.ward?.remainingMs).toBe(0);
+    expect(hitPlayer({ ...cast.state, player: spent }, { damage: 20 }).player.hp).toBe(spent.hp - (plainHit.player.maxHp - plainHit.player.hp));
+    expect(runFor(cast.state, 6100).state.player.ward).toBeUndefined();
+  });
+
+  it('guard and super-armor together never take off more than DAMAGE_TAKEN_FLOOR allows (degenerate-builds B2)', () => {
+    // Bulk Up (guard 0.6) under a 0.6 ward: 0.36 before, now half of the hit gets through.
+    const base = world([null, null, 'bulk-up', null]);
+    const guarded = { ...base, player: { ...base.player, buff: { moveId: 'bulk-up' as MoveId, remainingMs: 5000 }, ward: { damageTaken: 0.6, remainingMs: 2000, restMs: 2000 } } };
+    const taken = guarded.player.hp - hitPlayer(guarded, { damage: 40 }).player.hp;
+    expect(taken).toBe(Math.round(40 * DAMAGE_TAKEN_FLOOR));
+    // One of them alone is untouched.
+    const wardOnly = { ...base, player: { ...base.player, ward: { damageTaken: 0.6, remainingMs: 2000, restMs: 2000 } } };
+    expect(wardOnly.player.hp - hitPlayer(wardOnly, { damage: 40 }).player.hp).toBe(24);
   });
 
   it('i-frames: an ordinary hit passes through the active phase of a ranked dash; a positional one does not', () => {
