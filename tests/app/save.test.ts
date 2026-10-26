@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
+import { dailyMissions } from '../../src/core/missions';
+import { MISSIONS } from '../../src/data/missions';
 import { EMPTY_SAVE, earnCoins, loadSave, migrate, sanitize, SAVE_KEY, SAVE_VERSION, writeSave } from '../../src/app/save';
 
 const throwing: KeyValueStore = {
@@ -70,6 +72,24 @@ describe('save facade', () => {
     const store = memoryStore();
     writeSave(store, { ...EMPTY_SAVE, coins: 5, achievements: { 'clear-misty-forest-easy': '2026-10-26' }, earned: 1234 });
     expect(loadSave(store)).toMatchObject({ achievements: { 'clear-misty-forest-easy': '2026-10-26' }, earned: 1234 });
+  });
+
+  it('round-trips accepted and claimed missions', () => {
+    const store = memoryStore();
+    const [a, b] = dailyMissions('2026-10-26');
+    writeSave(store, { ...EMPTY_SAVE, missions: { accepted: [{ id: a!.id, progress: 0 }], claimed: [b!.id] } });
+    expect(loadSave(store).missions).toEqual({ accepted: [{ id: a!.id, progress: 0 }], claimed: [b!.id] });
+  });
+
+  it('sanitize keeps only real missions, once each, with whole progress up to their target, at most the limit', () => {
+    const board = dailyMissions('2026-10-26');
+    const accepted = [...board, board[0]!].map((m) => ({ id: m.id, progress: 1e9 }));
+    const save = sanitize({ coins: 0, upgrades: {}, missions: { accepted: [...accepted, { id: 'd:2026-10-26:99', progress: 1 }, 'x', { id: 7 }], claimed: ['nope', board[1]!.id, board[1]!.id, 3] } });
+    expect(save.missions!.accepted).toEqual(board.slice(0, MISSIONS.maxAccepted).map((m) => ({ id: m.id, progress: m.target })));
+    expect(save.missions!.claimed).toEqual([board[1]!.id]);
+    expect(sanitize({ coins: 0, upgrades: {}, missions: { accepted: [{ id: board[0]!.id, progress: -2.5 }] } }).missions).toEqual({ accepted: [{ id: board[0]!.id, progress: 0 }], claimed: [] });
+    expect(sanitize({ coins: 0, upgrades: {}, missions: { accepted: [], claimed: [] } }).missions).toBeUndefined();
+    expect(sanitize({ coins: 0, upgrades: {}, missions: 'all' }).missions).toBeUndefined();
   });
 
   it('sanitize keeps only known achievement ids with a date, and a whole lifetime count', () => {

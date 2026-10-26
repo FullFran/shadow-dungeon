@@ -11,6 +11,8 @@ import type { Difficulty } from '../data/difficulty';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
 import type { KeyValueStore } from '../adapters/storage';
 import { ACHIEVEMENTS } from '../data/achievements';
+import { MISSIONS } from '../data/missions';
+import { missionById, type MissionState } from '../core/missions';
 
 /**
  * The save facade (docs/gdd.md §12): one versioned local save for what
@@ -26,7 +28,7 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
 /**
  * 2: the move tutor's learned moves and Mejoras (odd/tasks/movepools.md); a v1 save reads with none.
  * 3: the gacha collection (odd/tasks/gacha-evolutions.md): owned species, materials, pity; a v2 save reads with none.
- * 4: achievements and lifetime Pokémonedas (odd/tasks/achievements-missions.md); a v3 save reads with none.
+ * 4: achievements, lifetime Pokémonedas and missions (odd/tasks/achievements-missions.md); a v3 save reads with none.
  */
 export const SAVE_VERSION = 4;
 
@@ -48,6 +50,8 @@ export interface SaveData {
   achievements?: Record<string, string>;
   /** Pokémonedas earned in total, spending aside (absent = 0). */
   earned?: number;
+  /** The notice board's missions: accepted with their progress, and claimed (absent = none; core/missions.ts). */
+  missions?: MissionState;
 }
 
 export const EMPTY_SAVE: SaveData = { version: SAVE_VERSION, coins: 0, upgrades: {} };
@@ -87,6 +91,7 @@ export function sanitize(raw: unknown): SaveData {
   const pity = wholeCount(raw.pity);
   const achievements = sanitizeAchievements(raw.achievements);
   const earned = wholeCount(raw.earned);
+  const missions = sanitizeMissions(raw.missions);
   return {
     version: SAVE_VERSION,
     coins,
@@ -98,7 +103,29 @@ export function sanitize(raw: unknown): SaveData {
     ...(pity > 0 ? { pity } : {}),
     ...(achievements ? { achievements } : {}),
     ...(earned > 0 ? { earned } : {}),
+    ...(missions ? { missions } : {}),
   };
+}
+
+/**
+ * Missions: accepted ones that name a real mission, once each, with whole
+ * progress up to its target, at most the board's limit; claimed ones that
+ * name a real mission, once each, the latest kept. Expiry is the board's
+ * business (core/missions.ts `pruneMissions`, it needs the clock). Null when none.
+ */
+function sanitizeMissions(raw: unknown): MissionState | null {
+  if (!isRecord(raw)) return null;
+  const accepted: { id: string; progress: number }[] = [];
+  for (const entry of Array.isArray(raw.accepted) ? raw.accepted : []) {
+    if (accepted.length >= MISSIONS.maxAccepted) break;
+    if (!isRecord(entry) || typeof entry.id !== 'string' || accepted.some((a) => a.id === entry.id)) continue;
+    const mission = missionById(entry.id);
+    if (mission) accepted.push({ id: mission.id, progress: Math.min(mission.target, wholeCount(entry.progress)) });
+  }
+  const claimed: string[] = [];
+  for (const id of Array.isArray(raw.claimed) ? raw.claimed : []) if (typeof id === 'string' && !claimed.includes(id) && missionById(id)) claimed.push(id);
+  if (accepted.length === 0 && claimed.length === 0) return null;
+  return { accepted, claimed: claimed.slice(-MISSIONS.maxClaimed) };
 }
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;

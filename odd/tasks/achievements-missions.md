@@ -33,7 +33,7 @@ single branch `feat/achievements-missions`, one commit per task; forecast ~1,500
 ## Tasks
 - [x] T1 Achievements core + data + run report + save v4 + tests. Route: inline (single worker, already delegated).
 - [x] T2 Achievements UI: toast, window, title entry, wiring at run end and stalls; i18n.
-- [ ] T3 Missions core + data + save + tests.
+- [x] T3 Missions core + data + save + tests.
 - [ ] T4 Missions UI: board window at the notice board; i18n.
 - [ ] T5 GDD section + parity evidence.
 
@@ -53,3 +53,4 @@ single branch `feat/achievements-missions`, one commit per task; forecast ~1,500
 ## Progress / evidence
 - T1: `data/achievements.ts` (generated families), `core/achievements.ts` (`achieved`, `newlyUnlocked`, `unlockAll`, `familyProgress`), `core/run-report.ts` (`tallyKills`, `runReport`); `RunSummary` gains `kills`, `guardianNoHit` (victory only, no hit on the last floor entered), `coop`; save v4 (`achievements`, `earned`; `earnCoins` counts the lifetime total). RED observed (missing modules, save v4 asserts), then GREEN; mutation: dropping `CHALLENGES` from `clearableDungeons` fails the parity test. typecheck ok; vitest 216 files / 2616 tests ok.
 - T2: `core/achievements.ts` `settleAchievements` (stamps the UTC day, pays rewards into coins and the lifetime count, chains a milestone a reward reaches; RED observed then GREEN); `app/progress.ts` (`recordRun`, `recordSave`); `app/achievements.ts` (texts from i18n templates filled with content names, toast, window by family); `main.ts`: run end settles each peer's own report (shrine trials excluded, they never count as runs), gacha and evolve windows settle on close, title entry "Logros" (appended after the shrine); CSS in index.html. Text tests iterate every achievement in es and en (no raw keys, placeholders or em dashes). typecheck ok; vitest app/i18n/town/ui 375 tests ok.
+- T3: `data/missions.ts` (board numbers), `core/missions.ts` (daily board seeded by the UTC day, weekly by its Monday, ids regenerate the mission, `missionProgress` gated by tier, accept/advance/claim/prune, `payMissionReward`); save `missions` (sanitize: real ids, unique, progress clamped, limit); `app/progress.ts` run end advances missions, `acceptAt`/`claimAt`. RED observed (missing module, save asserts), then GREEN; mutation: letting Pesadilla materials through fails the reward test. Tests iterate 400 days: every main dungeon is a floor goal, every winnable dungeon (challenges too) a clear goal, every playable line a species goal, every enemy type of the dungeons a defeat goal, every material line a reward.
