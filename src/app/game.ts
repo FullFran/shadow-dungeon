@@ -1,4 +1,5 @@
 import { withHerald } from '../core/herald/floor';
+import { progressTrial, startTrial, trialHurt, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
@@ -92,6 +93,18 @@ export interface RunSummary {
   difficulty: Difficulty;
   /** Sima: the floor events taken this run (end screen). */
   simaEvents?: readonly SimaRecord[];
+  /** A boss shrine trial (core/shrine.ts): its stops, how many fell, the fight time, captures and whether no hit was taken. */
+  trial?: TrialSummary;
+}
+
+export interface TrialSummary {
+  stops: readonly BossStop[];
+  /** Bosses beaten (all of them on a victory). */
+  beaten: number;
+  /** Simulated fight time (pauses excluded). */
+  ms: number;
+  captures: number;
+  noHit: boolean;
 }
 
 export interface GameOptions {
@@ -115,6 +128,8 @@ export interface GameOptions {
   testSpawns?: readonly SpeciesId[];
   /** Development (`?boss=<seed>`): the start floor's herald is this seed's. */
   heraldSeed?: number;
+  /** Solo: a boss shrine trial (core/shrine.ts), these arenas in order instead of the dungeon's floors; no coins, no restarts. */
+  trial?: readonly BossStop[];
   /** Sound effects from core events and the floor music: Crypt, collapse or guardian (ducked while the Esc menu is open). */
   audio?: Pick<AudioEngine, 'handleEvents' | 'play' | 'setMusic' | 'setDucked' | 'setRumble'>;
   /** The M key. */
@@ -207,22 +222,23 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const net = options.net;
   /** F3 in a shared run: the net stats overlay. */
   const overlay = net ? createNetOverlay(canvas.parentElement ?? document.body, net.session, net.role, net.localId) : null;
-  const started = startRun(
-    options.seed ?? 1,
-    {
-      ...(options.species ? { species: options.species } : {}),
-      loadout: options.loadout,
-      lockType: options.lockType,
-      clickToLock: options.clickToLock,
-      // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
-      ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
-      // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
-      ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
-      ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
-    },
-    options.startFloor,
-    options.dungeon,
-  );
+  const runOptions = {
+    ...(options.species ? { species: options.species } : {}),
+    loadout: options.loadout,
+    lockType: options.lockType,
+    clickToLock: options.clickToLock,
+    // Modo puro: no shop upgrades in the endless dungeon (core/endless.ts).
+    ...(runUpgrades(dungeonById(options.dungeon), options.upgrades) ? { upgrades: options.upgrades } : {}),
+    // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
+    ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
+    ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),
+  };
+  // The boss shrine (solo only): its first arena at its expected level, no items or upgrades.
+  const trialStart = options.trial && options.trial.length > 0 && !net ? startTrial(options.seed ?? 1, runOptions, options.trial) : null;
+  const started = trialStart ?? startRun(options.seed ?? 1, runOptions, options.startFloor, options.dungeon);
+  /** The shrine trial under way, and whether a hit was taken in it («Sin rasguños»). */
+  let trial: TrialState | null = trialStart?.trial ?? null;
+  let trialHit = false;
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
@@ -552,7 +568,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function restartFloor(): void {
     hideMenu();
     // A shared run cannot rewind one peer; harder tiers allow fewer restarts per floor.
-    if (net || restartsLeft(difficulty, restartsUsed) === 0) return;
+    if (net || trial || restartsLeft(difficulty, restartsUsed) === 0) return;
     restartsUsed += 1;
     world = { ...floorStart, lock: configureLock(floorStart.lock, lockSettings) };
     tally = floorStartTally;
@@ -580,7 +596,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       {
         resume: hideMenu,
         restart: restartFloor,
-        ...(net ? {} : { restartsLeft: restartsLeft(difficulty, restartsUsed) }),
+        ...(net ? {} : { restartsLeft: trial ? 0 : restartsLeft(difficulty, restartsUsed) }),
         quit: () => {
           hideMenu();
           net?.session.leave();
@@ -686,7 +702,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     hidePick();
     audio?.setMusic(null);
     // What the merchant took comes off the pay.
-    const coins = spendCoins(scaleCoins(coinBreakdown(tally, result, difficulty), dungeonOf(run).endless?.coinScale ?? 1), simaSpent);
+    // A shrine trial pays nothing here (main.ts pays a gauntlet's first clear).
+    const coins = trial ? coinBreakdown(emptyTally(), null, difficulty) : spendCoins(scaleCoins(coinBreakdown(tally, result, difficulty), dungeonOf(run).endless?.coinScale ?? 1), simaSpent);
+    const trialSummary: TrialSummary | null = trial
+      ? { stops: trial.stops, beaten: trial.index + (result === 'victory' ? 1 : 0), ms: tally.playedMs, captures: tally.captures ?? 0, noHit: !trialHit }
+      : null;
     const finish = () =>
       options.onEnd(result, {
         dungeon: run.dungeon,
@@ -698,6 +718,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         difficulty,
         ...(run.clockMs !== undefined ? { clockMs: run.clockMs } : {}),
         ...(simaLog.length > 0 ? { simaEvents: [...simaLog] } : {}),
+        ...(trialSummary ? { trial: trialSummary } : {}),
       });
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
     window.setTimeout(() => {
@@ -728,6 +749,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     announceFloor(true);
     // The guardian's floor opens with its cinematic (a herald's with its intro); the held item pick waits for it.
     guardianMoment('pre', () => heraldMoment(offerPick));
+  }
+
+  /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
+  function trialProgress(): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number } {
+    const p = progressTrial(trial!, run, world, FIXED_DT_MS);
+    if (trial!.pauseMs === null && p.trial.pauseMs !== null) {
+      const next = p.trial.stops[p.trial.index + 1];
+      if (next) say(t('shrine.next').replace('{name}', t(`species.${next.boss}`)), 'good');
+    }
+    trial = p.trial;
+    return p;
   }
 
   function simulate(frameMs: number): void {
@@ -797,7 +829,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           say(t('forest.wisp.found'), 'good');
         }
       }
-      const progress = progressRun(run, world);
+      if (trial && trialHurt(events)) trialHit = true;
+      const progress = trial ? trialProgress() : progressRun(run, world);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
       // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
