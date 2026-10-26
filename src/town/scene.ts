@@ -1,4 +1,5 @@
 import { bestiaryLines } from './bestiary';
+import { devPerfProbe } from '../adapters/perf-probe';
 import { SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
@@ -523,6 +524,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     resize();
     const view = townCamera(camera, map);
     const timeMs = now - start;
+    const perf = devPerfProbe();
+    const drawAt = perf ? performance.now() : 0;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade ? null : nearestInteractable(walker.pos, targets);
@@ -540,6 +543,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       },
       timeMs,
     );
+    if (perf) {
+      perf.record('frame', dt);
+      perf.record('render', performance.now() - drawAt);
+    }
     raf = requestAnimationFrame(frame);
   }
 

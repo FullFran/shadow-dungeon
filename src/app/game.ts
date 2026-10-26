@@ -58,6 +58,7 @@ import { holdWakeLock } from '../adapters/wake-lock';
 import { mergeInputs, touchToPlayerInput } from '../adapters/touch';
 import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
+import { devPerfProbe } from '../adapters/perf-probe';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
 import { displayName } from '../net/nickname';
@@ -885,7 +886,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const frozen = juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
     log = pruneLog(log, realMs);
+    const perf = devPerfProbe();
+    const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
+    if (perf) {
+      perf.record('frame', frameMs);
+      perf.record('sim', performance.now() - simAt);
+    }
 
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
     camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
@@ -914,6 +921,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       clickLockActive(world.lock) && !closeMenu && lastInput
         ? enemyUnderCursor({ playerPos: world.player.pos, cursor: lastInput.aim, view: lastInput.view, enemies: world.enemies })
         : null;
+    const drawAt = perf ? performance.now() : 0;
     renderer.draw({
       prev,
       current: world,
@@ -947,6 +955,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       touchUi: isTouchUi(),
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
     });
+    if (perf) {
+      perf.record('render', performance.now() - drawAt);
+      perf.record('bullets', world.projectiles.length);
+      perf.record('enemies', world.enemies.length);
+    }
     overlay?.update(realMs);
     raf = requestAnimationFrame(frame);
   }
