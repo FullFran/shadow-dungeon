@@ -275,6 +275,9 @@
       html.touch .prologue-hint { display: none; }
       html.touch .prologue-skip { min-height: 44px; min-width: 88px; right: max(20px, env(safe-area-inset-right)); }
       .touch-back, .rotate-hint { display: none; }
+      /* Co-op, fainted: move the camera on to the next standing teammate (src/app/spectate.ts). */
+      .spectate-next { position: fixed; top: max(64px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 6; min-width: 96px; min-height: 44px; padding: 4px 14px; font: inherit; font-size: 14px; color: var(--md-text); background: var(--md-window-top); border: 2px solid var(--md-border); border-radius: 6px; }
+      .spectate-next[hidden] { display: none; }
       html.touch .touch-back { display: block; position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 20; min-width: 72px; min-height: 44px; padding: 4px 14px;
         font: inherit; font-size: 18px; color: var(--md-text); background: var(--md-window-bottom); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 2px var(--md-ink); }
       html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }

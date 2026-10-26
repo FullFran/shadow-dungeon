@@ -115,6 +115,8 @@ export interface RenderFrame {
   waiting?: string | null;
   /** The mid-boss bonfire burning on this floor (core/bonfire.ts), where it stands. */
   bonfire?: Vec2 | null;
+  /** Co-op, fainted: the teammate the camera follows ("Mirando a Ana"). */
+  spectating?: string | null;
 }
 
 const COLORS = {
@@ -1692,6 +1694,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, gateY, timeMs);
     else if (openedNotice) drawGateNotice(ctx, openedNotice, hud.width, gateY, timeMs);
     if (frame.waiting) drawWaitLine(ctx, frame.waiting, hud.width, hud.height - 48);
+    if (frame.spectating) drawWaitLine(ctx, frame.spectating, hud.width, hud.height - (frame.waiting ? 76 : 48));
   }
 
   return { draw };

@@ -18,6 +18,7 @@ import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, tickRunClock, withFogWall, type RunState } from '../core/run';
 import { bonfireFloor, bonfireLights, bonfirePos, bonfireSnapshot, respawnsLeft } from '../core/bonfire';
+import { nextSpectate, spectateTarget, type Watchable } from './spectate';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
@@ -389,6 +390,19 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let bonfire: { run: RunState; world: WorldState; tally: CoinTally } | null = null;
   let bonfireUsed = 0;
   let wiped = false;
+  /** Co-op, fainted: the teammate the camera follows (./spectate.ts), and the button that moves on to the next one (touch and mouse; Q on the keyboard). */
+  let watching: string | null = null;
+  const spectateButton = document.createElement('button');
+  spectateButton.className = 'spectate-next';
+  spectateButton.type = 'button';
+  spectateButton.hidden = true;
+  overlayParent.appendChild(spectateButton);
+  /** The teammates this peer can watch, in roster order. */
+  const watchable = (): Watchable[] => [...world.remotes].sort((a, b) => a.id.localeCompare(b.id)).map((r) => ({ id: r.id, standing: r.player.hp > 0 }));
+  const watchNext = () => {
+    if (watching !== null) watching = nextSpectate(watchable(), watching);
+  };
+  spectateButton.addEventListener('click', watchNext);
   /** Pokémonedas spent at the merchant (taken off the run's pay), and as the floor was entered ("Restart floor"). */
   let simaSpent = 0;
   let floorStartSpent = 0;
@@ -803,6 +817,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
       choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
+    else if (e.code === 'KeyQ' && watching !== null && !closeMenu) watchNext();
     else if (e.code === 'Tab' && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
       e.preventDefault();
@@ -1081,7 +1096,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
 
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
-    camera = followCamera(camera, lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
+    // Co-op, fainted: the camera follows a standing teammate instead of the body.
+    watching = net && world.player.hp <= 0 && !ended ? spectateTarget(watchable(), watching) : null;
+    spectateButton.hidden = watching === null;
+    if (watching !== null) spectateButton.textContent = t(isTouchUi() ? 'spectate.next' : 'spectate.nextKey');
+    const watched = watching !== null ? world.remotes.find((r) => r.id === watching) : undefined;
+    camera = followCamera(camera, watched ? watched.player.pos : lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
     const bar = bossBar(world);
@@ -1150,6 +1170,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
       waiting: wiped && net?.role === 'guest' ? t('bonfire.waitHost') : waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
       bonfire: bonfire && bonfire.run.floor === run.floor ? bonfirePos(world) : null,
+      spectating: watched && net ? t('spectate.watching').replace('{name}', rosterNames(net.session.roster()).get(watched.id) ?? t(`species.${watched.player.species}`)) : null,
     });
     if (perf) {
       perf.record('render', performance.now() - drawAt);
@@ -1195,6 +1216,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // A room's session outlives its run: the room goes back to the town together.
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
+      spectateButton.remove();
       window.removeEventListener('keydown', onKeyDown);
     },
   };
