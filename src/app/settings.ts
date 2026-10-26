@@ -3,7 +3,7 @@ import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { isPlayable, SPECIES, type SpeciesId } from '../data/species';
 import { padLoadout, validateLoadout } from '../core/loadout';
-import { DEFAULT_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
+import { NEW_PLAYER_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
 import type { KeyValueStore } from '../adapters/storage';
@@ -35,14 +35,14 @@ export interface Settings {
   haptics: boolean;
   /** Shown over this player in online rooms (src/net/nickname.ts); empty uses "Jugador-XYZ". */
   nickname: string;
-  /** The last difficulty tier picked (solo, and the host's for a room); easy by default (data/difficulty.ts). */
+  /** The last difficulty tier picked (solo, and the host's for a room); normal for new players (data/difficulty.ts). */
   difficulty: Difficulty;
 }
 
 const KEY = 'mazmorra-sombria.settings';
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: DEFAULT_DIFFICULTY };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */

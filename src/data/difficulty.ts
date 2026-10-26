@@ -10,6 +10,9 @@ export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard', 'n
 
 export const DEFAULT_DIFFICULTY: Difficulty = 'easy';
 
+/** Tier a new player starts on (settings default). DEFAULT_DIFFICULTY stays the meaning of an absent field in state, saves and the wire. */
+export const NEW_PLAYER_DIFFICULTY: Difficulty = 'normal';
+
 export const difficultyRank = (d: Difficulty): number => DIFFICULTIES.indexOf(d);
 
 /** True when `current` is `min` or harder. */

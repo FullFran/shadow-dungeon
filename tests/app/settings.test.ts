@@ -51,7 +51,7 @@ describe('settings', () => {
 
   /** A two-move save as it loads since four-slots: boost and area take the species defaults. */
   const pad = (species: SpeciesId, two: readonly MoveId[]): (MoveId | null)[] => [...two, ...SPECIES[species].defaultLoadout.slice(2)];
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: 'easy' };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, nickname: '', difficulty: 'normal' };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, ...SOUND });
@@ -80,12 +80,12 @@ describe('settings', () => {
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
   });
 
-  it('remembers the last difficulty tier, and reads anything unknown as easy', () => {
+  it('remembers the last difficulty tier, and reads anything unknown as normal (the new-player default)', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ difficulty: 'nightmare' }));
     expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('nightmare');
     store.set('mazmorra-sombria.settings', JSON.stringify({ difficulty: 'legendary' }));
-    expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('easy');
+    expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('normal');
   });
 
   it('keeps a stored nickname only after sanitising it', () => {

@@ -893,7 +893,7 @@ Escalar solo la vida (lo que hace PokéSurvivor) en un souls se queda corto: el 
 
 ## 9. Dificultad
 
-Hay cuatro niveles: Fácil, Normal, Difícil y Pesadilla. Fácil es el equilibrio de siempre: mismos números, mismos tiempos, mismas plantas (lo único nuevo en todos los niveles son los dos ataques de zona de Aegislash y Sableye que se cuentan abajo). Jugando sola se elige en la pantalla de movimientos, encima de «Empezar», y se recuerda para la próxima. En una sala la elige el anfitrión para todo el grupo, en la ventana de la boca de la mazmorra o del poste del camino; los invitados la ven en la ventana de la sala y juegan la del anfitrión (viaja en el mensaje de inicio; un anfitrión antiguo que no la manda cuenta como Fácil).
+Hay cuatro niveles: Fácil, Normal, Difícil y Pesadilla. Fácil es el equilibrio de siempre: mismos números, mismos tiempos, mismas plantas (lo único nuevo en todos los niveles son los dos ataques de zona de Aegislash y Sableye que se cuentan abajo). Jugando sola se elige en la pantalla de movimientos, encima de «Empezar», y se recuerda para la próxima. Quien juega por primera vez empieza en Normal (la experiencia pensada: «tu turno», cartas de hechizo); Fácil queda para quien la elija. En una sala la elige el anfitrión para todo el grupo, en la ventana de la boca de la mazmorra o del poste del camino; los invitados la ven en la ventana de la sala y juegan la del anfitrión (viaja en el mensaje de inicio; un anfitrión antiguo que no la manda cuenta como Fácil).
 
 ### Qué hace divertida y justa una dificultad alta
 
