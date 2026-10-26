@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -30,14 +29,17 @@ const (
 	nicknameRawMax = 256
 )
 
-// KnownSaveVersions lists the client SAVE_VERSION values (src/app/save.ts)
-// the server accepts. Add the new number here when the client bumps it.
-var KnownSaveVersions = []int{1, 2, 3}
+// The client SAVE_VERSION (src/app/save.ts) the server accepts: any whole
+// number in this range, so the client can bump it without a server deploy.
+const (
+	MinSaveVersion = 1
+	MaxSaveVersion = 99
+)
 
 var (
 	ErrTooLarge        = errors.New("save data is larger than 64 KB")
 	ErrNotObject       = errors.New("save data must be a JSON object")
-	ErrUnknownVersion  = errors.New("unknown save version")
+	ErrUnknownVersion  = errors.New("save version must be a whole number from 1 to 99")
 	ErrVersionMismatch = errors.New("data.version must equal the record version")
 	ErrBadCoins        = errors.New("coins must be a whole number between 0 and the cap")
 
@@ -58,7 +60,7 @@ func ValidateSave(data []byte, version int) error {
 		return ErrNotObject
 	}
 
-	if !slices.Contains(KnownSaveVersions, version) {
+	if version < MinSaveVersion || version > MaxSaveVersion {
 		return ErrUnknownVersion
 	}
 	if n, ok := wholeNumber(save["version"]); !ok || n != float64(version) {

@@ -1,5 +1,6 @@
 // Package setup reads the environment and applies it to PocketBase at
 // startup: CORS origins, OAuth2 providers, rate limits and proxy headers.
+// Email + password sign-in is schema (migrations), not environment.
 // The environment is the source of truth; changes made in the dashboard to
 // these settings are overwritten on the next start.
 package setup
@@ -64,9 +65,15 @@ func WithOrigins(args []string, origins []string) []string {
 	return append(append([]string{}, args...), "--origins="+strings.Join(origins, ","))
 }
 
-// RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is in seconds.
+// SignUpLimit caps account creation per IP: 5 sign-ups per 10 minutes.
+var SignUpLimit = core.RateLimitRule{Label: "users:create", MaxRequests: 5, Duration: 600}
+
+// RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is
+// in seconds. A collection label ("users:create") wins over its wildcard
+// ("*:create"), whatever the order.
 var RateLimitRules = []core.RateLimitRule{
 	{Label: "*:auth", MaxRequests: 10, Duration: 60},
+	SignUpLimit,
 	{Label: "saves:create", MaxRequests: 10, Duration: 60},
 	{Label: "saves:update", MaxRequests: 30, Duration: 60},
 	{Label: "*:create", MaxRequests: 20, Duration: 60},

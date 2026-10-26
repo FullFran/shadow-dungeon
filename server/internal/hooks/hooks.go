@@ -21,7 +21,40 @@ func Register(app core.App) {
 	app.OnRecordCreateRequest("saves").BindFunc(createSave)
 	app.OnRecordUpdateRequest("saves").BindFunc(updateSave)
 
+	app.OnRecordCreateRequest("users").BindFunc(signUp)
+	app.OnRecordUpdateRequest("users").BindFunc(keepAccountFlags)
 	app.OnRecordAuthWithOAuth2Request("users").BindFunc(dropProviderEmail)
+}
+
+// signUp requires an email for a password account (the field is optional
+// because OAuth2 accounts have none) and keeps the address private and the
+// account unverified: only a verification email may verify it, and there is
+// no SMTP yet. PocketBase itself rejects short passwords and taken emails.
+func signUp(e *core.RecordRequestEvent) error {
+	if e.HasSuperuserAuth() {
+		return e.Next()
+	}
+	info, err := e.RequestInfo()
+	if err != nil {
+		return err
+	}
+	if info.Context != core.RequestInfoContextOAuth2 && e.Record.Email() == "" {
+		return validation.Errors{core.FieldNameEmail: validation.NewError("validation_required", "Cannot be blank.")}
+	}
+	e.Record.SetEmailVisibility(false)
+	e.Record.SetVerified(false)
+	return e.Next()
+}
+
+// keepAccountFlags stops an owner from publishing their email or marking
+// their own account verified; superusers can still change both.
+func keepAccountFlags(e *core.RecordRequestEvent) error {
+	if e.HasSuperuserAuth() {
+		return e.Next()
+	}
+	e.Record.SetEmailVisibility(false)
+	e.Record.SetVerified(e.Record.Original().Verified())
+	return e.Next()
 }
 
 // conflictError carries the stored save out of the transaction so the
@@ -132,8 +165,13 @@ func answerConflict(e *core.RecordRequestEvent, err error) error {
 	})
 }
 
-// dropProviderEmail keeps no email address: the account is identified by
-// the provider's user id alone (stored by PocketBase in _externalAuths).
+// dropProviderEmail keeps no provider email address: an OAuth2 account is
+// identified by the provider's user id alone (stored in _externalAuths).
+// Without an email PocketBase never links a provider to an existing account
+// by matching addresses, so an unverified password account cannot be taken
+// over through a provider that reports the same email. Linking happens only
+// when the request carries the signed-in user's token: PocketBase then links
+// the provider to that account instead of creating a new one.
 // It also ignores client-sent createData, as users have no custom fields.
 func dropProviderEmail(e *core.RecordAuthWithOAuth2RequestEvent) error {
 	if e.OAuth2User != nil {
