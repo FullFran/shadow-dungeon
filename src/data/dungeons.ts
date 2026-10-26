@@ -11,6 +11,7 @@ import { CUBONE_ROADS } from './story/cubone';
 import { LITWICK_ROADS } from './story/litwick';
 import type { SendaRoad } from './story/roads';
 import { ZORUA_ROADS } from './story/zorua';
+import { SIMA_STORY, simaStoryBossOf } from './sima-story';
 import { ABRA_ROADS } from './story/abra';
 import { PIPLUP_ROADS } from './story/piplup';
 import { SHINX_ROADS } from './story/shinx';
@@ -588,7 +589,12 @@ export const chanceAt = (table: readonly number[], floor: number): number => tab
 export function musicFor(dungeon: DungeonDef, plan: FloorPlan, kind: FloorKind, floor = 1): MusicContext {
   const endless = dungeon.endless;
   if (plan.kind === 'room') {
-    if (plan.role === 'echo' && endless) return echoAt(endless, floor).music;
+    if (plan.role === 'echo' && endless) {
+      // A Senda boss in the Sima (core/sima-story.ts) plays its own track; the echoes theirs.
+      const story = simaStoryBossOf(plan.room);
+      if (story) return story.wound ? SIMA_STORY.wounds.music : SIMA_STORY.strays.music;
+      return echoAt(endless, floor).music;
+    }
     return plan.role === 'midboss' ? dungeon.music.midboss : dungeon.music.guardian;
   }
   if (kind !== 'normal') return dungeon.music.urgent[kind];

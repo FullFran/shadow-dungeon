@@ -130,3 +130,22 @@ describe('Mystery Dungeon UI strings', () => {
     expect(catalog('en')['title.alt']).toBe(catalog('es')['app.title']);
   });
 });
+
+describe('the name of the reborn', () => {
+  it('lives in one key: {called} and {calledOne} in any string become it, in both languages', () => {
+    for (const language of LANGUAGES) {
+      setLanguage(language);
+      const name = t('lore.reborn.name');
+      const one = t('lore.reborn.one');
+      expect(name.length).toBeGreaterThan(0);
+      for (const key of Object.keys(catalog(language))) {
+        const text = t(key);
+        expect(text, key).not.toContain('{called');
+        if (catalog(language)[key]!.includes('{calledOne}')) expect(text, key).toContain(one);
+        else if (catalog(language)[key]!.includes('{called}')) expect(text, key).toContain(name);
+      }
+    }
+    setLanguage('es');
+    expect(t('lore.reborn.name')).toBe('Caminantes de la Sima');
+  });
+});

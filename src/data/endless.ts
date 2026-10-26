@@ -118,6 +118,12 @@ export interface EndlessDef {
    * way on at the top).
    */
   heralds?: { from: number; every: number; offset: number; echo: EchoDef };
+  /**
+   * The Sendas' wounds (data/sima-story.ts, docs/sima-redesign.md §4): from
+   * floor `from`, every `every`th floor (a guardian-echo floor) holds a wound
+   * instead; the guardians' turn skips those floors, so all five keep coming.
+   */
+  wounds?: { from: number; every: number };
   /** The way on that opens at the top centre of an echo's arena once it falls (px). */
   echoExit: { width: number; height: number };
   pool: readonly EndlessPoolEntry[];
@@ -172,6 +178,8 @@ export const ENDLESS: EndlessDef = {
   eclipseEcho: { room: 'eclipse', music: 'guardian' },
   // Generated heralds after the first strata (user feedback 2026-10-25): 22, 32, 42..., among the later echoes.
   heralds: { from: 22, every: 10, offset: 2, echo: { room: 'abyss', music: 'guardian' } },
+  // The Sendas' wounds on 35, 55, 75... (the guardians keep 45, 65, 85...).
+  wounds: { from: 35, every: 20 },
   echoExit: { width: 80, height: 50 },
   pool: ENDLESS_POOL,
   spawns: { base: 1, perDepth: 0.15, jitter: 1, maxPerRoom: 3, budget: { base: 2, perDepth: 0.2, jitter: 1, maxEnemies: 3, rest: [0.2], repeatWeight: 0.4, leaders: { fromFloor: 3, start: 0.15, perFloor: 0.02, max: 0.6 } } },
@@ -197,6 +205,18 @@ export const isHeraldFloor = (endless: Pick<EndlessDef, 'heralds'>, floor: numbe
   return h !== undefined && floor >= h.from && floor % h.every === h.offset;
 };
 
+/** True on the floors a Senda's wound holds instead of a guardian echo (35, 55, 75...). */
+export const isWoundFloor = (endless: Pick<EndlessDef, 'echoEvery'> & Partial<Pick<EndlessDef, 'wounds'>>, floor: number): boolean => {
+  const w = endless.wounds;
+  return w !== undefined && floor >= w.from && (floor - w.from) % w.every === 0 && floor % endless.echoEvery === 0;
+};
+
+/** Wound floors up to `floor` (they take guardian slots). */
+const woundsUpTo = (endless: Pick<EndlessDef, 'echoEvery'> & Partial<Pick<EndlessDef, 'wounds'>>, floor: number): number => {
+  const w = endless.wounds;
+  return w === undefined || floor < w.from ? 0 : Math.floor((floor - w.from) / w.every) + 1;
+};
+
 /** True on the floors that hold a guardian echo (5, 10, 15...), the Eclipse Echo, or a herald. */
 export const isEchoFloor = (endless: Pick<EndlessDef, 'echoEvery'> & Partial<Pick<EndlessDef, 'heralds'>>, floor: number): boolean =>
   (floor > 0 && floor % endless.echoEvery === 0) || isHeraldFloor(endless, floor);
@@ -204,13 +224,17 @@ export const isEchoFloor = (endless: Pick<EndlessDef, 'echoEvery'> & Partial<Pic
 /**
  * The echo of an echo floor: the Eclipse Echo on every `eclipseEvery`th floor
  * (when the dungeon has one), otherwise the guardian echoes in turn (the first
- * on floor 5, the next on the next guardian echo floor, and round again).
+ * on floor 5, the next on the next guardian echo floor, and round again; the
+ * wound floors skip a turn). On a wound floor it is the guardian the wound
+ * stands in for (its arena is the wound's: core/sima-story.ts).
  */
-export function echoAt(endless: Pick<EndlessDef, 'echoEvery' | 'echoes' | 'eclipseEvery' | 'eclipseEcho'> & Partial<Pick<EndlessDef, 'heralds'>>, floor: number): EchoDef {
+export function echoAt(endless: Pick<EndlessDef, 'echoEvery' | 'echoes' | 'eclipseEvery' | 'eclipseEcho'> & Partial<Pick<EndlessDef, 'heralds' | 'wounds'>>, floor: number): EchoDef {
   if (endless.heralds && isHeraldFloor(endless, floor)) return endless.heralds.echo;
   const { eclipseEvery, eclipseEcho } = endless;
   if (eclipseEvery && eclipseEcho && floor > 0 && floor % eclipseEvery === 0) return eclipseEcho;
   const echoes = Math.floor(floor / endless.echoEvery);
   const eclipses = eclipseEvery && eclipseEcho ? Math.floor(floor / eclipseEvery) : 0;
-  return endless.echoes[(echoes - eclipses - 1 + endless.echoes.length * 1000) % endless.echoes.length]!;
+  // A wound's floor takes no guardian's turn (the wound itself is chosen by the run seed, core/sima-story.ts).
+  const wounds = woundsUpTo(endless, floor) - (isWoundFloor(endless, floor) ? 1 : 0);
+  return endless.echoes[(echoes - eclipses - wounds - 1 + endless.echoes.length * 1000) % endless.echoes.length]!;
 }

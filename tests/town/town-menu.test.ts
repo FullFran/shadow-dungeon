@@ -45,6 +45,25 @@ describe('town Esc menu', () => {
     expect(scene).toMatch(/if \(dialog\) dialog = null;\s*else openMenu\(\);/);
   });
 
+  it('every way into a dungeon (the Esc menu, the waystone, the entrances, the windows) goes through depart, where the Sima pleas wait', () => {
+    const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
+    // The pleas are checked first thing in depart (alone, the first time, heading to the Sima).
+    const depart = scene.slice(scene.indexOf('const depart = '), scene.indexOf('// In a room only the host leads'));
+    expect(depart).toContain('options.simaPlea.due()');
+    expect(depart).toContain('beginPlea(');
+    // The Esc menu's "Mazmorras" and the hub's waystone open the destination window, whose rows depart.
+    expect(scene).toMatch(/case 'dungeons':\s*return canTravel\(lobby\) \? openExitWindow\(\)/);
+    expect(scene).toMatch(/if \(map\.id === HUB && canTravel\(lobby\)\) openExitWindow\(\);/);
+    const exit = scene.slice(scene.indexOf('function openExitWindow('), scene.indexOf('function reachEntrance('));
+    expect(exit).toContain('enterRows(d.id, d.label, lobby, depart)');
+    // Every window over the town (challenges, the menu's services) departs through it too.
+    expect(scene).toContain('(id) => depart(id),');
+    // The solo town hands the pleas over; the Esc menu never opens over them.
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    expect(main.slice(main.indexOf('function townScreen('), main.indexOf('function tutorView('))).toContain('simaPlea: { dungeon: ECLIPSE.id');
+    expect(scene).toMatch(/function openMenu\(\): void \{\s*if \(exitWindow \|\| closeShop \|\| fade \|\| plea \|\| stopped\) return;/);
+  });
+
   it('the solo town wires every service, the room town all but the account (it leaves the room) and online', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
     const solo = main.slice(main.indexOf('function townScreen('), main.indexOf('function tutorView('));

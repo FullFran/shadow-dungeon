@@ -339,8 +339,8 @@ describe('the caves and the swamp in the Sima', () => {
   it('Dhelmise and Nihilego join the guardian echoes, and as echoes never reach phase 2', () => {
     expect(ENDLESS.echoes.map((e) => e.room)).toEqual(['boss', 'hollow', 'roost', 'wreck', 'rift']);
     for (const [floor, species] of [
-      [35, 'dhelmise'],
-      [45, 'nihilego'],
+      [45, 'dhelmise'],
+      [65, 'nihilego'],
     ] as const) {
       let w = startRun(4242, {}, floor, ECL).world;
       expect(w.enemyScale?.echo).toBe(true);

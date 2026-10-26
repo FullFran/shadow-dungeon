@@ -1,3 +1,4 @@
+import type { Figuration } from './figurations';
 import { drawHerald, heraldScale } from './herald-vfx';
 import { heraldOf } from '../core/herald/brain';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
@@ -42,7 +43,7 @@ import { hudSpace } from '../ui/hud-layout';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
-import { enemyAnim, playerAnim, type AnimChoice } from './sprite-anim';
+import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } from './sprite-anim';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
@@ -120,7 +121,23 @@ export interface RenderFrame {
   memory?: Vec2 | null;
   /** Co-op, fainted: the teammate the camera follows ("Mirando a Ana"). */
   spectating?: string | null;
+  /**
+   * The Sima as this player remembers it (app/sima-lore.ts): enemy id -> the
+   * species whose name it goes by (a faceless guardian, someone's shadow) on
+   * the boss bar; presentation only.
+   */
+  shownAs?: ReadonlyMap<string, string>;
+  /** Enemies this player does not know the face of: drawn as a silhouette. */
+  silhouettes?: ReadonlySet<string>;
+  /** The Sima's figuraciones (adapters/figurations.ts): shapes that are not there, in world px; drawn only, never part of the world. */
+  figurations?: readonly Figuration[];
 }
+
+/** A figuración: nobody, a shape in the dark at the edge of the view. */
+const FIGURATION_FILTER = 'brightness(0) drop-shadow(0 0 2px rgba(120, 30, 50, 0.8))';
+
+/** A Sima boss the player does not know yet: black, with a pale rim (docs/sima-redesign.md). */
+const SILHOUETTE_FILTER = 'brightness(0) drop-shadow(0 0 1px rgba(220, 200, 255, 0.9)) drop-shadow(0 0 4px rgba(120, 40, 70, 0.9))';
 
 const COLORS = {
   aimLine: '#ffd447',
@@ -1623,6 +1640,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
           // The Eco del Eclipse and a Senda's wound: the eclipse's corruption on a Pokémon's own sheet (a wound drawn huge).
           if (enemy.species === 'eclipse-echo' || isWound(enemy.species)) ctx.filter = ECHO_FILTER;
+          if (frame.silhouettes?.has(enemy.id)) ctx.filter = SILHOUETTE_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? woundScale(worldDifficulty(current)) : 1));
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
@@ -1671,6 +1689,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
     for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
+    // Figuraciones: flat black shapes with a faint rim, over the floor and under the HUD.
+    for (const f of frame.figurations ?? []) {
+      const meta = SPRITES.sprites[f.sprite]?.anims[f.walking ? 'Walk' : 'Idle'] ?? SPRITES.sprites[f.sprite]?.anims.Idle;
+      if (!meta || !sheets.get(sheetKey(f.sprite, meta.file))) continue;
+      ctx.filter = FIGURATION_FILTER;
+      drawSprite({ sprite: f.sprite as AnimChoice['sprite'], anim: f.walking ? 'Walk' : 'Idle', frame: frameAtTime(meta.durations, timeMs, true), row: Math.min(directionRow(f.facing), meta.rows - 1) }, f.pos, f.alpha);
+      ctx.filter = 'none';
+    }
 
     const hovered = current.enemies.find((e) => e.id === frame.hoverId && e.alive);
     if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
@@ -1699,7 +1725,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
-    drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false);
+    drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false, frame.shownAs);
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined);
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);

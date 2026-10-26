@@ -1,3 +1,5 @@
+import { figurationsAt, type FigurationMode } from '../adapters/figurations';
+import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
 import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
@@ -14,11 +16,18 @@ import { announcedOnEntry, simaNews } from '../adapters/sima-events-view';
 import { openSimaChoice, type SimaChoiceOption } from './sima-choice';
 import type { ItemId } from '../data/items';
 import { MOVES, type MoveId } from '../data/moves';
-import type { SpeciesId } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
+import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, tickRunClock, withFogWall, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, strayHere, tickRunClock, withFogWall, type RunState } from '../core/run';
+import { lookText, simaFoeLook, type SimaMemory } from './sima-lore';
+import { simaCardKey, type SimaSceneId } from '../data/sima-scenes';
+import type { SimaSceneInfo } from './sima-cinematic';
+import { isHeraldFloor } from '../data/endless';
+import { ROOMS } from '../data/rooms';
+import { ENDLESS } from '../data/endless';
 import { bonfireFloor, bonfireLights, bonfirePos, bonfireSnapshot, respawnsLeft } from '../core/bonfire';
 import { nextSpectate, spectateTarget, type Watchable } from './spectate';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
@@ -92,6 +101,9 @@ export const VIEW_HEIGHT = 320;
 export type GameResult = 'defeat' | 'victory' | 'eclipse';
 
 /** Shown on the end screens. */
+/** The guardians whose echoes the Sima holds (their names wait until the player has beaten them). */
+const GUARDIAN_ECHOES: readonly string[] = ENDLESS.echoes.map((e) => ROOMS[e.room].spawns[0]!.species);
+
 export interface RunSummary {
   /** The dungeon of the run (records are kept per dungeon). */
   dungeon: DungeonId;
@@ -193,7 +205,24 @@ export interface GameOptions {
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
   touch?: { autoAim(): boolean; haptics(): boolean };
+  /**
+   * The Sima as this player remembers it (app/sima-lore.ts): names, epithets
+   * and silhouettes of its bosses. Presentation only; absent, every boss goes
+   * by its own name.
+   */
+  simaMemory?: SimaMemory;
+  /**
+   * The Sima's cinematics (data/sima-scenes.ts): whether this device has seen
+   * one, and, solo only, playing it over the game (null when nothing plays;
+   * the run stands still meanwhile). A shared run logs its line instead.
+   */
+  simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
+  /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
+  figurations?(): FigurationMode;
 }
+
+/** The shapes figuraciones take: the shadows of those who did not come back. The player's own joins them per run. */
+const LOST_SHAPES: readonly string[] = [...new Set(SIMA_SHADOWS.map((b) => SPRITE_KEYS[b.sprite as keyof typeof SPRITE_KEYS]).filter(Boolean))];
 
 /** What a fainted player sends in a shared run: nothing (an ally standing by gets it up: core/revive.ts). */
 function idleInput(from: PlayerInput): PlayerInput {
@@ -371,6 +400,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const audio = options.audio;
   /** Floor 1 entry title and the "♪ title" note of the last music change (presentation only). */
   let intro: DungeonIntro | null = null;
+  /** The Sima's boss of this floor as this player remembers it: the name it goes by, and whether it is a silhouette (app/sima-lore.ts). */
+  const shownAs = new Map<string, string>();
+  const silhouettes = new Set<string>();
+  /** The Sima boss of this floor as this player remembers it (app/sima-lore.ts). */
+  let currentLook: ReturnType<typeof simaFoeLook> = null;
+  /** A lost shadow felled on this floor already offered its item. */
+  let strayRewarded = false;
   let nowPlaying: NowPlaying | null = null;
   let playing: MusicContext | null = null;
   /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
@@ -557,7 +593,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (mimic) say(echoLine(mimic, run.floor), 'warn');
     // A guardian echo of the endless dungeon: only a short name card, no cinematic.
     const plan = floorPlanOf(run);
-    const echo = plan.kind === 'room' && plan.role === 'echo' ? world.enemies[0] : undefined;
+    // A lost shadow waits behind its fog (core/run.ts `withFogWall`).
+    const echo = plan.kind === 'room' && plan.role === 'echo' ? (world.enemies[0] ?? world.fogWall?.enemies[0]) : undefined;
+    shownAs.clear();
+    silhouettes.clear();
+    const look = echo && plan.kind === 'room' && options.simaMemory ? simaFoeLook(plan.room, echo.species, options.simaMemory, GUARDIAN_ECHOES) : null;
+    currentLook = look;
     const herald = heraldHere(world);
     if (herald) {
       // A herald: its own name, epithet and epigraph (core/herald); remembered on this device.
@@ -565,6 +606,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro = net || !options.playHeraldIntro ? { ...heraldIntro(herald.def), shownAtMs: realMs } : null;
       card = null;
       if (net || !options.playHeraldIntro) options.onHeraldMet?.(herald.def.seed, herald.def.name);
+    } else if (echo && look) {
+      // The Sima as this player remembers it (app/sima-lore.ts): a faceless guardian, someone's shadow, or its name and a line.
+      const text = lookText(look, run.floor, t);
+      intro = { name: text.name, subtitle: text.subtitle, shownAtMs: realMs };
+      card = null;
+      if (look.shown !== echo.species) shownAs.set(echo.id, look.shown);
+      if (look.silhouette) silhouettes.add(echo.id);
+      if (text.log) say(text.log, 'warn');
     } else if (echo) {
       // The echo's name card replaces the floor card (they would overlap).
       // The Sima's own boss has its own line under its name.
@@ -828,6 +877,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     else openMerchant(events);
   }
 
+  /** A lost shadow felled: its item pick, once (each peer its own offer, like a vault's). */
+  function watchStray(): void {
+    if (strayRewarded || !strayHere(run) || !roomCleared(world)) return;
+    strayRewarded = true;
+    say(t('sima.stray.reward'), 'item');
+    run = { ...run, offer: rewardOffer(run.seed, run.floor, world.localId, world.player.items) };
+    offerPick();
+  }
+
   function hidePick(): void {
     if (!closePick) return;
     closePick();
@@ -980,6 +1038,48 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
+  /**
+   * The Sima's own moments (data/sima-scenes.ts), the first time this device
+   * meets them: a stratum's threshold, its own shadow, the first herald (before
+   * its own cutscene), somebody's shadow. Solo plays the cinematic (the run and
+   * its clock stand still); a shared run logs its line. `then` runs after.
+   */
+  function simaMoment(then: () => void): void {
+    const scenes = options.simaScenes;
+    const endless = dungeonOf(run).endless;
+    if (!scenes || !endless || trial) return then();
+    const bands = endless.bands;
+    const band = simaBand();
+    const look = currentLook;
+    const due: SimaSceneId | null =
+      isHeraldFloor(endless, run.floor) ? 'first-name'
+      : bands && band && band.id !== 'crypt' && bandStartsAt(bands, run.floor) ? `stratum-${band.id}`
+      : world.enemies.some((e) => e.species === 'eclipse-echo') ? 'own-shadow'
+      : strayHere(run) ? (look && !look.silhouette ? 'someone-known' : 'someone')
+      : null;
+    if (!due || scenes.seen(due)) return then();
+    if (net) {
+      say(t(simaCardKey(due)), 'warn');
+      return then();
+    }
+    const foe = world.fogWall?.enemies[0];
+    const other = due.startsWith('someone') && foe ? { sprite: SPRITE_KEYS[SPECIES[foe.species].sprite], known: due === 'someone-known' } : undefined;
+    input.setSuspended(true);
+    audio?.setDucked(true);
+    closeCinematic = scenes.play(due, { species: world.player.species, floor: run.floor, ...(other ? { other } : {}) }, () => {
+      closeCinematic = null;
+      audio?.setDucked(false);
+      if (!closeMenu && !closePick) input.setSuspended(false);
+      lastFrame = performance.now();
+      then();
+    });
+    if (!closeCinematic) {
+      audio?.setDucked(false);
+      input.setSuspended(false);
+      then();
+    }
+  }
+
   /** Before a herald fight, solo: its intro cutscene (the run stands still, input cut off until it ends). `then` runs once it is over. */
   function heraldMoment(then: () => void): void {
     const herald = heraldHere(world);
@@ -1060,6 +1160,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     merchantSold = false;
     shrineTimePaid = false;
     eventRewarded = false;
+    strayRewarded = false;
     lastEvent = world.simaEvent;
     prev = world;
     camera = world.player.pos;
@@ -1067,7 +1168,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     music();
     announceFloor(true);
     // The guardian's floor opens with its cinematic (a herald's with its intro); the held item pick waits for it.
-    guardianMoment('pre', () => heraldMoment(offerPick));
+    simaMoment(() => guardianMoment('pre', () => heraldMoment(offerPick)));
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
@@ -1144,7 +1245,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         const pulse = hapticPulse(events);
         if (pulse !== null) vibrate(pulse);
       }
-      for (const line of eventMessages(events, (id) => world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
+      for (const line of eventMessages(events, (id) => shownAs.get(id) ?? world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
       for (const event of events) {
         if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
@@ -1164,7 +1265,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (behindFog && !world.fogWall && !progress.entered) crossedFog();
       // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
       const plan = floorPlanOf(run);
-      const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? 'echo' : world.simaEvent?.kind;
+      const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? (strayHere(run) ? 'stray' : 'echo') : world.simaEvent?.kind;
       watchClock(undefined, progress.bonusMs, reason);
       // A guest follows the host's word after a wipe: back to the bonfire, or the end.
       const retry = net?.role === 'guest' && !trial ? net.session.takeRetry() : null;
@@ -1184,6 +1285,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           hideChoice();
         }
         watchSimaEvent();
+        watchStray();
         watchLeave();
         watchBonfire();
         watchStory(events);
@@ -1293,6 +1395,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       waiting: wiped && net?.role === 'guest' ? t('bonfire.waitHost') : waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
       bonfire: bonfire && bonfire.run.floor === run.floor ? bonfirePos(world) : null,
       memory: memory ? memory.pos : null,
+      shownAs,
+      silhouettes,
+      // Under low lucidity, shapes that are not there (presentation only: the world never sees them).
+      figurations:
+        run.clockMs !== undefined && options.figurations
+          ? figurationsAt({ mode: options.figurations(), clockMs: run.clockMs, timeMs: realMs, view, player: world.player.pos, sprites: [...LOST_SHAPES, SPRITE_KEYS[SPECIES[world.player.species].sprite]], salt: run.floor })
+          : [],
       spectating: watched && net ? t('spectate.watching').replace('{name}', rosterNames(net.session.roster()).get(watched.id) ?? t(`species.${watched.player.species}`)) : null,
     });
     if (perf) {
@@ -1309,7 +1418,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   lastEvent = world.simaEvent;
   announceFloor(false);
   // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
-  guardianMoment('pre', () => heraldMoment(offerPick));
+  simaMoment(() => guardianMoment('pre', () => heraldMoment(offerPick)));
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {

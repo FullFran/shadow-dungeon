@@ -755,8 +755,8 @@ export const ECHO_BOSSES: readonly BossCase[] = (
     { species: 'aegislash', room: 'boss', floor: 5 },
     { species: 'trevenant', room: 'hollow', floor: 15 },
     { species: 'decidueye', room: 'roost', floor: 25 },
-    { species: 'dhelmise', room: 'wreck', floor: 35 },
-    { species: 'nihilego', room: 'rift', floor: 45 },
+    { species: 'dhelmise', room: 'wreck', floor: 45 },
+    { species: 'nihilego', room: 'rift', floor: 65 },
   ] as const
 ).map(({ species, room, floor }) => ({
   species,

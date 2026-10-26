@@ -1,3 +1,4 @@
+import { figurationMode } from '../adapters/figurations';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
@@ -34,6 +35,10 @@ import { heldItems } from './item-pick';
 import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
+import { readSimaMemory } from './sima-lore';
+import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaText, type SimaSceneInfo } from './sima-cinematic';
+import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
+import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen, nextPlayScreen } from './adventure-route';
@@ -45,7 +50,7 @@ import { openTown, type TownOptions } from '../town/scene';
 import type { TownLobby } from '../town/lobby';
 import { displayName, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -512,6 +517,43 @@ function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; pha
 }
 
 /**
+ * A Sima cinematic (data/sima-scenes.ts) on the prologue player: over the
+ * running game (`overlay`, solo: the run stands still) or as its own screen
+ * (the mouth before the first descent, the return after a run). It counts as
+ * seen once it ends or is skipped; a seen one returns null and plays nothing
+ * (the return's short form always plays).
+ */
+function simaScene(root: HTMLElement, id: SimaSceneId, info: SimaSceneInfo, onDone: () => void, overlay: boolean, replay?: { startMs: number }): (() => void) | null {
+  if (!replay && id !== 'return-short' && hasSeenSimaScene(store, id)) {
+    onDone();
+    return null;
+  }
+  void sheetsReady();
+  const text = simaText(t, info.floor);
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    panels: simaPanels(id, info, text),
+    draw: (ctx, panel, time, camera, alpha) => drawSimaScene(ctx, panel as SimaPanel, time, camera, alpha),
+    label: t('sima.scene.title'),
+    text,
+    ...(replay ? { startMs: replay.startMs } : {}),
+    onDone: () => {
+      markSimaSceneSeen(store, id);
+      screen.remove();
+      onDone();
+    },
+  });
+  if (overlay) {
+    screen.style.zIndex = '6';
+    root.append(screen);
+  } else {
+    show(root, [screen], false);
+    root.querySelector('.notice')?.classList.add('in-game');
+  }
+  return () => screen.remove();
+}
+
+/**
  * A Senda chapter's cinematic (docs/story-quests.md): before the run starts
  * and after its victory, on the prologue player with the story tableaux,
  * skippable the same way. Solo only (a shared run never pauses).
@@ -656,7 +698,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: (here) => accountScreen(root, () => townScreen(root, here)), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: (here) => accountScreen(root, () => townScreen(root, here)), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => !hasSeenSimaScene(store, 'plea'), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1340,6 +1382,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   // A Senda chapter (each peer its own save; the tier is the run's): its cinematic first, alone.
   const story = trial ? null : storyRunOf(loadSave(store), dungeonById(shared.dungeon ?? dungeon), shared.difficulty ?? DEFAULT_DIFFICULTY);
   if (story && !shared.net && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
+  // The Sima's mouth (docs/sima-redesign.md §5.1): the first descent on this device, alone, after the villagers' pleas.
+  const sima = !trial && dungeonById(shared.dungeon ?? dungeon).endless !== undefined;
+  if (sima && !shared.net && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => simaScene(root, 'mouth', { species: settings.species }, resolve, false));
   const canvas = h('canvas', { className: 'game' });
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
@@ -1364,6 +1409,14 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     ...(story ? { story } : {}),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
+    // The Sima as this player remembers it (names only; every peer reads its own: app/sima-lore.ts).
+    ...(sima
+      ? {
+          figurations: () => figurationMode(settings.figurations, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false),
+          simaMemory: readSimaMemory(store),
+          simaScenes: { seen: (id: SimaSceneId) => hasSeenSimaScene(store, id), play: (id: SimaSceneId, info: SimaSceneInfo, onDone: () => void) => simaScene(root, id, info, onDone, true) },
+        }
+      : {}),
     onEnd: (result, summary) => {
       // The host left mid-run: the room is gone, this peer goes back to the hub alone (after being paid below).
       if (summary.cutShort === 'hostLeft') leaveNet();
@@ -1387,6 +1440,11 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       recordStory(store, story, result === 'victory' && !summary.cutShort);
       const results = () => resultScreen(root, result, summary, online, progress.save.coins, score, materials);
       if (story && result === 'victory' && !shared.net) return storyCinematic(root, story, 'after', results);
+      // The Sima, alone: the first time lucidity runs out, the breaking point and the waking with Phantump; after any other run, the return.
+      if (sima && !shared.net && !summary.cutShort) {
+        const id: SimaSceneId = result === 'eclipse' && !hasSeenSimaScene(store, 'lost') ? 'lost' : hasSeenSimaScene(store, 'return') ? 'return-short' : 'return';
+        return void simaScene(root, id, { species: settings.species, floor: summary.floor }, results, false);
+      }
       results();
     },
   });
@@ -1436,6 +1494,18 @@ function devScreen(root: HTMLElement): boolean {
         const chapter = Math.min(3, Math.max(1, Number(params.get('chapter') ?? 1))) as 1 | 2 | 3;
         const story: StoryRun = { line: (params.get('line') ?? 'mimikyu') as StoryRun['line'], chapter };
         storyCinematic(root, story, params.get('phase') === 'after' ? 'after' : 'before', () => titleScreen(root));
+      }),
+    // `&scene=lost&at=ms&species=cubone&floor=23&sprite=haunter&known=1`: a Sima cinematic (data/sima-scenes.ts), seen or not.
+    sima: () =>
+      void sheetsReady().then(() => {
+        const params = new URLSearchParams(window.location.search);
+        const sprite = params.get('sprite');
+        const info: SimaSceneInfo = {
+          species: (params.get('species') ?? settings.species) as SpeciesId,
+          floor: Number(params.get('floor') ?? 12),
+          ...(sprite ? { other: { sprite, known: params.get('known') === '1' } } : {}),
+        };
+        simaScene(root, (params.get('scene') ?? 'mouth') as SimaSceneId, info, () => titleScreen(root), false, { startMs: Number(params.get('at') ?? 0) });
       }),
     // `&species=decidueye&phase=post`: a guardian cinematic over the title (as the first time unless already seen).
     guardian: () =>

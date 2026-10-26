@@ -251,7 +251,7 @@ type HudSize = Pick<Rect, 'width' | 'height'>;
  * with the charge level, boss bar and flashes. The minimap and the message
  * log are drawn by their own modules.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, floor: number, coins?: number, touch = false): void {
+export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, floor: number, coins?: number, touch = false, shownAs?: ReadonlyMap<string, string>): void {
   const { player } = state;
   statusPanel(ctx, state, floor, coins, touch);
   // Touch: the slot buttons show the moves (src/adapters/touch-slots.ts); no slot windows under the thumbs.
@@ -262,7 +262,8 @@ export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice:
     const box = bossRect(screen);
     const { x, width: w } = box;
     const y = box.y + HUD_BOX.bossNameHeight;
-    const name = boss.species === 'eclipse-echo' ? echoName(state.echoMimic) : t(`species.${boss.species}`);
+    // The Sima names a boss as the player remembers it (app/sima-lore.ts): a faceless guardian, someone's shadow.
+    const name = boss.species === 'eclipse-echo' ? echoName(state.echoMimic) : t(`species.${shownAs?.get(boss.enemyId) ?? boss.species}`);
     ctx.font = canvasFont();
     // A herald names itself and its card count (adapters/herald-vfx.ts) and wears its theme's colour; every card boss shares the notches and the clock.
     const herald = heraldBarText(state, boss.enemyId);

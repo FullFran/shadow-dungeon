@@ -1,7 +1,7 @@
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { TOUCH_MODES } from '../adapters/touch-mode';
 import { TOUCH_SCALES } from '../ui/touch-layout';
-import { TOUCH_OPACITIES } from './settings';
+import { FIGURATION_MODES, TOUCH_OPACITIES } from './settings';
 import { LANGUAGES, t, type Language } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
 import { h } from '../ui/window';
@@ -25,7 +25,7 @@ export interface SettingsAccess {
 }
 
 export interface SettingRow {
-  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
+  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'figurations' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
   label: string;
   value: string;
   /** Volumes: the level 0..1 for the meter. */
@@ -78,6 +78,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
   const touchSize = (delta: -1 | 1) => access.update({ touchSize: cycle(TOUCH_SCALES, access.get().touchSize as (typeof TOUCH_SCALES)[number], delta) });
   const touchOpacity = (delta: -1 | 1) => access.update({ touchOpacity: cycle(TOUCH_OPACITIES, access.get().touchOpacity as (typeof TOUCH_OPACITIES)[number], delta) });
   const sizeKey = s.touchSize < 1 ? 'small' : s.touchSize > 1 ? 'large' : 'normal';
+  const figurations = (delta: -1 | 1) => access.update({ figurations: cycle(FIGURATION_MODES, access.get().figurations, delta) });
   return [
     { id: 'language', label: t('language.label'), value: t(`language.${s.language}`), disabled: false, adjust: pickLanguage, confirm: () => pickLanguage(1) },
     { id: 'lockType', section: t('menu.lockOn'), label: t('menu.lockType'), value: t(`lockType.${s.lockType}`), disabled: false, adjust: lockType, confirm: () => lockType(1) },
@@ -93,6 +94,8 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     volume('musicVolume'),
     volume('sfxVolume'),
     { id: 'muted', label: t('menu.mute'), value: onOff(s.muted), disabled: false, adjust: toggle('muted'), confirm: toggle('muted') },
+    // Accessibility: the Sima's figuraciones (shapes that are not there, under low lucidity).
+    { id: 'figurations', section: t('menu.accessibility'), label: t('menu.figurations'), value: t(`menu.figurations.${s.figurations}`), disabled: false, adjust: figurations, confirm: () => figurations(1) },
     { id: 'touchMode', section: t('touch.section'), label: t('touch.mode'), value: t(`touch.mode.${s.touchMode}`), disabled: false, adjust: touchMode, confirm: () => touchMode(1) },
     { id: 'autoAim', label: t('touch.autoAim'), value: onOff(s.autoAim), disabled: false, adjust: toggle('autoAim'), confirm: toggle('autoAim') },
     { id: 'haptics', label: t('touch.haptics'), value: onOff(s.haptics), disabled: false, adjust: toggle('haptics'), confirm: toggle('haptics') },
