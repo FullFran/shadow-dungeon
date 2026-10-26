@@ -91,6 +91,10 @@ export type NetMessage =
   | { t: 'snap'; at: number; floor: number; s: HostSnapshot }
   /** Host: everyone goes down to this floor. */
   | { t: 'floor'; floor: number }
+  /** Host, after a full party wipe (core/bonfire.ts): `go`, everyone respawns at the bonfire on `floor`; else the run ends. */
+  | { t: 'retry'; floor: number; go: boolean }
+  /** Host: `peer` knocked during a floor; it is let in at the next join point (a new floor, a bonfire respawn). */
+  | { t: 'wait'; peer: string }
   /** Host, endless dungeon: its run clock (ms left) on `floor`, about once a second and on every floor change. */
   | { t: 'clock'; ms: number; floor: number }
   | { t: 'leave'; id: string }
@@ -356,7 +360,7 @@ function decodeTown(wire: Wire): NetMessage | null {
   return { t: 'town', at: wire.at, map: wire.m, pos: { x: x!, y: y! }, facing: { x: fx!, y: fy! }, moving: moving === 1 };
 }
 
-const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'clock', 'leave', 'town']);
+const KNOWN = new Set(['hello', 'start', 'lobby', 'full', 'ping', 'pong', 'state', 'claim', 'pick', 'berry', 'snap', 'floor', 'retry', 'wait', 'clock', 'leave', 'town']);
 
 const PLAYER_ID = /^p[1-4]$/;
 
@@ -436,6 +440,10 @@ export function decodeMessage(text: string): NetMessage | null {
       return typeof wire.id === 'string' && typeof (wire.t === 'pick' ? wire.by : wire.to) === 'string' ? (wire as unknown as NetMessage) : null;
     case 'floor':
       return isFloor(wire.floor) ? { t: 'floor', floor: wire.floor } : null;
+    case 'retry':
+      return isFloor(wire.floor) && typeof wire.go === 'boolean' ? { t: 'retry', floor: wire.floor, go: wire.go } : null;
+    case 'wait':
+      return typeof wire.peer === 'string' ? { t: 'wait', peer: wire.peer } : null;
     case 'leave':
       return typeof wire.id === 'string' ? { t: 'leave', id: wire.id } : null;
     default:

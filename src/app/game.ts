@@ -16,7 +16,8 @@ import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, withFogWall, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, tickRunClock, withFogWall, type RunState } from '../core/run';
+import { bonfireFloor, bonfireLights, bonfirePos, bonfireSnapshot, respawnsLeft } from '../core/bonfire';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
@@ -381,6 +382,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let leaveOpen = false;
   let lastInputAt = 0;
   let waiting = 0;
+  /**
+   * The mid-boss bonfire (core/bonfire.ts): this peer's run, world and coin tally as it was lit, the respawns used this
+   * run, and a full wipe waiting for the decision (the host's, or this player's solo).
+   */
+  let bonfire: { run: RunState; world: WorldState; tally: CoinTally } | null = null;
+  let bonfireUsed = 0;
+  let wiped = false;
   /** Pokémonedas spent at the merchant (taken off the run's pay), and as the floor was entered ("Restart floor"). */
   let simaSpent = 0;
   let floorStartSpent = 0;
@@ -598,6 +606,66 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       hideChoice();
     });
     leaveOpen = true;
+  }
+
+  /** A full wipe may go back to the bonfire: one is lit behind the party (a late joiner knows only that it passed one) and the tier allows another respawn. */
+  const bonfireOpen = (): boolean => {
+    if (trial || respawnsLeft(difficulty, bonfireUsed) === 0) return false;
+    if (bonfire) return true;
+    if (net?.role !== 'guest') return false;
+    for (let f = 1; f < run.floor; f++) if (bonfireFloor({ dungeon: run.dungeon, floor: f })) return true;
+    return false;
+  };
+
+  /** Each step after a full wipe with a bonfire behind: solo and the host choose (asked again if dismissed); a guest waits for the host's word. */
+  function onWipe(): void {
+    wiped = true;
+    if (net?.role === 'guest' || closeChoice || ended) return;
+    const left = respawnsLeft(difficulty, bonfireUsed);
+    showChoice(t('bonfire.title'), t(net ? 'bonfire.hintShared' : 'leave.hint'), [
+      { name: t('bonfire.go'), description: left === null ? t('bonfire.goText') : t('bonfire.goLeft').replace('{n}', String(left)), look: 'rare' },
+      { name: t('bonfire.give'), description: t('bonfire.giveText'), look: 'common' },
+    ], (index) => {
+      hideChoice();
+      if (index === 0) return respawn(bonfire!.run.floor);
+      net?.session.sendRetry(run.floor, false);
+      end('defeat');
+    });
+  }
+
+  /** Everyone back at the bonfire: this peer's own snapshot (or, without one, the bonfire floor anew); the host tells the guests. */
+  function respawn(floor: number): void {
+    bonfireUsed += 1;
+    const back = bonfire ?? returnToFloor(run, world, floor);
+    run = back.run;
+    world = { ...back.world, lock: configureLock(back.world.lock, lockSettings) };
+    if (bonfire) tally = bonfire.tally;
+    floorStart = world;
+    floorStartTally = tally;
+    floorStartSpent = simaSpent;
+    restartsUsed = 0;
+    wiped = false;
+    hideChoice();
+    ready = false;
+    leaveAsked = false;
+    prev = world;
+    accumulator = 0;
+    juice = initialJuice();
+    lastHurtAt = Number.NEGATIVE_INFINITY;
+    defeatedAt.clear();
+    lastInput = null;
+    camera = world.player.pos;
+    music();
+    say(t('bonfire.back'), 'good');
+    if (net?.role === 'host') net.session.sendRetry(run.floor, true);
+  }
+
+  /** Each step: the mid-boss just fell, so its bonfire lights and this peer's state is kept (core/bonfire.ts). */
+  function watchBonfire(): void {
+    if (trial || !bonfireLights(run, world, bonfire !== null)) return;
+    bonfire = { run, world: bonfireSnapshot(world), tally };
+    say(t('bonfire.lit'), 'good');
+    audio?.play('item');
   }
 
   /** The party went through a boss room's fog: it seals behind, and the boss shows itself (its cinematic solo). */
@@ -962,15 +1030,26 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const plan = floorPlanOf(run);
       const reason = progress.entered ? 'descend' : plan.kind === 'room' && plan.role === 'echo' ? 'echo' : world.simaEvent?.kind;
       watchClock(undefined, progress.bonusMs, reason);
-      if (progress.outcome) end(progress.outcome);
+      // A guest follows the host's word after a wipe: back to the bonfire, or the end.
+      const retry = net?.role === 'guest' && !trial ? net.session.takeRetry() : null;
+      if (retry?.go) respawn(retry.floor);
+      else if (retry) end('defeat');
+      else if (progress.outcome === 'defeat' && bonfireOpen()) onWipe();
+      else if (progress.outcome) end(progress.outcome);
       else if (progress.entered) {
         enterFloor(progress);
         if (net) net.session.sendFloor(netFloor());
         if (net && run.clockMs !== undefined) net.session.sendClock(run.clockMs, run.floor);
       } else if (!trial && hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
       else {
+        if (wiped) {
+          // Someone got up before the decision (a revive): the wipe is over.
+          wiped = false;
+          hideChoice();
+        }
         watchSimaEvent();
         watchLeave();
+        watchBonfire();
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -1069,7 +1148,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       touchUi: isTouchUi(),
       touchAim: isTouchUi() ? touch.aimPreview() : null,
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
-      waiting: waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
+      waiting: wiped && net?.role === 'guest' ? t('bonfire.waitHost') : waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
+      bonfire: bonfire && bonfire.run.floor === run.floor ? bonfirePos(world) : null,
     });
     if (perf) {
       perf.record('render', performance.now() - drawAt);

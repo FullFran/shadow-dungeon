@@ -139,6 +139,12 @@ export interface NetSession {
   sendFloor(floor: number): void;
   /** Guest: the floor the host moved to since the last call, if any. */
   takeFloorChange(): number | null;
+  /** Host, after a full party wipe (core/bonfire.ts): everyone back to the bonfire on `floor` (`go`), or the run ends; also a join point. */
+  sendRetry(floor: number, go: boolean): void;
+  /** Guest: the host's latest wipe decision since the last call, if any. */
+  takeRetry(): { floor: number; go: boolean } | null;
+  /** Guest: it knocked during a floor; the host lets it in at the next floor start or bonfire respawn. */
+  onWait(handler: () => void): void;
   /** Host, endless dungeon: sends its run clock (reliable). */
   sendClock(ms: number, floor: number): void;
   /** Guest: the host's latest clock since the last call, if any. */
@@ -244,6 +250,15 @@ export function createSession(options: SessionOptions): NetSession {
   let berryInbox: BerryClaim[] = [];
   let berryGrants: string[] = [];
   let floorChange: number | null = null;
+  let retry: { floor: number; go: boolean } | null = null;
+  /**
+   * Host: a run lets new players in only at a join point (docs/gdd.md §7): its
+   * start, a new floor or a bonfire respawn, until the host steps it. Hellos
+   * heard meanwhile wait here (`wait`) and are let in at the next one.
+   */
+  let joinOpen = true;
+  const held = new Map<string, { species: SpeciesId; name: string }>();
+  const waitHandlers: Array<() => void> = [];
   let clock: { ms: number; floor: number } | null = null;
   /** This player's gather status (sent with its state), and the others' as last heard. */
   let own = { ready: false, afk: false };
@@ -306,8 +321,18 @@ export function createSession(options: SessionOptions): NetSession {
     return true;
   }
 
+  /** Host, at a join point: the run is open to new players until its next step; the ones held are let in now. */
+  function openJoin(): void {
+    joinOpen = true;
+    if (held.size === 0) return;
+    for (const [peer, theirs] of held) if (!admit(peer, theirs.species, theirs.name)) send({ t: 'full', peer }, true);
+    held.clear();
+    send(startMessage(), true);
+  }
+
   function dropPeer(peer: string): void {
     const entry = roster.find((r) => r.peer === peer);
+    held.delete(peer);
     tracker.forget(peer);
     pending.delete(peer);
     walkers.delete(peer);
@@ -342,6 +367,12 @@ export function createSession(options: SessionOptions): NetSession {
           for (const handler of versionHandlers) handler(name);
           return;
         }
+        // Mid-run, between join points: a new player waits for the next floor (a known one just picked again).
+        if (!lobby && !joinOpen && !roster.some((r) => r.peer === from)) {
+          held.set(from, { species: message.species, name });
+          send({ t: 'wait', peer: from }, true);
+          return;
+        }
         if (!admit(from, message.species, name)) send({ t: 'full', peer: from }, true);
         else if (lobby) send(lobbyMessage(), true);
         else send(startMessage(), true);
@@ -367,6 +398,12 @@ export function createSession(options: SessionOptions): NetSession {
         return;
       case 'full':
         if (message.peer === transport.selfId) refused(message.reason ?? 'full');
+        return;
+      case 'wait':
+        if (message.peer === transport.selfId && !started) for (const handler of waitHandlers) handler();
+        return;
+      case 'retry':
+        if (role === 'guest') retry = { floor: message.floor, go: message.go };
         return;
       case 'ping':
         send({ t: 'pong', to: from, at: message.at }, true);
@@ -453,6 +490,7 @@ export function createSession(options: SessionOptions): NetSession {
     berryGrants = [];
     holds = [];
     floorChange = null;
+    retry = null;
     // A Sima clock from the last round must not reach the next one.
     clock = null;
   }
@@ -476,6 +514,7 @@ export function createSession(options: SessionOptions): NetSession {
       lobby = hostOptions?.lobby ?? false;
       const name = sanitizeNickname(hostOptions?.name);
       setRoster([{ peer: transport.selfId, id: 'p1', species, ...(name ? { name } : {}) }]);
+      joinOpen = true;
       // Tabs that knocked while this one was still searching are let in now (local election).
       for (const [peer, theirs] of pending) admit(peer, theirs.species, theirs.name);
       pending.clear();
@@ -497,6 +536,7 @@ export function createSession(options: SessionOptions): NetSession {
       if (runSeed !== undefined) seed = runSeed;
       running = trial ?? null;
       send(startMessage(), true);
+      openJoin();
     },
     setTrial(next) {
       if (role !== 'host' || !lobby) return;
@@ -529,6 +569,9 @@ export function createSession(options: SessionOptions): NetSession {
       hostFloor = 1;
       running = null;
       resetRun();
+      // Players held during the last run come into the room now.
+      for (const [peer, theirs] of held) if (!admit(peer, theirs.species, theirs.name)) send({ t: 'full', peer }, true);
+      held.clear();
       send(lobbyMessage(), true);
     },
     onLobby: (handler) => void lobbyHandlers.push(handler),
@@ -590,6 +633,8 @@ export function createSession(options: SessionOptions): NetSession {
     },
     afterStep(world, floor) {
       if (!role || !localId) return;
+      // The host stepped the floor: the join point is over.
+      if (role === 'host') joinOpen = false;
       ticks++;
       if (ticks % PING_EVERY_TICKS === 0) send({ t: 'ping', at: scheduler.now() }, true);
       if (role === 'guest') {
@@ -616,7 +661,21 @@ export function createSession(options: SessionOptions): NetSession {
     sendFloor(floor) {
       hostFloor = floor;
       send({ t: 'floor', floor }, true);
+      if (role === 'host') openJoin();
     },
+    sendRetry(floor, go) {
+      if (role !== 'host') return;
+      send({ t: 'retry', floor, go }, true);
+      if (!go) return;
+      hostFloor = floor;
+      openJoin();
+    },
+    takeRetry() {
+      const taken = retry;
+      retry = null;
+      return taken;
+    },
+    onWait: (handler) => void waitHandlers.push(handler),
     takeFloorChange() {
       const floor = floorChange;
       floorChange = null;

@@ -349,6 +349,18 @@ export function progressRun(current: RunState, world: WorldState, agreed?: boole
   return { run: down.run, world: down.world, entered: true, outcome: null, ...(total > 0 ? { bonusMs: total } : {}) };
 }
 
+/**
+ * Back to an earlier `floor` of the run (a bonfire respawn for a player that
+ * has no snapshot of it, core/bonfire.ts): no item offer, a fainted player
+ * stands up with the floor heal; every peer generates it from the run seed.
+ */
+export function returnToFloor(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
+  const back: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape: null, offer: null };
+  const { hp, maxHp } = world.player;
+  const stood = hp > 0 ? world : { ...world, player: { ...world.player, hp: Math.max(1, Math.round(RUN.floorHeal * maxHp)) } };
+  return { run: back, world: enterFloor(stood, back) };
+}
+
 /** Guest: the host went down to `floor`; every peer generates it from the shared run seed. */
 export function followToFloor(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState } {
   if (floor <= run.floor || floor > floorCount(run)) return { run, world };

@@ -111,8 +111,10 @@ export interface RenderFrame {
   clock?: RunClock | null;
   /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
   sima?: SimaLook | null;
-  /** Co-op: this player is ready to leave the floor and the party still waits for others ("Esperando a 2"). */
+  /** Co-op: this player is ready to leave the floor and the party still waits for others ("Esperando a 2"); after a wipe, waiting for the host. */
   waiting?: string | null;
+  /** The mid-boss bonfire burning on this floor (core/bonfire.ts), where it stands. */
+  bonfire?: Vec2 | null;
 }
 
 const COLORS = {
@@ -744,6 +746,28 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     ctx.fillStyle = 'rgba(240, 242, 250, 0.35)';
     ctx.fillRect(0, line - 3 + Math.sin(timeMs / 300) * 2, width, 3);
+  }
+
+  /** The mid-boss bonfire: a ring of stones, crossed logs and a flickering flame with its glow. */
+  function bonfireProp(at: Vec2, timeMs: number): void {
+    const flicker = Math.sin(timeMs / 90) * 1.5 + Math.sin(timeMs / 47);
+    const glow = ctx.createRadialGradient(at.x, at.y - 6, 2, at.x, at.y - 6, 46);
+    glow.addColorStop(0, 'rgba(255, 170, 70, 0.35)');
+    glow.addColorStop(1, 'rgba(255, 120, 40, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(at.x - 46, at.y - 52, 92, 92);
+    ctx.fillStyle = '#5b5560';
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.fillRect(Math.round(at.x + Math.cos(a) * 12) - 2, Math.round(at.y + Math.sin(a) * 6) - 2, 4, 4);
+    }
+    ctx.fillStyle = '#6b4226';
+    ctx.fillRect(at.x - 9, at.y - 2, 18, 3);
+    ctx.fillRect(at.x - 2, at.y - 5, 4, 8);
+    ctx.fillStyle = '#ff8a2a';
+    ctx.fillRect(at.x - 5, at.y - 12 - flicker, 10, 10 + flicker);
+    ctx.fillStyle = '#ffd36a';
+    ctx.fillRect(at.x - 2, at.y - 9 - flicker, 4, 6 + flicker);
   }
 
   function exitGate(exit: Rect, open: boolean, timeMs: number): void {
@@ -1521,6 +1545,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     gateMarks(current, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
+    if (frame.bonfire) bonfireProp(frame.bonfire, timeMs);
     // Inundación: the rising water lies over the floor, under everyone.
     if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
     for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);

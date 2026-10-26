@@ -46,6 +46,8 @@ export interface TierDef {
   eliteChance: number;
   /** Solo "Restart floor" uses per floor; null = unlimited. */
   restartsPerFloor: number | null;
+  /** Respawns at the mid-boss bonfire per run after a full party wipe (core/bonfire.ts); null = unlimited. Provisional. */
+  bonfireRespawns: number | null;
   /** Whole-run Pokémonedas multiplier (it multiplies the per-minute line too). */
   coins: number;
   /**
@@ -75,11 +77,11 @@ export interface TierDef {
 }
 
 export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
-  easy: { hp: 1, damage: 1, telegraph: 1, extraPerRoom: 0, cooldown: 1, eliteChance: 0, restartsPerFloor: null, coins: 1, encounters: { frequency: 1, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1600 },
+  easy: { hp: 1, damage: 1, telegraph: 1, extraPerRoom: 0, cooldown: 1, eliteChance: 0, restartsPerFloor: null, bonfireRespawns: null, coins: 1, encounters: { frequency: 1, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1600 },
   // No tier adds enemies (user feedback 2026-10-25: more enemies is not fun); tougher ones instead: elites, patterns, aggression.
-  normal: { hp: 1.15, damage: 1.15, telegraph: 0.95, extraPerRoom: 0, cooldown: 0.9, eliteChance: 0.1, restartsPerFloor: null, coins: 1.3, encounters: { frequency: 1.2, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1300 },
-  hard: { hp: 1.3, damage: 1.3, telegraph: 0.9, extraPerRoom: 0, cooldown: 0.8, eliteChance: 0.2, restartsPerFloor: 1, coins: 1.7, encounters: { frequency: 1.5, extraWaves: 0 }, roll: { iframes: 0.9, stamina: 1.1 }, turnMs: 1000 },
-  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false, turnMs: 800 },
+  normal: { hp: 1.15, damage: 1.15, telegraph: 0.95, extraPerRoom: 0, cooldown: 0.9, eliteChance: 0.1, restartsPerFloor: null, bonfireRespawns: 3, coins: 1.3, encounters: { frequency: 1.2, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1300 },
+  hard: { hp: 1.3, damage: 1.3, telegraph: 0.9, extraPerRoom: 0, cooldown: 0.8, eliteChance: 0.2, restartsPerFloor: 1, bonfireRespawns: 1, coins: 1.7, encounters: { frequency: 1.5, extraWaves: 0 }, roll: { iframes: 0.9, stamina: 1.1 }, turnMs: 1000 },
+  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, bonfireRespawns: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false, turnMs: 800 },
 };
 
 /**

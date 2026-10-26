@@ -890,6 +890,10 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   session.onFull((reason) => {
     if (current === session) messageScreen(root, t(reason === 'version' ? 'net.version' : 'lobby.full'));
   });
+  // A run is under way: this player comes in at the next floor start or bonfire respawn (it keeps walking the town meanwhile).
+  session.onWait(() => {
+    if (current === session) toast(root, t('net.waitFloor'));
+  });
   // Host: someone on another version knocked; say so here too (they see "reload the page").
   session.onVersionRefused(() => {
     if (current === session) toast(root, t('net.versionRefused'));
