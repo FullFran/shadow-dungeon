@@ -101,7 +101,13 @@ let hideCode = false;
  * The online room this tab is in, kept across its runs: the room walks the
  * town between runs (`townLobby`), and the session outlives each run.
  */
-let room: { session: NetSession; code: string; asHost: boolean; seed: number } | null = null;
+let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom } | null = null;
+
+/** Where the online window was opened from: the title menu, or the Refugio's signal pillar (leaving the room goes back there). */
+type OnlineFrom = 'title' | 'town';
+
+/** The Refugio tile in front of the signal pillar (data/world.ts `REFUGIO.beacon`). */
+const BEACON_TILE = { at: 'refugio', tile: { x: 16, y: 15 } } as const;
 
 /** Run seed from `?seed=` (any integer), else a fresh random one per run. */
 function runSeed(): number {
@@ -502,7 +508,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openShrine: () => shrineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -718,8 +724,8 @@ function creditsScreen(root: HTMLElement): void {
 }
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
-function onlineScreen(root: HTMLElement): void {
-  const back = () => titleScreen(root, 1);
+function onlineScreen(root: HTMLElement, from: OnlineFrom = 'title'): void {
+  const back = () => (from === 'town' ? townScreen(root, BEACON_TILE) : titleScreen(root, 1));
   const prefill = roomCodeFromSearch(window.location.search) ?? '';
   const code = h('input', { type: 'text', className: 'code-input', placeholder: t('lobby.codePlaceholder'), value: prefill });
   code.maxLength = 7;
@@ -733,7 +739,7 @@ function onlineScreen(root: HTMLElement): void {
   const error = h('p', { className: 'lobby-error' });
   const tryJoin = () => {
     const normalized = normalizeRoomCode(code.value);
-    if (normalized) void openLobby(root, normalized, false);
+    if (normalized) void openLobby(root, normalized, false, undefined, from);
     else {
       error.textContent = t('lobby.invalidCode');
       code.focus();
@@ -748,7 +754,7 @@ function onlineScreen(root: HTMLElement): void {
     onBack: back,
     label: t('lobby.online'),
     items: [
-      { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true) },
+      { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true, undefined, from) },
       { label: t('lobby.joinCode'), value: code, className: 'join-row', onConfirm: join },
       nicknameRow(),
       { label: t('menu.back'), onConfirm: back },
@@ -789,7 +795,7 @@ const nameOf = (entry: { name?: string; peer: string }): string => displayName(e
  * then everyone walks the town together (`townLobby`). The host leads the
  * group into a dungeon; guests start with the host's seed.
  */
-async function openLobby(root: HTMLElement, code: string, asHost: boolean, transport?: () => Transport<string>): Promise<void> {
+async function openLobby(root: HTMLElement, code: string, asHost: boolean, transport?: () => Transport<string>, from: OnlineFrom = 'title'): Promise<void> {
   leaveNet();
   waitScreen(root, t('lobby.connecting'));
   let session: NetSession;
@@ -801,7 +807,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     return;
   }
   current = session;
-  room = { session, code, asHost, seed: runSeed() };
+  room = { session, code, asHost, seed: runSeed(), from };
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
   session.onFull(() => {
@@ -844,7 +850,8 @@ function townLobby(root: HTMLElement): void {
     show(root, nodes, false);
     audio.setMusic('title');
   };
-  const leave = () => titleScreen(root, 1);
+  // Leaving goes back where the room was opened: the title menu, or the Refugio beside the signal pillar (walked alone again).
+  const leave = () => (r.from === 'town' ? townScreen(root, BEACON_TILE) : titleScreen(root, 1));
   const lobby: TownLobby = {
     isHost: r.asHost,
     selfName: sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() }),

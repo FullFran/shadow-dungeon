@@ -46,6 +46,9 @@ User request 2026-10-26: a quick, solid boss rematch plus boss rush modes with a
   - Core: `trialEpoch` (net floor = arena index + 1) and `progressSharedTrial` (host as solo; a guest follows the host's arena, catching up). Party scaling from the roster at start, HP carry per player, revives as in runs, everyone returns via `backToRoom`.
   - Records: optional `group` tables («En grupo»), shown under the solo best; group clears pay no gauntlet reward. Old peers block the start («Versión antigua») and are turned away from a trial under way. The «solo only» line and the altar's room refusal are gone.
   - Tests: `tests/net/shrine-room.test.ts` (loopback: pick → repick → start with trial → same scaled boss → back to town; old peers; wire validation), `tests/core/shrine.test.ts` shared trials, group records. RED observed for the group records and the shared-trial core tests (the net test was written first but run only after the session code).
+- [x] T7 Start online rooms from the town (route: same delegated writer; user request 2026-10-26) — third commit in `fix/shrine-loadout` (`feat(town): ...`)
+  - Refugio «Pilar de las señales»: a `pillar` prop at (16,12) on the south square, reading point `REFUGIO.beacon` (16.5,15.5), away from the altar, board, waystone and the shop/storyteller NPCs (the parallel move-tutor NPC should pick another spot). Alone it opens the existing online window; in a room it says the room menu is on Esc (`beaconAction`). Room state remembers `from`: leaving a room opened from the pillar returns to the Refugio beside it.
+  - Tests: `tests/town/lobby.test.ts` (beacon rule and placement), `tests/town/world.test.ts` (beacon reachable). RED observed (beacon undefined) before the data.
 
 ## Decisions
 - Name: «Santuario de los Juramentos» / "Sanctum of Oaths"; Reflejos/Reflections, Desafíos/Trials.
@@ -63,6 +66,7 @@ User request 2026-10-26: a quick, solid boss rematch plus boss rush modes with a
 - `npm test`: 187 files, 2070 tests passed.
 - `npm run build`: ok.
 - `npm run prove -- --judge`: 166 cards survivable, 24/24 solver fights.
+- T5–T7 (`fix/shrine-loadout`): `npm test` 189 files, 2088 tests passed; `npm run build` ok. Screenshots in `/tmp/shrine-loadout/` (best time with species and «En grupo», loadout species and moves with «Comenzar el juramento», back keeps the row, Refugio signal pillar and the online window it opens). Room trials are covered by loopback tests only (no two-browser screenshot).
 
 ## Next step
 Human review; merge is the user's decision. Engram mirror pending (worker did not write it).

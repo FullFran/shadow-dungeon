@@ -22,7 +22,7 @@ import { nearestInteractable, stepWalker, townArena, type Interactable, type Wal
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
-import { canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
+import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
 type ChoiceRow = { label: string; onConfirm: () => void } | TierRow;
@@ -72,6 +72,8 @@ export interface TownOptions {
   difficulty?: () => Difficulty;
   /** The hub's altar: opens the Santuario de los Juramentos (alone, or the room's shared trial in a lobby). */
   openShrine?: () => void;
+  /** The hub's signal pillar, alone: opens the online room window (create a room, or join one by code). */
+  openOnline?: () => void;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -92,7 +94,7 @@ const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 /** Floaters bob over the ground. */
 const FLOATERS = new Set<string>(['gastly', 'litwick', 'hoothoot', 'pumpkabooSmall', 'pumpkabooSuper', 'decidueye']);
 
-type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'lore'; point: LorePoint });
+type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'beacon' } | { kind: 'lore'; point: LorePoint });
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -160,6 +162,7 @@ function targetsOf(map: WorldMap): Target[] {
     ...(map.board ? [{ id: 'board', kind: 'board', pos: { x: map.board.x * TILE, y: map.board.y * TILE } } as Target] : []),
     ...(map.waystone ? [{ id: 'waystone', kind: 'waystone', pos: { x: map.waystone.x * TILE, y: map.waystone.y * TILE } } as Target] : []),
     ...(map.shrine ? [{ id: 'shrine', kind: 'shrine', pos: { x: map.shrine.x * TILE, y: map.shrine.y * TILE } } as Target] : []),
+    ...(map.beacon ? [{ id: 'beacon', kind: 'beacon', pos: { x: map.beacon.x * TILE, y: map.beacon.y * TILE } } as Target] : []),
     ...map.lore.map((point): Target => ({ id: point.id, kind: 'lore', point, pos: { x: point.x * TILE, y: point.y * TILE } })),
   ];
 }
@@ -207,7 +210,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pixelScale = 1;
   let stopped = false;
   let raf = 0;
-  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'shrine' } | null = null;
+  let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'shrine' | 'online' } | null = null;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -307,6 +310,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         handle.stop();
         options.openShrine();
       }
+      if (!next && opens === 'online' && options.openOnline) {
+        handle.stop();
+        options.openOnline();
+      }
       return;
     }
     const target = nearestInteractable(walker.pos, targets);
@@ -320,6 +327,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (target.kind === 'shrine') {
       // The altar speaks, then the shrine opens (in a room: the host's pick for everyone, main.ts).
       dialog = { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
+      return;
+    }
+    if (target.kind === 'beacon') {
+      dialog =
+        beaconAction(lobby) === 'open'
+          ? { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.1')]), opens: 'online' }
+          : { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.room')]) };
       return;
     }
     if (target.kind === 'lore') {

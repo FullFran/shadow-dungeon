@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue } from '../../src/town/lobby';
+import { beaconAction, canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue } from '../../src/town/lobby';
+import { REFUGIO } from '../../src/data/world';
 
 describe('town lobby rules', () => {
   it('sends presence about ten times a second', () => {
@@ -18,6 +19,16 @@ describe('town lobby rules', () => {
   it('keeps sealed and missing dungeons shut for everyone', () => {
     expect(entranceAction('locked', { isHost: true })).toBe('locked');
     expect(entranceAction('missing', { isHost: false })).toBe('missing');
+  });
+
+  it('opens the online room window from the Refugio beacon alone, and tells a room it is in one already', () => {
+    expect(REFUGIO.beacon).toBeDefined();
+    expect(REFUGIO.props.some((p) => p.kind === 'pillar' && p.x + 0.5 === REFUGIO.beacon!.x)).toBe(true);
+    // Not on the altar's, the board's or the waystone's spot.
+    for (const other of [REFUGIO.shrine, REFUGIO.board, REFUGIO.waystone]) expect(other).not.toEqual(REFUGIO.beacon);
+    expect(beaconAction(null)).toBe('open');
+    expect(beaconAction({ isHost: true })).toBe('in-room');
+    expect(beaconAction({ isHost: false })).toBe('in-room');
   });
 
   it('opens the waystone quick travel to the host and solo players only', () => {
