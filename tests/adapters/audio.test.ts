@@ -249,6 +249,11 @@ class FakeAudioContext {
     return { duration: 1, getChannelData: () => new Float32Array(length) };
   }
   resume() {
+    this.state = 'running';
+    return Promise.resolve();
+  }
+  suspend() {
+    this.state = 'suspended';
     return Promise.resolve();
   }
 }
@@ -541,5 +546,30 @@ describe('engine with a fake AudioContext', () => {
     const before = fake.started;
     vi.advanceTimersByTime(1000);
     expect(fake.started).toBe(before);
+  });
+});
+
+describe('backgrounded page (mobile app switch)', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('suspends the audio while the page is hidden and resumes it when it comes back', () => {
+    const { audio, fake } = setup();
+    audio.setBackground(true);
+    expect(fake.state).toBe('suspended');
+    audio.setBackground(false);
+    expect(fake.state).toBe('running');
+  });
+
+  it('a gesture resumes a context the system interrupted (iOS: a call, Siri)', () => {
+    const { audio, fake } = setup();
+    fake.state = 'interrupted';
+    audio.unlock();
+    expect(fake.state).toBe('running');
+  });
+
+  it('is a no-op before the first gesture', () => {
+    vi.stubGlobal('AudioContext', undefined);
+    const audio = createAudio(LEVELS, offline);
+    expect(() => audio.setBackground(true)).not.toThrow();
   });
 });

@@ -291,8 +291,10 @@ function browserMusicDeps(): MusicDeps {
 }
 
 export interface AudioEngine {
-  /** Creates or resumes the AudioContext; call from a user gesture. Idempotent. */
+  /** Creates or resumes the AudioContext (also one the system interrupted, iOS); call from a user gesture. Idempotent. */
   unlock(): void;
+  /** The page went to the background (hidden): suspend the context; back in front: resume it. A no-op before unlock. */
+  setBackground(hidden: boolean): void;
   play(id: SoundId): void;
   handleEvents(events: readonly GameEvent[]): void;
   /** Switches the music context (no-op if it is already playing or loading); null fades the music out. Stingers play once. */
@@ -1064,10 +1066,13 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
     return rumble;
   }
 
+  /** The page is hidden: no gesture-driven resume until it is back in front. */
+  let backgrounded = false;
   return {
     unlock() {
       if (ctx) {
-        if (ctx.state === 'suspended') void ctx.resume();
+        // 'suspended', or Safari's 'interrupted' after a call: a gesture may resume it.
+        if (ctx.state !== 'running' && !backgrounded) void ctx.resume();
         return;
       }
       const Ctor = audioContextCtor();
@@ -1094,6 +1099,12 @@ export function createAudio(initial: AudioLevels, deps: MusicDeps = browserMusic
         pendingCue = null;
         playCue(music, offsetS + (performance.now() - askedAt) / 1000);
       } else if (wanted) switchTo(wanted);
+    },
+    setBackground(hidden) {
+      backgrounded = hidden;
+      if (!ctx) return;
+      if (hidden) void ctx.suspend();
+      else if (ctx.state !== 'running') void ctx.resume();
     },
     play,
     handleEvents(events) {

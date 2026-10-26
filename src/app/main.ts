@@ -94,6 +94,11 @@ const pwa = setupPwa({
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
+// iOS Safari only lets a context start or resume on the end of a touch (or a click), not on its start.
+window.addEventListener('touchend', unlockAudio);
+window.addEventListener('click', unlockAudio);
+// Phones: switching apps or locking the screen suspends the audio (music and loops); it resumes when the page is back.
+document.addEventListener('visibilitychange', () => audio.setBackground(document.hidden));
 setUiSound(() => audio.play('click'));
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;

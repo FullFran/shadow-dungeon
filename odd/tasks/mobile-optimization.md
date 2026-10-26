@@ -37,7 +37,18 @@ Touch controls, PWA and a fit-to-screen canvas landed in `mobile-touch` / `integ
   - End screens 390x844 (victory, eclipse): actions below the fold -> summary scrolls inside the window with the actions pinned at its foot.
   - Run: in-run fan notice hidden on touch (C1); keyboard-hint slot windows gone (C3).
   - Unchanged and fine: title, loadout, dungeons, endless, town, shop, online, lobby, item pick, pause menu, credits (only vertical page scroll on long lists, reachable; "Atrás" fixed top-left).
-- [ ] M2 Clear render hotspots only (route: inline).
+- [x] M2 Clear render hotspots only (route: inline). (a) Fixed arenas drew the floor checker for the whole arena every frame, off-screen tiles included: now visible tiles only, one rect of the first colour plus the second colour's squares (boss card ~480 -> ~280 `fillRect`/frame); tile edges land on whole backing pixels (integer scale, rounded offset), so the pixels are the same. (b) Town grass/path tiles cached per map/look/sheet in an offscreen canvas and blitted once (whole-factor nearest scaling, so the same pixels); animated water/chasm/rock/bridge stay live. (c) Audio: suspended while the page is hidden (`visibilitychange`), resumed on return; iOS unlock also on `touchend`/`click` and from Safari's `interrupted` state (test-first: RED 3 failing, GREEN). Not done (no clear win measured): bullets/text allocation work, DPR (already capped at 2: 1024x640 backing store on both phone sizes), shadowBlur/filters (none in these scenes), a low-power setting.
+
+| scene | viewport | render p50/p95 before | after |
+|---|---|---|---|
+| boss-card | 844x390 | 3.80/4.96 | 3.50/4.62 |
+| boss-card | 390x844 | 3.74/5.02 | 3.48/4.76 |
+| crowd-12 | 844x390 | 1.88/2.60 | 1.58/2.02 |
+| floor | 844x390 | 1.70/2.28 | 1.38/1.82 |
+| town | 844x390 | 3.44/3.80 | 3.18/3.84 |
+| town | 390x844 | 3.38/3.70 | 3.14/3.62 |
+
+(Run/floor gains include the touch HUD no longer drawing the slot windows, C3.) Sim unchanged (<0.6 ms p95). reports/perf/after.json.
 - [ ] M4 Load/PWA checks (route: inline).
 
 ## Checks

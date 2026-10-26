@@ -653,10 +653,20 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.wall;
       ctx.fillRect(-200, -200, width + 400, height + 400);
     }
-    for (let y = 0; y < height; y += TILE) {
-      for (let x = 0; x < width; x += TILE) {
-        ctx.fillStyle = ((x + y) / TILE) % 2 === 0 ? COLORS.floorA : COLORS.floorB;
-        ctx.fillRect(x, y, Math.min(TILE, width - x), Math.min(TILE, height - y));
+    // The checker, visible tiles only (a tile of margin for the shake): one rect of the first colour,
+    // then the second colour's squares. Tile edges sit on whole backing pixels (integer scale, rounded
+    // offset), so this paints the same pixels as a rect per tile over the whole arena, at a quarter of the calls.
+    const cx0 = Math.max(0, Math.floor((view.x - TILE) / TILE) * TILE);
+    const cy0 = Math.max(0, Math.floor((view.y - TILE) / TILE) * TILE);
+    const cx1 = Math.min(width, view.x + view.width + TILE);
+    const cy1 = Math.min(height, view.y + view.height + TILE);
+    if (cx1 > cx0 && cy1 > cy0) {
+      ctx.fillStyle = COLORS.floorA;
+      ctx.fillRect(cx0, cy0, Math.min(width, Math.ceil(cx1 / TILE) * TILE) - cx0, Math.min(height, Math.ceil(cy1 / TILE) * TILE) - cy0);
+      ctx.fillStyle = COLORS.floorB;
+      for (let y = cy0; y < cy1; y += TILE) {
+        const first = ((cx0 + y) / TILE) % 2 === 0 ? cx0 + TILE : cx0;
+        for (let x = first; x < cx1; x += 2 * TILE) ctx.fillRect(x, y, Math.min(TILE, width - x), Math.min(TILE, height - y));
       }
     }
     ctx.strokeStyle = COLORS.wallEdge;

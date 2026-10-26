@@ -190,6 +190,14 @@ function ground(ctx: CanvasRenderingContext2D, images: TownImages, map: MapShape
   const sheet = images.get(GROUND_SHEETS[look.ground]) ?? images.get(TOWN_GROUND.file);
   const cols = map.rows[0]?.length ?? 0;
   const { x0, y0, x1, y1 } = visibleTiles(view, { cols, rows: map.rows.length, tiles: [] });
+  const layer = sheet ? groundLayer(images, sheet, map, look) : null;
+  if (layer) {
+    const sx = Math.max(0, x0 * TILE);
+    const sy = Math.max(0, y0 * TILE);
+    const sw = Math.min(layer.width, (x1 + 1) * TILE) - sx;
+    const sh = Math.min(layer.height, (y1 + 1) * TILE) - sy;
+    if (sw > 0 && sh > 0) ctx.drawImage(layer, sx, sy, sw, sh, sx, sy, sw, sh);
+  }
   for (let ty = y0; ty <= y1; ty++) {
     for (let tx = x0; tx <= x1; tx++) {
       const kind = groundAt(map, tx, ty);
@@ -198,6 +206,7 @@ function ground(ctx: CanvasRenderingContext2D, images: TownImages, map: MapShape
         drawSpecial(ctx, map, kind, tx, ty, timeMs);
         continue;
       }
+      if (layer) continue;
       const x = tx * TILE;
       const y = ty * TILE;
       if (!sheet) {
@@ -205,17 +214,56 @@ function ground(ctx: CanvasRenderingContext2D, images: TownImages, map: MapShape
         ctx.fillRect(x, y, TILE, TILE);
         continue;
       }
-      let src: { x: number; y: number } = TOWN_GROUND.grass;
-      if (kind === 'path') {
-        const cell = pathPatchCell(map, tx, ty);
-        src = { x: TOWN_GROUND.path.x + cell.col * SRC, y: TOWN_GROUND.path.y + cell.row * SRC };
-      } else if (hash01(tx * 7919 + ty * 104729) < 0.18) {
-        const tufts = sheet === images.get(GROUND_SHEETS[look.ground]) ? GROUND_TUFTS[look.ground] : TOWN_GROUND.grassTufts;
-        src = tufts[Math.floor(hash01(tx * 31 + ty * 17 + 5) * tufts.length)]!;
-      }
+      const src = groundSource(images, sheet, map, look, kind, tx, ty);
       ctx.drawImage(sheet, src.x, src.y, SRC, SRC, x, y, TILE, TILE);
     }
   }
+}
+
+/** Source tile of a grass or path ground tile: the path patch cell, now and then a tuft, else grass. */
+function groundSource(images: TownImages, sheet: CanvasImageSource, map: MapShape, look: MapLook, kind: string, tx: number, ty: number): { x: number; y: number } {
+  if (kind === 'path') {
+    const cell = pathPatchCell(map, tx, ty);
+    return { x: TOWN_GROUND.path.x + cell.col * SRC, y: TOWN_GROUND.path.y + cell.row * SRC };
+  }
+  if (hash01(tx * 7919 + ty * 104729) < 0.18) {
+    const tufts = sheet === images.get(GROUND_SHEETS[look.ground]) ? GROUND_TUFTS[look.ground] : TOWN_GROUND.grassTufts;
+    return tufts[Math.floor(hash01(tx * 31 + ty * 17 + 5) * tufts.length)]!;
+  }
+  return TOWN_GROUND.grass;
+}
+
+/**
+ * The static grass and path tiles of a map, drawn once per map, look and sheet
+ * into an offscreen canvas at world size (sky and the animated water, chasm,
+ * rock and bridge tiles stay transparent and are drawn live on top; they keep
+ * to their own tile). The tiles scale by whole factors (16 -> 32 px, then the
+ * integer canvas scale) at a rounded offset with smoothing off, so one blit
+ * paints the same pixels as a drawImage per tile: one call a frame, not ~200.
+ */
+const groundCache = new WeakMap<MapShape, { sheet: CanvasImageSource; ground: string; canvas: HTMLCanvasElement }>();
+
+function groundLayer(images: TownImages, sheet: CanvasImageSource, map: MapShape, look: MapLook): HTMLCanvasElement | null {
+  const cached = groundCache.get(map);
+  if (cached && cached.sheet === sheet && cached.ground === look.ground) return cached.canvas;
+  if (typeof document === 'undefined') return null;
+  const cols = map.rows[0]?.length ?? 0;
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * TILE;
+  canvas.height = map.rows.length * TILE;
+  const g = canvas.getContext('2d');
+  if (!g || canvas.width === 0 || canvas.height === 0) return null;
+  g.imageSmoothingEnabled = false;
+  for (let ty = 0; ty < map.rows.length; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
+      const kind = groundAt(map, tx, ty);
+      if (kind === 'sky' || kind === 'water' || kind === 'chasm' || kind === 'rock' || kind === 'bridge') continue;
+      const src = groundSource(images, sheet, map, look, kind, tx, ty);
+      g.drawImage(sheet, src.x, src.y, SRC, SRC, tx * TILE, ty * TILE, TILE, TILE);
+    }
+  }
+  groundCache.set(map, { sheet, ground: look.ground, canvas });
+  return canvas;
 }
 
 interface Sprite {
