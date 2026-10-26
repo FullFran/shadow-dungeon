@@ -26,7 +26,7 @@ The town is the interface for everything; the title only starts play.
 ## Tasks
 
 - [x] T1 Fast travel (route: inline; this worker is the single writer). Commit 93c4680. Evidence: tests/town/travel.test.ts; menu-geometry `travel` stable at 1280x800, 844x390, 390x844; browser round trip Refugio to Lago (lands under the waystone) and the Phantump shortcut (lands beside him, "hablar" prompt).
-- [x] T2 Title menu and town Esc menu (route: inline, same writer). Commit: see Progress. Evidence: tests/app/title-menu.test.ts, tests/town/town-menu.test.ts; menu-geometry `title`, `options`, `town-menu`, `travel` stable at all three sizes.
+- [x] T2 Title menu and town Esc menu (route: inline, same writer). Commit d1fa417. Evidence: tests/app/title-menu.test.ts, tests/town/town-menu.test.ts; menu-geometry `title`, `options`, `town-menu`, `travel` stable at all three sizes.
 
 ## Parity checklist
 
@@ -59,7 +59,7 @@ The town is the interface for everything; the title only starts play.
 ## Progress
 
 - T1 done: 93c4680 feat(town): fast travel between visited maps from a waystone on every map.
-- T2 done: feat(app): town-first title and the town Esc menu (commit after 93c4680 on feat/fast-travel).
+- T2 done: d1fa417 feat(app): town-first title and the town Esc menu.
 - Gotcha found: the town's Esc handler ran before the shared cursor-list key listener when the town was the first screen (dev `?screen=town`), so the menu it opened read the same Esc as "back" and closed at once; the scene now calls `preventDefault()` on Esc, which the cursor list honours.
 
 ## Next step
