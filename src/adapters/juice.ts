@@ -27,11 +27,11 @@ export const JUICE = {
   rumblePx: 1.5,
 } as const;
 
-export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hurt' | 'heal';
+export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hold' | 'hurt' | 'heal';
 
 export interface FloatingNumber {
   pos: Vec2;
-  /** Damage shown; 0 with style 'blocked' shows the blocked label. */
+  /** Damage shown; 0 with style 'blocked' shows the blocked label, with 'hold' the card floor's ("¡Aguanta!"). */
   value: number;
   style: NumberStyle;
   big: boolean;
@@ -95,6 +95,10 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
       case 'hitBlocked':
         next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: 0, style: 'blocked', big: false, ageMs: 0 }] };
         next = shake(next, 1.5);
+        break;
+      case 'cardHold':
+        // A spell card's floor absorbed the hit (core/cards.ts `paceFloor`): the boss holds.
+        next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: 0, style: 'hold', big: false, ageMs: 0 }] };
         break;
       case 'playerHurt':
         next = shake({ ...next, hitstopMs: Math.max(next.hitstopMs, JUICE.hurtHitstopMs) }, JUICE.shakePx + 2);

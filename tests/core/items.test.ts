@@ -162,7 +162,7 @@ describe('item effects', () => {
       const state = { ...arena(['scope-lens', 'scope-lens', 'scope-lens'], [['poochyena', vec(425, 300)]]), rng: seed * 7919 };
       damages.add(firstHit(use(state, 0, 300).events));
     }
-    const claw = { power: MOVES['shadow-claw'].power, moveType: 'ghost' as const, attackerTypes: ['ghost', 'fairy'] as const, defenderTypes: ['dark'] as const };
+    const claw = { power: MOVES['shadow-claw'].power, moveType: 'ghost' as const, attackerTypes: ['ghost', 'fairy'] as const, defenderTypes: ['dark'] as const, onEnemy: true };
     expect(damages).toEqual(new Set([computeDamage(claw).damage, computeDamage({ ...claw, multiplier: ITEM_EFFECTS.critMultiplier }).damage]));
   });
 

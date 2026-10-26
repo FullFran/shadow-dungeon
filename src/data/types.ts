@@ -31,3 +31,33 @@ export const TYPE_CHART: Record<PokemonType, Partial<Record<PokemonType, number>
   // Dragon: Axew's line (data/line-moves.ts); no enemy has it yet.
   dragon: { dragon: 2, steel: 0.5, fairy: 0 },
 };
+
+/**
+ * A type chart by effectiveness level: the net count of a move's
+ * super-effective defender types over its resisted ones (an immunity is
+ * softened apart, `TUNING.combat.immunityMultiplier`). Net 0 is neutral
+ * (a super-effective and a resisted type cancel out, as in the games).
+ */
+export interface TypeLevels {
+  /** Net +1. */
+  superEffective: number;
+  /** Net +2 (both types): the cap. */
+  doubleSuper: number;
+  /** Net −1. */
+  resisted: number;
+  /** Net −2. */
+  doubleResisted: number;
+}
+
+/** The standard chart as levels (x2, x4, x0.5, x0.25): enemies' hits on the player keep it. */
+export const GEN6_LEVELS: TypeLevels = { superEffective: 2, doubleSuper: 4, resisted: 0.5, doubleResisted: 0.25 };
+
+/**
+ * The compressed chart of the player's hits on enemies (owner decision
+ * 2026-10-26, odd/tasks/type-balance.md, reports/balance/type-chart-baseline.md):
+ * the bosses' danmaku does not depend on the player's type, so a full x2
+ * (x3 with STAB, x6 on both types) let a matching species skip the spell
+ * cards. Chart B of the study: advantage still counts (x1.6, x2.2 on both
+ * types), never as a shortcut; a resisted move hurts more than before.
+ */
+export const PLAYER_HIT_LEVELS: TypeLevels = { superEffective: 1.6, doubleSuper: 2.2, resisted: 0.75, doubleResisted: 0.5 };

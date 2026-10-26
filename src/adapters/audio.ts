@@ -99,6 +99,7 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'passiveTriggered':
       return event.passive === 'illusion' ? 'illusion' : event.passive === 'flash-fire' ? 'flashFire' : event.passive === 'battle-armor' ? 'battleArmor' : null;
     case 'hitBlocked':
+    case 'cardHold':
       return 'blocked';
     case 'hitDodged':
       return 'dodge';

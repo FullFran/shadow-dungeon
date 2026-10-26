@@ -1,4 +1,4 @@
-import { typeEffectiveness } from '../core/damage';
+import { hitEffectiveness } from '../core/damage';
 import { CRYPT, guardianOf } from '../data/dungeons';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
@@ -8,7 +8,7 @@ import { t } from '../i18n';
 /**
  * What a move card in the loadout tells beyond power and description: its
  * stamina cost, its hit shape and how its type fares against the Crypt's
- * enemies (`typeEffectiveness` of the move type on each species).
+ * enemies (`hitEffectiveness`, the player's chart, of the move type on each species).
  */
 export type MoveShapeId = 'ring' | 'arc-short' | 'arc-wide' | 'dash' | 'projectile-fast' | 'projectile-slow' | 'boomerang' | 'self' | 'cone' | 'wave';
 
@@ -47,7 +47,7 @@ export function matchup(type: PokemonType, roster: readonly SpeciesId[] = cryptR
   const strong: SpeciesId[] = [];
   const weak: SpeciesId[] = [];
   for (const id of roster) {
-    const effectiveness = typeEffectiveness(type, SPECIES[id].types);
+    const effectiveness = hitEffectiveness(type, SPECIES[id].types);
     if (effectiveness > 1) strong.push(id);
     else if (effectiveness < 1) weak.push(id);
   }

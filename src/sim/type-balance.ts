@@ -5,7 +5,8 @@ import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import type { RoomId } from '../data/rooms';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { TUNING } from '../data/tuning';
-import { TYPE_CHART, type PokemonType } from '../data/types';
+import { PLAYER_HIT_LEVELS, type PokemonType, type TypeLevels } from '../data/types';
+import { levelEffectiveness } from '../core/damage';
 import { cardFloorShare } from '../core/cards';
 import { stageBonus } from '../core/evolution';
 import { expectedLevel } from '../core/fairness';
@@ -43,21 +44,16 @@ import { bossFloor, CARD_BOSSES, ECHO_BOSSES, fightIn, type BossCase } from './p
  * timer.
  */
 
-/** A type chart by effectiveness level: the net count of super-effective over resisted defender types. */
-export interface ChartRule {
+/** A type chart by effectiveness level (data/types.ts `TypeLevels`), named for the report. */
+export interface ChartRule extends TypeLevels {
   name: string;
-  /** Net +1 (one super-effective type). */
-  superEffective: number;
-  /** Net +2 (both types super-effective): the cap. */
-  doubleSuper: number;
-  /** Net −1. */
-  resisted: number;
-  /** Net −2. */
-  doubleResisted: number;
 }
 
 /** The shipped Gen 6+ chart as levels (×2, ×4, ×0.5, ×0.25). */
 export const RAW_RULE: ChartRule = { name: 'Gen 6 (shipped)', superEffective: 2, doubleSuper: 4, resisted: 0.5, doubleResisted: 0.25 };
+
+/** The chart the engine plays now for the player's hits (data/types.ts `PLAYER_HIT_LEVELS`). */
+export const ENGINE_RULE: ChartRule = { name: `engine ×${PLAYER_HIT_LEVELS.superEffective} / cap ×${PLAYER_HIT_LEVELS.doubleSuper}`, ...PLAYER_HIT_LEVELS };
 
 export const CANDIDATE_RULES: readonly ChartRule[] = [
   RAW_RULE,
@@ -66,19 +62,8 @@ export const CANDIDATE_RULES: readonly ChartRule[] = [
   { name: 'C ×1.4 / cap ×1.8', superEffective: 1.4, doubleSuper: 1.8, resisted: 0.75, doubleResisted: 0.5 },
 ];
 
-/** Effectiveness of `moveType` on `defender` under `rule`: immunities softened as shipped, the rest by net level. */
-export function ruleEffectiveness(rule: ChartRule, moveType: PokemonType, defender: readonly PokemonType[]): number {
-  let net = 0;
-  let immune = 1;
-  for (const d of defender) {
-    const m = TYPE_CHART[moveType][d] ?? 1;
-    if (m === 0) immune *= TUNING.combat.immunityMultiplier;
-    else if (m > 1) net += 1;
-    else if (m < 1) net -= 1;
-  }
-  const level = net >= 2 ? rule.doubleSuper : net === 1 ? rule.superEffective : net === 0 ? 1 : net === -1 ? rule.resisted : rule.doubleResisted;
-  return immune * level;
-}
+/** Effectiveness of `moveType` on `defender` under `rule`: the engine's own level rule (core/damage.ts `levelEffectiveness`). */
+export const ruleEffectiveness = (rule: ChartRule, moveType: PokemonType, defender: readonly PokemonType[]): number => levelEffectiveness(rule, moveType, defender);
 
 /** One species of the study: its final form (or a starter's base form), with Mimikyu's awakenings. */
 export interface StudyEntry {
