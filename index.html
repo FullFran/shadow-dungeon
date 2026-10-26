@@ -217,6 +217,9 @@
       }
       .shop { width: 52rem; max-width: 100%; }
       .shop.tutor { width: 60rem; }
+      .shop.travel { width: 44rem; }
+      .travel-detail h3 { margin: 0 0 6px; }
+      .travel-lines { margin: 0; padding-left: 1.2em; }
       .shop .shop-effect { margin: 0; }
       .shop .shop-balance { margin-bottom: 8px; }
       /* The move tutor: its long list scrolls inside the window; the build hint in the cursor colour. */
@@ -404,6 +407,8 @@
         html.touch .tutor .tutor-build { grid-area: build; font-size: 15px; }
         /* The move list scrolls inside the window, so the text and balance on the left stay in view. */
         html.touch .tutor .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
+        /* Viajar: every visited map plus the shortcuts; the list scrolls inside the window like the tutor's. */
+        html.touch .travel .shop-list { max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain; }
         html.touch .achievements .achievement-list { max-height: calc(100dvh - 220px); }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }

@@ -23,7 +23,10 @@ const VIEWPORTS = [
   [390, 844, true],
 ];
 
-/** [name, query, settle ms, step]: step 'pick' takes the first item card of a run, 'menu' then opens the pause menu. */
+/** Every overworld map visited on this device (the travel window lists them all). */
+const ALL_MAPS = { 'mazmorra-sombria.visitedMaps': JSON.stringify(['refugio', 'ruinas', 'mirador', 'crater', 'lago', 'cienaga']) };
+
+/** [name, query, settle ms, step, local storage]: step 'pick' takes the first item card of a run, 'menu' then opens the pause menu; the storage entries are set before the page opens. */
 const SCREENS = [
   ['title', '', 1500],
   ['settings', 'screen=settings', 1200],
@@ -41,6 +44,7 @@ const SCREENS = [
   ['shrine-gauntlets', 'screen=shrine&view=gauntlets', 1500],
   ['online', 'screen=online', 1200],
   ['account', 'screen=account', 1500],
+  ['travel', 'screen=town&window=travel', 3000, undefined, ALL_MAPS],
   ['item-pick', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500],
   ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, 'menu'],
   ['victory', 'screen=victory', 1200],
@@ -67,9 +71,10 @@ const { page, stop } = await startFirefox(9351);
 const failures = [];
 try {
   for (const [w, h, touch] of VIEWPORTS) {
-    for (const [name, query, settle, step] of SCREENS) {
+    for (const [name, query, settle, step, storage] of SCREENS) {
       await page.viewport(w, h, 1);
       await seedSettings(page, vite.url, { difficulty: 'easy', touchMode: touch ? 'on' : 'off' });
+      if (storage) await page.evaluate(`(${JSON.stringify(Object.entries(storage))}.forEach(([k, v]) => localStorage.setItem(k, v)), 1)`);
       await page.nav(`${vite.url}${query ? `?${query}` : ''}`);
       await wait(settle);
       if (step === 'menu') {

@@ -1354,7 +1354,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
 }
 
 /** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
-type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
+type TownPlace = Pick<TownOptions, 'at' | 'tile' | 'startWindow'>;
 
 /** Development server only: `&coins=N` sets the saved balance (smoke tests of the stalls). */
 function devCoins(): void {
@@ -1367,12 +1367,13 @@ function devStoryDone(): boolean {
   return import.meta.env.DEV && new URLSearchParams(window.location.search).get('storySkip') === '1';
 }
 
-/** Development server only: the `map` and `tile` query of `?screen=town`. */
+/** Development server only: the `map`, `tile` and `window` (travel) query of `?screen=town`. */
 function devTownPlace(): TownPlace {
   const params = new URLSearchParams(window.location.search);
   const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
   const at = (params.get('map') ?? undefined) as TownOptions['at'];
-  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}) };
+  const startWindow = params.get('window') === 'travel' ? ('travel' as const) : undefined;
+  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}) };
 }
 
 /**
