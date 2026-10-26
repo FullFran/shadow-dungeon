@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { CHALLENGES, guardianOf } from '../../src/data/dungeons';
 import { ROOMS, type RoomId } from '../../src/data/rooms';
 import type { Difficulty } from '../../src/data/difficulty';
@@ -24,6 +24,8 @@ const WOUNDS: readonly BossCase[] = CHALLENGES.flatMap((d) => {
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
 describe('the wounds are beatable', () => {
+  // Back-to-back synchronous proofs never let the worker read its RPC replies ("Timeout calling onTaskUpdate" once a file runs past 60 s): yield a macrotask after each.
+  afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
   it('every Senda with a wound is listed (Mimikyu at least)', () => {
     expect(WOUNDS.map((w) => w.species)).toContain('mimikyu-wound');
     for (const w of WOUNDS) expect(ROOMS[w.room].spawns[0]!.species).toBe(w.species);

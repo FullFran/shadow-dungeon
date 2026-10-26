@@ -23,7 +23,7 @@ export type CuboneBossId = 'cubone-wound' | 'cubone-haunter' | 'cubone-mandibuzz
 
 /** Its shadows (data/story/kit.ts; `hpScale` per tier tuned so every card meets its kill margin, tests/sim/story-prove-<line>.test.ts): sheets, types (a shadow does not fly), shots and signature cards. */
 export const CUBONE_BOSSES: readonly (StoryBossDef & { id: CuboneBossId })[] = [
-  { id: 'cubone-haunter', sprite: 'haunter', types: ['ghost', 'poison'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'poison' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.6, 0.6, 0.7] },
+  { id: 'cubone-haunter', sprite: 'haunter', types: ['ghost', 'poison'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'poison' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.6, 0.6, 0.69] },
   { id: 'cubone-mandibuzz', sprite: 'mandibuzz', types: ['dark', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'dark', b: 'ghost' }, cards: ['drop', 'fan', 'bloom'], hpScale: [0.5, 0.6, 0.5, 0.47] },
   { id: 'cubone-dusclops', sprite: 'dusclops', types: ['ghost'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'dark' }, cards: ['moon', 'drop', 'walls'], hpScale: [0.5, 0.6, 0.6, 0.49] },
   { id: 'cubone-kangaskhan', sprite: 'kangaskhan', types: ['normal', 'ghost'], maxHp: 520, radius: 16, shots: { a: 'normal', b: 'ghost' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.45, 0.44, 0.6, 0.57] },
