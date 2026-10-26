@@ -196,6 +196,9 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   return gate ? placeGate(evented, gate, floor) : evented;
 }
 
+/** Loads `run`'s current floor into `world` with no heal (the boss shrine's arenas, core/shrine.ts). */
+export const enterRunFloor = (world: WorldState, run: RunState): WorldState => enterFloor(world, run);
+
 /** A wave gate's room: the rolled event's if it already is a wave room, else the first room that is neither the start nor the stairs. */
 function waveRoomOf(floor: Floor, rolled: { kind: SimaEventKind; room: number } | null): { kind: SimaEventKind; room: number } | null {
   if (rolled?.kind === 'waves') return rolled;
