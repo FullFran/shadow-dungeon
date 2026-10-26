@@ -301,7 +301,9 @@ function coverSpots(room: RoomId): Vec2[] {
 function loopMs(f: CardFightDef, index: number): number {
   const card = f.cards[index]!;
   const loop = card.steps.reduce((sum, s) => sum + s.telegraphMs + stepAttackMs(s) + s.recoverMs + card.restMs, 400);
-  return Math.min(14_000, Math.min(card.timerMs, loop + 2500));
+  // With a "tu turno" window after every two moves (core/cards.ts `COMBO_STEPS`, at most the easy length).
+  const turns = Math.ceil(card.steps.length / 2) * 1600;
+  return Math.min(20_000, Math.min(card.timerMs, loop + turns + 2500));
 }
 
 describe('guardian spell cards: a safe path through every card (simulation)', () => {

@@ -657,7 +657,8 @@ De ahí salen las reglas de este juego:
 4. **Todo ataque nuevo se avisa y deja castigar:** aviso de al menos 280 ms y una recuperación después.
 5. **La voltereta no lo arregla todo:** los ataques de zona (`pierceRoll`: zonas en el suelo, muros que barren, carriles) atraviesan la invulnerabilidad de la voltereta y nunca cuentan como esquiva perfecta; hay que salir de su área andando o rodando hacia fuera, no a través. Se avisan distinto: un doble borde blanco y violeta que late sobre la zona, un «!» violeta sobre el enemigo y un sonido propio.
 6. **Ningún golpe quita más del 35 % de la vida de referencia** (`MAX_HIT_SHARE`, `src/core/fairness.ts`): la vida máxima que tendría tu Pokémon al nivel esperado en esa planta (el que da la experiencia de despejar todas las plantas anteriores, sin objetos ni mejoras). El tope se aplica al daño final de cada golpe enemigo (contacto, disparo o zona), después de todos los multiplicadores (nivel, profundidad, grupo, élites, pactos), en el lado de la víctima, así que solitario, anfitrión e invitados coinciden. No es sobre tu vida real: si vas al nivel esperado, un golpe nunca te mata con la vida llena; si no has subido de nivel, sí puede quitarte toda la vida de un golpe; si vas por encima, recibes el mismo daño (una parte menor de tu vida). El derrumbe, el gas y la niebla quedan fuera: no matan por diseño.
-7. **Más difícil paga más:** Pokémonedas multiplicadas (también por minuto jugado) y récords propios por nivel.
+7. **Ritmo por turnos:** Dark Souls es un juego de ritmo por turnos; este es un juego de ritmo danmaku por turnos, pero con turnos minúsculos. Tras cada combo, todo jefe con cartas (guardianes, jefes intermedios, heraldos y ecos) abre una ventana «tu turno»: se queda quieto, no empieza ninguna amenaza nueva y las balas que quedan se desvanecen en 0,35 s, así que se puede entrar a pegar sin miedo. Un combo es una pasada de los movimientos de la carta, dos como mucho; en las cartas alojadas, cada movimiento propio (que ya es un combo: tres destellos, cuatro anillos). La duración está en la tabla de niveles (`TIERS.turnMs`, `TURN_FLOOR`): acortarla es una de las palancas principales de la dificultad. Un pacto de la Sima que acelera a los enemigos la alarga en su reloj, así que en tiempo real dura lo mismo. Tests en `tests/core/turn-windows.test.ts`.
+8. **Más difícil paga más:** Pokémonedas multiplicadas (también por minuto jugado) y récords propios por nivel.
 
 ### La tabla
 
@@ -668,6 +669,7 @@ De ahí salen las reglas de este juego:
 | Duración del aviso | ×1 | ×0,95 | ×0,9 | ×0,85 (con el mínimo de arriba) |
 | Enemigos extra por sala | 0 | 0 | 0 | 0 |
 | Esperas entre ataques (agresividad) | ×1 | ×0,9 | ×0,8 | ×0,7 |
+| Ventana «tu turno» de los jefes con cartas (tras cada combo) | 1,6 s | 1,3 s | 1,0 s | 0,8 s (nunca bajo 0,7 s; última carta ≥ 0,6 s; ninguna en la de supervivencia) |
 | Élites (por enemigo de planta generada) | 0 | 10 % | 20 % | 30 % |
 | Encuentros especiales (frecuencia, oleadas extra) | ×1, +0 | ×1,2, +0 | ×1,5, +0 | ×2, +1 |
 | Voltereta (ventana invulnerable, estamina) | ×1, ×1 | ×1, ×1 | ×0,9, ×1,1 | ×0,8, ×1,2 |

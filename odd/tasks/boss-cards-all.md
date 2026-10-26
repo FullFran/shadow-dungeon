@@ -29,7 +29,11 @@ User decisions 2026-10-26 (A, B, C, D), plus two additions during the work: the 
   - Data in `src/data/hosted-cards.ts` (table in GDD). Easy is unchanged (`behaviourFor(easy)` is the same object).
   - Tests: `tests/core/hosted-cards.test.ts` (41). Existing tier tests now ignore `declare` telegraphs and compare normal as `{...def, spellCards}`. The Trevenant hard-rotation test drives its native engine directly.
   - Evidence: `npm test` 1688 passed; `npm run build` ok; `npm run balance -- --quick` 0 failures (the report was not committed, the full sweep stays the committed one).
-- [ ] T Turn windows ("ritmo por turnos")
+- [x] T Turn windows ("ritmo por turnos") (route: inline)
+  - `TierDef.turnMs` (1600/1300/1000/800) + `TURN_FLOOR` (700 ms; last spell ×0.75 ≥ 600 ms; no turn in survival cards; shots fade within 350 ms). `core/cards.ts` `turnMsFor`/`startTurn`/`inTurn` (`recover` + `ai.attack = 'turn'`, event `bossTurn`).
+  - Pattern cards: a turn after every pass of a card's moves, two moves at most (`COMBO_STEPS`). Hosted cards: after each of the boss's own moves, absorbing its own rest. Heralds: after every cycle. Sima pacts that speed up enemies lengthen the turn in enemy time, so it lasts the same in real time.
+  - Tests: `tests/core/turn-windows.test.ts` (8 bosses × 3 tiers × every card, plus a herald). guardian-cards `loopMs` now counts turns (cap 20 s).
+  - Evidence: `npm test` 1714 passed, `npm run build` ok, `npm run balance -- --quick` 0 failures.
 - [ ] D Proof pipeline + solver bot + GDD guarantee
 - [ ] C Sima echoes on cards by depth
 - [ ] B Presentation pass + screenshots

@@ -370,6 +370,8 @@ export type GameEvent =
   | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
   | { type: 'spellCardEnd'; enemyId: string; card: CardId; outcome: Exclude<CardOutcome, 'start'> }
+  /** "Tu turno": a card boss finished a combo and opens for `durationMs` (core/cards.ts `startTurn`): no new threat, its shots fade. */
+  | { type: 'bossTurn'; enemyId: string; durationMs: number }
   /** The local player went through a spell card without being hit (every peer for itself): coins and a heal. */
   | { type: 'cardCaptured'; enemyId: string; card: CardId; heal: number }
   | { type: 'disguiseBroken' }

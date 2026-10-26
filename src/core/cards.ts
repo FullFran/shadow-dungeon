@@ -5,6 +5,8 @@ import { crossed, firePattern, laneGapOf, patternAttackMs, patternMelee, pattern
 import { confineCircle } from './geometry';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
+import { TIERS, TURN_FLOOR } from '../data/difficulty';
+import { worldDifficulty } from './difficulty';
 
 /**
  * Spell-card fights (data/cards.ts): the engine any boss with a
@@ -28,6 +30,41 @@ import { add, distance, normalize, scale, vec, type Vec2 } from './vec';
 
 const withAi = (enemy: EnemyState, ai: AiState): EnemyState => ({ ...enemy, ai });
 const withBoss = (enemy: EnemyState, boss: Partial<BossState>): EnemyState => ({ ...enemy, boss: { ...enemy.boss!, ...boss } });
+
+/** `ai.attack` of a boss in its "tu turno" window (mode `recover`): every peer reads it from the snapshot. */
+export const TURN = 'turn';
+
+/** Whether a boss is in its "tu turno" window. */
+export const inTurn = (enemy: Pick<EnemyState, 'ai'>): boolean => enemy.ai.mode === 'recover' && enemy.ai.attack === TURN;
+
+/**
+ * The "tu turno" window after a combo of `card` at the world's tier, in real
+ * time (data/difficulty.ts `turnMs`, `TURN_FLOOR`): none in a survival card
+ * (nothing to punish), a little shorter in a last spell, never under the
+ * floors. A Sima pact that quickens the enemies lengthens it in enemy time,
+ * so the real window keeps its length.
+ */
+export function turnMsFor(state: Pick<WorldState, 'difficulty' | 'simaPact'>, card?: Pick<SpellCardDef, 'survival' | 'lastSpell'>): number {
+  if (card?.survival) return 0;
+  const base = TIERS[worldDifficulty(state)].turnMs;
+  const real = card?.lastSpell ? Math.max(TURN_FLOOR.lastSpellMinMs, base * TURN_FLOOR.lastSpellShare) : Math.max(TURN_FLOOR.minMs, base);
+  return real * Math.max(1, state.simaPact?.enemySpeed ?? 1);
+}
+
+/**
+ * Opens a "tu turno" window (the souls rhythm in tiny turns): the boss holds
+ * in `recover` (`ai.attack` = `TURN`) for `durationMs`, starts nothing, and
+ * every enemy shot still flying fades within `TURN_FLOOR.fadeMs`.
+ */
+export function startTurn(state: WorldState, enemy: EnemyState, durationMs: number, events: GameEvent[]): { state: WorldState; enemy: EnemyState } {
+  events.push({ type: 'bossTurn', enemyId: enemy.id, durationMs });
+  const projectiles = state.projectiles.map((p) => (p.owner === 'enemy' && p.remainingMs > TURN_FLOOR.fadeMs ? { ...p, remainingMs: TURN_FLOOR.fadeMs } : p));
+  const { aimPoint: _aim, ...ai } = enemy.ai;
+  return { state: { ...state, projectiles }, enemy: withAi(enemy, { ...enterMode(ai, 'recover', durationMs), attack: TURN, contact: 'none' }) };
+}
+
+/** A pattern card's combo: at most this many of its moves in a row before "tu turno". */
+export const COMBO_STEPS = 2;
 
 /** Pause between a declaration and the card's first move. */
 export const FIRST_MOVE_MS = 400;
@@ -243,9 +280,19 @@ function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, car
       }
       break;
     }
-    case 'recover':
-      if (modeOver(ai)) enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: card.restMs, strafeSign: ai.strafeSign === 1 ? -1 : 1 });
+    case 'recover': {
+      if (!modeOver(ai)) break;
+      // A combo is a pass of the card's moves, two at most: "tu turno" before the next one.
+      const done = boss.combosDone;
+      const combo = done % card.steps.length === 0 || (done % card.steps.length) % COMBO_STEPS === 0;
+      const turn = ai.attack !== TURN && combo ? turnMsFor(state, card) : 0;
+      if (turn > 0) {
+        const opened = startTurn(state, enemy, turn, events);
+        state = opened.state;
+        enemy = opened.enemy;
+      } else enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: card.restMs, strafeSign: ai.strafeSign === 1 ? -1 : 1 });
       break;
+    }
     default:
       enemy = withAi(enemy, { ...enterMode(ai, 'approach'), cooldownMs: card.restMs });
       break;
@@ -320,7 +367,19 @@ export function updateHostedCardFight(state: WorldState, start: EnemyState, figh
   const floor = enemy.boss!.hpFloor ?? 0;
   const broken = !card.survival && enemy.hp <= floor;
   if (broken || cardMs >= card.timerMs) return endCard(state, enemy, fight, index, card.survival ? 'survived' : broken ? 'broken' : 'timeout', events);
-  return play(state, enemy, card);
+  // "Tu turno": its engine waits; then it goes on from its own rest (the turn absorbs it).
+  if (inTurn(enemy)) {
+    if (!modeOver(ai)) return replaceEnemy(state, enemy);
+    const { attack: _turn, ...rest } = enemy.ai;
+    return replaceEnemy(state, withAi(enemy, { ...enterMode(rest, 'approach'), contact: 'none' }));
+  }
+  const played = play(state, enemy, card);
+  // Each of its own moves is a combo: when its engine leaves a recovery for its rest, the turn opens.
+  const after = played.enemies.find((e) => e.id === enemy.id);
+  const turn = after?.alive && ai.mode === 'recover' && after.ai.mode === 'approach' ? turnMsFor(state, card) : 0;
+  if (!after || turn <= 0) return played;
+  const opened = startTurn(played, after, turn, events);
+  return replaceEnemy(opened.state, opened.enemy);
 }
 
 /** The moves a hosted card plays at this party size: its own, then the party's area move (data/party-tricks.ts `partyMoves`) once per loop. */
