@@ -36,7 +36,7 @@ jobs:
           BASE="${{ github.event.before }}"
           if [ "${{ github.event_name }}" != "push" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             npm run test:proofs
-          elif git diff --name-only "$BASE" "${{ github.sha }}" | grep -qE '^(src/sim/|src/data/story|src/data/story-quests|src/data/.*cards|src/core/(cards|danmaku|damage|boss|combat)|src/data/(types|difficulty|rooms|dungeons|tuning)\.ts|tests/sim/(story-prove|wound-prove))'; then
+          elif git diff --name-only "$BASE" "${{ github.sha }}" | grep -qE '^(src/sim/|src/data/story|src/data/story-quests|src/data/.*cards|src/core/(cards|danmaku|damage|boss|combat)|src/data/(types|difficulty|rooms|dungeons|tuning|sima-story|endless)\.ts|src/core/sima-story\.ts|src/data/story/|tests/sim/(story-prove|wound-prove|story-prove-sima))'; then
             npm run test:proofs
           else
             echo "Boss proofs skipped: nothing they prove changed."
