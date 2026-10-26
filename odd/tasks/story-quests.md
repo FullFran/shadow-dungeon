@@ -9,7 +9,7 @@ Owner (2026-10-26) after Mimikyu's challenge: "no estuvo tan épica... lore del 
 ## Scope
 - docs/story-quests.md (design, all 8 outlines), GDD section.
 - Data `src/data/story-quests.ts` (`STORY_QUESTS`), pure rules `src/core/story.ts`.
-- Wound boss: species `mimikyu-wound`, cards `src/data/wound-cards.ts` (Decidueye's card engine, cards on every tier), rooms `throne` and `wound-mimikyu`, `sendaPlan` in dungeons.ts; corrupted + 1.7x render.
+- Wound boss: species `mimikyu-wound`, cards `src/data/wound-cards.ts` (Decidueye's card engine, cards on every tier), rooms `throne` and `wound-mimikyu`, `sendaPlan` in dungeons.ts; corrupted + 1.7x render. Since T10 the wound, its arena and its roads live in `src/data/story/mimikyu.ts` on the kit (wound-cards.ts and the `throne` room removed).
 - Reach rule: `attackTypesOf`/`typeHurts`/`canHurtLine` in core/challenge.ts; Litwick and Piplup pools fixed.
 - Save: optional `story` field, sanitized (5 lines in save.ts).
 - Cinematics on the prologue player with `src/adapters/story-scenes.ts`; in-run voice, fragments (card in `src/app/memory-card.ts`), boss lines (after the fog); bond and Phantump line in Phantump's window; Senda progress in the challenges window.
@@ -34,6 +34,8 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
 - [x] T9 Owner addition "Touhou por dentro": signature cards named «Signo», from the proven patterns plus a moon-phase ring card; survival on Hard, last word on Nightmare; hpScale per tier tuned to the kill margins. New engine patterns (frozen knives, late-visible bullets, phoenix walls) pending.
 - [x] T10 The gacha lines (branch `feat/sendas-gacha`, built from main b87190d, then converged on the starters' kit): Abra, Piplup, Shinx and Axew Sendas on `senda()`/`roadFor`, one file each under `src/data/story/` and `src/adapters/story/<line>-scenes.ts` (12 new tableaux; figures can face away and vanish with a teleport's shimmer). 21 new shadows (19 new sheets fetched with `tools/fetch-sprites.mjs --add=`, a new flag that keeps the rest of sprite-meta.json; Lanturn and Bisharp as shadows of existing sheets), 4 wounds (Alakazam Desvelado, Empoleon de Hielo Negro, Luxray Sin Párpados, Haxorus de Colmillos Rotos). Kit extended, generic: a `blades` template (Aegislash's fan + swung blade), per-card HP `weights` per tier, and the last word's `last` form (`turning`, `aimed`, `drop`) for bosses whose turning one had no melee opening. Reused old bosses only where the story needs them (Nihilego in Abra III and Shinx III, Trevenant in Axew II), proven at those roads' levels (tests/sim/story-prove-reused.test.ts). Text es/en for the four lines (challenge, 3 chapters, floors per road, cards and stances). Route: delegated writer (this agent), inline inside it; the HP tuning fitted with a scratch calibration over the live proof (several rounds).
 
+- [x] T11 Owner 2026-10-26 (priority, for the story deck): Mimikyu's Senda to the standard of the other seven on `feat/senda-mimikyu-v2`: a road per chapter (I crypt, II forest, III caves), six new shadows (Ditto, Noctowl; Jigglypuff, Pikachu; Polteageist, Hatterene; sheets fetched with `--add=`), boss text rewritten per chapter (es/en), the wound moved onto the kit (`mimikyu-wound`, cards fan/drop/bloom/rain, survival, last word; i18n `spell.story.mimikyu-wound.*`), kit weights/last forms ported verbatim from feat/sendas-gacha, wound proofs on the road each tier walks (tests/sim/wound-prove.ts, as on that branch), shard tests/sim/story-prove-mimikyu.test.ts, hpScale/weights tuned after main's compressed type chart. Route: delegated writer (this agent), inline inside it. Commits: e7319ff sprites, 5f2d394 feature, kit port, 3e9828d docs, 9d932e1 merge of main (compressed chart), 964cc69 tuning (Ditto and Jigglypuff Ghost only, card weights, wound weights like the old hand-tuned shares).
+
 ## Acceptance (observed)
 - Pilot (T1-T5): typecheck clean; 242 files, 3006 tests; build; prove 166 cards, 24/24 fights; wound-prove 17 cards.
 - Starters (T6-T9, 2026-10-26), on `feat/sendas-starters`:
@@ -49,11 +51,19 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
   - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports/proof untouched.
   - Gacha proofs: story-prove-{abra,piplup,shinx,axew} (every card of 21 shadows on Easy..Nightmare from three starts, solver on Nightmare seeds 1-3), wound-prove-gacha shards (4 wounds, each tier at its own road's level), story-prove-reused (Nihilego and Trevenant replaying their stored witnesses at the gacha roads' levels).
 
+- Mimikyu v2 (T11, 2026-10-27), on `feat/senda-mimikyu-v2` after merging main's compressed type chart:
+  - `npm run typecheck`: clean (both configs).
+  - `npx vitest run --testTimeout=30000 --maxWorkers=4`: 249 files, 3129 tests passed.
+  - `npm run test:proofs`: 5 files, 418 tests passed (story-prove-mimikyu 97: every card of the six shadows on Easy..Nightmare from three starts and the Nightmare solver; wound-prove 77 for the four wounds on the road each tier walks).
+  - `npm run build`: built.
+  - `npm run prove`: 166 cards (166 survivable), 24/24 solver fights cleared; reports unchanged.
+  - Screenshots 1280x720 (muted): scratchpad `senda-mimikyu-{1,2,3}-{cinematic-a,cinematic-b,mid1,mid1-fight,mid2,mid2-fight,wound,wound-fight}.png`, `senda-mimikyu-1-fragment.png`.
+
 ## Parity checklist
 - [x] Every challenge line: reach rule applied to all eight (test iterates CHALLENGES on every tier). Mimikyu's Senda complete.
 - [x] Cubone, Litwick, Zorua Sendas: three chapters with their own roads, shadows, wound, scenes, text es/en (T6-T9).
 - [x] Abra, Piplup, Shinx, Axew Sendas: three chapters with their own roads, shadows, wound, scenes, text es/en (T10); proofs per line (tests/sim/story-prove-{abra,piplup,shinx,axew}.test.ts), wounds per road level (tests/sim/wound-prove.test.ts reads each tier's road), reused bosses (story-prove-reused); screenshots in the scratchpad (senda-<line>-cinematic/fragment/wound.png).
-- [ ] Mimikyu: still one road for its three chapters (Sableye, Aegislash); per-chapter roads and shadows for it are the owner's call (its text names those bosses). Pending, not out of scope.
+- [x] Mimikyu (T11): three roads, six new shadows (no species shared with any other Senda, gacha branch included), the wound on the kit growing 3/5/6 cards, text es/en, reach and STAB tests per road (SENDAS now lists mimikyu), proofs green (evidence above). Shadows not in the shrine or the Sima (same pending decision as the others).
 - [x] New species parity (shadows): species, behaviour (card engine), tier tricks, sprite anim, rooms, i18n names/cards/stances, XP (50 per shadow, wounds 0 like Mimikyu's), reach rule, proofs. Not in the shrine's reflections nor the Sima (pending decision, like the wound).
 - [x] Sprites: 7 sheets fetched with tools/fetch-sprites.mjs (native Idle, Walk, Attack, Shoot, Charge, Hurt; Alolan Marowak rejected, its Shoot is a copy), CREDITS regenerated. No shiny needed (enemies).
 - [x] Co-op: the road is derived from the host's dungeon id and tier on every peer (startRun), so shared runs walk the same road; not playtested online.
@@ -66,4 +76,4 @@ single branch `feat/story-quests` from main 2360985: design doc commit, then one
 - Shrine/Sima/main dungeons: not concerned (the wound is not in the shrine's reflections yet: pending decision).
 
 ## Next step
-Owner review of the seven Sendas' texts (the gacha four in the scratchpad screenshots senda-<line>-*.png) and the shadows' feel; decide Mimikyu's per-chapter roads; shadows in the shrine and the Sima are pending.
+Owner review of the eight Sendas' texts (the gacha four and Mimikyu's in the scratchpad screenshots senda-<line>-*.png) and the shadows' feel; shadows in the shrine and the Sima are pending.

@@ -127,6 +127,13 @@ const TARGETS = [
   { dex: '0429', form: '0000', species: 'mismagius', formName: 'base' },
   { dex: '0352', form: '0000', species: 'kecleon', formName: 'base' },
   { dex: '0442', form: '0000', species: 'spiritomb', formName: 'base' },
+  // Mimikyu's Senda's shadows (docs/story-quests.md; AnimData 2026-10-26: native Idle, Walk, Attack, Charge and Hurt;
+  // Ditto's Shoot is a copy of its Charge, which is how it copies).
+  { dex: '0132', form: '0000', species: 'ditto', formName: 'base' },
+  { dex: '0855', form: '0000', species: 'polteageist', formName: 'base' },
+  { dex: '0039', form: '0000', species: 'jigglypuff', formName: 'base' },
+  { dex: '0025', form: '0000', species: 'pikachu', formName: 'base' },
+  { dex: '0858', form: '0000', species: 'hatterene', formName: 'base' },
   // The Refugio's move tutor (tracker.json 2026-10-26: full sheet set, CHUNSOFT + PMDCollab).
   { dex: '0235', form: '0000', species: 'smeargle', formName: 'base' },
   // Gacha evolution lines (odd/tasks/gacha-evolutions.md T3).

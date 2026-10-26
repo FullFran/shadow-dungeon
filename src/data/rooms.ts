@@ -27,8 +27,7 @@ export interface RoomDef {
   pools?: readonly { x: number; y: number; radius: number }[];
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss' | 'throne'
-  | 'wound-mimikyu'
+export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss'
   // A Senda's mid-boss in a guardian's arena needs a way on (docs/story-quests.md): the rift and the roost with an exit.
   | 'rift-way'
   | 'roost-way'
@@ -101,38 +100,6 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     ],
     playerStart: { x: 400, y: 540 },
     spawns: [{ species: 'aegislash', x: 400, y: 220 }],
-    exit: null,
-    next: null,
-  },
-  /** A Senda's throne (docs/story-quests.md): the throne room with a way on at the top, for Aegislash as a mid-boss before the wound. */
-  throne: {
-    id: 'throne',
-    width: 800,
-    height: 640,
-    obstacles: [
-      { x: 172, y: 150, width: 56, height: 56, cover: true },
-      { x: 572, y: 150, width: 56, height: 56, cover: true },
-      { x: 172, y: 400, width: 56, height: 56, cover: true },
-      { x: 572, y: 400, width: 56, height: 56, cover: true },
-    ],
-    playerStart: { x: 400, y: 540 },
-    spawns: [{ species: 'aegislash', x: 400, y: 220 }],
-    exit: { x: 360, y: 0, width: 80, height: 50 },
-    next: null,
-  },
-  /** Mimikyu's wound (data/wound-cards.ts): the throne room emptied, four pillars to hide behind, and what was under the rag in the middle. */
-  'wound-mimikyu': {
-    id: 'wound-mimikyu',
-    width: 800,
-    height: 640,
-    obstacles: [
-      { x: 172, y: 150, width: 56, height: 56, cover: true },
-      { x: 572, y: 150, width: 56, height: 56, cover: true },
-      { x: 172, y: 400, width: 56, height: 56, cover: true },
-      { x: 572, y: 400, width: 56, height: 56, cover: true },
-    ],
-    playerStart: { x: 400, y: 540 },
-    spawns: [{ species: 'mimikyu-wound', x: 400, y: 220 }],
     exit: null,
     next: null,
   },

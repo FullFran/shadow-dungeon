@@ -6,6 +6,7 @@ import { ROOMS, type RoomId } from './rooms';
 import type { SpeciesId } from './species';
 import { echoAt, ENDLESS, isEchoFloor, type EndlessDef } from './endless';
 import type { Difficulty } from './difficulty';
+import { MIMIKYU_ROADS } from './story/mimikyu';
 import { CUBONE_ROADS } from './story/cubone';
 import { LITWICK_ROADS } from './story/litwick';
 import type { SendaRoad } from './story/roads';
@@ -526,11 +527,13 @@ const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry 
  * One challenge per line, each with its own trial and a boss its types can
  * hurt: Abra's dream (Lanturn's lights), Piplup's frozen lake (Sableye's
  * hoard), Shinx's storm (Salazzle), Axew's ravine of fangs (Trevenant),
- * Mimikyu's disguise (its Senda: Sableye, Aegislash, then its own wound), Zorua's reflection (Trevenant, Decidueye, its
+ * Mimikyu's disguise (Ditto, Noctowl, its wound), Zorua's reflection (Trevenant, Decidueye, its
  * wound), Litwick's flame (Lanturn, Dhelmise, its wound) and Cubone's bone (Trevenant, Dhelmise, its wound). The gacha
  * lines keep the four mid-boss arenas; a starter with a Senda faces its own wound last.
  */
 // The starters' Sendas, one road per chapter (data/story/<line>.ts); chapter I's is the line's challenge.
+// Mimikyu's: Ditto and Noctowl in the crypt, Jigglypuff and Pikachu on the way to the old plaza, Polteageist and Hatterene in the caves, then Mimikyu Sin Disfraz.
+const MIMIKYU_SENDA = senda('mimikyu', MIMIKYU_ROADS, [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)]);
 const ZORUA_SENDA = senda('zorua', ZORUA_ROADS, [at('drifloon', 3, 2, 2), at('phantump', 2, 2, 2), at('pumpkaboo-small', 2, 2, 2), at('duskull', 1, 2, 2), at('drifblim', 0, 0, 1)]);
 const LITWICK_SENDA = senda('litwick', LITWICK_ROADS, [at('phantump', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
 const CUBONE_SENDA = senda('cubone', CUBONE_ROADS, [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]);
@@ -546,15 +549,14 @@ export const CHALLENGES: readonly DungeonDef[] = [
   PIPLUP_SENDA[0],
   SHINX_SENDA[0],
   AXEW_SENDA[0],
-  // Mimikyu's Senda: Sableye's eyes that look, Aegislash who forbids hiding, then Mimikyu Sin Disfraz.
-  challenge('mimikyu', CRYPT, 'wound-mimikyu', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)], sendaPlan('vault', 'throne', 'wound-mimikyu')),
+  MIMIKYU_SENDA[0],
   ZORUA_SENDA[0],
   LITWICK_SENDA[0],
   CUBONE_SENDA[0],
 ];
 
 /** The Sendas' second and third chapter roads (kept apart from `CHALLENGES`: one challenge per line). */
-export const SENDA_ROADS: readonly DungeonDef[] = [ABRA_SENDA, PIPLUP_SENDA, SHINX_SENDA, AXEW_SENDA, ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
+export const SENDA_ROADS: readonly DungeonDef[] = [ABRA_SENDA, PIPLUP_SENDA, SHINX_SENDA, AXEW_SENDA, MIMIKYU_SENDA, ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
 
 const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES, ...SENDA_ROADS];
 

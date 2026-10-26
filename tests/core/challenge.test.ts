@@ -33,7 +33,7 @@ describe('challenge dungeons as data', () => {
     const mainArenas = DUNGEONS.flatMap((d) => d.plan.flatMap((p) => (p.kind === 'room' ? [p.room] : [])));
     for (const d of CHALLENGES) {
       if (storyOf(d.challenge!.line)) {
-        // docs/story-quests.md: G G mid-boss G G mid-boss wound, the mid-bosses from the main dungeons' arenas or a throne with a way on.
+        // docs/story-quests.md: G G mid-boss G G mid-boss wound, the mid-bosses in arenas with a way on.
         expect(d.plan.map((p) => (p.kind === 'room' ? (p.role ?? 'boss') : 'generated')), d.id).toEqual(['generated', 'generated', 'midboss', 'generated', 'generated', 'midboss', 'boss']);
         for (const p of d.plan) if (p.kind === 'room' && p.role === 'midboss') expect(ROOMS[p.room].exit, `${d.id} ${p.room}`).not.toBeNull();
         expect(isWound(guardianOf(d)!), d.id).toBe(true);
@@ -217,7 +217,7 @@ describe('Senda roads: each chapter walks its own road (owner 2026-10-26)', () =
   const stab = (line: SpeciesId): PokemonType[] => [...new Set(PLAYABLE_SPECIES.filter((id) => lineOf(id) === line).flatMap((id) => SPECIES[id].types))];
 
   it('the starters\' Sendas have three roads; Easy and Normal walk the challenge, Hard the second, Nightmare the third', () => {
-    expect(SENDAS.map((d) => d.challenge!.line).sort()).toEqual(['abra', 'axew', 'cubone', 'litwick', 'piplup', 'shinx', 'zorua']);
+    expect(SENDAS.map((d) => d.challenge!.line).sort()).toEqual(['abra', 'axew', 'cubone', 'litwick', 'mimikyu', 'piplup', 'shinx', 'zorua']);
     for (const d of SENDAS) {
       expect(roadFor(d, 'easy')).toBe(d);
       expect(roadFor(d, 'normal')).toBe(d);
