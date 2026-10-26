@@ -88,7 +88,10 @@ let scratch: HTMLCanvasElement | null = null;
 
 export interface Figure {
   sprite: string;
-  anim: 'Idle' | 'Walk';
+  /** Any animation of the sheet (the Sendas pose their Pokémon hurt or fainted). */
+  anim: string;
+  /** Plays once and holds its last frame (a faint), instead of looping. */
+  once?: boolean;
   /** Sheet row: 0 faces the viewer, 4 shows the back. */
   row: number;
   /** Ground point on the stage. */
@@ -125,7 +128,7 @@ export function silhouette(ctx: CanvasRenderingContext2D, sheets: SheetStore | n
   const meta = SPRITES.sprites[f.sprite]?.anims[f.anim];
   const image = meta ? sheets?.get(sheetKey(f.sprite, meta.file)) : undefined;
   if (!meta || !image) return;
-  const frame = frameAtTime(meta.durations, ms, true);
+  const frame = frameAtTime(meta.durations, ms, !f.once);
   const row = Math.min(f.row, meta.rows - 1);
   const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.8 };
   const dx = Math.round(f.x - anchor.x * f.scale);

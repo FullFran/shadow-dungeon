@@ -1,3 +1,4 @@
+import { sanitizeStory, type StoryProgress } from '../core/story';
 import { UPGRADE_IDS, UPGRADES, type UpgradeId, type UpgradeLevels } from '../data/upgrades';
 import type { MoveId } from '../data/moves';
 import { isPlayable, isStarter, originalKit, PLAYABLE_SPECIES, type SpeciesId } from '../data/species';
@@ -65,6 +66,8 @@ export interface SaveData {
   shinyWorn?: readonly SpeciesId[];
   /** Gacha pulls since the last shiny (absent = 0). */
   shinyPity?: number;
+  /** Senda chapters closed per challenge line, 1..3 (absent = none; core/story.ts). */
+  story?: StoryProgress;
 }
 
 export const EMPTY_SAVE: SaveData = { version: SAVE_VERSION, coins: 0, upgrades: {} };
@@ -109,6 +112,7 @@ export function sanitize(raw: unknown): SaveData {
   const shinies = sanitizeLines(raw.shinies);
   const shinyWorn = shinies ? sanitizeLines(raw.shinyWorn)?.filter((line) => shinies.includes(line)) : null;
   const shinyPity = Math.min(wholeCount(raw.shinyPity), GACHA.shinyPity - 1);
+  const story = sanitizeStory(raw.story);
   return {
     version: SAVE_VERSION,
     coins,
@@ -125,6 +129,7 @@ export function sanitize(raw: unknown): SaveData {
     ...(shinies ? { shinies } : {}),
     ...(shinyWorn && shinyWorn.length > 0 ? { shinyWorn } : {}),
     ...(shinyPity > 0 ? { shinyPity } : {}),
+    ...(story ? { story } : {}),
   };
 }
 

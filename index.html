@@ -237,6 +237,10 @@
 
       .item-pick.shared { position: fixed; left: 0; right: 0; bottom: 3rem; display: flex; justify-content: center; pointer-events: none; z-index: 8; }
       .item-pick .pick-panel { max-width: 52rem; pointer-events: auto; }
+      /* A Senda memory fragment (app/memory-card.ts): a narrow card, the name in gold, the text as an item description. */
+      .memory-card .memory-panel { max-width: 30rem; }
+      .memory-card .memory-name { display: block; color: #f3d98a; margin-bottom: 0.5rem; letter-spacing: 0.04em; }
+      .memory-card .memory-text { font-style: italic; line-height: 1.45; margin: 0 0 0.8rem; }
       .item-pick.shared .pick-panel { padding: 18px 16px 12px; background: linear-gradient(180deg, rgba(43, 75, 147, 0.94), rgba(15, 26, 69, 0.94)); }
       .md-item.pick-card { position: relative; flex-direction: column; align-items: stretch; gap: 4px; width: 13.5rem; min-height: 9.5rem; padding: 10px 12px 12px; border-radius: 10px;
         background: rgba(5, 6, 13, 0.35); box-shadow: inset 0 0 0 2px var(--rarity, var(--md-border-shade)); }

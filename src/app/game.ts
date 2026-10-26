@@ -49,7 +49,7 @@ import { tallyKills, type KillsByType } from '../core/run-report';
 import { partySizeOf } from '../core/party';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
 import { tileOf } from '../core/tiles';
-import { length, vec } from '../core/vec';
+import { distance, length, vec, type Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
 import { heldItems, type HeldItem } from '../adapters/hud';
@@ -74,6 +74,9 @@ import { t } from '../i18n';
 import { displayName } from '../net/nickname';
 import type { RosterEntry } from '../net/protocol';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
+import { openMemoryCard } from './memory-card';
+import { FRAGMENT_REACH, fragmentSpot, type StoryRun } from '../core/story';
+import { chapterOf, STORY_LOW_HP, STORY_MID_FLOOR, storyKeys, storyOf, type StoryTrigger } from '../data/story-quests';
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
 import { hudScaleFor } from '../ui/hud-layout';
@@ -180,6 +183,12 @@ export interface GameOptions {
    * get the name card on the canvas instead and never pause.
    */
   playHeraldIntro?(def: HeraldDef, onDone: () => void): (() => void) | null;
+  /**
+   * A Senda chapter (docs/story-quests.md, app/story.ts): the Pokémon's inner
+   * voice in the log, the memory fragments on their floors, and each boss's
+   * epithet and lines. Presentation only: the simulation never sees it.
+   */
+  story?: StoryRun;
   /** Shared run (`?net=local`): this peer's session, role and player id. Absent solo. */
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
@@ -440,6 +449,73 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /** The Senda chapter of this run, its memory fragment on this floor (where it lies, which), the fragments read, the low-HP line said, the bosses whose last lines were said. */
+  const story = options.story ? { run: options.story, chapter: chapterOf(storyOf(options.story.line)!, options.story.chapter) } : null;
+  let memory: { pos: Vec2; index: number } | null = null;
+  const memoriesRead = new Set<number>();
+  let lowHpSaid = false;
+  const bossesMourned = new Set<number>();
+  let closeMemory: (() => void) | null = null;
+  /** The Pokémon's own words in the log: «Mimikyu: …». */
+  const voice = (trigger: StoryTrigger) => {
+    if (!story) return;
+    say(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
+  };
+  /** A Senda's floor: the voice, the fragment it hides, its boss's epithet and first words. */
+  const storyFloor = () => {
+    memory = null;
+    if (!story) return;
+    if (run.floor === 1) voice('arrive');
+    if (run.floor === STORY_MID_FLOOR) voice('mid');
+    const index = story.chapter.fragments.indexOf(run.floor);
+    // Development server only: `?fragmentHere=1` lays it at the player's feet (screenshots of the card).
+    const here = import.meta.env.DEV && new URLSearchParams(window.location.search).get('fragmentHere') === '1';
+    const spot = index >= 0 && !memoriesRead.has(index) ? (here ? world.player.pos : fragmentSpot(world.arena.rooms, world.player.pos)) : null;
+    if (spot) memory = { pos: spot, index };
+    // A boss behind a fog wall speaks once the fog is crossed (crossedFog).
+    if (!world.fogWall) storyBoss();
+  };
+  /** The chapter's boss of this floor: its epithet on the name card and its first words. */
+  const storyBoss = () => {
+    if (!story) return;
+    const { line, chapter } = story.run;
+    const boss = story.chapter.bosses.find((b) => b.floor === run.floor);
+    const foe = world.enemies.find((e) => e.boss);
+    if (!boss || !foe) return;
+    intro = { name: t(`species.${foe.species}`), subtitle: t(storyKeys.bossTitle(line, chapter, boss.floor)), shownAtMs: realMs };
+    for (let i = 0; i < boss.pre; i++) say(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
+  };
+  /** After a step: a boss of the chapter fell (its last words), the low-HP line, a fragment picked up. */
+  const watchStory = (events: readonly GameEvent[]) => {
+    if (!story || ended) return;
+    const { line, chapter } = story.run;
+    const boss = story.chapter.bosses.find((b) => b.floor === run.floor);
+    if (boss && !bossesMourned.has(boss.floor) && events.some((e) => e.type === 'enemyDefeated' && prev.enemies.some((x) => x.id === e.enemyId && x.boss))) {
+      bossesMourned.add(boss.floor);
+      for (let i = 0; i < boss.post; i++) say(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
+    }
+    if (!lowHpSaid && world.player.hp > 0 && world.player.hp < world.player.maxHp * STORY_LOW_HP) {
+      lowHpSaid = true;
+      voice('lowHp');
+    }
+    if (memory && !closeMemory && world.player.hp > 0 && distance(world.player.pos, memory.pos) <= FRAGMENT_REACH) {
+      const { index } = memory;
+      memory = null;
+      memoriesRead.add(index);
+      const name = t(storyKeys.fragmentName(line, chapter, index));
+      say(t('story.fragment.found').replace('{name}', name), 'item');
+      audio?.play('click');
+      if (!net) input.setSuspended(true);
+      closeMemory = openMemoryCard(overlayParent, name, t(storyKeys.fragmentText(line, chapter, index)), Boolean(net), hideMemory);
+    }
+  };
+  function hideMemory(): void {
+    if (!closeMemory) return;
+    closeMemory();
+    closeMemory = null;
+    if (!net && !closeMenu && !closePick && !closeChoice) input.setSuspended(false);
+    lastFrame = performance.now();
+  }
   /** The spirit light's cache was reached on this floor (its line shows once). */
   let wispFound = false;
   /** The Sima's depth band of the current floor (data/sima.ts); null in other dungeons. */
@@ -500,6 +576,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
+    storyFloor();
   }
 
   function hideMenu(): void {
@@ -630,7 +707,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   /** Stepping on the stairs (or a cleared room's exit) asks "¿Bajar?" once; confirming marks this player ready (solo: it leaves). */
   function watchLeave(): void {
-    if (ready || leaveAsked || trial || ended || closeChoice || closePick || closeMenu || closeCinematic) return;
+    if (ready || leaveAsked || trial || ended || closeChoice || closePick || closeMenu || closeCinematic || closeMemory) return;
     if (world.player.hp <= 0 || !atLeavingPoint(run, world, world.player.pos)) return;
     leaveAsked = true;
     const shared = net !== undefined;
@@ -717,6 +794,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     prev = world;
     camera = world.player.pos;
     say(t('leave.fog.sealed'), 'warn');
+    storyBoss();
     guardianMoment('pre', () => undefined);
   }
 
@@ -828,6 +906,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
+    // A memory fragment's card: Esc puts it away (Enter is its own button).
+    if (closeMemory && !closeMenu && e.code === 'Escape') {
+      e.preventDefault();
+      hideMemory();
+      return;
+    }
     // The shrine's or merchant's choice: 1/2/3 pick, Esc walks away.
     if (closeChoice && !closeMenu && (e.code === 'Escape' || pickIndexForKey(e.code, 3) !== null)) {
       e.preventDefault();
@@ -1101,6 +1185,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         watchSimaEvent();
         watchLeave();
         watchBonfire();
+        watchStory(events);
       }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
@@ -1114,7 +1199,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
     const paused =
-      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net));
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net));
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -1206,6 +1291,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
       waiting: wiped && net?.role === 'guest' ? t('bonfire.waitHost') : waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
       bonfire: bonfire && bonfire.run.floor === run.floor ? bonfirePos(world) : null,
+      memory: memory ? memory.pos : null,
       spectating: watched && net ? t('spectate.watching').replace('{name}', rosterNames(net.session.roster()).get(watched.id) ?? t(`species.${watched.player.species}`)) : null,
     });
     if (perf) {
@@ -1244,6 +1330,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       closeChoice = null;
       closeCinematic?.();
       closeCinematic = null;
+      closeMemory?.();
+      closeMemory = null;
       audio?.setDucked(false);
       audio?.setRumble(0);
       cancelAnimationFrame(raf);

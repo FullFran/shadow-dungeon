@@ -62,6 +62,9 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
+import { recordStory, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { drawStoryScene } from '../adapters/story-scenes';
+import type { StoryRun } from '../core/story';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
@@ -471,6 +474,26 @@ function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; pha
   screen.style.zIndex = '6';
   root.append(screen);
   return () => screen.remove();
+}
+
+/**
+ * A Senda chapter's cinematic (docs/story-quests.md): before the run starts
+ * and after its victory, on the prologue player with the story tableaux,
+ * skippable the same way. Solo only (a shared run never pauses).
+ */
+function storyCinematic(root: HTMLElement, story: StoryRun, phase: StoryPhase, onDone: () => void): void {
+  const panels = storyPanels(story, phase, t);
+  if (panels.length === 0) return onDone();
+  void sheetsReady();
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    panels,
+    draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha),
+    label: t(`story.${story.line}.${story.chapter}.title`),
+    onDone,
+  });
+  show(root, [screen], false);
+  root.querySelector('.notice')?.classList.add('in-game');
 }
 
 /**
@@ -1257,6 +1280,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, difficulty: join.difficulty ?? DEFAULT_DIFFICULTY, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
   }
   const online = join?.online ?? false;
+  // A Senda chapter (each peer its own save; the tier is the run's): its cinematic first, alone.
+  const story = trial ? null : storyRunOf(loadSave(store), dungeonById(shared.dungeon ?? dungeon), shared.difficulty ?? DEFAULT_DIFFICULTY);
+  if (story && !shared.net && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
   const canvas = h('canvas', { className: 'game' });
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
@@ -1278,6 +1304,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
     onQuit: () => (trial?.from === 'room' ? backToRoom(root) : trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : townScreen(root)),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
+    ...(story ? { story } : {}),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     onEnd: (result, summary) => {
@@ -1299,7 +1326,11 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       // A run the host cut short never reached its end: no score.
       const score = summary.clockMs !== undefined && !summary.cutShort ? endlessScore(summary) : undefined;
-      resultScreen(root, result, summary, online, progress.save.coins, score, materials);
+      // A won Senda chapter is closed (its bond line shows at Phantump's), and alone its closing cinematic plays first.
+      recordStory(store, story, result === 'victory' && !summary.cutShort);
+      const results = () => resultScreen(root, result, summary, online, progress.save.coins, score, materials);
+      if (story && result === 'victory' && !shared.net) return storyCinematic(root, story, 'after', results);
+      results();
     },
   });
 }
@@ -1311,6 +1342,11 @@ type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
 function devCoins(): void {
   const coins = Number(new URLSearchParams(window.location.search).get('coins'));
   if (coins > 0) writeSave(store, { ...loadSave(store), coins });
+}
+
+/** Development server only: `&storySkip=1` starts a Senda run without its opening cinematic. */
+function devStoryDone(): boolean {
+  return import.meta.env.DEV && new URLSearchParams(window.location.search).get('storySkip') === '1';
 }
 
 /** Development server only: the `map` and `tile` query of `?screen=town`. */
@@ -1334,6 +1370,14 @@ function devScreen(root: HTMLElement): boolean {
   const screens: Record<string, () => void> = {
     loadout: () => loadout(root),
     dungeons: () => chooseDungeon(root, () => titleScreen(root)),
+    // `&line=mimikyu&chapter=1&phase=before&at=ms`: a Senda chapter's cinematic over the title.
+    story: () =>
+      void sheetsReady().then(() => {
+        const params = new URLSearchParams(window.location.search);
+        const chapter = Math.min(3, Math.max(1, Number(params.get('chapter') ?? 1))) as 1 | 2 | 3;
+        const story: StoryRun = { line: (params.get('line') ?? 'mimikyu') as StoryRun['line'], chapter };
+        storyCinematic(root, story, params.get('phase') === 'after' ? 'after' : 'before', () => titleScreen(root));
+      }),
     // `&species=decidueye&phase=post`: a guardian cinematic over the title (as the first time unless already seen).
     guardian: () =>
       void sheetsReady().then(() => {

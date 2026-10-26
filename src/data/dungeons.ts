@@ -454,17 +454,17 @@ export const CHALLENGE_MATERIALS = 3;
  * after the victory). Kept apart from `DUNGEONS` (the main select and the
  * balance sweeps never list it).
  */
-const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: readonly SpawnEntry[]): DungeonDef => ({
+const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: readonly SpawnEntry[], plan: readonly FloorPlan[] = [GENERATED, GENERATED, GENERATED, { kind: 'room', room }]): DungeonDef => ({
   id: `challenge-${line}`,
   lore: {
     id: `challenge-${line}`,
     nameKey: `challenge.${line}.name`,
     subtitleKey: `challenge.${line}.subtitle`,
     loreKeys: [`challenge.${line}.lore`],
-    floorKeys: [1, 2, 3, 4].map((floor) => `challenge.${line}.floor.${floor}`),
+    floorKeys: plan.map((_, i) => `challenge.${line}.floor.${i + 1}`),
     victoryKey: `challenge.${line}.victory`,
   },
-  plan: [GENERATED, GENERATED, GENERATED, { kind: 'room', room }],
+  plan,
   spawns: { ...base.spawns, pool },
   urgent: [],
   music: base.music,
@@ -476,6 +476,22 @@ const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: re
   challenge: { line, materials: CHALLENGE_MATERIALS },
 });
 
+/**
+ * A Senda's longer road (docs/story-quests.md, owner 2026-10-26): two
+ * generated floors, a mid-boss (fog wall and bonfire as everywhere), two
+ * more, a second mid-boss, and the line's wound as the last boss. The pool's
+ * floor-3 weights hold on the deeper generated floors.
+ */
+const sendaPlan = (first: RoomId, second: RoomId, wound: RoomId): readonly FloorPlan[] => [
+  GENERATED,
+  GENERATED,
+  { kind: 'room', room: first, role: 'midboss' },
+  GENERATED,
+  GENERATED,
+  { kind: 'room', room: second, role: 'midboss' },
+  { kind: 'room', room: wound },
+];
+
 /** A pool entry: its weight on challenge floors 1, 2 and 3. */
 const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry => ({ species, weights: [f1, f2, f3] });
 
@@ -483,18 +499,19 @@ const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry 
  * One challenge per line, each with its own trial and a boss its types can
  * hurt: Abra's dream (Lanturn's lights), Piplup's frozen lake (Sableye's
  * hoard), Shinx's storm (Salazzle), Axew's ravine of fangs (Trevenant),
- * Mimikyu's disguise (Aegislash), Zorua's illusions (Decidueye), Litwick's
+ * Mimikyu's disguise (its Senda: Sableye, Aegislash, then its own wound), Zorua's illusions (Decidueye), Litwick's
  * candles (Dhelmise's wreck) and Cubone's bone (Nihilego). The gacha lines
  * keep the four mid-boss arenas, the starters face the four guardians.
  */
 export const CHALLENGES: readonly DungeonDef[] = [
   challenge('abra', CAVES, 'grotto', [at('hoothoot', 3, 2, 2), at('gastly', 2, 2, 2), at('drifloon', 1, 2, 2), at('koffing', 1, 1, 2), at('haunter', 0, 0, 1)]),
-  challenge('piplup', CRYPT, 'vault', [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('salandit', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]),
+  challenge('piplup', CRYPT, 'vault', [at('wooper', 3, 2, 2), at('zubat', 2, 2, 2), at('krabby', 1, 2, 2), at('golett', 0, 1, 2), at('golbat', 0, 0, 1)]),
   challenge('shinx', SWAMP, 'den', [at('zubat', 3, 2, 2), at('drifloon', 2, 2, 2), at('krabby', 2, 2, 2), at('hoothoot', 1, 2, 2), at('chinchou', 0, 1, 2), at('golbat', 0, 0, 1)]),
   challenge('axew', FOREST, 'hollow', [at('poochyena', 3, 3, 2), at('ekans', 2, 2, 2), at('corphish', 1, 2, 2), at('croagunk', 0, 1, 2), at('mightyena', 0, 0, 1)]),
-  challenge('mimikyu', CRYPT, 'boss', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)]),
+  // Mimikyu's Senda: Sableye's eyes that look, Aegislash who forbids hiding, then Mimikyu Sin Disfraz.
+  challenge('mimikyu', CRYPT, 'wound-mimikyu', [at('duskull', 3, 2, 2), at('phantump', 2, 2, 2), at('gastly', 2, 2, 2), at('impidimp', 1, 2, 2), at('dusclops', 0, 0, 1)], sendaPlan('vault', 'throne', 'wound-mimikyu')),
   challenge('zorua', FOREST, 'roost', [at('drifloon', 3, 2, 2), at('phantump', 2, 2, 2), at('pumpkaboo-small', 2, 2, 2), at('duskull', 1, 2, 2), at('drifblim', 0, 0, 1)]),
-  challenge('litwick', CAVES, 'wreck', [at('duskull', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('dusclops', 0, 0, 1)]),
+  challenge('litwick', CAVES, 'wreck', [at('phantump', 3, 2, 2), at('gastly', 2, 2, 2), at('spinarak', 1, 2, 2), at('foongus', 1, 1, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]),
   challenge('cubone', SWAMP, 'rift', [at('gastly', 2, 2, 2), at('pawniard', 2, 2, 2), at('ekans', 2, 2, 2), at('koffing', 1, 2, 2), at('golett', 0, 1, 1), at('haunter', 0, 0, 1)]),
 ];
 

@@ -1,6 +1,9 @@
 import { CHALLENGES, type DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
-import type { SpeciesId } from '../data/species';
+import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
+import { POKEMON_TYPES, TYPE_CHART, type PokemonType } from '../data/types';
+import { behaviourFor } from './tricks';
+import { fightOf } from './cards';
 import { rosterOf, type Collection } from './collection';
 import { lineOf } from './evolution';
 
@@ -37,4 +40,42 @@ export function challengeReward<C extends Collection>(collection: C, dungeon: Du
   if (!victory || !reward || difficulty === 'easy' || !challengeOpen(dungeon, collection.owned ?? [])) return collection;
   const have = collection.materials?.[reward.line] ?? {};
   return { ...collection, materials: { ...collection.materials, [reward.line]: { ...have, [difficulty]: (have[difficulty] ?? 0) + reward.materials } } };
+}
+
+/**
+ * Whether what a challenge sends can hurt its line (owner playtest
+ * 2026-10-26: Litwick's Flash Fire made fire-only enemies harmless). Every
+ * attack of a species at a tier is found by reading its behaviour data for
+ * anything with a `power` and a `type` (melee, shots, patterns, spell cards
+ * alike), so a new enemy kind needs no list here.
+ */
+export function attackTypesOf(species: SpeciesId, difficulty: Difficulty): Set<PokemonType> {
+  const out = new Set<PokemonType>();
+  const seen = new Set<unknown>();
+  const visit = (node: unknown): void => {
+    if (node === null || typeof node !== 'object' || seen.has(node)) return;
+    seen.add(node);
+    const record = node as Record<string, unknown>;
+    if (typeof record.power === 'number' && record.power > 0 && typeof record.type === 'string' && (POKEMON_TYPES as readonly string[]).includes(record.type)) out.add(record.type as PokemonType);
+    for (const value of Object.values(record)) visit(value);
+  };
+  // A fight of authored cards plays only them (its old kit is never used); a hosted fight plays the boss's own moves.
+  const def = behaviourFor(species, difficulty);
+  const fight = fightOf(def);
+  visit(fight && fight.cards.every((c) => !c.moves?.length) ? fight : def);
+  return out;
+}
+
+/** Whether a hit of `type` hurts `defender` at all (not immune by type, not absorbed by its passive: Flash Fire takes fire). */
+export function typeHurts(type: PokemonType, defender: SpeciesId): boolean {
+  const def = SPECIES[defender];
+  if (def.passive === 'flash-fire' && type === 'fire') return false;
+  return def.types.reduce((m, t) => m * (TYPE_CHART[type][t] ?? 1), 1) > 0;
+}
+
+/** Whether `species` at `difficulty` has an attack that hurts every form of `line`. */
+export function canHurtLine(species: SpeciesId, line: SpeciesId, difficulty: Difficulty): boolean {
+  const forms = PLAYABLE_SPECIES.filter((id) => lineOf(id) === line);
+  const types = [...attackTypesOf(species, difficulty)];
+  return forms.every((form) => types.some((type) => typeHurts(type, form)));
 }

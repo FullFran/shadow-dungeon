@@ -77,6 +77,8 @@ export type SpeciesId =
   | 'eclipse-hunter'
   // Its own boss, a corrupted shadow of Mimikyu (the busted form's full sheet set, tinted in the eclipse's colours).
   | 'eclipse-echo'
+  // The Sendas' last bosses (docs/story-quests.md): a line's own Pokémon, its wound made flesh (huge, in the eclipse's corruption).
+  | 'mimikyu-wound'
   // The Heralds of the Eclipse (data/herald.ts): one technical species; each herald's look, types and patterns are generated.
   | 'sima-herald'
   // The gacha's evolution lines (data/player-evolutions.ts): playable once owned.
@@ -289,6 +291,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
+  'mimikyu-wound': { id: 'mimikyu-wound', types: ['ghost', 'fairy'], maxHp: 760, radius: 20, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
   'eclipse-hunter': { id: 'eclipse-hunter', types: ['dark', 'ghost'], maxHp: 999, radius: 12, sprite: 'houndour', movepool: [], defaultLoadout: [] },
   // Its sheets and types come from the generated herald (core/herald); the radius is HERALD_RADIUS.
   'sima-herald': { id: 'sima-herald', types: ['dark'], maxHp: 1500, radius: 18, sprite: 'gastly', movepool: [], defaultLoadout: [] },

@@ -10,6 +10,7 @@ import { COOP_REVIVE } from '../data/party-scaling';
 import { rootLanes } from '../core/treant';
 import { TYPE_COLORS } from '../ui/tokens';
 import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
+import { isWound, WOUND_SCALE } from '../data/story-quests';
 import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
@@ -115,6 +116,8 @@ export interface RenderFrame {
   waiting?: string | null;
   /** The mid-boss bonfire burning on this floor (core/bonfire.ts), where it stands. */
   bonfire?: Vec2 | null;
+  /** A Senda's memory fragment lying on this floor (docs/story-quests.md), where it lies. */
+  memory?: Vec2 | null;
   /** Co-op, fainted: the teammate the camera follows ("Mirando a Ana"). */
   spectating?: string | null;
 }
@@ -748,6 +751,26 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
     ctx.fillStyle = 'rgba(240, 242, 250, 0.35)';
     ctx.fillRect(0, line - 3 + Math.sin(timeMs / 300) * 2, width, 3);
+  }
+
+  /** A memory fragment: a small pale keepsake on the floor that breathes a soft light, with motes rising off it. */
+  function memoryProp(at: Vec2, timeMs: number): void {
+    const breath = 0.5 + 0.5 * Math.sin(timeMs / 420);
+    const glow = ctx.createRadialGradient(at.x, at.y - 4, 1, at.x, at.y - 4, 30);
+    glow.addColorStop(0, `rgba(255, 236, 170, ${0.35 + 0.25 * breath})`);
+    glow.addColorStop(1, 'rgba(255, 220, 140, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(at.x - 30, at.y - 34, 60, 60);
+    ctx.fillStyle = '#e8d48a';
+    ctx.fillRect(at.x - 5, at.y - 4, 10, 6);
+    ctx.fillStyle = '#fff6d0';
+    ctx.fillRect(at.x - 3, at.y - 6, 6, 3);
+    for (let i = 0; i < 4; i++) {
+      const phase = ((timeMs / 1000) * 0.5 + i / 4) % 1;
+      ctx.globalAlpha = (1 - phase) * 0.8;
+      ctx.fillRect(Math.round(at.x - 6 + i * 4), Math.round(at.y - 8 - phase * 22), 1, 1);
+    }
+    ctx.globalAlpha = 1;
   }
 
   /** The mid-boss bonfire: a ring of stones, crossed logs and a flickering flame with its glow. */
@@ -1548,6 +1571,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     gateMarks(current, timeMs);
     if (frame.exit) exitGate(frame.exit, frame.exitOpen, timeMs);
     if (frame.bonfire) bonfireProp(frame.bonfire, timeMs);
+    if (frame.memory) memoryProp(frame.memory, timeMs);
     // Inundación: the rising water lies over the floor, under everyone.
     if (current.flood) floodVeil(ctx, view, floodLevel(current.flood), timeMs);
     for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);
@@ -1596,8 +1620,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
           if (enemy.elite && enemy.alive) ctx.filter = eliteFilter(ELITE_TRAIT_DEFS[enemy.elite].tint);
           if (enemy.species === 'eclipse-hunter') ctx.filter = HUNTER_FILTER;
-          if (enemy.species === 'eclipse-echo') ctx.filter = ECHO_FILTER;
-          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy));
+          // The Eco del Eclipse and a Senda's wound: the eclipse's corruption on a Pokémon's own sheet (a wound drawn huge).
+          if (enemy.species === 'eclipse-echo' || isWound(enemy.species)) ctx.filter = ECHO_FILTER;
+          drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? WOUND_SCALE : 1));
           ctx.filter = 'none';
           if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
           if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);

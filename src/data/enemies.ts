@@ -4,6 +4,7 @@ import { cardInfo, type CardFightDef } from './cards';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 import { EVOLVED_BEHAVIOUR } from './evolved-enemies';
+import { WOUND_MIMIKYU_EASY } from './wound-cards';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
 
 /**
@@ -1690,6 +1691,8 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   nihilego: NIHILEGO,
   'eclipse-hunter': ECLIPSE_HUNTER,
   'eclipse-echo': ECLIPSE_ECHO,
+  // A Senda's wound (data/wound-cards.ts): Decidueye's card engine with its own cards on every tier (Easy too), and no knockback.
+  'mimikyu-wound': { ...DECIDUEYE, poise: { hitstunScale: 0, knockbackScale: 0 }, spellCards: WOUND_MIMIKYU_EASY },
   'sima-herald': HERALD_BASE,
   // Evolved forms (data/evolved-enemies.ts).
   ...EVOLVED_BEHAVIOUR,

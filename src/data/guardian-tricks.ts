@@ -2,6 +2,7 @@ import { AEGISLASH_CARDS_HARD, AEGISLASH_CARDS_NIGHTMARE, AEGISLASH_CARDS_NORMAL
 import { DECIDUEYE_CARDS_HARD, DECIDUEYE_CARDS_NIGHTMARE, DECIDUEYE_CARDS_NORMAL } from './decidueye-cards';
 import type { Trick } from './forest-tricks';
 import { HOSTED_FIGHTS } from './hosted-cards';
+import { WOUND_MIMIKYU_HARD, WOUND_MIMIKYU_NIGHTMARE, WOUND_MIMIKYU_NORMAL } from './wound-cards';
 import type { CardFightDef } from './cards';
 import type { SpeciesId } from './species';
 
@@ -30,6 +31,11 @@ export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
     { minDifficulty: 'normal', patch: { spellCards: AEGISLASH_CARDS_NORMAL } },
     { minDifficulty: 'hard', patch: { spellCards: AEGISLASH_CARDS_HARD } },
     { minDifficulty: 'nightmare', patch: { spellCards: AEGISLASH_CARDS_NIGHTMARE } },
+  ],
+  'mimikyu-wound': [
+    { minDifficulty: 'normal', patch: { spellCards: WOUND_MIMIKYU_NORMAL } },
+    { minDifficulty: 'hard', patch: { spellCards: WOUND_MIMIKYU_HARD } },
+    { minDifficulty: 'nightmare', patch: { spellCards: WOUND_MIMIKYU_NIGHTMARE } },
   ],
   decidueye: [
     { minDifficulty: 'normal', patch: { spellCards: DECIDUEYE_CARDS_NORMAL } },
