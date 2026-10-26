@@ -88,8 +88,16 @@ export const FONT = {
   titlePx: 66,
 } as const;
 
-/** Canvas font string in the pixel font (view pixels; `bold` uses the 700 weight). */
-export const canvasFont = (px: number = FONT.hudPx, bold = false): string => `${bold ? '700 ' : ''}${px}px "${FONT.family}", monospace`;
+/**
+ * Weight of emphasised canvas text. Pixelify Sans' 700 fills the lowercase
+ * "e" (its counter shrinks to a dot at any size, playtest 2026-10-26), and the
+ * weights between blur the 1-unit pixel strokes, so emphasis keeps the
+ * regular 400 and comes from size, colour and the outline instead.
+ */
+export const EMPHASIS_WEIGHT = 400;
+
+/** Canvas font string in the pixel font (view pixels; `bold` asks for emphasis: `EMPHASIS_WEIGHT`). */
+export const canvasFont = (px: number = FONT.hudPx, bold = false): string => `${bold ? `${EMPHASIS_WEIGHT} ` : ''}${px}px "${FONT.family}", monospace`;
 
 /** Window open animation and cursor bob, ms. */
 export const MOTION = { openMs: 120, bobMs: 600 } as const;

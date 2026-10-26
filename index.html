@@ -16,7 +16,13 @@
       /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
       @font-face { font-family: 'Pixelify Sans'; src: url('./fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
       :root { color-scheme: dark; }
-      body { margin: 0; background: var(--md-ink, #05060d); color: var(--md-text, #f5f7ff); font-family: var(--md-font, ui-monospace, monospace); font-size: var(--md-body, 22px); line-height: 1.25; -webkit-font-smoothing: none;
+      /*
+       * Pixelify Sans ships real weights (variable 400-700), but its bold "e" fills its own counter at any size
+       * (playtest 2026-10-26: "la e no cierra"). Text stays at 400 (headings and strong included) and the browser never
+       * fakes a weight or a slant. Sizes for the results screen sit on the font's 11 px grid (half-steps of 5.5 px on touch).
+       */
+      h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
+      body { margin: 0; background: var(--md-ink, #05060d); color: var(--md-text, #f5f7ff); font-family: var(--md-font, ui-monospace, monospace); font-size: var(--md-body, 22px); line-height: 1.25; -webkit-font-smoothing: none; font-synthesis: none;
         /* The font's fi/fl ligatures read as other letters. */
         font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0, 'dlig' 0; }
       input, button { font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0, 'dlig' 0; }
@@ -27,7 +33,7 @@
         box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade), 0 9px 0 3px rgba(0, 0, 0, 0.4);
         animation: md-open var(--md-open-ms, 120ms) ease-out both; transform-origin: 50% 40%; text-align: left; }
       .md-window.still { animation: none; }
-      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 14px; font-size: var(--md-body); font-weight: 700; color: var(--md-cursor);
+      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 14px; font-size: var(--md-body); color: var(--md-cursor);
         background: var(--md-window-top); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 3px var(--md-ink); white-space: nowrap; }
       .md-window-body > :first-child { margin-top: 0; }
       .md-window-body > :last-child { margin-bottom: 0; }
@@ -72,7 +78,7 @@
       a { color: var(--md-xp); }
 
       .title-logo { text-align: center; margin-top: 18vh; }
-      .title-logo h1 { margin: 0; font-size: var(--md-title); font-weight: 700; line-height: 1; color: #fff4f0; letter-spacing: 0.03em;
+      .title-logo h1 { margin: 0; font-size: var(--md-title); line-height: 1; color: #fff4f0; letter-spacing: 0.03em;
         text-shadow: 0 4px 0 var(--md-eclipse), 0 8px 0 #3a0610, 0 0 30px rgba(232, 40, 58, 0.55); }
       .title-logo .title-alt { margin: 12px 0 0; color: var(--md-text-dim); letter-spacing: 0.3em; text-transform: uppercase; text-shadow: 0 2px 0 var(--md-ink); }
       .title-menu { min-width: 17rem; }
@@ -100,7 +106,7 @@
       .tier-master { background: #e0b84f; }
       .rank-stars { color: var(--md-cursor); letter-spacing: 1px; }
       .equipped { margin-left: auto; padding: 0 8px; border-radius: 6px; font-size: 16px; color: var(--md-ink); background: var(--md-cursor); }
-      .start-row .md-label { color: var(--md-cursor); font-weight: 700; }
+      .start-row .md-label { color: var(--md-cursor); }
 
       .settings { width: 42rem; max-width: 100%; }
       .settings .md-value, .pause-settings .md-value { min-width: 9rem; justify-content: flex-end; }
@@ -127,6 +133,7 @@
       .lobby-error { color: var(--md-danger); margin: 8px 0 0; font-size: 16px; }
       .lobby-error:empty { display: none; }
       .lobby { min-width: 22rem; max-width: 32rem; }
+      /* Capitals and digits only (no lowercase "e" to fill in): the one place the real 700 weight stays. */
       .room-code { font-size: var(--md-title); font-weight: 700; letter-spacing: 0.25em; color: var(--md-cursor); margin: 6px 0 4px; text-shadow: 0 4px 0 var(--md-ink); user-select: all; }
       .players { min-width: 14rem; }
       .roster { list-style: none; margin: 0; padding: 0; }
@@ -153,7 +160,7 @@
       .result h1 { margin: 0 0 4px; font-size: var(--md-heading); }
       .result.victory h1 { color: var(--md-cursor); }
       .result.defeat h1 { color: var(--md-eclipse); }
-      .result h3 { margin: 14px 0 4px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }
+      .result h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; }
       .result .md-stat-value { text-align: right; max-width: 16rem; }
       .result-actions { margin-top: 16px; }
       .result-columns { display: grid; gap: 0 2.5rem; }
@@ -165,9 +172,9 @@
       @media (max-height: 760px) {
         #app:has(.result) { gap: 10px; padding-top: 16px; }
         .result { padding-top: 16px; padding-bottom: 12px; }
-        .result h1 { font-size: 28px; }
+        .result h1 { font-size: 22px; }
         .result > .md-window-body > p { margin: 0.2em 0; }
-        .result h3 { margin: 8px 0 2px; font-size: 14px; }
+        .result h3 { margin: 8px 0 2px; font-size: 11px; }
         .result .md-stat { padding: 0; line-height: 1.25; }
         .result-actions { flex-direction: row; justify-content: center; gap: 24px; margin-top: 10px; }
       }
@@ -311,11 +318,11 @@
         html.touch .tutor .shop-list { max-height: none; }
         /* End screen: summary and Pokémonedas side by side, the two actions on one row ("Volver al menú" is its way back, so no "Atrás"). */
         html.touch .result { min-width: 0; width: min(46rem, 100%); padding-top: 14px; padding-bottom: 12px; }
-        html.touch .result h1 { font-size: 26px; }
+        html.touch .result h1 { font-size: 22px; }
         html.touch .result > .md-window-body > p { margin: 0.2em 0; }
         html.touch .result-columns { grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
-        html.touch .result h3 { margin: 6px 0 2px; font-size: 13px; }
-        html.touch .result .md-stat { padding: 0; font-size: 16px; line-height: 1.3; gap: 1em; }
+        html.touch .result h3 { margin: 6px 0 2px; font-size: 11px; }
+        html.touch .result .md-stat { padding: 0; font-size: 16.5px; line-height: 1.3; gap: 1em; }
         html.touch .result-actions { flex-direction: row; gap: 12px; margin-top: 8px; }
         html.touch .result-actions .md-item { flex: 1; }
         /* The Sima's longer end screen scrolls inside its window, with the two actions pinned at the bottom (never off screen). */
