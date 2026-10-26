@@ -434,6 +434,8 @@
   "screen.coins.multiplier": "Dificultad",
   "screen.coins.total": "Ganadas",
   "screen.coins.balance": "Saldo",
+  "screen.materials": "Esencias",
+  "screen.materials.earned": "+{n} Esencias de {species} ({difficulty})",
   "title.shop": "Tienda",
   "shop.title": "Tienda de mejoras",
   "shop.text": "Mejoras permanentes para todos tus Pokémon. Se notan al empezar cada exploración.",

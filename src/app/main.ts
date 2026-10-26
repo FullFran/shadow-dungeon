@@ -63,7 +63,7 @@ import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
-import { endActions, returnPlace, townOf, type ReturnPlace } from './after-run';
+import { endActions, materialsEarned, returnPlace, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
@@ -567,7 +567,7 @@ function townWindow(parent: HTMLElement, open: { element: HTMLElement; dispose()
 }
 
 /** Mimikyu's gacha stall over the town. */
-const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, play: (sound) => audio.play(sound), onBack: onClose }));
+const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: onClose }));
 
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
 const townEvolve = (parent: HTMLElement, onClose: () => void): (() => void) =>
@@ -1006,7 +1006,7 @@ function scoreColumn(score: EndScore): HTMLElement {
   return column;
 }
 
-function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore): void {
+function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore, materials?: string | null): void {
   // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
   const inRoom = online && room !== null && current === room.session;
   const party = inRoom ? room!.session.roster().map(nameOf) : null;
@@ -1041,6 +1041,8 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
           h('h3', { className: 'dim', textContent: t('screen.coins') }),
           // The Sima's ×0.5 is its pay rate, not a difficulty: its line says so.
           ...coinLines(summary.coins, balance, (key) => t(score && key === 'screen.coins.multiplier' ? 'endless.coins.rate' : key)).map((line) => statLine(line.label, line.value)),
+          // A challenge clear: the materials it paid (after-run.ts).
+          ...(materials ? [statLine(t('screen.materials'), materials)] : []),
         ]),
         ...(score ? [scoreColumn(score)] : []),
       ]),
@@ -1126,10 +1128,12 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       // Every peer earns its own Pokémonedas, guests too.
       earnCoins(store, summary.coins.total);
       // A challenge dungeon's victory pays its line's materials of the run's tier, to every peer that owns the line.
+      const before = loadSave(store);
       const save = earnChallengeReward(store, dungeonById(summary.dungeon), result === 'victory', summary.difficulty);
+      const materials = materialsEarned(dungeonById(summary.dungeon), summary.difficulty, before, save, t);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       const score = summary.clockMs !== undefined ? endlessScore(summary) : undefined;
-      resultScreen(root, result, summary, online, save.coins, score);
+      resultScreen(root, result, summary, online, save.coins, score, materials);
     },
   });
 }
@@ -1180,7 +1184,7 @@ function devScreen(root: HTMLElement): boolean {
     // Mimikyu's gacha stall and Phantump's evolutions on their own (back goes to the title); `&coins=1000` first sets the balance (smoke tests).
     gacha: () => {
       devCoins();
-      show(root, [gachaWindow({ store, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) }).element]);
+      show(root, [gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) }).element]);
     },
     evolve: () => {
       devCoins();

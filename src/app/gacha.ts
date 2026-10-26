@@ -1,11 +1,13 @@
 import { GACHA, GACHA_POOL, type GachaRarity } from '../data/gacha';
 import type { SpeciesId } from '../data/species';
 import { pull, type PullResult } from '../core/gacha';
+import type { SheetStore } from '../adapters/assets';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
+import { portrait } from './loadout';
 import { loadSave, writeSave, type SaveData } from './save';
 
 /**
@@ -13,7 +15,8 @@ import { loadSave, writeSave, type SaveData } from './save';
  * window over the town with the balance, the price, the rates per rarity
  * and the pulls left to a sure rare, and one Pull row. A pull is saved at
  * once and plays a short reveal in the rarity's colour (a tap on it or the
- * next pull ends it early). The numbers come from data/gacha.ts. Evolving
+ * next pull ends it early): the species' idle sprite in a frame of that
+ * colour, a silhouette until the name shows. The numbers come from data/gacha.ts. Evolving
  * is Phantump's window (app/evolve.ts).
  */
 export interface StallInfo {
@@ -57,6 +60,8 @@ export const REVEAL_MS = 1500;
 
 export interface GachaOptions {
   store: KeyValueStore;
+  /** The sprite sheets (the reveal's portrait). */
+  sheets: Promise<SheetStore>;
   play?(sound: 'coin' | 'denied'): void;
   onBack(): void;
 }
@@ -64,7 +69,9 @@ export interface GachaOptions {
 export function gachaWindow(options: GachaOptions): { element: HTMLElement; dispose(): void } {
   let save = loadSave(options.store);
   const balance = h('div', { className: 'shop-balance' });
-  const reveal = h('p', { className: 'gacha-reveal' });
+  const text = h('p', {});
+  const art = h('div', {});
+  const reveal = h('div', { className: 'gacha-reveal' }, [art, text]);
   const effect = h('div', { className: 'shop-effect' }, [reveal, h('p', { className: 'dim', textContent: t('gacha.text') })]);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let shown: (() => void) | null = null;
@@ -80,9 +87,16 @@ export function gachaWindow(options: GachaOptions): { element: HTMLElement; disp
   const startReveal = (result: PullResult) => {
     finishReveal();
     reveal.className = `gacha-reveal is-${result.rarity}`;
-    reveal.textContent = t('gacha.reveal.wait');
+    // The frame takes the rarity's colour from the reveal (`currentColor`).
+    const sprite = portrait(options.sheets, result.species);
+    sprite.style.filter = 'brightness(0)';
+    const frame = h('div', { className: 'portrait-frame' }, [sprite]);
+    frame.style.cssText = 'border: 2px solid currentColor; background: none';
+    art.replaceChildren(frame);
+    text.textContent = t('gacha.reveal.wait');
     shown = () => {
-      reveal.textContent = revealText(result);
+      sprite.style.filter = '';
+      text.textContent = revealText(result);
     };
     timer = setTimeout(finishReveal, REVEAL_MS);
   };

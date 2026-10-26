@@ -434,6 +434,8 @@
   "screen.coins.multiplier": "Difficulty",
   "screen.coins.total": "Earned",
   "screen.coins.balance": "Balance",
+  "screen.materials": "Essence",
+  "screen.materials.earned": "+{n} {species} Essence ({difficulty})",
   "title.shop": "Shop",
   "shop.title": "Upgrade shop",
   "shop.text": "Permanent upgrades for all your Pokémon. They apply at the start of every expedition.",

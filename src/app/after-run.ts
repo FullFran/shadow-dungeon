@@ -1,3 +1,7 @@
+import type { Collection } from '../core/collection';
+import type { Difficulty } from '../data/difficulty';
+import type { DungeonDef } from '../data/dungeons';
+
 /**
  * Where the player goes once a run is over: the town is the hub
  * (docs/gdd.md §10). The title only opens on launch; its first entry still
@@ -24,3 +28,18 @@ export const returnPlace = (reason: LeaveReason): ReturnPlace => (reason === 'lo
 export type TownReturn = 'room' | 'hub';
 
 export const townOf = (run: { inRoom: boolean }): TownReturn => (run.inRoom ? 'room' : 'hub');
+
+/**
+ * The end screen's materials line: "+3 Esencias de Abra (Normal)", the
+ * materials a challenge clear added to the save (`before` and `after` the
+ * reward), or null when it added none (a main dungeon, Easy, a defeat, a
+ * peer that does not own the line). `tr` is the i18n lookup.
+ */
+export function materialsEarned(dungeon: DungeonDef, difficulty: Difficulty, before: Pick<Collection, 'materials'>, after: Pick<Collection, 'materials'>, tr: (key: string) => string): string | null {
+  const line = dungeon.challenge?.line;
+  if (!line || difficulty === 'easy') return null;
+  const count = (c: Pick<Collection, 'materials'>) => c.materials?.[line]?.[difficulty] ?? 0;
+  const earned = count(after) - count(before);
+  if (earned <= 0) return null;
+  return tr('screen.materials.earned').replace('{n}', String(earned)).replace('{species}', tr(`species.${line}`)).replace('{difficulty}', tr(`difficulty.${difficulty}`));
+}
