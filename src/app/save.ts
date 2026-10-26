@@ -10,6 +10,7 @@ import type { DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
 import type { KeyValueStore } from '../adapters/storage';
+import { ACHIEVEMENTS } from '../data/achievements';
 
 /**
  * The save facade (docs/gdd.md §12): one versioned local save for what
@@ -25,8 +26,9 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
 /**
  * 2: the move tutor's learned moves and Mejoras (odd/tasks/movepools.md); a v1 save reads with none.
  * 3: the gacha collection (odd/tasks/gacha-evolutions.md): owned species, materials, pity; a v2 save reads with none.
+ * 4: achievements and lifetime Pokémonedas (odd/tasks/achievements-missions.md); a v3 save reads with none.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveData {
   version: typeof SAVE_VERSION;
@@ -42,6 +44,10 @@ export interface SaveData {
   materials?: Partial<Record<SpeciesId, Materials>>;
   /** Gacha pulls since the last rare (absent = 0). */
   pity?: number;
+  /** Unlocked achievements: id -> UTC day (absent = none; core/achievements.ts). */
+  achievements?: Record<string, string>;
+  /** Pokémonedas earned in total, spending aside (absent = 0). */
+  earned?: number;
 }
 
 export const EMPTY_SAVE: SaveData = { version: SAVE_VERSION, coins: 0, upgrades: {} };
@@ -58,8 +64,8 @@ export function migrate(raw: unknown): Record<string, unknown> | null {
   if (!isRecord(raw)) return null;
   const version = raw.version;
   if (version === undefined) return { ...raw, version: SAVE_VERSION };
-  // v1 -> v2 -> v3: nothing learned or owned yet (the new fields are optional).
-  if (version === 1 || version === 2) return { ...raw, version: SAVE_VERSION };
+  // v1 -> v2 -> v3 -> v4: nothing learned, owned or unlocked yet (the new fields are optional).
+  if (version === 1 || version === 2 || version === 3) return { ...raw, version: SAVE_VERSION };
   return raw;
 }
 
@@ -79,6 +85,8 @@ export function sanitize(raw: unknown): SaveData {
   const owned = sanitizeOwned(raw.owned);
   const materials = sanitizeMaterials(raw.materials);
   const pity = wholeCount(raw.pity);
+  const achievements = sanitizeAchievements(raw.achievements);
+  const earned = wholeCount(raw.earned);
   return {
     version: SAVE_VERSION,
     coins,
@@ -88,7 +96,23 @@ export function sanitize(raw: unknown): SaveData {
     ...(owned ? { owned } : {}),
     ...(materials ? { materials } : {}),
     ...(pity > 0 ? { pity } : {}),
+    ...(achievements ? { achievements } : {}),
+    ...(earned > 0 ? { earned } : {}),
   };
+}
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Achievements: known ids with a YYYY-MM-DD day, in list order; null when none. */
+function sanitizeAchievements(raw: unknown): Record<string, string> | null {
+  if (!isRecord(raw)) return null;
+  const out: Record<string, string> = {};
+  for (const def of ACHIEVEMENTS) {
+    if (!Object.hasOwn(raw, def.id)) continue;
+    const date = raw[def.id];
+    if (typeof date === 'string' && DATE_KEY.test(date)) out[def.id] = date;
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /** A whole, non-negative, safe count (anything else is 0). */
@@ -180,10 +204,11 @@ export function writeSave(store: KeyValueStore, save: SaveData): void {
   }
 }
 
-/** Adds a run's coins (negative amounts count as 0) to the stored balance and returns the new save. */
+/** Adds a run's coins (negative amounts count as 0) to the stored balance and the lifetime count, and returns the new save. */
 export function earnCoins(store: KeyValueStore, amount: number): SaveData {
   const save = loadSave(store);
-  const next = sanitize({ ...save, coins: save.coins + Math.max(0, Math.floor(amount)) });
+  const gain = Math.max(0, Math.floor(amount));
+  const next = sanitize({ ...save, coins: save.coins + gain, earned: (save.earned ?? 0) + gain });
   writeSave(store, next);
   return next;
 }
