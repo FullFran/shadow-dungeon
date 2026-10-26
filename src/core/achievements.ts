@@ -70,3 +70,26 @@ export function familyProgress(unlocked: Unlocked, defs: readonly AchievementDef
     return { family, done: mine.filter((d) => unlocked[d.id] !== undefined).length, total: mine.length };
   });
 }
+
+/** The save's part settling touches. */
+export interface AchievementWallet extends ProgressSnapshot {
+  coins: number;
+  achievements?: Unlocked;
+}
+
+/**
+ * Unlocks what this run (null: none) and save earn on `dateKey` and pays
+ * their Pokémonedas into the balance and the lifetime count; a reward that
+ * reaches a lifetime milestone unlocks it too. The same save comes back
+ * when nothing unlocks.
+ */
+export function settleAchievements<S extends AchievementWallet>(save: S, report: RunReport | null, dateKey: string, defs: readonly AchievementDef[] = ACHIEVEMENTS): { save: S; unlocked: AchievementDef[] } {
+  let next = save;
+  const unlocked: AchievementDef[] = [];
+  for (let fresh = newlyUnlocked(next.achievements ?? {}, report, next, defs); fresh.length > 0; fresh = newlyUnlocked(next.achievements ?? {}, report, next, defs)) {
+    const paid = rewardOf(fresh);
+    next = { ...next, achievements: unlockAll(next.achievements ?? {}, fresh, dateKey), coins: next.coins + paid, earned: (next.earned ?? 0) + paid };
+    unlocked.push(...fresh);
+  }
+  return { save: next, unlocked };
+}

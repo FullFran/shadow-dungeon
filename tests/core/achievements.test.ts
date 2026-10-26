@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { achieved, familyProgress, newlyUnlocked, unlockAll } from '../../src/core/achievements';
+import { achieved, familyProgress, newlyUnlocked, settleAchievements, unlockAll, type AchievementWallet } from '../../src/core/achievements';
 import { lineOf, stageOf } from '../../src/core/evolution';
 import type { RunReport } from '../../src/core/run-report';
 import { ACHIEVEMENT_FAMILIES, ACHIEVEMENTS, achievementById, clearableDungeons, type AchievementDef } from '../../src/data/achievements';
@@ -140,5 +140,21 @@ describe('evaluating achievements', () => {
     expect(progress.map((p) => p.family)).toEqual([...ACHIEVEMENT_FAMILIES]);
     expect(progress.reduce((sum, p) => sum + p.total, 0)).toBe(ACHIEVEMENTS.length);
     expect(progress.reduce((sum, p) => sum + p.done, 0)).toBe(Object.keys(unlocked).length);
+  });
+});
+
+describe('settling achievements into a save', () => {
+  it('stamps the day, pays the rewards once into coins and the lifetime count, and chains a milestone they reach', () => {
+    const save: AchievementWallet = { coins: 10, earned: 990 };
+    const first = settleAchievements(save, report({ dungeon: 'misty-forest', difficulty: 'normal' }), '2026-10-26');
+    const paid = first.unlocked.reduce((sum, d) => sum + d.reward, 0);
+    expect(paid).toBeGreaterThanOrEqual(20);
+    expect(first.save.coins).toBe(10 + paid);
+    expect(first.save.earned).toBe(990 + paid);
+    expect(ids(first.unlocked)).toEqual(expect.arrayContaining(['clear-misty-forest-normal', 'species-mimikyu', 'earned-1000']));
+    expect(first.save.achievements!['earned-1000']).toBe('2026-10-26');
+    const again = settleAchievements(first.save, report({ dungeon: 'misty-forest', difficulty: 'normal' }), '2026-10-27');
+    expect(again.unlocked).toEqual([]);
+    expect(again.save).toBe(first.save);
   });
 });
