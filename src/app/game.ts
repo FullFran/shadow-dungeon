@@ -248,6 +248,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
+  // Development server only: the live world for headless checks (the roll direction playtest read the player's position from it).
+  if (import.meta.env.DEV) (globalThis as { __mzWorld?: () => WorldState }).__mzWorld = () => world;
   // A guest joining a room's trial under way starts on the host's arena (its `start` floor is the arena, `trialEpoch`).
   if (trial && net?.role === 'guest' && (options.startFloor ?? 1) > 1) {
     const caught = progressSharedTrial(trial, run, world, 0, 'guest', options.startFloor ?? 1);

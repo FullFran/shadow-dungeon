@@ -53,8 +53,8 @@ Open the play link (or `npm run dev` locally). The title screen (Play, Play onli
 
 | Input | Action |
 |---|---|
-| WASD | Move |
-| Space | Roll (i-frames, costs stamina); roll through a hit at the last moment for a perfect dodge |
+| WASD or arrow keys | Move |
+| Space | Roll (i-frames, costs stamina); roll through a hit at the last moment for a perfect dodge. It goes the way you hold; with no direction held, at the locked target, else at the mouse cursor (once you move the mouse after walking), else where you face. A direction pressed in the first 0.1 s of a roll still turns it, so Space a hair before the key is fine |
 | Left click / Q | Fast move (Shadow Claw or Shadow Sneak) |
 | Right click / E | Heavy move (Play Rough or Shadow Ball), hold to charge |
 | R / 1 | Boost: a self-buff on a long cooldown, no stamina (Swords Dance: next 3 hits ×1.5; Nasty Plot, Will-O-Wisp, Bulk Up for the other starters) |

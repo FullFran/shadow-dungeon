@@ -1,9 +1,9 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
-import { confineCircle } from './geometry';
+import { confineCircle, sweepCircle } from './geometry';
 import { playerStats } from './items';
-import { add, length, normalize, scale, type Vec2 } from './vec';
+import { add, length, normalize, scale, sub, type Vec2 } from './vec';
 import { buffSpeed } from './boosts';
 
 const { roll: ROLL, stamina: STAMINA, player: PLAYER, combat: COMBAT } = TUNING;
@@ -29,7 +29,19 @@ function regenStamina(player: PlayerState, dtMs: number): PlayerState {
 
 const confine = (pos: Vec2, arena: Arena): Vec2 => confineCircle(arena, pos, PLAYER.radius);
 
-function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): PlayerState {
+/**
+ * Where a roll with no direction held goes: at the locked target, else at the
+ * mouse cursor (`aimPointer`), else along the facing (also when the point sits
+ * on the player). Playtest 2026-10-26: a player aiming with the mouse rolled
+ * along the last walking direction (right, in a room just entered).
+ */
+function neutralRollDir(player: PlayerState, input: PlayerInput, lockTarget: Vec2 | null): Vec2 {
+  const point = lockTarget ?? (input.aimPointer ? input.aim : null);
+  const dir = point ? normalize(sub(point, player.pos)) : player.facing;
+  return length(dir) > 0 ? dir : player.facing;
+}
+
+function tryStartRoll(player: PlayerState, moveDir: Vec2, neutralDir: Vec2, events: GameEvent[]): PlayerState {
   if (player.roll || player.action) return player;
   const cost = ROLL.staminaCost * playerStats(player).staminaCost * (player.rollTier?.staminaCost ?? 1);
   if (player.stamina < cost) {
@@ -37,8 +49,25 @@ function tryStartRoll(player: PlayerState, moveDir: Vec2, events: GameEvent[]): 
     return player;
   }
   events.push({ type: 'rollStarted' });
-  const dir = length(moveDir) > 0 ? moveDir : player.facing;
-  return { ...spendStamina(player, cost), roll: { elapsedMs: 0, dir }, facing: dir };
+  const held = length(moveDir) > 0;
+  const dir = held ? moveDir : neutralDir;
+  // A neutral roll remembers its start, so a direction pressed just after still redirects all of it.
+  return { ...spendStamina(player, cost), roll: { elapsedMs: 0, dir, ...(held ? {} : { from: player.pos }) }, facing: dir };
+}
+
+/**
+ * The direction buffer: a neutral roll still young takes the first direction
+ * pressed, as if it had been held at the start (the distance so far is redone
+ * from the start point along it, swept against walls). Past the window it is final.
+ */
+function redirectRoll(player: PlayerState, moveDir: Vec2, arena: Arena): PlayerState {
+  const roll = player.roll;
+  if (!roll?.from) return player;
+  const { from, ...committed } = roll;
+  if (roll.elapsedMs >= ROLL.redirectMs) return { ...player, roll: committed };
+  if (length(moveDir) === 0) return player;
+  const pos = sweepCircle(arena, from, scale(moveDir, ROLL_SPEED * Math.min(roll.elapsedMs, ROLL.durationMs)), PLAYER.radius);
+  return { ...player, pos, facing: moveDir, roll: { ...committed, dir: moveDir } };
 }
 
 function tickBuff(player: PlayerState, dtMs: number): PlayerState {
@@ -56,7 +85,8 @@ function walkFactor(player: PlayerState): number {
 
 /**
  * Advances the player one step: roll start (edge input), roll motion with a
- * committed direction, otherwise walking along WASD; then stamina regen.
+ * committed direction (a neutral roll may still be redirected in its first
+ * `redirectMs`), otherwise walking along WASD; then stamina regen.
  * Move actions (combat.ts) run after this and may move the player too (dashes).
  */
 export function updatePlayer(
@@ -67,10 +97,13 @@ export function updatePlayer(
   events: GameEvent[],
   /** Walking speed factor from the ground (shallow water, the flood); rolls are never slowed. */
   wade = 1,
+  /** The locked target's position, if any: a neutral roll goes at it. */
+  lockTarget: Vec2 | null = null,
 ): PlayerState {
   const moveDir = normalize(input.move);
   let next = tickBuff(player, dtMs);
-  if (input.roll) next = tryStartRoll(next, moveDir, events);
+  if (input.roll) next = tryStartRoll(next, moveDir, neutralRollDir(next, input, lockTarget), events);
+  else next = redirectRoll(next, moveDir, arena);
 
   if (next.roll) {
     const elapsedMs = next.roll.elapsedMs + dtMs;

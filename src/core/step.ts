@@ -46,7 +46,8 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const events: GameEvent[] = [];
   // Shallow water and the flood slow a non-Water player's walk (water.ts, flood.ts).
   const wade = wadeFactor(state.player.types, state.arena, state.player.pos, state.flood);
-  const walked = pickUpBerries({ ...state, player: updatePlayer(state.player, input, dtMs, state.arena, events, wade) }, events);
+  const locked = state.lock.targetId ? state.enemies.find((e) => e.id === state.lock.targetId && e.alive) : undefined;
+  const walked = pickUpBerries({ ...state, player: updatePlayer(state.player, input, dtMs, state.arena, events, wade, locked?.pos ?? null) }, events);
   const { player } = walked;
   const lockContext = { playerPos: player.pos, cursor: input.aim, view: input.view, enemies: state.enemies };
   const lock = updateLock(state.lock, { held: input.lock, click: input.click, wheel: input.wheel }, lockContext, events);

@@ -28,6 +28,12 @@ export interface PlayerInput {
   move: Vec2;
   /** Cursor position in world coordinates. */
   aim: Vec2;
+  /**
+   * The aim is a live pointer (a mouse cursor the player moved), not a
+   * stand-in point (touch aims ahead along the facing). A roll with no
+   * direction held then goes at it when nothing is locked. Absent = false.
+   */
+  aimPointer?: boolean;
   /** Edge: roll pressed this tick. */
   roll: boolean;
   /** Level: whether each move slot's button is held, aligned with the loadout. Edges are derived in the core. */
@@ -88,6 +94,12 @@ export interface RollState {
   elapsedMs: number;
   /** Unit direction committed when the roll started. */
   dir: Vec2;
+  /**
+   * A neutral roll (no direction held at its start): where it started. While
+   * present (the first `TUNING.roll.redirectMs`), a direction pressed
+   * redirects the whole roll from here; then it is dropped.
+   */
+  from?: Vec2;
 }
 
 export interface DamageBuff {
@@ -127,7 +139,7 @@ export interface PlayerState {
   species: SpeciesId;
   types: readonly PokemonType[];
   pos: Vec2;
-  /** Unit vector of the last movement direction; rolls without input go this way. */
+  /** Unit vector of the last movement direction; a roll with no direction, no lock and no live cursor goes this way. */
   facing: Vec2;
   hp: number;
   maxHp: number;

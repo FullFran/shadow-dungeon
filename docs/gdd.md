@@ -511,8 +511,8 @@ Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún 
 
 | Tecla | Qué hace |
 |---|---|
-| WASD | Moverte |
-| Espacio | Rueda con invulnerabilidad; gasta estamina |
+| WASD o flechas | Moverte |
+| Espacio | Rueda con invulnerabilidad; gasta estamina. Va hacia donde mantienes la dirección; sin dirección, hacia el objetivo fijado, si no hacia el cursor del ratón (si lo has movido después de andar) y si no hacia donde miras. Una dirección pulsada en la primera décima de segundo de la rueda aún la gira: pulsar Espacio un pelín antes que la tecla vale |
 | Clic izquierdo (o Q) | Ataque ligero: rápido, se recupera enseguida y castiga huecos pequeños (Placaje, Arañazo) |
 | Clic derecho (o E) | Movimiento fuerte de su tipo: arranque lento, gasta estamina y si lo mantienes carga (Ascuas, Pistola Agua) |
 | R (o 1) | Potenciación: una mejora propia con enfriamiento largo y sin estamina (Danza Espada, Maquinación, Fuego Fatuo, Corpulencia) |
@@ -546,7 +546,7 @@ Se activan solos al primer toque (ajuste «Controles táctiles»: Automático, S
 | Control | Qué hace |
 |---|---|
 | Joystick (mitad izquierda, aparece donde pones el pulgar) | Moverte, analógico y con zona muerta |
-| Rodar | Rueda (como Espacio) |
+| Rodar | Rueda (como Espacio): hacia donde empujas el joystick; sin joystick, hacia el objetivo fijado o hacia donde miras |
 | Rápido / Fuerte | Los dos movimientos; Fuerte se mantiene para cargar y se suelta para lanzar |
 | Potenc. / Área | La potenciación y el movimiento de área (botones de 52 px a la izquierda de Fuerte; se ocultan si la ranura está vacía) |
 | Fijar | Un toque fija al enemigo que tienes delante o lo suelta; deslizar a izquierda o derecha sobre él cambia de objetivo (como la rueda) |

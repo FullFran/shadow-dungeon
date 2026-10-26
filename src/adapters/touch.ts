@@ -100,6 +100,8 @@ export function touchToPlayerInput(frame: TouchFrame, ctx: TouchAimContext): Pla
   return {
     move: frame.move,
     aim,
+    // The touch aim is a stand-in (ahead, the enemy in front, a tap): a neutral roll keeps the facing.
+    aimPointer: false,
     roll: frame.roll,
     slots: [frame.fast, frame.heavy, frame.boost, frame.area],
     slotMouse: [autoAimed && frame.fast, autoAimed && frame.heavy, autoAimed && frame.boost, autoAimed && frame.area],
@@ -122,6 +124,7 @@ export function mergeInputs(keyboard: PlayerInput, touch: PlayerInput): PlayerIn
   return {
     move: length(touch.move) > 0 ? touch.move : keyboard.move,
     aim: touchAims ? touch.aim : keyboard.aim,
+    aimPointer: touchAims ? false : Boolean(keyboard.aimPointer),
     roll: keyboard.roll || touch.roll,
     // As long as the longer of the two (an older input with fewer slots counts as not held there).
     slots: slotRange(keyboard, touch).map((i) => Boolean(keyboard.slots[i]) || Boolean(touch.slots[i])),

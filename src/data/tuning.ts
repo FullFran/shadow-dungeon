@@ -31,6 +31,8 @@ export const TUNING = {
     /** Invulnerability window inside the roll, measured from roll start. */
     iframesStartMs: 30,
     iframesEndMs: 300,
+    /** A roll started with no direction held takes a direction pressed within this time (a near-simultaneous press). */
+    redirectMs: 100,
   },
 
   perfectDodge: {

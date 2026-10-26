@@ -4,7 +4,8 @@ import { screenToWorld } from './view';
 
 /**
  * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
- * WASD move, Space roll, LMB or Q fast slot, RMB or E heavy slot (hold to
+ * WASD or the arrow keys move, Space roll (along the held direction; with
+ * none, at the lock, else at the cursor while the mouse is live, else the facing), LMB or Q fast slot, RMB or E heavy slot (hold to
  * charge), R or 1 boost slot, F or 2 area slot (keys only: they go along the
  * facing or at the lock), Shift or middle mouse lock on (per lock type), LMB on an enemy locks it
  * (click-to-lock, Q never does), wheel switches target. Without a lock, a
@@ -24,10 +25,24 @@ export interface RawInput {
   rollPressed: boolean;
   /** Wheel deltaY in pixels since the last simulation step. */
   wheel: number;
+  /**
+   * The mouse moved (or clicked) after the last direction key press: the
+   * cursor is where the player aims, so a neutral roll goes there. A
+   * keyboard-only player's resting cursor goes stale on the next WASD press. Absent = false.
+   */
+  pointerLive?: boolean;
 }
 
-const axis = (keys: ReadonlySet<string>, negative: string, positive: string) =>
-  (keys.has(positive) ? 1 : 0) - (keys.has(negative) ? 1 : 0);
+/** -1, 0 or 1 along one axis; WASD and the arrows together (same side counts once, opposite sides cancel). */
+const axis = (keys: ReadonlySet<string>, negative: readonly string[], positive: readonly string[]) =>
+  (positive.some((code) => keys.has(code)) ? 1 : 0) - (negative.some((code) => keys.has(code)) ? 1 : 0);
+
+/** Direction keys by axis side, as in the town (src/town/scene.ts). */
+const LEFT = ['KeyA', 'ArrowLeft'];
+const RIGHT = ['KeyD', 'ArrowRight'];
+const UP = ['KeyW', 'ArrowUp'];
+const DOWN = ['KeyS', 'ArrowDown'];
+const MOVE_KEYS = new Set([...LEFT, ...RIGHT, ...UP, ...DOWN]);
 
 /**
  * Keys of each slot (fast, heavy, boost, area), by `KeyboardEvent.code`. R/F
@@ -42,8 +57,9 @@ const SLOT_BUTTONS: readonly (number | undefined)[] = [0, 2];
 export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number): PlayerInput {
   const { keys, buttons } = raw;
   return {
-    move: { x: axis(keys, 'KeyA', 'KeyD'), y: axis(keys, 'KeyW', 'KeyS') },
+    move: { x: axis(keys, LEFT, RIGHT), y: axis(keys, UP, DOWN) },
     aim: screenToWorld(raw.mouse, view, pixelScale),
+    aimPointer: raw.pointerLive ?? false,
     roll: raw.rollPressed,
     slots: SLOT_KEY_CODES.map((codes, i) => (SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])) || codes.some((code) => keys.has(code))),
     slotMouse: SLOT_KEY_CODES.map((_, i) => SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])),
@@ -61,7 +77,7 @@ export function wheelPixels(deltaY: number, deltaMode: number, pageHeight = 600)
   return deltaY;
 }
 
-const GAME_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', ...SLOT_KEY_CODES.flat(), 'Space', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set([...MOVE_KEYS, ...SLOT_KEY_CODES.flat(), 'Space', 'ShiftLeft', 'ShiftRight']);
 
 export interface InputDevice {
   /** Raw state for the next simulation step; edges (roll, wheel) are consumed. */
@@ -84,6 +100,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   let rollPressed = false;
   let wheel = 0;
   let suspended = false;
+  let pointerLive = false;
 
   const releaseAll = () => {
     keys.clear();
@@ -95,6 +112,8 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
     if (suspended || !GAME_KEYS.has(e.code)) return;
     e.preventDefault();
     if (e.code === 'Space' && !e.repeat) rollPressed = true;
+    // Walking with the keys again: the cursor resting where it was is no longer the aim.
+    if (MOVE_KEYS.has(e.code) && !e.repeat) pointerLive = false;
     keys.add(e.code);
   };
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
@@ -102,6 +121,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
     const rect = canvas.getBoundingClientRect();
     // Canvas pixels: the backing store may differ from the CSS size.
     mouse = { x: ((e.clientX - rect.left) * canvas.width) / rect.width, y: ((e.clientY - rect.top) * canvas.height) / rect.height };
+    pointerLive = true;
   };
   const onMouseDown = (e: MouseEvent) => {
     onMouseMove(e);
@@ -136,7 +156,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
 
   return {
     take() {
-      const raw: RawInput = { keys: new Set(keys), buttons: new Set(buttons), mouse, rollPressed, wheel };
+      const raw: RawInput = { keys: new Set(keys), buttons: new Set(buttons), mouse, rollPressed, wheel, pointerLive };
       rollPressed = false;
       wheel = 0;
       return raw;
