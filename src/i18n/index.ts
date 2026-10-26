@@ -27,9 +27,17 @@ export function getLanguage(): Language {
   return current;
 }
 
-/** Looks a key up in the current language, falling back to Spanish, then the key itself. */
+const lookup = (key: string): string => catalogs[current][key] ?? catalogs.es[key] ?? key;
+
+/**
+ * Looks a key up in the current language, falling back to Spanish, then the
+ * key itself. `{called}` and `{calledOne}` in any string become the name the
+ * villagers give the reborn (`lore.reborn.name`, `lore.reborn.one`;
+ * docs/sima-redesign.md), so the name lives in one place.
+ */
 export function t(key: MessageKey | (string & {})): string {
-  return catalogs[current][key] ?? catalogs.es[key] ?? key;
+  const text = lookup(key);
+  return text.includes('{called') ? text.replaceAll('{calledOne}', lookup('lore.reborn.one')).replaceAll('{called}', lookup('lore.reborn.name')) : text;
 }
 
 export function catalog(language: Language): Readonly<Record<string, string>> {

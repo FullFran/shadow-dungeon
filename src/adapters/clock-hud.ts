@@ -4,7 +4,8 @@ import { pixelText } from '../ui/canvas';
 import { canvasFont, PALETTE } from '../ui/tokens';
 
 /**
- * The endless dungeon's run clock on the HUD: large at the top centre, red
+ * The endless dungeon's run clock on the HUD (shown as «Lucidez», the
+ * player's lucidity): large at the top centre, red
  * and pulsing once it is low, with "+40 s" under it when time is added.
  * Presentation only; the clock itself is the run's (core/endless.ts).
  */
@@ -61,14 +62,17 @@ export function drawRunClock(ctx: CanvasRenderingContext2D, clock: RunClock, now
   const size = Math.round(20 * look.scale);
   ctx.globalAlpha = 0.55;
   ctx.fillStyle = '#000000';
-  ctx.fillRect(cx - 34, 4, 68, 24);
+  ctx.fillRect(cx - 34, 4, 68, 34);
   ctx.globalAlpha = 1;
+  // The clock is the player's lucidity (docs/sima-redesign.md): its name over the time.
+  ctx.font = canvasFont();
+  pixelText(ctx, t('hud.lucidity'), cx, 14, look.color === PALETTE.text ? PALETTE.textDim : look.color, 'center');
   ctx.font = canvasFont(size, true);
-  pixelText(ctx, look.text, cx, 24, look.color, 'center');
+  pixelText(ctx, look.text, cx, 34, look.color, 'center');
   const popup = clock.bonus ? bonusPopup(clock.bonus, nowMs, t) : null;
   if (popup) {
     // A dark pill behind the big green "+N s", and its reason under it.
-    const y = 46 - popup.rise;
+    const y = 56 - popup.rise;
     ctx.globalAlpha = popup.alpha * 0.6;
     ctx.fillStyle = '#000000';
     ctx.fillRect(cx - 40, y - popup.size + 1, 80, popup.size + (popup.reason ? 13 : 4));
