@@ -24,8 +24,15 @@ describe('cloud save wiring', () => {
     expect(main.match(/browserStore\(\)/g)).toHaveLength(1);
   });
 
-  it('no module that writes the save makes its own browser store', () => {
-    const writers = sourceFiles(join(ROOT, 'src')).filter((file) => /\b(writeSave|earnCoins|earnChallengeReward|SAVE_KEY)\b/.test(readFileSync(file, 'utf8')));
+  it('the account observes every profile key, not only the save', () => {
+    const screen = readFileSync(join(ROOT, 'src/app/account-screen.ts'), 'utf8');
+    expect(screen).toMatch(/observeKeys\(options\.store, PROFILE_KEYS,/);
+  });
+
+  it('no module that writes profile data makes its own browser store', () => {
+    const writers = sourceFiles(join(ROOT, 'src')).filter((file) =>
+      /\b(writeSave|earnCoins|earnChallengeReward|SAVE_KEY|saveRun|saveScore|saveTrial|recordHerald|RECORDS_KEY|LEADERBOARD_KEY|SHRINE_KEY|BESTIARY_KEY)\b/.test(readFileSync(file, 'utf8')),
+    );
     expect(writers.length).toBeGreaterThan(3);
     const bypass = writers.filter((file) => !file.endsWith('main.ts') && /browserStore\(\)/.test(readFileSync(file, 'utf8')));
     expect(bypass.map((file) => relative(ROOT, file))).toEqual([]);

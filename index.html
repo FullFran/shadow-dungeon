@@ -152,6 +152,19 @@
       .account-email { color: var(--md-cursor); overflow-wrap: anywhere; }
       .account-note { margin: 8px 0 0; font-size: 16px; }
       .account-summary { font-size: 16px; }
+      /* Cloud sync (src/app/account-screen.ts): side cards, the status line and the "Deshacer" notice (it takes clicks, unlike .net-toast). */
+      .sync-headline { color: var(--md-cursor); margin: 0 0 6px; }
+      .sync-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
+      .sync-card { border: 2px solid var(--md-ink); border-radius: 6px; padding: 6px 8px; margin: 6px 0; font-size: 16px; }
+      .sync-cards .sync-card { margin: 0; }
+      .sync-card p { margin: 0; overflow-wrap: anywhere; }
+      .sync-card-title { color: var(--md-cursor); }
+      .sync-status { margin: 4px 0 6px; }
+      .sync-undo { position: fixed; bottom: 16px; left: 16px; right: 16px; margin: 0 auto; max-width: 34rem; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; z-index: 21; color: var(--md-text); background: rgba(15, 26, 69, 0.96); border: 2px solid var(--md-ink); border-radius: 6px; }
+      .sync-undo-button { font: inherit; color: var(--md-cursor); background: transparent; border: 2px solid var(--md-cursor); border-radius: 4px; padding: 2px 10px; cursor: pointer; }
+      @media (max-width: 560px) {
+        .sync-cards { grid-template-columns: 1fr; }
+      }
       @media (max-width: 560px) {
         .account .md-item { flex-wrap: wrap; row-gap: 2px; }
         .account .md-item.account-row { flex-wrap: nowrap; }
