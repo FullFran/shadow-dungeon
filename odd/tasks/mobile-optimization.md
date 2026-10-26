@@ -49,7 +49,7 @@ Touch controls, PWA and a fit-to-screen canvas landed in `mobile-touch` / `integ
 | town | 390x844 | 3.38/3.70 | 3.14/3.62 |
 
 (Run/floor gains include the touch HUD no longer drawing the slot windows, C3.) Sim unchanged (<0.6 ms p95). reports/perf/after.json.
-- [ ] M4 Load/PWA checks (route: inline).
+- [x] M4 Load/PWA checks (route: inline; `enterImmersive` test-first: RED missing module, GREEN 4 tests). A run on touch asks for fullscreen (navigation UI hidden) and then locks landscape, feature-detected and silent on refusal (iPhone Safari: neither exists; an installed PWA is already fullscreen/landscape by its manifest, so only the lock is tried). Wake lock during runs already existed (`holdWakeLock`, feature-detected). Audio unlock on iOS and backgrounding: done in M2. Build: `index-*.js` 950.57 -> 961.37 kB (270.22 -> 274.39 kB gzip), index.html 33.31 -> 36.60 kB (8.12 -> 8.81 kB gzip), trystero chunk unchanged (80.49 kB, already lazy). First load (title): index.html 8.8 kB gz + JS 274 kB gz + font 79 kB + manifest/icons; the first run or town then fetches all 727 sprite sheets (11.5 MB), runtime-cached by the service worker; music (23.8 MB) is fetched per track on demand. Not done: per-dungeon lazy sprite loading (the renderer needs a synchronous sheet store; the biggest remaining first-run cost on mobile data, left as a follow-up).
 
 ## Checks
 `npx vitest run --testTimeout=30000`, `npm run build` (sizes), `npm run balance -- --quick --slots --out=<dir>` diffed against /tmp/mobile/base/balance, `node tools/mobile/bench.mjs` before/after, `git log --format=%B -n 4 | grep -ic co-authored` = 0.

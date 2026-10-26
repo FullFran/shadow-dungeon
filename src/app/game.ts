@@ -59,6 +59,7 @@ import { mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch
 import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
 import { slotButtonState } from '../adapters/touch-slots';
+import { enterImmersive } from '../ui/fullscreen';
 import { devPerfProbe } from '../adapters/perf-probe';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
@@ -228,6 +229,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
   // Touch devices: keep the screen awake while the run lasts.
   const releaseWakeLock = isTouchUi() ? holdWakeLock() : () => {};
+  // Phones: fullscreen and landscape for the run, where the browser allows it (src/ui/fullscreen.ts).
+  if (isTouchUi()) void enterImmersive();
   const renderer = createRenderer(canvas, sheets);
   const net = options.net;
   /** F3 in a shared run: the net stats overlay. */
