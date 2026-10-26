@@ -853,6 +853,35 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 - No hay reclutamiento dentro de la mazmorra. Un compañero controlado por la máquina obliga a escribir una IA de compañero, y eso es caro y fácil que salga mal. Además, los compañeros ya son las personas del chat que juegan contigo.
 - Antes de entrar eliges con qué Pokémon de tu colección juegas.
 
+### Gacha, evoluciones y mazmorras reto *(provisional)*
+
+Mimikyu atiende el puesto de la suerte en el pueblo (decisión del 26-10-2026: quiere hacer amigos). Su ventana enseña el saldo, el precio, las probabilidades y cuántas tiradas faltan para una rara segura. Cada tirada se guarda al momento.
+
+- Una tirada cuesta 100 P y da la primera forma de una línea. Común (85 %): Piplup o Shinx. Rara (15 %): Abra o Axew.
+- La rara es segura a la décima tirada desde la última rara (el contador se guarda).
+- Si ya tienes esa línea (en cualquier forma), te devuelve 40 P.
+- Lo que sale se puede jugar en todas partes, también en cooperativo. Los cuatro iniciales siguen siempre disponibles.
+
+Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Cada línea evoluciona dos veces, con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
+
+| Paso | Precio | Esencias | Bono de PS y daño |
+| --- | --- | --- | --- |
+| Primera a segunda forma | 400 P | 3 Normal y 2 Difícil | +6 % |
+| Segunda a tercera forma | 900 P | 3 Difícil y 2 Pesadilla | +12 % |
+
+El bono tiene tope: 15 % jugando solo y 8 % en grupo. Cada forma nueva conserva el kit y las Mejoras y aprende un movimiento: Kadabra Tinieblas, Alakazam Bola Sombra, Prinplup Demolición, Empoleon Rayo Hielo, Luxio Meteoros, Luxray Trueno, Fraxure Tijera X, Haxorus Demolición. Si evolucionas el Pokémon que llevas elegido, pasas a jugar con su forma nueva.
+
+Las Esencias se ganan en las mazmorras reto, una por línea. Cada una tiene tres plantas generadas y un jefe, y reutiliza enemigos, salas y música de una mazmorra principal según el tipo de la línea:
+
+| Reto | Plantas de | Jefe |
+| --- | --- | --- |
+| Abra (psíquico) | Cripta | Sableye |
+| Piplup (agua) | Cuevas | Lanturn |
+| Shinx (eléctrico) | Bosque | Trevenant |
+| Axew (dragón) | Pantano | Salazzle |
+
+Un reto se abre cuando tienes cualquier forma de su línea y sale aparte, en el grupo "Retos" de la selección de mazmorra y en la salida del pueblo. Ganarlo da 3 Esencias del nivel de su dificultad (la selección lo recuerda). En cooperativo cada jugador cobra en su propia partida guardada, y solo si tiene esa línea. Datos: `src/data/gacha.ts`, `src/data/player-evolutions.ts` y `CHALLENGES` en `src/data/dungeons.ts`.
+
 ## 6. Muerte y revivir
 
 | Situación | Regla |

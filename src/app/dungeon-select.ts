@@ -9,11 +9,14 @@ import { h, mdWindow } from '../ui/window';
  * The dungeon select (after the loadout, when more than one dungeon is
  * open): every dungeon in order, the locked ones greyed out with what opens
  * them, and a side window with the highlighted dungeon's subtitle and best
- * floor on this device.
+ * floor on this device. Below them, under "Retos", the challenge dungeons
+ * of the lines the player owns (odd/tasks/gacha-evolutions.md T4).
  */
 export interface DungeonSelectOptions {
   records: Records;
   cleared: ReadonlySet<string>;
+  /** The open challenge dungeons (core/challenge.ts `openChallenges`); none by default. */
+  challenges?: readonly DungeonDef[];
   onChoose(dungeon: DungeonId): void;
   onBack(): void;
 }
@@ -27,7 +30,9 @@ export const lockedHint = (dungeon: DungeonDef): string =>
   dungeon.unlockedBy ? t('select.locked').replace('{dungeon}', t(dungeonById(dungeon.unlockedBy).lore.nameKey)) : '';
 
 export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[] {
-  const choices = dungeonChoices(options.cleared);
+  // Header rows take a list slot too: index the choices like the list (null on the header).
+  const challenges = options.challenges ?? [];
+  const choices = [...dungeonChoices(options.cleared), ...(challenges.length > 0 ? [null] : []), ...challenges.map((dungeon) => ({ dungeon, unlocked: true }))];
   const subtitle = h('p', { className: 'dim' });
   const best = h('p');
   const legend = h('p', { className: 'dim' });
@@ -35,15 +40,20 @@ export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[
     const choice = choices[index];
     if (!choice) return;
     subtitle.textContent = choice.unlocked ? t(choice.dungeon.lore.subtitleKey) : lockedHint(choice.dungeon);
-    best.textContent = choice.unlocked ? bestFloorText(options.records, choice.dungeon) : '';
+    // A challenge says which difficulty drops which Essence instead of its best floor.
+    best.textContent = !choice.unlocked ? '' : choice.dungeon.challenge ? t('select.drops') : bestFloorText(options.records, choice.dungeon);
     // The first line of its legend, once it is open.
     legend.textContent = choice.unlocked ? t(choice.dungeon.lore.loreKeys[0] ?? '') : '';
   };
-  const items: ListItem[] = choices.map((choice) => ({
-    label: choice.unlocked ? t(choice.dungeon.lore.nameKey) : '???',
-    disabled: !choice.unlocked,
-    onConfirm: () => options.onChoose(choice.dungeon.id),
-  }));
+  const items: ListItem[] = choices.map((choice) =>
+    choice === null
+      ? { header: true, label: t('select.challenges') }
+      : {
+          label: choice.unlocked ? t(choice.dungeon.lore.nameKey) : '???',
+          disabled: !choice.unlocked,
+          onConfirm: () => options.onChoose(choice.dungeon.id),
+        },
+  );
   const list = cursorList({ items, onBack: options.onBack, onCursor: describe, label: t('select.title') });
   describe(list.index());
   return [

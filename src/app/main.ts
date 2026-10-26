@@ -42,7 +42,7 @@ import { openTown, type TownOptions } from '../town/scene';
 import type { TownLobby } from '../town/lobby';
 import { displayName, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, guardianOf, type DungeonId } from '../data/dungeons';
+import { dungeonById, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -51,7 +51,10 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import type { SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { earnChallengeReward, earnCoins, loadSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave, writeSave } from './save';
+import { gachaWindow } from './gacha';
+import { evolveWindow } from './evolve';
+import { openChallenges } from '../core/challenge';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
@@ -335,13 +338,19 @@ function newAdventure(root: HTMLElement, dungeon?: DungeonId): void {
 /** Dungeons whose guardian fell on this device (they open the next ones). */
 const cleared = (): Set<string> => clearedDungeons(readRecords(store));
 
+/** The challenge dungeons of the lines this device owns (core/challenge.ts). */
+const challenges = (): DungeonDef[] => openChallenges(loadSave(store).owned ?? []);
+
+/** What the town's exit lists: the open dungeons, then the owned lines' challenges. */
+const townDungeons = (): { id: string; label: string }[] => [...unlockedDungeons(cleared()), ...challenges()].map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
+
 /** After the loadout: the dungeon select when more than one dungeon is open, otherwise straight in. */
 function chooseDungeon(root: HTMLElement, back: () => void): void {
-  if (!needsDungeonSelect(cleared())) {
+  if (!needsDungeonSelect(cleared()) && challenges().length === 0) {
     void play(root);
     return;
   }
-  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), onChoose: (dungeon) => enterDungeon(root, dungeon, () => chooseDungeon(root, back)), onBack: back }));
+  show(root, dungeonSelectScreen({ records: readRecords(store), cleared: cleared(), challenges: challenges(), onChoose: (dungeon) => enterDungeon(root, dungeon, () => chooseDungeon(root, back)), onBack: back }));
 }
 
 /** Today's day of the daily challenge (UTC). */
@@ -520,8 +529,8 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     show(root, nodes, false);
     audio.setMusic('title');
   };
-  const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
+  const dungeons = townDungeons();
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 5), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), difficulty: () => settings.difficulty, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -545,6 +554,28 @@ function townTutor(parent: HTMLElement, onClose: () => void): () => void {
     tutor.dispose();
     overlay.remove();
   };
+}
+
+/** A stall window over the town, centred like the shop (the town waits behind it). */
+function townWindow(parent: HTMLElement, open: { element: HTMLElement; dispose(): void }): () => void {
+  const overlay = h('div', { className: 'town-shop' }, [open.element]);
+  parent.append(overlay);
+  return () => {
+    open.dispose();
+    overlay.remove();
+  };
+}
+
+/** Mimikyu's gacha stall over the town. */
+const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, play: (sound) => audio.play(sound), onBack: onClose }));
+
+/** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
+const townEvolve = (parent: HTMLElement, onClose: () => void): (() => void) =>
+  townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: onClose }));
+
+/** The selected species evolved: play as its new form (with that form's default loadout). */
+function followEvolution(from: SpeciesId, to: SpeciesId): void {
+  if (settings.species === from) update(withSpecies(settings, to));
 }
 
 /** Poochyena's shop over the town (centred, the town waits behind it). */
@@ -926,8 +957,8 @@ function townLobby(root: HTMLElement): void {
     session.begin(def.id, runSeed);
     void play(root, { session, role: 'host', localId: 'p1', seed: runSeed, floor: 1, dungeon: def.id, difficulty: session.difficulty(), online: true });
   };
-  const dungeons = unlockedDungeons(cleared()).map((d) => ({ id: d.id, label: t(d.lore.nameKey) }));
-  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openShrine: () => shrineScreen(root, 'room'), lobby });
+  const dungeons = townDungeons();
+  void openTown({ sheets: sheetsReady(), species: settings.species, dungeons, show: showTown, onDepart: depart, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openShrine: () => shrineScreen(root, 'room'), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1106,6 +1137,12 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
 /** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
 type TownPlace = Pick<TownOptions, 'at' | 'tile'>;
 
+/** Development server only: `&coins=N` sets the saved balance (smoke tests of the stalls). */
+function devCoins(): void {
+  const coins = Number(new URLSearchParams(window.location.search).get('coins'));
+  if (coins > 0) writeSave(store, { ...loadSave(store), coins });
+}
+
 /** Development server only: the `map` and `tile` query of `?screen=town`. */
 function devTownPlace(): TownPlace {
   const params = new URLSearchParams(window.location.search);
@@ -1140,6 +1177,15 @@ function devScreen(root: HTMLElement): boolean {
     // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
     town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),
+    // Mimikyu's gacha stall and Phantump's evolutions on their own (back goes to the title); `&coins=1000` first sets the balance (smoke tests).
+    gacha: () => {
+      devCoins();
+      show(root, [gachaWindow({ store, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) }).element]);
+    },
+    evolve: () => {
+      devCoins();
+      show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onBack: () => titleScreen(root) }).element]);
+    },
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
       const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });

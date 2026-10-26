@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOWN } from '../../src/data/town';
+import { LAGO } from '../../src/data/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { npcLines } from '../../src/town/dialog';
 
@@ -17,10 +18,15 @@ describe('town NPC lines', () => {
     expect(told.at(-1)).toEqual([story.lines[0]]);
   });
 
-  it('the gacha stall gives its flavour, then "coming soon", every time', () => {
-    expect(npcLines(npc('gacha'), 0)).toEqual(npcLines(npc('gacha'), 5));
-    expect(npcLines(npc('gacha'), 0).at(-1)).toBe('town.soon');
-    expect(npc('gacha').opens).toBeUndefined();
+  it('Mimikyu\'s gacha stall and the Lago oracle Phantump give their flavour and then open their window, never "coming soon"', () => {
+    const oracle = LAGO.npcs.find((n) => n.role === 'oracle')!;
+    expect(npc('gacha').species).toBe('mimikyu');
+    expect(oracle.species).toBe('phantump');
+    for (const [stall, opens] of [[npc('gacha'), 'gacha'], [oracle, 'evolve']] as const) {
+      expect(npcLines(stall, 0)).toEqual(npcLines(stall, 5));
+      expect(npcLines(stall, 0)).not.toContain('town.soon');
+      expect(stall.opens).toBe(opens);
+    }
   });
 
   it('the shop gives its flavour and then opens the upgrade shop, never "coming soon"', () => {

@@ -1,0 +1,129 @@
+import { GACHA, GACHA_POOL, type GachaRarity } from '../data/gacha';
+import type { SpeciesId } from '../data/species';
+import { pull, type PullResult } from '../core/gacha';
+import type { KeyValueStore } from '../adapters/storage';
+import { t } from '../i18n';
+import { cursorList } from '../ui/cursor-list';
+import { h, mdWindow, statLine } from '../ui/window';
+import { coinText } from './coin-lines';
+import { loadSave, writeSave, type SaveData } from './save';
+
+/**
+ * Mimikyu's gacha stall (odd/tasks/gacha-evolutions.md T5): an MD-style
+ * window over the town with the balance, the price, the rates per rarity
+ * and the pulls left to a sure rare, and one Pull row. A pull is saved at
+ * once and plays a short reveal in the rarity's colour (a tap on it or the
+ * next pull ends it early). The numbers come from data/gacha.ts. Evolving
+ * is Phantump's window (app/evolve.ts).
+ */
+export interface StallInfo {
+  cost: number;
+  canPull: boolean;
+  /** Pulls until a rare is sure (the hard pity). */
+  pityLeft: number;
+  rates: { rarity: GachaRarity; percent: number; species: SpeciesId[] }[];
+}
+
+export function stallInfo(save: SaveData): StallInfo {
+  const rate = (rarity: GachaRarity) => Math.round((rarity === 'rare' ? GACHA.rareRate : 1 - GACHA.rareRate) * 100);
+  return {
+    cost: GACHA.cost,
+    canPull: save.coins >= GACHA.cost,
+    pityLeft: GACHA.hardPity - (save.pity ?? 0),
+    rates: (['common', 'rare'] as const).map((rarity) => ({ rarity, percent: rate(rarity), species: GACHA_POOL.filter((e) => e.rarity === rarity).map((e) => e.species) })),
+  };
+}
+
+/** One pull from the stored save, written at once; null (nothing written) without the Pokémonedas. */
+export function pullAt(store: KeyValueStore, rng: number): { result: PullResult; save: SaveData } | null {
+  const save = loadSave(store);
+  const pulled = pull(save, rng);
+  if (!pulled) return null;
+  writeSave(store, { ...save, ...pulled.state, owned: [...(pulled.state.owned ?? [])] });
+  return { result: pulled.result, save: loadSave(store) };
+}
+
+/** "¡Abra! (rara)", or a duplicate with its refund. */
+export function revealText(result: PullResult): string {
+  const key = result.duplicate ? 'gacha.reveal.duplicate' : 'gacha.reveal.new';
+  return t(key)
+    .replace('{species}', t(`species.${result.species}`))
+    .replace('{rarity}', t(`gacha.rarity.${result.rarity}`))
+    .replace('{refund}', coinText(result.refund, (k) => t(k)));
+}
+
+/** How long the reveal holds the suspense before it shows the result. */
+export const REVEAL_MS = 1500;
+
+export interface GachaOptions {
+  store: KeyValueStore;
+  play?(sound: 'coin' | 'denied'): void;
+  onBack(): void;
+}
+
+export function gachaWindow(options: GachaOptions): { element: HTMLElement; dispose(): void } {
+  let save = loadSave(options.store);
+  const balance = h('div', { className: 'shop-balance' });
+  const reveal = h('p', { className: 'gacha-reveal' });
+  const effect = h('div', { className: 'shop-effect' }, [reveal, h('p', { className: 'dim', textContent: t('gacha.text') })]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let shown: (() => void) | null = null;
+
+  /** Ends a running reveal at once (the next pull, a tap or closing). */
+  const finishReveal = () => {
+    clearTimeout(timer);
+    shown?.();
+    shown = null;
+  };
+  reveal.addEventListener('click', finishReveal);
+
+  const startReveal = (result: PullResult) => {
+    finishReveal();
+    reveal.className = `gacha-reveal is-${result.rarity}`;
+    reveal.textContent = t('gacha.reveal.wait');
+    shown = () => {
+      reveal.textContent = revealText(result);
+    };
+    timer = setTimeout(finishReveal, REVEAL_MS);
+  };
+
+  const list = cursorList({ items: [], onBack: options.onBack, label: t('gacha.title'), className: 'shop-list' });
+
+  function refresh(): void {
+    const info = stallInfo(save);
+    balance.replaceChildren(
+      statLine(t('screen.coins.balance'), coinText(save.coins, (k) => t(k))),
+      ...info.rates.map((r) => statLine(`${t(`gacha.rarity.${r.rarity}`)} ${r.percent} %`, r.species.map((s) => t(`species.${s}`)).join(', '))),
+      statLine(t('gacha.pity'), t('gacha.pulls').replace('{n}', String(info.pityLeft))),
+    );
+    list.setItems([
+      {
+        label: t('gacha.pull'),
+        value: coinText(info.cost, (k) => t(k)),
+        className: info.canPull ? 'shop-row' : 'shop-row is-disabled',
+        onConfirm: () => {
+          const pulled = pullAt(options.store, (Math.random() * 2 ** 31) | 0);
+          if (!pulled) {
+            options.play?.('denied');
+            return;
+          }
+          options.play?.('coin');
+          save = pulled.save;
+          startReveal(pulled.result);
+          refresh();
+        },
+      },
+      { label: t('menu.back'), onConfirm: options.onBack },
+    ]);
+  }
+
+  refresh();
+  const element = mdWindow({ title: t('gacha.title'), className: 'shop gacha' }, [h('p', { textContent: t('gacha.intro') }), balance, list.element, effect]);
+  return {
+    element,
+    dispose: () => {
+      clearTimeout(timer);
+      list.dispose();
+    },
+  };
+}

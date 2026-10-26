@@ -184,6 +184,11 @@
       /* The move tutor: its long list scrolls inside the window; the build hint in the cursor colour. */
       .tutor .shop-list { max-height: 44vh; overflow-y: auto; }
       .tutor .tutor-build, .loadout-build { margin: 0 0 8px; color: var(--md-cursor); }
+      /* Phantump's stall: the reveal line in the rarity's colour (a tap ends it early). */
+      .gacha .gacha-reveal { min-height: 1.3em; margin: 0 0 4px; cursor: pointer; }
+      .gacha .gacha-reveal.is-common { color: #8fd0ff; }
+      .gacha .gacha-reveal.is-rare { color: #ffd166; }
+      .gacha .shop-effect p { margin: 0; }
       /* Santuario de los Juramentos (src/app/shrine.ts) */
       .shrine { min-width: 36rem; max-width: 46rem; }
       .shrine h3 { margin: 0 0 10px; font-size: 16px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.15em; }

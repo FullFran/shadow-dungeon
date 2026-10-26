@@ -321,7 +321,8 @@ export const LAGO: WorldMap = {
   npcs: [
     { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'] },
     { id: 'keeper', role: 'keeper', species: 'litwick', x: 16, y: 9, lines: ['world.npc.keeper.1', 'world.npc.keeper.2', 'world.npc.keeper.3', 'world.npc.keeper.4'], rotate: true },
-    { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.1', 'town.soon', 'world.npc.oracle.2'] },
+    // The oracle evolves the gacha species (odd/tasks/gacha-evolutions.md T5, user decision 2026-10-26).
+    { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.2', 'world.npc.oracle.evolve', 'world.npc.oracle.open'], opens: 'evolve' },
   ],
   links: [
     { id: 'west', x: 0, y: 11, width: 1, height: 2, to: 'mirador', toLink: 'east' },
