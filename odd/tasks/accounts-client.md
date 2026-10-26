@@ -35,11 +35,11 @@ User request (2026-10-26): "first version of accounts with email + password; clo
 Branch `feat/accounts-client` from main 4934138; one commit per task; forecast ~900-1,200 authored lines (single PR, `ask-on-risk` default; reported to the parent).
 
 ## Tasks
-- [ ] T1 Pure sync logic (src/app/cloud-sync.ts) with tests: emptiness, first-login decision, summaries, push loop (debounce, 409 adoption, offline retry, flush on hide). Route: inline (single new module + test, already understood).
-- [ ] T2 API adapter (src/adapters/account-api.ts) with a fake-fetch test; session storage (src/app/account.ts) with tests. Route: inline.
-- [ ] T3 Account screen + wiring (src/app/account-screen.ts, main.ts, i18n, index.html CSS). Route: inline.
-- [ ] T4 Docs (docs/gdd.md, README.md, .env.example).
-- [ ] T5 Local end-to-end against `go run . serve` (register -> save -> reload -> restored).
+- [x] T1 Pure sync logic (src/app/cloud-sync.ts) with tests: emptiness, first-login decision, summaries, push loop (debounce, 409 adoption, offline retry, flush on hide). Route: inline (one module + test). Commit df7dca1.
+- [x] T2 API adapter (src/adapters/account-api.ts) with a fake-fetch test; session (src/app/account.ts) with tests. Commit 1462f1c.
+- [x] T3 Account screen + wiring (src/app/account-screen.ts, main.ts, i18n, index.html CSS) + wiring guard test. Commit 8605baa.
+- [x] T5 Local end-to-end against the local backend; fixes it found. Commit 562fa07.
+- [x] T4 Docs (docs/gdd.md §12, README, .env.example). Commit f1fb15b.
 
 ## Acceptance
 - typecheck, `npx vitest run --testTimeout=30000`, build, `npm run prove` green.
@@ -47,16 +47,20 @@ Branch `feat/accounts-client` from main 4934138; one commit per task; forecast ~
 - Guest play unchanged (no request is made while signed out).
 
 ## Progress / evidence
-(filled per task)
+- T1: RED observed (module missing), then GREEN 25/25 (tests/app/cloud-sync.test.ts).
+- T2: tests written before the implementation (not run red separately); 31 tests green (account-api, account).
+- T3: `?screen=account` dev hook; tests/app/account-wiring.test.ts guards that every save writer uses main.ts's observed store.
+- T5: local backend (`server/` built from the backend worktree, temp `--dir`, origin http://127.0.0.1:5199) + `tools/mobile/bidi.mjs` at 390x844: register uploads (rev 1, 120 coins) -> a later page write is pushed (1000, rev 2) -> wiped device logs in and gets 1000 back -> device with 50 is asked and keeps "La nube" -> reload keeps the session and save -> delete with confirm (login then 400) and the local save stays. 12/12 checks. The first run found a real hazard: a live page whose storage was wiped pushed an empty save over cloud progress at resume; fixed (`resumeDecision` adopts instead, test-first). Also fixed the guest window running under the touch "Atrás" on phones.
+- Gate: typecheck OK; vitest 226 files / 2707 tests passed; build OK (bundle holds https://sd-api.fullfran.com, no local URL); `npm run prove` 166 cards, 24/24 fights.
 
 ## Parity checklist
-- [ ] Save write points: every `writeSave` call site in the app (shop, tutor, gacha, evolve, coin earnings, challenge rewards, shrine gauntlet) goes through main.ts's store -> observed by `observeKey`.
-- [ ] Save versions: the cloud payload is `sanitize()`d at SAVE_VERSION; a cloud save from an older/newer client reads through `migrate()` + `sanitize()` like a local one.
-- [ ] Solo and co-op: the save is per device/account, so co-op payouts written locally are pushed like solo ones.
-- [ ] i18n es/en for every new string (no em dashes).
-- [ ] GDD (`docs/gdd.md`) and README.
-- [ ] sim/prove harnesses: unaffected (no core change); `npm run prove` green.
+- [x] Save write points: shop, tutor, gacha, evolve, coin earnings, challenge rewards and the shrine gauntlet all write through main.ts's store, which is `observeKey(browserStore())` (account-wiring test fails if a save writer makes its own store).
+- [x] Save versions: payloads are `sanitize()`d at SAVE_VERSION; cloud data reads through `migrate()` + `sanitize()` (`readRemote`, tested with a v1 payload and hostile data).
+- [x] Solo and co-op: payouts of both are local `writeSave` calls, so both are pushed.
+- [x] i18n es/en for every new string, no em dashes (account strings test).
+- [x] GDD §12 and README.
+- [x] sim/prove harnesses: no core change; `npm run prove` green.
 - Pending (not in v1): OAuth linking (Google/Twitch/Discord), password reset and email verification (need SMTP), profiles/nickname sync, settings and notice-board records in the cloud (only the save facade syncs).
 
 ## Next step
-T1.
+Merge into main (current main 76beb88 conflicts only in the title menu row next to "Logros" and in the appended i18n keys: keep both; the account row then sits at index 9, so its back becomes `titleScreen(root, 9)`). Then a production check on https://www.fullfran.com/shadow-dungeon/ with one real account deleted afterwards.
