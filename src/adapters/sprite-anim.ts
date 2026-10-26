@@ -312,6 +312,7 @@ const ENEMY_ATTACK_ANIM: Readonly<Partial<Record<EnemyState['species'], string>>
   'eclipse-nest': 'Idle',
   'eclipse-hunter': 'Attack',
   'eclipse-echo': 'Shoot',
+  'mimikyu-wound': 'Shoot',
   'sima-herald': 'Shoot',
 };
 

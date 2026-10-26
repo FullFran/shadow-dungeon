@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
 import { earnChallengeReward, loadSave, writeSave, EMPTY_SAVE } from '../../src/app/save';
-import { challengeMisfits, challengeOpen, challengeReward, openChallenges } from '../../src/core/challenge';
+import { attackTypesOf, canHurtLine, challengeMisfits, challengeOpen, challengeReward, openChallenges, typeHurts } from '../../src/core/challenge';
+import { isWound, storyOf } from '../../src/data/story-quests';
 import { dungeonChoices } from '../../src/core/dungeon-select';
 import { evolutionOf, lineOf } from '../../src/core/evolution';
 import { awakeningsOf } from '../../src/data/player-evolutions';
@@ -27,9 +28,16 @@ describe('challenge dungeons as data', () => {
     for (const d of CHALLENGES) expect(lineOf(d.challenge!.line)).toBe(d.challenge!.line);
   });
 
-  it('three generated floors and a boss that already guards a main dungeon\'s arena', () => {
+  it('three generated floors and a boss that already guards a main dungeon\'s arena (a line with a Senda: its seven floors and its wound)', () => {
     const mainArenas = DUNGEONS.flatMap((d) => d.plan.flatMap((p) => (p.kind === 'room' ? [p.room] : [])));
     for (const d of CHALLENGES) {
+      if (storyOf(d.challenge!.line)) {
+        // docs/story-quests.md: G G mid-boss G G mid-boss wound, the mid-bosses from the main dungeons' arenas or a throne with a way on.
+        expect(d.plan.map((p) => (p.kind === 'room' ? (p.role ?? 'boss') : 'generated')), d.id).toEqual(['generated', 'generated', 'midboss', 'generated', 'generated', 'midboss', 'boss']);
+        for (const p of d.plan) if (p.kind === 'room' && p.role === 'midboss') expect(ROOMS[p.room].exit, `${d.id} ${p.room}`).not.toBeNull();
+        expect(isWound(guardianOf(d)!), d.id).toBe(true);
+        continue;
+      }
       expect(d.plan.slice(0, 3).every((p) => p.kind === 'generated'), d.id).toBe(true);
       const boss = d.plan[3]!;
       expect(d.plan).toHaveLength(4);
@@ -39,14 +47,14 @@ describe('challenge dungeons as data', () => {
     }
   });
 
-  it('runs: every floor starts, the fourth is the boss floor, and the id round-trips', () => {
+  it('runs: every floor starts, the last is the boss floor, and the id round-trips', () => {
     for (const d of CHALLENGES) {
       expect(dungeonById(d.id)).toBe(d);
-      for (const floor of [1, 2, 3, 4]) {
+      for (let floor = 1; floor <= d.plan.length; floor++) {
         const { run, world } = startRun(7, {}, floor, d.id);
         expect(run.dungeon).toBe(d.id);
-        expect(floorCount(run)).toBe(4);
-        expect(isBossFloor(run)).toBe(floor === 4);
+        expect(floorCount(run)).toBe(d.plan.length);
+        expect(isBossFloor(run)).toBe(floor === d.plan.length);
         expect(world.enemies.length, `${d.id} F${floor}`).toBeGreaterThan(0);
       }
     }
@@ -84,6 +92,36 @@ describe('challenge fit: the line can hurt what it meets', () => {
       expect(homes.has(undefined), d.id).toBe(false);
     }
     expect(new Set(CHALLENGES.map(guardianOf)).size).toBe(CHALLENGES.length);
+  });
+});
+
+describe('challenge reach: what a challenge sends can hurt its line (owner playtest 2026-10-26)', () => {
+  /** Every species a challenge's arenas hold (mid-bosses and the last boss). */
+  const bossesOf = (d: (typeof CHALLENGES)[number]): SpeciesId[] => d.plan.flatMap((p) => (p.kind === 'room' ? ROOMS[p.room].spawns.map((s) => s.species) : []));
+  const TIERS = ['easy', 'normal', 'hard', 'nightmare'] as const;
+
+  it('reads attacks from any behaviour, and knows Flash Fire and type immunities', () => {
+    expect([...attackTypesOf('duskull', 'normal')]).toContain('fire');
+    expect(typeHurts('fire', 'litwick')).toBe(false);
+    expect(typeHurts('fire', 'chandelure')).toBe(false);
+    expect(typeHurts('poison', 'empoleon')).toBe(false);
+    expect(typeHurts('normal', 'mimikyu')).toBe(false);
+    expect(typeHurts('ghost', 'mimikyu')).toBe(true);
+    expect([...attackTypesOf('mimikyu-wound', 'nightmare')].sort()).toEqual(['fairy', 'ghost']);
+  });
+
+  it.each(CHALLENGES.map((d) => [d.id, d] as const))('%s: at most 10 %% of the spawn weight cannot hurt every form of the line, on every tier', (_, d) => {
+    const line = d.challenge!.line;
+    for (const tier of TIERS) {
+      const weight = (e: (typeof d.spawns.pool)[number]) => e.weights.reduce((a, b) => a + b, 0);
+      const total = d.spawns.pool.reduce((sum, e) => sum + weight(e), 0);
+      const harmless = d.spawns.pool.filter((e) => !canHurtLine(e.species, line, tier));
+      expect(harmless.reduce((sum, e) => sum + weight(e), 0) / total, `${tier}: ${harmless.map((e) => e.species).join(', ')}`).toBeLessThanOrEqual(0.1);
+    }
+  });
+
+  it.each(CHALLENGES.map((d) => [d.id, d] as const))('%s: every boss has an attack that hurts every form of the line, on every tier', (_, d) => {
+    for (const tier of TIERS) for (const boss of bossesOf(d)) expect(canHurtLine(boss, d.challenge!.line, tier), `${boss} ${tier}`).toBe(true);
   });
 });
 

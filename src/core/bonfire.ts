@@ -11,7 +11,8 @@ import { vec, type Vec2 } from './vec';
  * own state as it was then. Later in the run a full party wipe may go back
  * there instead of ending (the tier's allowance, `respawnsLeft`); the floors
  * after it come again from the run seed. Not in the Sima, the shrine, nor a
- * dungeon without a mid-boss (the challenges).
+ * dungeon without a mid-boss (a plain challenge; a Senda has two:
+ * docs/story-quests.md).
  */
 
 /** Whether this floor's room lights a bonfire once cleared: a mid-boss room outside the Sima. */

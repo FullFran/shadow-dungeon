@@ -11,6 +11,9 @@ import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave, wearShinyAt, writeSave, type SaveData } from './save';
+import { bondLine } from './story';
+import { storyKeys } from '../data/story-quests';
+import type { ChallengeLine } from '../data/dungeons';
 
 /**
  * Phantump's evolutions (odd/tasks/gacha-evolutions.md T5,
@@ -95,7 +98,18 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
     describeLine.textContent = describeAt[index] ?? t(isTouchUi() ? 'shop.hint.touch' : 'evolve.hint');
   };
 
-  const rowText = (row: EvolveRow) =>
+  /** The line's bond with you (its Senda's chapters closed): its newest line, and Phantump's word once the third is closed. */
+  const bondText = (row: EvolveRow): string => {
+    const line = lineOf(row.species) as ChallengeLine;
+    const bond = bondLine(save, line);
+    if (!bond) return '';
+    const words = t('story.bond').replace('{n}', String(bond.level)).replace('{species}', t(`species.${row.species}`)).replace('{text}', t(bond.key));
+    return bond.level >= 3 ? `${words} ${t(storyKeys.phantump(line))}` : words;
+  };
+
+  const rowText = (row: EvolveRow) => [rowCost(row), bondText(row)].filter(Boolean).join(' ');
+
+  const rowCost = (row: EvolveRow) =>
     row.to === null
       ? t(row.awaken ? 'evolve.awaken.full' : 'evolve.final')
       : t('evolve.cost')

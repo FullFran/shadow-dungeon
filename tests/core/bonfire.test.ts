@@ -22,7 +22,7 @@ describe('bonfire', () => {
     for (const d of DIFFICULTIES) expect(respawnsLeft(d, 0) === null || respawnsLeft(d, 0)! >= 0).toBe(true);
   });
 
-  it('every main dungeon with a mid-boss has its bonfire there; the Sima and the challenges (no mid-boss) have none', () => {
+  it('every main dungeon with a mid-boss has its bonfire there; the Sima and the plain challenges (no mid-boss) have none; a Senda lights one on each of its mid-bosses', () => {
     for (const def of DUNGEONS) {
       const floors = def.endless ? 30 : def.plan.length;
       for (let floor = 1; floor <= floors; floor++) {
@@ -32,7 +32,7 @@ describe('bonfire', () => {
       }
       if (!def.endless) expect(midbossFloor(def)).toBeGreaterThan(0);
     }
-    for (const def of CHALLENGES) for (let floor = 1; floor <= def.plan.length; floor++) expect(bonfireFloor({ dungeon: def.id, floor })).toBe(false);
+    for (const def of CHALLENGES) for (let floor = 1; floor <= def.plan.length; floor++) { const plan = def.plan[floor - 1]!; expect(bonfireFloor({ dungeon: def.id, floor }), `${def.id} ${floor}`).toBe(plan.kind === 'room' && plan.role === 'midboss'); }
   });
 
   it('lights once the mid-boss falls, not before, and only once', () => {
