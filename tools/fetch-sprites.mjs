@@ -116,6 +116,15 @@ const TARGETS = [
   { dex: '0089', form: '0000', species: 'muk', formName: 'base' },
   { dex: '0454', form: '0000', species: 'toxicroak', formName: 'base' },
   { dex: '0229', form: '0000', species: 'houndoom', formName: 'base' },
+  // The starters' Sendas' new bosses (docs/story-quests.md; AnimData.xml 2026-10-26: native Idle, Walk, Attack, Shoot,
+  // Charge and Hurt; Alolan Marowak left out, its Shoot is a copy of Strike).
+  { dex: '0630', form: '0000', species: 'mandibuzz', formName: 'base' },
+  { dex: '0115', form: '0000', species: 'kangaskhan', formName: 'base' },
+  { dex: '0477', form: '0000', species: 'dusknoir', formName: 'base' },
+  { dex: '0354', form: '0000', species: 'banette', formName: 'base' },
+  { dex: '0429', form: '0000', species: 'mismagius', formName: 'base' },
+  { dex: '0352', form: '0000', species: 'kecleon', formName: 'base' },
+  { dex: '0442', form: '0000', species: 'spiritomb', formName: 'base' },
   // The Refugio's move tutor (tracker.json 2026-10-26: full sheet set, CHUNSOFT + PMDCollab).
   { dex: '0235', form: '0000', species: 'smeargle', formName: 'base' },
   // Gacha evolution lines (odd/tasks/gacha-evolutions.md T3).
