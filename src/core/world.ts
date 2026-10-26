@@ -42,6 +42,8 @@ export interface WorldOptions {
   party?: number;
   /** Awakening steps of the local player's species (Mimikyu's; core/evolution.ts `stageBonus`; absent = none). */
   awakened?: number;
+  /** The local player wears its line's shiny skin (cosmetic only; core/shiny.ts). */
+  shiny?: boolean;
 }
 
 /**
@@ -104,8 +106,10 @@ export function createWorld({
   difficulty,
   party,
   awakened,
+  shiny,
 }: WorldOptions): WorldState {
-  const player = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1, awakened ?? 0), difficulty);
+  const created = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1, awakened ?? 0), difficulty);
+  const player = shiny ? { ...created, shiny: true } : created;
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),

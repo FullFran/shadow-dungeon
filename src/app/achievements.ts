@@ -37,6 +37,8 @@ function values(def: AchievementDef, tr: Tr): Record<string, string> {
       return { species: tr(`species.${r.species}`) };
     case 'awaken':
       return { species: tr(`species.${r.species}`), n: String(r.step), steps: String(awakeningsOf(r.species).length) };
+    case 'shiny':
+      return { species: tr(`species.${r.line}`) };
     case 'earned':
       return { n: String(r.coins) };
     default:

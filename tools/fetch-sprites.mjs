@@ -5,9 +5,12 @@
 // (the other sections, such as Font and Music, are kept as they are).
 //
 //   node tools/fetch-sprites.mjs
+//   node tools/fetch-sprites.mjs --only=shiny   (only the shiny sheets; the
+//     rest of sprite-meta.json is kept, CREDITS.md is regenerated in full)
 //
 // SpriteCollab layout: sprite/<dex4>/ is the base form, sprite/<dex4>/<form4>/
-// an alternate form. Sheets have one column per frame and one row per
+// an alternate form and sprite/<dex4>/<form4>/0001/ its shiny (local folder
+// public/sprites/<dex4>/<form4>/0001/, meta key "<dex4>/<form4>/0001"). Sheets have one column per frame and one row per
 // direction (see DIRECTIONS). Frame durations are in 1/60 s ticks.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -135,6 +138,12 @@ const TARGETS = [
   { dex: '0105', form: '0000', species: 'marowak', formName: 'base' },
 ];
 
+// Every playable sprite also has a shiny (odd/tasks/shiny-echo.md; AnimData 2026-10-26: all 21 have
+// Idle, Walk, Attack, Shoot, Charge and Hurt). Busted Mimikyu is a playable sheet too.
+const PLAYABLE = new Set(['mimikyu', 'zorua', 'litwick', 'cubone', 'abra', 'kadabra', 'alakazam', 'piplup', 'prinplup', 'empoleon', 'shinx', 'luxio', 'luxray', 'axew', 'fraxure', 'haxorus', 'zoroark', 'lampent', 'chandelure', 'marowak']);
+const SHINY_TARGETS = TARGETS.filter((t) => PLAYABLE.has(t.species)).map((t) => ({ ...t, shiny: '0001', formName: `${t.formName}-shiny` }));
+const ALL_TARGETS = [...TARGETS, ...SHINY_TARGETS];
+
 // Animations the game uses, with fallbacks when a sheet does not exist.
 const WANTED = {
   Idle: ['Walk'],
@@ -168,12 +177,14 @@ async function fetchText(url) {
   return buffer.toString('utf8');
 }
 
-const folderUrl = (target) =>
-  `${RAW}/sprite/${target.dex}${target.form === '0000' ? '' : `/${target.form}`}`;
+/** The target's folder under sprite/ (and under public/sprites/, with the base form's "0000"). */
+const remotePath = (target) => `${target.dex}${target.form === '0000' && !target.shiny ? '' : `/${target.form}`}${target.shiny ? `/${target.shiny}` : ''}`;
+const localKey = (target) => `${target.dex}/${target.form}${target.shiny ? `/${target.shiny}` : ''}`;
+const folderUrl = (target) => `${RAW}/sprite/${remotePath(target)}`;
 
 async function downloadTarget(target) {
   const base = folderUrl(target);
-  const outDir = join(OUT_SPRITES, target.dex, target.form);
+  const outDir = join(OUT_SPRITES, ...localKey(target).split('/'));
   await mkdir(outDir, { recursive: true });
 
   const { shadowSize, anims } = parseAnimData(await fetchText(`${base}/AnimData.xml`));
@@ -183,12 +194,12 @@ async function downloadTarget(target) {
   for (const [wanted, fallbacks] of Object.entries(WANTED)) {
     const picked = pickAnim(anims, wanted, fallbacks);
     if (!picked) {
-      if (fallbacks.length) throw new Error(`${target.dex}/${target.form}: no sheet for ${wanted}`);
+      if (fallbacks.length) throw new Error(`${localKey(target)}: no sheet for ${wanted}`);
       continue;
     }
     if (!downloaded.has(picked.name)) {
       const sheet = await fetchBuffer(`${base}/${picked.name}-Anim.png`);
-      if (!sheet) throw new Error(`${target.dex}/${target.form}: ${picked.name}-Anim.png missing`);
+      if (!sheet) throw new Error(`${localKey(target)}: ${picked.name}-Anim.png missing`);
       await writeFile(join(outDir, `${picked.name}-Anim.png`), sheet);
       const image = decodePng(sheet);
       const shadow = await fetchBuffer(`${base}/${picked.name}-Shadow.png`);
@@ -202,7 +213,7 @@ async function downloadTarget(target) {
     const { frameWidth, frameHeight, durations, ...timing } = picked.anim;
     const frameCount = Math.round(sheet.sheetWidth / frameWidth);
     if (frameCount !== durations.length) {
-      throw new Error(`${target.dex}/${target.form} ${picked.name}: ${frameCount} columns vs ${durations.length} durations`);
+      throw new Error(`${localKey(target)} ${picked.name}: ${frameCount} columns vs ${durations.length} durations`);
     }
     meta.anims[wanted] = {
       file: `${picked.name}-Anim.png`,
@@ -216,7 +227,7 @@ async function downloadTarget(target) {
       anchor: sheet.anchor,
     };
   }
-  console.log(`${target.dex}/${target.form} ${target.species} (${target.formName}): ${downloaded.size} sheets`);
+  console.log(`${localKey(target)} ${target.species} (${target.formName}): ${downloaded.size} sheets`);
   return meta;
 }
 
@@ -227,7 +238,7 @@ async function collectCredits(targets, names) {
     for (const credit of parseCredits(text)) {
       const { name, contact } = resolveAuthor(names, credit.author);
       const entry = perArtist.get(name) ?? { contact, sprites: new Set() };
-      entry.sprites.add(`${target.species} (${target.dex}${target.form === '0000' ? '' : `/${target.form}`})`);
+      entry.sprites.add(`${target.species}${target.shiny ? ' shiny' : ''} (${remotePath(target)})`);
       perArtist.set(name, entry);
     }
   }
@@ -235,14 +246,17 @@ async function collectCredits(targets, names) {
 }
 
 async function main() {
+  const onlyShiny = process.argv.includes('--only=shiny');
+  const kept = onlyShiny ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
   const meta = { directions: DIRECTIONS, ticksPerSecond: 60, sprites: {} };
-  for (const target of TARGETS) {
-    meta.sprites[`${target.dex}/${target.form}`] = await downloadTarget(target);
+  for (const target of ALL_TARGETS) {
+    const key = localKey(target);
+    meta.sprites[key] = onlyShiny && !target.shiny && kept[key] ? kept[key] : await downloadTarget(target);
   }
   await writeFile(OUT_META, `${JSON.stringify(meta, null, 2)}\n`);
 
   const names = parseCreditNames(await fetchText(`${RAW}/credit_names.txt`));
-  const perArtist = await collectCredits(TARGETS, names);
+  const perArtist = await collectCredits(ALL_TARGETS, names);
   // Keep the hand-written sections (Font, Music...) of the current file.
   const existing = await readFile(OUT_CREDITS, 'utf8').catch(() => null);
   await writeFile(OUT_CREDITS, mergeCredits(existing, creditsMarkdown(perArtist)));

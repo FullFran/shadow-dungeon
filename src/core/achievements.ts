@@ -20,6 +20,8 @@ export interface ProgressSnapshot {
   awakened?: Readonly<Partial<Record<SpeciesId, number>>>;
   /** Lifetime Pokémonedas earned. */
   earned?: number;
+  /** Lines with their shiny skin unlocked. */
+  shinies?: readonly SpeciesId[];
 }
 
 /** Whether `def` holds for this run (null: no run, the save only) and save. */
@@ -44,6 +46,8 @@ export function achieved(def: AchievementDef, report: RunReport | null, save: Pr
       return owned.length > 0;
     case 'collectAll':
       return GACHA_POOL.every((p) => owned.some((id) => lineOf(id) === lineOf(p.species)));
+    case 'shiny':
+      return (save.shinies ?? []).includes(rule.line);
     case 'coop':
       return won && report!.coop;
     case 'earned':

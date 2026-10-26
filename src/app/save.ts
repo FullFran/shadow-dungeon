@@ -6,6 +6,8 @@ import { lineOf } from '../core/evolution';
 import type { Materials } from '../core/collection';
 import { awakeningsOf, MATERIAL_TIERS } from '../data/player-evolutions';
 import { challengeReward } from '../core/challenge';
+import { challengeShiny, SHINY_LINES } from '../core/shiny';
+import { GACHA } from '../data/gacha';
 import type { DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
@@ -31,6 +33,7 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
  *    Since odd/tasks/roster-parity.md (same version, optional fields only): `owned` also holds evolved
  *    starters, `materials` the starters' lines, and `awakened` Mimikyu's awakening steps.
  * 4: achievements, lifetime Pokémonedas and missions (odd/tasks/achievements-missions.md); a v3 save reads with none.
+ *    Since odd/tasks/shiny-echo.md (same version, optional fields only): `shinies`, `shinyWorn` and `shinyPity`.
  */
 export const SAVE_VERSION = 4;
 
@@ -56,6 +59,12 @@ export interface SaveData {
   earned?: number;
   /** The notice board's missions: accepted with their progress, and claimed (absent = none; core/missions.ts). */
   missions?: MissionState;
+  /** Lines with their shiny skin unlocked, by first form (absent = none; core/shiny.ts). */
+  shinies?: readonly SpeciesId[];
+  /** Lines whose skin is worn, a subset of `shinies` (absent = none). */
+  shinyWorn?: readonly SpeciesId[];
+  /** Gacha pulls since the last shiny (absent = 0). */
+  shinyPity?: number;
 }
 
 export const EMPTY_SAVE: SaveData = { version: SAVE_VERSION, coins: 0, upgrades: {} };
@@ -97,6 +106,9 @@ export function sanitize(raw: unknown): SaveData {
   const achievements = sanitizeAchievements(raw.achievements);
   const earned = wholeCount(raw.earned);
   const missions = sanitizeMissions(raw.missions);
+  const shinies = sanitizeLines(raw.shinies);
+  const shinyWorn = shinies ? sanitizeLines(raw.shinyWorn)?.filter((line) => shinies.includes(line)) : null;
+  const shinyPity = Math.min(wholeCount(raw.shinyPity), GACHA.shinyPity - 1);
   return {
     version: SAVE_VERSION,
     coins,
@@ -110,7 +122,18 @@ export function sanitize(raw: unknown): SaveData {
     ...(achievements ? { achievements } : {}),
     ...(earned > 0 ? { earned } : {}),
     ...(missions ? { missions } : {}),
+    ...(shinies ? { shinies } : {}),
+    ...(shinyWorn && shinyWorn.length > 0 ? { shinyWorn } : {}),
+    ...(shinyPity > 0 ? { shinyPity } : {}),
   };
+}
+
+/** Skin lines: first forms of playable lines, once each, in the order stored; null when none. */
+function sanitizeLines(raw: unknown): SpeciesId[] | null {
+  if (!Array.isArray(raw)) return null;
+  const lines: SpeciesId[] = [];
+  for (const id of raw) if (SHINY_LINES.some((l) => l === id) && !lines.includes(id)) lines.push(id);
+  return lines.length > 0 ? lines : null;
 }
 
 /**
@@ -258,10 +281,14 @@ export function earnCoins(store: KeyValueStore, amount: number): SaveData {
   return next;
 }
 
-/** Pays a run's challenge materials (core/challenge.ts) into the stored save and returns it; any other run changes nothing. */
+/**
+ * Pays a run's challenge materials (core/challenge.ts) and, on Pesadilla, a
+ * starter line's shiny skin (core/shiny.ts) into the stored save and returns
+ * it; any other run changes nothing.
+ */
 export function earnChallengeReward(store: KeyValueStore, dungeon: DungeonDef, victory: boolean, difficulty: Difficulty): SaveData {
   const save = loadSave(store);
-  const next = challengeReward(save, dungeon, victory, difficulty);
+  const next = challengeShiny(challengeReward(save, dungeon, victory, difficulty), dungeon, victory, difficulty);
   if (next !== save) writeSave(store, next);
   return next;
 }

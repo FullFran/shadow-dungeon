@@ -1,6 +1,6 @@
 import { DIFFICULTIES, type Difficulty } from './difficulty';
 import { CHALLENGES, DUNGEONS, guardianOf, type DungeonDef, type DungeonId } from './dungeons';
-import { PLAYER_AWAKENINGS, PLAYER_EVOLUTIONS } from './player-evolutions';
+import { lineRoot, PLAYER_AWAKENINGS, PLAYER_EVOLUTIONS } from './player-evolutions';
 import { SIMA_BANDS } from './sima';
 import { PLAYABLE_SPECIES, type SpeciesId } from './species';
 
@@ -10,7 +10,7 @@ import { PLAYABLE_SPECIES, type SpeciesId } from './species';
  * evolution, awakening or Sima stratum gets its achievements with no edit here. The
  * rules are evaluated by core/achievements.ts from run-end reports and the
  * save; a few pay a small Pokémonedas reward, none gives power. Names come
- * from i18n templates (`achievement.<family>.title`) filled with the
+ * from i18n templates (`achievement.<kind>.title`) filled with the
  * content's own names. Provisional rewards.
  */
 export type AchievementRule =
@@ -30,6 +30,8 @@ export type AchievementRule =
   | { kind: 'firstPull' }
   /** Own every gacha line. */
   | { kind: 'collectAll' }
+  /** Unlock the shiny skin of `line` (its first form; core/shiny.ts). */
+  | { kind: 'shiny'; line: SpeciesId }
   /** Win any dungeon in a party of two or more. */
   | { kind: 'coop' }
   /** Earn `coins` Pokémonedas in total (spending never lowers it). */
@@ -37,10 +39,10 @@ export type AchievementRule =
   /** Hidden: fall on the very first floor. */
   | { kind: 'stumble' };
 
-export type AchievementFamily = 'clear' | 'flawless' | 'depth' | 'species' | 'evolve' | 'gacha' | 'coop' | 'coins' | 'secret';
+export type AchievementFamily = 'clear' | 'flawless' | 'depth' | 'species' | 'evolve' | 'gacha' | 'shiny' | 'coop' | 'coins' | 'secret';
 
 /** The families in the order the achievements window lists them. */
-export const ACHIEVEMENT_FAMILIES: readonly AchievementFamily[] = ['clear', 'flawless', 'depth', 'species', 'evolve', 'gacha', 'coop', 'coins', 'secret'];
+export const ACHIEVEMENT_FAMILIES: readonly AchievementFamily[] = ['clear', 'flawless', 'depth', 'species', 'evolve', 'gacha', 'shiny', 'coop', 'coins', 'secret'];
 
 export interface AchievementDef {
   id: string;
@@ -60,6 +62,7 @@ export const ACHIEVEMENT_REWARDS = {
   evolve: 20,
   firstPull: 0,
   collectAll: 50,
+  shiny: 30,
   coop: 30,
   stumble: 10,
 } as const;
@@ -85,6 +88,8 @@ function generate(): AchievementDef[] {
     ),
     { id: 'gacha-first-pull', family: 'gacha', rule: { kind: 'firstPull' }, reward: ACHIEVEMENT_REWARDS.firstPull },
     { id: 'gacha-collect-all', family: 'gacha', rule: { kind: 'collectAll' }, reward: ACHIEVEMENT_REWARDS.collectAll },
+    // One per line with a skin (the first forms of the playable species: core/shiny.ts `SHINY_LINES`).
+    ...PLAYABLE_SPECIES.filter((id) => lineRoot(id) === id).map((line): AchievementDef => ({ id: `shiny-${line}`, family: 'shiny', rule: { kind: 'shiny', line }, reward: ACHIEVEMENT_REWARDS.shiny })),
     { id: 'coop-clear', family: 'coop', rule: { kind: 'coop' }, reward: ACHIEVEMENT_REWARDS.coop },
     ...EARNED_MILESTONES.map((coins): AchievementDef => ({ id: `earned-${coins}`, family: 'coins', rule: { kind: 'earned', coins }, reward: 0 })),
     { id: 'secret-stumble', family: 'secret', rule: { kind: 'stumble' }, reward: ACHIEVEMENT_REWARDS.stumble, hidden: true },

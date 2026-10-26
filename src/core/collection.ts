@@ -5,10 +5,11 @@ import { isPlayable, isStarter, STARTER_SPECIES, type SpeciesId } from '../data/
  * The player's collection (odd/tasks/gacha-evolutions.md), pure: the species
  * won at the gacha and the evolved starters, kept as their current form (an
  * evolution replaces it), the awakening steps of the species that never
- * evolve (Mimikyu), the evolution materials per line and the gacha's pity
- * counter. The save facade (app/save.ts) stores it; the starters are always
- * owned and only listed once evolved (odd/tasks/roster-parity.md). Pure and
- * portable so a server can run the same rules later.
+ * evolve (Mimikyu), the evolution materials per line, the gacha's pity
+ * counters and the shiny skins (unlocked and worn, per line). The save
+ * facade (app/save.ts) stores it; the starters are always owned and only
+ * listed once evolved (odd/tasks/roster-parity.md). Pure and portable so a
+ * server can run the same rules later.
  */
 export interface Collection {
   coins: number;
@@ -20,6 +21,12 @@ export interface Collection {
   awakened?: Readonly<Partial<Record<SpeciesId, number>>>;
   /** Gacha pulls since the last rare (the pity counter). */
   pity?: number;
+  /** Lines (keyed by their first form) whose shiny skin is unlocked (core/shiny.ts). */
+  shinies?: readonly SpeciesId[];
+  /** Lines whose unlocked shiny skin is worn (a subset of `shinies`). */
+  shinyWorn?: readonly SpeciesId[];
+  /** Gacha pulls since the last shiny (its own pity counter). */
+  shinyPity?: number;
 }
 
 /** A line's materials, per tier. */

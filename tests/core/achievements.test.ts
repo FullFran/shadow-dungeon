@@ -72,7 +72,7 @@ describe('achievements as data', () => {
 });
 
 /** A run report and a save that should unlock `def` (each rule's witness). */
-function witness(def: AchievementDef): { report: RunReport | null; save: { owned?: string[]; earned?: number; awakened?: Record<string, number> } } {
+function witness(def: AchievementDef): { report: RunReport | null; save: { owned?: string[]; earned?: number; awakened?: Record<string, number>; shinies?: string[] } } {
   const r = def.rule;
   switch (r.kind) {
     case 'clear':
@@ -91,6 +91,8 @@ function witness(def: AchievementDef): { report: RunReport | null; save: { owned
       return { report: null, save: { owned: [GACHA_POOL[0]!.species] } };
     case 'collectAll':
       return { report: null, save: { owned: GACHA_POOL.map((p) => p.species) } };
+    case 'shiny':
+      return { report: null, save: { shinies: [r.line] } };
     case 'coop':
       return { report: report({ coop: true }), save: {} };
     case 'earned':
