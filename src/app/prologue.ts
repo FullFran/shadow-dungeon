@@ -34,6 +34,8 @@ export interface PrologueOptions {
   draw?(ctx: CanvasRenderingContext2D, panel: CinematicPanel, time: SceneTime, camera: Shot, alpha: number): void;
   /** Accessible name of the screen (default: the Prologue title entry). */
   label?: string;
+  /** Reads a narration key (default: the i18n `t`); the Sima's scenes fill in the floor reached. */
+  text?(key: string): string;
   /** Styles the narration lines when a panel starts (a herald's title card: its name big, in its colour). */
   styleLines?(panel: CinematicPanel, lines: readonly HTMLElement[]): void;
 }
@@ -108,7 +110,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
 
   const renderText = (index: number, localMs: number, alpha: number) => {
     const panel = panels[index]!;
-    const strings = panel.lines.map((key) => [...t(key)]);
+    const strings = panel.lines.map((key) => [...(options.text ?? t)(key)]);
     const counts = revealedChars(panel, localMs, strings.map((s) => s.length));
     const key = `${index}:${counts.join(',')}`;
     if (index !== shownPanel) {
