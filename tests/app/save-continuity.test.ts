@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
 import { httpAccountApi } from '../../src/adapters/account-api';
 import { createAccount } from '../../src/app/account';
-import { observeKey, type Timers } from '../../src/app/cloud-sync';
+import { observeKey, readRemote, type Timers } from '../../src/app/cloud-sync';
 import { loadSave, parseSave, SAVE_KEY, SAVE_VERSION, writeSave, type SaveData } from '../../src/app/save';
 import { defaultSettings, loadSettings } from '../../src/app/settings';
 import { rosterOf } from '../../src/core/collection';
+import { familyProgress } from '../../src/core/achievements';
+import { recordPast } from '../../src/app/progress';
 import { readRecords, RECORDS_KEY } from '../../src/town/records';
 import { LEADERBOARD_KEY, readBoard } from '../../src/town/leaderboard';
 import { readShrine, SHRINE_KEY } from '../../src/town/shrine-records';
@@ -114,5 +116,17 @@ describe('progress continuity from the deployed saves', () => {
     writeSave(store, today);
     const { missions: _empty, ...rest } = today;
     expect(loadSave(store)).toEqual(rest);
+  });
+
+  it('achievements unlocked on load survive a reload and the trip through the cloud', () => {
+    const store = deviceWith(v2Storage);
+    const { save } = recordPast(store, Date.UTC(2026, 9, 26));
+    expect(Object.keys(save.achievements ?? {}).length).toBeGreaterThan(0);
+    // A reload is a fresh read of the same strings (the achievements window reads loadSave(store).achievements).
+    const reloaded = loadSave(deviceWith({ [SAVE_KEY]: store.get(SAVE_KEY)! }));
+    expect(reloaded).toEqual(save);
+    expect(familyProgress(reloaded.achievements ?? {}).reduce((n, f) => n + f.done, 0)).toBe(Object.keys(save.achievements ?? {}).length);
+    // Cloud sync pushes the sanitized save and reads it back the same way.
+    expect(readRemote(JSON.parse(JSON.stringify(reloaded)))).toEqual(save);
   });
 });
