@@ -2910,7 +2910,7 @@
   "species.sima-not-yours": "Una herida que no es tuya",
   "sima.stray.nameless": "Planta {floor} · Alguien que bajó y no volvió",
   "sima.stray.known": "Planta {floor} · {epithet}",
-  "sima.stray.log.nameless": "Detrás de la niebla espera alguien que bajó y no volvió. Puedes seguir de largo: la escalera está a un lado.",
+  "sima.stray.log.nameless": "Tras la niebla espera alguien que no volvió. La escalera está a un lado.",
   "sima.stray.log.known": "Es {name}. {line} ya lo dejó atrás. Este no lo sabe.",
   "sima.wound.nameless": "Planta {floor} · Lo que el eclipse se quedó de alguien",
   "sima.wound.known": "Planta {floor} · {epithet}",

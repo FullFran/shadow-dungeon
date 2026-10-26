@@ -142,13 +142,13 @@ export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'> & Partial<
   return (plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless) || strayHere(run);
 }
 
-/** The way down past a lost shadow's fog: stairs in the antechamber's left corner (the shadow is optional). */
-const STRAY_STAIRS = { x: 40, width: 40, height: 40 } as const;
+/** The way down past a lost shadow's fog: stairs in the antechamber, `left` px left of its middle (in view from the start; the shadow is optional). */
+const STRAY_STAIRS = { left: 150, width: 40, height: 40 } as const;
 
 /** The stairs of a stray floor still behind its fog (in the antechamber), or none. */
 export function strayStairs(world: WorldState): WorldState['arena']['stairs'] {
   if (!world.fogWall) return undefined;
-  return { x: STRAY_STAIRS.x, y: world.fogWall.line + Math.round((FOG_ANTE - STRAY_STAIRS.height) / 2), width: STRAY_STAIRS.width, height: STRAY_STAIRS.height };
+  return { x: Math.round(world.arena.width / 2 - STRAY_STAIRS.left - STRAY_STAIRS.width / 2), y: world.fogWall.line + Math.round((FOG_ANTE - STRAY_STAIRS.height) / 2), width: STRAY_STAIRS.width, height: STRAY_STAIRS.height };
 }
 
 /**

@@ -513,7 +513,8 @@ function drawPortrait(ctx: CanvasRenderingContext2D, sheets: SheetStore, sprite:
   drawPanel(ctx, x, y, size, size);
   if (!meta || !image) return;
   const frame = frameAtTime(meta.durations, timeMs, true);
-  const scale = Math.max(1, Math.floor((size - 8) / Math.max(meta.frameWidth, meta.frameHeight)));
+  // Close up, like a Mystery Dungeon portrait: twice the sheet, the face in the frame.
+  const scale = 2;
   const dw = meta.frameWidth * scale;
   const dh = meta.frameHeight * scale;
   ctx.save();
@@ -521,7 +522,7 @@ function drawPortrait(ctx: CanvasRenderingContext2D, sheets: SheetStore, sprite:
   ctx.rect(x + 3, y + 3, size - 6, size - 6);
   ctx.clip();
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(image, frame * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, Math.round(x + size / 2 - dw / 2), Math.round(y + size / 2 - dh / 2 + 4), dw, dh);
+  ctx.drawImage(image, frame * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, Math.round(x + size / 2 - dw / 2), Math.round(y + size / 2 - dh / 2 + 10), dw, dh);
   ctx.restore();
 }
 
