@@ -27,6 +27,8 @@ export interface ScoreEntry {
   level: number;
   /** The run's tier; absent = easy (every score from before tiers). Each tier keeps its own top ten. */
   difficulty?: Difficulty;
+  /** The build the run was made with (core/tutor.ts `buildTag`: moves, tiers, Mejoras); absent on older scores. */
+  build?: string;
 }
 
 /** A score's tier (old scores are easy). */
@@ -56,6 +58,7 @@ export function recordScore(board: readonly ScoreEntry[], entry: ScoreEntry): { 
 
 const ID = /^[a-z0-9-]{1,40}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const BUILD = /^[a-zAM0-9:+ -]{1,200}$/;
 const whole = (v: unknown, min: number): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= min;
 
 function parseEntry(raw: unknown): ScoreEntry | null {
@@ -65,7 +68,8 @@ function parseEntry(raw: unknown): ScoreEntry | null {
   if ((e.mode !== 'daily' && e.mode !== 'free') || typeof e.date !== 'string' || !DATE.test(e.date) || typeof e.species !== 'string' || !ID.test(e.species)) return null;
   // A tier other than easy is kept; anything else (absent, unknown) reads as easy.
   const tier = isDifficulty(e.difficulty) && e.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: e.difficulty } : {};
-  return { floor: e.floor, clockMs: e.clockMs, mode: e.mode, date: e.date, seed: e.seed, species: e.species, level: e.level, ...tier };
+  const build = typeof e.build === 'string' && BUILD.test(e.build) ? { build: e.build } : {};
+  return { floor: e.floor, clockMs: e.clockMs, mode: e.mode, date: e.date, seed: e.seed, species: e.species, level: e.level, ...tier, ...build };
 }
 
 export function parseBoard(raw: string | null): ScoreEntry[] {

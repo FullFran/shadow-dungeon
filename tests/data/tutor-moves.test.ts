@@ -1,29 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { budgetRatio, costsOf } from '../../src/core/move-power';
 import { validateLoadout } from '../../src/core/loadout';
+import { DUNGEONS } from '../../src/data/dungeons';
 import { LEARNSETS, type StarterId } from '../../src/data/learnsets';
-import { BASE_MOVE_IDS, MOVES, type MoveDef, type MoveId } from '../../src/data/moves';
+import { BASE_MOVE_IDS, MOVES, type MoveId } from '../../src/data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
 import { originalKit, PLAYABLE_SPECIES, SPECIES } from '../../src/data/species';
-import { GRANDFATHERED, movePrice, RECOMMENDED_BUILD, TUTOR_OFFER } from '../../src/data/tutor';
+import { GRANDFATHERED, MASTER_MOVES, movePrice, moveTier, RECOMMENDED_BUILD, TIER_BUDGET, TUTOR_OFFER, type MoveTier } from '../../src/data/tutor';
 import { TUTOR_MOVE_IDS } from '../../src/data/tutor-moves';
 
 const starters = PLAYABLE_SPECIES as readonly StarterId[];
-
-/** Single-target damage per ms of a tap (multi-hit counted whole); area moves per second of cooldown. */
-function rate(move: MoveDef): number {
-  const total = move.power * (move.multiHit ?? 1) * (move.hitbox.kind === 'projectile' && move.hitbox.boomerang ? 2 : 1);
-  if (move.slot === 'area') {
-    const zone = move.hitbox.kind === 'projectile' && move.hitbox.linger ? Math.ceil(move.hitbox.lifetimeMs / move.hitbox.linger) : 1;
-    return (total * zone) / (move.cooldownMs! / 1000);
-  }
-  const cycle = move.windupMs + move.activeMs + move.recoveryMs;
-  return total / Math.max(cycle, move.cooldownMs ?? 0);
-}
-
-/** A move pays for extra damage: recoil, an HP cost or a cooldown on a heavy move. */
-const drawback = (move: MoveDef) => Boolean(move.recoil || (move.slot === 'heavy' && move.cooldownMs));
-const ranged = (move: MoveDef) => move.hitbox.kind === 'projectile';
-const multi = (move: MoveDef) => (move.multiHit ?? 1) > 1 || (move.hitbox.kind === 'projectile' && Boolean(move.hitbox.boomerang));
+const ALL: readonly MoveId[] = [...BASE_MOVE_IDS, ...TUTOR_MOVE_IDS];
 
 describe('tutor moves: canon learnsets', () => {
   it.each(starters)("%s's movepool is its canon learnset (plus the grandfathered original moves)", (id) => {
@@ -63,18 +50,40 @@ describe('tutor moves: canon learnsets', () => {
   });
 });
 
-describe('tutor moves: damage budget', () => {
-  // The ceiling of each slot is the best of the original kits, by shape (ranged and multi-hit apart); a move with a drawback may go 25 % past it.
-  const base = BASE_MOVE_IDS.map((id) => MOVES[id]);
-  const ceiling = (move: MoveDef) => {
-    const peers = base.filter((b) => b.slot === move.slot && (move.slot === 'area' || (ranged(b) === ranged(move) && multi(b) === multi(move))));
-    const pool = peers.length > 0 ? peers : base.filter((b) => b.slot === move.slot);
-    return Math.max(...pool.map(rate)) * (drawback(move) ? 1.25 : 1);
-  };
+describe('tutor moves: tier-aware damage budget', () => {
+  // Effective damage rate against the best original move of the same slot and shape (core/move-power.ts).
+  const damaging = ALL.filter((id) => MOVES[id].slot !== 'boost');
 
-  it.each(TUTOR_MOVE_IDS.filter((id) => MOVES[id].slot !== 'boost'))('%s stays inside its slot budget', (id: MoveId) => {
+  it('every move has a tier: the original kits are Básico, the tutor sells Avanzado and Maestro', () => {
+    for (const id of BASE_MOVE_IDS) expect(moveTier(id), id).toBe('basic');
+    for (const id of TUTOR_MOVE_IDS) expect(['advanced', 'master'], id).toContain(moveTier(id));
+  });
+
+  it.each(damaging)('%s stays inside its tier budget, and pays for any power above the baseline', (id: MoveId) => {
     const move = MOVES[id];
-    expect(rate(move)).toBeLessThanOrEqual(ceiling(move) + 1e-9);
+    const ratio = budgetRatio(move);
+    expect(ratio).toBeLessThanOrEqual(TIER_BUDGET[moveTier(id)] + 1e-9);
+    // Above the baseline one real cost, above the Avanzado budget two.
+    if (ratio > 1 + 1e-9) expect(costsOf(move).length, `${id} ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(1);
+    if (ratio > TIER_BUDGET.advanced + 1e-9) expect(costsOf(move).length, `${id} ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each(starters)('%s can buy at least two Maestro moves, and its damaging ones really are stronger (×1.25 or more)', (id) => {
+    const masters = TUTOR_OFFER[id].filter((m) => moveTier(m) === 'master');
+    expect(masters.length).toBeGreaterThanOrEqual(2);
+    for (const m of masters.filter((x) => MOVES[x].slot !== 'boost')) expect(budgetRatio(MOVES[m]), m).toBeGreaterThanOrEqual(1.25);
+    // A Maestro boost pays in HP.
+    for (const m of masters.filter((x) => MOVES[x].slot === 'boost')) expect(MOVES[m].hpCost, m).toBeGreaterThan(0);
+  });
+
+  it.each(starters)('%s has a Maestro move that only unlocks after clearing a dungeon', (id) => {
+    const locked = TUTOR_OFFER[id].filter((m) => MASTER_MOVES[m]?.unlockedBy);
+    expect(locked.length).toBeGreaterThanOrEqual(1);
+    for (const m of locked) expect(DUNGEONS.some((d) => d.id === MASTER_MOVES[m]!.unlockedBy && !d.endless), m).toBe(true);
+  });
+
+  it('only tutor moves are Maestro', () => {
+    for (const id of Object.keys(MASTER_MOVES)) expect((TUTOR_MOVE_IDS as readonly string[]).includes(id), id).toBe(true);
   });
 
   it('boosts never deal damage or cost stamina, and keep a cooldown of 12 s or more', () => {
@@ -94,9 +103,13 @@ describe('tutor moves: damage budget', () => {
     }
   });
 
-  it('prices grow with power inside a slot', () => {
+  it('prices grow with power inside a slot, and every Maestro move costs more than any Avanzado one of its slot', () => {
     for (const id of TUTOR_MOVE_IDS) expect(movePrice(MOVES[id])).toBeGreaterThan(0);
     expect(movePrice(MOVES['fire-blast'])).toBeGreaterThan(movePrice(MOVES['scorching-sands']));
     expect(movePrice(MOVES.thunder)).toBeGreaterThan(movePrice(MOVES['burning-jealousy']));
+    const priced = (slot: string, tier: MoveTier) => TUTOR_MOVE_IDS.filter((m) => MOVES[m].slot === slot && moveTier(m) === tier).map((m) => movePrice(MOVES[m]));
+    for (const slot of PLAYER_SLOT_LAYOUT) {
+      if (priced(slot, 'master').length > 0) expect(Math.min(...priced(slot, 'master')), slot).toBeGreaterThan(Math.max(...priced(slot, 'advanced')));
+    }
   });
 });

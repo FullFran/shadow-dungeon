@@ -105,11 +105,12 @@ export function tutorRows(save: TutorWallet, species: SpeciesId, filter: SlotFil
 }
 
 /** Buys a row from the stored save: the new save, or null (nothing written) when refused. */
-export function tutorPurchase(store: KeyValueStore, species: SpeciesId, row: Pick<TutorRow, 'kind' | 'move'>): SaveData | null {
+export function tutorPurchase(store: KeyValueStore, species: SpeciesId, row: Pick<TutorRow, 'kind' | 'move'>, cleared: Iterable<string> = []): SaveData | null {
   const save = loadSave(store);
-  const wallet = row.kind === 'move' ? buyMove(save, species, row.move) : rankUp(save, species, row.move);
+  const wallet = row.kind === 'move' ? buyMove({ ...save, cleared }, species, row.move) : rankUp(save, species, row.move);
   if (!wallet) return null;
-  const next: SaveData = { ...save, ...wallet };
+  const { cleared: _cleared, ...bought } = wallet;
+  const next: SaveData = { ...save, ...bought };
   writeSave(store, next);
   return loadSave(store);
 }
@@ -118,6 +119,8 @@ export interface TutorOptions {
   store: KeyValueStore;
   /** The player's starter: the tutor opens on it. */
   species: SpeciesId;
+  /** Dungeons cleared on this device: some Maestro moves wait for one. */
+  cleared?: Iterable<string>;
   play?(sound: 'coin' | 'denied'): void;
   onBack(): void;
 }
@@ -161,7 +164,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
         className: row.affordable ? 'shop-row' : 'shop-row is-disabled',
         tapToSelect: true,
         onConfirm: () => {
-          const bought = tutorPurchase(options.store, species, row);
+          const bought = tutorPurchase(options.store, species, row, options.cleared);
           if (!bought) {
             options.play?.('denied');
             return;

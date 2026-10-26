@@ -89,8 +89,8 @@ export function startTrial(
 ): { run: RunState; world: WorldState; trial: TrialState } {
   const first = stops[0];
   if (!first) throw new Error('a trial needs at least one boss');
-  // ...and so are the move tutor's Mejoras.
-  const { upgrades: _upgrades, moveRanks: _ranks, ...pure } = options;
+  // The move tutor's learned moves and Mejoras do come along: progression counts in the shrine too (odd/tasks/move-progression.md).
+  const { upgrades: _upgrades, ...pure } = options;
   const started = startRun(seed, pure, first.floor, first.dungeon);
   const run = stopRun(seed, first);
   const world = withStopHerald({ ...started.world, player: atLevel(started.world.player, levelOf(first, started.world)) }, first);

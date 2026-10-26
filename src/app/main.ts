@@ -54,7 +54,7 @@ import { parseSpawnList } from '../core/test-floor';
 import { earnCoins, loadSave } from './save';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
-import { knownLoadout, knownMoves, runRanks } from '../core/tutor';
+import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { coinLines } from './coin-lines';
 import { setTouchMode } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
@@ -529,7 +529,7 @@ function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, numbe
 
 /** Smeargle's move tutor over the town, like the shop. */
 function townTutor(parent: HTMLElement, onClose: () => void): () => void {
-  const tutor = tutorWindow({ store, species: settings.species, play: (sound) => audio.play(sound), onBack: onClose });
+  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: onClose });
   const overlay = h('div', { className: 'town-shop' }, [tutor.element]);
   parent.append(overlay);
   return () => {
@@ -1018,7 +1018,10 @@ function simaLine(text: string): HTMLElement {
 function endlessScore(summary: RunSummary): EndScore {
   const date = today();
   const tier = summary.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: summary.difficulty } : {};
-  const entry: ScoreEntry = { floor: summary.floor, clockMs: Math.round(summary.clockMs ?? 0), mode: modeOfSeed(summary.seed, date), date, seed: summary.seed, species: settings.species, level: summary.level, ...tier };
+  // The build goes with the score: Mejoras and Maestro moves count in the Sima too.
+  const save = loadSave(store);
+  const build = buildTag(knownLoadout(save, settings.species, settings.loadout), runRanks(save, settings.species));
+  const entry: ScoreEntry = { floor: summary.floor, clockMs: Math.round(summary.clockMs ?? 0), mode: modeOfSeed(summary.seed, date), date, seed: summary.seed, species: settings.species, level: summary.level, ...tier, build };
   // Ranked on its own tier's board, which the end screen shows.
   const saved = saveScore(store, entry);
   return { entry, rank: saved.rank, board: tierBoard(saved.board, summary.difficulty) };
@@ -1126,7 +1129,7 @@ function devScreen(root: HTMLElement): boolean {
     shop: () => shopScreen(root),
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
-      const tutor = tutorWindow({ store, species: settings.species, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
+      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
       show(root, [tutor.element]);
     },
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.

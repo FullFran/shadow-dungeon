@@ -1,4 +1,5 @@
-import type { MoveDef, MoveId } from './moves';
+import { BASE_MOVE_IDS, type MoveDef, type MoveId } from './moves';
+import type { DungeonId } from './dungeons';
 import type { StarterId } from './learnsets';
 
 /**
@@ -24,11 +25,67 @@ export const GRANDFATHERED: Readonly<Partial<Record<StarterId, readonly MoveId[]
 };
 
 /**
- * A move's price in Pokémonedas, by slot and power: stronger moves cost
+ * Power tiers (odd/tasks/move-progression.md T1): Básico is the original
+ * kit, which sets each slot's baseline; the tutor sells Avanzado moves (up to
+ * ×1.2 the baseline's effective damage) and Maestro moves (up to ×1.4), and
+ * anything above the baseline pays with real costs (core/move-power.ts).
+ */
+export type MoveTier = 'basic' | 'advanced' | 'master';
+export const MOVE_TIERS: readonly MoveTier[] = ['basic', 'advanced', 'master'];
+
+/** Effective damage budget per tier, as a multiple of the slot/shape baseline. */
+export const TIER_BUDGET: Readonly<Record<MoveTier, number>> = { basic: 1, advanced: 1.2, master: 1.4 };
+
+/**
+ * The hard ceiling of any move at full investment (rank +2's damage and its
+ * effects' expected extra damage included), against the baseline: player
+ * damage only; enemy fairness (the one-hit cap, telegraphs) is untouched.
+ */
+export const HARD_CEILING = 1.75;
+
+/**
+ * The Maestro moves, each optionally unlocked only after clearing a dungeon
+ * (its guardian beaten on this device), to pace progression.
+ */
+export const MASTER_MOVES: Readonly<Partial<Record<MoveId, { unlockedBy?: DungeonId }>>> = {
+  // Mimikyu
+  'wood-hammer': {},
+  'phantom-force': { unlockedBy: 'crypt-of-the-sword-king' },
+  thunder: { unlockedBy: 'misty-forest' },
+  curse: {},
+  // Zorua
+  'sludge-bomb': {},
+  'hyper-voice': { unlockedBy: 'misty-forest' },
+  // Litwick
+  'fire-blast': {},
+  'flare-blitz': { unlockedBy: 'crypt-of-the-sword-king' },
+  'fire-spin': { unlockedBy: 'misty-forest' },
+  // Cubone
+  'double-edge': {},
+  'focus-punch': { unlockedBy: 'crypt-of-the-sword-king' },
+  'ice-beam': { unlockedBy: 'misty-forest' },
+  'belly-drum': {},
+};
+
+/** The tier of a move: the original kits are Básico, the Maestro list Maestro, every other tutor move Avanzado. */
+export function moveTier(id: MoveId): MoveTier {
+  if ((BASE_MOVE_IDS as readonly MoveId[]).includes(id)) return 'basic';
+  return MASTER_MOVES[id] ? 'master' : 'advanced';
+}
+
+/** The dungeon whose guardian must fall before the tutor teaches `id`, if any. */
+export const unlockOf = (id: MoveId): DungeonId | null => MASTER_MOVES[id]?.unlockedBy ?? null;
+
+/** Maestro prices per slot: above every Avanzado price of the slot. */
+export const MASTER_PRICES: Readonly<Record<MoveDef['slot'], number>> = { fast: 450, heavy: 800, boost: 600, area: 950 };
+
+/**
+ * A move's price in Pokémonedas, by tier, slot and power: stronger moves cost
  * more; a boost costs by its cooldown's rarity. Provisional, on the scale of
  * Poochyena's upgrades (60–550).
  */
 export function movePrice(move: MoveDef): number {
+  if (moveTier(move.id) === 'master') return MASTER_PRICES[move.slot];
   if (move.slot === 'boost') return 350;
   const tiers: Record<Exclude<MoveDef['slot'], 'boost'>, readonly [number, number, number]> = {
     fast: [120, 200, 300],

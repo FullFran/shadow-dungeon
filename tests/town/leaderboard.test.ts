@@ -9,6 +9,7 @@ import {
   saveScore,
   type ScoreEntry,
 } from '../../src/town/leaderboard';
+import { buildTag } from '../../src/core/tutor';
 
 const entry = (over: Partial<ScoreEntry> = {}): ScoreEntry => ({ floor: 7, clockMs: 61_000, mode: 'free', date: '2026-10-25', seed: 99, species: 'mimikyu', level: 6, ...over });
 
@@ -19,6 +20,14 @@ function memoryStore(initial: Record<string, string> = {}) {
 }
 
 describe('endless leaderboard', () => {
+  it('keeps the build a score was made with (moves, tiers and Mejoras), and drops a malformed one', () => {
+    const build = buildTag(['shadow-claw', 'wood-hammer', null, 'thunder'], { 'shadow-claw': 2, thunder: 1 });
+    expect(build).toBe('shadow-claw+2 wood-hammer:M - thunder:M+1');
+    expect(parseBoard(JSON.stringify([entry({ build })]))[0]!.build).toBe(build);
+    expect(parseBoard(JSON.stringify([{ ...entry(), build: '<script>' }]))[0]!.build).toBeUndefined();
+    expect(parseBoard(JSON.stringify([entry()]))[0]!.build).toBeUndefined();
+  });
+
   it('ranks by deepest floor, then by time left', () => {
     let board: ScoreEntry[] = [];
     for (const e of [entry({ floor: 5 }), entry({ floor: 9, clockMs: 1000 }), entry({ floor: 9, clockMs: 30_000 }), entry({ floor: 2 })]) board = recordScore(board, e).board;

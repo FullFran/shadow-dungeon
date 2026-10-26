@@ -6,7 +6,7 @@ import { startTrial } from '../../src/core/shrine';
 import type { GameEvent, PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
-import { buyMove, knownLoadout, knownMoves, moveRank, rankUp, runRanks, tutorPrice, type TutorWallet } from '../../src/core/tutor';
+import { buyMove, knownLoadout, knownMoves, moveRank, rankUp, runRanks, tutorLock, tutorPrice, type TutorWallet } from '../../src/core/tutor';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { MOVES, type MoveId } from '../../src/data/moves';
@@ -34,6 +34,18 @@ describe('move tutor: learning', () => {
     expect(buyMove({ coins: 9999 }, 'zorua', 'wood-hammer')).toBeNull();
     // Learned per species: Zorua learning Shadow Claw does not touch Mimikyu.
     expect(knownMoves(buyMove({ coins: 9999 }, 'zorua', 'shadow-claw')!, 'mimikyu')).toEqual(originalKit('mimikyu'));
+  });
+
+  it('a Maestro move locked behind a dungeon is refused until its guardian falls', () => {
+    expect(tutorLock({}, 'mimikyu', 'thunder')).toBe('misty-forest');
+    expect(buyMove({ coins: 9999 }, 'mimikyu', 'thunder')).toBeNull();
+    expect(buyMove({ coins: 9999, cleared: ['crypt-of-the-sword-king'] }, 'mimikyu', 'thunder')).toBeNull();
+    const wallet = buyMove({ coins: 9999, cleared: ['crypt-of-the-sword-king', 'misty-forest'] }, 'mimikyu', 'thunder');
+    expect(knownMoves(wallet!, 'mimikyu')).toContain('thunder');
+    expect(wallet!.coins).toBe(9999 - movePrice(MOVES.thunder));
+    // Unlocked Maestro and Avanzado moves have no lock.
+    expect(tutorLock({}, 'mimikyu', 'wood-hammer')).toBeNull();
+    expect(tutorLock({}, 'mimikyu', 'slash')).toBeNull();
   });
 
   it('a run only takes known moves: an unknown one falls back to the default of its slot', () => {
@@ -89,9 +101,10 @@ describe('move tutor: Mejoras', () => {
     expect(current.player.cooldowns?.['bulk-up']).toBeLessThanOrEqual(MOVES['bulk-up'].cooldownMs! * 0.9);
   });
 
-  it('a shrine trial is pure: no ranks (like the shop upgrades)', () => {
-    const trial = startTrial(1, { species: 'cubone', moveRanks: { 'bone-club': 2 } }, [{ dungeon: 'crypt-of-the-sword-king', floor: 6, boss: 'aegislash', role: 'guardian' }]);
-    expect(trial.world.player.moveRanks).toBeUndefined();
+  it('a shrine trial keeps the Mejoras (progression counts everywhere) but still drops the shop upgrades', () => {
+    const trial = startTrial(1, { species: 'cubone', moveRanks: { 'bone-club': 2 }, upgrades: { vitality: 2 } }, [{ dungeon: 'crypt-of-the-sword-king', floor: 6, boss: 'aegislash', role: 'guardian' }]);
+    expect(trial.world.player.moveRanks).toEqual({ 'bone-club': 2 });
+    expect(trial.world.player.upgrades).toBeUndefined();
   });
 });
 

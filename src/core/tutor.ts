@@ -1,7 +1,8 @@
 import type { StarterId } from '../data/learnsets';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { isPlayable, originalKit, SPECIES, type SpeciesId } from '../data/species';
-import { MAX_RANK, movePrice, RANK_COSTS, RANK_EFFECT, TUTOR_OFFER } from '../data/tutor';
+import { MAX_RANK, movePrice, moveTier, RANK_COSTS, RANK_EFFECT, TUTOR_OFFER, unlockOf } from '../data/tutor';
+import type { DungeonId } from '../data/dungeons';
 
 /**
  * The move tutor, pure (odd/tasks/movepools.md T3): which moves a starter
@@ -23,6 +24,15 @@ export interface TutorWallet {
   coins: number;
   learned?: LearnedMoves;
   ranks?: RankedMoves;
+  /** Dungeons cleared on this device (their guardian beaten): some Maestro moves wait for one (data/tutor.ts `MASTER_MOVES`). */
+  cleared?: Iterable<string>;
+}
+
+/** The dungeon still to clear before the tutor teaches `move` to `species`, or null when it is open. */
+export function tutorLock(wallet: Pick<TutorWallet, 'cleared'>, _species: SpeciesId, move: MoveId): DungeonId | null {
+  const needed = unlockOf(move);
+  if (!needed) return null;
+  return [...(wallet.cleared ?? [])].includes(needed) ? null : needed;
 }
 
 const asStarter = (id: SpeciesId): StarterId | null => (isPlayable(id) ? (id as StarterId) : null);
@@ -47,7 +57,7 @@ export function tutorPrice(species: SpeciesId, move: MoveId): number | null {
 export function buyMove(wallet: TutorWallet, species: SpeciesId, move: MoveId): TutorWallet | null {
   const starter = asStarter(species);
   const price = tutorPrice(species, move);
-  if (!starter || price === null || price === 0 || knownMoves(wallet, species).includes(move) || wallet.coins < price) return null;
+  if (!starter || price === null || price === 0 || knownMoves(wallet, species).includes(move) || wallet.coins < price || tutorLock(wallet, species, move)) return null;
   const learned = { ...wallet.learned, [starter]: [...(wallet.learned?.[starter] ?? []), move] };
   return { ...wallet, coins: wallet.coins - price, learned };
 }
@@ -95,3 +105,15 @@ export const rankDamage = (ranks: MoveRanks | undefined, move: MoveDef): number 
 
 /** In a run: the cooldown of a ranked boost or area move (its own unranked). */
 export const rankCooldown = (ranks: MoveRanks | undefined, move: MoveDef): number => (move.cooldownMs ?? 0) * (1 - RANK_EFFECT.cooldown * (ranks?.[move.id] ?? 0));
+
+const TIER_TAG = { basic: '', advanced: ':A', master: ':M' } as const;
+
+/**
+ * A compact record of a build for rankings (odd/tasks/move-progression.md:
+ * progression counts everywhere, so a score keeps what it was made with):
+ * each slot's move, its tier (`:A` Avanzado, `:M` Maestro) and its rank
+ * (`+1`, `+2`); an empty slot is `-`.
+ */
+export function buildTag(loadout: readonly (MoveId | null)[], ranks: MoveRanks | undefined): string {
+  return loadout.map((m) => (m === null ? '-' : `${m}${TIER_TAG[moveTier(m)]}${ranks?.[m] ? `+${ranks[m]}` : ''}`)).join(' ');
+}
