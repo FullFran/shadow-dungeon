@@ -22,6 +22,7 @@ import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../src/data/species';
 import { TUNING } from '../src/data/tuning';
 import type { PokemonType } from '../src/data/types';
 import { levelDamage } from '../src/core/progression';
+import { CARD_FLOOR } from '../src/data/cards';
 import { stageBonus } from '../src/core/evolution';
 import type { MoveId } from '../src/data/moves';
 import { cardWorld, fightIn, judgeCard, KILL_MARGIN, KNOWN_KILL_GAPS, PROOF_CASES, reachOf, startsOf, type CardProof, type Witness } from '../src/sim/prove';
@@ -35,6 +36,7 @@ import {
   levelFor,
   moveRate,
   type StudyEntry,
+  ENGINE_RULE,
   RAW_RULE,
   ruleEffectiveness,
   runFight,
@@ -65,9 +67,11 @@ const SKIP = 0.35;
 /** An outlier fight: shorter than this share of its designed duration (or most of its cards skipped). */
 const SHORT = 0.35;
 /** The chart the engine plays now (the records were made under it). */
-const RECORDED: ChartRule = RAW_RULE;
+const RECORDED: ChartRule = ENGINE_RULE;
 /** The card floor the engine plays now (the records already carry it). */
-const RECORDED_FLOOR = ((): Readonly<Record<Difficulty, number>> | null => null)();
+const RECORDED_FLOOR: Readonly<Record<Difficulty, number>> | null = Object.values(CARD_FLOOR).some((f) => f > 0) ? CARD_FLOOR : null;
+/** The baseline study's per-cell summary (recorded on the shipped engine, main b87190d). */
+const BASELINE_TSV = 'reports/balance/type-chart-baseline.tsv';
 
 /** The owner's playtest, 2026-10-26: Chandelure (final, Maestro moves, Mejoras), Shrine reflections on Nightmare. */
 const OWNER: Readonly<Record<string, number>> = { trevenant: 33.9, decidueye: 43.0, aegislash: 58.4, dhelmise: 58.6, nihilego: 142.5 };
@@ -247,7 +251,9 @@ for (const boss of Object.keys(OWNER)) {
 }
 L.push(
   '',
-  `Read: on the four Ghost bosses (×3 with STAB) the bot lands within about ±25 % of the owner (0.75–1.26), so it reproduces the skip; on Nihilego (×1.5, the owner's "no difícil pero más razonable") the owner took ${((OWNER.nihilego! * 1000) / median(records.filter((r) => r.build === 'stab' && r.boss === 'nihilego').map((r) => r.fightMs))).toFixed(1)}× the bot: a strong human is close to the bot when cards fall in seconds, and slower when they have to play through the patterns. The owner's reference for a reasonable fight is Nihilego's 2:22.5, ${pct((OWNER.nihilego! * 1000) / NIHILEGO_DESIGNED)} of its designed duration on Nightmare (${secs(NIHILEGO_DESIGNED)} of timers).`,
+  after
+    ? `Read: these are the same runs on this engine. The owner's times were on the shipped engine; with the card floor no Ghost guardian can now fall in under ${pct(RECORDED_FLOOR?.nightmare ?? 0)} of its timers. The owner's reference for a reasonable fight is Nihilego's 2:22.5, ${pct((OWNER.nihilego! * 1000) / NIHILEGO_DESIGNED)} of its designed duration on Nightmare (${secs(NIHILEGO_DESIGNED)} of timers); a human ×${HUMAN} the bot's card times above the floor lands near it.`
+    : `Read: on the four Ghost bosses (×3 with STAB) the bot lands within about ±25 % of the owner (0.75–1.26), so it reproduces the skip; on Nihilego (×1.5, the owner's "no difícil pero más razonable") the owner took ${((OWNER.nihilego! * 1000) / median(records.filter((r) => r.build === 'stab' && r.boss === 'nihilego').map((r) => r.fightMs))).toFixed(1)}× the bot: a strong human is close to the bot when cards fall in seconds, and slower when they have to play through the patterns. The owner's reference for a reasonable fight is Nihilego's 2:22.5, ${pct((OWNER.nihilego! * 1000) / NIHILEGO_DESIGNED)} of its designed duration on Nightmare (${secs(NIHILEGO_DESIGNED)} of timers).`,
   '',
 );
 
@@ -302,6 +308,7 @@ const ownerRows = study.filter((r) => r.entry === 'chandelure' && r.build === 'f
 L.push(`Chandelure (full) vs the four Ghost guardians on Nightmare: ${ownerRows.filter((r) => outlier(r, now)).length}/${ownerRows.length} fights are outliers; median play ${pct(median(ownerRows.map((r) => playMs(r, now) / designedMs(r))))} of designed.`, '');
 L.push('<details><summary>Every outlier cell</summary>', '', ...[...pairs].sort().map((p) => `- ${p}`), '', '</details>', '');
 
+if (!after) {
 // Candidates.
 L.push('## Candidates', '');
 L.push(
@@ -384,6 +391,75 @@ for (const b of bosses) {
   }
 }
 L.push('');
+}
+
+// ---- After: the engine's own fights against the shipped engine's (the baseline's per-cell summary) ----
+interface BaseCell {
+  playMs: number;
+  designedMs: number;
+  skipped: number;
+  hurtable: number;
+  cls: string;
+  predictedMs: number | null;
+}
+const baseline = new Map<string, BaseCell>();
+if (after && existsSync(BASELINE_TSV)) {
+  for (const line of readFileSync(BASELINE_TSV, 'utf8').trim().split('\n').slice(1)) {
+    const [key, play, designed, sk, hurt, cls, predicted] = line.split('\t');
+    baseline.set(key!, { playMs: Number(play), designedMs: Number(designed), skipped: Number(sk), hurtable: Number(hurt), cls: cls!, predictedMs: predicted ? Number(predicted) : null });
+  }
+}
+if (after) {
+  const keyOf = (r: FightRecord) => `${r.boss}/${r.tier}/${r.entry}/${r.build}`;
+  const cellsNow = [...new Set(study.map(keyOf))].map((key) => {
+    const rs = study.filter((r) => keyOf(r) === key);
+    const sk = skipped(rs[0]!, now);
+    return { key, tier: rs[0]!.tier, build: rs[0]!.build, cls: klass(rs[0]!), playMs: median(rs.map((r) => playMs(r, now))), designedMs: designedMs(rs[0]!), skipped: sk.n, hurtable: sk.of, base: baseline.get(key) };
+  });
+  const paired = cellsNow.filter((c) => c.base);
+  const isOut = (play: number, designed: number, sk: number, hurt: number) => play < SHORT * designed || sk > 0.5 * hurt;
+  L.push('## Before and after (engine bot, both seeds\' median per cell)', '');
+  L.push(
+    `Before = the shipped engine (Gen 6 chart, no card floor) as recorded by the baseline study (${BASELINE_TSV}); after = this engine. *Predicted* = what the baseline study forecast for chart B with a 35 % floor (before the HP retune of the five fights below). ${paired.length} of ${cellsNow.length} cells paired.`,
+    '',
+  );
+  L.push('| tier | build | cells | outliers before → after | skipped cards before → after | median length / designed before → after (adv · neutral · disadv) | median \\|after − predicted\\| / designed |', '|---|---|---|---|---|---|---|');
+  for (const tier of TIERS) {
+    for (const build of BUILDS) {
+      const cs = paired.filter((c) => c.tier === tier && c.build === build);
+      if (cs.length === 0) continue;
+      const before = cs.filter((c) => isOut(c.base!.playMs, c.base!.designedMs, c.base!.skipped, c.base!.hurtable)).length;
+      const afterOut = cs.filter((c) => isOut(c.playMs, c.designedMs, c.skipped, c.hurtable)).length;
+      const share = (cls: string, of: (c: (typeof cs)[number]) => number) => pct(median(cs.filter((c) => c.cls === cls).map((c) => of(c) / c.designedMs)));
+      const err = median(cs.filter((c) => c.base!.predictedMs !== null).map((c) => Math.abs(c.playMs - c.base!.predictedMs!) / c.designedMs));
+      L.push(
+        `| ${tier} | ${build} | ${cs.length} | ${before} → ${afterOut} | ${cs.reduce((s, c) => s + c.base!.skipped, 0)} → ${cs.reduce((s, c) => s + c.skipped, 0)} | ${share('advantaged', (c) => c.base!.playMs)} · ${share('neutral', (c) => c.base!.playMs)} · ${share('disadvantaged', (c) => c.base!.playMs)} → ${share('advantaged', (c) => c.playMs)} · ${share('neutral', (c) => c.playMs)} · ${share('disadvantaged', (c) => c.playMs)} | ${pct(err)} |`,
+      );
+    }
+  }
+  L.push('');
+  const rest = paired.filter((c) => c.cls !== 'advantaged');
+  const ratios = rest.map((c) => c.playMs / c.base!.playMs - 1).sort((a, b) => a - b);
+  L.push(
+    `Neutral and disadvantaged cells (${rest.length}): median change ${pct(median(ratios))}, p90 ${pct(ratios[Math.floor(0.9 * (ratios.length - 1))]!)}; ${rest.filter((c) => c.playMs > 1.05 * c.base!.playMs).length} are more than 5 % slower (the ones that skipped cards before), none longer than its designed duration (${rest.filter((c) => c.playMs > c.designedMs + 1).length}).`,
+    '',
+  );
+  L.push('### Nightmare, full build, per species: length / designed, before → after', '');
+  L.push(`| boss | ${STUDY_ENTRIES.map((e) => e.label).join(' | ')} |`, `|---|${STUDY_ENTRIES.map(() => '---').join('|')}|`);
+  for (const b of bosses) {
+    const cells = STUDY_ENTRIES.map((e) => {
+      const c = paired.find((x) => x.key === `${b}/nightmare/${e.label}/full`);
+      return c ? `${pct(c.base!.playMs / c.designedMs)} → ${pct(c.playMs / c.designedMs)}` : '-';
+    });
+    L.push(`| ${b} | ${cells.join(' | ')} |`);
+  }
+  L.push('');
+  // The proof under this engine.
+  const ms = margins(RECORDED);
+  const gaps = ms.filter((m) => m.margin < m.target);
+  L.push('### Proof margins under this chart', '');
+  L.push(`Kill gaps: ${gaps.length} (known list ${KNOWN_KILL_GAPS.length}); not on the known list: ${gaps.filter((m) => !knownGap(m)).map((m) => m.key).join(', ') || 'none'}. Tightest non-gap margins: ${ms.filter((m) => m.margin >= m.target && Number.isFinite(m.margin)).sort((a, b) => a.margin / a.target - b.margin / b.target).slice(0, 5).map((m) => `${m.key} ${m.margin.toFixed(2)}/${m.target} (${m.starter})`).join('; ')}.`, '');
+}
 
 // ---- Progression spread (owner, 2026-10-26: "la diferencia entre eso y el Mimikyu sin ascender es abismal") ----
 /** The fix the report recommends (null until chosen): the spread is shown under it too. */
@@ -439,8 +515,8 @@ const spreadTable = (cand: Candidate, title: string) => {
   L.push('', `Overall: neutral median ×${median(neutral).toFixed(2)} (range ×${Math.min(...neutral).toFixed(2)}–×${Math.max(...neutral).toFixed(2)}); advantaged median ×${median(adv).toFixed(2)}, max ×${Math.max(...adv).toFixed(2)}.`, '');
   return { neutral: median(neutral), adv: median(adv), advMax: Math.max(...adv) };
 };
-const spreadNow = spreadTable(after ? { rule: RAW_RULE, floor: 0 } : now, after ? 'Shipped chart, no floor (re-weighed from these records)' : 'Shipped');
-const spreadFix = CHOSEN ? spreadTable(CHOSEN, `With the chosen fix (${CHOSEN.rule.name}, floor ${pct(CHOSEN.floor)} on Nightmare)`) : null;
+const spreadNow = spreadTable(now, after ? `After (engine: ${RECORDED.name}, card floor)` : 'Shipped');
+const spreadFix = CHOSEN && !after ? spreadTable(CHOSEN, `With the chosen fix (${CHOSEN.rule.name}, floor ${pct(CHOSEN.floor)} on Normal, Hard and Nightmare)`) : null;
 
 L.push('### Where the spread comes from (analytic, Nightmare, guardians and mid-bosses)', '');
 L.push('Each factor is a ratio over the fresh Mimikyu\'s best default move on that boss; their product is the analytic DPS spread (no dodging). Median over the 8 card bosses, then the extremes.', '');
@@ -448,7 +524,7 @@ L.push('| final form | species kit | tutor tier | Mejoras ×2 | stage bonus | ST
 const caseBosses = STUDY_CASES.filter((x) => x.role === 'boss').map((x) => x.case.species);
 for (const e of finals) {
   const ds = caseBosses.map((b) => decompose(e, b, RAW_RULE));
-  const dc = caseBosses.map((b) => decompose(e, b, CHOSEN?.rule ?? RAW_RULE));
+  const dc = caseBosses.map((b) => decompose(e, b, after ? RECORDED : (CHOSEN?.rule ?? RAW_RULE)));
   const m = (k: keyof (typeof ds)[number]) => `×${median(ds.map((d) => d[k] as number)).toFixed(2)}`;
   L.push(`| ${e.label} | ${m('species')} | ${m('tutor')} | ${m('ranks')} | ${m('stage')} | ${m('stab')} | ${m('type')} | ×1.00 | ${m('total')} (max ×${Math.max(...ds.map((d) => d.total)).toFixed(2)}) | ×${median(dc.map((d) => d.type)).toFixed(2)} | ×${median(dc.map((d) => d.total)).toFixed(2)} (max ×${Math.max(...dc.map((d) => d.total)).toFixed(2)}) |`);
 }
@@ -457,14 +533,14 @@ const ch = finals.find((e) => e.label === 'chandelure')!;
 L.push('Chandelure, per boss (analytic sources, shipped → chosen):', '');
 for (const b of caseBosses) {
   const d = decompose(ch, b, RAW_RULE);
-  const c = decompose(ch, b, CHOSEN?.rule ?? RAW_RULE);
+  const c = decompose(ch, b, after ? RECORDED : (CHOSEN?.rule ?? RAW_RULE));
   L.push(`- ${b} (${d.move}): kit ×${d.species.toFixed(2)} · tutor ×${d.tutor.toFixed(2)} · Mejoras ×${d.ranks.toFixed(2)} · stage ×${d.stage.toFixed(2)} · STAB ×${d.stab.toFixed(2)} · type ×${d.type.toFixed(2)} = ×${d.total.toFixed(2)} → type ×${c.type.toFixed(2)} = ×${c.total.toFixed(2)}`);
 }
 L.push('');
 void spreadNow;
 void spreadFix;
 
-L.push(...RECOMMENDATION);
+if (!after) L.push(...RECOMMENDATION);
 const text = `${L.join('\n')}\n`;
 writeFileSync(out, text);
 // Per-cell summary (median over seeds), so the after report can compare with the shipped engine's own fights (TSV: reports/balance/*.json is ignored).
