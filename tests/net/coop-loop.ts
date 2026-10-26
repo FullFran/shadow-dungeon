@@ -4,7 +4,7 @@ import { step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
 import { LagTransport } from '../../src/net/lag';
 import { createSession, type NetSession } from '../../src/net/session';
-import { createFakeScheduler, createMemoryHub } from '../../src/net/transport';
+import { createFakeScheduler, createMemoryHub, type FakeScheduler } from '../../src/net/transport';
 import { SPECIES } from '../../src/data/species';
 
 /**
@@ -31,6 +31,8 @@ export interface CoopLoop {
   guestEvents: GameEvent[];
   /** The floor both peers report (their epoch). */
   floor: number;
+  /** The shared fake clock (advanced by `tick`). */
+  scheduler: FakeScheduler;
   tick(hostInput: PlayerInput, guestInput: PlayerInput): void;
 }
 
@@ -55,6 +57,7 @@ export function coopLoop(worlds: (guestId: string) => { host: WorldState; guest:
     hostEvents: [],
     guestEvents: [],
     floor,
+    scheduler,
     tick(hostInput, guestInput) {
       const h = host.beforeStep(loop.hostWorld, loop.floor);
       loop.hostWorld = step(h.world, hostInput, FIXED_DT_MS);

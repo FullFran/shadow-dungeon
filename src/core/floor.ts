@@ -9,7 +9,7 @@ import { roomRect, type Floor } from './dungeon';
 import { insideRect } from './geometry';
 import type { Arena, WorldState } from './state';
 import { TILE, tileCenter } from './tiles';
-import { vec } from './vec';
+import { vec, type Vec2 } from './vec';
 import { joinBands } from './leaders';
 import { enterRoom, spawnEnemy } from './world';
 
@@ -50,9 +50,8 @@ export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'no
   return joinBands(next, floor.spawns);
 }
 
-/** True when a player (the local one, or a remote one still standing) is on the stairs (no clear requirement, Mystery Dungeon style). */
-export function onStairs(state: WorldState): boolean {
+/** True when `pos` (the local player's by default) is on the floor's stairs (no clear requirement, Mystery Dungeon style). */
+export function onStairs(state: WorldState, pos: Vec2 = state.player.pos): boolean {
   const stairs = state.arena.stairs;
-  if (stairs === undefined) return false;
-  return insideRect(state.player.pos, stairs) || state.remotes.some((r) => r.player.hp > 0 && insideRect(r.player.pos, stairs));
+  return stairs !== undefined && insideRect(pos, stairs);
 }

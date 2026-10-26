@@ -127,6 +127,14 @@ export interface NetSession {
   liveStats(): StatsSummary;
   beforeStep(world: WorldState, floor: number): { world: WorldState; events: GameEvent[] };
   afterStep(world: WorldState, floor: number): void;
+  /** This player's gather status, sent with its state from now on (core/gather.ts). */
+  setStatus(status: { ready: boolean; afk: boolean }): void;
+  /**
+   * Player `id`'s gather status on `floor` as its last state said: ready, and
+   * active (not AFK, and heard from within `STALE_MS`: a hidden tab stops
+   * sending). Null when nothing was heard from it on that floor.
+   */
+  status(id: string, floor: number): { ready: boolean; active: boolean } | null;
   /** Host: everyone goes to `floor`. */
   sendFloor(floor: number): void;
   /** Guest: the floor the host moved to since the last call, if any. */
@@ -145,6 +153,8 @@ const VERSION = { v: PROTOCOL_VERSION, c: CONTENT_HASH } as const;
 /** Town presence comes at ~10 Hz: draw walkers a bit further in the past than run players. */
 const TOWN_DELAY_MS = 150;
 const PING_EVERY_TICKS = 60;
+/** A player silent this long is away (its tab hidden: the browser stops its frames) and is not waited for (ms). */
+export const STALE_MS = 3000;
 const SNAP_DISTANCE = 64;
 
 const pick = <T>(a: T, b: T, t: number): T => (t < 1 ? a : b);
@@ -235,6 +245,9 @@ export function createSession(options: SessionOptions): NetSession {
   let berryGrants: string[] = [];
   let floorChange: number | null = null;
   let clock: { ms: number; floor: number } | null = null;
+  /** This player's gather status (sent with its state), and the others' as last heard. */
+  let own = { ready: false, afk: false };
+  const statuses = new Map<string, { ready: boolean; afk: boolean; floor: number; heardAt: number }>();
   const stats: NetStats = { snapshotBytes: 0, stateBytes: 0, snapshotsReceived: 0 };
 
   const send = (message: NetMessage, reliable: boolean): number => {
@@ -302,6 +315,7 @@ export function createSession(options: SessionOptions): NetSession {
     if (entry.id === 'p1') hostLeft();
     setRoster(roster.filter((r) => r !== entry));
     players.delete(entry.id);
+    statuses.delete(entry.id);
     if (role === 'host') send({ t: 'leave', id: entry.id }, true);
   }
 
@@ -379,6 +393,7 @@ export function createSession(options: SessionOptions): NetSession {
       }
       case 'state': {
         if (message.p.id === localId) return;
+        statuses.set(message.p.id, { ready: message.ready === true, afk: message.afk === true, floor: message.floor, heardAt: scheduler.now() });
         const buffer = players.get(message.p.id) ?? createBuffer<PlayerSnapshot>();
         players.set(message.p.id, pushSample(buffer, { at: stamp(from, message.at), epoch: message.floor, value: message.p }));
         return;
@@ -422,6 +437,7 @@ export function createSession(options: SessionOptions): NetSession {
         if (message.id === 'p1') hostLeft();
         for (const r of roster) if (r.id === message.id) walkers.delete(r.peer);
         players.delete(message.id);
+        statuses.delete(message.id);
         setRoster(roster.filter((r) => r.id !== message.id));
         return;
     }
@@ -429,6 +445,8 @@ export function createSession(options: SessionOptions): NetSession {
   /** A new round: forget the last run's remote players, snapshots and pending claims. */
   function resetRun(): void {
     players.clear();
+    statuses.clear();
+    own = { ready: false, afk: false };
     snapshots = createBuffer<HostSnapshot>();
     inbox = [];
     berryInbox = [];
@@ -584,8 +602,16 @@ export function createSession(options: SessionOptions): NetSession {
       }
       if (ticks % sendEvery !== 0) return;
       const at = scheduler.now();
-      stats.stateBytes = send({ t: 'state', at, floor, p: { ...playerSnapshot(world), id: localId } }, false);
+      stats.stateBytes = send({ t: 'state', at, floor, p: { ...playerSnapshot(world), id: localId }, ...(own.ready ? { ready: true } : {}), ...(own.afk ? { afk: true } : {}) }, false);
       if (role === 'host') stats.snapshotBytes = send({ t: 'snap', at, floor, s: hostSnapshot(world) }, false);
+    },
+    setStatus(status) {
+      own = { ready: status.ready, afk: status.afk };
+    },
+    status(id, floor) {
+      const heard = statuses.get(id);
+      if (!heard || heard.floor !== floor) return null;
+      return { ready: heard.ready, active: !heard.afk && scheduler.now() - heard.heardAt < STALE_MS };
     },
     sendFloor(floor) {
       hostFloor = floor;

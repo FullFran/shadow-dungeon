@@ -359,6 +359,11 @@ export function drawGateLine(ctx: CanvasRenderingContext2D, gate: Pick<GateState
   gateBanner(ctx, gateText(gate), PALETTE.danger, { panel: 0.85, text: 0.75 + 0.25 * Math.sin(timeMs / 240) }, width, y);
 }
 
+/** Draws the co-op gather line ("Esperando a 2") centred at `y` (HUD units). */
+export function drawWaitLine(ctx: CanvasRenderingContext2D, text: string, width: number, y: number): void {
+  gateBanner(ctx, text, PALETTE.cursor, { panel: 0.85, text: 1 }, width, y);
+}
+
 /** Draws the "gate opened" notice, fading out over its last second. */
 export function drawGateNotice(ctx: CanvasRenderingContext2D, notice: GateNotice, width: number, y: number, timeMs: number): void {
   const age = timeMs - notice.atMs;

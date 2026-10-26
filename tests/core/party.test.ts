@@ -204,10 +204,11 @@ describe('shared run: the host moves everyone', () => {
   const SEED = 777;
   const stairsPos = (w: WorldState) => vec(w.arena.stairs!.x + 16, w.arena.stairs!.y + 16);
 
-  it('the host goes down when any present player stands on the stairs', () => {
+  it('the host goes down once the party agreed (core/gather.ts), not because a teammate stands on the stairs', () => {
     const { run, world } = startRun(SEED, { localId: 'p1' });
     const withP2 = withRemote(world, 'p2', stairsPos(world));
-    const progress = progressRun(run, withP2);
+    expect(progressRun(run, withP2).entered).toBe(false);
+    const progress = progressRun(run, withP2, true);
     expect(progress.entered).toBe(true);
     expect(progress.run.floor).toBe(2);
   });

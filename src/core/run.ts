@@ -25,9 +25,9 @@ import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
 import { partyDefeated, partyField, partySizeOf, presentPartySize } from './party';
 import { deriveSeed, nextRandom } from './rng';
-import { atExit, loadRoom, roomCleared } from './rooms';
+import { loadRoom, roomCleared } from './rooms';
 import type { WorldState } from './state';
-import { vec } from './vec';
+import { vec, type Vec2 } from './vec';
 import { createWorld, type WorldOptions } from './world';
 
 /**
@@ -290,12 +290,27 @@ function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: n
 }
 
 /**
- * After a step: defeat (every player down), victory (last floor cleared),
- * stairs (or a fixed room's exit) to the next floor, or nothing. In a shared
- * run only the host takes the stairs, when any player stands on them; guests
- * follow its floor change (`followToFloor`).
+ * Whether `pos` is where the current floor is left: the stairs of a generated
+ * floor (unless a gate holds them shut), or the exit of a cleared room. Never
+ * on the last floor (beating its room is the victory).
  */
-export function progressRun(current: RunState, world: WorldState): RunProgress {
+export function atLeavingPoint(run: RunState, world: WorldState, pos: Vec2): boolean {
+  if (run.floor >= floorCount(run)) return false;
+  const plan = floorPlanOf(run);
+  if (plan.kind === 'generated') return onStairs(world, pos) && !gateShut(world);
+  const exit = roomExit(plan, dungeonOf(run));
+  return exit !== null && roomCleared(world) && insideRect(pos, exit);
+}
+
+/**
+ * After a step: defeat (every player down), victory (last floor cleared),
+ * the next floor, or nothing. `agreed` says the party chose to leave (the
+ * stairs prompt and the gather rule, core/gather.ts); without it (the balance
+ * and proof harnesses) the player standing on the leaving point leaves at
+ * once. In a shared run only the host moves the party; guests follow its
+ * floor change (`followToFloor`).
+ */
+export function progressRun(current: RunState, world: WorldState, agreed?: boolean): RunProgress {
   if (partyDefeated(world)) return { run: current, world, entered: false, outcome: 'defeat' };
   // Endless: the eclipse swallows the floor when the host's clock runs out (a guest ends on the host's word).
   if (current.clockMs !== undefined && current.clockMs <= 0 && world.role !== 'guest') return { run: current, world, entered: false, outcome: 'eclipse' };
@@ -307,10 +322,7 @@ export function progressRun(current: RunState, world: WorldState): RunProgress {
   if (last && floorPlanOf(run).kind === 'room' && roomCleared(world)) return { run, world, entered: false, outcome: 'victory' };
   const bonus = paid.bonusMs > 0 ? { bonusMs: paid.bonusMs } : {};
   if (world.role === 'guest') return { run, world, entered: false, outcome: null, ...bonus };
-  const plan = floorPlanOf(run);
-  const exit = roomExit(plan, dungeonOf(run));
-  const leaving =
-    plan.kind === 'generated' ? onStairs(world) && !gateShut(world) : plan.role === 'echo' ? exit !== null && roomCleared(world) && insideRect(world.player.pos, exit) : atExit(world, plan.room);
+  const leaving = agreed ?? atLeavingPoint(run, world, world.player.pos);
   if (last || !leaving) return { run, world, entered: false, outcome: null, ...bonus };
   const down = goDown(run, world, run.floor + 1);
   const total = paid.bonusMs + down.bonusMs;

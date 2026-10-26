@@ -81,7 +81,8 @@ export type NetMessage =
   /** Round-trip probe (reliable, ~1 Hz); every peer answers with `pong` to the sender. */
   | { t: 'ping'; at: number }
   | { t: 'pong'; to: string; at: number }
-  | { t: 'state'; at: number; floor: number; p: PlayerSnapshot }
+  /** A peer's own player; `ready`: it confirmed leaving the floor and stands on the stairs (or exit); `afk`: no input for a while (core/gather.ts). */
+  | { t: 'state'; at: number; floor: number; p: PlayerSnapshot; ready?: true; afk?: true }
   | { t: 'claim'; claims: readonly HitClaim[] }
   /** Guest: its player walked over Oran Berry `id`; the host decides (first claim wins). */
   | { t: 'pick'; id: string; by: string }
@@ -314,7 +315,7 @@ export function encodeMessage(message: NetMessage): string {
   let wire: Wire;
   switch (message.t) {
     case 'state':
-      wire = { t: 'state', at: r1(message.at), f: message.floor, p: encodePlayer(message.p) };
+      wire = { t: 'state', at: r1(message.at), f: message.floor, p: encodePlayer(message.p), ...(message.ready ? { r: 1 } : {}), ...(message.afk ? { a: 1 } : {}) };
       break;
     case 'snap':
       wire = {
@@ -396,7 +397,8 @@ export function decodeMessage(text: string): NetMessage | null {
       return decodeTown(wire);
     case 'state': {
       const p = decodePlayer(wire.p);
-      return p && finite(wire.at) && isFloor(wire.f) ? { t: 'state', at: wire.at, floor: wire.f, p } : null;
+      if (!p || !finite(wire.at) || !isFloor(wire.f)) return null;
+      return { t: 'state', at: wire.at, floor: wire.f, p, ...(wire.r === 1 ? { ready: true as const } : {}), ...(wire.a === 1 ? { afk: true as const } : {}) };
     }
     case 'snap':
       if (!finite(wire.at) || !isFloor(wire.f) || !finite(wire.k)) return null;

@@ -16,7 +16,8 @@ import type { SpeciesId } from '../data/species';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, roomExit, setClock, startRun, tickRunClock, type RunState } from '../core/run';
+import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
 import { atCard, fightOf } from '../core/cards';
@@ -37,7 +38,7 @@ import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
 import { WISP_BERRY } from '../core/wisp';
 import { clickLockActive, configureLock, enemyUnderCursor } from '../core/lockon';
-import type { GameEvent, LockType, PlayerInput, WorldState } from '../core/state';
+import type { GameEvent, LockType, PlayerInput, RemotePlayer, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { coinBreakdown, emptyTally, tallyFloor, tallyStep, type CoinBreakdown, type CoinTally } from '../core/coins';
 import { advanceClock, FIXED_DT_MS, frameTime } from '../core/timestep';
@@ -365,6 +366,16 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let choicePick: ((index: number) => void) | null = null;
   /** The player walked away from (or used) the shrine or merchant: it opens again only after leaving its reach. */
   let choiceDismissed = false;
+  /**
+   * Leaving the floor (core/gather.ts): this player confirmed on the stairs (or a cleared room's exit) and stands there,
+   * was already asked (again only after walking off), the prompt is the open choice; its last input (real ms), and how
+   * many teammates the party still waits for (HUD).
+   */
+  let ready = false;
+  let leaveAsked = false;
+  let leaveOpen = false;
+  let lastInputAt = 0;
+  let waiting = 0;
   /** Pokémonedas spent at the merchant (taken off the run's pay), and as the floor was entered ("Restart floor"). */
   let simaSpent = 0;
   let floorStartSpent = 0;
@@ -452,6 +463,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     closeChoice = null;
     choicePick = null;
     choiceDismissed = true;
+    leaveOpen = false;
     if (!net && !closeMenu && !closePick) input.setSuspended(false);
   }
 
@@ -543,6 +555,44 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     });
   }
 
+  /** A teammate for the gather rule, as this peer sees it: standing, active (heard from on this floor, not AFK), ready on the leaving point. */
+  const teammate = (r: RemotePlayer): GatherMember => {
+    const status = net?.session.status(r.id, netFloor());
+    return { alive: r.player.hp > 0, active: status?.active ?? false, ready: (status?.ready ?? false) && atLeavingPoint(run, world, r.player.pos) };
+  };
+
+  /** Each step: whether the party agreed to leave the floor (solo: this player confirmed); sends this player's status and counts who is missing. */
+  function gather(): boolean {
+    const atPoint = !trial && atLeavingPoint(run, world, world.player.pos);
+    ready = keepReady(ready, atPoint);
+    if (!atPoint) leaveAsked = false;
+    if (leaveOpen && !atPoint) hideChoice();
+    const active = isActive(realMs - lastInputAt, document.hidden);
+    net?.session.setStatus({ ready, afk: !active });
+    const members: GatherMember[] = [{ alive: world.player.hp > 0, active, ready }, ...(net ? world.remotes.map(teammate) : [])];
+    waiting = ready ? waitingFor(members) : 0;
+    return partyAgreed(members);
+  }
+
+  /** Stepping on the stairs (or a cleared room's exit) asks "¿Bajar?" once; confirming marks this player ready (solo: it leaves). */
+  function watchLeave(): void {
+    if (ready || leaveAsked || trial || ended || closeChoice || closePick || closeMenu || closeCinematic) return;
+    if (world.player.hp <= 0 || !atLeavingPoint(run, world, world.player.pos)) return;
+    leaveAsked = true;
+    const shared = net !== undefined;
+    showChoice(t('leave.title'), t(shared ? 'leave.hintShared' : 'leave.hint'), [
+      { name: t('leave.go'), description: t(shared ? 'leave.goShared' : 'leave.goText'), look: 'rare' },
+      { name: t('leave.stay'), description: t('leave.stayText'), look: 'common' },
+    ], (index) => {
+      if (index === 0) {
+        ready = true;
+        lastInputAt = realMs;
+      }
+      hideChoice();
+    });
+    leaveOpen = true;
+  }
+
   /** Each step: tells the log what the floor's event did, records it, hands out its item pick, and opens the shrine or merchant on reaching them. */
   function watchSimaEvent(): void {
     const events = dungeonOf(run).endless?.events;
@@ -615,6 +665,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     merchantSold = false;
     lastEvent = world.simaEvent;
     hideChoice();
+    ready = false;
+    leaveAsked = false;
     prev = world;
     accumulator = 0;
     juice = initialJuice();
@@ -781,6 +833,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     floorStart = world;
     restartsUsed = 0;
     hideChoice();
+    ready = false;
+    leaveAsked = false;
     floorStartSpent = simaSpent;
     merchantBerries = 0;
     merchantSold = false;
@@ -825,6 +879,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       });
       const raw = mergeInputs(keys, touchInput);
       const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
+      if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
       prev = world;
@@ -836,6 +891,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       const before = world;
       world = step(world, playerInput, FIXED_DT_MS);
+      const agreed = gather();
       // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
       const clockBefore = run.clockMs;
       // Guests run their copy too, for a smooth display; the host's clock (`takeClock`) corrects it and decides the end.
@@ -877,7 +933,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       if (trial && trialHurt(events)) trialHit = true;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
-      const progress = trial ? trialProgress(hostFloor) : progressRun(run, world);
+      const progress = trial ? trialProgress(hostFloor) : progressRun(run, world, agreed);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
       // Why the time came: a new floor, a felled echo, the crystal or a cleared wave room.
@@ -890,7 +946,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         if (net) net.session.sendFloor(netFloor());
         if (net && run.clockMs !== undefined) net.session.sendClock(run.clockMs, run.floor);
       } else if (!trial && hostFloor !== null && hostFloor > run.floor) enterFloor(followToFloor(run, world, hostFloor));
-      else watchSimaEvent();
+      else {
+        watchSimaEvent();
+        watchLeave();
+      }
       if (juice.hitstopMs > 0) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
         accumulator = 0;
@@ -988,6 +1047,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       touchUi: isTouchUi(),
       touchAim: isTouchUi() ? touch.aimPreview() : null,
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
+      waiting: waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
     });
     if (perf) {
       perf.record('render', performance.now() - drawAt);

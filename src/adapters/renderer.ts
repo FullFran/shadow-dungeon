@@ -26,7 +26,7 @@ import type { Vec2 } from '../core/vec';
 import { AIM_DRAG } from './touch';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
-import { drawGateLine, drawGateNotice, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
+import { drawGateLine, drawGateNotice, drawWaitLine, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
 import { drawCaptureNotice, drawCardDeclaration, drawDungeonIntro, drawNowPlaying, drawSpellBanner, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
@@ -111,6 +111,8 @@ export interface RenderFrame {
   clock?: RunClock | null;
   /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
   sima?: SimaLook | null;
+  /** Co-op: this player is ready to leave the floor and the party still waits for others ("Esperando a 2"). */
+  waiting?: string | null;
 }
 
 const COLORS = {
@@ -1645,6 +1647,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const gateY = frame.card && cardAlpha(frame.card, timeMs - frame.card.shownAtMs) > 0 ? hud.height / 2 + 52 : current.simaEvent ? 132 : 78;
     if (current.gate && !current.gate.done) drawGateLine(ctx, current.gate, hud.width, gateY, timeMs);
     else if (openedNotice) drawGateNotice(ctx, openedNotice, hud.width, gateY, timeMs);
+    if (frame.waiting) drawWaitLine(ctx, frame.waiting, hud.width, hud.height - 48);
   }
 
   return { draw };
