@@ -15,7 +15,7 @@ import type { SendaRoad } from './roads';
  * Decidueye, who saw the pack pass), III in the grudge's fog (Houndoom, the
  * hunter; Spiritomb, a hundred and eight souls bound by resentment). Its
  * wound, Zoroark de Niebla Blanca, grows each chapter: the grudge of the one
- * left behind (Normal and Ghost, white like an omen), wearing the pack's
+ * left behind (Ghost, white like an omen), wearing the pack's
  * faces. Texts: `story.zorua.*`.
  */
 
@@ -29,7 +29,7 @@ export const ZORUA_BOSSES: readonly (StoryBossDef & { id: ZoruaBossId })[] = [
   { id: 'zorua-mightyena', sprite: 'mightyena', types: ['dark', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'dark', b: 'ghost' }, cards: ['fan', 'drop', 'rain'], hpScale: [0.5, 0.54, 0.44, 0.41] },
   { id: 'zorua-houndoom', sprite: 'houndoom', types: ['fire', 'ghost'], maxHp: 520, radius: 15, shots: { a: 'fire', b: 'dark' }, cards: ['walls', 'fan', 'bloom'], hpScale: [0.5, 0.6, 0.6, 0.69] },
   { id: 'zorua-spiritomb', sprite: 'spiritomb', types: ['ghost', 'dark'], maxHp: 520, radius: 15, shots: { a: 'ghost', b: 'dark' }, cards: ['moon', 'walls', 'drop'], hpScale: [0.5, 0.56, 0.6, 0.49] },
-  // The wound: Zoroark of the white fog (Normal and Ghost, the grudge's vessel): borrowed faces, a blow from behind, the path that loops, the fog that closes in.
+  // The wound: Zoroark of the white fog (Ghost, the grudge's vessel): borrowed faces, a blow from behind, the path that loops, the fog that closes in.
   { id: 'zorua-wound', sprite: 'zoroark', types: ['ghost'], maxHp: 760, radius: 20, shots: { a: 'dark', b: 'ghost' }, cards: ['fan', 'drop', 'bloom', 'walls'], hpScale: [0.5, 0.55, 0.7, 0.85], wound: true },
 ];
 

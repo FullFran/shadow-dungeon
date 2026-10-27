@@ -8,7 +8,7 @@ import type { SendaRoad } from './roads';
  * who wears its mother's skull and cries inside it, so the crying sounds like
  * a song. Its mother went down to the dungeons for light the night of the
  * Eclipse; her skull came back in other arms, and a shadow with her shape
- * hums among the swamp's grave mounds. Each chapter walks its own road with
+ * hums in the caves where she went down. Each chapter walks its own road with
  * its own shadows: I by the swamp (Haunter, who laughs at crying; Mandibuzz,
  * whom crying calls), II in the caves where she went down (Dusclops, who
  * carries the dead inside; Kangaskhan, a mother with an empty pouch), III up
