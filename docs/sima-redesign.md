@@ -321,7 +321,7 @@ Todas con su versión inglesa en `en.json`.
 | # | Tarea | Tamaño | Datos o motor |
 |---|---|---|---|
 | T1 | Textos: mazmorra, lucidez, pantalla final, líneas de estrato, eco sin rostro (es y en) | S | Datos |
-| T2 | Cinemáticas de la Sima: tipo `SimaScene`, cuadros en `src/adapters/sima-scenes.ts` con la figura del jugador y su eco, disparadores (primera entrada, estrato, primer Eco, primer heraldo, primera sombra, quiebre, regreso), «vistas» guardadas en el dispositivo, solo en solitario, reloj parado, entrada en el menú para volver a verlas | M | Motor (pocas piezas nuevas: el reproductor y las poses ya existen) |
+| T2 | Cinemáticas de la Sima: tipo `SimaScene`, cuadros en `src/adapters/sima-scenes.ts` con la figura del jugador y su eco, disparadores (primera entrada, estrato, primer Eco, primer heraldo, primera sombra, quiebre, regreso), «vistas» guardadas en el dispositivo, solo en solitario, reloj parado, entrada en el menú para volver a verlas (hecho: Galería del menú del pueblo, `odd/tasks/lore-gallery.md`) | M | Motor (pocas piezas nuevas: el reproductor y las poses ya existen) |
 | T3 | Eco de guardián sin rostro si no lo has vencido (nombre y silueta, cosmético por cliente; la pelea no cambia) | S | Motor ligero, lee los récords de siempre |
 | T4 | Suceso «Sombra extraviada»: tipo nuevo en `SIMA_EVENTS`, sala con muro de niebla, bolsa por semilla sobre `STORY_BOSSES`, pelea del nivel de la partida con la escala de eco, premio, nombre según memoria, cooperativo | M-L | Datos (peso, planta mínima, premio) y motor (el suceso y la sala) |
 | T5 | Heridas en las plantas de eco desde la 35, alternas con los guardianes, con su sala | M | Datos (`ENDLESS.echoes` gana una regla de alternancia) y motor |
