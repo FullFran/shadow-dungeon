@@ -32,7 +32,10 @@ Cómo llega cada hecho al jugador: **se juega** (una regla que se nota jugando),
 | Regla | Qué dice | Nivel | Cómo llega | Fuentes |
 |---|---|---|---|---|
 | El Eclipse no se mueve | Anillo rojo quieto; el mundo exterior está siempre al anochecer del eclipse | [N] | Se lee y se ve (cielo de todos los mapas) | `prologue.eclipse.2`; `docs/gdd.md:512` |
+| La noche que no acaba | Desde el Eclipse el sol no ha vuelto a salir. El tiempo pasa igual: frío y menos frío, y los inviernos se cuentan por el hielo, no por la luz. La luna sigue saliendo; el sol no. «No se hizo de día» (Shinx) es literal; «La luna aún sale» (Cubone) es lo único de su madre que aún sube; «mañana» es una forma de hablar. El Refugio del Ocaso se llama así porque se quedó en el último anochecer | [N] (decisión del dueño del 27-10-2026; C6 resuelta) | Se lee | `story.shinx.1.fragment.1.text`; `story.cubone.1.before.1`; `sima.plea.hermit.1`; `docs/gdd.md:23`, `docs/gdd.md:512` |
 | Las mazmorras devuelven sombras | Quien entra y vuelve ya no es él, solo su sombra; los enemigos son sombras | [N] | Se lee; se juega (enemigos) | `prologue.shadows.2`; `town.story.2`; `docs/gdd.md:225` |
+| Cómo se vuelve uno sombra | Una sombra es lo que queda cuando tu sombra ya no te necesita. Normalmente pasa despacio: cada bajada se bebe un poco más de ti (el prólogo; la Caminante que volvió once veces). La noche del Eclipse pasó de golpe a los que estaban en la plaza (Senda de Mimikyu); por eso esa noche es la herida de todo el pueblo | [N] (decisión del dueño del 27-10-2026; C4 resuelta) | Se lee | `prologue.shadows.2`; `story.mimikyu.3.before.1`; `sima.plea.hermit.2`; `docs/gdd.md:422` |
+| El lago helado | El Lago Negro es el lago de Piplup: la noche del Eclipse se heló entero, y el hielo es negro porque debajo ya no hay luz. El pescador pesca por un agujero que mantiene abierto junto al embarcadero (el «agua negra»). El lago desagua al mar, más allá: por ahí se fueron los demás, y el hielo dejó a Piplup aislado | [J] (decisión del dueño del 27-10-2026; C7 y C9 resueltas) | Se lee | `world.npc.keeper.1`; `world.npc.fisher.1`; `story.piplup.3.before.1`; `story.piplup.3.boss.6.title`; `docs/gdd.md:518` |
 | Guardianes y juramentos | Cada mazmorra tiene un guardián atado a un juramento olvidado; al caer, el juramento se rompe y otro lo siente | [J] | Se lee (cinemáticas de guardián) | `prologue.guardians.1`; `guardian.aegislash.post.1`; `world.lore.crater.2` |
 | Algo bebe la luz | Bajo la tierra (prólogo) o «más allá de vuestro cielo» (Nihilego); nunca se nombra | [N] | Se lee | `prologue.hunger.1`; `guardian.nihilego.post.2`; `guardian.dhelmise.post.2` |
 | La Sima baja hacia el eclipse | No hacia el fondo de la tierra: «Allí abajo está el otro cielo»; la luz cae y nunca toca fondo | [J] | Se lee (Phantump) y se ve (Estrato V: el anillo debajo) | `sima.scene.lost.11`, `sima.scene.lost.12`; `sima.band.abyss.lore.2`; `docs/gdd.md:424` |
@@ -57,12 +60,12 @@ Cómo llega cada hecho al jugador: **se juega** (una regla que se nota jugando),
 
 El mundo exterior es pequeño, se recorre andando, siempre al anochecer del eclipse y sin combate (`docs/gdd.md:512`).
 
-- **Refugio del Ocaso** [J] (`world.map.refugio`): el pueblo de partida. Mimikyu (puesto de la suerte), Poochyena (tienda; «Desde el Eclipse Carmesí la fragua no prende sola», `town.shop.1`), Gastly (cuentacuentos, `town.story.1-4`), Smeargle (maestro de movimientos, `town.tutor.1`), el tablón, el Pilar de las señales («Una llama fría arde en la piedra», `town.beacon.1`) y el **Santuario de los Juramentos** («Donde los guardianes vuelven a jurar», `shrine.subtitle`; «Cada guardián que cae deja aquí su juramento», `shrine.text`). `src/data/town.ts:203-206`, `src/data/world.ts:136-143`.
-- **Camino de las Ruinas** [J] (`world.map.ruinas`): tumbas y columnas; la Estatua sin rostro («El que juró la espada no la soltará jamás», `world.lore.knight.1`, que cambia al caer el Rey, `world.lore.knight.2`); el poste («No bajes solo», tachado: «Volvió», `world.lore.sign.2`). Boca de la Cripta. `src/data/world.ts:156-199`.
-- **Paso del Mirador** [J] (`world.map.mirador`): una grieta y un solo puente; el eclipse «cada noche parece un poco más cerca» (`world.lore.view.1`). Boca del Bosque Brumoso. `src/data/world.ts:205-253`.
-- **Cráter del Eclipse** [J] (`world.map.crater`): ceniza bajo el eclipse; la boca de la Sima; la Estatua quemada, «con las manos quemadas, como si hubiera intentado sujetar el sol» (`world.lore.crater.1`); «La sima no tiene fondo. Solo más eclipse» (`world.lore.crater.3`). Aquí se hacen las súplicas y despiertas al perderte. `src/data/world.ts:259-292`, `src/data/sima-plea.ts:41`.
-- **Aldea del Lago Negro** [J] (`world.map.lago`): pescadores; «Esta aldea vivía de la luz del lago. Cuando el sol se apagó, el agua se volvió negra.» (`world.npc.keeper.1`); «El lago ya no refleja el cielo. Refleja lo que hay debajo.» (`world.npc.fisher.2`). Cubone pesca, Litwick guarda la llama, Phantump ve lo que vendrá; un ídolo de rana recibe ofrendas (`world.lore.idol.1-3`). La casa grande con todas las lámparas encendidas está «al final de la aldea» (`story.litwick.1.before.1`). Boca de las Cuevas Inundadas al final del embarcadero. `src/data/world.ts:299-350`.
-- **Ciénaga del Cielo Roto** [J] (`world.map.cienaga`): donde cayó la primera gota de luz roja (`world.npc.hermit.2`); el Cristal caído que muestra «un cielo que no es este» (`world.lore.crystal.2`) y luego suena «como una puerta que alguien, desde el otro lado, empuja» (`world.lore.crystal.3`). Croagunk, el ermitaño. Boca del Pantano. `src/data/world.ts:359-413`.
+- **Refugio del Ocaso** [J] (`world.map.refugio`): el pueblo de partida. Mimikyu (puesto de la suerte), Poochyena (tienda; «Desde el Eclipse Carmesí la fragua no prende sola», `town.shop.1`), Gastly (cuentacuentos, `town.story.1-4`), Smeargle (maestro de movimientos, `town.tutor.1`), Abra dormido en un rincón junto a la casa de piedra y Axew entrenando en la linde del noreste (vecinos de sus Sendas, sección 4), el tablón, el Pilar de las señales («Una llama fría arde en la piedra», `town.beacon.1`) y el **Santuario de los Juramentos** («Donde los guardianes vuelven a jurar», `shrine.subtitle`; «Cada guardián que cae deja aquí su juramento», `shrine.text`). `src/data/town.ts:223-226`, `src/data/world.ts:135-150`.
+- **Camino de las Ruinas** [J] (`world.map.ruinas`): tumbas y columnas; la Estatua sin rostro («El que juró la espada no la soltará jamás», `world.lore.knight.1`, que cambia al caer el Rey, `world.lore.knight.2`); el poste («No bajes solo», tachado: «Volvió», `world.lore.sign.2`). Boca de la Cripta. `src/data/world.ts:163-206`.
+- **Paso del Mirador** [J] (`world.map.mirador`): una grieta y un solo puente; el eclipse «cada noche parece un poco más cerca» (`world.lore.view.1`). Boca del Bosque Brumoso. `src/data/world.ts:212-260`.
+- **Cráter del Eclipse** [J] (`world.map.crater`): ceniza bajo el eclipse; la boca de la Sima; la Estatua quemada, «con las manos quemadas, como si hubiera intentado sujetar el sol» (`world.lore.crater.1`); «La sima no tiene fondo. Solo más eclipse» (`world.lore.crater.3`). Aquí se hacen las súplicas y despiertas al perderte. En el borde norte, Shinx mira hacia abajo, por donde bajan los Caminantes. `src/data/world.ts:266-300`, `src/data/sima-plea.ts:41`.
+- **Aldea del Lago Negro** [J] (`world.map.lago`): pescadores; «Esta aldea vivía de la luz del lago. Cuando el sol se apagó, el lago se heló entero, y el hielo es negro: debajo ya no queda luz.» (`world.npc.keeper.1`); es el lago de Piplup, y Cubone pesca por el agujero del embarcadero (`world.npc.fisher.1`; sección 2, «El lago helado»); «El lago ya no refleja el cielo. Refleja lo que hay debajo.» (`world.npc.fisher.2`). Cubone pesca, Piplup vigila a su lado el único agujero hasta el agua, Litwick guarda la llama, un niño callado (Zorua disfrazado) se sienta en la plaza, Phantump ve lo que vendrá; un ídolo de rana recibe ofrendas (`world.lore.idol.1-3`). La casa grande con todas las lámparas encendidas está «al final de la aldea» (`story.litwick.1.before.1`). Boca de las Cuevas Inundadas al final del embarcadero. `src/data/world.ts:307-381`.
+- **Ciénaga del Cielo Roto** [J] (`world.map.cienaga`): donde cayó la primera gota de luz roja (`world.npc.hermit.2`); el Cristal caído que muestra «un cielo que no es este» (`world.lore.crystal.2`) y luego suena «como una puerta que alguien, desde el otro lado, empuja» (`world.lore.crystal.3`). Croagunk, el ermitaño. Boca del Pantano. `src/data/world.ts:390-444`.
 - **Las mazmorras principales** [J] (`src/data/dungeon-lore.ts:18-53`):
   - *Cripta del Rey de las Espadas*, «Donde el acero aún espera órdenes»: el Rey guarda una puerta sellada; «Nadie sabe si protege al mundo de lo que hay detrás, o a lo que hay detrás del mundo.» (`dungeon.crypt.lore.2`). Jefes: Sableye (intermedio) y Aegislash.
   - *Bosque Brumoso*, «Donde la niebla es el aliento de los perdidos»: «Quien se pierde en la niebla no vuelve: echa raíces, y escucha.» (`dungeon.forest.lore.1`). Jefes: Trevenant y Decidueye.
@@ -74,7 +77,7 @@ El mundo exterior es pequeño, se recorre andando, siempre al anochecer del ecli
   - III · La Campana Ahogada (21-30), *Lo que nombras*: «La campana del pecio suena bajo tus pies. O sobre tu cabeza.» (`sima.band.caves.lore.2`).
   - IV · El Cielo Envenenado (31-40), *Lo que no es tuyo*: «Ya no ves tus miedos. Ves los de los que bajaron antes.» (`sima.band.swamp.lore.2`).
   - V · El Abismo bajo el Anillo (41+), *Lo que queda de ti*: islas sobre la nada; «A lo lejos se recortan las torres de un reino que se hundió entero.» (`sima.band.abyss.lore.3`); «Lo único que te sostiene es tu nombre. No lo sueltes.» (`sima.band.abyss.lore.5`).
-- **Lugares de las Sendas** [J], que no están en el mapa del mundo: la plaza de antes del Eclipse con su columpio (Mimikyu II), la torre sin techo «más allá de la cripta» (`story.cubone.3.before.1`), la casa grande (Litwick II), la fuente de la aldea (`story.zorua.1.before.1`), la niebla blanca «más allá del pantano» (`story.zorua.3.before.1`), el lago helado de Piplup, la manada al borde de la tormenta (Shinx II), la barranca y su árbol viejo de marcas (Axew).
+- **Lugares de las Sendas** [J], que no están en el mapa del mundo: la plaza de antes del Eclipse con su columpio (Mimikyu II), la torre sin techo «más allá de la cripta» (`story.cubone.3.before.1`), la casa grande (Litwick II), la fuente de la aldea (`story.zorua.1.before.1`; el mapa no tiene fuente: el residente Zorua se sienta en las piedras de la plaza), la niebla blanca «más allá del pantano» (`story.zorua.3.before.1`), el lago helado de Piplup (el Lago Negro, C7), la manada al borde de la tormenta (Shinx II), la barranca y su árbol viejo de marcas (Axew).
 - **Tierras sin nombre** [J]: «Más allá del lago hay tierras que aún no tienen nombre. Algún día el camino seguirá.» (`world.npc.oracle.2`).
 
 ## 4. Personajes y facciones
@@ -86,9 +89,14 @@ El mundo exterior es pequeño, se recorre andando, siempre al anochecer del ecli
 | **Phantump**, la vidente del Lago | Evoluciona y despierta Pokémon; cierra las Sendas con una línea; explica qué son los Caminantes | «Las almas viejas sabemos esperar.» Te espera en el borde: «Y si te pierdes, te espero aquí, en el borde.» | `world.npc.oracle.evolve`; `sima.plea.oracle.3`; `sima.scene.lost.7-14`; `travel.at` |
 | **Gastly**, cuentacuentos (Refugio) | Cuenta el prólogo; reconoce a los Caminantes «en los ojos» | Busca una manada de zorros que cruzó la niebla del bosque y no salió | `town.story.1-4`; `sima.plea.storyteller.1-5` |
 | **Cubone**, pescador (Lago) | Pesca sin cebo. Es el Cubone de la Senda del Hueso (D-B) | Su madre bajó a las cuevas a por luz la noche del Eclipse; volvió su hueso | `world.npc.fisher.1-2`; `sima.plea.fisher.1-3` |
-| **Litwick**, «Guardiana de la llama» (Lago) | Guía a los perdidos hasta la orilla. Es el Litwick de la Senda de la Llama (D-B; género sin decidir, C5) | Busca al niño que llevó de la mano; mantiene la casa grande encendida | `world.npc.keeper.1-4`; `sima.plea.keeper.1-3` |
+| **Litwick**, «Guardiana de la llama» (Lago) | Guía a los perdidos hasta la orilla. Es la Litwick de la Senda de la Llama (D-B); femenina (C5, resuelta) | Busca al niño que llevó de la mano, que ya de viejo bajó a buscar calor; mantiene la casa grande encendida | `world.npc.keeper.1-4`; `sima.plea.keeper.1-3` |
 | **Poochyena**, tienda (Refugio) | Fragua y mejoras | Su hermana mayor, una Mightyena con una muesca en la oreja, dejó de volver | `town.shop.1`; `sima.plea.shop.1-3` |
 | **Mimikyu**, puesto de la suerte (Refugio) | El gacha («Cada cápsula trae a alguien nuevo, y yo quiero muchos amigos»). Es el Mimikyu de la Senda del Disfraz (D-B) | Busca a alguien que empujaba el columpio de la plaza aunque nadie se subiera | `town.gacha.1`; `sima.plea.gacha.1-2` |
+| **Abra**, «Bajo la manta» (Refugio) | Duerme en un rincón, junto a la casa de piedra; casi nunca contesta. Es el Abra de la Senda del Sueño | En sueños dice que la manta no es suya, que se la dejaron en la puerta | `town.resident.abra.1-2`; `story.abra.3.fragment.1.text`; `src/data/world.ts:148` |
+| **Axew**, «Aprendiz» (Refugio) | Entrena solo junto a un árbol de marcas bajas, en la linde del noreste. Es el Axew de la Senda del Colmillo | «Los mayores se fueron, así que me hago fuerte yo» | `town.resident.axew.1-2`; `src/data/world.ts:149` |
+| **Zorua**, «Niño callado» (Lago) | Un Pokémon pequeño y callado (Shroomish) en la plaza de la aldea; es Zorua disfrazado, y se ve como Zoroark al cerrar su Senda. El disfraz es su herida contada sin palabras | «No soy nadie. De verdad. Sigue andando.» | `town.resident.zorua.2`; `town.name.child`; `story.zorua.1.before.1`; `src/data/world.ts:362` |
+| **Piplup**, «Del lago» (Lago) | En el embarcadero, junto al pescador y al único agujero hasta el agua; rechaza lo que le ofrecen. Es el Piplup de la Senda del Lago Helado | «Este agujero es el único que queda hasta el agua. Lo vigilo porque quiero.» | `town.resident.piplup.1-2`; `src/data/world.ts:348` |
+| **Shinx**, «Vigía del borde» (Cráter) | En el borde norte, mira hacia abajo, por donde bajan los Caminantes. Es el Shinx de la Senda de la Tormenta | «Alguien tiene que acordarse de por dónde se fue cada uno.» | `town.resident.shinx.1-2`; `src/data/world.ts:297` |
 | **Croagunk**, ermitaño de la ciénaga | Avisa del agua negra | Vio a una Caminante volver once veces; la duodécima solo subió su sombra | `world.npc.hermit.1-3`; `sima.plea.hermit.1-3` |
 | **Smeargle**, maestro de movimientos | Tutor | «Cada Pokémon guarda en su sangre los movimientos de su tierra.» | `town.tutor.1` |
 
@@ -120,7 +128,18 @@ Los cuatro tienen cinemática antes y después (`src/data/guardian-cinematics.ts
 
 Iniciales (test de personalidad): Mimikyu, Zorua, Litwick, Cubone (`src/data/quiz.ts:18`). Del gacha: Abra, Piplup, Shinx, Axew (`docs/gdd.md:1028-1031`).
 
-**De quién es cada Senda** (decisión del dueño del 27-10-2026, D-B): las Sendas son heridas de otros, casi siempre de los vecinos, no el pasado del propio Caminante. Cubone → el pescador de la Aldea del Lago Negro (`src/data/world.ts:338`); Litwick → la guardiana de la llama de la Aldea (`src/data/world.ts:339`); Mimikyu → el del puesto de la suerte del Refugio (`src/data/town.ts:204`). Zorua, Abra, Piplup, Shinx y Axew **no tienen vecino** en el mundo ni en el pueblo: su texto ya funciona como herida de otro (sus vínculos hablan desde la aldea o el pueblo: `story.zorua.2.bond`, `story.shinx.2.bond`, `story.axew.3.bond`), y a quién pertenecen queda pendiente del dueño.
+**De quién es cada Senda** (decisión del dueño del 27-10-2026, D-B): las Sendas son heridas de otros, casi siempre de los vecinos, no el pasado del propio Caminante. Desde el 27-10-2026 las ocho tienen vecino en el mundo (`src/data/world.ts`, `src/data/town.ts:224`). Antes de su Senda dice unas líneas; al cerrar el capítulo I te reconoce y dice otras (`src/town/residents.ts`, que lee el `story` de la partida, el mismo que la galería; en el pueblo a solas y en el de la sala). Zorua no se quita el disfraz hasta cerrar el III.
+
+| Línea | Vecino | Dónde | Antes de su Senda | Al reconocerte (capítulo I cerrado) |
+|---|---|---|---|---|
+| Mimikyu | El del puesto de la suerte | Refugio, el puesto | `town.gacha.1` | `town.gacha.after.1` («Tú te das la vuelta sin que te lo pida») |
+| Cubone | El pescador | Lago, final del embarcadero | `world.npc.fisher.1-2` | `world.npc.fisher.after.1` («mejor que seamos dos mirando») |
+| Litwick | La guardiana de la llama | Lago, junto al camino | `world.npc.keeper.1-4` | `world.npc.keeper.after.1` («Quédate a un paso, como aquella noche») |
+| Zorua | Un niño callado (Shroomish; Zoroark al cerrar el III) | Lago, piedras de la plaza | `town.resident.zorua.1-2` | `town.resident.zorua.after.1`; al cerrar el III, `town.resident.zorua.revealed.1` («Soy yo. Solo yo») |
+| Abra | Bajo la manta | Refugio, rincón junto a la casa de piedra | `town.resident.abra.1-2` (ronquidos) | `town.resident.abra.after.1-2` («No me voy a ir») |
+| Piplup | Del lago | Lago, embarcadero, junto a Cubone | `town.resident.piplup.1-2` | `town.resident.piplup.after.1` («De tu mano no la cojo. Es distinto») |
+| Shinx | Vigía del borde | Cráter, borde norte | `town.resident.shinx.1-2` | `town.resident.shinx.after.1` («Así sé que se puede») |
+| Axew | Aprendiz | Refugio, linde del noreste | `town.resident.axew.1-2` | `town.resident.axew.after.1-2` («Ya me has visto el colmillo») |
 
 | Línea | Herida (trauma) | Mentira que se cuenta | Jefe final (su herida hecha carne) |
 |---|---|---|---|
@@ -141,7 +160,7 @@ Estructura común [J] (`docs/story-quests.md:18-67`): tres capítulos (I Normal,
 
 ### Mimikyu, La Senda del Disfraz («Lo que hay debajo»)
 
-Fuentes: `docs/story-quests.md:77-91`, `story.mimikyu.*` (`src/i18n/es.json:2304-2385`), `src/data/story/mimikyu.ts`.
+Fuentes: `docs/story-quests.md:77-91`, `story.mimikyu.*` (`src/i18n/es.json:2331-2412`), `src/data/story/mimikyu.ts`.
 
 - **Antes**: se cosió el trapo para ir a la plaza; «Una tarde sopló el viento. El trapo se levantó un instante. Uno de los pequeños miró debajo.» (`story.mimikyu.2.before.3`). «Cuando llegó el Eclipse, los de la plaza se volvieron sombra. Mimikyu no. Él ya lo era.» (`story.mimikyu.3.before.1`).
 - **I. El trapo** (camino de la Cripta): baja «por los materiales», lo dice dos veces. Jefes: Ditto, *El que no tiene cara* («a un charco no lo abraza nadie»), y Noctowl, *El sabio que no parpadea*. Herida: *Lo que no quiere ser visto*. Final: cose el cuello ante un espejo roto; «Te has dado la vuelta antes de que te lo pidiera.»
@@ -151,7 +170,7 @@ Fuentes: `docs/story-quests.md:77-91`, `story.mimikyu.*` (`src/i18n/es.json:2304
 
 ### Cubone, La Senda del Hueso («Lo que queda de una madre»)
 
-Fuentes: `docs/story-quests.md:93-101`, `story.cubone.*` (`src/i18n/es.json:2555-2637`), `src/data/story/cubone.ts:6-19`.
+Fuentes: `docs/story-quests.md:93-101`, `story.cubone.*` (`src/i18n/es.json:2582-2664`), `src/data/story/cubone.ts:6-19`.
 
 - **Antes**: «Cuando llegó el Eclipse, la madre de Cubone bajó a las cuevas a buscar luz para el lago.» Volvió su cráneo, en brazos de otros (`story.cubone.2.before.1-2`). Llora dentro del cráneo y suena a canción.
 - **I. El casco** (Pantano): Haunter, *El que se ríe del llanto*; Mandibuzz, *La que oye llorar*. Herida: *El que dejó de llorar*. Final: «No pesco para comer. Pesco porque si alguien sube del fondo, quiero estar aquí.»
@@ -161,7 +180,9 @@ Fuentes: `docs/story-quests.md:93-101`, `story.cubone.*` (`src/i18n/es.json:2555
 
 ### Litwick, La Senda de la Llama («Una llama por cada alma»)
 
-Fuentes: `docs/story-quests.md:103-111`, `story.litwick.*` (`src/i18n/es.json:2734-2815`), `src/data/story/litwick.ts:6-20`.
+Litwick es femenina en todo el juego (C5): es la guardiana de la llama de la aldea.
+
+Fuentes: `docs/story-quests.md:103-111`, `story.litwick.*` (`src/i18n/es.json:2761-2842`), `src/data/story/litwick.ts:6-20`.
 
 - **Antes**: llevó a un niño perdido en las cuevas hasta su casa, «Por el camino comió un poco»; el niño llegó con frío y el frío no se le fue nunca (`story.litwick.2.before.3`). Desde entonces enciende todas las lámparas de la casa grande.
 - **I. La vela que guía** (Cuevas): Drifblim, *El que se lleva a los niños de la mano*; Lanturn, *La otra luz*. Herida: *Las llamas que no son suyas*. Final: «Cuando estás triste, tengo hambre.»
@@ -171,7 +192,7 @@ Fuentes: `docs/story-quests.md:103-111`, `story.litwick.*` (`src/i18n/es.json:27
 
 ### Zorua, La Senda del Reflejo («Nada es lo que parece»)
 
-Fuentes: `docs/story-quests.md:113-121`, `story.zorua.*` (`src/i18n/es.json:2890-2971`), `src/data/story/zorua.ts:6-20`.
+Fuentes: `docs/story-quests.md:113-121`, `story.zorua.*` (`src/i18n/es.json:2917-2998`), `src/data/story/zorua.ts:6-20`.
 
 - **Antes**: «La noche del Eclipse, la manada de Zorua cruzó el Bosque Brumoso por un camino que solo veían los suyos. Zorua se asustó y se hizo niño [...]. La manada pasó a su lado y no lo reconoció.» (`story.zorua.2.before.1-2`).
 - **I. La forma prestada** (Cuevas): Kecleon, *El que también cambia de color*; Gengar, *La sombra que te copia* («Copiar es lo de todos los que están solos»). Herida: *La forma que se quedó*.
@@ -181,7 +202,7 @@ Fuentes: `docs/story-quests.md:113-121`, `story.zorua.*` (`src/i18n/es.json:2890
 
 ### Abra, La Senda del Sueño («Duerme, y el mundo se mueve»)
 
-Fuentes: `docs/story-quests.md:125-133`, `story.abra.*` (`src/i18n/es.json:1500-1582`), `src/data/story/abra.ts:6-19`.
+Fuentes: `docs/story-quests.md:125-133`, `story.abra.*` (`src/i18n/es.json:1527-1609`), `src/data/story/abra.ts:6-19`.
 
 - **Antes**: «Una semana antes del Eclipse lo soñó: un anillo rojo bebiéndose el sol, y la plaza en silencio.» No avisó; se teletransportó lejos (`story.abra.2.after.1-2`). Al evolucionar soñó que era un niño que doblaba cucharas (`story.abra.2.before.1`), un eco de la premisa de los Caminantes.
 - **I. Dormir** (Cuevas): Munna, *La que come sueños bonitos*; Drowzee, *El que come las pesadillas*. Herida: *El que no puede dormir*.
@@ -191,7 +212,7 @@ Fuentes: `docs/story-quests.md:125-133`, `story.abra.*` (`src/i18n/es.json:1500-
 
 ### Piplup, La Senda del Lago Helado («Bajo el hielo, un brillo»)
 
-Fuentes: `docs/story-quests.md:135-143`, `story.piplup.*` (`src/i18n/es.json:1684-1766`), `src/data/story/piplup.ts:6-19`.
+Fuentes: `docs/story-quests.md:135-143`, `story.piplup.*` (`src/i18n/es.json:1711-1793`), `src/data/story/piplup.ts:6-19`.
 
 - **Antes**: quiso cruzar el lago helado solo; cayó; la vieja Empoleon lo sacó y le dejó una baya que nunca se comió (`story.piplup.2.after.1-3`). «Cuando llegó el Eclipse, el lago se heló negro. La vieja Empoleon bajó a buscar el reflejo del cielo. No subió.» (`story.piplup.3.before.1`).
 - **I. No necesito ayuda** (Cripta): Glalie, *La cara que no llora*; Weavile, *La que roba lo que brilla*. Herida: *El que no deja que lo toquen*.
@@ -201,7 +222,7 @@ Fuentes: `docs/story-quests.md:135-143`, `story.piplup.*` (`src/i18n/es.json:168
 
 ### Shinx, La Senda de la Tormenta («Cada trueno, un paso»)
 
-Fuentes: `docs/story-quests.md:145-153`, `story.shinx.*` (`src/i18n/es.json:1857-1938`), `src/data/story/shinx.ts`.
+Fuentes: `docs/story-quests.md:145-153`, `story.shinx.*` (`src/i18n/es.json:1884-1965`), `src/data/story/shinx.ts`.
 
 - **Antes**: nació la noche del Eclipse, en mitad de una tormenta; «Desde entonces no ha visto el día.» (`story.shinx.1.before.2`). Una noche asustó a su madre con un trueno (`story.shinx.2.before.2-3`). «Tras el Eclipse, su madre salió a buscarlos a todos, con los ojos abiertos día y noche. No volvió a cerrarlos. No volvió.» (`story.shinx.3.before.2`).
 - **I. Chispa** (Pantano): Ampharos, *La luz del faro*; Manectric, *El que se ríe de las chispas*. Herida: *Los ojos que no se cierran*.
@@ -211,7 +232,7 @@ Fuentes: `docs/story-quests.md:145-153`, `story.shinx.*` (`src/i18n/es.json:1857
 
 ### Axew, La Senda del Colmillo («Un colmillo se gana mordiendo»)
 
-Fuentes: `docs/story-quests.md:155-163`, `story.axew.*` (`src/i18n/es.json:2029-2110`), `src/data/story/axew.ts`.
+Fuentes: `docs/story-quests.md:155-163`, `story.axew.*` (`src/i18n/es.json:2056-2137`), `src/data/story/axew.ts`.
 
 - **Antes**: «La noche del Eclipse, los mayores bajaron por la barranca a luchar contra lo que se bebía el sol.» Axew los siguió, cayó y se melló el colmillo; despertó arriba, solo (`story.axew.2.before.1-4`).
 - **I. El colmillo mellado** (Bosque): Druddigon, *El matón de la barranca*; Bisharp, *El señor de las cuchillas* («Vuelve a casa, pequeño.» / «¡Eso dijeron ellos!»). Herida: *El que no fue lo bastante grande*.
@@ -221,19 +242,19 @@ Fuentes: `docs/story-quests.md:155-163`, `story.axew.*` (`src/i18n/es.json:2029-
 
 ## 6. Cronología
 
-Lo que el juego permite ordenar. Las duraciones son vagas a propósito o sin decidir (ver C6).
+Lo que el juego permite ordenar. Desde el Eclipse no ha vuelto a salir el sol y el tiempo se cuenta en inviernos (C6, resuelta); las duraciones siguen vagas a propósito.
 
 **Antes del juego**
 
 1. [N] La edad de la luz (`prologue.light.1-2`).
 2. [N] Algo despierta bajo la tierra y bebe el sol «día tras día» (`prologue.dimming.1`).
-3. [J] Mucho antes del Eclipse: Litwick lleva al niño de la casa grande a casa; el niño crece y vive mucho (`story.litwick.2.before.1-3`, `story.litwick.2.after.2`).
+3. [J] Mucho antes del Eclipse: Litwick lleva al niño de la casa grande a casa; el niño crece y vive mucho, siempre con frío, y ya de viejo baja a la Sima a buscar calor (`story.litwick.2.before.1-3`, `story.litwick.2.after.2`, `sima.plea.keeper.2`; C8).
 4. [J] Antes del Eclipse: la plaza con columpio; el viento levanta el trapo de Mimikyu (`story.mimikyu.2.before.1-4`). Piplup cae por el hielo (`story.piplup.2.before.2`).
 5. [J] Una semana antes: Abra sueña el anillo rojo y huye (`story.abra.2.after.1-2`).
 6. [N] **La noche del Eclipse Carmesí** (el sol se apaga; un reloj se para a esa hora, `story.abra.3.fragment.2.text`):
    - se abren las Mazmorras Sombrías (`prologue.dungeons.1`);
    - cae la primera gota de luz roja en la ciénaga (`world.npc.hermit.2`) y Nihilego cae por la grieta del cielo (`story.shinx.3.boss.6.pre.2`);
-   - el Lago Negro se vuelve negro (`world.npc.keeper.1`);
+   - el Lago Negro se hiela entero; el hielo es negro porque debajo ya no hay luz (`world.npc.keeper.1`, `story.piplup.3.before.1`; C7);
    - la manada de Zorua cruza el Bosque (`story.zorua.2.before.1`); la madre de Cubone baja a las cuevas (`story.cubone.2.before.1`); los mayores de Axew bajan por la barranca y Trevenant salva a Axew (`story.axew.2.before.1`, `story.axew.2.after.2`); nace Shinx (`story.shinx.1.before.1`); los de la plaza se vuelven sombra (`story.mimikyu.3.before.1`).
 7. [J] Tras el Eclipse: la vieja Empoleon baja bajo el hielo negro y no sube (`story.piplup.3.before.1`); la madre de Shinx sale a buscar a los perdidos (`story.shinx.3.before.2`); Abra vuelve «cuando ya no quedaba nadie a quien avisar» (`story.abra.2.after.3`); los guardianes velan sus puertas «desde que el sol se apagó» (`guardian.decidueye.pre.2`); muchos entran en las mazmorras y vuelven como sombra (`prologue.shadows.1-2`).
 8. [J] «Hace tres inviernos» una Caminante baja a la Sima, vuelve once veces y a la duodécima solo sube su sombra (`sima.plea.hermit.1-2`). Antes que tú bajaron otros (`sima.plea.storyteller.2`).
@@ -242,7 +263,7 @@ Lo que el juego permite ordenar. Las duraciones son vagas a propósito o sin dec
 
 9. [J] La voz; el test; despiertas como Pokémon en el Refugio (`quiz.intro.1-3`).
 10. [J] Las súplicas en el borde del cráter (primera visita al pueblo, `docs/gdd.md:432`), y la boca de la Sima (`sima.scene.mouth.1-5`).
-11. [J] Caen los guardianes en orden: Aegislash → Decidueye → Dhelmise → Nihilego; el mundo reacciona (estatuas, poste, ídolo, cristal: `world.lore.*` con `after`, `src/data/world.ts:196-408`).
+11. [J] Caen los guardianes en orden: Aegislash → Decidueye → Dhelmise → Nihilego; el mundo reacciona (estatuas, poste, ídolo, cristal: `world.lore.*` con `after`, `src/data/world.ts:203-439`).
 12. [J] En la Sima: tu sombra (planta 10), el primer nombre (22), umbrales de estrato, la primera vez que te pierdes (Phantump lo explica), el regreso.
 13. [J] Las Sendas, capítulo a capítulo, en cualquier orden entre líneas; al cerrar el III, evolución final o despertar.
 14. [B] Necrozma, el final (`docs/gdd.md:231`).
@@ -306,26 +327,26 @@ Lo que el juego permite ordenar. Las duraciones son vagas a propósito o sin dec
 
 | # | Qué choca | Un lado | El otro lado | Estado |
 |---|---|---|---|---|
-| C1 | **¿Quién eres en una Senda?** Eres el Pokémon (el reto solo se juega con una forma de su línea) y a la vez su acompañante («Baja contigo», «tú»). Además el pueblo tiene su propio Cubone, Litwick y Mimikyu, y el test puede convertirte en uno de ellos | `quiz.result.species`, `src/data/quiz.ts:18`; `challenges.text`; `docs/gdd.md:422` (las Sendas son el pasado del propio Pokémon jugable) | `challenge.cubone.lore` («Baja con él»), `story.mimikyu.1.bond` («Te he guardado la mejor tela del puesto», el Mimikyu del puesto); `src/data/world.ts:338-339`; `src/data/town.ts:204` | **Resuelta** (dueño, 27-10-2026, D-B): las Sendas son heridas de otros, casi siempre de los vecinos (el Cubone pescador es el Cubone de la Senda; igual Litwick y Mimikyu). Para bajar con ellos la Sima te hace llevar su forma, por eso solo se juegan con su línea y por eso «baja contigo». Si el test te hizo Cubone, eres otro Cubone. Arreglado `docs/gdd.md:423` y `docs/sima-redesign.md:11`; ningún texto del jugador decía que la Senda fuera tu pasado. Zorua, Abra, Piplup, Shinx y Axew sin vecino: pendiente del dueño |
+| C1 | **¿Quién eres en una Senda?** Eres el Pokémon (el reto solo se juega con una forma de su línea) y a la vez su acompañante («Baja contigo», «tú»). Además el pueblo tiene su propio Cubone, Litwick y Mimikyu, y el test puede convertirte en uno de ellos | `quiz.result.species`, `src/data/quiz.ts:18`; `challenges.text`; `docs/gdd.md:422` (las Sendas son el pasado del propio Pokémon jugable) | `challenge.cubone.lore` («Baja con él»), `story.mimikyu.1.bond` («Te he guardado la mejor tela del puesto», el Mimikyu del puesto); `src/data/world.ts:346-358`; `src/data/town.ts:224` | **Resuelta** (dueño, 27-10-2026, D-B): las Sendas son heridas de otros, casi siempre de los vecinos (el Cubone pescador es el Cubone de la Senda; igual Litwick y Mimikyu). Para bajar con ellos la Sima te hace llevar su forma, por eso solo se juegan con su línea y por eso «baja contigo». Si el test te hizo Cubone, eres otro Cubone. Arreglado `docs/gdd.md:423` y `docs/sima-redesign.md:11`; ningún texto del jugador decía que la Senda fuera tu pasado. Zorua, Abra, Piplup, Shinx y Axew tienen vecino desde el 27-10-2026 (sección 4, «De quién es cada Senda») |
 | C2 | **Hacia dónde tira tu sombra**: el canon dice hacia arriba; la decisión del dueño de hoy dice hacia abajo | `sima.scene.lost.10`, `screen.eclipse.text`, `sima.plea.oracle.2`; `docs/sima-redesign.md:7` | Decisión del 27-10-2026 (sección 10, D1) | **Resuelta** (dueño, 27-10-2026, D-A): mientras bajas tira hacia abajo; al perderte te sube porque necesita un cuerpo vivo. Reescritos `sima.scene.lost.10`, `sima.scene.lost.13`, `screen.eclipse.text`, `sima.plea.oracle.2`; `docs/gdd.md:422`, `docs/sima-redesign.md:7` |
 | C3 | **Tu sombra es enemiga y salvadora a la vez**: el Eco es «la parte de ti que el eclipse ya se ha bebido» y hay que vencerlo; la misma sombra te sube cuando te pierdes | `sima.scene.own-shadow.3`, `sima.scene.own-shadow.4` | `sima.scene.lost.5`, `sima.scene.return.1` | **Resuelta** (D-A): no es salvadora; te guarda porque te necesita, y cada bajada se bebe más de ti. El Eco es lo ya bebido, por eso se vence |
-| C4 | **Cómo se vuelve uno sombra**: el prólogo dice que al entrar en una mazmorra y volver; Mimikyu dice que los de la plaza se volvieron sombra al llegar el Eclipse | `prologue.shadows.2` (`src/i18n/es.json:405`) | `story.mimikyu.3.before.1` (`src/i18n/es.json:2360`); `docs/story-quests.md:79` | Abierta |
-| C5 | **Género de Litwick**: guardiana en el pueblo, masculino en su Senda | `town.name.keeper` (`src/i18n/es.json:704`, «Guardiana de la llama») | `story.litwick.3.before.3` («si se hace pequeño», `src/i18n/es.json:2792`), `story.litwick.3.voice.mid` (`src/i18n/es.json:2798`) | Abierta. Con D-B la Litwick de la Senda es la guardiana de la aldea, así que el choque es ahora dentro del mismo personaje: decide el dueño |
-| C6 | **El paso del tiempo**: sin días ni ciclo; «No se hizo de día»; pero la luna sale, hay inviernos, años y «mañana» | `docs/gdd.md:23`, `docs/gdd.md:512`; `story.shinx.1.fragment.1.text` (`src/i18n/es.json:1867`); `story.shinx.1.before.2` | `story.cubone.1.before.1` («La luna aún sale», `src/i18n/es.json:2558`); `sima.plea.hermit.1` («Hace tres inviernos», `src/i18n/es.json:3132`); `story.zorua.2.boss.6.pre.1` («Hace años»); `sima.scene.lost.14` («Mañana») | Abierta |
-| C7 | **¿El lago está helado o es agua negra?** Piplup: «el lago se heló negro»; la aldea: agua negra con embarcadero donde Cubone pesca | `story.piplup.3.before.1` (`src/i18n/es.json:1741`) | `world.npc.keeper.1` (`src/i18n/es.json:708`), `world.npc.fisher.1` (`src/i18n/es.json:706`); `docs/gdd.md:518` | Abierta (puede ser otro lago: no se nombra) |
-| C8 | **La casa grande**: en la súplica sigue encendida y el niño bajó a buscar calor; en la Senda el niño vivió mucho y las lámparas se apagan | `sima.plea.keeper.2-3` (`src/i18n/es.json:3125-3126`) | `story.litwick.2.after.1-2` (`src/i18n/es.json:2767-2768`), `story.litwick.2.bond` | Parcial: la súplica es anterior a la Senda, pero que el niño «bajó» no encaja con «vivió mucho» sin explicar |
-| C9 | **Mar o lago**: Empoleon mira «el mar» y Lapras es «el mar que lleva a los demás» en una Senda de lago | `story.piplup.3.after.3` (`src/i18n/es.json:1764`) | `challenge.piplup.name` («La Senda del Lago Helado») | Menor |
-| C10 | **Sima / Chasm** en inglés: el nombre de la mazmorra se traduce y en otros textos no | `en.json:441` (`dungeon.eclipse.name`: «Eclipse Chasm») | `en.json:3057` («The Sima del Eclipse»), `en.json:3059`, `en.json:3104` («the Sima»); `lore.reborn.name` («Sima Walkers») | **Resuelta** (27-10-2026): en inglés «Sima» no se traduce: `dungeon.eclipse.name`, `world.sima.name`, `endless.score`, `gallery.group.sima` = «Sima del Eclipse»; «the Sima» en `endless.entry.title`, `endless.board.*`, `endless.coins.rate`, `sima.summary.title`, `achievement.family.depth`, `world.lore.crater.1`, `world.lore.crater.3`, `sync.card.progress` |
+| C4 | **Cómo se vuelve uno sombra**: el prólogo dice que al entrar en una mazmorra y volver; Mimikyu dice que los de la plaza se volvieron sombra al llegar el Eclipse | `prologue.shadows.2` (`src/i18n/es.json:405`) | `story.mimikyu.3.before.1` (`src/i18n/es.json:2387`); `docs/story-quests.md:79` | **Resuelta** (dueño, 27-10-2026): una sombra es lo que queda cuando tu sombra ya no te necesita. Normalmente pasa despacio (cada bajada se bebe un poco más de ti: el prólogo, la Caminante que volvió once veces); la noche del Eclipse pasó de golpe a los que estaban en la plaza, y por eso esa noche es la herida de todo el pueblo. Ningún texto lo contradice: sin cambio de texto (sección 2, «Cómo se vuelve uno sombra»). **Matiz abierto** (lo decide el dueño más adelante): `sima.plea.hermit.2` («…su sombra subió sola y se quedó sentada en el borde, esperándola») hace que la sombra, ya sin dueña, siga esperándola; se deja sin cambiar |
+| C5 | **Género de Litwick**: guardiana en el pueblo, masculino en su Senda | `town.name.keeper` (`src/i18n/es.json:721`, «Guardiana de la llama») | `story.litwick.3.before.3` («si se hace pequeño», `src/i18n/es.json:2819`), `story.litwick.3.voice.mid` (`src/i18n/es.json:2825`) | **Resuelta** (dueño, 27-10-2026): Litwick es femenina; la guardiana y la de la Senda son la misma. Cambiadas a femenino `challenge.litwick.lore` («Baja con ella»), `challenge.litwick.3.floor.7` («esperándola»), `story.litwick.1.boss.7.post.1` («como si la conociera»), `story.litwick.3.before.3` («si se hace pequeña»), `story.litwick.3.voice.mid` («Me estoy haciendo pequeña»). El inglés ya decía «it» |
+| C6 | **El paso del tiempo**: sin días ni ciclo; «No se hizo de día»; pero la luna sale, hay inviernos, años y «mañana» | `docs/gdd.md:23`, `docs/gdd.md:512`; `story.shinx.1.fragment.1.text` (`src/i18n/es.json:1894`); `story.shinx.1.before.2` | `story.cubone.1.before.1` («La luna aún sale», `src/i18n/es.json:2585`); `sima.plea.hermit.1` («Hace tres inviernos», `src/i18n/es.json:3159`); `story.zorua.2.boss.6.pre.1` («Hace años»); `sima.scene.lost.14` («Mañana») | **Resuelta** (dueño, 27-10-2026): desde el Eclipse el sol no ha vuelto a salir; el tiempo pasa (frío y menos frío; los inviernos se cuentan por el hielo, no por la luz); la luna sale, el sol no. «No se hizo de día» es literal, «La luna aún sale» se queda (lo único de su madre que aún sube), «tres inviernos» y «años» encajan, «mañana» es una forma de hablar, y el Refugio del Ocaso se llama así por haberse quedado en el último anochecer. Sin cambio de texto; `docs/gdd.md:23` y `docs/gdd.md:512` lo dicen (sección 2, «La noche que no acaba») |
+| C7 | **¿El lago está helado o es agua negra?** Piplup: «el lago se heló negro»; la aldea: agua negra con embarcadero donde Cubone pesca | `story.piplup.3.before.1` (`src/i18n/es.json:1768`) | `world.npc.keeper.1` (`src/i18n/es.json:727`), `world.npc.fisher.1` (`src/i18n/es.json:724`); `docs/gdd.md:518` | **Resuelta** (dueño, 27-10-2026): el Lago Negro es el lago de Piplup; la noche del Eclipse se heló entero y el hielo es negro porque debajo no hay luz; Cubone pesca por un agujero que mantiene abierto junto al embarcadero. Cambiados `world.npc.keeper.1` y `world.npc.fisher.1`; `docs/gdd.md:518`. El mapa aún dibuja el lago como agua (arte pendiente) |
+| C8 | **La casa grande**: en la súplica sigue encendida y el niño bajó a buscar calor; en la Senda el niño vivió mucho y las lámparas se apagan | `sima.plea.keeper.2-3` (`src/i18n/es.json:3152-3153`) | `story.litwick.2.after.1-2` (`src/i18n/es.json:2794-2795`), `story.litwick.2.bond` | **Resuelta** (dueño, 27-10-2026): el niño vivió mucho, siempre con el frío que Litwick le dejó al comer «solo un poco», y ya de viejo bajó a la Sima a buscar calor. Ella nunca fue a verle y enciende las lámparas por si vuelve; su Senda es aceptar que no volverá, por eso las apaga. Cambiado `sima.plea.keeper.2` («Una noche, ya de viejo, bajó a buscar calor.») |
+| C9 | **Mar o lago**: Empoleon mira «el mar» y Lapras es «el mar que lleva a los demás» en una Senda de lago | `story.piplup.3.after.3` (`src/i18n/es.json:1791`) | `challenge.piplup.name` («La Senda del Lago Helado») | **Resuelta** (dueño, 27-10-2026): el lago desagua al mar, más allá; por ahí se fueron los demás (Empoleon mira «el mar»; Lapras es «el mar que lleva a los demás»), y el hielo dejó a Piplup aislado. Sin cambio de texto |
+| C10 | **Sima / Chasm** en inglés: el nombre de la mazmorra se traduce y en otros textos no | `en.json:458` (`dungeon.eclipse.name`: «Eclipse Chasm») | `en.json:3084` («The Sima del Eclipse»), `en.json:3086`, `en.json:3131` («the Sima»); `lore.reborn.name` («Sima Walkers») | **Resuelta** (27-10-2026): en inglés «Sima» no se traduce: `dungeon.eclipse.name`, `world.sima.name`, `endless.score`, `gallery.group.sima` = «Sima del Eclipse»; «the Sima» en `endless.entry.title`, `endless.board.*`, `endless.coins.rate`, `sima.summary.title`, `achievement.family.depth`, `world.lore.crater.1`, `world.lore.crater.3`, `sync.card.progress` |
 | C11 | **«Eco» y «sombra» con varios significados**: Eco del Eclipse (tú), eco del guardián, eco mercader; sombra (enemigo), sombra propia, sombra de Senda | `sima.echo.of`; `endless.echo`; `sima.event.merchant` | `prologue.shadows.2`; `sima.scene.lost.9`; `docs/story-quests.md:52` | Abierta (léxico) |
 | C12 | **Trevenant como «eco del guardián»**: es jefe intermedio, no guardián, y aun así su eco sale como «Eco del guardián» | `docs/gdd.md:207` (los ocho jefes, Trevenant entre los intermedios) | `docs/gdd.md:383`; `endless.echo` | **Resuelta** en el GDD (27-10-2026): en la Sima «guardián» es todo jefe atado a un juramento (el Santuario cuenta los ocho, `shrine.count`), así que «Eco del guardián» y «Guardián sin rostro» valen para Trevenant; el título estricto «Guardián de {dungeon}» (`shrine.role.guardian`) sigue siendo de los cuatro. Sin cambio de texto (`docs/gdd.md:383`) |
-| C13 | **El gacha «Próximamente»**: Phantump y el GDD dicen que el puesto aún no existe; existe y lo lleva Mimikyu | `world.npc.oracle.1` (antes `src/i18n/es.json:712`, sin usar en `src/data/world.ts:341`); `docs/gdd.md:518` | `town.gacha.1`, `gacha.title`; `docs/gdd.md:1037` | **Resuelta** (27-10-2026): `world.npc.oracle.1` borrada (nada la usaba); el GDD ya no dice «Próximamente» (`docs/gdd.md:518`, `docs/gdd.md:1270`) |
+| C13 | **El gacha «Próximamente»**: Phantump y el GDD dicen que el puesto aún no existe; existe y lo lleva Mimikyu | `world.npc.oracle.1` (antes `src/i18n/es.json:735`, sin usar en `src/data/world.ts:372`); `docs/gdd.md:518` | `town.gacha.1`, `gacha.title`; `docs/gdd.md:1037` | **Resuelta** (27-10-2026): `world.npc.oracle.1` borrada (nada la usaba); el GDD ya no dice «Próximamente» (`docs/gdd.md:518`, `docs/gdd.md:1270`) |
 | C14 | **Retos frente a Sendas**: la tabla de retos pone a guardianes e intermedios como jefe de cada reto; hoy el jefe final de cada reto es su herida | `docs/gdd.md:1026-1035` | `src/data/story/cubone.ts:44-47` (y los demás `*_ROADS`); `docs/story-quests.md:50` | **Resuelta** (27-10-2026): la tabla del GDD da los tres caminos y la herida de cada Senda, según `*_ROADS` (`docs/gdd.md:1026-1035`) |
 | C15 | **Tipos de la herida de Zorua**: el comentario dice Normal y Fantasma; los datos, solo Fantasma | `src/data/story/zorua.ts:18`, `src/data/story/zorua.ts:32` | `src/data/story/zorua.ts:33`; `docs/story-quests.md:117` | **Resuelta** (27-10-2026): el comentario dice ahora solo Fantasma |
 | C16 | **Dónde tararea la madre de Cubone**: el comentario la pone entre los túmulos del pantano; el capítulo II va por las cuevas | `src/data/story/cubone.ts:9-10` | `src/data/story/cubone.ts:46`; `challenge.cubone.2.floor.7` | **Resuelta** (27-10-2026): el comentario la pone en las cuevas donde bajó |
-| C17 | **Abra volvió «cuando ya no quedaba nadie»**, pero el pueblo está habitado y le dejaron una manta | `story.abra.2.after.3` (`src/i18n/es.json:1553`) | `story.abra.3.fragment.1.text` (`src/i18n/es.json:1564`) | Abierta (puede ser «nadie a quien avisar a tiempo») |
-| C18 | **Arriba o abajo**: el hambre está «bajo la tierra» y viene «de un cielo sin sol» | `prologue.hunger.1` (`src/i18n/es.json:396`) | `guardian.nihilego.pre.2` (`src/i18n/es.json:859`) | Resuelta en el juego por Phantump (`sima.scene.lost.11-12`, `src/i18n/es.json:3105-3106`); el «son el mismo sitio» queda en diseño |
-| C19 | **La Sima sellada**: un texto dice que la Sima no deja pasar «Todavía»; la Sima está abierta desde el principio | `world.sealed.missing` (`src/i18n/es.json:702`) | `docs/gdd.md:381`; `docs/sima-redesign.md:10` | **Resuelta** (27-10-2026): `world.sealed.missing` dice ahora «Algo cierra el paso. Por aquí no se puede bajar.», sin decir que la Sima esté sellada |
-| C20 | **La manada de Zorua**: Gastly dice que no salió del bosque; la Senda insinúa un camino de vuelta a la aldea | `sima.plea.storyteller.4` (`src/i18n/es.json:3119`) | `story.zorua.2.boss.7.post.1`, `story.zorua.3.fragment.2.text` | Abierta (M8) |
+| C17 | **Abra volvió «cuando ya no quedaba nadie»**, pero el pueblo está habitado y le dejaron una manta | `story.abra.2.after.3` (`src/i18n/es.json:1580`) | `story.abra.3.fragment.1.text` (`src/i18n/es.json:1591`) | **Resuelta** (lectura equivocada, 27-10-2026): el texto dice «cuando ya no quedaba nadie a quien avisar», no «nadie»: el pueblo sigue habitado y le dejó la manta. Sin cambio de texto |
+| C18 | **Arriba o abajo**: el hambre está «bajo la tierra» y viene «de un cielo sin sol» | `prologue.hunger.1` (`src/i18n/es.json:396`) | `guardian.nihilego.pre.2` (`src/i18n/es.json:886`) | Resuelta en el juego por Phantump (`sima.scene.lost.11-12`, `src/i18n/es.json:3132-3133`); el «son el mismo sitio» queda en diseño |
+| C19 | **La Sima sellada**: un texto dice que la Sima no deja pasar «Todavía»; la Sima está abierta desde el principio | `world.sealed.missing` (`src/i18n/es.json:719`) | `docs/gdd.md:381`; `docs/sima-redesign.md:10` | **Resuelta** (27-10-2026): `world.sealed.missing` dice ahora «Algo cierra el paso. Por aquí no se puede bajar.», sin decir que la Sima esté sellada |
+| C20 | **La manada de Zorua**: Gastly dice que no salió del bosque; la Senda insinúa un camino de vuelta a la aldea | `sima.plea.storyteller.4` (`src/i18n/es.json:3146`) | `story.zorua.2.boss.7.post.1`, `story.zorua.3.fragment.2.text` | Abierta (M8) |
 
 ## 10. Ideas de diseño aún no implementadas (NO CANON AÚN)
 
@@ -377,6 +398,16 @@ graph TD
   cubone -->|vive en| lago
   litwick -->|vive en| lago
   mimikyu -->|vive en| refugio
+  sendas --- abra["Abra"]
+  sendas --- piplup["Piplup"]
+  sendas --- shinx["Shinx"]
+  sendas --- axew["Axew"]
+  zorua -->|vive en| lago
+  piplup -->|vive en| lago
+  abra -->|vive en| refugio
+  axew -->|vive en| refugio
+  shinx -->|vigila| crater
+  eclipse -->|deja| nocheSinFin["La noche que no acaba"]
   hambre -.->|borrador| necrozma["Necrozma"]
   sombrasAmigos["Sombras de amigos"] -.->|borrador| sima
   classDef draft stroke-dasharray: 5 5;
@@ -401,22 +432,22 @@ Aplicación de la lista de `docs/lore/buenas-practicas.md` a este lore. Cumple /
 | 8 | Anclas de canon citadas; desviaciones deliberadas | **Parcial** | `docs/story-quests.md` da la inspiración de cada línea (por ejemplo `docs/story-quests.md:79`, `docs/story-quests.md:95`), pero sin citar entradas concretas de la Pokédex ni fuentes. No hay lista de desviaciones del canon. Desviaciones visibles: Mimikyu «despierta» en vez de evolucionar (`docs/gdd.md:1022`); las sombras con alas no vuelan; las sombras psíquicas o eléctricas son Fantasma (`docs/story-quests.md:129`, `docs/story-quests.md:149`). |
 | 9 | Nada copiado | **Cumple** (según lo revisado) | La regla está escrita (`docs/story-quests.md:16`, «Nunca se copia ni se parafrasea de cerca»); los nombres de heraldos son sílabas propias (`src/data/herald-words.ts:4-8`); «Caminantes de la Sima» es un guiño a Dark Souls 3 sin copiar el nombre (`docs/sima-redesign.md:11`). Sin auditoría frase a frase contra la Pokédex. |
 | 10 | Cada entrada con nivel y fuente | **Cumple desde hoy** | Esta biblia marca [N]/[J]/[B] y cita fuente; el grafo marca canon/diseño. Antes no existía. |
-| 11 | Registro de cambios y contradicciones | **Parcial** | Hay decisiones fechadas en `docs/sima-redesign.md:5-21` y en el GDD, y esta biblia abre el registro (sección 13) y la tabla de contradicciones (sección 9), y desde el 27-10-2026 están resueltas C1, C2, C3, C10, C12, C13, C14, C15, C16 y C19, además de C18. |
+| 11 | Registro de cambios y contradicciones | **Parcial** | Hay decisiones fechadas en `docs/sima-redesign.md:5-21` y en el GDD, y esta biblia abre el registro (sección 13) y la tabla de contradicciones (sección 9), y desde el 27-10-2026 están resueltas C1 a C10, C12 a C17 y C19, además de C18. |
 | 12 | Glosario con un término por concepto | **No cumple** | «Eco» nombra tres cosas y «sombra» tres (C11); la Sima se llamaba «Eclipse Chasm» y «Sima» en inglés (C10, resuelta el 27-10-2026); «Sombra extraviada» no tiene nombre en pantalla. |
-| 13 | Una sola cronología | **No cumple** | El paso del tiempo choca (C6: sin días frente a lunas, inviernos y años); no hay duración fijada entre el Eclipse y el juego. |
+| 13 | Una sola cronología | **Parcial** | Desde el 27-10-2026 el paso del tiempo tiene regla (C6, resuelta: el sol no ha vuelto a salir, la luna sí, los inviernos se cuentan por el hielo). Sigue sin fijarse cuánto ha pasado entre el Eclipse y el juego. |
 | 14 | Mapa de entrega; columna y fragmentos por Senda | **Cumple** en las Sendas, **parcial** fuera | Cada Senda tiene columna (cinemática antes y después) y fragmentos opcionales (`docs/story-quests.md:60-67`), y todo hecho de esta biblia dice cómo llega. Pero lo que explica el mundo (qué son los Caminantes) solo llega si te pierdes en la Sima por primera vez (`sima.scene.lost.7-14`): quien nunca agota la Lucidez no se entera. |
 | 15 | Tono por zona; calidez y esperanza | **Cumple** | Calidez en los vínculos y los finales de Senda (`story.piplup.3.bond`, «Ayer pedí ayuda para cargar la leña»), pavor en la Sima y el pantano, asombro en el Estrato V y el mirador. La esperanza se mantiene: «Casi siempre volvéis» (`sima.scene.lost.7`), y Phantump ve cosas buenas al cerrar cada Senda (`story.*.3.after.4`). |
 
 **Arreglos, por prioridad**
 
 1. ~~**Decidir C2 y reescribir el tirón de la sombra** (D1) en un solo sitio: reglas, textos y GDD a la vez. Es la regla central y hoy tiene dos versiones.~~ Hecho el 27-10-2026 (D-A).
-2. ~~**Responder C1** (quién eres en una Senda y quiénes son los Cubone, Litwick y Mimikyu del pueblo). Toca la premisa de los Caminantes.~~ Hecho el 27-10-2026 (D-B); falta el vecino de Zorua, Abra, Piplup, Shinx y Axew.
+2. ~~**Responder C1** (quién eres en una Senda y quiénes son los Cubone, Litwick y Mimikyu del pueblo). Toca la premisa de los Caminantes.~~ Hecho el 27-10-2026 (D-B); los ocho vecinos están en el mundo desde el mismo día.
 3. **Guardar una respuesta para cada misterio** de la sección 8, aunque el plan sea «nunca» (M1, M3, M4, M8 primero).
 4. **Fijar el léxico**: un nombre por concepto para «eco» y «sombra» (C11). Sima/Chasm en inglés (C10), hecho el 27-10-2026.
-5. **Fijar la escala de tiempo** desde el Eclipse y si hay noches y días (C6).
+5. ~~**Fijar si hay noches y días** (C6).~~ Hecho el 27-10-2026: el sol no ha vuelto a salir. Falta la duración desde el Eclipse.
 6. **Dar razón de mundo a las mecánicas sin lectura** (morir fuera de la Sima, la hoguera, de dónde vienen los Pokémon del gacha) y escribir el coste de volver.
 7. **Lista de desviaciones del canon** y citas de la Pokédex por línea (punto 8).
-8. **Arreglos menores de texto o docs**: C5 (género de Litwick) y C9 pendientes; C13, C14, C15 y C16 hechos el 27-10-2026.
+8. ~~**Arreglos menores de texto o docs**~~: C5, C9, C13, C14, C15 y C16 hechos el 27-10-2026.
 
 ## 13. Registro de cambios
 
@@ -430,4 +461,7 @@ Aplicación de la lista de `docs/lore/buenas-practicas.md` a este lore. Cumple /
 | 27-10-2026 | Se crea esta biblia, el grafo y la auditoría | `docs/lore/` |
 | 27-10-2026 | **Retcon** (decisión del dueño, D-A): la sombra tira hacia abajo mientras bajas; al perderte te sube solo porque necesita un cuerpo vivo (te guarda, no te salva); cada bajada se bebe más de ti; la Caminante de Croagunk es el final del camino. Resuelve C2 y C3. Motivo: la regla central tenía dos versiones | `sima.scene.lost.10`, `sima.scene.lost.13`, `screen.eclipse.text`, `sima.plea.oracle.2`; `docs/gdd.md:422`; `docs/sima-redesign.md:7` |
 | 27-10-2026 | **Retcon** (decisión del dueño, D-B): las Sendas son heridas de otros, casi siempre de los vecinos, no tu pasado; la Sima te hace llevar su forma; nuevo misterio M13. Resuelve C1. Motivo: eras a la vez el Pokémon y su acompañante, y el pueblo tenía su propio Cubone, Litwick y Mimikyu | `docs/gdd.md:423`; `docs/sima-redesign.md:11`; sección 8 |
+| 27-10-2026 | Decisiones del dueño sin cambio de texto: cómo se vuelve uno sombra (despacio en cada bajada, de golpe en la plaza la noche del Eclipse; C4), el sol no ha vuelto a salir y el tiempo se cuenta en inviernos (C6), el lago desagua al mar (C9), y C17 era una lectura equivocada. `sima.plea.hermit.2` queda como matiz abierto | Sección 2; sección 9; `docs/gdd.md:23`, `docs/gdd.md:422`, `docs/gdd.md:512` |
+| 27-10-2026 | **Retcon** (decisión del dueño): Litwick es femenina (C5), cinco líneas de su Senda pasan a femenino; el Lago Negro es el lago helado de Piplup y Cubone pesca por un agujero (C7), cambiados `world.npc.keeper.1` y `world.npc.fisher.1`; el niño de la casa grande bajó ya de viejo (C8), cambiado `sima.plea.keeper.2`. Motivo: el mismo personaje o lugar tenía dos versiones | Sección 9 |
+| 27-10-2026 | Los ocho vecinos: Abra (Refugio), Axew (Refugio), Zorua disfrazado de niño callado (Lago; Zoroark al cerrar su Senda), Piplup (embarcadero) y Shinx (cráter) se suman a Cubone, Litwick y Mimikyu; los ocho dicen otras líneas al cerrar el capítulo I de su Senda. Motivo: «las Sendas son heridas de los vecinos» valía solo para tres | Sección 4; `src/town/residents.ts`; `docs/gdd.md:423` |
 | 27-10-2026 | Arreglos sin decisión: «Sima» sin traducir en inglés (C10), eco de Trevenant explicado en el GDD (C12), clave muerta y «Próximamente» fuera (C13), tabla de retos al día (C14), comentarios de Zorua y Cubone (C15, C16), texto neutro si falta la mazmorra (C19). Motivo: coherencia | Sección 9 |

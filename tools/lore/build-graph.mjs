@@ -19,9 +19,10 @@ function E(from, to, relation, sources) { edges.push({ from, to, relation, sourc
 N('edad-de-luz', 'La edad de la luz', 'suceso', 'Un tiempo en que el sol no conocía la sombra y a los Pokémon nada les faltaba.', [I('prologue.light.1'), I('prologue.light.2')]);
 N('hambre', 'Lo que bebe la luz', 'concepto', 'Algo despertó bajo la tierra con hambre de luz y bebió el sol hasta dejarlo hueco; sigue devorando la luz más hondo que todas las mazmorras. Nunca se nombra en el juego.', [I('prologue.hunger.1'), I('prologue.dimming.1'), I('prologue.guardians.2'), I('town.story.4')]);
 N('eclipse', 'Eclipse Carmesí', 'suceso', 'Un anillo rojo sobre la nada que no se ha movido desde que llegó. El mundo está siempre al anochecer del eclipse.', [I('prologue.eclipse.1'), I('prologue.eclipse.2'), 'docs/gdd.md:512']);
+N('noche-sin-fin', 'La noche que no acaba', 'concepto', 'Desde el Eclipse el sol no ha vuelto a salir. El tiempo pasa igual: frío y menos frío, y los inviernos se cuentan por el hielo, no por la luz. La luna sigue saliendo; el sol no. El Refugio del Ocaso se quedó en el último anochecer (decisión del dueño, 27-10-2026; C6).', [I('story.shinx.1.fragment.1.text'), I('story.cubone.1.before.1'), I('sima.plea.hermit.1'), 'docs/gdd.md:23', 'docs/gdd.md:512']);
 N('noche-del-eclipse', 'La noche del Eclipse', 'suceso', 'La noche en que se apagó el sol: se abren las mazmorras, cae la primera gota roja, nace Shinx, se pierden la manada de Zorua, la madre de Cubone y los mayores de Axew.', [I('story.zorua.2.before.1'), I('story.cubone.2.before.1'), I('story.axew.2.before.1'), I('story.shinx.1.before.1'), I('world.npc.hermit.2')]);
 N('mazmorras', 'Mazmorras Sombrías', 'concepto', 'Bocas de piedra que se abrieron con el Eclipse. Quien entra y vuelve ya no es él: solo su sombra.', [I('prologue.dungeons.1'), I('prologue.dungeons.2'), I('prologue.shadows.2')]);
-N('sombras', 'Las sombras', 'faccion', 'Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Según Mimikyu, los de la plaza se volvieron sombra al llegar el Eclipse (contradicción C4).', [I('prologue.shadows.2'), I('town.story.2'), 'docs/gdd.md:225', I('story.mimikyu.3.before.1')]);
+N('sombras', 'Las sombras', 'faccion', 'Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4).', [I('prologue.shadows.2'), I('town.story.2'), 'docs/gdd.md:225', I('story.mimikyu.3.before.1'), 'docs/gdd.md:422']);
 N('guardianes', 'Los guardianes', 'faccion', 'Cada mazmorra tiene un guardián atado a un juramento que ya nadie recuerda; el Rey de las Espadas es el primero.', [I('prologue.guardians.1'), I('town.story.3'), I('guardian.aegislash.pre.1')]);
 N('juramentos', 'Los juramentos', 'concepto', 'Lo que ata a cada guardián. Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.', [I('prologue.guardians.1'), I('guardian.aegislash.post.1'), I('shrine.text')]);
 N('voz', 'La voz', 'personaje', '«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es.', [I('prologue.voice.1'), I('quiz.intro.1'), I('quiz.intro.2'), I('sima.scene.lost.4'), 'docs/sima-redesign.md:92']);
@@ -56,14 +57,14 @@ N('altar', 'Altar del Eclipse', 'objeto', 'Pactos de don y precio: «El eclipse 
 // --- Design only ----------------------------------------------------------
 N('necrozma', 'Necrozma', 'personaje', 'Diseño: lo que hay bajo la tierra y el jefe final; el prólogo no lo enseña ni lo nombra.', ['docs/gdd.md:231', 'docs/species-candidates.md:252'], 'diseño');
 N('forma-de-la-herida', 'La forma de la herida', 'concepto', 'Abajo solo se entra con la forma de la herida a la que acompañas: en una Senda la Sima te hace llevar la forma del vecino con el que bajas (las Sendas son heridas de otros, no tu pasado). Por eso una Senda solo se juega con su línea. Qué cuesta llevar la forma de otro es un misterio (M13).', [I('challenges.text'), I('challenge.cubone.lore'), 'docs/gdd.md:423']);
-N('sombras-amigos', 'Sombras de amigos', 'concepto', 'NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.', ['docs/lore/lore.md:334'], 'diseño');
+N('sombras-amigos', 'Sombras de amigos', 'concepto', 'NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.', ['docs/lore/lore.md:355'], 'diseño');
 
 // --- Places ---------------------------------------------------------------
-N('refugio', 'Refugio del Ocaso', 'lugar', 'El pueblo de partida: el puesto de Mimikyu, la tienda de Poochyena, Gastly, Smeargle, el tablón y el Santuario.', [I('world.map.refugio'), 'docs/gdd.md:514', 'src/data/town.ts:203']);
-N('ruinas', 'Camino de las Ruinas', 'lugar', 'Tumbas y columnas rotas; la Estatua sin rostro y la boca de la Cripta.', [I('world.map.ruinas'), 'docs/gdd.md:515', 'src/data/world.ts:156']);
+N('refugio', 'Refugio del Ocaso', 'lugar', 'El pueblo de partida: el puesto de Mimikyu, la tienda de Poochyena, Gastly, Smeargle, el tablón y el Santuario; Abra duerme en un rincón y Axew entrena en la linde. Se llama así porque se quedó en el último anochecer.', [I('world.map.refugio'), 'docs/gdd.md:514', 'src/data/town.ts:223']);
+N('ruinas', 'Camino de las Ruinas', 'lugar', 'Tumbas y columnas rotas; la Estatua sin rostro y la boca de la Cripta.', [I('world.map.ruinas'), 'docs/gdd.md:515', 'src/data/world.ts:163']);
 N('mirador', 'Paso del Mirador', 'lugar', 'Una grieta y un solo puente; desde aquí el eclipse se ve enorme. Boca del Bosque Brumoso.', [I('world.map.mirador'), I('world.lore.view.1'), 'docs/gdd.md:516']);
 N('crater', 'Cráter del Eclipse', 'lugar', 'Ceniza bajo el eclipse; en su borde, la boca de la Sima y la Estatua quemada. Aquí se hacen las súplicas y despiertas al perderte.', [I('world.map.crater'), 'docs/gdd.md:517', I('sima.scene.lost.6')]);
-N('lago', 'Aldea del Lago Negro', 'lugar', 'Aldea de pescadores junto a un lago que ya no refleja el cielo: «Refleja lo que hay debajo.»', [I('world.map.lago'), I('world.npc.keeper.1'), I('world.npc.fisher.2'), 'docs/gdd.md:518']);
+N('lago', 'Aldea del Lago Negro', 'lugar', 'Aldea de pescadores junto al lago que se heló entero la noche del Eclipse: el hielo es negro porque debajo ya no hay luz, y el pescador pesca por un agujero junto al embarcadero. «Refleja lo que hay debajo.»', [I('world.map.lago'), I('world.npc.keeper.1'), I('world.npc.fisher.1'), I('world.npc.fisher.2'), 'docs/gdd.md:518']);
 N('cienaga', 'Ciénaga del Cielo Roto', 'lugar', 'Donde cayó la primera luz del eclipse; el cristal caído y la boca del Pantano.', [I('world.map.cienaga'), 'docs/gdd.md:519']);
 N('santuario', 'Santuario de los Juramentos', 'lugar', '«Donde los guardianes vuelven a jurar»: los nombres de los guardianes vencidos brillan en el altar.', [I('shrine.title'), I('shrine.subtitle'), I('world.lore.shrine.1')]);
 N('cripta', 'Cripta del Rey de las Espadas', 'lugar', '«Donde el acero aún espera órdenes»: el Rey guarda una puerta sellada.', [I('dungeon.crypt.name'), I('dungeon.crypt.lore.1'), I('dungeon.crypt.lore.2')]);
@@ -85,9 +86,9 @@ for (const [id, band] of bands) {
 N('plaza', 'La plaza de antes del Eclipse', 'lugar', 'Una plaza con sol y un columpio donde Mimikyu iba cada tarde.', [I('story.mimikyu.2.before.1'), I('challenge.mimikyu.2.floor.1')]);
 N('casa-grande', 'La casa grande', 'lugar', 'Al final de la aldea, con todas las lámparas encendidas y nadie dentro; las enciende Litwick cada noche.', [I('story.litwick.1.before.1'), I('story.litwick.2.before.4')]);
 N('torre', 'La torre sin techo', 'lugar', 'Más allá de la cripta; suben a ella los que ya no tienen a quién esperar.', [I('story.cubone.3.before.1')]);
-N('fuente', 'La fuente de la aldea', 'lugar', 'Donde un niño callado mira el agua y su reflejo es un zorro.', [I('story.zorua.1.before.1')]);
+N('fuente', 'La fuente de la aldea', 'lugar', 'Donde un niño callado mira el agua y su reflejo es un zorro. El mapa no tiene fuente: el niño callado se sienta en las piedras de la plaza.', [I('story.zorua.1.before.1'), 'src/data/world.ts:362']);
 N('niebla-blanca', 'La niebla blanca', 'lugar', 'Más allá del pantano, huele a rencor: ahí duermen los que esperaron demasiado.', [I('story.zorua.3.before.1')]);
-N('lago-helado', 'El lago helado', 'lugar', 'El lago de Piplup: reflejaba el cielo; tras el Eclipse se heló negro (¿el Lago Negro?, contradicción C7).', [I('story.piplup.2.before.1'), I('story.piplup.3.before.1')]);
+N('lago-helado', 'El lago helado', 'lugar', 'El lago de Piplup, que es el Lago Negro: reflejaba el cielo; la noche del Eclipse se heló entero, negro. Desagua al mar, más allá: por ahí se fueron los demás, y el hielo dejó a Piplup aislado (decisión del dueño, 27-10-2026; C7, C9).', [I('story.piplup.2.before.1'), I('story.piplup.3.before.1'), I('story.piplup.3.boss.6.title'), I('story.piplup.3.after.3'), 'docs/gdd.md:518']);
 N('barranca', 'La barranca', 'lugar', 'Donde los mayores bajaron la noche del Eclipse y Axew cayó; un árbol viejo lleno de marcas.', [I('story.axew.1.before.1'), I('story.axew.2.before.1')]);
 N('tierras-sin-nombre', 'Tierras sin nombre', 'lugar', '«Más allá del lago hay tierras que aún no tienen nombre. Algún día el camino seguirá.»', [I('world.npc.oracle.2')]);
 
@@ -153,11 +154,18 @@ const HURT = {
   shinx: 'Nació la noche del Eclipse; asustó a su madre con un trueno, y ella salió a buscar a los perdidos y no volvió.',
   axew: 'Siguió a los mayores por la barranca, cayó y se melló el colmillo; ellos no volvieron.',
 };
-const HOME = { mimikyu: 'refugio', cubone: 'lago', litwick: 'lago' };
+const HOME = { mimikyu: 'refugio', cubone: 'lago', litwick: 'lago', abra: 'refugio', axew: 'refugio', zorua: 'lago', piplup: 'lago', shinx: 'crater' };
+// The resident's name key on the dialog box (src/data/world.ts, src/data/town.ts).
+const NAME = { mimikyu: 'gacha', cubone: 'fisher', litwick: 'keeper', abra: 'sleeper', axew: 'trainee', zorua: 'child', piplup: 'proud', shinx: 'watcher' };
 const NPC_NOTE = {
   mimikyu: ' En el Refugio lleva el puesto de la suerte: la Senda del Disfraz es su herida.',
   cubone: ' En la Aldea del Lago Negro es el pescador: la Senda del Hueso es su herida.',
-  litwick: ' En la Aldea es la «Guardiana de la llama»: la Senda de la Llama es su herida (género sin decidir, C5).',
+  litwick: ' En la Aldea es la «Guardiana de la llama», femenina (C5): la Senda de la Llama es su herida.',
+  abra: ' En el Refugio duerme en un rincón, bajo la manta que le dejó el pueblo, y casi nunca contesta: la Senda del Sueño es su herida.',
+  axew: ' En el Refugio entrena solo junto a un árbol de marcas bajas, en la linde: la Senda del Colmillo es su herida.',
+  zorua: ' En la Aldea es un niño callado en la plaza, disfrazado de otro Pokémon pequeño hasta que cierra su Senda (entonces, Zoroark): la Senda del Reflejo es su herida.',
+  piplup: ' En la Aldea vigila el único agujero hasta el agua, junto al pescador, y rechaza lo que le ofrecen: la Senda del Lago Helado es su herida.',
+  shinx: ' En el borde del cráter mira por dónde bajan los Caminantes: la Senda de la Tormenta es su herida.',
 };
 const BASE = { crypt: 'cripta', forest: 'bosque', caves: 'cuevas', swamp: 'pantano' };
 // [chapter road base, mid at floor 3, mid at floor 6] from src/data/story/*_ROADS.
@@ -184,7 +192,7 @@ for (const [line, info] of Object.entries(LINES)) {
   N(sendaId, t(`story.${line}.title`), 'senda', `${t(`challenge.${line}.subtitle`)}. ${HURT[line]} Al cerrar el III ${info.evo}. Phantump: ${t(`story.${line}.phantump`).replace(/^Phantump: /, '')}`, [I(`story.${line}.title`), I(`challenge.${line}.subtitle`), I(`story.${line}.phantump`), docSrc]);
   E(line, sendaId, 'protagoniza', [I(`story.${line}.title`)]);
   E(line, 'caminantes', 'pertenece_a', ['docs/gdd.md:422']);
-  if (HOME[line]) E(line, HOME[line], 'vive_en', [I(`town.name.${line === 'mimikyu' ? 'gacha' : line === 'cubone' ? 'fisher' : 'keeper'}`)]);
+  if (HOME[line]) E(line, HOME[line], 'vive_en', [I(`town.name.${NAME[line]}`)]);
   const woundId = `${line}-wound`;
   N(woundId, t(`species.${line}-wound`), 'personaje', `La herida de ${name}: el propio Pokémon, enorme y corrompido. Última palabra en Pesadilla.`, [I(`species.${line}-wound`), `docs/story-quests.md:${info.wound}`]);
   E(woundId, line, 'es_herida_de', [`docs/story-quests.md:${info.wound}`]);
@@ -224,7 +232,7 @@ for (const [line, info] of Object.entries(LINES)) {
 
 // Senda places and losses.
 N('madre-cubone', 'La madre de Cubone', 'personaje', 'Bajó a las cuevas a buscar luz para el lago la noche del Eclipse; volvió su cráneo. Abajo, una sombra con su forma tararea.', [I('story.cubone.2.before.1'), I('story.cubone.2.before.3'), I('sima.plea.fisher.1')]);
-N('nino-casa-grande', 'El niño de la casa grande', 'personaje', 'Se perdió en las cuevas; Litwick lo llevó a casa comiéndose un poco de él; tuvo frío siempre y vivió mucho. En la súplica, «Una noche bajó a buscar calor» (contradicción C8).', [I('story.litwick.2.before.2'), I('story.litwick.2.after.2'), I('sima.plea.keeper.2')]);
+N('nino-casa-grande', 'El niño de la casa grande', 'personaje', 'Se perdió en las cuevas; Litwick lo llevó a casa comiéndose un poco de él; tuvo frío siempre y vivió mucho, y ya de viejo bajó a la Sima a buscar calor (C8, resuelta).', [I('story.litwick.2.before.2'), I('story.litwick.2.after.2'), I('sima.plea.keeper.2')]);
 N('manada-zorua', 'La manada de Zorua', 'faccion', 'Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo.', [I('story.zorua.2.before.1'), I('story.zorua.2.before.2'), I('sima.plea.storyteller.4')]);
 N('vieja-empoleon', 'La vieja Empoleon del lago', 'personaje', 'Sacó a Piplup del hielo y le dejó una baya. Tras el Eclipse bajó a buscar el reflejo del cielo y no subió.', [I('story.piplup.2.after.2'), I('story.piplup.3.before.1')]);
 N('madre-shinx', 'La madre de Shinx', 'personaje', 'Una Luxray de la manada al borde de la tormenta; tras el Eclipse salió a buscar a todos los perdidos con los ojos abiertos y no volvió.', [I('story.shinx.2.before.2'), I('story.shinx.3.before.2')]);
@@ -276,30 +284,30 @@ e('crater', 'mirador', 'conecta_con', I('world.npc.keeper.4'), 'docs/gdd.md:516'
 e('refugio', 'ruinas', 'conecta_con', I('world.lore.sign.1'));
 e('ruinas', 'mirador', 'conecta_con', I('world.lore.sign.1'));
 e('mirador', 'lago', 'conecta_con', I('world.npc.keeper.3'));
-e('lago', 'cienaga', 'conecta_con', 'src/data/world.ts:359');
+e('lago', 'cienaga', 'conecta_con', 'src/data/world.ts:390');
 e('cripta', 'ruinas', 'se_abre_en', 'docs/gdd.md:515');
 e('bosque', 'mirador', 'se_abre_en', 'docs/gdd.md:516');
 e('cuevas', 'lago', 'se_abre_en', 'docs/gdd.md:336');
 e('pantano', 'cienaga', 'se_abre_en', 'docs/gdd.md:519');
 e('santuario', 'refugio', 'esta_en', 'docs/gdd.md:205');
-e('estatua-sin-rostro', 'ruinas', 'esta_en', 'src/data/world.ts:196');
-e('poste', 'ruinas', 'esta_en', 'src/data/world.ts:197');
-e('estatua-quemada', 'crater', 'esta_en', 'src/data/world.ts:292');
-e('idolo', 'lago', 'esta_en', 'src/data/world.ts:349');
-e('cristal-caido', 'cienaga', 'esta_en', 'src/data/world.ts:405');
+e('estatua-sin-rostro', 'ruinas', 'esta_en', 'src/data/world.ts:203');
+e('poste', 'ruinas', 'esta_en', 'src/data/world.ts:204');
+e('estatua-quemada', 'crater', 'esta_en', 'src/data/world.ts:300');
+e('idolo', 'lago', 'esta_en', 'src/data/world.ts:380');
+e('cristal-caido', 'cienaga', 'esta_en', 'src/data/world.ts:436');
 e('casa-grande', 'lago', 'esta_en', I('story.litwick.1.before.1'));
 e('tierras-sin-nombre', 'lago', 'mas_alla_de', I('world.npc.oracle.2'));
 e('primera-gota', 'cienaga', 'ocurre_en', I('world.npc.hermit.2'));
 e('primera-gota', 'noche-del-eclipse', 'ocurre_en', I('world.npc.hermit.2'));
 e('nihilego', 'noche-del-eclipse', 'cae_en', I('story.shinx.3.boss.6.pre.2'));
 e('cristal-caido', 'otro-cielo', 'muestra', I('world.lore.crystal.2'));
-e('phantump', 'lago', 'vive_en', I('travel.at'), 'src/data/world.ts:341');
+e('phantump', 'lago', 'vive_en', I('travel.at'), 'src/data/world.ts:372');
 e('phantump', 'caminantes', 'explica', I('sima.scene.lost.7'));
 e('phantump', 'crater', 'espera_en', I('sima.plea.oracle.3'));
-e('gastly', 'refugio', 'vive_en', 'src/data/town.ts:206');
-e('poochyena', 'refugio', 'vive_en', 'src/data/town.ts:205');
-e('smeargle', 'refugio', 'vive_en', 'src/data/world.ts:143');
-e('croagunk', 'cienaga', 'vive_en', 'src/data/world.ts:399');
+e('gastly', 'refugio', 'vive_en', 'src/data/town.ts:226');
+e('poochyena', 'refugio', 'vive_en', 'src/data/town.ts:225');
+e('smeargle', 'refugio', 'vive_en', 'src/data/world.ts:147');
+e('croagunk', 'cienaga', 'vive_en', 'src/data/world.ts:430');
 e('gastly', 'suplicas', 'aparece_en', 'src/data/sima-plea.ts:23');
 e('cubone', 'suplicas', 'aparece_en', 'src/data/sima-plea.ts:24');
 e('litwick', 'suplicas', 'aparece_en', 'src/data/sima-plea.ts:25');
@@ -359,10 +367,21 @@ e('estrato-3', 'cuevas', 'imita', 'docs/gdd.md:393');
 e('estrato-4', 'pantano', 'imita', 'docs/gdd.md:393');
 e('estrato-5', 'otro-cielo', 'baja_hacia', I('sima.band.abyss.lore.2'));
 e('hambre', 'necrozma', 'es', 'docs/gdd.md:231');
-e('sombras-amigos', 'sima', 'aparece_en', 'docs/lore/lore.md:334');
-e('sombras-amigos', 'sombra-propia', 'depende_de', 'docs/lore/lore.md:334');
+e('sombras-amigos', 'sima', 'aparece_en', 'docs/lore/lore.md:355');
+e('sombras-amigos', 'sombra-propia', 'depende_de', 'docs/lore/lore.md:355');
 e('caminante-once', 'sombra-propia', 'es_el_final_de', I('sima.plea.hermit.2'), I('sima.scene.lost.13'));
 e('caminantes', 'forma-de-la-herida', 'lleva_en_las_sendas', 'docs/gdd.md:423');
+e('eclipse', 'noche-sin-fin', 'deja', 'docs/gdd.md:23', I('story.shinx.1.fragment.1.text'));
+e('noche-sin-fin', 'refugio', 'da_nombre_a', 'docs/gdd.md:512');
+e('noche-sin-fin', 'madre-cubone', 'la_luna_aun_sale_por', I('story.cubone.1.before.1'));
+e('sombra-propia', 'sombras', 'deja_al_no_necesitarte', 'docs/gdd.md:422');
+e('noche-del-eclipse', 'plaza', 'vuelve_sombra_de_golpe_a', I('story.mimikyu.3.before.1'), 'docs/gdd.md:422');
+e('lago-helado', 'lago', 'es', I('world.npc.keeper.1'), 'docs/gdd.md:518');
+e('piplup', 'cubone', 'junto_a', 'src/data/world.ts:348');
+e('zorua', 'fuente', 'se_sienta_en', 'src/data/world.ts:362', I('story.zorua.1.before.1'));
+e('abra', 'frag-abra-3-1', 'duerme_bajo', I('town.resident.abra.2'));
+e('shinx', 'caminantes', 'vigila_a', I('town.resident.shinx.1'));
+e('axew', 'mayores-axew', 'entrena_sin', I('town.resident.axew.1'));
 e('forma-de-la-herida', 'herida', 'acompaña_a', I('challenge.cubone.lore'), 'docs/gdd.md:423');
 
 const out = { generated: '2026-10-27', note: 'Lore graph of Mazmorra Sombría. Sources: "path:line" (or "path:line-line") into the repo, or "i18n:<key>" into src/i18n/es.json. Check: node tools/lore-graph-check.mjs', nodes, edges };
