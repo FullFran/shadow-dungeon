@@ -18,6 +18,8 @@ import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { FONT, PALETTE } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
+import { npcView } from './residents';
+import type { StoryProgress } from '../core/story';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
@@ -129,6 +131,13 @@ export interface TownOptions {
    * or when the player heads for `dungeon` (then it departs).
    */
   simaPlea?: { dungeon: string; due(): boolean; seen(): void };
+  /**
+   * This player's Senda progress (the save's `story`): the residents whose
+   * wounds the Sendas are recognise the player once a chapter is closed
+   * (src/town/residents.ts). Read once as the town opens (it only changes
+   * after a run, which leaves the town); absent = none.
+   */
+  story?: StoryProgress;
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -447,7 +456,13 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     dialog =
       target.kind === 'board'
         ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')), ...(options.openBoard ? { opens: 'board' as const } : {}) }
-        : { speaker: t(`town.name.${target.npc.role}`), state: openDialog(npcLines(target.npc, talk(target.npc.id)).map((key) => t(key))), ...(target.npc.opens ? { opens: target.npc.opens } : {}) };
+        : npcDialog(target.npc);
+  }
+
+  /** What an NPC says now: a resident's lines depend on the player's Senda progress. */
+  function npcDialog(npc: TownNpc): NonNullable<typeof dialog> {
+    const view = npcView(npc, options.story);
+    return { speaker: t(view.nameKey), state: openDialog(npcLines(view, talk(npc.id)).map((key) => t(key))), ...(npc.opens ? { opens: npc.opens } : {}) };
   }
 
   /** Opens a stall window (the shop, or the move tutor's: `open`) over the town. */
@@ -754,8 +769,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const npcs = map.npcs.map((npc): TownCharacter => {
       const pos = tileCentre(npc.x, npc.y);
       const toPlayer = { x: walker.pos.x - pos.x, y: walker.pos.y - pos.y };
-      const near = Math.hypot(toPlayer.x, toPlayer.y) < TILE * 4;
-      return { sprite: npcSprite(npc.species), pos, facing: near ? toPlayer : { x: 0, y: 1 }, moving: false, floats: FLOATERS.has(npc.species) };
+      const near = !npc.asleep && Math.hypot(toPlayer.x, toPlayer.y) < TILE * 4;
+      const { species } = npcView(npc, options.story);
+      return { sprite: npcSprite(species), pos, facing: near ? toPlayer : { x: 0, y: 1 }, moving: false, floats: FLOATERS.has(species) };
     });
     const roaming = map.wanderers.flatMap((w): TownCharacter[] => {
       const state = wanderers.get(w.id);

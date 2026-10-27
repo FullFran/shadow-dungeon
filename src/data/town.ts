@@ -1,3 +1,4 @@
+import type { ChallengeLine } from './dungeons';
 import { SPRITE_KEYS } from './sprites';
 
 /**
@@ -130,10 +131,25 @@ export interface TownProp {
   y: number;
 }
 
-export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle' | 'hermit' | 'tutor';
+export type TownNpcRole = 'gacha' | 'shop' | 'storyteller' | 'fisher' | 'keeper' | 'oracle' | 'hermit' | 'tutor' | 'sleeper' | 'fox' | 'proud' | 'watcher' | 'trainee';
 
 /** Species an NPC or a wandering Pokémon can use: any existing sprite (public/sprites). */
 export type NpcSpecies = keyof typeof SPRITE_KEYS;
+
+/**
+ * The neighbour whose wound a Senda is (docs/lore/lore.md §4, owner
+ * 2026-10-27): what it says changes once it recognises you, from the save's
+ * `story` (src/town/residents.ts). Its `lines` are the ones before.
+ */
+export interface Resident {
+  line: ChallengeLine;
+  /** Lines once a chapter of its Senda is closed (rotated like `lines` when the NPC rotates). */
+  after: readonly string[];
+  /** Shown as another species, under another name, until its Senda is done (Zorua). */
+  disguise?: { species: NpcSpecies; nameKey: string };
+  /** Lines once its Senda is done and the disguise is gone. */
+  revealed?: readonly string[];
+}
 
 export interface TownNpc {
   id: string;
@@ -149,6 +165,10 @@ export interface TownNpc {
   rotate?: boolean;
   /** A window opens when the dialog ends (Poochyena's upgrade shop, Smeargle's move tutor, Mimikyu's gacha stall, the Lago oracle Phantump's evolutions). */
   opens?: 'shop' | 'tutor' | 'gacha' | 'evolve';
+  /** Asleep: it does not turn towards the player (Abra). */
+  asleep?: true;
+  /** The Senda this NPC's wound is. */
+  resident?: Resident;
 }
 
 export interface TownMap {
@@ -201,7 +221,7 @@ export const TOWN: TownMap = {
     { kind: 'bush', x: 3, y: 9 },
   ],
   npcs: [
-    { id: 'gacha', role: 'gacha', species: 'mimikyu', x: 8, y: 6, lines: ['town.gacha.1', 'town.gacha.open'], opens: 'gacha' },
+    { id: 'gacha', role: 'gacha', species: 'mimikyu', x: 8, y: 6, lines: ['town.gacha.1', 'town.gacha.open'], opens: 'gacha', resident: { line: 'mimikyu', after: ['town.gacha.after.1', 'town.gacha.open'] } },
     { id: 'shop', role: 'shop', species: 'poochyena', x: 16, y: 6, lines: ['town.shop.1', 'town.shop.open'], opens: 'shop' },
     { id: 'storyteller', role: 'storyteller', species: 'gastly', x: 24, y: 6, lines: ['town.story.1', 'town.story.2', 'town.story.3', 'town.story.4'], rotate: true },
   ],

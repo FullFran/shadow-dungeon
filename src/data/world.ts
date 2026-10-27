@@ -140,7 +140,14 @@ export const REFUGIO: WorldMap = {
   // The signal pillar on the south square: online rooms start from the town too.
   props: [...TOWN.props, { kind: 'notice-board', x: 28, y: 8 }, { kind: 'statue', x: 21, y: 12 }, { kind: 'pillar', x: 16, y: 12 }],
   // Smeargle, the move tutor (odd/tasks/movepools.md), by the stone house on the west lawn.
-  npcs: [...TOWN.npcs, { id: 'tutor', role: 'tutor', species: 'smeargle', x: 6, y: 11, lines: ['town.tutor.1', 'town.tutor.open'], opens: 'tutor' }],
+  // Two residents whose Sendas are their wounds (docs/lore/lore.md §4): Abra asleep in the corner by the stone house,
+  // under the blanket the town left at its door, and Axew training alone by the tree at the town's north-east edge.
+  npcs: [
+    ...TOWN.npcs,
+    { id: 'tutor', role: 'tutor', species: 'smeargle', x: 6, y: 11, lines: ['town.tutor.1', 'town.tutor.open'], opens: 'tutor' },
+    { id: 'sleeper', role: 'sleeper', species: 'abra', x: 2, y: 16, lines: ['town.resident.abra.1', 'town.resident.abra.1', 'town.resident.abra.2'], rotate: true, asleep: true, resident: { line: 'abra', after: ['town.resident.abra.after.1', 'town.resident.abra.after.2'] } },
+    { id: 'trainee', role: 'trainee', species: 'axew', x: 29, y: 4, lines: ['town.resident.axew.1', 'town.resident.axew.2'], resident: { line: 'axew', after: ['town.resident.axew.after.1', 'town.resident.axew.after.2'] } },
+  ],
   links: [{ id: 'east', ...TOWN.exit, to: 'ruinas', toLink: 'west' }],
   entrances: [],
   lore: [],
@@ -286,7 +293,8 @@ export const CRATER: WorldMap = {
     { kind: 'rubble', x: 9, y: 21 },
     { kind: 'flat-rocks', x: 18, y: 20 },
   ],
-  npcs: [],
+  // Shinx on the north rim, looking down where the Caminantes go.
+  npcs: [{ id: 'watcher', role: 'watcher', species: 'shinx', x: 16, y: 6, lines: ['town.resident.shinx.1', 'town.resident.shinx.2'], resident: { line: 'shinx', after: ['town.resident.shinx.after.1'] } }],
   links: [{ id: 'south', x: 15, y: 25, width: 2, height: 1, to: 'mirador', toLink: 'north' }],
   entrances: [{ dungeon: SIMA_DUNGEON_ID, nameKey: 'world.sima.name', x: 15, y: 15, width: 2, height: 1, back: { x: 15, y: 17 } }],
   lore: [{ id: 'burnt-statue', nameKey: 'world.lore.crater.name', x: 24, y: 13.5, lines: [{ key: 'world.lore.crater.1' }, { key: 'world.lore.crater.2', after: CRYPT }, { key: 'world.lore.crater.3', after: FOREST }] }],
@@ -335,8 +343,31 @@ export const LAGO: WorldMap = {
     { kind: 'rubble', x: 15, y: 15 },
   ],
   npcs: [
-    { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'] },
-    { id: 'keeper', role: 'keeper', species: 'litwick', x: 16, y: 9, lines: ['world.npc.keeper.1', 'world.npc.keeper.2', 'world.npc.keeper.3', 'world.npc.keeper.4'], rotate: true },
+    { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'], resident: { line: 'cubone', after: ['world.npc.fisher.after.1', 'world.npc.fisher.2'] } },
+    // Piplup beside the fisher at the end of the pier, refusing whatever it is offered.
+    { id: 'proud', role: 'proud', species: 'piplup', x: 23, y: 5, lines: ['town.resident.piplup.1', 'town.resident.piplup.2'], resident: { line: 'piplup', after: ['town.resident.piplup.after.1'] } },
+    {
+      id: 'keeper',
+      role: 'keeper',
+      species: 'litwick',
+      x: 16,
+      y: 9,
+      lines: ['world.npc.keeper.1', 'world.npc.keeper.2', 'world.npc.keeper.3', 'world.npc.keeper.4'],
+      rotate: true,
+      resident: { line: 'litwick', after: ['world.npc.keeper.1', 'world.npc.keeper.after.1', 'world.npc.keeper.3', 'world.npc.keeper.4'] },
+    },
+    // Zorua, the quiet child of the village square (its Senda's «fuente de la aldea»; the map has no fountain prop, so the
+    // flat stones of the square stand for it): a small Pokémon until its Senda is done, then the big fox it grew into.
+    {
+      id: 'fox',
+      role: 'fox',
+      species: 'zoroark',
+      x: 13,
+      y: 13,
+      lines: ['town.resident.zorua.1', 'town.resident.zorua.2'],
+      rotate: true,
+      resident: { line: 'zorua', after: ['town.resident.zorua.after.1'], disguise: { species: 'shroomish', nameKey: 'town.name.child' }, revealed: ['town.resident.zorua.revealed.1'] },
+    },
     // The oracle evolves the gacha species (odd/tasks/gacha-evolutions.md T5, user decision 2026-10-26).
     { id: 'oracle', role: 'oracle', species: 'phantump', x: 7, y: 11, lines: ['world.npc.oracle.2', 'world.npc.oracle.evolve', 'world.npc.oracle.open'], opens: 'evolve' },
   ],
