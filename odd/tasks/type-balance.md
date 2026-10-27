@@ -40,6 +40,7 @@ Owner decision: do both (1) compress the type chart and (2) a minimum duration p
 - [x] Sima echoes: the floor follows the echo's own (scaled) timer; echo kill margins checked by the proof.
 - [x] Senda wounds: shared engine; tests/sim/wound-prove.test.ts 18/18 green under the new chart (after the merge: 77/77 with the three new wounds).
 - [x] Senda shadows (merge): tests/sim/story-prove-*.test.ts green after three hpScale retunes; in the study (`SHADOW_BOSSES`).
+- [x] Gacha and Mimikyu v2 Sendas (merged 2026-10-27): 21 gacha shadows tuned under the old chart; under chart B only piplup-lanturn Normal fell short (kill margin 1.45 < 1.5), hpScale 0.525 -> 0.5; Mimikyu v2 arrived tuned. `SHADOW_BOSSES` now holds 42 shadows (every Senda) and the study re-ran on them: 9082 engine fights, 0 outlier cells of 4536 (reports/balance/type-chart-after.md).
 - [x] Net protocol (merge): `PROTOCOL_VERSION` 5, GDD §7 note, tests/net/shiny-wire.test.ts pin.
 - [x] Co-op: host clamps (combat, sync claims, afflictions, rank-effect marks) all read `cardHpFloor`; `held` travels in the host snapshot (stripped on merge when absent); the host emits `cardHold` for claims too.
 - [x] Player damage paths (strike, blocked chip, projectiles through `strikeEnemy`) pass `onEnemy`; Expert Belt reads `hitEffectiveness`; enemy contact and enemy shots keep `typeEffectiveness` (test over every playable species and type).
