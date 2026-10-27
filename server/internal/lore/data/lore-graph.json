@@ -35,7 +35,21 @@
    "sources": [
     "i18n:prologue.eclipse.1",
     "i18n:prologue.eclipse.2",
-    "docs/gdd.md:511"
+    "docs/gdd.md:512"
+   ]
+  },
+  {
+   "id": "noche-sin-fin",
+   "label": "La noche que no acaba",
+   "type": "concepto",
+   "status": "canon",
+   "summary": "Desde el Eclipse el sol no ha vuelto a salir. El tiempo pasa igual: frío y menos frío, y los inviernos se cuentan por el hielo, no por la luz. La luna sigue saliendo; el sol no. El Refugio del Ocaso se quedó en el último anochecer (decisión del dueño, 27-10-2026; C6).",
+   "sources": [
+    "i18n:story.shinx.1.fragment.1.text",
+    "i18n:story.cubone.1.before.1",
+    "i18n:sima.plea.hermit.1",
+    "docs/gdd.md:23",
+    "docs/gdd.md:512"
    ]
   },
   {
@@ -69,12 +83,14 @@
    "label": "Las sombras",
    "type": "faccion",
    "status": "canon",
-   "summary": "Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Según Mimikyu, los de la plaza se volvieron sombra al llegar el Eclipse (contradicción C4).",
+   "summary": "Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.",
    "sources": [
+    "docs/lore/lore.md:309",
     "i18n:prologue.shadows.2",
     "i18n:town.story.2",
     "docs/gdd.md:225",
-    "i18n:story.mimikyu.3.before.1"
+    "i18n:story.mimikyu.3.before.1",
+    "docs/gdd.md:422"
    ]
   },
   {
@@ -94,7 +110,7 @@
    "label": "Los juramentos",
    "type": "concepto",
    "status": "canon",
-   "summary": "Lo que ata a cada guardián. Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.",
+   "summary": "Lo que ata a cada guardián: antes del Eclipse, cada uno juró mantener cerrada una puerta contra el hambre (M4). Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.",
    "sources": [
     "i18n:prologue.guardians.1",
     "i18n:guardian.aegislash.post.1",
@@ -106,8 +122,9 @@
    "label": "La voz",
    "type": "personaje",
    "status": "canon",
-   "summary": "«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es.",
+   "summary": "«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es. Respuesta del dueño (M1): es tu propia sombra, que te llamó cuando moriste como humano porque una sombra sin cuerpo no puede bajar ni beber.",
    "sources": [
+    "docs/lore/lore.md:59",
     "i18n:prologue.voice.1",
     "i18n:quiz.intro.1",
     "i18n:quiz.intro.2",
@@ -146,12 +163,15 @@
    "label": "Tu sombra",
    "type": "concepto",
    "status": "canon",
-   "summary": "La sombra que baja contigo y no te suelta: cuando te pierdes en la Sima, tira de ti hacia arriba. A quien baja sin una, la Sima se lo queda.",
+   "summary": "La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda. Léxico (C11): la sombra es tuya; es tuya mientras te necesita.",
    "sources": [
+    "docs/lore/lore.md:309",
     "i18n:sima.scene.lost.5",
     "i18n:sima.scene.lost.10",
+    "i18n:sima.scene.lost.13",
     "i18n:sima.plea.oracle.2",
-    "i18n:screen.eclipse.text"
+    "i18n:screen.eclipse.text",
+    "docs/gdd.md:422"
    ]
   },
   {
@@ -163,7 +183,7 @@
    "sources": [
     "i18n:endless.entry.clock",
     "i18n:endless.score.time",
-    "docs/gdd.md:424",
+    "docs/gdd.md:425",
     "docs/gdd.md:387"
    ]
   },
@@ -172,7 +192,7 @@
    "label": "Perderse",
    "type": "suceso",
    "status": "canon",
-   "summary": "Llegar a 0:00 de Lucidez: tu sombra te sube al borde del cráter. Es una marca, no una derrota.",
+   "summary": "Llegar a 0:00 de Lucidez: tu sombra te sube al borde del cráter porque aún le haces falta. Es una marca, no una derrota.",
    "sources": [
     "i18n:screen.eclipse.title",
     "i18n:screen.eclipse.text",
@@ -186,7 +206,7 @@
    "status": "canon",
    "summary": "Con menos de 60 s de Lucidez, siluetas de alguien que no está en el borde de la vista. Nunca dañan.",
    "sources": [
-    "docs/gdd.md:432",
+    "docs/gdd.md:433",
     "i18n:menu.figurations"
    ]
   },
@@ -207,7 +227,7 @@
    "label": "El otro cielo",
    "type": "concepto",
    "status": "canon",
-   "summary": "La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego.",
+   "summary": "La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego. Es el cielo de donde vino Necrozma: el fondo de la herida que abrió (M5).",
    "sources": [
     "i18n:sima.scene.lost.11",
     "i18n:sima.scene.lost.12",
@@ -219,10 +239,11 @@
    "id": "arriba-abajo",
    "label": "Arriba y abajo se tocan",
    "type": "concepto",
-   "status": "diseño",
-   "summary": "Diseño: el «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados; nunca se dice así.",
+   "status": "canon",
+   "summary": "El «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados: el fondo de la Sima, la herida de Necrozma, es el otro cielo (decisión del dueño, 27-10-2026; C18). El juego no lo dice así.",
    "sources": [
-    "docs/sima-redesign.md:96"
+    "docs/sima-redesign.md:96",
+    "docs/lore/lore.md:57"
    ]
   },
   {
@@ -241,8 +262,9 @@
    "label": "Sombras de las Sendas",
    "type": "faccion",
    "status": "canon",
-   "summary": "Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela.",
+   "summary": "Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela. Léxico (C11): la sombra de una Senda es la herida de un vecino hecha forma.",
    "sources": [
+    "docs/lore/lore.md:309",
     "docs/story-quests.md:52"
    ]
   },
@@ -255,7 +277,7 @@
    "sources": [
     "src/data/sima-plea.ts:22",
     "i18n:gallery.sima.plea",
-    "docs/gdd.md:431"
+    "docs/gdd.md:432"
    ]
   },
   {
@@ -320,8 +342,9 @@
    "label": "Eco del Eclipse",
    "type": "personaje",
    "status": "canon",
-   "summary": "Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido. Crece en cada encuentro (plantas 10, 20...).",
+   "summary": "Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...). Léxico (C11): el eco es de la Sima; tu Eco es lo que la Sima guardó de ti.",
    "sources": [
+    "docs/lore/lore.md:309",
     "i18n:sima.echo.subtitle",
     "i18n:sima.scene.own-shadow.3",
     "i18n:sima.echo.line.1",
@@ -333,8 +356,9 @@
    "label": "Ecos de guardián",
    "type": "faccion",
    "status": "canon",
-   "summary": "Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...). Si no has vencido al guardián, sale como Guardián sin rostro.",
+   "summary": "Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro. Léxico (C11): un eco es lo que la Sima guarda de algo que bajó; estos, su recuerdo de los guardianes.",
    "sources": [
+    "docs/lore/lore.md:309",
     "i18n:endless.echo",
     "i18n:species.sima-faceless",
     "i18n:endless.echo.faceless",
@@ -364,7 +388,7 @@
     "i18n:species.sima-someone",
     "i18n:sima.scene.someone.2",
     "i18n:sima.stray.log.known",
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -376,7 +400,7 @@
    "sources": [
     "i18n:species.sima-not-yours",
     "i18n:sima.wound.log.known",
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -395,8 +419,9 @@
    "label": "Eco mercader",
    "type": "personaje",
    "status": "canon",
-   "summary": "Un mercader de la Sima. «El eco te ve marchar sin decir nada.»",
+   "summary": "Un mercader de la Sima. «El eco te ve marchar sin decir nada.» Léxico (C11): el recuerdo que la Sima guarda de alguien que bajó a comerciar.",
    "sources": [
+    "docs/lore/lore.md:309",
     "i18n:sima.event.merchant",
     "i18n:sima.merchant.leaveText"
    ]
@@ -413,24 +438,70 @@
    ]
   },
   {
+   "id": "capsulas",
+   "label": "Las cápsulas de Mimikyu",
+   "type": "concepto",
+   "status": "canon",
+   "summary": "No son Pokémon sino presentaciones: cada cápsula guarda algo de un vecino (la cuchara de Abra, una pluma, una escama) que acepta conocerte y dejarte llevar su forma. Al azar porque Mimikyu no sabe quién querrá ser tu amigo y no se atreve a preguntar (decisión del dueño, 27-10-2026; el texto llegará más adelante).",
+   "sources": [
+    "docs/lore/lore.md:60",
+    "i18n:town.gacha.1"
+   ]
+  },
+  {
+   "id": "arco-legendario",
+   "label": "El arco legendario",
+   "type": "concepto",
+   "status": "diseño",
+   "summary": "NO CANON AÚN: pedirle a dios. Dialga (el tiempo atascado), Palkia (el espacio roto de la Sima), Giratina (adonde quizá van las sombras que ya no necesitan a su dueño) y Arceus corrompido, que se gana cerrando su Senda y recupera sus 16 tablas en la Sima. Lunala sostendría la luna. Todo legendario debe ahondar el lore existente.",
+   "sources": [
+    "docs/lore/lore.md:368"
+   ]
+  },
+  {
+   "id": "reverso",
+   "label": "El reverso del mundo",
+   "type": "lugar",
+   "status": "canon",
+   "summary": "Detrás de las puertas selladas: el lado de Giratina, adonde van las sombras que ya nadie necesita. El Rey protege al mundo de él y a él del mundo (M3; no está en el juego).",
+   "sources": [
+    "docs/lore/lore.md:317",
+    "i18n:dungeon.crypt.lore.2"
+   ]
+  },
+  {
+   "id": "ultra-megalopolis",
+   "label": "Ultra Megalópolis",
+   "type": "lugar",
+   "status": "canon",
+   "summary": "El reino hundido cuyas torres se ven en el Estrato V: la ciudad que Necrozma dejó a oscuras antes que la nuestra (M6; se revela al final).",
+   "sources": [
+    "docs/lore/lore.md:320",
+    "i18n:sima.band.abyss.lore.3"
+   ]
+  },
+  {
    "id": "necrozma",
    "label": "Necrozma",
    "type": "personaje",
-   "status": "diseño",
-   "summary": "Diseño: lo que hay bajo la tierra y el jefe final; el prólogo no lo enseña ni lo nombra.",
+   "status": "canon",
+   "summary": "Lo que bebe la luz (decisión del dueño, 27-10-2026; no se nombra en el juego hasta el final). El Eclipse Carmesí es Necrozma delante del sol, bebiéndoselo; vino del Ultraespacio; el anillo rojo es el borde del sol ardiendo alrededor de su cuerpo, rojo porque el Pokémon Prisma se queda todos los colores menos ese. La Sima es la herida que abrió al atravesar el mundo; las sombras, lo que esa herida deja en la gente. Jefe final.",
    "sources": [
+    "docs/lore/lore.md:58",
     "docs/gdd.md:231",
     "docs/species-candidates.md:252"
    ]
   },
   {
-   "id": "sombra-tira-abajo",
-   "label": "La sombra que tira hacia abajo",
+   "id": "forma-de-la-herida",
+   "label": "La forma de la herida",
    "type": "concepto",
-   "status": "diseño",
-   "summary": "NO CANON AÚN (dueño, 27-10-2026): tu sombra tira de ti hacia abajo y la Lucidez es la resistencia; si caes sin Lucidez tu sombra se queda abajo. Choca con el canon actual (C2).",
+   "status": "canon",
+   "summary": "Abajo solo se entra con la forma de la herida a la que acompañas: en una Senda la Sima te hace llevar la forma del vecino con el que bajas (las Sendas son heridas de otros, no tu pasado). Por eso una Senda solo se juega con su línea. Qué cuesta llevar la forma de otro es un misterio (M13).",
    "sources": [
-    "docs/lore/lore.md:330"
+    "i18n:challenges.text",
+    "i18n:challenge.cubone.lore",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -438,9 +509,9 @@
    "label": "Sombras de amigos",
    "type": "concepto",
    "status": "diseño",
-   "summary": "NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa.",
+   "summary": "NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.",
    "sources": [
-    "docs/lore/lore.md:330"
+    "docs/lore/lore.md:358"
    ]
   },
   {
@@ -448,11 +519,11 @@
    "label": "Refugio del Ocaso",
    "type": "lugar",
    "status": "canon",
-   "summary": "El pueblo de partida: el puesto de Mimikyu, la tienda de Poochyena, Gastly, Smeargle, el tablón y el Santuario.",
+   "summary": "El pueblo de partida: el puesto de Mimikyu, la tienda de Poochyena, Gastly, Smeargle, el tablón y el Santuario; Abra duerme en un rincón y Axew entrena en la linde. Se llama así porque se quedó en el último anochecer.",
    "sources": [
     "i18n:world.map.refugio",
-    "docs/gdd.md:513",
-    "src/data/town.ts:203"
+    "docs/gdd.md:514",
+    "src/data/town.ts:223"
    ]
   },
   {
@@ -463,8 +534,8 @@
    "summary": "Tumbas y columnas rotas; la Estatua sin rostro y la boca de la Cripta.",
    "sources": [
     "i18n:world.map.ruinas",
-    "docs/gdd.md:514",
-    "src/data/world.ts:156"
+    "docs/gdd.md:515",
+    "src/data/world.ts:163"
    ]
   },
   {
@@ -476,7 +547,7 @@
    "sources": [
     "i18n:world.map.mirador",
     "i18n:world.lore.view.1",
-    "docs/gdd.md:515"
+    "docs/gdd.md:516"
    ]
   },
   {
@@ -487,7 +558,7 @@
    "summary": "Ceniza bajo el eclipse; en su borde, la boca de la Sima y la Estatua quemada. Aquí se hacen las súplicas y despiertas al perderte.",
    "sources": [
     "i18n:world.map.crater",
-    "docs/gdd.md:516",
+    "docs/gdd.md:517",
     "i18n:sima.scene.lost.6"
    ]
   },
@@ -496,12 +567,13 @@
    "label": "Aldea del Lago Negro",
    "type": "lugar",
    "status": "canon",
-   "summary": "Aldea de pescadores junto a un lago que ya no refleja el cielo: «Refleja lo que hay debajo.»",
+   "summary": "Aldea de pescadores junto al lago que se heló entero la noche del Eclipse: el hielo es negro porque debajo ya no hay luz, y el pescador pesca por un agujero junto al embarcadero. «Refleja lo que hay debajo.»",
    "sources": [
     "i18n:world.map.lago",
     "i18n:world.npc.keeper.1",
+    "i18n:world.npc.fisher.1",
     "i18n:world.npc.fisher.2",
-    "docs/gdd.md:517"
+    "docs/gdd.md:518"
    ]
   },
   {
@@ -512,7 +584,7 @@
    "summary": "Donde cayó la primera luz del eclipse; el cristal caído y la boca del Pantano.",
    "sources": [
     "i18n:world.map.cienaga",
-    "docs/gdd.md:518"
+    "docs/gdd.md:519"
    ]
   },
   {
@@ -685,9 +757,10 @@
    "label": "La fuente de la aldea",
    "type": "lugar",
    "status": "canon",
-   "summary": "Donde un niño callado mira el agua y su reflejo es un zorro.",
+   "summary": "Donde un niño callado mira el agua y su reflejo es un zorro. El mapa no tiene fuente: el niño callado se sienta en las piedras de la plaza.",
    "sources": [
-    "i18n:story.zorua.1.before.1"
+    "i18n:story.zorua.1.before.1",
+    "src/data/world.ts:362"
    ]
   },
   {
@@ -705,10 +778,13 @@
    "label": "El lago helado",
    "type": "lugar",
    "status": "canon",
-   "summary": "El lago de Piplup: reflejaba el cielo; tras el Eclipse se heló negro (¿el Lago Negro?, contradicción C7).",
+   "summary": "El lago de Piplup, que es el Lago Negro: reflejaba el cielo; la noche del Eclipse se heló entero, negro. Desagua al mar, más allá: por ahí se fueron los demás, y el hielo dejó a Piplup aislado (decisión del dueño, 27-10-2026; C7, C9).",
    "sources": [
     "i18n:story.piplup.2.before.1",
-    "i18n:story.piplup.3.before.1"
+    "i18n:story.piplup.3.before.1",
+    "i18n:story.piplup.3.boss.6.title",
+    "i18n:story.piplup.3.after.3",
+    "docs/gdd.md:518"
    ]
   },
   {
@@ -782,7 +858,7 @@
    "label": "Cristal caído",
    "type": "objeto",
    "status": "canon",
-   "summary": "Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado.",
+   "summary": "Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado. Es un trozo de Necrozma, y lo que empuja es él, aún con hambre (M9).",
    "sources": [
     "i18n:world.lore.crystal.1",
     "i18n:world.lore.crystal.2",
@@ -866,10 +942,11 @@
    "label": "La Caminante que volvió once veces",
    "type": "personaje",
    "status": "canon",
-   "summary": "Hace tres inviernos bajó, volvió once veces; la duodécima su sombra subió sola y sigue sentada en el borde.",
+   "summary": "Hace tres inviernos bajó, volvió once veces; la duodécima su sombra subió sola y sigue sentada en el borde. Es el final del camino: su sombra ya no la necesitaba.",
    "sources": [
     "i18n:sima.plea.hermit.1",
-    "i18n:sima.plea.hermit.2"
+    "i18n:sima.plea.hermit.2",
+    "docs/gdd.md:422"
    ]
   },
   {
@@ -877,7 +954,7 @@
    "label": "El que empujaba el columpio",
    "type": "personaje",
    "status": "canon",
-   "summary": "Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
+   "summary": "El Pikachu al que Mimikyu imita (M7): no estaba en la plaza la noche del Eclipse; bajó después a buscar a sus amigos y no volvió, y su sombra, que ya no lo necesitaba, se sienta en el columpio. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
    "sources": [
     "i18n:sima.plea.gacha.1",
     "i18n:sima.plea.gacha.2"
@@ -978,7 +1055,7 @@
    "status": "canon",
    "summary": "Jefa intermedia del Pantano. «La reina del pantano ya sabe que has llegado.»",
    "sources": [
-    "docs/gdd.md:450",
+    "docs/gdd.md:451",
     "i18n:dungeon.swamp.floor.5"
    ]
   },
@@ -987,11 +1064,12 @@
    "label": "Mimikyu",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Un pequeño miró bajo su trapo; el que miró no volvió a la plaza. Teme que lo vean. En el Refugio lleva el puesto de la suerte (contradicción C1).",
+   "summary": "Línea jugable y Caminante. Un pequeño miró bajo su trapo; el que miró no volvió a la plaza. Teme que lo vean. En el Refugio lleva el puesto de la suerte: la Senda del Disfraz es su herida.",
    "sources": [
     "i18n:species.mimikyu",
     "i18n:challenge.mimikyu.lore",
-    "docs/story-quests.md:77"
+    "docs/story-quests.md:77",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -1194,11 +1272,12 @@
    "label": "Cubone",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Su madre bajó a las cuevas a por luz la noche del Eclipse; volvió su cráneo. Llora dentro del hueso. En la Aldea del Lago Negro es el pescador (contradicción C1).",
+   "summary": "Línea jugable y Caminante. Su madre bajó a las cuevas a por luz la noche del Eclipse; volvió su cráneo. Llora dentro del hueso. En la Aldea del Lago Negro es el pescador: la Senda del Hueso es su herida.",
    "sources": [
     "i18n:species.cubone",
     "i18n:challenge.cubone.lore",
-    "docs/story-quests.md:93"
+    "docs/story-quests.md:93",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -1402,11 +1481,12 @@
    "label": "Litwick",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Guió a un niño perdido a casa comiéndose un poco de su vida; el niño no dejó de tener frío. Teme ser un trocito de lo que bebe la luz. En la Aldea es la «Guardiana de la llama» (contradicciones C1 y C5).",
+   "summary": "Línea jugable y Caminante. Guió a un niño perdido a casa comiéndose un poco de su vida; el niño no dejó de tener frío. Teme ser un trocito de lo que bebe la luz. En la Aldea es la «Guardiana de la llama», femenina (C5): la Senda de la Llama es su herida.",
    "sources": [
     "i18n:species.litwick",
     "i18n:challenge.litwick.lore",
-    "docs/story-quests.md:103"
+    "docs/story-quests.md:103",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -1587,11 +1667,12 @@
    "label": "Zorua",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Por miedo se hizo niño y su manada pasó a su lado sin reconocerlo.",
+   "summary": "Línea jugable y Caminante. Por miedo se hizo niño y su manada pasó a su lado sin reconocerlo. En la Aldea es un niño callado en la plaza, disfrazado de otro Pokémon pequeño hasta que cierra su Senda (entonces, Zoroark): la Senda del Reflejo es su herida.",
    "sources": [
     "i18n:species.zorua",
     "i18n:challenge.zorua.lore",
-    "docs/story-quests.md:113"
+    "docs/story-quests.md:113",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -1783,11 +1864,12 @@
    "label": "Abra",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Soñó el Eclipse una semana antes y huyó sin avisar. Duerme para no verlo.",
+   "summary": "Línea jugable y Caminante. Soñó el Eclipse una semana antes y huyó sin avisar. Duerme para no verlo. En el Refugio duerme en un rincón, bajo la manta que le dejó el pueblo, y casi nunca contesta: la Senda del Sueño es su herida.",
    "sources": [
     "i18n:species.abra",
     "i18n:challenge.abra.lore",
-    "docs/story-quests.md:125"
+    "docs/story-quests.md:125",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -1979,11 +2061,12 @@
    "label": "Piplup",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Cayó por el hielo y lo sacó la vieja Empoleon; nunca se comió su baya. Ella bajó tras el Eclipse y no subió.",
+   "summary": "Línea jugable y Caminante. Cayó por el hielo y lo sacó la vieja Empoleon; nunca se comió su baya. Ella bajó tras el Eclipse y no subió. En la Aldea vigila el único agujero hasta el agua, junto al pescador, y rechaza lo que le ofrecen: la Senda del Lago Helado es su herida.",
    "sources": [
     "i18n:species.piplup",
     "i18n:challenge.piplup.lore",
-    "docs/story-quests.md:135"
+    "docs/story-quests.md:135",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -2175,11 +2258,12 @@
    "label": "Shinx",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Nació la noche del Eclipse; asustó a su madre con un trueno, y ella salió a buscar a los perdidos y no volvió.",
+   "summary": "Línea jugable y Caminante. Nació la noche del Eclipse; asustó a su madre con un trueno, y ella salió a buscar a los perdidos y no volvió. En el borde del cráter mira por dónde bajan los Caminantes: la Senda de la Tormenta es su herida.",
    "sources": [
     "i18n:species.shinx",
     "i18n:challenge.shinx.lore",
-    "docs/story-quests.md:145"
+    "docs/story-quests.md:145",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -2371,11 +2455,12 @@
    "label": "Axew",
    "type": "personaje",
    "status": "canon",
-   "summary": "Línea jugable y Caminante. Siguió a los mayores por la barranca, cayó y se melló el colmillo; ellos no volvieron.",
+   "summary": "Línea jugable y Caminante. Siguió a los mayores por la barranca, cayó y se melló el colmillo; ellos no volvieron. En el Refugio entrena solo junto a un árbol de marcas bajas, en la linde: la Senda del Colmillo es su herida.",
    "sources": [
     "i18n:species.axew",
     "i18n:challenge.axew.lore",
-    "docs/story-quests.md:155"
+    "docs/story-quests.md:155",
+    "docs/gdd.md:423"
    ]
   },
   {
@@ -2568,7 +2653,7 @@
    "label": "El niño de la casa grande",
    "type": "personaje",
    "status": "canon",
-   "summary": "Se perdió en las cuevas; Litwick lo llevó a casa comiéndose un poco de él; tuvo frío siempre y vivió mucho. En la súplica, «Una noche bajó a buscar calor» (contradicción C8).",
+   "summary": "Se perdió en las cuevas; Litwick lo llevó a casa comiéndose un poco de él; tuvo frío siempre y vivió mucho, y ya de viejo bajó a la Sima a buscar calor (C8, resuelta).",
    "sources": [
     "i18n:story.litwick.2.before.2",
     "i18n:story.litwick.2.after.2",
@@ -2580,7 +2665,7 @@
    "label": "La manada de Zorua",
    "type": "faccion",
    "status": "canon",
-   "summary": "Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo.",
+   "summary": "Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo. Es la manada que perdió Gastly; respuesta interna (M8): la niebla blanca se los quedó y ahora son sombras con caras ajenas.",
    "sources": [
     "i18n:story.zorua.2.before.1",
     "i18n:story.zorua.2.before.2",
@@ -2618,6 +2703,18 @@
    "sources": [
     "i18n:story.axew.2.before.1",
     "i18n:story.axew.3.boss.6.pre.2"
+   ]
+  },
+  {
+   "id": "madre-zorua",
+   "label": "La madre de Zorua",
+   "type": "personaje",
+   "status": "diseño",
+   "summary": "Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.",
+   "sources": [
+    "docs/lore/lore.md:322",
+    "i18n:story.zorua.1.fragment.2.text",
+    "i18n:story.zorua.3.fragment.2.text"
    ]
   },
   {
@@ -2798,7 +2895,7 @@
    "to": "pantano",
    "relation": "vive_en",
    "sources": [
-    "docs/gdd.md:450"
+    "docs/gdd.md:451"
    ]
   },
   {
@@ -2854,7 +2951,7 @@
    "to": "mimikyu-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -2894,7 +2991,7 @@
    "to": "ditto",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -2918,7 +3015,7 @@
    "to": "noctowl",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -2982,7 +3079,7 @@
    "to": "jigglypuff",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3006,7 +3103,7 @@
    "to": "pikachu",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3070,7 +3167,7 @@
    "to": "polteageist",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3094,7 +3191,7 @@
    "to": "hatterene",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3166,7 +3263,7 @@
    "to": "cubone-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -3206,7 +3303,7 @@
    "to": "haunter",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3230,7 +3327,7 @@
    "to": "mandibuzz",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3294,7 +3391,7 @@
    "to": "dusclops",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3318,7 +3415,7 @@
    "to": "kangaskhan",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3382,7 +3479,7 @@
    "to": "bisharp",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3406,7 +3503,7 @@
    "to": "dusknoir",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3478,7 +3575,7 @@
    "to": "litwick-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -3518,7 +3615,7 @@
    "to": "drifblim",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3590,7 +3687,7 @@
    "to": "banette",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3614,7 +3711,7 @@
    "to": "mismagius",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3678,7 +3775,7 @@
    "to": "muk",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3730,6 +3827,14 @@
    ]
   },
   {
+   "from": "zorua",
+   "to": "lago",
+   "relation": "vive_en",
+   "sources": [
+    "i18n:town.name.child"
+   ]
+  },
+  {
    "from": "zorua-wound",
    "to": "zorua",
    "relation": "es_herida_de",
@@ -3750,7 +3855,7 @@
    "to": "zorua-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -3790,7 +3895,7 @@
    "to": "kecleon",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3814,7 +3919,7 @@
    "to": "gengar",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3878,7 +3983,7 @@
    "to": "mightyena",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3950,7 +4055,7 @@
    "to": "houndoom",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -3974,7 +4079,7 @@
    "to": "spiritomb",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4018,6 +4123,14 @@
    ]
   },
   {
+   "from": "abra",
+   "to": "refugio",
+   "relation": "vive_en",
+   "sources": [
+    "i18n:town.name.sleeper"
+   ]
+  },
+  {
    "from": "abra-wound",
    "to": "abra",
    "relation": "es_herida_de",
@@ -4038,7 +4151,7 @@
    "to": "abra-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -4078,7 +4191,7 @@
    "to": "munna",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4102,7 +4215,7 @@
    "to": "drowzee",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4166,7 +4279,7 @@
    "to": "mr-mime",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4190,7 +4303,7 @@
    "to": "hypno",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4254,7 +4367,7 @@
    "to": "musharna",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4306,6 +4419,14 @@
    ]
   },
   {
+   "from": "piplup",
+   "to": "lago",
+   "relation": "vive_en",
+   "sources": [
+    "i18n:town.name.proud"
+   ]
+  },
+  {
    "from": "piplup-wound",
    "to": "piplup",
    "relation": "es_herida_de",
@@ -4326,7 +4447,7 @@
    "to": "piplup-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -4366,7 +4487,7 @@
    "to": "glalie",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4390,7 +4511,7 @@
    "to": "weavile",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4454,7 +4575,7 @@
    "to": "mamoswine",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4526,7 +4647,7 @@
    "to": "froslass",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4550,7 +4671,7 @@
    "to": "lapras",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4594,6 +4715,14 @@
    ]
   },
   {
+   "from": "shinx",
+   "to": "crater",
+   "relation": "vive_en",
+   "sources": [
+    "i18n:town.name.watcher"
+   ]
+  },
+  {
    "from": "shinx-wound",
    "to": "shinx",
    "relation": "es_herida_de",
@@ -4614,7 +4743,7 @@
    "to": "shinx-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -4654,7 +4783,7 @@
    "to": "ampharos",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4678,7 +4807,7 @@
    "to": "manectric",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4742,7 +4871,7 @@
    "to": "absol",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4766,7 +4895,7 @@
    "to": "electivire",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4830,7 +4959,7 @@
    "to": "umbreon",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -4882,6 +5011,14 @@
    ]
   },
   {
+   "from": "axew",
+   "to": "refugio",
+   "relation": "vive_en",
+   "sources": [
+    "i18n:town.name.trainee"
+   ]
+  },
+  {
    "from": "axew-wound",
    "to": "axew",
    "relation": "es_herida_de",
@@ -4902,7 +5039,7 @@
    "to": "axew-wound",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -4942,7 +5079,7 @@
    "to": "druddigon",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -5022,7 +5159,7 @@
    "to": "garchomp",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -5086,7 +5223,7 @@
    "to": "salamence",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -5110,7 +5247,7 @@
    "to": "dragonite",
    "relation": "puede_ser",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -5238,10 +5375,18 @@
   {
    "from": "sombra-propia",
    "to": "perderse",
-   "relation": "rescata_en",
+   "relation": "te_guarda_en",
    "sources": [
     "i18n:sima.scene.lost.10",
     "i18n:screen.eclipse.text"
+   ]
+  },
+  {
+   "from": "sombra-propia",
+   "to": "sima",
+   "relation": "tira_hacia_el_fondo_de",
+   "sources": [
+    "i18n:sima.scene.lost.10"
    ]
   },
   {
@@ -5290,7 +5435,7 @@
    "to": "figuraciones",
    "relation": "causa",
    "sources": [
-    "docs/gdd.md:432"
+    "docs/gdd.md:433"
    ]
   },
   {
@@ -5388,7 +5533,7 @@
    "to": "sima",
    "relation": "aparece_en",
    "sources": [
-    "docs/gdd.md:428"
+    "docs/gdd.md:429"
    ]
   },
   {
@@ -5396,7 +5541,7 @@
    "to": "estrato-4",
    "relation": "empieza_en",
    "sources": [
-    "docs/gdd.md:427"
+    "docs/gdd.md:428"
    ]
   },
   {
@@ -5444,7 +5589,7 @@
    "to": "crater",
    "relation": "se_abre_en",
    "sources": [
-    "docs/gdd.md:516"
+    "docs/gdd.md:517"
    ]
   },
   {
@@ -5453,7 +5598,7 @@
    "relation": "conecta_con",
    "sources": [
     "i18n:world.npc.keeper.4",
-    "docs/gdd.md:515"
+    "docs/gdd.md:516"
    ]
   },
   {
@@ -5485,7 +5630,7 @@
    "to": "cienaga",
    "relation": "conecta_con",
    "sources": [
-    "src/data/world.ts:359"
+    "src/data/world.ts:390"
    ]
   },
   {
@@ -5493,7 +5638,7 @@
    "to": "ruinas",
    "relation": "se_abre_en",
    "sources": [
-    "docs/gdd.md:514"
+    "docs/gdd.md:515"
    ]
   },
   {
@@ -5501,7 +5646,7 @@
    "to": "mirador",
    "relation": "se_abre_en",
    "sources": [
-    "docs/gdd.md:515"
+    "docs/gdd.md:516"
    ]
   },
   {
@@ -5517,7 +5662,7 @@
    "to": "cienaga",
    "relation": "se_abre_en",
    "sources": [
-    "docs/gdd.md:518"
+    "docs/gdd.md:519"
    ]
   },
   {
@@ -5533,7 +5678,7 @@
    "to": "ruinas",
    "relation": "esta_en",
    "sources": [
-    "src/data/world.ts:196"
+    "src/data/world.ts:203"
    ]
   },
   {
@@ -5541,7 +5686,7 @@
    "to": "ruinas",
    "relation": "esta_en",
    "sources": [
-    "src/data/world.ts:197"
+    "src/data/world.ts:204"
    ]
   },
   {
@@ -5549,7 +5694,7 @@
    "to": "crater",
    "relation": "esta_en",
    "sources": [
-    "src/data/world.ts:292"
+    "src/data/world.ts:300"
    ]
   },
   {
@@ -5557,7 +5702,7 @@
    "to": "lago",
    "relation": "esta_en",
    "sources": [
-    "src/data/world.ts:349"
+    "src/data/world.ts:380"
    ]
   },
   {
@@ -5565,7 +5710,7 @@
    "to": "cienaga",
    "relation": "esta_en",
    "sources": [
-    "src/data/world.ts:405"
+    "src/data/world.ts:436"
    ]
   },
   {
@@ -5622,7 +5767,7 @@
    "relation": "vive_en",
    "sources": [
     "i18n:travel.at",
-    "src/data/world.ts:341"
+    "src/data/world.ts:372"
    ]
   },
   {
@@ -5646,7 +5791,7 @@
    "to": "refugio",
    "relation": "vive_en",
    "sources": [
-    "src/data/town.ts:206"
+    "src/data/town.ts:226"
    ]
   },
   {
@@ -5654,7 +5799,7 @@
    "to": "refugio",
    "relation": "vive_en",
    "sources": [
-    "src/data/town.ts:205"
+    "src/data/town.ts:225"
    ]
   },
   {
@@ -5662,7 +5807,7 @@
    "to": "refugio",
    "relation": "vive_en",
    "sources": [
-    "src/data/world.ts:143"
+    "src/data/world.ts:147"
    ]
   },
   {
@@ -5670,7 +5815,7 @@
    "to": "cienaga",
    "relation": "vive_en",
    "sources": [
-    "src/data/world.ts:399"
+    "src/data/world.ts:430"
    ]
   },
   {
@@ -5775,6 +5920,57 @@
    "relation": "busca",
    "sources": [
     "i18n:sima.plea.storyteller.4"
+   ]
+  },
+  {
+   "from": "gastly",
+   "to": "manada-zorua",
+   "relation": "perdio",
+   "sources": [
+    "i18n:sima.plea.storyteller.4",
+    "docs/lore/lore.md:322"
+   ]
+  },
+  {
+   "from": "manada-zorua",
+   "to": "niebla-blanca",
+   "relation": "se_la_quedo",
+   "sources": [
+    "docs/lore/lore.md:322"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "manada-zorua",
+   "relation": "pertenece_a",
+   "sources": [
+    "docs/lore/lore.md:322"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "zorua",
+   "relation": "es_madre_de",
+   "sources": [
+    "docs/lore/lore.md:322"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "frag-zorua-3-2",
+   "relation": "dejo",
+   "sources": [
+    "i18n:story.zorua.3.fragment.2.text",
+    "docs/lore/lore.md:322"
+   ]
+  },
+  {
+   "from": "zorua",
+   "to": "manada-zorua",
+   "relation": "se_quedo_fuera_de",
+   "sources": [
+    "i18n:story.zorua.2.before.2",
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -6138,28 +6334,190 @@
    ]
   },
   {
+   "from": "cripta",
+   "to": "reverso",
+   "relation": "guarda_la_puerta_a",
+   "sources": [
+    "docs/lore/lore.md:317",
+    "i18n:dungeon.crypt.lore.2"
+   ]
+  },
+  {
+   "from": "reverso",
+   "to": "sombras",
+   "relation": "recoge_a",
+   "sources": [
+    "docs/lore/lore.md:317"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "reverso",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:317"
+   ]
+  },
+  {
+   "from": "nihilego",
+   "to": "necrozma",
+   "relation": "vino_con",
+   "sources": [
+    "docs/lore/lore.md:318"
+   ]
+  },
+  {
+   "from": "ultra-megalopolis",
+   "to": "estrato-5",
+   "relation": "se_ve_desde",
+   "sources": [
+    "i18n:sima.band.abyss.lore.3"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "ultra-megalopolis",
+   "relation": "dejo_a_oscuras",
+   "sources": [
+    "docs/lore/lore.md:320"
+   ]
+  },
+  {
+   "from": "columpio-alguien",
+   "to": "pikachu",
+   "relation": "es",
+   "sources": [
+    "docs/lore/lore.md:321",
+    "i18n:sima.plea.gacha.2"
+   ]
+  },
+  {
+   "from": "pikachu",
+   "to": "plaza",
+   "relation": "su_sombra_se_sienta_en",
+   "sources": [
+    "docs/lore/lore.md:321",
+    "i18n:story.mimikyu.2.boss.6.pre.1"
+   ]
+  },
+  {
+   "from": "caminante-once",
+   "to": "estatua-quemada",
+   "relation": "grabo_junto_a",
+   "sources": [
+    "docs/lore/lore.md:325",
+    "i18n:world.lore.crater.3"
+   ]
+  },
+  {
+   "from": "decidueye",
+   "to": "estatua-sin-rostro",
+   "relation": "deja_su_pluma_en",
+   "sources": [
+    "docs/lore/lore.md:326",
+    "i18n:world.lore.knight.3"
+   ]
+  },
+  {
+   "from": "aegislash",
+   "to": "idolo",
+   "relation": "deja_su_espada_en",
+   "sources": [
+    "docs/lore/lore.md:326",
+    "i18n:world.lore.idol.2"
+   ]
+  },
+  {
    "from": "hambre",
    "to": "necrozma",
    "relation": "es",
    "sources": [
-    "docs/gdd.md:231"
+    "docs/gdd.md:231",
+    "docs/lore/lore.md:58"
    ]
   },
   {
-   "from": "sombra-tira-abajo",
+   "from": "necrozma",
+   "to": "eclipse",
+   "relation": "es",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:prologue.eclipse.2"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "sima",
+   "relation": "abrio",
+   "sources": [
+    "docs/lore/lore.md:58"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "otro-cielo",
+   "relation": "viene_de",
+   "sources": [
+    "docs/lore/lore.md:58"
+   ]
+  },
+  {
+   "from": "cristal-caido",
+   "to": "necrozma",
+   "relation": "es_un_trozo_de",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:world.lore.crystal.3"
+   ]
+  },
+  {
+   "from": "primera-gota",
+   "to": "necrozma",
+   "relation": "es_luz_derramada_por",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:dungeon.swamp.lore.1"
+   ]
+  },
+  {
+   "from": "voz",
    "to": "sombra-propia",
-   "relation": "contradice",
+   "relation": "es",
    "sources": [
-    "i18n:sima.scene.lost.10",
-    "docs/lore/lore.md:330"
+    "docs/lore/lore.md:59"
    ]
   },
   {
-   "from": "sombra-tira-abajo",
-   "to": "lucidez",
-   "relation": "redefine",
+   "from": "capsulas",
+   "to": "mimikyu",
+   "relation": "las_ofrece",
    "sources": [
-    "docs/lore/lore.md:330"
+    "docs/lore/lore.md:60",
+    "i18n:town.gacha.1"
+   ]
+  },
+  {
+   "from": "capsulas",
+   "to": "forma-de-la-herida",
+   "relation": "abren",
+   "sources": [
+    "docs/lore/lore.md:60"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "noche-sin-fin",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:368"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "sima",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:368"
    ]
   },
   {
@@ -6167,23 +6525,165 @@
    "to": "sima",
    "relation": "aparece_en",
    "sources": [
-    "docs/lore/lore.md:330"
+    "docs/lore/lore.md:358"
    ]
   },
   {
    "from": "sombras-amigos",
-   "to": "sombra-tira-abajo",
+   "to": "sombra-propia",
    "relation": "depende_de",
    "sources": [
-    "docs/lore/lore.md:330"
+    "docs/lore/lore.md:358"
    ]
   },
   {
    "from": "caminante-once",
-   "to": "sombra-tira-abajo",
-   "relation": "precedente_de",
+   "to": "sombra-propia",
+   "relation": "es_el_final_de",
    "sources": [
-    "i18n:sima.plea.hermit.2"
+    "i18n:sima.plea.hermit.2",
+    "i18n:sima.scene.lost.13"
+   ]
+  },
+  {
+   "from": "caminantes",
+   "to": "forma-de-la-herida",
+   "relation": "lleva_en_las_sendas",
+   "sources": [
+    "docs/gdd.md:423"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "eco-del-eclipse",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:309"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "ecos-guardian",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:309"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "eco-mercader",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:309"
+   ]
+  },
+  {
+   "from": "sombra-senda",
+   "to": "herida",
+   "relation": "da_forma_a",
+   "sources": [
+    "docs/lore/lore.md:309"
+   ]
+  },
+  {
+   "from": "eclipse",
+   "to": "noche-sin-fin",
+   "relation": "deja",
+   "sources": [
+    "docs/gdd.md:23",
+    "i18n:story.shinx.1.fragment.1.text"
+   ]
+  },
+  {
+   "from": "noche-sin-fin",
+   "to": "refugio",
+   "relation": "da_nombre_a",
+   "sources": [
+    "docs/gdd.md:512"
+   ]
+  },
+  {
+   "from": "noche-sin-fin",
+   "to": "madre-cubone",
+   "relation": "la_luna_aun_sale_por",
+   "sources": [
+    "i18n:story.cubone.1.before.1"
+   ]
+  },
+  {
+   "from": "sombra-propia",
+   "to": "sombras",
+   "relation": "deja_al_no_necesitarte",
+   "sources": [
+    "docs/gdd.md:422"
+   ]
+  },
+  {
+   "from": "noche-del-eclipse",
+   "to": "plaza",
+   "relation": "vuelve_sombra_de_golpe_a",
+   "sources": [
+    "i18n:story.mimikyu.3.before.1",
+    "docs/gdd.md:422"
+   ]
+  },
+  {
+   "from": "lago-helado",
+   "to": "lago",
+   "relation": "es",
+   "sources": [
+    "i18n:world.npc.keeper.1",
+    "docs/gdd.md:518"
+   ]
+  },
+  {
+   "from": "piplup",
+   "to": "cubone",
+   "relation": "junto_a",
+   "sources": [
+    "src/data/world.ts:348"
+   ]
+  },
+  {
+   "from": "zorua",
+   "to": "fuente",
+   "relation": "se_sienta_en",
+   "sources": [
+    "src/data/world.ts:362",
+    "i18n:story.zorua.1.before.1"
+   ]
+  },
+  {
+   "from": "abra",
+   "to": "frag-abra-3-1",
+   "relation": "duerme_bajo",
+   "sources": [
+    "i18n:town.resident.abra.2"
+   ]
+  },
+  {
+   "from": "shinx",
+   "to": "caminantes",
+   "relation": "vigila_a",
+   "sources": [
+    "i18n:town.resident.shinx.1"
+   ]
+  },
+  {
+   "from": "axew",
+   "to": "mayores-axew",
+   "relation": "entrena_sin",
+   "sources": [
+    "i18n:town.resident.axew.1"
+   ]
+  },
+  {
+   "from": "forma-de-la-herida",
+   "to": "herida",
+   "relation": "acompaña_a",
+   "sources": [
+    "i18n:challenge.cubone.lore",
+    "docs/gdd.md:423"
    ]
   }
  ]
