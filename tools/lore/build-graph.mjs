@@ -111,7 +111,7 @@ N('croagunk', 'Croagunk, el ermitaño', 'personaje', 'Vive junto al camino de la
 N('smeargle', 'Smeargle, maestro de movimientos', 'personaje', '«Cada Pokémon guarda en su sangre los movimientos de su tierra. Yo sé pintarlos de nuevo.»', [I('town.name.tutor'), I('town.tutor.1')]);
 N('hermana-mightyena', 'La hermana de Poochyena', 'personaje', 'Una Mightyena grande con una muesca en la oreja que bajaba a por género y dejó de volver.', [I('sima.plea.shop.1'), I('sima.plea.shop.2')]);
 N('caminante-once', 'La Caminante que volvió once veces', 'personaje', 'Hace tres inviernos bajó, volvió once veces; la duodécima su sombra subió sola y sigue sentada en el borde. Es el final del camino: su sombra ya no la necesitaba.', [I('sima.plea.hermit.1'), I('sima.plea.hermit.2'), 'docs/gdd.md:422']);
-N('columpio-alguien', 'El que empujaba el columpio', 'personaje', 'Provisional (M7): el Pikachu al que Mimikyu imita; choca con su súplica, que dice que bajó después. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.', [I('sima.plea.gacha.1'), I('sima.plea.gacha.2')]);
+N('columpio-alguien', 'El que empujaba el columpio', 'personaje', 'El Pikachu al que Mimikyu imita (M7): no estaba en la plaza la noche del Eclipse; bajó después a buscar a sus amigos y no volvió, y su sombra, que ya no lo necesitaba, se sienta en el columpio. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.', [I('sima.plea.gacha.1'), I('sima.plea.gacha.2')]);
 
 // --- Guardians and mid-bosses ---------------------------------------------
 const guardians = [
@@ -383,7 +383,8 @@ e('arco-legendario', 'reverso', 'ahondaria', 'docs/lore/lore.md:317');
 e('nihilego', 'necrozma', 'vino_con', 'docs/lore/lore.md:318');
 e('ultra-megalopolis', 'estrato-5', 'se_ve_desde', I('sima.band.abyss.lore.3'));
 e('necrozma', 'ultra-megalopolis', 'dejo_a_oscuras', 'docs/lore/lore.md:320');
-e('columpio-alguien', 'pikachu', 'seria_provisional', 'docs/lore/lore.md:321');
+e('columpio-alguien', 'pikachu', 'es', 'docs/lore/lore.md:321', I('sima.plea.gacha.2'));
+e('pikachu', 'plaza', 'su_sombra_se_sienta_en', 'docs/lore/lore.md:321', I('story.mimikyu.2.boss.6.pre.1'));
 e('caminante-once', 'estatua-quemada', 'grabo_junto_a', 'docs/lore/lore.md:325', I('world.lore.crater.3'));
 e('decidueye', 'estatua-sin-rostro', 'deja_su_pluma_en', 'docs/lore/lore.md:326', I('world.lore.knight.3'));
 e('aegislash', 'idolo', 'deja_su_espada_en', 'docs/lore/lore.md:326', I('world.lore.idol.2'));

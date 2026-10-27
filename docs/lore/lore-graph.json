@@ -954,7 +954,7 @@
    "label": "El que empujaba el columpio",
    "type": "personaje",
    "status": "canon",
-   "summary": "Provisional (M7): el Pikachu al que Mimikyu imita; choca con su súplica, que dice que bajó después. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
+   "summary": "El Pikachu al que Mimikyu imita (M7): no estaba en la plaza la noche del Eclipse; bajó después a buscar a sus amigos y no volvió, y su sombra, que ya no lo necesitaba, se sienta en el columpio. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
    "sources": [
     "i18n:sima.plea.gacha.1",
     "i18n:sima.plea.gacha.2"
@@ -6385,9 +6385,19 @@
   {
    "from": "columpio-alguien",
    "to": "pikachu",
-   "relation": "seria_provisional",
+   "relation": "es",
    "sources": [
-    "docs/lore/lore.md:321"
+    "docs/lore/lore.md:321",
+    "i18n:sima.plea.gacha.2"
+   ]
+  },
+  {
+   "from": "pikachu",
+   "to": "plaza",
+   "relation": "su_sombra_se_sienta_en",
+   "sources": [
+    "docs/lore/lore.md:321",
+    "i18n:story.mimikyu.2.boss.6.pre.1"
    ]
   },
   {
