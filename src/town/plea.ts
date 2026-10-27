@@ -56,3 +56,11 @@ export function pleaCrowd(state: PleaState, tile: number, actors: readonly PleaA
     return { actor, pos: { x: spot.x * tile, y: spot.y * tile } };
   });
 }
+
+/**
+ * Whether the town plays the pleas the moment it opens (owner, 2026-10-27:
+ * every player who has not seen them must, or they miss them): alone, while
+ * they are due, and not under a development start window. Heading for the
+ * Sima still checks them too (a room plays none: they wait for a solo visit).
+ */
+export const pleaOnArrival = (o: { inRoom: boolean; startWindow: boolean; due: boolean }): boolean => !o.inRoom && !o.startWindow && o.due;

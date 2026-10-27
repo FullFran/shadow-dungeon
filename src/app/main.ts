@@ -36,7 +36,7 @@ import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen } from './prologue';
 import { readSimaMemory } from './sima-lore';
-import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaText, type SimaSceneInfo } from './sima-cinematic';
+import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaPleaDue, simaText, type SimaSceneInfo } from './sima-cinematic';
 import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
 import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
@@ -720,7 +720,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => !hasSeenSimaScene(store, 'plea'), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */

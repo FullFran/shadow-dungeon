@@ -27,7 +27,7 @@ import { markVisited, readVisited, travelDestinations, type TravelDestination } 
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
 import { menuWindow } from '../ui/menu-window';
-import { pleaActor, pleaCrowd, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
+import { pleaActor, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
 import { PLEA_STAGE, pleaKeys } from '../data/sima-plea';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
@@ -117,8 +117,9 @@ export interface TownOptions {
   startWindow?: 'travel' | 'menu' | 'account';
   /**
    * The villagers' pleas before the first descent into the Sima (data/sima-plea.ts):
-   * alone, the first time the player heads for `dungeon`, the scene moves to
-   * the crater's rim and the villagers come up one by one before it departs.
+   * alone, while due, the scene moves to the crater's rim and the villagers
+   * come up one by one: as the town opens (the player then stays on the rim),
+   * or when the player heads for `dungeon` (then it departs).
    */
   simaPlea?: { dungeon: string; due(): boolean; seen(): void };
 }
@@ -502,7 +503,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     };
   }
 
-  /** The pleas are over (or skipped): seen on this device, and on to the Sima. */
+  /** The pleas are over (or skipped): seen on this device, and on (to the Sima, or nowhere: the player stays on the rim). */
   function endPlea(): void {
     if (!plea) return;
     plea = null;
@@ -850,6 +851,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
   resize();
+  // The pleas, alone, the first time this device opens the town after they exist (old profiles too): on the crater's rim, then the player stays there.
+  if (options.simaPlea && pleaOnArrival({ inRoom: lobby !== null, startWindow: options.startWindow !== undefined, due: options.simaPlea.due() })) beginPlea(() => markVisited(browserStore(), map.id));
   if (options.startWindow === 'travel') openShopWindow(openTravel);
   if (options.startWindow === 'menu') openMenu();
   if (options.startWindow === 'account') openShopWindow(options.openAccount);

@@ -26,6 +26,13 @@ function seenSet(store: KeyValueStore): Set<string> {
 
 export const hasSeenSimaScene = (store: KeyValueStore, id: SimaSceneId | 'plea'): boolean => seenSet(store).has(id);
 
+/**
+ * Whether the villagers' pleas still have to play on this device: true for
+ * every profile without the flag, older saves included (the flag is new, so a
+ * player who cleared everything before the pleas existed is still due).
+ */
+export const simaPleaDue = (store: KeyValueStore): boolean => !hasSeenSimaScene(store, 'plea');
+
 export function markSimaSceneSeen(store: KeyValueStore, id: SimaSceneId | 'plea'): void {
   const seen = seenSet(store);
   if (seen.has(id)) return;
