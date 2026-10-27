@@ -24,7 +24,7 @@ N('noche-del-eclipse', 'La noche del Eclipse', 'suceso', 'La noche en que se apa
 N('mazmorras', 'Mazmorras Sombrías', 'concepto', 'Bocas de piedra que se abrieron con el Eclipse. Quien entra y vuelve ya no es él: solo su sombra.', [I('prologue.dungeons.1'), I('prologue.dungeons.2'), I('prologue.shadows.2')]);
 N('sombras', 'Las sombras', 'faccion', 'Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.', ['docs/lore/lore.md:309', I('prologue.shadows.2'), I('town.story.2'), 'docs/gdd.md:225', I('story.mimikyu.3.before.1'), 'docs/gdd.md:422']);
 N('guardianes', 'Los guardianes', 'faccion', 'Cada mazmorra tiene un guardián atado a un juramento que ya nadie recuerda; el Rey de las Espadas es el primero.', [I('prologue.guardians.1'), I('town.story.3'), I('guardian.aegislash.pre.1')]);
-N('juramentos', 'Los juramentos', 'concepto', 'Lo que ata a cada guardián. Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.', [I('prologue.guardians.1'), I('guardian.aegislash.post.1'), I('shrine.text')]);
+N('juramentos', 'Los juramentos', 'concepto', 'Lo que ata a cada guardián: antes del Eclipse, cada uno juró mantener cerrada una puerta contra el hambre (M4). Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.', [I('prologue.guardians.1'), I('guardian.aegislash.post.1'), I('shrine.text')]);
 N('voz', 'La voz', 'personaje', '«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es. Respuesta del dueño (M1): es tu propia sombra, que te llamó cuando moriste como humano porque una sombra sin cuerpo no puede bajar ni beber.', ['docs/lore/lore.md:59', I('prologue.voice.1'), I('quiz.intro.1'), I('quiz.intro.2'), I('sima.scene.lost.4'), 'docs/sima-redesign.md:92']);
 N('caminantes', 'Caminantes de la Sima', 'faccion', 'Gente que contestó a la voz y despertó dentro de un Pokémon con sus recuerdos y sus heridas, y con una sombra que no los suelta. Todo Pokémon jugable es uno.', [I('lore.reborn.name'), I('sima.scene.lost.8'), I('sima.scene.lost.9'), 'docs/gdd.md:422', 'docs/sima-redesign.md:11']);
 N('reencarnacion', 'Renacer como Pokémon', 'concepto', 'Despertar en un mundo que no es el tuyo, dentro de un Pokémon elegido por tus respuestas (la premisa de Mundo Misterioso).', [I('quiz.intro.2'), I('quiz.result.species'), 'src/data/quiz.ts:18']);
@@ -57,6 +57,8 @@ N('altar', 'Altar del Eclipse', 'objeto', 'Pactos de don y precio: «El eclipse 
 // --- Design only ----------------------------------------------------------
 N('capsulas', 'Las cápsulas de Mimikyu', 'concepto', 'No son Pokémon sino presentaciones: cada cápsula guarda algo de un vecino (la cuchara de Abra, una pluma, una escama) que acepta conocerte y dejarte llevar su forma. Al azar porque Mimikyu no sabe quién querrá ser tu amigo y no se atreve a preguntar (decisión del dueño, 27-10-2026; el texto llegará más adelante).', ['docs/lore/lore.md:60', I('town.gacha.1')]);
 N('arco-legendario', 'El arco legendario', 'concepto', 'NO CANON AÚN: pedirle a dios. Dialga (el tiempo atascado), Palkia (el espacio roto de la Sima), Giratina (adonde quizá van las sombras que ya no necesitan a su dueño) y Arceus corrompido, que se gana cerrando su Senda y recupera sus 16 tablas en la Sima. Lunala sostendría la luna. Todo legendario debe ahondar el lore existente.', ['docs/lore/lore.md:368'], 'diseño');
+N('reverso', 'El reverso del mundo', 'lugar', 'Detrás de las puertas selladas: el lado de Giratina, adonde van las sombras que ya nadie necesita. El Rey protege al mundo de él y a él del mundo (M3; no está en el juego).', ['docs/lore/lore.md:317', I('dungeon.crypt.lore.2')]);
+N('ultra-megalopolis', 'Ultra Megalópolis', 'lugar', 'El reino hundido cuyas torres se ven en el Estrato V: la ciudad que Necrozma dejó a oscuras antes que la nuestra (M6; se revela al final).', ['docs/lore/lore.md:320', I('sima.band.abyss.lore.3')]);
 N('necrozma', 'Necrozma', 'personaje', 'Lo que bebe la luz (decisión del dueño, 27-10-2026; no se nombra en el juego hasta el final). El Eclipse Carmesí es Necrozma delante del sol, bebiéndoselo; vino del Ultraespacio; el anillo rojo es el borde del sol ardiendo alrededor de su cuerpo, rojo porque el Pokémon Prisma se queda todos los colores menos ese. La Sima es la herida que abrió al atravesar el mundo; las sombras, lo que esa herida deja en la gente. Jefe final.', ['docs/lore/lore.md:58', 'docs/gdd.md:231', 'docs/species-candidates.md:252']);
 N('forma-de-la-herida', 'La forma de la herida', 'concepto', 'Abajo solo se entra con la forma de la herida a la que acompañas: en una Senda la Sima te hace llevar la forma del vecino con el que bajas (las Sendas son heridas de otros, no tu pasado). Por eso una Senda solo se juega con su línea. Qué cuesta llevar la forma de otro es un misterio (M13).', [I('challenges.text'), I('challenge.cubone.lore'), 'docs/gdd.md:423']);
 N('sombras-amigos', 'Sombras de amigos', 'concepto', 'NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.', ['docs/lore/lore.md:358'], 'diseño');
@@ -109,7 +111,7 @@ N('croagunk', 'Croagunk, el ermitaño', 'personaje', 'Vive junto al camino de la
 N('smeargle', 'Smeargle, maestro de movimientos', 'personaje', '«Cada Pokémon guarda en su sangre los movimientos de su tierra. Yo sé pintarlos de nuevo.»', [I('town.name.tutor'), I('town.tutor.1')]);
 N('hermana-mightyena', 'La hermana de Poochyena', 'personaje', 'Una Mightyena grande con una muesca en la oreja que bajaba a por género y dejó de volver.', [I('sima.plea.shop.1'), I('sima.plea.shop.2')]);
 N('caminante-once', 'La Caminante que volvió once veces', 'personaje', 'Hace tres inviernos bajó, volvió once veces; la duodécima su sombra subió sola y sigue sentada en el borde. Es el final del camino: su sombra ya no la necesitaba.', [I('sima.plea.hermit.1'), I('sima.plea.hermit.2'), 'docs/gdd.md:422']);
-N('columpio-alguien', 'El que empujaba el columpio', 'personaje', 'Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.', [I('sima.plea.gacha.1'), I('sima.plea.gacha.2')]);
+N('columpio-alguien', 'El que empujaba el columpio', 'personaje', 'Provisional (M7): el Pikachu al que Mimikyu imita; choca con su súplica, que dice que bajó después. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.', [I('sima.plea.gacha.1'), I('sima.plea.gacha.2')]);
 
 // --- Guardians and mid-bosses ---------------------------------------------
 const guardians = [
@@ -375,6 +377,16 @@ e('estrato-2', 'bosque', 'imita', 'docs/gdd.md:393');
 e('estrato-3', 'cuevas', 'imita', 'docs/gdd.md:393');
 e('estrato-4', 'pantano', 'imita', 'docs/gdd.md:393');
 e('estrato-5', 'otro-cielo', 'baja_hacia', I('sima.band.abyss.lore.2'));
+e('cripta', 'reverso', 'guarda_la_puerta_a', 'docs/lore/lore.md:317', I('dungeon.crypt.lore.2'));
+e('reverso', 'sombras', 'recoge_a', 'docs/lore/lore.md:317');
+e('arco-legendario', 'reverso', 'ahondaria', 'docs/lore/lore.md:317');
+e('nihilego', 'necrozma', 'vino_con', 'docs/lore/lore.md:318');
+e('ultra-megalopolis', 'estrato-5', 'se_ve_desde', I('sima.band.abyss.lore.3'));
+e('necrozma', 'ultra-megalopolis', 'dejo_a_oscuras', 'docs/lore/lore.md:320');
+e('columpio-alguien', 'pikachu', 'seria_provisional', 'docs/lore/lore.md:321');
+e('caminante-once', 'estatua-quemada', 'grabo_junto_a', 'docs/lore/lore.md:325', I('world.lore.crater.3'));
+e('decidueye', 'estatua-sin-rostro', 'deja_su_pluma_en', 'docs/lore/lore.md:326', I('world.lore.knight.3'));
+e('aegislash', 'idolo', 'deja_su_espada_en', 'docs/lore/lore.md:326', I('world.lore.idol.2'));
 e('hambre', 'necrozma', 'es', 'docs/gdd.md:231', 'docs/lore/lore.md:58');
 e('necrozma', 'eclipse', 'es', 'docs/lore/lore.md:58', I('prologue.eclipse.2'));
 e('necrozma', 'sima', 'abrio', 'docs/lore/lore.md:58');

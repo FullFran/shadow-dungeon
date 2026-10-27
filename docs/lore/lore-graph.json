@@ -110,7 +110,7 @@
    "label": "Los juramentos",
    "type": "concepto",
    "status": "canon",
-   "summary": "Lo que ata a cada guardián. Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.",
+   "summary": "Lo que ata a cada guardián: antes del Eclipse, cada uno juró mantener cerrada una puerta contra el hambre (M4). Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.",
    "sources": [
     "i18n:prologue.guardians.1",
     "i18n:guardian.aegislash.post.1",
@@ -456,6 +456,28 @@
    "summary": "NO CANON AÚN: pedirle a dios. Dialga (el tiempo atascado), Palkia (el espacio roto de la Sima), Giratina (adonde quizá van las sombras que ya no necesitan a su dueño) y Arceus corrompido, que se gana cerrando su Senda y recupera sus 16 tablas en la Sima. Lunala sostendría la luna. Todo legendario debe ahondar el lore existente.",
    "sources": [
     "docs/lore/lore.md:368"
+   ]
+  },
+  {
+   "id": "reverso",
+   "label": "El reverso del mundo",
+   "type": "lugar",
+   "status": "canon",
+   "summary": "Detrás de las puertas selladas: el lado de Giratina, adonde van las sombras que ya nadie necesita. El Rey protege al mundo de él y a él del mundo (M3; no está en el juego).",
+   "sources": [
+    "docs/lore/lore.md:317",
+    "i18n:dungeon.crypt.lore.2"
+   ]
+  },
+  {
+   "id": "ultra-megalopolis",
+   "label": "Ultra Megalópolis",
+   "type": "lugar",
+   "status": "canon",
+   "summary": "El reino hundido cuyas torres se ven en el Estrato V: la ciudad que Necrozma dejó a oscuras antes que la nuestra (M6; se revela al final).",
+   "sources": [
+    "docs/lore/lore.md:320",
+    "i18n:sima.band.abyss.lore.3"
    ]
   },
   {
@@ -932,7 +954,7 @@
    "label": "El que empujaba el columpio",
    "type": "personaje",
    "status": "canon",
-   "summary": "Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
+   "summary": "Provisional (M7): el Pikachu al que Mimikyu imita; choca con su súplica, que dice que bajó después. Alguien que empujaba el columpio de la plaza aunque nadie se subiera; bajó a buscar a sus amigos y no subió.",
    "sources": [
     "i18n:sima.plea.gacha.1",
     "i18n:sima.plea.gacha.2"
@@ -6309,6 +6331,90 @@
    "relation": "baja_hacia",
    "sources": [
     "i18n:sima.band.abyss.lore.2"
+   ]
+  },
+  {
+   "from": "cripta",
+   "to": "reverso",
+   "relation": "guarda_la_puerta_a",
+   "sources": [
+    "docs/lore/lore.md:317",
+    "i18n:dungeon.crypt.lore.2"
+   ]
+  },
+  {
+   "from": "reverso",
+   "to": "sombras",
+   "relation": "recoge_a",
+   "sources": [
+    "docs/lore/lore.md:317"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "reverso",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:317"
+   ]
+  },
+  {
+   "from": "nihilego",
+   "to": "necrozma",
+   "relation": "vino_con",
+   "sources": [
+    "docs/lore/lore.md:318"
+   ]
+  },
+  {
+   "from": "ultra-megalopolis",
+   "to": "estrato-5",
+   "relation": "se_ve_desde",
+   "sources": [
+    "i18n:sima.band.abyss.lore.3"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "ultra-megalopolis",
+   "relation": "dejo_a_oscuras",
+   "sources": [
+    "docs/lore/lore.md:320"
+   ]
+  },
+  {
+   "from": "columpio-alguien",
+   "to": "pikachu",
+   "relation": "seria_provisional",
+   "sources": [
+    "docs/lore/lore.md:321"
+   ]
+  },
+  {
+   "from": "caminante-once",
+   "to": "estatua-quemada",
+   "relation": "grabo_junto_a",
+   "sources": [
+    "docs/lore/lore.md:325",
+    "i18n:world.lore.crater.3"
+   ]
+  },
+  {
+   "from": "decidueye",
+   "to": "estatua-sin-rostro",
+   "relation": "deja_su_pluma_en",
+   "sources": [
+    "docs/lore/lore.md:326",
+    "i18n:world.lore.knight.3"
+   ]
+  },
+  {
+   "from": "aegislash",
+   "to": "idolo",
+   "relation": "deja_su_espada_en",
+   "sources": [
+    "docs/lore/lore.md:326",
+    "i18n:world.lore.idol.2"
    ]
   },
   {
