@@ -22,21 +22,21 @@ N('eclipse', 'Eclipse Carmesí', 'suceso', 'Un anillo rojo sobre la nada que no 
 N('noche-sin-fin', 'La noche que no acaba', 'concepto', 'Desde el Eclipse el sol no ha vuelto a salir. El tiempo pasa igual: frío y menos frío, y los inviernos se cuentan por el hielo, no por la luz. La luna sigue saliendo; el sol no. El Refugio del Ocaso se quedó en el último anochecer (decisión del dueño, 27-10-2026; C6).', [I('story.shinx.1.fragment.1.text'), I('story.cubone.1.before.1'), I('sima.plea.hermit.1'), 'docs/gdd.md:23', 'docs/gdd.md:512']);
 N('noche-del-eclipse', 'La noche del Eclipse', 'suceso', 'La noche en que se apagó el sol: se abren las mazmorras, cae la primera gota roja, nace Shinx, se pierden la manada de Zorua, la madre de Cubone y los mayores de Axew.', [I('story.zorua.2.before.1'), I('story.cubone.2.before.1'), I('story.axew.2.before.1'), I('story.shinx.1.before.1'), I('world.npc.hermit.2')]);
 N('mazmorras', 'Mazmorras Sombrías', 'concepto', 'Bocas de piedra que se abrieron con el Eclipse. Quien entra y vuelve ya no es él: solo su sombra.', [I('prologue.dungeons.1'), I('prologue.dungeons.2'), I('prologue.shadows.2')]);
-N('sombras', 'Las sombras', 'faccion', 'Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.', ['docs/lore/lore.md:306', I('prologue.shadows.2'), I('town.story.2'), 'docs/gdd.md:225', I('story.mimikyu.3.before.1'), 'docs/gdd.md:422']);
+N('sombras', 'Las sombras', 'faccion', 'Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.', ['docs/lore/lore.md:309', I('prologue.shadows.2'), I('town.story.2'), 'docs/gdd.md:225', I('story.mimikyu.3.before.1'), 'docs/gdd.md:422']);
 N('guardianes', 'Los guardianes', 'faccion', 'Cada mazmorra tiene un guardián atado a un juramento que ya nadie recuerda; el Rey de las Espadas es el primero.', [I('prologue.guardians.1'), I('town.story.3'), I('guardian.aegislash.pre.1')]);
 N('juramentos', 'Los juramentos', 'concepto', 'Lo que ata a cada guardián. Al caer el guardián se rompe y queda en el Santuario, donde vuelve a cumplirse.', [I('prologue.guardians.1'), I('guardian.aegislash.post.1'), I('shrine.text')]);
-N('voz', 'La voz', 'personaje', '«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es.', [I('prologue.voice.1'), I('quiz.intro.1'), I('quiz.intro.2'), I('sima.scene.lost.4'), 'docs/sima-redesign.md:92']);
+N('voz', 'La voz', 'personaje', '«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es. Respuesta del dueño (M1): es tu propia sombra, que te llamó cuando moriste como humano porque una sombra sin cuerpo no puede bajar ni beber.', ['docs/lore/lore.md:59', I('prologue.voice.1'), I('quiz.intro.1'), I('quiz.intro.2'), I('sima.scene.lost.4'), 'docs/sima-redesign.md:92']);
 N('caminantes', 'Caminantes de la Sima', 'faccion', 'Gente que contestó a la voz y despertó dentro de un Pokémon con sus recuerdos y sus heridas, y con una sombra que no los suelta. Todo Pokémon jugable es uno.', [I('lore.reborn.name'), I('sima.scene.lost.8'), I('sima.scene.lost.9'), 'docs/gdd.md:422', 'docs/sima-redesign.md:11']);
 N('reencarnacion', 'Renacer como Pokémon', 'concepto', 'Despertar en un mundo que no es el tuyo, dentro de un Pokémon elegido por tus respuestas (la premisa de Mundo Misterioso).', [I('quiz.intro.2'), I('quiz.result.species'), 'src/data/quiz.ts:18']);
-N('sombra-propia', 'Tu sombra', 'concepto', 'La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda. Léxico (C11): la sombra es tuya; es tuya mientras te necesita.', ['docs/lore/lore.md:306', I('sima.scene.lost.5'), I('sima.scene.lost.10'), I('sima.scene.lost.13'), I('sima.plea.oracle.2'), I('screen.eclipse.text'), 'docs/gdd.md:422']);
+N('sombra-propia', 'Tu sombra', 'concepto', 'La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda. Léxico (C11): la sombra es tuya; es tuya mientras te necesita.', ['docs/lore/lore.md:309', I('sima.scene.lost.5'), I('sima.scene.lost.10'), I('sima.scene.lost.13'), I('sima.plea.oracle.2'), I('screen.eclipse.text'), 'docs/gdd.md:422']);
 N('lucidez', 'Lucidez', 'concepto', 'El reloj de la Sima: cuánto aguantas siendo tú. Bajar y vencer ecos la devuelven; a las 0:00 te pierdes.', [I('endless.entry.clock'), I('endless.score.time'), 'docs/gdd.md:425', 'docs/gdd.md:387']);
 N('perderse', 'Perderse', 'suceso', 'Llegar a 0:00 de Lucidez: tu sombra te sube al borde del cráter porque aún le haces falta. Es una marca, no una derrota.', [I('screen.eclipse.title'), I('screen.eclipse.text'), 'docs/sima-redesign.md:8']);
 N('figuraciones', 'Figuraciones', 'concepto', 'Con menos de 60 s de Lucidez, siluetas de alguien que no está en el borde de la vista. Nunca dañan.', ['docs/gdd.md:433', I('menu.figurations')]);
 N('memoria', 'La memoria del jugador', 'concepto', 'Lo mecánico sale de la semilla; lo narrativo, de tu memoria: lo que no conoces sale sin nombre ni cara.', ['docs/sima-redesign.md:31', 'docs/gdd.md:421', 'src/app/sima-lore.ts:11']);
-N('otro-cielo', 'El otro cielo', 'concepto', 'La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego.', [I('sima.scene.lost.11'), I('sima.scene.lost.12'), I('guardian.nihilego.pre.2'), I('world.lore.crystal.2')]);
-N('arriba-abajo', 'Arriba y abajo se tocan', 'concepto', 'Diseño: el «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados; nunca se dice así.', ['docs/sima-redesign.md:96'], 'diseño');
+N('otro-cielo', 'El otro cielo', 'concepto', 'La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego. Es el cielo de donde vino Necrozma: el fondo de la herida que abrió (M5).', [I('sima.scene.lost.11'), I('sima.scene.lost.12'), I('guardian.nihilego.pre.2'), I('world.lore.crystal.2')]);
+N('arriba-abajo', 'Arriba y abajo se tocan', 'concepto', 'El «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados: el fondo de la Sima, la herida de Necrozma, es el otro cielo (decisión del dueño, 27-10-2026; C18). El juego no lo dice así.', ['docs/sima-redesign.md:96', 'docs/lore/lore.md:57']);
 N('herida', 'La herida', 'concepto', 'El último jefe de cada Senda: el propio Pokémon, enorme y corrompido, su herida hecha carne. Una versión menor cierra el I y el II, la entera el III.', ['docs/story-quests.md:40', 'docs/story-quests.md:44']);
-N('sombra-senda', 'Sombras de las Sendas', 'faccion', 'Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela. Léxico (C11): la sombra de una Senda es la herida de un vecino hecha forma.', ['docs/lore/lore.md:306', 'docs/story-quests.md:52']);
+N('sombra-senda', 'Sombras de las Sendas', 'faccion', 'Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela. Léxico (C11): la sombra de una Senda es la herida de un vecino hecha forma.', ['docs/lore/lore.md:309', 'docs/story-quests.md:52']);
 N('suplicas', 'Las súplicas', 'suceso', 'Antes de la primera bajada, los vecinos suben al borde del cráter y te piden por favor que busques a alguien que no volvió.', ['src/data/sima-plea.ts:22', I('gallery.sima.plea'), 'docs/gdd.md:432']);
 N('la-boca', 'La boca', 'suceso', 'Primera entrada a la Sima: «Baja todo lo que puedas. Acuérdate de ellos. …Y acuérdate de ti.»', [I('sima.scene.mouth.1'), I('sima.scene.mouth.4'), I('sima.scene.mouth.5')]);
 N('punto-de-quiebre', 'Punto de quiebre', 'suceso', 'La primera vez que te pierdes: todo se apaga, tu sombra tira de ti y despiertas en el borde con Phantump, que explica qué son los Caminantes.', [I('gallery.sima.lost'), I('sima.scene.lost.1'), I('sima.scene.lost.7')]);
@@ -45,19 +45,21 @@ N('primera-gota', 'La primera gota de luz roja', 'suceso', 'La noche que el sol 
 N('reto-diario', 'El turno de esta noche', 'concepto', 'El reto diario: la misma semilla para todo el pueblo. «Esta noche ha bajado todo el pueblo por la misma.»', [I('endless.entry.daily'), I('sima.scene.return.3')]);
 
 // --- Sima figures ---------------------------------------------------------
-N('eco-del-eclipse', 'Eco del Eclipse', 'personaje', 'Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...). Léxico (C11): el eco es de la Sima; tu Eco es lo que la Sima guardó de ti.', ['docs/lore/lore.md:306', I('sima.echo.subtitle'), I('sima.scene.own-shadow.3'), I('sima.echo.line.1'), 'docs/gdd.md:405']);
-N('ecos-guardian', 'Ecos de guardián', 'faccion', 'Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro. Léxico (C11): un eco es lo que la Sima guarda de algo que bajó; estos, su recuerdo de los guardianes.', ['docs/lore/lore.md:306', I('endless.echo'), I('species.sima-faceless'), I('endless.echo.faceless'), 'docs/gdd.md:383']);
+N('eco-del-eclipse', 'Eco del Eclipse', 'personaje', 'Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...). Léxico (C11): el eco es de la Sima; tu Eco es lo que la Sima guardó de ti.', ['docs/lore/lore.md:309', I('sima.echo.subtitle'), I('sima.scene.own-shadow.3'), I('sima.echo.line.1'), 'docs/gdd.md:405']);
+N('ecos-guardian', 'Ecos de guardián', 'faccion', 'Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro. Léxico (C11): un eco es lo que la Sima guarda de algo que bajó; estos, su recuerdo de los guardianes.', ['docs/lore/lore.md:309', I('endless.echo'), I('species.sima-faceless'), I('endless.echo.faceless'), 'docs/gdd.md:383']);
 N('heraldos', 'Heraldos del Eclipse', 'faccion', 'Jefes generados con nombres que nadie ha dicho nunca: lo que tu cabeza inventa para lo que no entiende (plantas 22, 32...).', [I('species.sima-herald'), I('sima.scene.first-name.1'), I('sima.scene.stratum-caves.1'), 'docs/gdd.md:407']);
 N('sombra-extraviada', 'Sombra de alguien', 'personaje', 'La sombra de una Senda en la Sima, optativa, tras su muro de niebla: «No es quien era. Es lo que el eclipse se quedó.»', [I('species.sima-someone'), I('sima.scene.someone.2'), I('sima.stray.log.known'), 'docs/gdd.md:429']);
 N('herida-ajena', 'Una herida que no es tuya', 'personaje', 'La herida de una Senda en las plantas 35, 55, 75...: «La herida de {line}. {line} la cerró. Esta se quedó abajo.»', [I('species.sima-not-yours'), I('sima.wound.log.known'), 'docs/gdd.md:428']);
 N('sabueso', 'Sabueso del Eclipse', 'personaje', 'Un perseguidor imposible de vencer: solo se huye hacia la escalera.', [I('sima.event.hunter'), I('sima.log.hunter.loosed')]);
-N('eco-mercader', 'Eco mercader', 'personaje', 'Un mercader de la Sima. «El eco te ve marchar sin decir nada.» Léxico (C11): el recuerdo que la Sima guarda de alguien que bajó a comerciar.', ['docs/lore/lore.md:306', I('sima.event.merchant'), I('sima.merchant.leaveText')]);
+N('eco-mercader', 'Eco mercader', 'personaje', 'Un mercader de la Sima. «El eco te ve marchar sin decir nada.» Léxico (C11): el recuerdo que la Sima guarda de alguien que bajó a comerciar.', ['docs/lore/lore.md:309', I('sima.event.merchant'), I('sima.merchant.leaveText')]);
 N('altar', 'Altar del Eclipse', 'objeto', 'Pactos de don y precio: «El eclipse da y el eclipse quita.»', [I('sima.event.shrine'), I('sima.log.shrine.accepted')]);
 
 // --- Design only ----------------------------------------------------------
-N('necrozma', 'Necrozma', 'personaje', 'Diseño: lo que hay bajo la tierra y el jefe final; el prólogo no lo enseña ni lo nombra.', ['docs/gdd.md:231', 'docs/species-candidates.md:252'], 'diseño');
+N('capsulas', 'Las cápsulas de Mimikyu', 'concepto', 'No son Pokémon sino presentaciones: cada cápsula guarda algo de un vecino (la cuchara de Abra, una pluma, una escama) que acepta conocerte y dejarte llevar su forma. Al azar porque Mimikyu no sabe quién querrá ser tu amigo y no se atreve a preguntar (decisión del dueño, 27-10-2026; el texto llegará más adelante).', ['docs/lore/lore.md:60', I('town.gacha.1')]);
+N('arco-legendario', 'El arco legendario', 'concepto', 'NO CANON AÚN: pedirle a dios. Dialga (el tiempo atascado), Palkia (el espacio roto de la Sima), Giratina (adonde quizá van las sombras que ya no necesitan a su dueño) y Arceus corrompido, que se gana cerrando su Senda y recupera sus 16 tablas en la Sima. Lunala sostendría la luna. Todo legendario debe ahondar el lore existente.', ['docs/lore/lore.md:368'], 'diseño');
+N('necrozma', 'Necrozma', 'personaje', 'Lo que bebe la luz (decisión del dueño, 27-10-2026; no se nombra en el juego hasta el final). El Eclipse Carmesí es Necrozma delante del sol, bebiéndoselo; vino del Ultraespacio; el anillo rojo es el borde del sol ardiendo alrededor de su cuerpo, rojo porque el Pokémon Prisma se queda todos los colores menos ese. La Sima es la herida que abrió al atravesar el mundo; las sombras, lo que esa herida deja en la gente. Jefe final.', ['docs/lore/lore.md:58', 'docs/gdd.md:231', 'docs/species-candidates.md:252']);
 N('forma-de-la-herida', 'La forma de la herida', 'concepto', 'Abajo solo se entra con la forma de la herida a la que acompañas: en una Senda la Sima te hace llevar la forma del vecino con el que bajas (las Sendas son heridas de otros, no tu pasado). Por eso una Senda solo se juega con su línea. Qué cuesta llevar la forma de otro es un misterio (M13).', [I('challenges.text'), I('challenge.cubone.lore'), 'docs/gdd.md:423']);
-N('sombras-amigos', 'Sombras de amigos', 'concepto', 'NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.', ['docs/lore/lore.md:355'], 'diseño');
+N('sombras-amigos', 'Sombras de amigos', 'concepto', 'NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.', ['docs/lore/lore.md:358'], 'diseño');
 
 // --- Places ---------------------------------------------------------------
 N('refugio', 'Refugio del Ocaso', 'lugar', 'El pueblo de partida: el puesto de Mimikyu, la tienda de Poochyena, Gastly, Smeargle, el tablón y el Santuario; Abra duerme en un rincón y Axew entrena en la linde. Se llama así porque se quedó en el último anochecer.', [I('world.map.refugio'), 'docs/gdd.md:514', 'src/data/town.ts:223']);
@@ -97,7 +99,7 @@ N('estatua-sin-rostro', 'Estatua sin rostro', 'objeto', 'Un caballero de piedra:
 N('estatua-quemada', 'Estatua quemada', 'objeto', 'Mira al fondo de la sima con las manos quemadas, como si hubiera intentado sujetar el sol. «La sima no tiene fondo. Solo más eclipse».', [I('world.lore.crater.1'), I('world.lore.crater.2'), I('world.lore.crater.3')]);
 N('poste', 'Poste del camino', 'objeto', '«No bajes solo», tachado; debajo: «Volvió».', [I('world.lore.sign.1'), I('world.lore.sign.2')]);
 N('idolo', 'Ídolo del lago', 'objeto', 'Un ídolo de rana con ofrendas para que el agua siga quieta; un instante refleja un sol que ya no existe.', [I('world.lore.idol.1'), I('world.lore.idol.3')]);
-N('cristal-caido', 'Cristal caído', 'objeto', 'Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado.', [I('world.lore.crystal.1'), I('world.lore.crystal.2'), I('world.lore.crystal.3')]);
+N('cristal-caido', 'Cristal caído', 'objeto', 'Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado. Es un trozo de Necrozma, y lo que empuja es él, aún con hambre (M9).', [I('world.lore.crystal.1'), I('world.lore.crystal.2'), I('world.lore.crystal.3')]);
 
 // --- Town people ----------------------------------------------------------
 N('phantump', 'Phantump, la vidente', 'personaje', 'La vidente del Lago: evoluciona y despierta, cierra cada Senda con una línea y explica qué son los Caminantes. Te espera en el borde.', [I('town.name.oracle'), I('world.npc.oracle.evolve'), I('sima.plea.oracle.3'), I('sima.scene.lost.7')]);
@@ -237,7 +239,7 @@ N('manada-zorua', 'La manada de Zorua', 'faccion', 'Cruzó el Bosque Brumoso la 
 N('vieja-empoleon', 'La vieja Empoleon del lago', 'personaje', 'Sacó a Piplup del hielo y le dejó una baya. Tras el Eclipse bajó a buscar el reflejo del cielo y no subió.', [I('story.piplup.2.after.2'), I('story.piplup.3.before.1')]);
 N('madre-shinx', 'La madre de Shinx', 'personaje', 'Una Luxray de la manada al borde de la tormenta; tras el Eclipse salió a buscar a todos los perdidos con los ojos abiertos y no volvió.', [I('story.shinx.2.before.2'), I('story.shinx.3.before.2')]);
 N('mayores-axew', 'Los mayores de Axew', 'faccion', 'Bajaron por la barranca a luchar contra lo que se bebía el sol y no esperaron a Axew. Solo Dragonite encontró el camino de vuelta.', [I('story.axew.2.before.1'), I('story.axew.3.boss.6.pre.2')]);
-N('madre-zorua', 'La madre de Zorua', 'personaje', 'Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.', ['docs/lore/lore.md:319', I('story.zorua.1.fragment.2.text'), I('story.zorua.3.fragment.2.text')], 'diseño');
+N('madre-zorua', 'La madre de Zorua', 'personaje', 'Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.', ['docs/lore/lore.md:322', I('story.zorua.1.fragment.2.text'), I('story.zorua.3.fragment.2.text')], 'diseño');
 N('pequeno-que-miro', 'El pequeño que miró', 'personaje', 'Miró debajo del trapo de Mimikyu y no volvió a la plaza; «no enfermó por lo que vio. Enfermó de miedo».', [I('story.mimikyu.2.before.3'), I('story.mimikyu.2.after.2')]);
 
 // --- Edges between the rest -----------------------------------------------
@@ -322,12 +324,12 @@ e('la-boca', 'sima', 'abre', 'src/data/sima-scenes.ts:94');
 e('el-regreso', 'crater', 'ocurre_en', I('sima.scene.return.1'));
 e('punto-de-quiebre', 'crater', 'ocurre_en', I('sima.scene.lost.6'));
 e('gastly', 'manada-zorua', 'busca', I('sima.plea.storyteller.4'));
-e('gastly', 'manada-zorua', 'perdio', I('sima.plea.storyteller.4'), 'docs/lore/lore.md:319');
-e('manada-zorua', 'niebla-blanca', 'se_la_quedo', 'docs/lore/lore.md:319');
-e('madre-zorua', 'manada-zorua', 'pertenece_a', 'docs/lore/lore.md:319');
-e('madre-zorua', 'zorua', 'es_madre_de', 'docs/lore/lore.md:319');
-e('madre-zorua', 'frag-zorua-3-2', 'dejo', I('story.zorua.3.fragment.2.text'), 'docs/lore/lore.md:319');
-e('zorua', 'manada-zorua', 'se_quedo_fuera_de', I('story.zorua.2.before.2'), 'docs/lore/lore.md:319');
+e('gastly', 'manada-zorua', 'perdio', I('sima.plea.storyteller.4'), 'docs/lore/lore.md:322');
+e('manada-zorua', 'niebla-blanca', 'se_la_quedo', 'docs/lore/lore.md:322');
+e('madre-zorua', 'manada-zorua', 'pertenece_a', 'docs/lore/lore.md:322');
+e('madre-zorua', 'zorua', 'es_madre_de', 'docs/lore/lore.md:322');
+e('madre-zorua', 'frag-zorua-3-2', 'dejo', I('story.zorua.3.fragment.2.text'), 'docs/lore/lore.md:322');
+e('zorua', 'manada-zorua', 'se_quedo_fuera_de', I('story.zorua.2.before.2'), 'docs/lore/lore.md:322');
 e('cubone', 'madre-cubone', 'busca', I('sima.plea.fisher.1'));
 e('litwick', 'nino-casa-grande', 'busca', I('sima.plea.keeper.3'));
 e('poochyena', 'hermana-mightyena', 'busca', I('sima.plea.shop.3'));
@@ -373,15 +375,25 @@ e('estrato-2', 'bosque', 'imita', 'docs/gdd.md:393');
 e('estrato-3', 'cuevas', 'imita', 'docs/gdd.md:393');
 e('estrato-4', 'pantano', 'imita', 'docs/gdd.md:393');
 e('estrato-5', 'otro-cielo', 'baja_hacia', I('sima.band.abyss.lore.2'));
-e('hambre', 'necrozma', 'es', 'docs/gdd.md:231');
-e('sombras-amigos', 'sima', 'aparece_en', 'docs/lore/lore.md:355');
-e('sombras-amigos', 'sombra-propia', 'depende_de', 'docs/lore/lore.md:355');
+e('hambre', 'necrozma', 'es', 'docs/gdd.md:231', 'docs/lore/lore.md:58');
+e('necrozma', 'eclipse', 'es', 'docs/lore/lore.md:58', I('prologue.eclipse.2'));
+e('necrozma', 'sima', 'abrio', 'docs/lore/lore.md:58');
+e('necrozma', 'otro-cielo', 'viene_de', 'docs/lore/lore.md:58');
+e('cristal-caido', 'necrozma', 'es_un_trozo_de', 'docs/lore/lore.md:58', I('world.lore.crystal.3'));
+e('primera-gota', 'necrozma', 'es_luz_derramada_por', 'docs/lore/lore.md:58', I('dungeon.swamp.lore.1'));
+e('voz', 'sombra-propia', 'es', 'docs/lore/lore.md:59');
+e('capsulas', 'mimikyu', 'las_ofrece', 'docs/lore/lore.md:60', I('town.gacha.1'));
+e('capsulas', 'forma-de-la-herida', 'abren', 'docs/lore/lore.md:60');
+e('arco-legendario', 'noche-sin-fin', 'ahondaria', 'docs/lore/lore.md:368');
+e('arco-legendario', 'sima', 'ahondaria', 'docs/lore/lore.md:368');
+e('sombras-amigos', 'sima', 'aparece_en', 'docs/lore/lore.md:358');
+e('sombras-amigos', 'sombra-propia', 'depende_de', 'docs/lore/lore.md:358');
 e('caminante-once', 'sombra-propia', 'es_el_final_de', I('sima.plea.hermit.2'), I('sima.scene.lost.13'));
 e('caminantes', 'forma-de-la-herida', 'lleva_en_las_sendas', 'docs/gdd.md:423');
-e('sima', 'eco-del-eclipse', 'guarda', 'docs/lore/lore.md:306');
-e('sima', 'ecos-guardian', 'guarda', 'docs/lore/lore.md:306');
-e('sima', 'eco-mercader', 'guarda', 'docs/lore/lore.md:306');
-e('sombra-senda', 'herida', 'da_forma_a', 'docs/lore/lore.md:306');
+e('sima', 'eco-del-eclipse', 'guarda', 'docs/lore/lore.md:309');
+e('sima', 'ecos-guardian', 'guarda', 'docs/lore/lore.md:309');
+e('sima', 'eco-mercader', 'guarda', 'docs/lore/lore.md:309');
+e('sombra-senda', 'herida', 'da_forma_a', 'docs/lore/lore.md:309');
 e('eclipse', 'noche-sin-fin', 'deja', 'docs/gdd.md:23', I('story.shinx.1.fragment.1.text'));
 e('noche-sin-fin', 'refugio', 'da_nombre_a', 'docs/gdd.md:512');
 e('noche-sin-fin', 'madre-cubone', 'la_luna_aun_sale_por', I('story.cubone.1.before.1'));

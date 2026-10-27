@@ -85,7 +85,7 @@
    "status": "canon",
    "summary": "Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "i18n:prologue.shadows.2",
     "i18n:town.story.2",
     "docs/gdd.md:225",
@@ -122,8 +122,9 @@
    "label": "La voz",
    "type": "personaje",
    "status": "canon",
-   "summary": "«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es.",
+   "summary": "«…¿Me oyes? ¿Puedes oírme?». Abre el test de personalidad y vuelve cuando te pierdes en la Sima. Nunca se dice quién es. Respuesta del dueño (M1): es tu propia sombra, que te llamó cuando moriste como humano porque una sombra sin cuerpo no puede bajar ni beber.",
    "sources": [
+    "docs/lore/lore.md:59",
     "i18n:prologue.voice.1",
     "i18n:quiz.intro.1",
     "i18n:quiz.intro.2",
@@ -164,7 +165,7 @@
    "status": "canon",
    "summary": "La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda. Léxico (C11): la sombra es tuya; es tuya mientras te necesita.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "i18n:sima.scene.lost.5",
     "i18n:sima.scene.lost.10",
     "i18n:sima.scene.lost.13",
@@ -226,7 +227,7 @@
    "label": "El otro cielo",
    "type": "concepto",
    "status": "canon",
-   "summary": "La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego.",
+   "summary": "La Sima no baja hacia el fondo de la tierra sino hacia el eclipse: allí abajo está el otro cielo, de donde dice venir Nihilego. Es el cielo de donde vino Necrozma: el fondo de la herida que abrió (M5).",
    "sources": [
     "i18n:sima.scene.lost.11",
     "i18n:sima.scene.lost.12",
@@ -238,10 +239,11 @@
    "id": "arriba-abajo",
    "label": "Arriba y abajo se tocan",
    "type": "concepto",
-   "status": "diseño",
-   "summary": "Diseño: el «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados; nunca se dice así.",
+   "status": "canon",
+   "summary": "El «otro cielo» de Nihilego y el «bajo la tierra» del prólogo son el mismo sitio visto desde los dos lados: el fondo de la Sima, la herida de Necrozma, es el otro cielo (decisión del dueño, 27-10-2026; C18). El juego no lo dice así.",
    "sources": [
-    "docs/sima-redesign.md:96"
+    "docs/sima-redesign.md:96",
+    "docs/lore/lore.md:57"
    ]
   },
   {
@@ -262,7 +264,7 @@
    "status": "canon",
    "summary": "Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela. Léxico (C11): la sombra de una Senda es la herida de un vecino hecha forma.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "docs/story-quests.md:52"
    ]
   },
@@ -342,7 +344,7 @@
    "status": "canon",
    "summary": "Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...). Léxico (C11): el eco es de la Sima; tu Eco es lo que la Sima guardó de ti.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "i18n:sima.echo.subtitle",
     "i18n:sima.scene.own-shadow.3",
     "i18n:sima.echo.line.1",
@@ -356,7 +358,7 @@
    "status": "canon",
    "summary": "Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro. Léxico (C11): un eco es lo que la Sima guarda de algo que bajó; estos, su recuerdo de los guardianes.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "i18n:endless.echo",
     "i18n:species.sima-faceless",
     "i18n:endless.echo.faceless",
@@ -419,7 +421,7 @@
    "status": "canon",
    "summary": "Un mercader de la Sima. «El eco te ve marchar sin decir nada.» Léxico (C11): el recuerdo que la Sima guarda de alguien que bajó a comerciar.",
    "sources": [
-    "docs/lore/lore.md:306",
+    "docs/lore/lore.md:309",
     "i18n:sima.event.merchant",
     "i18n:sima.merchant.leaveText"
    ]
@@ -436,12 +438,34 @@
    ]
   },
   {
+   "id": "capsulas",
+   "label": "Las cápsulas de Mimikyu",
+   "type": "concepto",
+   "status": "canon",
+   "summary": "No son Pokémon sino presentaciones: cada cápsula guarda algo de un vecino (la cuchara de Abra, una pluma, una escama) que acepta conocerte y dejarte llevar su forma. Al azar porque Mimikyu no sabe quién querrá ser tu amigo y no se atreve a preguntar (decisión del dueño, 27-10-2026; el texto llegará más adelante).",
+   "sources": [
+    "docs/lore/lore.md:60",
+    "i18n:town.gacha.1"
+   ]
+  },
+  {
+   "id": "arco-legendario",
+   "label": "El arco legendario",
+   "type": "concepto",
+   "status": "diseño",
+   "summary": "NO CANON AÚN: pedirle a dios. Dialga (el tiempo atascado), Palkia (el espacio roto de la Sima), Giratina (adonde quizá van las sombras que ya no necesitan a su dueño) y Arceus corrompido, que se gana cerrando su Senda y recupera sus 16 tablas en la Sima. Lunala sostendría la luna. Todo legendario debe ahondar el lore existente.",
+   "sources": [
+    "docs/lore/lore.md:368"
+   ]
+  },
+  {
    "id": "necrozma",
    "label": "Necrozma",
    "type": "personaje",
-   "status": "diseño",
-   "summary": "Diseño: lo que hay bajo la tierra y el jefe final; el prólogo no lo enseña ni lo nombra.",
+   "status": "canon",
+   "summary": "Lo que bebe la luz (decisión del dueño, 27-10-2026; no se nombra en el juego hasta el final). El Eclipse Carmesí es Necrozma delante del sol, bebiéndoselo; vino del Ultraespacio; el anillo rojo es el borde del sol ardiendo alrededor de su cuerpo, rojo porque el Pokémon Prisma se queda todos los colores menos ese. La Sima es la herida que abrió al atravesar el mundo; las sombras, lo que esa herida deja en la gente. Jefe final.",
    "sources": [
+    "docs/lore/lore.md:58",
     "docs/gdd.md:231",
     "docs/species-candidates.md:252"
    ]
@@ -465,7 +489,7 @@
    "status": "diseño",
    "summary": "NO CANON AÚN: abajo puedes encontrar las sombras de tus amigos (por nombre de usuario o código) o Caminantes generados; liberar la sombra de un amigo le avisa. Con la regla de la sombra del 27-10-2026, son sombras que ya no necesitaban a su dueño.",
    "sources": [
-    "docs/lore/lore.md:355"
+    "docs/lore/lore.md:358"
    ]
   },
   {
@@ -812,7 +836,7 @@
    "label": "Cristal caído",
    "type": "objeto",
    "status": "canon",
-   "summary": "Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado.",
+   "summary": "Dentro se ve un cielo que no es este; luego suena como una puerta que alguien empuja desde el otro lado. Es un trozo de Necrozma, y lo que empuja es él, aún con hambre (M9).",
    "sources": [
     "i18n:world.lore.crystal.1",
     "i18n:world.lore.crystal.2",
@@ -2666,7 +2690,7 @@
    "status": "diseño",
    "summary": "Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.",
    "sources": [
-    "docs/lore/lore.md:319",
+    "docs/lore/lore.md:322",
     "i18n:story.zorua.1.fragment.2.text",
     "i18n:story.zorua.3.fragment.2.text"
    ]
@@ -5882,7 +5906,7 @@
    "relation": "perdio",
    "sources": [
     "i18n:sima.plea.storyteller.4",
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -5890,7 +5914,7 @@
    "to": "niebla-blanca",
    "relation": "se_la_quedo",
    "sources": [
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -5898,7 +5922,7 @@
    "to": "manada-zorua",
    "relation": "pertenece_a",
    "sources": [
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -5906,7 +5930,7 @@
    "to": "zorua",
    "relation": "es_madre_de",
    "sources": [
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -5915,7 +5939,7 @@
    "relation": "dejo",
    "sources": [
     "i18n:story.zorua.3.fragment.2.text",
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -5924,7 +5948,7 @@
    "relation": "se_quedo_fuera_de",
    "sources": [
     "i18n:story.zorua.2.before.2",
-    "docs/lore/lore.md:319"
+    "docs/lore/lore.md:322"
    ]
   },
   {
@@ -6292,7 +6316,92 @@
    "to": "necrozma",
    "relation": "es",
    "sources": [
-    "docs/gdd.md:231"
+    "docs/gdd.md:231",
+    "docs/lore/lore.md:58"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "eclipse",
+   "relation": "es",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:prologue.eclipse.2"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "sima",
+   "relation": "abrio",
+   "sources": [
+    "docs/lore/lore.md:58"
+   ]
+  },
+  {
+   "from": "necrozma",
+   "to": "otro-cielo",
+   "relation": "viene_de",
+   "sources": [
+    "docs/lore/lore.md:58"
+   ]
+  },
+  {
+   "from": "cristal-caido",
+   "to": "necrozma",
+   "relation": "es_un_trozo_de",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:world.lore.crystal.3"
+   ]
+  },
+  {
+   "from": "primera-gota",
+   "to": "necrozma",
+   "relation": "es_luz_derramada_por",
+   "sources": [
+    "docs/lore/lore.md:58",
+    "i18n:dungeon.swamp.lore.1"
+   ]
+  },
+  {
+   "from": "voz",
+   "to": "sombra-propia",
+   "relation": "es",
+   "sources": [
+    "docs/lore/lore.md:59"
+   ]
+  },
+  {
+   "from": "capsulas",
+   "to": "mimikyu",
+   "relation": "las_ofrece",
+   "sources": [
+    "docs/lore/lore.md:60",
+    "i18n:town.gacha.1"
+   ]
+  },
+  {
+   "from": "capsulas",
+   "to": "forma-de-la-herida",
+   "relation": "abren",
+   "sources": [
+    "docs/lore/lore.md:60"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "noche-sin-fin",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:368"
+   ]
+  },
+  {
+   "from": "arco-legendario",
+   "to": "sima",
+   "relation": "ahondaria",
+   "sources": [
+    "docs/lore/lore.md:368"
    ]
   },
   {
@@ -6300,7 +6409,7 @@
    "to": "sima",
    "relation": "aparece_en",
    "sources": [
-    "docs/lore/lore.md:355"
+    "docs/lore/lore.md:358"
    ]
   },
   {
@@ -6308,7 +6417,7 @@
    "to": "sombra-propia",
    "relation": "depende_de",
    "sources": [
-    "docs/lore/lore.md:355"
+    "docs/lore/lore.md:358"
    ]
   },
   {
@@ -6333,7 +6442,7 @@
    "to": "eco-del-eclipse",
    "relation": "guarda",
    "sources": [
-    "docs/lore/lore.md:306"
+    "docs/lore/lore.md:309"
    ]
   },
   {
@@ -6341,7 +6450,7 @@
    "to": "ecos-guardian",
    "relation": "guarda",
    "sources": [
-    "docs/lore/lore.md:306"
+    "docs/lore/lore.md:309"
    ]
   },
   {
@@ -6349,7 +6458,7 @@
    "to": "eco-mercader",
    "relation": "guarda",
    "sources": [
-    "docs/lore/lore.md:306"
+    "docs/lore/lore.md:309"
    ]
   },
   {
@@ -6357,7 +6466,7 @@
    "to": "herida",
    "relation": "da_forma_a",
    "sources": [
-    "docs/lore/lore.md:306"
+    "docs/lore/lore.md:309"
    ]
   },
   {
