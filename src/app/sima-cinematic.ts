@@ -24,6 +24,9 @@ function seenSet(store: KeyValueStore): Set<string> {
   }
 }
 
+/** Every Sima scene id seen on this device (`plea` included). */
+export const simaScenesSeen = (store: KeyValueStore): ReadonlySet<string> => seenSet(store);
+
 export const hasSeenSimaScene = (store: KeyValueStore, id: SimaSceneId | 'plea'): boolean => seenSet(store).has(id);
 
 /**

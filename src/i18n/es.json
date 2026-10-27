@@ -3148,7 +3148,7 @@
   "gallery.locked": "???",
   "gallery.locked.about": "Aún no la has visto.",
   "gallery.play.about": "Vuélvela a ver. No cambia nada de tu partida.",
-  "gallery.group.about": "{seen} de {total} vistas.",
+  "gallery.group.about": "Vistas: {seen} de {total}.",
   "gallery.plea.room": "Las súplicas solo se pueden volver a ver fuera de una sala.",
   "gallery.back.about": "Vuelve al pueblo.",
   "gallery.groups.about": "Vuelve a la lista de la galería.",

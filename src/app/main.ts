@@ -34,12 +34,14 @@ import { startGame, type GameOptions, type GameResult, type RunningGame, type Ru
 import { heldItems } from './item-pick';
 import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
-import { prologueScreen } from './prologue';
+import { prologueScreen, type PrologueOptions } from './prologue';
 import { readSimaMemory } from './sima-lore';
 import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaPleaDue, simaText, type SimaSceneInfo } from './sima-cinematic';
 import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
 import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
+import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
+import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
 import { nextAdventureScreen, nextPlayScreen } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
@@ -705,6 +707,108 @@ function townAccount(parent: HTMLElement, onClose: () => void): () => void {
 }
 
 /**
+ * The gallery over the town (its Esc menu; app/lore-gallery.ts): the groups,
+ * then a group's scenes; a seen one plays again over the town (the window
+ * waits under it), an unseen one is "???" and does nothing. Nothing is
+ * written: no seen flag, save, record or story. The pleas replay on the
+ * crater's rim through the town (`replayPlea`, alone only).
+ */
+function townGallery(root: HTMLElement) {
+  return (parent: HTMLElement, onClose: () => void, replayPlea: (() => void) | null): (() => void) => {
+    const overlay = h('div', { className: 'town-shop' });
+    const groups = galleryGroups();
+    let open: { element: HTMLElement; dispose(): void } | null = null;
+    let closeScene: (() => void) | null = null;
+    const render = (group: number | null, initial = 0): void => {
+      open?.dispose();
+      const seen = readGallerySeen(store, settings.starterChosen);
+      if (group === null) {
+        open = menuWindow({
+          title: t('gallery.title'),
+          intro: t('gallery.intro'),
+          rows: groups.map((g, i) => ({ label: g.title(t), about: t('gallery.group.about').replace('{seen}', String(groupSeen(g, seen))).replace('{total}', String(g.entries.length)), onConfirm: () => render(i) })),
+          back: { label: t('menu.back'), about: t('gallery.back.about'), onConfirm: onClose },
+          className: 'town-menu',
+          initial,
+        });
+      } else {
+        const g = groups[group]!;
+        open = menuWindow({
+          title: g.title(t),
+          rows: g.entries.map((e, i) => {
+            const unlocked = galleryUnlocked(e.scene, seen);
+            const roomPlea = e.scene.kind === 'plea' && !replayPlea;
+            return {
+              label: unlocked ? e.label(t) : t('gallery.locked'),
+              about: !unlocked ? t('gallery.locked.about') : roomPlea ? t('gallery.plea.room') : t('gallery.play.about'),
+              onConfirm: () => {
+                if (!unlocked || roomPlea || closeScene) return;
+                if (e.scene.kind === 'plea') return replayPlea?.();
+                closeScene = galleryCinematic(root, e.scene, () => {
+                  closeScene = null;
+                  render(group, i);
+                });
+              },
+            };
+          }),
+          back: { label: t('menu.back'), about: t('gallery.groups.about'), onConfirm: () => render(null, group) },
+          className: 'town-menu',
+          initial,
+        });
+      }
+      overlay.replaceChildren(open.element);
+    };
+    render(null);
+    parent.append(overlay);
+    return () => {
+      closeScene?.();
+      closeScene = null;
+      open?.dispose();
+      overlay.remove();
+    };
+  };
+}
+
+/**
+ * One of the gallery's cinematics over the town, on the prologue player and
+ * skippable the same way, in full: the prologue (with its music), a Sima
+ * scene (the player's Pokémon, its best Sima floor), a guardian's, a Senda
+ * chapter's. Replaying writes nothing; `onDone` runs when it ends.
+ */
+function galleryCinematic(root: HTMLElement, scene: Exclude<GalleryScene, { kind: 'plea' }>, onDone: () => void): () => void {
+  void sheetsReady();
+  const play = ((): Omit<PrologueOptions, 'sheets' | 'onDone'> => {
+    switch (scene.kind) {
+      case 'prologue':
+        return { label: t('title.prologue'), music: { start: (offsetS) => audio.playCue(PROLOGUE_MUSIC, offsetS), stop: () => audio.stopCue() } };
+      case 'sima': {
+        const text = simaText(t, readRecords(store).dungeons[ECLIPSE.id]?.bestFloor);
+        return { label: t('sima.scene.title'), text, panels: simaPanels(scene.id, { species: settings.species }, text), draw: (ctx, panel, time, camera, alpha) => drawSimaScene(ctx, panel as SimaPanel, time, camera, alpha) };
+      }
+      case 'guardian': {
+        const cinematic = GUARDIAN_CINEMATICS[scene.species]!;
+        return { label: t(`species.${scene.species}`), panels: cinematicPanels(scene.species, scene.phase, 'full'), draw: (ctx, panel, time, camera, alpha) => drawGuardianScene(ctx, cinematic, panel, time, camera, alpha) };
+      }
+      case 'story':
+        return { label: t(`story.${scene.line}.${scene.chapter}.title`), panels: storyPanels({ line: scene.line, chapter: scene.chapter }, scene.phase, t), draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha) };
+    }
+  })();
+  const screen = prologueScreen({
+    sheets: () => sheets,
+    ...play,
+    onDone: () => {
+      screen.remove();
+      // The town's own track comes back after the prologue's.
+      if (scene.kind === 'prologue') audio.setMusic('title');
+      onDone();
+    },
+  });
+  screen.style.zIndex = '6';
+  root.append(screen);
+  return () => screen.remove();
+}
+
+/**
  * The hub town (src/town): walk around; its route exit goes on exactly like
  * "Play" (`newAdventure`), Esc goes back to the title. It keeps the title
  * track (Lonely Village) playing, so the step from the title is seamless
@@ -720,7 +824,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), seen: () => markSimaSceneSeen(store, 'plea') }, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1257,7 +1361,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1492,7 +1596,7 @@ function devTownPlace(): TownPlace {
   const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
   const at = (params.get('map') ?? undefined) as TownOptions['at'];
   const window_ = params.get('window');
-  const startWindow = window_ === 'travel' || window_ === 'menu' || window_ === 'account' ? window_ : undefined;
+  const startWindow = window_ === 'travel' || window_ === 'menu' || window_ === 'account' || window_ === 'gallery' ? window_ : undefined;
   return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}) };
 }
 

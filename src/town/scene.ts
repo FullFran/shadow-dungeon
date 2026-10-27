@@ -113,8 +113,15 @@ export interface TownOptions {
   openSettings?: TownWindowOpener;
   /** The account window over the town (its Esc menu), like `openShop`: in a room the room stays. */
   openAccount?: TownWindowOpener;
-  /** Development (`?screen=town&window=travel|menu|account`): a window open from the start, for screenshots and the menu geometry check. */
-  startWindow?: 'travel' | 'menu' | 'account';
+  /**
+   * The gallery over the town (its Esc menu), like `openShop`: the cinematics
+   * already seen, to watch again. `replayPlea` plays the villagers' pleas
+   * again on the crater's rim and brings the player back (null in a room:
+   * the walker never leaves the room's town).
+   */
+  openGallery?: (parent: HTMLElement, onClose: () => void, replayPlea: (() => void) | null) => () => void;
+  /** Development (`?screen=town&window=travel|menu|account|gallery`): a window open from the start, for screenshots and the menu geometry check. */
+  startWindow?: 'travel' | 'menu' | 'account' | 'gallery';
   /**
    * The villagers' pleas before the first descent into the Sima (data/sima-plea.ts):
    * alone, while due, the scene moves to the crater's rim and the villagers
@@ -268,6 +275,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** The villagers' pleas before the first descent (data/sima-plea.ts), while they play; then where the player was going. */
   let plea: PleaState | null = null;
   let pleaThen: (() => void) | null = null;
+  /** The pleas play again from the gallery: nothing is marked, and the player goes back where it was. */
+  let pleaReplay = false;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -508,10 +517,19 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!plea) return;
     plea = null;
     dialog = null;
-    options.simaPlea?.seen();
+    if (!pleaReplay) options.simaPlea?.seen();
+    pleaReplay = false;
     const then = pleaThen;
     pleaThen = null;
     fade = { phase: 'out', ms: 0, then: () => then?.() };
+  }
+
+  /** The gallery's replay of the pleas (alone): the same scene on the rim, then back to the map and tile the player left. */
+  function replayPlea(): void {
+    if (lobby || plea || fade) return;
+    const back = { map, walker };
+    pleaReplay = true;
+    beginPlea(() => enterMap(back.map, back.walker));
   }
 
   const depart = (id: string, variant?: string) => {
@@ -644,6 +662,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       shrine: !!options.openShrine,
       online: !!options.openOnline,
       account: !!options.openAccount,
+      gallery: !!options.openGallery,
       settings: !!options.openSettings,
     };
     return new Set(TOWN_SERVICES.filter((s) => wired[s]));
@@ -656,6 +675,12 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!go) return;
     handle.stop();
     go();
+  };
+
+  /** The gallery as a town window: alone it may replay the pleas, in a room it may not. */
+  const galleryOpener = (): TownWindowOpener | undefined => {
+    const open = options.openGallery;
+    return open ? (parent, onClose) => open(parent, onClose, lobby ? null : replayPlea) : undefined;
   };
 
   /** What a row of the Esc menu does (the same windows the NPCs and places open). */
@@ -687,6 +712,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return leaveTown(options.openOnline);
       case 'account':
         return openShopWindow(options.openAccount);
+      case 'gallery':
+        return openShopWindow(galleryOpener());
     }
   }
 
@@ -856,6 +883,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   if (options.startWindow === 'travel') openShopWindow(openTravel);
   if (options.startWindow === 'menu') openMenu();
   if (options.startWindow === 'account') openShopWindow(options.openAccount);
+  if (options.startWindow === 'gallery') openShopWindow(galleryOpener());
   raf = requestAnimationFrame(frame);
   return handle;
 }

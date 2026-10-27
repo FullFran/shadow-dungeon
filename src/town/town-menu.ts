@@ -6,7 +6,7 @@ import type { TownNpc } from '../data/town';
  * walking, then the way back to the title (or the room's own rows in an
  * online room). Walking to the NPCs and places still works the same.
  */
-export const TOWN_SERVICES = ['travel', 'dungeons', 'challenges', 'evolve', 'shop', 'tutor', 'gacha', 'board', 'achievements', 'shrine', 'online', 'account', 'settings'] as const;
+export const TOWN_SERVICES = ['travel', 'dungeons', 'challenges', 'evolve', 'shop', 'tutor', 'gacha', 'board', 'achievements', 'gallery', 'shrine', 'online', 'account', 'settings'] as const;
 export type TownService = (typeof TOWN_SERVICES)[number];
 
 /** The service each NPC window is (every `opens` kind must be one; tests/town/town-menu.test.ts). */

@@ -47,6 +47,7 @@ const SCREENS = [
   ['travel', 'screen=town&window=travel', 3000, undefined, ALL_MAPS],
   ['town-menu', 'screen=town&window=menu', 3000],
   ['town-account', 'screen=town&window=account', 3000],
+  ['town-gallery', 'screen=town&window=gallery', 3000],
   ['options', '', 1500, 'options'],
   ['item-pick', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500],
   ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, 'menu'],

@@ -3148,7 +3148,7 @@
   "gallery.locked": "???",
   "gallery.locked.about": "You have not seen it yet.",
   "gallery.play.about": "Watch it again. Nothing in your game changes.",
-  "gallery.group.about": "{seen} of {total} seen.",
+  "gallery.group.about": "Seen: {seen} of {total}.",
   "gallery.plea.room": "The pleas can only be watched again outside a room.",
   "gallery.back.about": "Back to the town.",
   "gallery.groups.about": "Back to the gallery's list.",

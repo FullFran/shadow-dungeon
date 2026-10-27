@@ -55,6 +55,21 @@ describe('town Esc menu', () => {
     expect(overlay).toContain("h('div', { className: 'town-shop' })");
   });
 
+  it('the gallery is a window over the town like the others, in both towns; the pleas replay only alone and mark nothing', () => {
+    const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
+    expect(scene).toMatch(/case 'gallery':\s*return openShopWindow\(galleryOpener\(\)\);/);
+    expect(scene).toContain('open(parent, onClose, lobby ? null : replayPlea)');
+    expect(scene).toMatch(/if \(!pleaReplay\) options\.simaPlea\?\.seen\(\);/);
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    expect(main.match(/openGallery: townGallery\(root\)/g)).toHaveLength(2);
+    const overlay = main.slice(main.indexOf('function townGallery('), main.indexOf('function galleryCinematic('));
+    expect(overlay).not.toContain('show(');
+    expect(overlay).toContain("h('div', { className: 'town-shop' })");
+    // Replaying writes nothing: no seen flag, save, record or story.
+    const player = main.slice(main.indexOf('function galleryCinematic('), main.indexOf('function galleryCinematic(') + 3000);
+    for (const write of ['markSeen', 'markSimaSceneSeen', 'markPrologueSeen', 'writeSave', 'recordStory', 'recordHerald', 'saveRun']) expect(player, write).not.toContain(write);
+  });
+
   it('every way into a dungeon (the Esc menu, the waystone, the entrances, the windows) goes through depart, where the Sima pleas wait', () => {
     const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
     // The pleas are checked first thing in depart (alone, the first time, heading to the Sima).
@@ -88,6 +103,7 @@ describe('town Esc menu', () => {
       shrine: 'openShrine',
       online: 'openOnline',
       account: 'openAccount',
+      gallery: 'openGallery',
       settings: 'openSettings',
     };
     for (const [service, key] of Object.entries(keys)) expect(solo, service).toContain(`${key}:`);

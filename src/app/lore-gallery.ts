@@ -43,7 +43,6 @@ export interface GallerySeen {
   story: StoryProgress | undefined;
 }
 
-const ROMAN: Record<ChapterNumber, string> = { 1: 'I', 2: 'II', 3: 'III' };
 const PHASES: readonly StoryPhase[] = ['before', 'after'];
 const GUARDIAN_PHASES: readonly CinematicPhase[] = ['pre', 'post'];
 
@@ -63,7 +62,8 @@ function sendaGroup(quest: StoryQuest): GalleryGroup {
         (phase): GalleryEntry => ({
           id: `story-${line}-${chapter}-${phase}`,
           scene: { kind: 'story', line, chapter, phase },
-          label: (tr) => `${ROMAN[chapter]} · ${tr(storyKeys.chapterTitle(line, chapter))} · ${tr(`gallery.story.${phase}`)}`,
+          // The chapter's title already carries its numeral ("I. El casco").
+          label: (tr) => `${tr(storyKeys.chapterTitle(line, chapter))} · ${tr(`gallery.story.${phase}`)}`,
         }),
       ),
     ),
