@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { depthScale } from '../../src/core/endless';
 import type { WorldState } from '../../src/core/state';
 import type { Difficulty } from '../../src/data/difficulty';
@@ -43,6 +43,8 @@ export const SIMA_STORY_CASES: readonly BossCase[] = [
 ];
 
 describe('the Sendas\' bosses are beatable in the Sima', () => {
+  // Back-to-back synchronous proofs never let the worker read its RPC replies ("Timeout calling onTaskUpdate" once a file runs past 60 s): yield a macrotask after each.
+  afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
   it('every shadow and every wound has its case', () => {
     expect(SIMA_STORY_CASES.length).toBe(SIMA_SHADOWS.length + SIMA_WOUNDS.length);
   });
