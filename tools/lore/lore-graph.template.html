@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grafo del lore</title>
+<style>
+  :root {
+    --bg: #f6f4f1; --panel: #ffffff; --ink: #1d1b20; --muted: #5d5966; --line: #d6d1cb; --edge: rgba(60, 55, 70, 0.22);
+    --edge-hi: rgba(170, 30, 50, 0.85); --focus: #b3122f;
+    --personaje: #c0392b; --lugar: #2e7d32; --faccion: #6a1b9a; --concepto: #1565c0; --suceso: #ef6c00; --objeto: #6d4c41; --senda: #00838f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121016; --panel: #1c1922; --ink: #ece8f1; --muted: #a49eb0; --line: #34303c; --edge: rgba(220, 210, 235, 0.16);
+      --edge-hi: rgba(255, 110, 120, 0.9); --focus: #ff6b7d;
+      --personaje: #ff7b6b; --lugar: #6fcf73; --faccion: #c58af0; --concepto: #6aa9ff; --suceso: #ffad5c; --objeto: #c9a08e; --senda: #4fd1d9;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121016; --panel: #1c1922; --ink: #ece8f1; --muted: #a49eb0; --line: #34303c; --edge: rgba(220, 210, 235, 0.16);
+    --edge-hi: rgba(255, 110, 120, 0.9); --focus: #ff6b7d;
+    --personaje: #ff7b6b; --lugar: #6fcf73; --faccion: #c58af0; --concepto: #6aa9ff; --suceso: #ffad5c; --objeto: #c9a08e; --senda: #4fd1d9;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  #search { flex: 1 1 180px; min-width: 0; max-width: 320px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; }
+  #filters { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  #filters label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; color: var(--muted); }
+  #filters .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  #legend { color: var(--muted); font-size: 12px; }
+  #legend .dash { display: inline-block; width: 18px; border-top: 2px dashed var(--muted); vertical-align: middle; margin: 0 4px; }
+  button { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); cursor: pointer; }
+  main { position: relative; display: grid; grid-template-columns: 1fr minmax(0, 360px); min-height: 0; }
+  #stage { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+  #stage.dragging { cursor: grabbing; }
+  aside { border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; padding: 14px 16px; min-height: 0; }
+  aside h2 { font-size: 17px; margin: 0 0 4px; }
+  aside .meta { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  aside h3 { font-size: 13px; margin: 14px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  aside ul { margin: 0; padding-left: 18px; }
+  aside li { margin: 2px 0; word-break: break-word; }
+  aside code { font-size: 12px; }
+  .nb { background: none; border: none; padding: 0; color: var(--focus); text-decoration: underline; cursor: pointer; text-align: left; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--line); margin-right: 4px; }
+  .node circle { stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
+  .node.design circle { stroke: var(--ink); stroke-dasharray: 3 2; stroke-width: 1.5; fill-opacity: 0.55; }
+  .node text { fill: var(--ink); font-size: 10px; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  .node.dim { opacity: 0.12; }
+  .node.hit circle { stroke: var(--focus); stroke-width: 3; }
+  .node.sel circle { stroke: var(--focus); stroke-width: 4; }
+  line.edge { stroke: var(--edge); stroke-width: 1; }
+  line.edge.design { stroke-dasharray: 4 3; }
+  line.edge.hi { stroke: var(--edge-hi); stroke-width: 1.8; }
+  line.edge.dim { opacity: 0.08; }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr 42%; }
+    aside { border-left: none; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Grafo del lore</h1>
+  <input id="search" type="search" placeholder="Buscar (nombre, resumen, fuente)…" aria-label="Buscar">
+  <div id="filters" aria-label="Filtrar por tipo"></div>
+  <span id="legend"><span class="dash"></span>diseño (no canon)</span>
+  <button id="theme" type="button" title="Cambiar tema">Tema</button>
+  <button id="reset" type="button">Encuadrar</button>
+</header>
+<main>
+  <svg id="stage" role="img" aria-label="Grafo de nodos del lore"></svg>
+  <aside id="panel"><h2>Mazmorra Sombría</h2><p class="meta" id="counts"></p><p>Pulsa un nodo para ver su resumen, sus fuentes y sus vecinos. Rueda o pellizco para acercar; arrastra el fondo para mover y un nodo para recolocarlo.</p><p>Fuentes: <code>ruta:línea</code> en el repositorio, o <code>i18n:clave</code> en <code>src/i18n/es.json</code>. La biblia completa está en <code>docs/lore/lore.md</code>.</p></aside>
+</main>
+<script id="lore-data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const data = JSON.parse(document.getElementById('lore-data').textContent);
+  const TYPES = ['personaje', 'lugar', 'faccion', 'concepto', 'suceso', 'objeto', 'senda'];
+  const TYPE_LABEL = { personaje: 'Personaje', lugar: 'Lugar', faccion: 'Facción', concepto: 'Concepto', suceso: 'Suceso', objeto: 'Objeto', senda: 'Senda' };
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('stage');
+  const panel = document.getElementById('panel');
+  const byId = new Map(data.nodes.map((n) => [n.id, n]));
+  const nbrs = new Map(data.nodes.map((n) => [n.id, []]));
+  for (const e of data.edges) { nbrs.get(e.from).push({ e, other: e.to, dir: '→' }); nbrs.get(e.to).push({ e, other: e.from, dir: '←' }); }
+  document.getElementById('counts').textContent = `${data.nodes.length} nodos · ${data.edges.length} relaciones`;
+
+  // Theme toggle (remembered per viewer when storage is available).
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('lore-graph-theme'); if (t) root.dataset.theme = t; } catch (_) {}
+  document.getElementById('theme').onclick = () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('lore-graph-theme', root.dataset.theme); } catch (_) {}
+  };
+
+  // Filters.
+  const active = new Set(TYPES);
+  const filters = document.getElementById('filters');
+  for (const t of TYPES) {
+    const lab = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.onchange = () => { cb.checked ? active.add(t) : active.delete(t); refresh(); };
+    const dot = document.createElement('span'); dot.className = 'dot'; dot.style.background = `var(--${t})`;
+    lab.append(cb, dot, document.createTextNode(TYPE_LABEL[t]));
+    filters.append(lab);
+  }
+
+  // Layout state.
+  const N = data.nodes.length;
+  const deg = new Map(data.nodes.map((n) => [n.id, nbrs.get(n.id).length]));
+  const pos = new Map();
+  data.nodes.forEach((n, i) => {
+    const a = (i / N) * Math.PI * 2 * 7.3; const r = 60 + 7 * Math.sqrt(i) * 12;
+    pos.set(n.id, { x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, fixed: false });
+  });
+  const radius = (id) => 4 + Math.min(10, Math.sqrt(deg.get(id)) * 1.8);
+
+  const gRoot = document.createElementNS(NS, 'g');
+  const gEdges = document.createElementNS(NS, 'g');
+  const gNodes = document.createElementNS(NS, 'g');
+  gRoot.append(gEdges, gNodes); svg.append(gRoot);
+  const edgeEls = data.edges.map((e) => {
+    const l = document.createElementNS(NS, 'line');
+    l.setAttribute('class', 'edge' + (byId.get(e.from).status === 'diseño' || byId.get(e.to).status === 'diseño' ? ' design' : ''));
+    const tt = document.createElementNS(NS, 'title'); tt.textContent = `${byId.get(e.from).label} ${e.relation} ${byId.get(e.to).label}`; l.append(tt);
+    gEdges.append(l); return l;
+  });
+  const nodeEls = new Map();
+  for (const n of data.nodes) {
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'node' + (n.status === 'diseño' ? ' design' : ''));
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('r', radius(n.id)); c.setAttribute('fill', `var(--${n.type})`);
+    const tt = document.createElementNS(NS, 'title'); tt.textContent = `${n.label} (${TYPE_LABEL[n.type]}${n.status === 'diseño' ? ', diseño' : ''})`; c.append(tt);
+    const tx = document.createElementNS(NS, 'text'); tx.textContent = n.label; tx.setAttribute('x', radius(n.id) + 3); tx.setAttribute('y', 3);
+    g.append(c, tx); gNodes.append(g); nodeEls.set(n.id, { g, tx });
+    g.addEventListener('pointerdown', (ev) => startNodeDrag(ev, n.id));
+    g.addEventListener('click', (ev) => { ev.stopPropagation(); select(n.id); });
+  }
+
+  // Force simulation (repulsion, springs, gentle centring), cooled over time.
+  let alpha = 1;
+  function tick() {
+    const ids = data.nodes.map((n) => n.id);
+    for (let i = 0; i < ids.length; i++) {
+      const a = pos.get(ids[i]);
+      for (let j = i + 1; j < ids.length; j++) {
+        const b = pos.get(ids[j]);
+        let dx = a.x - b.x, dy = a.y - b.y; let d2 = dx * dx + dy * dy || 0.01;
+        if (d2 > 250000) continue;
+        const f = (900 / d2) * alpha; const d = Math.sqrt(d2);
+        dx /= d; dy /= d; a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+      }
+    }
+    for (const e of data.edges) {
+      const a = pos.get(e.from), b = pos.get(e.to);
+      const dx = b.x - a.x, dy = b.y - a.y; const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const f = (d - 70) * 0.012 * alpha; const fx = (dx / d) * f, fy = (dy / d) * f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    }
+    for (const p of pos.values()) {
+      p.vx -= p.x * 0.002 * alpha; p.vy -= p.y * 0.002 * alpha;
+      if (!p.fixed) { p.x += Math.max(-20, Math.min(20, p.vx)); p.y += Math.max(-20, Math.min(20, p.vy)); }
+      p.vx *= 0.6; p.vy *= 0.6;
+    }
+    alpha = Math.max(0.02, alpha * 0.985);
+  }
+  for (let i = 0; i < 160; i++) tick();
+
+  function draw() {
+    data.edges.forEach((e, i) => {
+      const a = pos.get(e.from), b = pos.get(e.to); const l = edgeEls[i];
+      l.setAttribute('x1', a.x); l.setAttribute('y1', a.y); l.setAttribute('x2', b.x); l.setAttribute('y2', b.y);
+    });
+    for (const [id, el] of nodeEls) { const p = pos.get(id); el.g.setAttribute('transform', `translate(${p.x},${p.y})`); }
+  }
+
+  // View transform (pan and zoom).
+  let view = { x: 0, y: 0, k: 1 };
+  const applyView = () => { gRoot.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); updateLabels(); };
+  function fit() {
+    const shown = data.nodes.filter((n) => active.has(n.type));
+    const xs = shown.map((n) => pos.get(n.id).x), ys = shown.map((n) => pos.get(n.id).y);
+    if (!xs.length) return;
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const w = svg.clientWidth || 800, h = svg.clientHeight || 600;
+    const k = Math.min(w / (maxX - minX + 120), h / (maxY - minY + 120), 2.5);
+    view = { k, x: w / 2 - ((minX + maxX) / 2) * k, y: h / 2 - ((minY + maxY) / 2) * k };
+    applyView();
+  }
+  svg.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect(); const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    const k2 = Math.max(0.15, Math.min(6, view.k * Math.exp(-ev.deltaY * 0.0015)));
+    view.x = mx - ((mx - view.x) * k2) / view.k; view.y = my - ((my - view.y) * k2) / view.k; view.k = k2; applyView();
+  }, { passive: false });
+
+  // Pointer handling: background pan, pinch zoom, node drag.
+  const pointers = new Map(); let pan = null; let pinch = null; let dragNode = null; let moved = false;
+  svg.addEventListener('pointerdown', (ev) => {
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (dragNode) return;
+    if (pointers.size === 2) {
+      const [p1, p2] = [...pointers.values()];
+      pinch = { d: Math.hypot(p1.x - p2.x, p1.y - p2.y), k: view.k, cx: (p1.x + p2.x) / 2, cy: (p1.y + p2.y) / 2, vx: view.x, vy: view.y }; pan = null;
+    } else { pan = { x: ev.clientX, y: ev.clientY, vx: view.x, vy: view.y }; moved = false; svg.classList.add('dragging'); }
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener('pointermove', (ev) => {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (dragNode) {
+      const r = svg.getBoundingClientRect(); const p = pos.get(dragNode);
+      p.x = (ev.clientX - r.left - view.x) / view.k; p.y = (ev.clientY - r.top - view.y) / view.k; moved = true; draw(); return;
+    }
+    if (pinch && pointers.size === 2) {
+      const [p1, p2] = [...pointers.values()]; const r = svg.getBoundingClientRect();
+      const k2 = Math.max(0.15, Math.min(6, pinch.k * Math.hypot(p1.x - p2.x, p1.y - p2.y) / pinch.d));
+      const cx = pinch.cx - r.left, cy = pinch.cy - r.top;
+      view.x = cx - ((cx - pinch.vx) * k2) / pinch.k; view.y = cy - ((cy - pinch.vy) * k2) / pinch.k; view.k = k2; applyView(); return;
+    }
+    if (pan) { const dx = ev.clientX - pan.x, dy = ev.clientY - pan.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; view.x = pan.vx + dx; view.y = pan.vy + dy; applyView(); }
+  });
+  const endPointer = (ev) => {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (dragNode) { pos.get(dragNode).fixed = true; dragNode = null; }
+    if (pointers.size === 0) { pan = null; svg.classList.remove('dragging'); }
+  };
+  svg.addEventListener('pointerup', endPointer); svg.addEventListener('pointercancel', endPointer);
+  svg.addEventListener('click', () => { if (!moved) select(null); });
+  function startNodeDrag(ev, id) { ev.stopPropagation(); dragNode = id; moved = false; pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }); svg.setPointerCapture(ev.pointerId); }
+
+  // Selection, search and filters.
+  let selected = null; let query = '';
+  const search = document.getElementById('search');
+  search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); refresh(); });
+  search.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    const hit = data.nodes.find((n) => active.has(n.type) && matches(n));
+    if (hit) { select(hit.id); centre(hit.id); }
+  });
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const matches = (n) => !query || norm(`${n.label} ${n.id} ${n.summary} ${n.sources.join(' ')}`).includes(norm(query));
+  function centre(id) { const p = pos.get(id); const w = svg.clientWidth, h = svg.clientHeight; view.x = w / 2 - p.x * view.k; view.y = h / 2 - p.y * view.k; applyView(); }
+
+  function updateLabels() {
+    const near = selected ? new Set([selected, ...nbrs.get(selected).map((x) => x.other)]) : null;
+    for (const n of data.nodes) {
+      const show = view.k > 1.4 || deg.get(n.id) >= 9 || (near && near.has(n.id)) || (query && matches(n));
+      nodeEls.get(n.id).tx.style.display = show ? '' : 'none';
+    }
+  }
+
+  function refresh() {
+    const near = selected ? new Set([selected, ...nbrs.get(selected).map((x) => x.other)]) : null;
+    for (const n of data.nodes) {
+      const el = nodeEls.get(n.id).g;
+      const visible = active.has(n.type);
+      el.style.display = visible ? '' : 'none';
+      el.classList.toggle('dim', visible && ((near && !near.has(n.id)) || (!!query && !matches(n))));
+      el.classList.toggle('hit', !!query && matches(n));
+      el.classList.toggle('sel', n.id === selected);
+    }
+    data.edges.forEach((e, i) => {
+      const visible = active.has(byId.get(e.from).type) && active.has(byId.get(e.to).type);
+      const l = edgeEls[i]; l.style.display = visible ? '' : 'none';
+      const hi = selected && (e.from === selected || e.to === selected);
+      l.classList.toggle('hi', !!hi);
+      l.classList.toggle('dim', !!selected && !hi);
+    });
+    updateLabels();
+  }
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function select(id) {
+    selected = id;
+    if (!id) { refresh(); return; }
+    const n = byId.get(id);
+    const list = nbrs.get(id).slice().sort((a, b) => a.e.relation.localeCompare(b.e.relation));
+    panel.innerHTML = `<h2>${esc(n.label)}</h2>
+      <div class="meta"><span class="tag" style="border-color:var(--${n.type})">${TYPE_LABEL[n.type]}</span><span class="tag">${n.status === 'diseño' ? 'diseño (no canon)' : 'canon'}</span><code>${esc(n.id)}</code></div>
+      <p>${esc(n.summary)}</p>
+      <h3>Fuentes</h3><ul>${n.sources.map((s) => `<li><code>${esc(s)}</code></li>`).join('')}</ul>
+      <h3>Vecinos (${list.length})</h3><ul>${list.map(({ e, other, dir }) => `<li>${dir} <em>${esc(e.relation)}</em> <button class="nb" data-id="${esc(other)}">${esc(byId.get(other).label)}</button><br><small><code>${e.sources.map(esc).join(' · ')}</code></small></li>`).join('')}</ul>`;
+    panel.querySelectorAll('.nb').forEach((b) => b.addEventListener('click', () => { select(b.dataset.id); centre(b.dataset.id); }));
+    panel.scrollTop = 0;
+    refresh();
+  }
+
+  document.getElementById('reset').onclick = fit;
+  draw(); fit(); refresh();
+  // Keep settling a little after load, then stop.
+  let frames = 0;
+  (function loop() { if (frames++ < 140) { tick(); draw(); requestAnimationFrame(loop); } })();
+  addEventListener('resize', fit);
+})();
+</script>
+</body>
+</html>
