@@ -2,3 +2,5 @@ pb_data
 .env
 *.md
 docker-compose.yml
+# The embedded lore is markdown and must reach the build.
+!internal/lore/data/*.md

@@ -11,6 +11,8 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 
 	"github.com/fullfran/mazmorra-sombria/server/internal/hooks"
+	"github.com/fullfran/mazmorra-sombria/server/internal/lore"
+	"github.com/fullfran/mazmorra-sombria/server/internal/lore/loreapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
 	_ "github.com/fullfran/mazmorra-sombria/server/migrations"
 )
@@ -28,9 +30,19 @@ func main() {
 
 	hooks.Register(app)
 
+	// The lore is embedded; a broken copy stops the server here, not later.
+	loreIndex, err := lore.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Migrations have run by now (apis.Serve applies them before OnServe).
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		if err := setup.Apply(e.App, cfg); err != nil {
+			return err
+		}
+		// Public, read-only lore pages and API (owner decision 2026-10-27).
+		if err := loreapi.Register(e.Router, loreIndex); err != nil {
 			return err
 		}
 		names := make([]string, 0, len(cfg.Providers))
@@ -39,7 +51,8 @@ func main() {
 		}
 		e.App.Logger().Info("shadow dungeon api configured",
 			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits,
-			"smtp", cfg.Mail.SMTPEnabled(), "appURL", cfg.Mail.AppURL)
+			"smtp", cfg.Mail.SMTPEnabled(), "appURL", cfg.Mail.AppURL,
+			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit)
 		if cfg.Mail.SMTPPartial() {
 			e.App.Logger().Warn("SMTP stays off: set SD_SMTP_HOST, SD_SMTP_PASSWORD and SD_MAIL_FROM_ADDRESS")
 		}
