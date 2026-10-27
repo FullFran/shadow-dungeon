@@ -21,6 +21,9 @@ Guests keep playing without an account; that is all client-side.
 | `internal/rules/` | Pure rules: save validation, revision check, nickname rules (table-driven tests) |
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
 | `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
+| `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
+| `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
+| `skills/lore/` | Claude Code skill (`lore-sima`) that queries the lore API |
 
 ## Collections
 
@@ -98,6 +101,43 @@ Sign-up does not log in: call `auth-with-password` after it. Errors are
 PocketBase's `{"status":400,"data":{"email":{"code":"validation_not_unique"}}}`
 shape (`validation_min_text_constraint` for a short password,
 `validation_required` for a missing email). A 429 means a rate limit.
+
+## Lore (public, read-only)
+
+The game's lore is served from the same binary, read-only and **public on
+purpose for now** (owner decision, 2026-10-27: public while the lore is
+being built, to be made private later). It reads only embedded files and
+never touches PocketBase collections.
+
+| Route | What it returns |
+|---|---|
+| `GET /lore` | The lore bible as an HTML page (index, anchors, "Cómo consultar") |
+| `GET /lore/grafo` | The offline lore graph viewer, as is |
+| `GET /lore/buenas-practicas` | The best-practice notes as an HTML page |
+| `GET /api/lore/context?q=...&k=8` | Graph RAG: top `k` matching nodes (max 25) plus 1-hop neighbours, their edges, the bible sections that match or mention them (≤ 6,000 characters of section text) and `context`, a plain-text bundle with sources and canon tiers (≤ 14,000 characters) |
+| `GET /api/lore/node/{id}?depth=1\|2` | A node, its neighbours, edges and the sections that mention it; 404 for an unknown id |
+| `GET /api/lore/search?q=` | Ranked node labels and section headings, for autocomplete |
+| `GET /api/lore/graph` | `lore-graph.json` as is |
+| `GET /api/lore/doc/{lore\|buenas-practicas}` | The markdown as is |
+| `GET /api/lore/meta` | Counts, data version (hash of the embedded files), source ref and commit |
+
+Matching folds case and accents ("craneo" finds «cráneo») and scores with
+BM25. Every answer carries an `ETag` and `Cache-Control` (5 min for pages
+and raw data, 1 min for queries); a missing or over-300-character `q` is 400.
+The pages load Mermaid 10.9.1 from cdnjs (pinned, with SRI) for the map; the
+graph viewer needs nothing external.
+
+The source of truth is `docs/lore/` in the game repo, branch
+`docs/lore-bible`. After changing it there:
+
+```sh
+tools/sync-lore.sh                      # from docs/lore-bible (or --ref REF, --repo PATH)
+tools/sync-lore.sh --worktree           # from the game repo's working tree
+go test ./internal/lore/...             # then commit internal/lore/data/ and redeploy
+```
+
+The synced copies are committed so the Docker build needs nothing outside
+`server/` (`.dockerignore` lets `internal/lore/data/*.md` through).
 
 ## Email (Resend SMTP)
 
