@@ -93,6 +93,20 @@ describe('world maps', () => {
         for (const point of map.lore) expect(reachableNear(map, point), point.id).toBe(true);
       });
 
+      it('lets the player talk to every NPC without standing on an entrance or a link (they open a window or leave the map)', () => {
+        const triggers = new Set<number>();
+        for (const r of [...map.entrances, ...map.links]) for (let y = r.y; y < r.y + r.height; y++) for (let x = r.x; x < r.x + r.width; x++) triggers.add(y * cols + x);
+        for (const npc of map.npcs) {
+          const near = [...reach].some((index) => {
+            if (triggers.has(index)) return false;
+            const cx = ((index % cols) + 0.5) * TILE;
+            const cy = (Math.floor(index / cols) + 0.5) * TILE;
+            return Math.hypot(cx - (npc.x + 0.5) * TILE, cy - (npc.y + 0.5) * TILE) <= INTERACT_RANGE;
+          });
+          expect(near, `${map.id} ${npc.id}`).toBe(true);
+        }
+      });
+
       it('puts each dungeon entrance on reachable floor with a reachable way back outside any trigger', () => {
         for (const e of map.entrances) {
           for (let y = e.y; y < e.y + e.height; y++) for (let x = e.x; x < e.x + e.width; x++) expect(reach.has(y * cols + x), `${e.dungeon} ${x},${y}`).toBe(true);

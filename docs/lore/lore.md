@@ -133,7 +133,7 @@ Iniciales (test de personalidad): Mimikyu, Zorua, Litwick, Cubone (`src/data/qui
 | Línea | Vecino | Dónde | Antes de su Senda | Al reconocerte (capítulo I cerrado) |
 |---|---|---|---|---|
 | Mimikyu | El del puesto de la suerte | Refugio, el puesto | `town.gacha.1` | `town.gacha.after.1` («Tú te das la vuelta sin que te lo pida») |
-| Cubone | El pescador | Lago, final del embarcadero | `world.npc.fisher.1-2` | `world.npc.fisher.after.1` («mejor que seamos dos mirando») |
+| Cubone | El pescador | Lago, embarcadero, al pie de la escalera de las Cuevas | `world.npc.fisher.1-2` | `world.npc.fisher.after.1` («mejor que seamos dos mirando») |
 | Litwick | La guardiana de la llama | Lago, junto al camino | `world.npc.keeper.1-4` | `world.npc.keeper.after.1` («Quédate a un paso, como aquella noche») |
 | Zorua | Un niño callado (Shroomish; Zoroark al cerrar el III) | Lago, piedras de la plaza | `town.resident.zorua.1-2` | `town.resident.zorua.after.1`; al cerrar el III, `town.resident.zorua.revealed.1` («Soy yo. Solo yo») |
 | Abra | Bajo la manta | Refugio, rincón junto a la casa de piedra | `town.resident.abra.1-2` (ronquidos) | `town.resident.abra.after.1-2` («No me voy a ir») |

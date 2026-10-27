@@ -343,9 +343,9 @@ export const LAGO: WorldMap = {
     { kind: 'rubble', x: 15, y: 15 },
   ],
   npcs: [
-    { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 5, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'], resident: { line: 'cubone', after: ['world.npc.fisher.after.1', 'world.npc.fisher.2'] } },
-    // Piplup beside the fisher at the end of the pier, refusing whatever it is offered.
-    { id: 'proud', role: 'proud', species: 'piplup', x: 23, y: 5, lines: ['town.resident.piplup.1', 'town.resident.piplup.2'], resident: { line: 'piplup', after: ['town.resident.piplup.after.1'] } },
+    { id: 'fisher', role: 'fisher', species: 'cubone', x: 24, y: 7, lines: ['world.npc.fisher.1', 'world.npc.fisher.2'], resident: { line: 'cubone', after: ['world.npc.fisher.after.1', 'world.npc.fisher.2'] } },
+    // Piplup beside the fisher on the pier, by the only hole down to the water, refusing whatever it is offered.
+    { id: 'proud', role: 'proud', species: 'piplup', x: 24, y: 8, lines: ['town.resident.piplup.1', 'town.resident.piplup.2'], resident: { line: 'piplup', after: ['town.resident.piplup.after.1'] } },
     {
       id: 'keeper',
       role: 'keeper',
