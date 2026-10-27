@@ -83,8 +83,9 @@
    "label": "Las sombras",
    "type": "faccion",
    "status": "canon",
-   "summary": "Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4).",
+   "summary": "Los que entraron en las mazmorras y volvieron sin ser ellos; por eso los enemigos son versiones sombrías. Una sombra es lo que queda cuando tu sombra ya no te necesita: despacio, bajada a bajada; de golpe, la noche del Eclipse, a los que estaban en la plaza (decisión del dueño, 27-10-2026; C4). Léxico (C11): una sombra enemiga es una sombra que ya no necesitó a su dueño.",
    "sources": [
+    "docs/lore/lore.md:306",
     "i18n:prologue.shadows.2",
     "i18n:town.story.2",
     "docs/gdd.md:225",
@@ -161,8 +162,9 @@
    "label": "Tu sombra",
    "type": "concepto",
    "status": "canon",
-   "summary": "La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda.",
+   "summary": "La sombra que baja contigo y no te suelta. Mientras bajas, tira de ti hacia el fondo; cuando te pierdes te sube, solo porque necesita un cuerpo vivo al que volver: no te salva, te guarda. Cada bajada se bebe un poco más de ti. A quien baja sin una, la Sima se lo queda. Léxico (C11): la sombra es tuya; es tuya mientras te necesita.",
    "sources": [
+    "docs/lore/lore.md:306",
     "i18n:sima.scene.lost.5",
     "i18n:sima.scene.lost.10",
     "i18n:sima.scene.lost.13",
@@ -258,8 +260,9 @@
    "label": "Sombras de las Sendas",
    "type": "faccion",
    "status": "canon",
-   "summary": "Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela.",
+   "summary": "Los jefes intermedios de las Sendas: Pokémon que encajan con la historia de cada línea, hechos sombra. Una sombra no vuela. Léxico (C11): la sombra de una Senda es la herida de un vecino hecha forma.",
    "sources": [
+    "docs/lore/lore.md:306",
     "docs/story-quests.md:52"
    ]
   },
@@ -337,8 +340,9 @@
    "label": "Eco del Eclipse",
    "type": "personaje",
    "status": "canon",
-   "summary": "Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...).",
+   "summary": "Tu forma en negro y rojo, «La sombra que bajó contigo»: la parte de ti que el eclipse ya se ha bebido, lo que tu sombra ya se ha llevado de ti; por eso hay que vencerlo. Crece en cada encuentro (plantas 10, 20...). Léxico (C11): el eco es de la Sima; tu Eco es lo que la Sima guardó de ti.",
    "sources": [
+    "docs/lore/lore.md:306",
     "i18n:sima.echo.subtitle",
     "i18n:sima.scene.own-shadow.3",
     "i18n:sima.echo.line.1",
@@ -350,8 +354,9 @@
    "label": "Ecos de guardián",
    "type": "faccion",
    "status": "canon",
-   "summary": "Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro.",
+   "summary": "Lo que la Sima guarda de los guardianes (plantas 5, 15, 25...); en la Sima, «guardián» es todo jefe atado a un juramento, así que Trevenant, jefe intermedio, también sale en el turno. Si no has vencido al guardián, sale como Guardián sin rostro. Léxico (C11): un eco es lo que la Sima guarda de algo que bajó; estos, su recuerdo de los guardianes.",
    "sources": [
+    "docs/lore/lore.md:306",
     "i18n:endless.echo",
     "i18n:species.sima-faceless",
     "i18n:endless.echo.faceless",
@@ -412,8 +417,9 @@
    "label": "Eco mercader",
    "type": "personaje",
    "status": "canon",
-   "summary": "Un mercader de la Sima. «El eco te ve marchar sin decir nada.»",
+   "summary": "Un mercader de la Sima. «El eco te ve marchar sin decir nada.» Léxico (C11): el recuerdo que la Sima guarda de alguien que bajó a comerciar.",
    "sources": [
+    "docs/lore/lore.md:306",
     "i18n:sima.event.merchant",
     "i18n:sima.merchant.leaveText"
    ]
@@ -6320,6 +6326,38 @@
    "relation": "lleva_en_las_sendas",
    "sources": [
     "docs/gdd.md:423"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "eco-del-eclipse",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:306"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "ecos-guardian",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:306"
+   ]
+  },
+  {
+   "from": "sima",
+   "to": "eco-mercader",
+   "relation": "guarda",
+   "sources": [
+    "docs/lore/lore.md:306"
+   ]
+  },
+  {
+   "from": "sombra-senda",
+   "to": "herida",
+   "relation": "da_forma_a",
+   "sources": [
+    "docs/lore/lore.md:306"
    ]
   },
   {
