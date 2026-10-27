@@ -233,10 +233,11 @@ for (const [line, info] of Object.entries(LINES)) {
 // Senda places and losses.
 N('madre-cubone', 'La madre de Cubone', 'personaje', 'Bajó a las cuevas a buscar luz para el lago la noche del Eclipse; volvió su cráneo. Abajo, una sombra con su forma tararea.', [I('story.cubone.2.before.1'), I('story.cubone.2.before.3'), I('sima.plea.fisher.1')]);
 N('nino-casa-grande', 'El niño de la casa grande', 'personaje', 'Se perdió en las cuevas; Litwick lo llevó a casa comiéndose un poco de él; tuvo frío siempre y vivió mucho, y ya de viejo bajó a la Sima a buscar calor (C8, resuelta).', [I('story.litwick.2.before.2'), I('story.litwick.2.after.2'), I('sima.plea.keeper.2')]);
-N('manada-zorua', 'La manada de Zorua', 'faccion', 'Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo.', [I('story.zorua.2.before.1'), I('story.zorua.2.before.2'), I('sima.plea.storyteller.4')]);
+N('manada-zorua', 'La manada de Zorua', 'faccion', 'Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo. Es la manada que perdió Gastly; respuesta interna (M8): la niebla blanca se los quedó y ahora son sombras con caras ajenas.', [I('story.zorua.2.before.1'), I('story.zorua.2.before.2'), I('sima.plea.storyteller.4')]);
 N('vieja-empoleon', 'La vieja Empoleon del lago', 'personaje', 'Sacó a Piplup del hielo y le dejó una baya. Tras el Eclipse bajó a buscar el reflejo del cielo y no subió.', [I('story.piplup.2.after.2'), I('story.piplup.3.before.1')]);
 N('madre-shinx', 'La madre de Shinx', 'personaje', 'Una Luxray de la manada al borde de la tormenta; tras el Eclipse salió a buscar a todos los perdidos con los ojos abiertos y no volvió.', [I('story.shinx.2.before.2'), I('story.shinx.3.before.2')]);
 N('mayores-axew', 'Los mayores de Axew', 'faccion', 'Bajaron por la barranca a luchar contra lo que se bebía el sol y no esperaron a Axew. Solo Dragonite encontró el camino de vuelta.', [I('story.axew.2.before.1'), I('story.axew.3.boss.6.pre.2')]);
+N('madre-zorua', 'La madre de Zorua', 'personaje', 'Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.', ['docs/lore/lore.md:319', I('story.zorua.1.fragment.2.text'), I('story.zorua.3.fragment.2.text')], 'diseño');
 N('pequeno-que-miro', 'El pequeño que miró', 'personaje', 'Miró debajo del trapo de Mimikyu y no volvió a la plaza; «no enfermó por lo que vio. Enfermó de miedo».', [I('story.mimikyu.2.before.3'), I('story.mimikyu.2.after.2')]);
 
 // --- Edges between the rest -----------------------------------------------
@@ -321,6 +322,12 @@ e('la-boca', 'sima', 'abre', 'src/data/sima-scenes.ts:94');
 e('el-regreso', 'crater', 'ocurre_en', I('sima.scene.return.1'));
 e('punto-de-quiebre', 'crater', 'ocurre_en', I('sima.scene.lost.6'));
 e('gastly', 'manada-zorua', 'busca', I('sima.plea.storyteller.4'));
+e('gastly', 'manada-zorua', 'perdio', I('sima.plea.storyteller.4'), 'docs/lore/lore.md:319');
+e('manada-zorua', 'niebla-blanca', 'se_la_quedo', 'docs/lore/lore.md:319');
+e('madre-zorua', 'manada-zorua', 'pertenece_a', 'docs/lore/lore.md:319');
+e('madre-zorua', 'zorua', 'es_madre_de', 'docs/lore/lore.md:319');
+e('madre-zorua', 'frag-zorua-3-2', 'dejo', I('story.zorua.3.fragment.2.text'), 'docs/lore/lore.md:319');
+e('zorua', 'manada-zorua', 'se_quedo_fuera_de', I('story.zorua.2.before.2'), 'docs/lore/lore.md:319');
 e('cubone', 'madre-cubone', 'busca', I('sima.plea.fisher.1'));
 e('litwick', 'nino-casa-grande', 'busca', I('sima.plea.keeper.3'));
 e('poochyena', 'hermana-mightyena', 'busca', I('sima.plea.shop.3'));

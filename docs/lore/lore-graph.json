@@ -2613,7 +2613,7 @@
    "label": "La manada de Zorua",
    "type": "faccion",
    "status": "canon",
-   "summary": "Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo.",
+   "summary": "Cruzó el Bosque Brumoso la noche del Eclipse por un camino que solo veían los suyos y pasó junto a Zorua sin reconocerlo. Es la manada que perdió Gastly; respuesta interna (M8): la niebla blanca se los quedó y ahora son sombras con caras ajenas.",
    "sources": [
     "i18n:story.zorua.2.before.1",
     "i18n:story.zorua.2.before.2",
@@ -2651,6 +2651,18 @@
    "sources": [
     "i18n:story.axew.2.before.1",
     "i18n:story.axew.3.boss.6.pre.2"
+   ]
+  },
+  {
+   "id": "madre-zorua",
+   "label": "La madre de Zorua",
+   "type": "personaje",
+   "status": "diseño",
+   "summary": "Respuesta interna del dueño (M8, no está en el juego): alguien grande, de pelo largo, de la manada de Zorua. Antes de entrar en la niebla blanca dejó una marca de garra en una piedra del camino, apuntando a casa, para que Zorua supiera volver.",
+   "sources": [
+    "docs/lore/lore.md:319",
+    "i18n:story.zorua.1.fragment.2.text",
+    "i18n:story.zorua.3.fragment.2.text"
    ]
   },
   {
@@ -5856,6 +5868,57 @@
    "relation": "busca",
    "sources": [
     "i18n:sima.plea.storyteller.4"
+   ]
+  },
+  {
+   "from": "gastly",
+   "to": "manada-zorua",
+   "relation": "perdio",
+   "sources": [
+    "i18n:sima.plea.storyteller.4",
+    "docs/lore/lore.md:319"
+   ]
+  },
+  {
+   "from": "manada-zorua",
+   "to": "niebla-blanca",
+   "relation": "se_la_quedo",
+   "sources": [
+    "docs/lore/lore.md:319"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "manada-zorua",
+   "relation": "pertenece_a",
+   "sources": [
+    "docs/lore/lore.md:319"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "zorua",
+   "relation": "es_madre_de",
+   "sources": [
+    "docs/lore/lore.md:319"
+   ]
+  },
+  {
+   "from": "madre-zorua",
+   "to": "frag-zorua-3-2",
+   "relation": "dejo",
+   "sources": [
+    "i18n:story.zorua.3.fragment.2.text",
+    "docs/lore/lore.md:319"
+   ]
+  },
+  {
+   "from": "zorua",
+   "to": "manada-zorua",
+   "relation": "se_quedo_fuera_de",
+   "sources": [
+    "i18n:story.zorua.2.before.2",
+    "docs/lore/lore.md:319"
    ]
   },
   {
