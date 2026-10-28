@@ -13,6 +13,7 @@ import (
 	"github.com/fullfran/mazmorra-sombria/server/internal/hooks"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore/loreapi"
+	"github.com/fullfran/mazmorra-sombria/server/internal/ranking/rankingapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
 	_ "github.com/fullfran/mazmorra-sombria/server/migrations"
 )
@@ -45,6 +46,8 @@ func main() {
 		if err := loreapi.Register(e.Router, loreIndex); err != nil {
 			return err
 		}
+		// Public Sima ranking, derived from the cloud saves (nicknames only).
+		rankingapi.Register(e.Router, e.App)
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)

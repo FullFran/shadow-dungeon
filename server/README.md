@@ -6,8 +6,8 @@ used as a Go framework (`github.com/pocketbase/pocketbase`), built into one
 static binary.
 
 v1 scope: users (email + password; OAuth2 later as "link account"), public
-profiles and cloud saves. There are no
-rankings, no replay verifier and no server wallet yet; the save stays
+profiles, cloud saves and a public Sima ranking derived from those saves
+(unverified). There is no replay verifier and no server wallet yet; the save stays
 client-authoritative and the server only rejects absurd data
 (`docs/backend-accounts-plan.md` sections 2–5 describe what comes later).
 Guests keep playing without an account; that is all client-side.
@@ -21,6 +21,7 @@ Guests keep playing without an account; that is all client-side.
 | `internal/rules/` | Pure rules: save validation, revision check, nickname rules (table-driven tests) |
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
 | `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
+| `internal/ranking/` | Pure Sima ranking rule over the saves (table-driven tests); `rankingapi/` serves it |
 | `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
 | `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
 | `skills/lore/` | Claude Code skill (`lore-sima`) that queries the lore API |
@@ -77,6 +78,32 @@ deletes. On every create and update:
 The client can bump `SAVE_VERSION` up to 99 without a server change
 (`rules.MinSaveVersion`/`MaxSaveVersion`). The server does not migrate save
 contents; reading an older version is the client's job.
+
+## Sima ranking (public, read-only)
+
+`GET /api/sd/ranking/sima?tier=easy|normal|hard|nightmare` (no auth; the
+tier defaults to `easy`, the client's `DEFAULT_DIFFICULTY`; any other tier
+is 400). The route reads every `profiles` and `saves` record with app-level
+access (the collection rules stay owner-only) and builds, for that tier,
+each player's best score from `saves.data.profile.board` (the client's
+`ScoreEntry[]`): deeper floor first, then more time left (`clockMs`), top
+50. Both modes (daily and free) count; a score without `difficulty` is easy.
+
+```json
+{"tier":"easy","entries":[{"rank":1,"nickname":"Ana","avatarSpecies":"zorua","floor":9,"clockMs":500,"species":"zorua","level":14,"mode":"daily","date":"2026-10-25"}]}
+```
+
+- Only these fields leave the server: no raw save data, emails or user ids.
+- A player without a profile (or with an empty nickname) is **skipped**:
+  the ranking only shows names that are already public. Guests never appear.
+- A malformed save, board or entry (wrong types, a floor below 1 or not a
+  whole number, an unknown mode or tier) is skipped; it never fails the route.
+- Ties between players order by nickname, then user id (stable).
+- Each tier's answer is cached in memory for 60 s (and sent with
+  `Cache-Control: public, max-age=60`), so the saves are read at most once a
+  minute per tier. It is client-authoritative data: friends-scale and
+  unverified (the verified replay ranking of `docs/backend-accounts-plan.md`
+  stays the long-term plan).
 
 ## Web client API
 
