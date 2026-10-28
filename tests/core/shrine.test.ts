@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expectedLevel } from '../../src/core/fairness';
+import { crossFogWall } from '../../src/core/fog-wall';
 import { levelMaxHp } from '../../src/core/progression';
 import { roomCleared } from '../../src/core/rooms';
 import { atLevel, bossStop, gauntletStops, heraldStop, progressSharedTrial, progressTrial, SHRINE_BOSSES, startTrial, trialEpoch, trialHurt, type TrialProgress } from '../../src/core/shrine';
@@ -9,8 +10,14 @@ import { GAUNTLETS, SHRINE } from '../../src/data/shrine';
 import type { WorldState } from '../../src/core/state';
 
 const ORDER = ['sableye', 'aegislash', 'trevenant', 'decidueye', 'lanturn', 'dhelmise', 'salazzle', 'nihilego'];
-const fell = (world: WorldState): WorldState => ({ ...world, enemies: world.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) });
-const bossOf = (world: WorldState) => world.enemies.find((e) => e.boss);
+/** Every arena opens behind its fog (tests/core/shrine-fog.test.ts): these cross it, then fell the boss. */
+const fell = (world: WorldState): WorldState => {
+  const open = crossFogWall(world);
+  return { ...open, enemies: open.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
+};
+/** The arena's boss, behind its fog or in the room. */
+const foes = (world: WorldState) => world.fogWall?.enemies ?? world.enemies;
+const bossOf = (world: WorldState) => foes(world).find((e) => e.boss);
 
 describe('shrine bosses', () => {
   it('lists the eight fixed arenas of the story dungeons in dungeon order, mid-boss before guardian', () => {
@@ -55,7 +62,7 @@ describe('rematch setup', () => {
     const { run, world } = startTrial(3, { difficulty: 'normal' }, [stop]);
     expect(run.dungeon).toBe('eclipse-chasm');
     expect(run.clockMs).toBeUndefined();
-    expect(world.enemies.find((e) => e.herald)?.herald?.seed).toBe(12345);
+    expect(foes(world).find((e) => e.herald)?.herald?.seed).toBe(12345);
     expect(world.player.level).toBe(expectedLevel('eclipse-chasm', stop.floor, 'normal'));
   });
 

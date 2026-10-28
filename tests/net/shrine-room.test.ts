@@ -61,7 +61,8 @@ describe('shrine trials in an online room', () => {
     const guestRequest = trialRequestOf(guest.started!.trial!)!;
     const guestWorld = startTrial(77, { species: 'zorua', difficulty: 'hard', localId: 'p2', role: 'guest', party: guest.session.roster().length }, guestRequest.stops).world;
     const solo = startTrial(77, { species: 'cubone', difficulty: 'hard' }, request.stops).world;
-    const boss = (w: typeof solo) => w.enemies.find((e) => e.boss)!;
+    // The arena waits behind its fog (odd/tasks/shrine-fog.md): the boss is held there until the party crosses.
+    const boss = (w: typeof solo) => (w.fogWall?.enemies ?? w.enemies).find((e) => e.boss)!;
     expect(boss(hostWorld).species).toBe('aegislash');
     expect(boss(guestWorld)).toMatchObject({ species: 'aegislash', maxHp: boss(hostWorld).maxHp });
     expect(boss(hostWorld).maxHp).toBeGreaterThan(boss(solo).maxHp);

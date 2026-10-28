@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { crossFogWall } from '../../src/core/fog-wall';
 import { dungeonOf, floorCount, floorMusic, floorPlanOf, fogWallFloor, startRun, withFogWall } from '../../src/core/run';
 import { CHALLENGES, DUNGEONS, musicFor, SENDA_ROADS } from '../../src/data/dungeons';
+import { heraldStop, SHRINE_BOSSES, startTrial } from '../../src/core/shrine';
 
 /**
  * Boss music only after the fog (odd/tasks/sima-fog-bonfires.md T1): behind
@@ -38,6 +39,15 @@ describe('boss music after the fog', () => {
       expect(floorMusic(run, fogged), `${dungeon} ${floor}`).toBeNull();
       const boss = musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
       expect(floorMusic(run, crossFogWall(fogged)), `${dungeon} ${floor}`).toBe(boss);
+    }
+  });
+
+  it('every shrine trial arena: no music behind its fog, its track once crossed', () => {
+    for (const stop of [...SHRINE_BOSSES, heraldStop(12345)]) {
+      const { run, world } = startTrial(SEED, {}, [stop]);
+      expect(world.fogWall, stop.boss).toBeDefined();
+      expect(floorMusic(run, world), stop.boss).toBeNull();
+      expect(floorMusic(run, crossFogWall(world)), stop.boss).toBe(musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor));
     }
   });
 

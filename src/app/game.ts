@@ -1,7 +1,8 @@
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
 import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
-import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, type BossStop, type TrialState } from '../core/shrine';
+import { crossFogWall } from '../core/fog-wall';
+import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, trialStepMs, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
@@ -317,7 +318,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let trial: TrialState | null = trialStart?.trial ?? null;
   let trialHit = false;
   // Development server only: `?trialSkip=1` starts a shrine trial with its first arena already won (screenshots of the pause and the next arena).
-  if (import.meta.env.DEV && trial && new URLSearchParams(window.location.search).get('trialSkip') === '1') started.world = { ...started.world, enemies: started.world.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
+  if (import.meta.env.DEV && trial && new URLSearchParams(window.location.search).get('trialSkip') === '1') started.world = { ...crossFogWall(started.world), enemies: crossFogWall(started.world).enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
@@ -755,7 +756,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   /** Each step: whether the party agreed to leave the floor (solo: this player confirmed); sends this player's status and counts who is missing. */
   function gather(): boolean {
-    const atPoint = !trial && atLeavingPoint(run, world, world.player.pos);
+    // A shrine trial has no way down, only its arena's fog to gather at (core/shrine.ts).
+    const atPoint = (!trial || world.fogWall !== undefined) && atLeavingPoint(run, world, world.player.pos);
     ready = keepReady(ready, atPoint);
     if (!atPoint) leaveAsked = false;
     if (leaveOpen && !atPoint) hideChoice();
@@ -768,7 +770,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   /** Stepping on the stairs (or a cleared room's exit) asks "¿Bajar?" once; confirming marks this player ready (solo: it leaves). */
   function watchLeave(): void {
-    if (ready || leaveAsked || trial || ended || closeChoice || closePick || closeMenu || closeCinematic || closeMemory) return;
+    if (ready || leaveAsked || (trial && !world.fogWall) || ended || closeChoice || closePick || closeMenu || closeCinematic || closeMemory) return;
     if (world.player.hp <= 0 || !atLeavingPoint(run, world, world.player.pos)) return;
     leaveAsked = true;
     const shared = net !== undefined;
@@ -1203,9 +1205,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
-  function trialProgress(hostEpoch: number | null): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number; crossed?: boolean } {
+  function trialProgress(hostEpoch: number | null, agreed: boolean): { run: RunState; world: WorldState; entered: boolean; outcome: GameResult | null; bonusMs?: number; crossed?: boolean } {
     // Online, a guest follows the host's arena (`hostEpoch`) instead of loading the next one itself.
-    const p = net ? progressSharedTrial(trial!, run, world, FIXED_DT_MS, net.role, hostEpoch) : progressTrial(trial!, run, world, FIXED_DT_MS);
+    const p = net ? progressSharedTrial(trial!, run, world, FIXED_DT_MS, net.role, hostEpoch, agreed) : progressTrial(trial!, run, world, FIXED_DT_MS, agreed);
     if (trial!.pauseMs === null && p.trial.pauseMs !== null) {
       const next = p.trial.stops[p.trial.index + 1];
       if (next) say(t('shrine.next').replace('{name}', t(`species.${next.boss}`)), 'good');
@@ -1265,7 +1267,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       watchClock(clockBefore);
       // Captured spell cards (guardians' and heralds' alike, core/cards.ts `updateCapture`) are counted from the step's events.
-      tally = tallyStep(tally, before, world, FIXED_DT_MS);
+      // A trial's time does not run while the party waits behind its arena's fog (core/shrine.ts `trialStepMs`).
+      tally = tallyStep(tally, before, world, trial ? trialStepMs(before, FIXED_DT_MS) : FIXED_DT_MS);
       kills = tallyKills(kills, before, world);
       net?.session.afterStep(world, netFloor());
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
@@ -1289,7 +1292,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (trial && trialHurt(events)) trialHit = true;
       if (trialHurt(events)) floorHit = true;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
-      const progress = trial ? trialProgress(hostFloor) : progressRun(run, world, agreed);
+      const progress = trial ? trialProgress(hostFloor, agreed) : progressRun(run, world, agreed);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
       if (!progress.entered) run = progress.run;
       // The host's party went through the fog (a guest crosses on the host's snapshot, net/session.ts).

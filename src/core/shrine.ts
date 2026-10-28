@@ -9,7 +9,8 @@ import { devHeraldFloor, withHerald } from './herald/floor';
 import { levelMaxHp, MAX_LEVEL } from './progression';
 import { partyDefeated } from './party';
 import { roomCleared } from './rooms';
-import { enterRunFloor, startRun, type RunOutcome, type RunState } from './run';
+import { atFogWall, crossFogWall } from './fog-wall';
+import { enterRunFloor, startRun, withFogWall, type RunOutcome, type RunState } from './run';
 import type { GameEvent, PlayerState, WorldState } from './state';
 import type { WorldOptions } from './world';
 
@@ -21,6 +22,9 @@ import type { WorldOptions } from './world';
  * player stands at that floor's expected level (core/fairness.ts) with no
  * items and no shop upgrades. Between two arenas of a gauntlet HP carries
  * over (as a share of max HP) plus `SHRINE.heal`, after `SHRINE.pauseMs`.
+ * Every arena opens behind its fog wall (core/fog-wall.ts), like the bosses
+ * of a run (odd/tasks/shrine-fog.md): the party gathers in the antechamber
+ * and crosses together; the trial's time does not run there (`trialStepMs`).
  */
 export interface BossStop {
   /** The boss: its arena's first spawn (`sima-herald` for a herald). */
@@ -63,6 +67,8 @@ export interface TrialProgress {
   world: WorldState;
   /** True when this call loaded the next arena. */
   entered: boolean;
+  /** The party went through the arena's fog this call. */
+  crossed?: true;
   outcome: Exclude<RunOutcome, 'eclipse'> | null;
 }
 
@@ -93,7 +99,7 @@ export function startTrial(
   const { upgrades: _upgrades, ...pure } = options;
   const started = startRun(seed, pure, first.floor, first.dungeon);
   const run = stopRun(seed, first);
-  const world = withStopHerald({ ...started.world, player: atLevel(started.world.player, levelOf(first, started.world)) }, first);
+  const world = withFogWall(run, withStopHerald({ ...started.world, player: atLevel(started.world.player, levelOf(first, started.world)) }, first));
   return { run, world, trial: { stops, index: 0, pauseMs: null } };
 }
 
@@ -105,14 +111,26 @@ function nextArena(trial: TrialState, run: RunState, world: WorldState): TrialPr
   const raised = atLevel(world.player, levelOf(stop, world));
   const hp = Math.min(raised.maxHp, Math.round((share + SHRINE.heal) * raised.maxHp));
   const nextRun = stopRun(run.seed, stop);
-  const loaded = withStopHerald(enterRunFloor({ ...world, player: { ...raised, hp } }, nextRun), stop);
+  // A guest catching up may still stand behind the last arena's fog: the next arena brings its own.
+  const { fogWall: _left, ...open } = world;
+  const loaded = withFogWall(nextRun, withStopHerald(enterRunFloor({ ...open, player: { ...raised, hp } }, nextRun), stop));
   return { trial: { ...trial, index, pauseMs: null }, run: nextRun, world: loaded, entered: true, outcome: null };
 }
 
-/** After a step: defeat, victory (the last arena cleared), the pause, the next arena, or nothing. */
-export function progressTrial(trial: TrialState, run: RunState, world: WorldState, dtMs: number): TrialProgress {
+/**
+ * After a step: defeat, the crossing of the arena's fog, victory (the last
+ * arena cleared), the pause, the next arena, or nothing. `agreed` says the
+ * party chose to cross (the prompt and the gather rule, core/gather.ts);
+ * without it (harnesses) the player touching the fog crosses at once. A
+ * guest never crosses on its own: it crosses on the host's snapshot.
+ */
+export function progressTrial(trial: TrialState, run: RunState, world: WorldState, dtMs: number, agreed?: boolean): TrialProgress {
   const none = { trial, run, world, entered: false, outcome: null };
   if (partyDefeated(world)) return { ...none, outcome: 'defeat' };
+  if (world.fogWall) {
+    if (world.role === 'guest' || !(agreed ?? atFogWall(world, world.player.pos))) return none;
+    return { ...none, world: crossFogWall(world), crossed: true };
+  }
   if (!roomCleared(world)) return none;
   if (trial.index >= trial.stops.length - 1) return { ...none, outcome: 'victory' };
   const left = (trial.pauseMs ?? SHRINE.pauseMs) - dtMs;
@@ -131,15 +149,20 @@ export const trialEpoch = (trial: TrialState): number => trial.index + 1;
  * carries its own HP share; defeat and victory are read from the synced
  * world like a run's.
  */
-export function progressSharedTrial(trial: TrialState, run: RunState, world: WorldState, dtMs: number, role: 'host' | 'guest', hostEpoch: number | null): TrialProgress {
+export function progressSharedTrial(trial: TrialState, run: RunState, world: WorldState, dtMs: number, role: 'host' | 'guest', hostEpoch: number | null, agreed?: boolean): TrialProgress {
   if (role === 'guest' && hostEpoch !== null && hostEpoch > trialEpoch(trial) && trial.index < trial.stops.length - 1) {
     let p = nextArena(trial, run, world);
     while (trialEpoch(p.trial) < hostEpoch && p.trial.index < p.trial.stops.length - 1) p = nextArena(p.trial, p.run, p.world);
     return p;
   }
-  const p = progressTrial(trial, run, world, dtMs);
+  // A guest's fog drops with the host's snapshot (core/sync.ts), never here.
+  if (role === 'guest' && world.fogWall) return { trial, run, world, entered: false, outcome: null };
+  const p = progressTrial(trial, run, world, dtMs, agreed);
   return role === 'guest' && p.entered ? { trial, run, world, entered: false, outcome: null } : p;
 }
 
 /** «Sin rasguños»: any hit taken (a hurt, or Mimikyu's disguise broken) spoils it. */
 export const trialHurt = (events: readonly GameEvent[]): boolean => events.some((e) => e.type === 'playerHurt' || e.type === 'disguiseBroken');
+
+/** The trial time one step adds (the record's best time): none while the party waits behind the arena's fog. */
+export const trialStepMs = (world: Pick<WorldState, 'fogWall'>, dtMs: number): number => (world.fogWall ? 0 : dtMs);
