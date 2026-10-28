@@ -21,7 +21,7 @@ import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, strayHere, tickRunClock, withFogWall, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, strayHere, tickRunClock, withFogWall, floorMusic, type RunState } from '../core/run';
 import { lookText, simaFoeLook, type SimaMemory } from './sima-lore';
 import { simaCardKey, type SimaSceneId } from '../data/sima-scenes';
 import type { SimaSceneInfo } from './sima-cinematic';
@@ -415,10 +415,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let capture: CaptureNotice | null = null;
   let lastCard: string | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
+  // Behind a boss's fog there is none (core/run.ts `floorMusic`): the boss track starts after the crossing and its cinematic.
   const music = () => {
-    const context = musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
+    const context = floorMusic(run, world);
     audio?.setMusic(context);
-    if (context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
+    if (context && context !== playing) nowPlaying = { title: trackNote(context), shownAtMs: realMs };
     playing = context;
   };
   /** Endless, shared run: simulated time since the host last sent its clock. */
@@ -586,7 +587,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (world.simaEvent && announcedOnEntry(world.simaEvent.kind)) say(t(`sima.log.${world.simaEvent.kind}.here`), 'warn');
     // The Eco del Eclipse copies a player of the party (core/eclipse-echo.ts `echoMimic`): the same pick on every peer (the host's roster).
     const party = net ? net.session.roster().map((r) => ({ id: r.id, species: r.species })) : [{ id: world.localId, species: world.player.species }];
-    const mimic = world.enemies.some((e) => e.species === 'eclipse-echo') ? echoMimic(run.floor, party) : null;
+    // Behind the fog the Eco waits outside the world (core/fog-wall.ts): it already wears the copy it will cross with.
+    const mimic = (world.fogWall?.enemies ?? world.enemies).some((e) => e.species === 'eclipse-echo') ? echoMimic(run.floor, party) : null;
     const { echoMimic: _old, ...plain } = world;
     world = mimic ? { ...plain, echoMimic: mimic } : plain;
     prev = { ...prev, ...(mimic ? { echoMimic: mimic } : {}) };
@@ -599,13 +601,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     silhouettes.clear();
     const look = echo && plan.kind === 'room' && options.simaMemory ? simaFoeLook(plan.room, echo.species, options.simaMemory, GUARDIAN_ECHOES) : null;
     currentLook = look;
-    const herald = heraldHere(world);
-    if (herald) {
-      // A herald: its own name, epithet and epigraph (core/herald); remembered on this device.
-      // Solo plays its intro cutscene instead (heraldMoment); a shared run shows the name card over the running game.
-      intro = net || !options.playHeraldIntro ? { ...heraldIntro(herald.def), shownAtMs: realMs } : null;
-      card = null;
-      if (net || !options.playHeraldIntro) options.onHeraldMet?.(herald.def.seed, herald.def.name);
+    if (heraldCard()) {
+      // A herald met without a fog (behind one, its card waits for the crossing: crossedFog).
     } else if (echo && look) {
       // The Sima as this player remembers it (app/sima-lore.ts): a faceless guardian, someone's shadow, or its name and a line.
       const text = lookText(look, run.floor, t);
@@ -626,6 +623,21 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
     storyFloor();
+  }
+
+  /**
+   * A herald in the room: its own name, epithet and epigraph (core/herald);
+   * remembered on this device. Solo plays its intro cutscene instead
+   * (heraldMoment); a shared run shows the name card over the running game.
+   * False when no herald is in the room (one behind its fog is not yet).
+   */
+  function heraldCard(): boolean {
+    const herald = heraldHere(world);
+    if (!herald) return false;
+    intro = net || !options.playHeraldIntro ? { ...heraldIntro(herald.def), shownAtMs: realMs } : null;
+    card = null;
+    if (net || !options.playHeraldIntro) options.onHeraldMet?.(herald.def.seed, herald.def.name);
+    return true;
   }
 
   function hideMenu(): void {
@@ -844,7 +856,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     camera = world.player.pos;
     say(t('leave.fog.sealed'), 'warn');
     storyBoss();
-    guardianMoment('pre', () => undefined);
+    heraldCard();
+    // The boss shows itself: the Sima's boss scenes, the guardian's cinematic (a card in a shared run), the herald's intro; then its music.
+    simaMoment('crossed', () => guardianMoment('pre', () => heraldMoment(() => music())));
   }
 
   /** Each step: tells the log what the floor's event did, records it, hands out its item pick, and opens the shrine or merchant on reaching them. */
@@ -939,6 +953,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     defeatedAt.clear();
     lastInput = null;
     camera = world.player.pos;
+    // Back in the antechamber of a boss floor: its silence again (core/run.ts `floorMusic`).
+    music();
     announceFloor(false);
   }
 
@@ -1044,25 +1060,31 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
    * its own cutscene), somebody's shadow. Solo plays the cinematic (the run and
    * its clock stand still); a shared run logs its line. `then` runs after.
    */
-  function simaMoment(then: () => void): void {
+  function simaMoment(phase: 'entry' | 'crossed', then: () => void): void {
     const scenes = options.simaScenes;
     const endless = dungeonOf(run).endless;
     if (!scenes || !endless || trial) return then();
     const bands = endless.bands;
     const band = simaBand();
     const look = currentLook;
-    const due: SimaSceneId | null =
+    const stratum: SimaSceneId | null = bands && band && band.id !== 'crypt' && bandStartsAt(bands, run.floor) ? `stratum-${band.id}` : null;
+    // A boss's own scene plays once the fog is crossed (owner, 2026-10-28); a floor without fog plays it on entry.
+    const boss: SimaSceneId | null =
       isHeraldFloor(endless, run.floor) ? 'first-name'
-      : bands && band && band.id !== 'crypt' && bandStartsAt(bands, run.floor) ? `stratum-${band.id}`
       : world.enemies.some((e) => e.species === 'eclipse-echo') ? 'own-shadow'
       : strayHere(run) ? (look && !look.silhouette ? 'someone-known' : 'someone')
       : null;
+    const due: SimaSceneId | null =
+      phase === 'crossed' ? boss
+      : world.fogWall ? stratum
+      : isHeraldFloor(endless, run.floor) ? boss
+      : (stratum ?? boss);
     if (!due || scenes.seen(due)) return then();
     if (net) {
       say(t(simaCardKey(due)), 'warn');
       return then();
     }
-    const foe = world.fogWall?.enemies[0];
+    const foe = world.fogWall?.enemies[0] ?? world.enemies[0];
     const other = due.startsWith('someone') && foe ? { sprite: SPRITE_KEYS[SPECIES[foe.species].sprite], known: due === 'someone-known' } : undefined;
     input.setSuspended(true);
     audio?.setDucked(true);
@@ -1168,7 +1190,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     music();
     announceFloor(true);
     // The guardian's floor opens with its cinematic (a herald's with its intro); the held item pick waits for it.
-    simaMoment(() => guardianMoment('pre', () => heraldMoment(offerPick)));
+    simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
@@ -1418,7 +1440,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   lastEvent = world.simaEvent;
   announceFloor(false);
   // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
-  simaMoment(() => guardianMoment('pre', () => heraldMoment(offerPick)));
+  simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {

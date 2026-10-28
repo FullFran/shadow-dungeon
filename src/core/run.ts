@@ -4,7 +4,8 @@ import { ECHO_CARDS } from '../data/cards';
 import { behaviourFor } from './tricks';
 import { heraldSeed, withHerald } from './herald/floor';
 import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
-import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { chanceAt, CRYPT, dungeonById, floorsOf, musicFor, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
+import type { MusicContext } from '../data/music';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
 import { eliteRuleAt } from './sima';
@@ -160,6 +161,16 @@ export function withFogWall(run: RunState, world: WorldState): WorldState {
   if (!fogWallFloor(run) || world.fogWall) return world;
   const closed = closeFogWall(world);
   return strayHere(run) ? { ...closed, arena: { ...closed.arena, stairs: strayStairs(closed) } } : closed;
+}
+
+/**
+ * The floor's music as the party meets it (odd/tasks/sima-fog-bonfires.md):
+ * none behind a boss's fog (the antechamber has only its ambience), the
+ * floor's own track otherwise. The game starts the boss track once the fog
+ * is crossed and the boss cinematic, if any, is over.
+ */
+export function floorMusic(run: RunState, world: Pick<WorldState, 'fogWall'>): MusicContext | null {
+  return world.fogWall ? null : musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
 }
 
 /** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
