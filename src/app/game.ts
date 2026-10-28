@@ -21,14 +21,14 @@ import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, setClock, startRun, strayHere, tickRunClock, withFogWall, floorMusic, type RunState } from '../core/run';
+import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, floorMusic, type RunState } from '../core/run';
 import { lookText, simaFoeLook, type SimaMemory } from './sima-lore';
 import { simaCardKey, type SimaSceneId } from '../data/sima-scenes';
 import type { SimaSceneInfo } from './sima-cinematic';
 import { isHeraldFloor } from '../data/endless';
 import { ROOMS } from '../data/rooms';
 import { ENDLESS } from '../data/endless';
-import { bonfireFloor, bonfireLights, bonfirePos, bonfireSnapshot, respawnsLeft } from '../core/bonfire';
+import { bonfireFloor, bonfireLights, bonfireReturn, bonfireSnapshot, bonfireSpot, respawnsLeft } from '../core/bonfire';
 import { nextSpectate, spectateTarget, type Watchable } from './spectate';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
@@ -792,6 +792,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (trial || respawnsLeft(difficulty, bonfireUsed) === 0) return false;
     if (bonfire) return true;
     if (net?.role !== 'guest') return false;
+    // A Sima bonfire covers only its own boss floor.
+    if (dungeonOf(run).endless) return bonfireFloor(run);
     for (let f = 1; f < run.floor; f++) if (bonfireFloor({ dungeon: run.dungeon, floor: f })) return true;
     return false;
   };
@@ -801,9 +803,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     wiped = true;
     if (net?.role === 'guest' || closeChoice || ended) return;
     const left = respawnsLeft(difficulty, bonfireUsed);
+    const texts = dungeonOf(run).endless ? 'bonfire.sima' : 'bonfire';
     showChoice(t('bonfire.title'), t(net ? 'bonfire.hintShared' : 'leave.hint'), [
-      { name: t('bonfire.go'), description: left === null ? t('bonfire.goText') : t('bonfire.goLeft').replace('{n}', String(left)), look: 'rare' },
-      { name: t('bonfire.give'), description: t('bonfire.giveText'), look: 'common' },
+      // The Sima's bonfire is this floor's fog, and its clock keeps running (core/bonfire.ts).
+      { name: t('bonfire.go'), description: left === null ? t(`${texts}.goText`) : t(`${texts}.goLeft`).replace('{n}', String(left)), look: 'rare' },
+      { name: t('bonfire.give'), description: t(`${texts}.giveText`), look: 'common' },
     ], (index) => {
       hideChoice();
       if (index === 0) return respawn(bonfire!.run.floor);
@@ -815,8 +819,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Everyone back at the bonfire: this peer's own snapshot (or, without one, the bonfire floor anew); the host tells the guests. */
   function respawn(floor: number): void {
     bonfireUsed += 1;
-    const back = bonfire ?? returnToFloor(run, world, floor);
-    run = back.run;
+    const fresh = bonfire ? null : returnToFloor(run, world, floor);
+    // A Sima boss floor anew is met behind its fog again, like the snapshot the others kept.
+    const back = bonfire ?? (dungeonOf(run).endless ? { run: fresh!.run, world: withFogWall(fresh!.run, fresh!.world) } : fresh!);
+    // The Sima's clock never goes back with it (core/bonfire.ts `bonfireReturn`).
+    run = bonfireReturn(back.run, run);
     world = { ...back.world, lock: configureLock(back.world.lock, lockSettings) };
     if (bonfire) tally = bonfire.tally;
     floorStart = world;
@@ -1170,6 +1177,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     floorStartTally = tally;
     floorStartKills = kills;
     floorHit = false;
+    // A Sima bonfire goes out on the way down: it covers only its own boss floor.
+    if (dungeonOf(next.run).endless) bonfire = null;
     run = next.run;
     world = trial ? next.world : withFogWall(next.run, next.world);
     floorStart = world;
@@ -1239,7 +1248,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
       const clockBefore = run.clockMs;
       // Guests run their copy too, for a smooth display; the host's clock (`takeClock`) corrects it and decides the end.
-      run = tickRunClock(run, FIXED_DT_MS);
+      // Behind a boss's fog it stands still (core/run.ts `runClockStep`): the same on every peer, the world carries the fog.
+      run = runClockStep(run, world, FIXED_DT_MS);
       if (net && run.clockMs !== undefined) {
         if (net.role === 'host') {
           clockSentMs += FIXED_DT_MS;
@@ -1415,7 +1425,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       touchAim: isTouchUi() ? touch.aimPreview() : null,
       ...(net ? { names: rosterNames(net.session.roster()) } : {}),
       waiting: wiped && net?.role === 'guest' ? t('bonfire.waitHost') : waiting > 0 ? t('leave.waiting').replace('{n}', String(waiting)) : null,
-      bonfire: bonfire && bonfire.run.floor === run.floor ? bonfirePos(world) : null,
+      bonfire: bonfire && bonfire.run.floor === run.floor ? bonfireSpot(run, world) : null,
       memory: memory ? memory.pos : null,
       shownAs,
       silhouettes,

@@ -140,7 +140,8 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
  */
 export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'> & Partial<Pick<RunState, 'seed'>>): boolean {
   const plan = floorPlanOf(run);
-  return (plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless) || strayHere(run);
+  // Every boss room, the Sima's too (its echoes, Eco, heralds and wounds: odd/tasks/sima-fog-bonfires.md), and a stray floor's lost shadow.
+  return plan.kind === 'room' || strayHere(run);
 }
 
 /** The way down past a lost shadow's fog: stairs in the antechamber, `left` px left of its middle (in view from the start; the shadow is optional). */
@@ -325,6 +326,13 @@ export function tickRunClock(run: RunState, dtMs: number): RunState {
   if (grace <= 0) return { ...run, clockMs: tickClock(run.clockMs, dtMs) };
   return { ...run, graceMs: Math.max(0, grace - dtMs), clockMs: tickClock(run.clockMs, Math.max(0, dtMs - grace)) };
 }
+
+/**
+ * The clock for one fixed step of the game: it stands still while the party
+ * waits behind a boss's fog (the antechamber is a rest, and the fog costs no
+ * time), and runs as usual otherwise.
+ */
+export const runClockStep = (run: RunState, world: Pick<WorldState, 'fogWall'>, dtMs: number): RunState => (world.fogWall ? run : tickRunClock(run, dtMs));
 
 /** Guest: the host's clock as received (never below 0). */
 export const setClock = (run: RunState, ms: number): RunState => ({ ...run, clockMs: Math.max(0, ms) });

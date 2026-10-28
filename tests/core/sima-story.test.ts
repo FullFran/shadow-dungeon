@@ -78,8 +78,8 @@ describe('the Sendas in the Sima: wounds', () => {
     const own = loadRoom({ ...world, enemyScale: undefined }, wound.room).enemies[0]!;
     expect(world.enemies[0]!.maxHp / own.maxHp).toBeCloseTo(SIMA_STORY.hp, 2);
     expect(own.maxHp).toBeLessThan(SPECIES[wound.species].maxHp * 2);
-    // No fog in front of a wound (it is an echo floor).
-    expect(withFogWall(startRun(4242, {}, 35, ECL).run, world).fogWall).toBeUndefined();
+    // A wound waits behind its fog like every Sima boss (odd/tasks/sima-fog-bonfires.md T2).
+    expect(withFogWall(startRun(4242, {}, 35, ECL).run, world).fogWall).toBeDefined();
   });
 });
 

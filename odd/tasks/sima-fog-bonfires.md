@@ -34,19 +34,19 @@ Every boss in the game is met the same way, the Sima del Eclipse included: an an
 ## Tasks
 
 - [x] T1 Boss music and cinematics only after the fog, every dungeon. Route: delegated (single writer across `core/run.ts`, `app/game.ts`, tests). Commit: see Progress.
-- [ ] T2 Sima fog walls, bonfire and clock rule. Route: delegated (same writer).
+- [x] T2 Sima fog walls, bonfire and clock rule. Route: delegated (same writer). Commit: see Progress.
 
 ## Parity checklist
 
-- [ ] Main dungeons (Crypt, Forest, Caves, Swamp): music null behind the fog, boss track after; guardian cinematic after crossing.
-- [ ] Challenge dungeons and Sendas: same (test iterates `CHALLENGES`, `SENDA_ROADS`).
-- [ ] Sima: every boss floor kind (echo, Eco, herald, wound, stray) has fog, a bonfire, no music before, cinematic after.
-- [ ] Shrine: documented (no fog; open question).
-- [ ] Co-op: guest crossing path (`crossedFog` on the host snapshot) runs the same sequence; music is per peer; Sima bonfire respawn through the existing `retry` message; guest clock from the host.
-- [ ] Save/net protocol: no new fields (checked).
-- [ ] i18n es/en for any new line.
-- [ ] GDD (`docs/gdd.md`): fog, bonfire, Sima clock, music and cinematic order.
-- [ ] Sim/prove harnesses: unaffected (they skip the wall); `npm run prove` green.
+- [x] Main dungeons (Crypt, Forest, Caves, Swamp): music null behind the fog, boss track after; guardian cinematic after crossing. Evidence: `tests/core/boss-music.test.ts` iterates `DUNGEONS` floors with fog; `crossedFog` order test.
+- [x] Challenge dungeons and Sendas: same. Evidence: `boss-music.test.ts` iterates `CHALLENGES` and `SENDA_ROADS` and fails if any has no fog floor.
+- [x] Sima: every boss floor kind (echo, Eco, herald, wound, stray) has fog, a bonfire, no music before, cinematic after. Evidence: `tests/core/sima-fog-bonfire.test.ts` (floors 1-60, all four kinds seen; strays), `boss-music.test.ts` (Sima floors 1-60), `simaMoment('crossed')` in `crossedFog`.
+- [x] Shrine: documented (no fog, so its boss music starts with the fight as before; open question for the owner in the GDD fog rule, marked *pendiente*).
+- [x] Co-op: the guest's crossing (`crossedFog` on the host snapshot) runs the same sequence (cards instead of cinematics, then music); music is per peer; the Sima bonfire respawn goes through the existing `retry` message (a guest without a snapshot regenerates the floor behind its fog); the clock rule is the same on every peer (`runClockStep` reads the world's fog) and the host's clock still corrects the guest. Existing `tests/net/fog-wall.test.ts`, `tests/net/bonfire.test.ts` green.
+- [x] Save/net protocol: no new fields (the bonfire stays per-run closure state in `game.ts`; the fog already syncs as `fogWall: true`).
+- [x] i18n es/en for any new line: `bonfire.sima.goText`, `goLeft`, `giveText` (tested over `LANGUAGES`).
+- [x] GDD (`docs/gdd.md`): fog rule (Sima bosses, music order, shrine pending), Sima bonfire, clock behind the fog, stray and Sima cinematics after the crossing.
+- [x] Sim/prove harnesses: unaffected (they skip the wall); `npm run prove` 166/166 cards, 24/24 fights.
 
 ## Checks
 
@@ -57,4 +57,9 @@ Every boss in the game is met the same way, the Sima del Eclipse included: an an
 Created 2026-10-28.
 
 - T1: RED observed (`tests/core/boss-music.test.ts`, 5 failing: `floorMusic` missing, `music()` and `crossedFog` order). GREEN: `floorMusic` (core/run.ts) null behind the fog; `game.ts` `music()` uses it; `crossedFog` runs `storyBoss`, the herald card, `simaMoment('crossed')`, `guardianMoment('pre')`, `heraldMoment`, then `music()`; `restartFloor` resets the music; the Sima's boss scenes (first herald, own shadow, someone's shadow) wait for the crossing when the floor has fog (strays: before, they played on entry); the Eco del Eclipse's mimic is picked from the enemies behind the fog too. The echo name card still shows on entry (a floor card, not a cinematic). Full vitest 262 files / 3275 tests green; typecheck clean.
-- Next: T2.
+- T2: RED observed (9 failing across `sima-fog-bonfire.test.ts` and the updated `fog-wall`, `bonfire`, `sima-story` tests). GREEN: `fogWallFloor` covers every room plan; `bonfireFloor`/`bonfireLights` cover Sima boss floors (lit on arrival behind the fog); `bonfireSpot` (antechamber, right of the way in) and `bonfireReturn` (keeps the clock); `runClockStep` stops the clock behind the fog; `game.ts` puts the Sima bonfire out on the way down, a snapshot-less guest gets the floor behind its fog, the wipe prompt uses `bonfire.sima.*`. Checks: typecheck clean; vitest 263 files / 3283 tests passed; build ok; prove 166/166 cards, 24/24 fights.
+
+## Open questions for the owner
+
+- Shrine trials have no fog wall (GDD decision kept); should they get one too?
+- In Pesadilla (no respawns) the Sima bonfire still says «Hoguera encendida» on arrival, as the main dungeons' mid-boss bonfire does.
