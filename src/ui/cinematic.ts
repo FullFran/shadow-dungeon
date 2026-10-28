@@ -77,3 +77,16 @@ export function holdProgress(pressedAtMs: number | null, nowMs: number): number 
   if (pressedAtMs === null) return 0;
   return clamp01((nowMs - pressedAtMs) / SKIP.holdMs);
 }
+
+/**
+ * The scale of a `stageW` x `stageH` cinematic stage in a `viewW` x `viewH`
+ * viewport: the largest whole number from 2x up (every source pixel the same
+ * size), and below that the exact fit, fractional, so a portrait phone gets
+ * the whole width instead of a tiny 1x (the canvas keeps
+ * `image-rendering: pixelated`, so it stays crisp). Never larger than the
+ * viewport.
+ */
+export function stageScale(viewW: number, viewH: number, stageW: number, stageH: number): number {
+  const fit = Math.min(viewW / stageW, viewH / stageH);
+  return fit >= 2 ? Math.floor(fit) : Math.max(0.01, fit);
+}

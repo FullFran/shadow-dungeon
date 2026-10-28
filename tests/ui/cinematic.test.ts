@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CinematicPanel } from '../../src/data/prologue';
-import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, SKIP, skipAvailable, smoothstep, startOf, totalMs } from '../../src/ui/cinematic';
+import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, SKIP, skipAvailable, smoothstep, stageScale, startOf, totalMs } from '../../src/ui/cinematic';
 
 const panel = (id: string, durationMs: number, extra: Partial<CinematicPanel> = {}): CinematicPanel => ({
   id,
@@ -104,5 +104,35 @@ describe('skip', () => {
     expect(holdProgress(5000, 5000 + SKIP.holdMs / 2)).toBeCloseTo(0.5);
     expect(holdProgress(5000, 5000 + SKIP.holdMs)).toBe(1);
     expect(holdProgress(5000, 5000 + SKIP.holdMs * 3)).toBe(1);
+  });
+});
+
+describe('the cinematic stage scale', () => {
+  const W = 320;
+  const H = 180;
+  it('desktop keeps the largest whole number that fits, as before', () => {
+    expect(stageScale(1920, 1080, W, H)).toBe(6);
+    expect(stageScale(1366, 768, W, H)).toBe(4);
+    expect(stageScale(1280, 720, W, H)).toBe(4);
+    expect(stageScale(800, 600, W, H)).toBe(2);
+  });
+
+  it('below 2x it fits the viewport with a fractional scale, never overflowing it', () => {
+    // A 390 px portrait phone: 1.22x instead of a tiny 1x.
+    const phone = stageScale(390, 844, W, H);
+    expect(phone).toBeCloseTo(390 / 320, 5);
+    expect(phone * W).toBeLessThanOrEqual(390);
+    expect(stageScale(600, 400, W, H)).toBeCloseTo(600 / 320, 5);
+    // Very small viewports still fit (no 1x floor that overflows).
+    expect(stageScale(280, 600, W, H) * W).toBeLessThanOrEqual(280);
+  });
+
+  it('every size fits inside its viewport and never shrinks to nothing', () => {
+    for (const [w, h] of [[360, 640], [390, 844], [430, 932], [640, 360], [844, 390], [1024, 768], [2560, 1440], [100, 100]] as const) {
+      const s = stageScale(w, h, W, H);
+      expect(s * W, `${w}x${h}`).toBeLessThanOrEqual(w);
+      expect(s * H, `${w}x${h}`).toBeLessThanOrEqual(h);
+      expect(s, `${w}x${h}`).toBeGreaterThan(0);
+    }
   });
 });

@@ -2,13 +2,13 @@ import type { SheetStore } from '../adapters/assets';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
 import { t } from '../i18n';
-import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, skipAvailable } from '../ui/cinematic';
+import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, skipAvailable, stageScale } from '../ui/cinematic';
 import { h } from '../ui/window';
 
 /**
  * The prologue player: plays PROLOGUE on a low-res canvas scaled up by a
- * whole number (pixelated), with the narration typed out in the DOM below the
- * picture. Skippable after the first second by holding Esc or Enter, or by
+ * whole number (pixelated; below 2x, the exact fit: `stageScale`), with the
+ * narration typed out in the DOM below the picture. Skippable after the first second by holding Esc or Enter, or by
  * clicking "Saltar". When it ends or is skipped it calls `onDone` once; the
  * caller decides what comes next (the route name is PROLOGUE_ROUTE). It
  * cleans up by itself when it leaves the page.
@@ -42,8 +42,8 @@ export interface PrologueOptions {
   styleLines?(panel: CinematicPanel, lines: readonly HTMLElement[]): void;
 }
 
-/** Largest whole-number scale at which the stage fits the window. */
-const stageScale = (): number => Math.max(1, Math.floor(Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h)));
+/** The stage's scale in the window: whole numbers from 2x, the exact fit below (`stageScale`). */
+const windowScale = (): number => stageScale(window.innerWidth, window.innerHeight, STAGE.w, STAGE.h);
 
 const isSkipKey = (key: string): boolean => key === 'Escape' || key === 'Enter';
 
@@ -157,11 +157,11 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       finish();
       return;
     }
-    const next = stageScale();
+    const next = windowScale();
     if (next !== scale) {
       scale = next;
-      canvas.style.width = `${STAGE.w * scale}px`;
-      canvas.style.height = `${STAGE.h * scale}px`;
+      canvas.style.width = `${Math.floor(STAGE.w * scale)}px`;
+      canvas.style.height = `${Math.floor(STAGE.h * scale)}px`;
       text.style.fontSize = `${scale >= 5 ? 33 : scale >= 3 ? 22 : 16}px`;
     }
     const alpha = panelAlpha(moment.panel, moment.localMs);
