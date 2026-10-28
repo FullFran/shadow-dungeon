@@ -66,10 +66,71 @@ const TOAST_MS = 4500;
 /** Toast lines shown at once; the rest are summed up in one more line. */
 const TOAST_LINES = 3;
 
+/** Puts one toast on screen; `closed` is called when it goes by itself; returns how to take it down early. */
+export type ShowToast = (closed: () => void) => () => void;
+
+export interface ToastGate {
+  /** Shows the toast now, or queues it while held. */
+  show(toast: ShowToast): void;
+  /** A cinematic starts: toasts wait, and any on screen is taken down to come back after. */
+  hold(): void;
+  /** The cinematic is over: once no hold is left, the waiting toasts show in order. */
+  release(): void;
+}
+
+/**
+ * Keeps the toasts off the cinematics (pure; the DOM is in `ShowToast`):
+ * the prologue and the cinematics after a run hold it, and the toasts come
+ * out with the results.
+ */
+export function toastGate(): ToastGate {
+  let holds = 0;
+  const waiting: ShowToast[] = [];
+  const shown = new Map<ShowToast, () => void>();
+  const display = (toast: ShowToast) => {
+    let gone = false;
+    const close = toast(() => {
+      gone = true;
+      shown.delete(toast);
+    });
+    if (!gone) shown.set(toast, close);
+  };
+  return {
+    show(toast) {
+      if (holds > 0) waiting.push(toast);
+      else display(toast);
+    },
+    hold() {
+      holds += 1;
+      if (holds > 1) return;
+      const up = [...shown.entries()];
+      shown.clear();
+      for (const [toast, close] of up) {
+        close();
+        waiting.push(toast);
+      }
+    },
+    release() {
+      if (holds === 0) return;
+      holds -= 1;
+      if (holds === 0) for (const toast of waiting.splice(0)) display(toast);
+    },
+  };
+}
+
+const toasts = toastGate();
+
+/** A cinematic is starting: achievement toasts wait (see `toastGate`). */
+export const holdToasts = (): void => toasts.hold();
+
+/** The cinematic is over: the waiting toasts show. */
+export const releaseToasts = (): void => toasts.release();
+
 /**
  * The unlock toast: a small window at the top of the page (over any screen,
  * like the install banner) naming the new achievements, gone after a few
- * seconds or a tap. Nothing when the list is empty.
+ * seconds or a tap. Nothing when the list is empty. While a cinematic
+ * holds the toasts it waits and shows after.
  */
 export function achievementToast(defs: readonly AchievementDef[], tr: Tr = (key) => t(key), past = false): void {
   if (defs.length === 0 || typeof document === 'undefined') return;
@@ -79,11 +140,21 @@ export function achievementToast(defs: readonly AchievementDef[], tr: Tr = (key)
   const paid = coins > 0 ? [h('p', { className: 'dim', textContent: tr('achievement.reward').replace('{coins}', coinText(coins, tr)) })] : [];
   // Unlocked for progress made before achievements existed: one summary line instead of a list.
   const lines = past ? [h('p', { textContent: pastAchievementsText(defs.length, tr) })] : [...shown, ...more];
-  const toast = h('div', { className: 'achievement-toast' }, [mdWindow({ title: tr(past ? 'achievement.past.title' : 'achievement.toast.title') }, [...lines, ...paid])]);
-  const close = () => toast.remove();
-  toast.addEventListener('click', close);
-  document.body.append(toast);
-  setTimeout(close, TOAST_MS);
+  // Held during a cinematic (`toastGate`): it may be shown later, or again, each time for the full time.
+  toasts.show((closed) => {
+    const toast = h('div', { className: 'achievement-toast' }, [mdWindow({ title: tr(past ? 'achievement.past.title' : 'achievement.toast.title') }, [...lines, ...paid])]);
+    let gone = false;
+    const close = () => {
+      if (gone) return;
+      gone = true;
+      toast.remove();
+      closed();
+    };
+    toast.addEventListener('click', close);
+    document.body.append(toast);
+    setTimeout(close, TOAST_MS);
+    return close;
+  });
 }
 
 /** The retroactive toast's line: how many achievements earlier progress unlocked. */

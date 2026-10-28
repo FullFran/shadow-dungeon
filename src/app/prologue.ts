@@ -26,6 +26,8 @@ export interface PrologueOptions {
   /** The loaded sprite sheets, or null while they load (figures are left out until then). */
   sheets: () => SheetStore | null;
   onDone: () => void;
+  /** Runs once when the player goes away: it ended, was skipped (after `onDone`), or another screen replaced it. */
+  onClose?: () => void;
   music?: PrologueMusic;
   /** Start this far in (development screenshots). */
   startMs?: number;
@@ -81,6 +83,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     finished = true;
     cleanup();
     options.onDone();
+    options.onClose?.();
   };
   const onKeyDown = (e: KeyboardEvent) => {
     if (!isSkipKey(e.key)) return;
@@ -136,6 +139,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       if (started !== null) {
         finished = true;
         cleanup();
+        options.onClose?.();
       } else requestAnimationFrame(frame);
       return;
     }

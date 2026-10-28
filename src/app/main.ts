@@ -68,7 +68,7 @@ import { parseSpawnList } from '../core/test-floor';
 import { earnChallengeReward, earnCoins, loadSave, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
-import { achievementsWindow, achievementToast } from './achievements';
+import { achievementsWindow, achievementToast, holdToasts, releaseToasts } from './achievements';
 import { recordPast, recordRun, recordSave } from './progress';
 import { runReport } from '../core/run-report';
 import { evolveWindow } from './evolve';
@@ -511,10 +511,14 @@ function enterDungeon(root: HTMLElement, dungeon: DungeonId, back: () => void): 
 /** The prologue cinematic (route "prologue"); `onDone` runs when it ends or is skipped, and it counts as seen. */
 function prologue(root: HTMLElement, onDone: () => void, startMs?: number): void {
   void sheetsReady();
+  // No achievement toast over it (the boot's catch-up one comes back after).
+  holdToasts();
   const screen = prologueScreen({
     sheets: () => sheets,
     startMs,
     music: { start: (offsetS) => audio.playCue(PROLOGUE_MUSIC, offsetS), stop: () => audio.stopCue() },
+    // Released however it goes away (ended, skipped, or replaced by another screen).
+    onClose: releaseToasts,
     onDone: () => {
       markPrologueSeen(store);
       onDone();
@@ -1597,13 +1601,18 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       const materials = materialsEarned(dungeonById(summary.dungeon), summary.difficulty, before, save, t);
       // Achievements: every peer settles its own run on its own save (app/progress.ts); new ones pay into the balance shown.
       const progress = recordRun(store, runReport(summary, result, settings.species), Date.now());
+      // Its toasts wait for the cinematics after the run and come out with the results.
+      holdToasts();
       achievementToast(progress.unlocked);
       // The Sima del Eclipse: every peer keeps its own leaderboard (guests too: it is their score).
       // A run the host cut short never reached its end: no score.
       const score = summary.clockMs !== undefined && !summary.cutShort ? endlessScore(summary) : undefined;
       // A won Senda chapter is closed (its bond line shows at Phantump's), and alone its closing cinematic plays first.
       recordStory(store, story, result === 'victory' && !summary.cutShort);
-      const results = () => resultScreen(root, result, summary, online, progress.save.coins, score, materials);
+      const results = () => {
+        resultScreen(root, result, summary, online, progress.save.coins, score, materials);
+        releaseToasts();
+      };
       if (story && result === 'victory' && !shared.net) return storyCinematic(root, story, 'after', results);
       // The Sima, alone: the first run lost or defeated, the breaking point and the waking with Phantump; after any other run, the return.
       const id = sima && !shared.net ? simaEndScene({ result, cutShort: summary.cutShort !== undefined, seenLost: hasSeenSimaScene(store, 'lost'), seenReturn: hasSeenSimaScene(store, 'return') }) : null;
