@@ -32,7 +32,7 @@ Guests (no account) do not appear; the board says so.
 ## Tasks
 
 - [x] T1 Backend ranking route (pure ranking rule with table tests, route + integration test, README). Route: delegated (one writer across both worktrees; preparation reading + 2+ non-trivial files). Commit `36f8fd1` on `feat/sima-ranking` (mazmorra-backend).
-- [x] T2 Client global board (adapter + town board view + i18n es/en + GDD + tests). Route: delegated (same writer). Commit: see Progress.
+- [x] T2 Client global board (adapter + town board view + i18n es/en + GDD + tests). Route: delegated (same writer). Commit `bcec027` on `feat/sima-global-ranking`.
 - [ ] T3 Deploy backend and client (pending owner authorization).
 
 ## Parity checklist
@@ -65,5 +65,5 @@ Backend: `go test ./...` in `server/`. Client: `npm run typecheck`, `npx vitest 
 Created 2026-10-28.
 
 - T1 done: `36f8fd1` (mazmorra-backend, `feat/sima-ranking`). RED observed first (undefined symbols) for `internal/ranking` and `rankingapi`. `go test ./...` ok, `go vet ./...` clean. About 700 changed lines, mostly table tests and the route integration test; one coherent unit, not split.
-- T2 done (commit recorded below). RED observed first for the adapter (3 failing tests) and `tests/town/global-ranking.test.ts` (module missing). `npm run typecheck` ok; `npx vitest run --testTimeout=30000` 262 files / 3280 tests passed; `npm run build` ok; `npm run prove` 166 cards survivable, 24/24 solver fights.
+- T2 done: `bcec027`. RED observed first for the adapter (3 failing tests) and `tests/town/global-ranking.test.ts` (module missing). `npm run typecheck` ok; `npx vitest run --testTimeout=30000` 262 files / 3280 tests passed; `npm run build` ok; `npm run prove` 166 cards survivable, 24/24 solver fights.
 - Next: owner decision on the open issue above, then T3 (deploy, needs explicit authorization).
