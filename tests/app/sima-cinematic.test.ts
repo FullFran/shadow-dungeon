@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaText } from '../../src/app/sima-cinematic';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { hasSeenSimaScene, markSimaSceneSeen, simaEndScene, simaPanels, simaSceneSkipped, simaText } from '../../src/app/sima-cinematic';
 import { clockPaused } from '../../src/core/endless';
 import { SIMA_BANDS } from '../../src/data/sima';
 import { SIMA_SCENE_IDS, SIMA_SCENES, simaSceneKeys } from '../../src/data/sima-scenes';
@@ -63,5 +65,38 @@ describe('the Sima\'s cinematics', () => {
   it('a cinematic stops the clock alone, never in a shared run', () => {
     expect(clockPaused({ shared: false, menuOpen: false, pickOpen: false, cinematic: true })).toBe(true);
     expect(clockPaused({ shared: true, menuOpen: false, pickOpen: false, cinematic: true })).toBe(false);
+  });
+
+  it('the breaking point plays on the first Sima run lost or defeated (an HP death too), then the return', () => {
+    const fresh = { seenLost: false, seenReturn: false, cutShort: false };
+    expect(simaEndScene({ ...fresh, result: 'eclipse' })).toBe('lost');
+    expect(simaEndScene({ ...fresh, result: 'defeat' })).toBe('lost');
+    // A victory (a Sima run never has one, but the rule is total) is a return.
+    expect(simaEndScene({ ...fresh, result: 'victory' })).toBe('return');
+    // Once seen, every later end is the return, whole the first time, then short.
+    expect(simaEndScene({ ...fresh, seenLost: true, result: 'defeat' })).toBe('return');
+    expect(simaEndScene({ seenLost: true, seenReturn: true, cutShort: false, result: 'eclipse' })).toBe('return-short');
+    // A run the host cut short plays nothing.
+    expect(simaEndScene({ ...fresh, cutShort: true, result: 'defeat' })).toBeNull();
+  });
+
+  it('the breaking point reads right after an HP death: no line says the clock or the lucidity ran out', () => {
+    for (const language of LANGUAGES) {
+      setLanguage(language);
+      const lines = [...SIMA_SCENES.lost.map((_, i) => t(`sima.scene.lost.${i + 1}`)), t('sima.scene.lost.card')].join(' ').toLowerCase();
+      for (const word of ['lucidez', 'lucidity', 'reloj', 'clock', '0:00']) expect(lines, `${language} ${word}`).not.toContain(word);
+    }
+  });
+
+  it('a seen scene is skipped without calling back: the caller goes on by itself (no double then)', () => {
+    expect(simaSceneSkipped('lost', true)).toBe(true);
+    expect(simaSceneSkipped('lost', false)).toBe(false);
+    expect(simaSceneSkipped('lost', true, true)).toBe(false);
+    expect(simaSceneSkipped('return-short', true)).toBe(false);
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    const scene = main.slice(main.indexOf('function simaScene('), main.indexOf('function storyCinematic('));
+    expect(scene).toMatch(/if \(simaSceneSkipped\(id, hasSeenSimaScene\(store, id\), replay !== undefined\)\) return null;/);
+    // The run's end goes on to the results when nothing played.
+    expect(main).toMatch(/if \(!simaScene\(root, id, \{ species: settings\.species, floor: summary\.floor \}, results, false\)\) results\(\);/);
   });
 });

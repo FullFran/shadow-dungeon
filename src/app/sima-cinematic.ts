@@ -43,6 +43,26 @@ export function markSimaSceneSeen(store: KeyValueStore, id: SimaSceneId | 'plea'
   store.set(KEY, JSON.stringify([...seen]));
 }
 
+/**
+ * Whether `simaScene` plays nothing: a seen scene, unless replayed (the
+ * return's short form always plays). The caller then goes on by itself; a
+ * skipped scene never calls back (like the guardian cinematics).
+ */
+export const simaSceneSkipped = (id: SimaSceneId, seen: boolean, replay = false): boolean => !replay && id !== 'return-short' && seen;
+
+/**
+ * The scene after a Sima run, alone (docs/sima-redesign.md §5.6-5.7): the
+ * breaking point the first time a run ends lost or defeated (an HP death
+ * too, so a player who never runs out of lucidity still meets Phantump's
+ * explanation), then the return, whole the first time and short after. A run
+ * the host cut short plays none.
+ */
+export function simaEndScene(o: { result: 'victory' | 'defeat' | 'eclipse'; cutShort: boolean; seenLost: boolean; seenReturn: boolean }): SimaSceneId | null {
+  if (o.cutShort) return null;
+  if (o.result !== 'victory' && !o.seenLost) return 'lost';
+  return o.seenReturn ? 'return-short' : 'return';
+}
+
 const SLOW = { textStartMs: 900, charsPerSecond: 26, lineGapMs: 600 } as const;
 const CAMERAS: readonly { from: Shot; to: Shot }[] = [
   { from: { x: 0.5, y: 0.48, zoom: 1.05 }, to: { x: 0.5, y: 0.52, zoom: 1.14 } },

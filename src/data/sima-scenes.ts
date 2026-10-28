@@ -104,7 +104,7 @@ export const SIMA_SCENES: Record<SimaSceneId, readonly SimaBeat[]> = {
   // 5.5 Somebody's shadow: the first lost shadow, nameless or known (each plays once).
   someone: [b('fog-wall', 'Idle'), b('someone'), b('fog-wall', 'Idle')],
   'someone-known': [b('fog-wall', 'Idle', 'sima.scene.someone.1'), b('someone'), b('someone')],
-  // 5.6 Breaking point, then the waking: the first time lucidity runs out. Phantump explains the rest.
+  // 5.6 Breaking point, then the waking: the first Sima run lost or defeated (app/sima-cinematic.ts `simaEndScene`). Phantump explains the rest.
   lost: [
     b('pulse'),
     b('kneel', 'Hurt'),

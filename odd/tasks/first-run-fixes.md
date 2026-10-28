@@ -26,7 +26,7 @@ A first-time player met villagers talking about the Sima Walkers and "your shado
 ## Tasks
 
 - [x] F1+F7 Pleas after the first Crypt clear; after the arrival pleas, back to where the town opened. Route: inline (two small code sites in `town/scene.ts`, `town/plea.ts`, `app/main.ts`; context already read). Commit: see Progress.
-- [ ] F2+F6 Breaking point on the first lost or defeated Sima run; `simaScene` returns null without calling `onDone`. Route: inline (pure rule in `app/sima-cinematic.ts`, call sites in `app/main.ts`).
+- [x] F2+F6 Breaking point on the first lost or defeated Sima run; `simaScene` returns null without calling `onDone`. Route: inline (pure rule in `app/sima-cinematic.ts`, call sites in `app/main.ts`).
 - [ ] F3 Returning players with progress skip prologue and quiz. Route: inline (pure predicate in `app/adventure-route.ts`, wiring in `app/main.ts`).
 - [ ] F4 Story «before» cinematic in full once per chapter, then a title card. Route: inline (`app/story.ts` seen flags and short panels, `app/main.ts`).
 - [ ] F5 Achievement toasts held during cinematics. Route: inline (gate in `app/achievements.ts`, holds in `app/main.ts`).
@@ -37,7 +37,7 @@ Route note: this document is executed by one delegated worker (the parent delega
 ## Parity checklist
 
 - [x] Pleas: solo only (rooms never), legacy records (`clearedDungeons` counts a pre-flag victory in the first dungeon), old saves that cleared the Crypt and have not seen them get them on the next arrival; heading for the Sima still plays them if due.
-- [ ] Sima breaking point: solo only (shared runs unchanged), every non-victory, non-cut-short end (eclipse and defeat); text reads right after an HP death in es and en.
+- [x] Sima breaking point: solo only (shared runs unchanged), every non-victory, non-cut-short end (eclipse and defeat); text reads right after an HP death in es and en.
 - [ ] Returning players: progress predicate covers runs, victories, coins, earned, owned, story, achievements; quiz never runs for them.
 - [ ] Story cinematic: every Senda line and chapter (`STORY_QUESTS`), short card text exists in every language; guests still skip; gallery replays still full and mark nothing.
 - [ ] Toasts: post-run (every end path: story after, Sima scenes, plain results, trial end), boot catch-up vs prologue, stalls unaffected.
@@ -53,3 +53,4 @@ Route note: this document is executed by one delegated worker (the parent delega
 Created 2026-10-28 on branch `feat/first-run-fixes`.
 
 - F1+F7: RED observed (`tests/app/sima-plea-due.test.ts`: 3 failing, `pleaReady` missing, `ready:` and `opened` absent). GREEN: `pleaReady(cleared)` in `town/plea.ts` (the Crypt in the records' cleared set, legacy victories included); `pleaOnArrival` takes `ready`; the solo town passes `ready: () => pleaReady(cleared())`; heading for the Sima still plays them when due (unchanged); rooms never get `simaPlea` (only `townScreen` wires it). After the arrival pleas the walker goes back to where the town opened (`enterMap(opened.map, opened.walker)`): the hub's spawn after a run, the shrine or beacon tile when the town reopened there. Deliberate: the owner said "hub spawn"; returning to the place the town opened is the hub spawn in every post-run arrival and avoids teleporting a player who reopened the town at the shrine or beacon. GDD «Las súplicas» updated. Checks: focused vitest (sima-plea-due + tests/town) 223/223; typecheck clean.
+- F2+F6: RED observed (`tests/app/sima-cinematic.test.ts`: 2 failing, `simaEndScene` and `simaSceneSkipped` missing). The new text guard (no «lucidez/lucidity/reloj/clock/0:00» in the breaking point, es and en) passed from the start: the lines speak of getting lost and falling, which reads right after an HP death, so no text changed. GREEN: `simaEndScene` (pure: `lost` on the first non-victory end, then `return`, then `return-short`; none when cut short) used after the run; `simaSceneSkipped` makes `simaScene` return null without calling `onDone`; both callers that depend on the callback (the run's end, the mouth) go on by themselves when it returns null; `simaMoment` already did. GDD Sima cinematics line and the data comment updated. Checks: vitest tests/app 333/333; typecheck clean.

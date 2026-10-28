@@ -36,7 +36,7 @@ import { loadoutScreen, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen, type PrologueOptions } from './prologue';
 import { readSimaMemory } from './sima-lore';
-import { hasSeenSimaScene, markSimaSceneSeen, simaPanels, simaPleaDue, simaText, type SimaSceneInfo } from './sima-cinematic';
+import { hasSeenSimaScene, markSimaSceneSeen, simaEndScene, simaPanels, simaPleaDue, simaSceneSkipped, simaText, type SimaSceneInfo } from './sima-cinematic';
 import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
 import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
@@ -540,14 +540,12 @@ function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; pha
  * A Sima cinematic (data/sima-scenes.ts) on the prologue player: over the
  * running game (`overlay`, solo: the run stands still) or as its own screen
  * (the mouth before the first descent, the return after a run). It counts as
- * seen once it ends or is skipped; a seen one returns null and plays nothing
- * (the return's short form always plays).
+ * seen once it ends or is skipped; a seen one returns null, plays nothing and
+ * does not call `onDone` (the return's short form always plays).
  */
 function simaScene(root: HTMLElement, id: SimaSceneId, info: SimaSceneInfo, onDone: () => void, overlay: boolean, replay?: { startMs: number }): (() => void) | null {
-  if (!replay && id !== 'return-short' && hasSeenSimaScene(store, id)) {
-    onDone();
-    return null;
-  }
+  // A seen one plays nothing and never calls back: the caller goes on (`simaMoment` already does on null).
+  if (simaSceneSkipped(id, hasSeenSimaScene(store, id), replay !== undefined)) return null;
   void sheetsReady();
   const text = simaText(t, info.floor);
   const screen = prologueScreen({
@@ -1528,7 +1526,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   if (story && !shared.net && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
   // The Sima's mouth (docs/sima-redesign.md §5.1): the first descent on this device, alone, after the villagers' pleas.
   const sima = !trial && dungeonById(shared.dungeon ?? dungeon).endless !== undefined;
-  if (sima && !shared.net && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => simaScene(root, 'mouth', { species: settings.species }, resolve, false));
+  if (sima && !shared.net && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => {
+      if (!simaScene(root, 'mouth', { species: settings.species }, resolve, false)) resolve();
+    });
   const canvas = h('canvas', { className: 'game' });
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
@@ -1584,10 +1584,11 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
       recordStory(store, story, result === 'victory' && !summary.cutShort);
       const results = () => resultScreen(root, result, summary, online, progress.save.coins, score, materials);
       if (story && result === 'victory' && !shared.net) return storyCinematic(root, story, 'after', results);
-      // The Sima, alone: the first time lucidity runs out, the breaking point and the waking with Phantump; after any other run, the return.
-      if (sima && !shared.net && !summary.cutShort) {
-        const id: SimaSceneId = result === 'eclipse' && !hasSeenSimaScene(store, 'lost') ? 'lost' : hasSeenSimaScene(store, 'return') ? 'return-short' : 'return';
-        return void simaScene(root, id, { species: settings.species, floor: summary.floor }, results, false);
+      // The Sima, alone: the first run lost or defeated, the breaking point and the waking with Phantump; after any other run, the return.
+      const id = sima && !shared.net ? simaEndScene({ result, cutShort: summary.cutShort !== undefined, seenLost: hasSeenSimaScene(store, 'lost'), seenReturn: hasSeenSimaScene(store, 'return') }) : null;
+      if (id) {
+        if (!simaScene(root, id, { species: settings.species, floor: summary.floor }, results, false)) results();
+        return;
       }
       results();
     },
