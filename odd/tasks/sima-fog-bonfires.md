@@ -33,8 +33,8 @@ Every boss in the game is met the same way, the Sima del Eclipse included: an an
 
 ## Tasks
 
-- [x] T1 Boss music and cinematics only after the fog, every dungeon. Route: delegated (single writer across `core/run.ts`, `app/game.ts`, tests). Commit: see Progress.
-- [x] T2 Sima fog walls, bonfire and clock rule. Route: delegated (same writer). Commit: see Progress.
+- [x] T1 Boss music and cinematics only after the fog, every dungeon. Route: delegated (single writer across `core/run.ts`, `app/game.ts`, tests). Commit `40d4267`.
+- [x] T2 Sima fog walls, bonfire and clock rule. Route: delegated (same writer). Commit `14e4e6b`.
 
 ## Parity checklist
 
