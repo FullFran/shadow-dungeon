@@ -53,63 +53,12 @@ export function storyPanels(story: StoryRun, phase: StoryPhase, text: (key: stri
 }
 
 /**
- * The chapters whose «before» cinematic this device has played in full (its
- * own storage key, like the guardians' and the Sima's: not progress, never
- * in the save). Retrying the same chapter opens on a short title card.
+ * When a Senda cinematic can be skipped (owner, 2026-10-28: «que salga
+ * siempre pero con botón de saltar»): it plays in full on every attempt, so
+ * its «Saltar» is there from the first frame (the prologue keeps its one
+ * second, `SKIP.availableAfterMs`).
  */
-export const STORY_SEEN_KEY = 'mazmorra-sombria.storySeen';
-
-const storySeenId = (story: StoryRun): string => `${story.line}:${story.chapter}`;
-
-function storySeen(store: KeyValueStore): Set<string> {
-  try {
-    const raw = JSON.parse(store.get(STORY_SEEN_KEY) ?? '[]') as unknown;
-    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export const hasSeenStoryBefore = (store: KeyValueStore, story: StoryRun): boolean => storySeen(store).has(storySeenId(story));
-
-/** Remembers the chapter's «before» as seen (a failing store is ignored: it plays in full again). */
-export function markStoryBeforeSeen(store: KeyValueStore, story: StoryRun): void {
-  try {
-    const seen = storySeen(store);
-    if (seen.has(storySeenId(story))) return;
-    seen.add(storySeenId(story));
-    store.set(STORY_SEEN_KEY, JSON.stringify([...seen]));
-  } catch {
-    // Not persisted.
-  }
-}
-
-/** How long the retry's title card stays. */
-const CARD_MS = 3200;
-
-/**
- * The «before» cinematic of a chapter: in full the first time, then (`seen`)
- * a short title card on its first tableau with the Senda's and the chapter's
- * names, like the guardians' name cards.
- */
-export function storyBeforePanels(story: StoryRun, text: (key: string) => string, seen: boolean): StoryPanel[] {
-  const full = storyPanels(story, 'before', text);
-  const first = full[0];
-  if (!seen || !first) return full;
-  return [
-    {
-      ...first,
-      id: `${story.line}-${story.chapter}-before-card`,
-      lines: [storyKeys.title(story.line), storyKeys.chapterTitle(story.line, story.chapter)],
-      durationMs: CARD_MS,
-      fadeInMs: 500,
-      fadeOutMs: 700,
-      textStartMs: 300,
-      charsPerSecond: 60,
-      lineGapMs: 200,
-    },
-  ];
-}
+export const STORY_SKIP_AFTER_MS = 0;
 
 /** The chapter a run of `dungeon` on `difficulty` plays for this save (none: a plain challenge). */
 export const storyRunOf = (save: Pick<SaveData, 'story'>, dungeon: DungeonDef, difficulty: Difficulty): StoryRun | null => storyRunFor(dungeon, difficulty, save.story);

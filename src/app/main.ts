@@ -75,7 +75,7 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
-import { hasSeenStoryBefore, markStoryBeforeSeen, recordStory, storyBeforePanels, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
 import type { StoryRun } from '../core/story';
 import { shopWindow } from './shop';
@@ -598,8 +598,8 @@ function simaScene(root: HTMLElement, id: SimaSceneId, info: SimaSceneInfo, onDo
  * skippable the same way. Solo only (a shared run never pauses).
  */
 function storyCinematic(root: HTMLElement, story: StoryRun, phase: StoryPhase, onDone: () => void): void {
-  // The «before» in full once per chapter on this device; a retry opens on its title card.
-  const panels = phase === 'before' ? storyBeforePanels(story, t, hasSeenStoryBefore(store, story)) : storyPanels(story, phase, t);
+  // In full on every attempt (owner, 2026-10-28), skippable from the first frame.
+  const panels = storyPanels(story, phase, t);
   if (panels.length === 0) return onDone();
   void sheetsReady();
   const screen = prologueScreen({
@@ -607,10 +607,8 @@ function storyCinematic(root: HTMLElement, story: StoryRun, phase: StoryPhase, o
     panels,
     draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha),
     label: t(`story.${story.line}.${story.chapter}.title`),
-    onDone: () => {
-      if (phase === 'before') markStoryBeforeSeen(store, story);
-      onDone();
-    },
+    skipAfterMs: STORY_SKIP_AFTER_MS,
+    onDone,
   });
   show(root, [screen], false);
   root.querySelector('.notice')?.classList.add('in-game');

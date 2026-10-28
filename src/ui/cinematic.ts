@@ -70,7 +70,8 @@ export function cameraAt(panel: CinematicPanel, localMs: number): Shot {
   return { x: mix(from.x, to.x), y: mix(from.y, to.y), zoom: mix(from.zoom, to.zoom) };
 }
 
-export const skipAvailable = (elapsedMs: number): boolean => elapsedMs >= SKIP.availableAfterMs;
+/** Whether the skip counts yet: after `afterMs` (by default the prologue's `SKIP.availableAfterMs`; 0 is from the start). */
+export const skipAvailable = (elapsedMs: number, afterMs: number = SKIP.availableAfterMs): boolean => elapsedMs >= afterMs;
 
 /** Progress (0..1) of a skip key held since `pressedAtMs` (null when not held); 1 skips. */
 export function holdProgress(pressedAtMs: number | null, nowMs: number): number {

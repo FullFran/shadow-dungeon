@@ -2,7 +2,7 @@ import type { SheetStore } from '../adapters/assets';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
 import { t } from '../i18n';
-import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, skipAvailable, stageScale } from '../ui/cinematic';
+import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, SKIP, skipAvailable, stageScale } from '../ui/cinematic';
 import { h } from '../ui/window';
 
 /**
@@ -28,6 +28,8 @@ export interface PrologueOptions {
   onDone: () => void;
   /** Runs once when the player goes away: it ended, was skipped (after `onDone`), or another screen replaced it. */
   onClose?: () => void;
+  /** When «Saltar» (and the held key or finger) starts to count (default `SKIP.availableAfterMs`; 0 shows it from the first frame). */
+  skipAfterMs?: number;
   music?: PrologueMusic;
   /** Start this far in (development screenshots). */
   startMs?: number;
@@ -63,6 +65,12 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const element = h('section', { className: 'prologue' }, [stage, skip, hint]);
   element.setAttribute('aria-label', options.label ?? t('title.prologue'));
   const panels = options.panels ?? PROLOGUE;
+  const skipAfterMs = options.skipAfterMs ?? SKIP.availableAfterMs;
+  // Skippable from the start: visible at once, without the fade-in.
+  if (skipAfterMs <= 0) {
+    skip.classList.add('is-visible');
+    hint.classList.add('is-visible');
+  }
 
   const ctx = canvas.getContext('2d');
   let started: number | null = null;
@@ -90,7 +98,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     // Keep the key from the menus behind and from page scrolling.
     e.preventDefault();
     e.stopPropagation();
-    if (!e.repeat && pressedAt === null && skipAvailable(elapsed)) pressedAt = performance.now();
+    if (!e.repeat && pressedAt === null && skipAvailable(elapsed, skipAfterMs)) pressedAt = performance.now();
   };
   const onKeyUp = (e: KeyboardEvent) => {
     if (isSkipKey(e.key)) pressedAt = null;
@@ -98,11 +106,11 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   window.addEventListener('keydown', onKeyDown, true);
   window.addEventListener('keyup', onKeyUp, true);
   skip.addEventListener('click', () => {
-    if (skipAvailable(elapsed)) finish();
+    if (skipAvailable(elapsed, skipAfterMs)) finish();
   });
   // Touch: holding a finger anywhere on the picture is the held skip key (the same progress bar).
   element.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' || e.target === skip || pressedAt !== null || !skipAvailable(elapsed)) return;
+    if (e.pointerType !== 'touch' || e.target === skip || pressedAt !== null || !skipAvailable(elapsed, skipAfterMs)) return;
     pressedAt = performance.now();
   });
   const letGo = (e: PointerEvent) => {
@@ -172,7 +180,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       else drawPrologue(ctx, moment.panel.scene as PrologueScene, time, camera, alpha);
     }
     renderText(moment.index, moment.localMs, alpha);
-    const canSkip = skipAvailable(elapsed);
+    const canSkip = skipAvailable(elapsed, skipAfterMs);
     skip.classList.toggle('is-visible', canSkip);
     hint.classList.toggle('is-visible', canSkip);
     hold.style.width = `${holdProgress(pressedAt, now) * 100}%`;
