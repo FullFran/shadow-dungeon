@@ -480,6 +480,7 @@
   "endless.global.unavailable": "unavailable right now (offline or the server is down). Your marks on this device are still above.",
   "endless.global.empty": "no account has a mark on this tier yet. Only accounts count; guests do not appear.",
   "endless.global.guest": "log in from \"Account\" to see it and appear on it. Guests do not appear.",
+  "endless.global.noNickname": "set a nickname in Settings (the online one) to appear on the global ranking.",
   "endless.score": "Sima del Eclipse",
   "endless.score.mode": "Mode",
   "endless.score.time": "Lucidity left",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayName, fallbackNickname, NICKNAME_MAX, sanitizeNickname } from '../../src/net/nickname';
+import { displayName, fallbackNickname, isPublicNickname, NICKNAME_MAX, sanitizeNickname } from '../../src/net/nickname';
 
 describe('nicknames', () => {
   it('trims, collapses spaces and keeps at most 16 characters', () => {
@@ -40,5 +40,13 @@ describe('nicknames', () => {
     expect(displayName(' Ana ', 'Jugador', 'p')).toBe('Ana');
     expect(displayName('\u0000', 'Jugador', 'p')).toBe(fallbackNickname('Jugador', 'p'));
     expect(displayName(undefined, 'Player', 'p')).toBe(fallbackNickname('Player', 'p'));
+  });
+});
+
+describe('public nickname (the server profile rule)', () => {
+  it('is a non-empty nickname that sanitising leaves as it is', () => {
+    expect(isPublicNickname('Fran')).toBe(true);
+    expect(isPublicNickname('Gran Maestro')).toBe(true);
+    for (const bad of ['', '   ', ' Fran', 'Fran ', 'a  b', 'x\u200by', 'a'.repeat(NICKNAME_MAX + 1), 7]) expect(isPublicNickname(bad), String(bad)).toBe(false);
   });
 });

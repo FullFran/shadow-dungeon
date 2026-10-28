@@ -15,27 +15,34 @@ const templates: Record<string, string> = {
   'endless.global.unavailable': 'unavailable',
   'endless.global.empty': 'empty',
   'endless.global.guest': 'guest',
+  'endless.global.noNickname': 'set a nickname',
 };
 const tr = (key: string) => templates[key] ?? `[${key}]`;
 
 describe('global ranking lines', () => {
   it('shows the top rows two per page under a title naming the tier', () => {
     const rows = [row(1, 'Ana'), row(2, 'Bea'), row(3, 'Cris')];
-    expect(globalRankingLines({ kind: 'ready', entries: rows }, tr, 'Hard', null)).toEqual(['Global (Hard): 1. Ana F19 1:05 · 2. Bea F18 1:05', '3. Cris F17 1:05']);
+    expect(globalRankingLines({ kind: 'ready', entries: rows }, tr, 'Hard', { me: null })).toEqual(['Global (Hard): 1. Ana F19 1:05 · 2. Bea F18 1:05', '3. Cris F17 1:05']);
   });
 
   it("marks the player's own nickname, and adds its row when it is below the top", () => {
     const rows = Array.from({ length: 9 }, (_, i) => row(i + 1, i === 7 ? 'Me' : `P${i + 1}`));
-    const lines = globalRankingLines({ kind: 'ready', entries: rows }, tr, 'Easy', 'Me', 4);
+    const lines = globalRankingLines({ kind: 'ready', entries: rows }, tr, 'Easy', { me: 'Me', max: 4 });
     expect(lines).toEqual(['Global (Easy): 1. P1 F19 1:05 · 2. P2 F18 1:05', '3. P3 F17 1:05 · 4. P4 F16 1:05', '8. Me F12 1:05 (you)']);
-    expect(globalRankingLines({ kind: 'ready', entries: [row(1, 'Me')] }, tr, 'Easy', 'Me')).toEqual(['Global (Easy): 1. Me F19 1:05 (you)']);
+    expect(globalRankingLines({ kind: 'ready', entries: [row(1, 'Me')] }, tr, 'Easy', { me: 'Me' })).toEqual(['Global (Easy): 1. Me F19 1:05 (you)']);
   });
 
   it('loading, unavailable, empty and guest are one clear line each', () => {
-    expect(globalRankingLines({ kind: 'loading' }, tr, 'Easy', null)).toEqual(['Global (Easy): loading']);
-    expect(globalRankingLines({ kind: 'unavailable' }, tr, 'Easy', null)).toEqual(['Global (Easy): unavailable']);
-    expect(globalRankingLines({ kind: 'ready', entries: [] }, tr, 'Easy', null)).toEqual(['Global (Easy): empty']);
-    expect(globalRankingLines({ kind: 'guest' }, tr, 'Easy', null)).toEqual(['Global (Easy): guest']);
+    expect(globalRankingLines({ kind: 'loading' }, tr, 'Easy', { me: null })).toEqual(['Global (Easy): loading']);
+    expect(globalRankingLines({ kind: 'unavailable' }, tr, 'Easy', { me: null })).toEqual(['Global (Easy): unavailable']);
+    expect(globalRankingLines({ kind: 'ready', entries: [] }, tr, 'Easy', { me: null })).toEqual(['Global (Easy): empty']);
+    expect(globalRankingLines({ kind: 'guest' }, tr, 'Easy', { me: null })).toEqual(['Global (Easy): guest']);
+  });
+
+  it('a signed-in player without a nickname sees the board and how to appear on it', () => {
+    expect(globalRankingLines({ kind: 'ready', entries: [row(1, 'Ana')] }, tr, 'Easy', { me: null, noNickname: true })).toEqual(['Global (Easy): 1. Ana F19 1:05', 'set a nickname']);
+    expect(globalRankingLines({ kind: 'ready', entries: [] }, tr, 'Easy', { me: null, noNickname: true })).toEqual(['Global (Easy): empty', 'set a nickname']);
+    expect(globalRankingLines({ kind: 'guest' }, tr, 'Easy', { me: null, noNickname: true })).toEqual(['Global (Easy): guest']);
   });
 
   it('every line has its text in every language', () => {

@@ -51,8 +51,9 @@ import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-pane
 import { openTown, type TownOptions } from '../town/scene';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
+import { profilePublisher } from './profile-publish';
 import type { TownLobby } from '../town/lobby';
-import { displayName, sanitizeNickname } from '../net/nickname';
+import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
@@ -105,9 +106,14 @@ applyTokens(document.documentElement);
 /** Redraws the open account window in place (the screen or the town's overlay) and the view it shows; declared before the account, whose start may report a change at once. */
 let accountRedraw: (() => void) | null = null;
 let accountView: AccountView | null = null;
+/** One client for the public calls (Sima ranking, public profile); the account keeps its own. */
+const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
+/** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
+const publicProfile = profilePublisher({ api: publicApi, nickname: () => settings.nickname, species: () => settings.species });
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
 const { account, store } = setupAccount({
   store: browserStore(),
+  onSynced: (session) => publicProfile.synced(session),
   notify: (text) => {
     const app = document.getElementById('app');
     if (app) toast(app, text);
@@ -126,9 +132,12 @@ const { account, store } = setupAccount({
 });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
-const globalRanking = globalRankingSource({ api: httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL)), signedIn: () => account.state().kind === 'signed-in', now: () => Date.now() });
+const globalRanking = globalRankingSource({ api: publicApi, signedIn: () => account.state().kind === 'signed-in', now: () => Date.now() });
 const globalBoard = (difficulty: Difficulty): string[] =>
-  globalRankingLines(globalRanking.state(difficulty), (key) => t(key), t(`difficulty.${difficulty}`), account.state().kind === 'signed-in' ? sanitizeNickname(settings.nickname) || null : null);
+  globalRankingLines(globalRanking.state(difficulty), (key) => t(key), t(`difficulty.${difficulty}`), {
+    me: account.state().kind === 'signed-in' && isPublicNickname(settings.nickname) ? settings.nickname : null,
+    noNickname: account.state().kind === 'signed-in' && !isPublicNickname(settings.nickname),
+  });
 // Achievements arrived after players had progress: what the save, the records and the Sima leaderboard prove unlocks once, with one summary toast (app/progress.ts).
 setLanguage(settings.language);
 achievementToast(recordPast(store, Date.now()).unlocked, undefined, true);
@@ -297,6 +306,8 @@ function applyLanguage(language: Language): void {
 function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
+  // A new nickname or species reaches the public profile now (signed in only; a no-op when nothing changed).
+  if ((changes.nickname !== undefined || changes.species !== undefined) && account.state().kind === 'signed-in') publicProfile.changed();
   audio.setVolumes(settings);
   if (changes.touchMode) setTouchMode(settings.touchMode);
   setTouchPrefs(touchPrefsOf(settings));

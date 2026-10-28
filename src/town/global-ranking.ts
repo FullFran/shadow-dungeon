@@ -30,6 +30,7 @@ export const GLOBAL_RANKING_KEYS = [
   'endless.global.unavailable',
   'endless.global.empty',
   'endless.global.guest',
+  'endless.global.noNickname',
 ] as const;
 
 const PER_PAGE = 2;
@@ -37,12 +38,21 @@ const PER_PAGE = 2;
 /**
  * The board pages for one tier: the top `max` rows, the player's own
  * nickname marked (and its row added after the top when it is lower), or
- * one line for loading, unavailable, empty and guest.
+ * one line for loading, unavailable, empty and guest (plus how to appear
+ * for a signed-in player without a nickname).
  */
-export function globalRankingLines(state: GlobalRankingState, tr: (key: string) => string, tierName: string, me: string | null, max = GLOBAL_RANKING_SHOWN): string[] {
+export function globalRankingLines(
+  state: GlobalRankingState,
+  tr: (key: string) => string,
+  tierName: string,
+  options: { me: string | null; noNickname?: boolean; max?: number },
+): string[] {
+  const { me, max = GLOBAL_RANKING_SHOWN } = options;
   const title = tr('endless.global.title').replace('{tier}', tierName);
   if (state.kind !== 'ready') return [`${title} ${tr(`endless.global.${state.kind}`)}`];
-  if (state.entries.length === 0) return [`${title} ${tr('endless.global.empty')}`];
+  // Signed in without a nickname: no public profile, so not on the board; say how to appear.
+  const hint = options.noNickname ? [tr('endless.global.noNickname')] : [];
+  if (state.entries.length === 0) return [`${title} ${tr('endless.global.empty')}`, ...hint];
   const line = (e: RankingEntry): string => {
     const text = tr('endless.global.entry')
       .replace('{rank}', String(e.rank))
@@ -58,7 +68,7 @@ export function globalRankingLines(state: GlobalRankingState, tr: (key: string) 
   for (let i = 0; i < lines.length; i += PER_PAGE) pages.push(lines.slice(i, i + PER_PAGE).join(' · '));
   if (mine) pages.push(line(mine));
   pages[0] = `${title} ${pages[0]}`;
-  return pages;
+  return [...pages, ...hint];
 }
 
 export interface GlobalRankingSource {

@@ -17,7 +17,14 @@ import { electLeader, type LockManagerLike } from './sync-leader';
  * leader tab pushes; the others follow through storage events. A guest makes
  * no request.
  */
-export function setupAccount(options: { store: KeyValueStore; notify(text: string): void; onChange(): void; onReplaced?(): void }): { account: Account; store: KeyValueStore } {
+export function setupAccount(options: {
+  store: KeyValueStore;
+  notify(text: string): void;
+  onChange(): void;
+  onReplaced?(): void;
+  /** The account synced with the cloud (the public profile follows it, app/profile-publish.ts). */
+  onSynced?(session: { token: string; userId: string }): void;
+}): { account: Account; store: KeyValueStore } {
   const tabId = `t${Date.now().toString(36)}${Math.floor(Math.random() * 36 ** 4).toString(36)}`;
   const locks = (globalThis.navigator as Navigator & { locks?: LockManagerLike }).locks ?? null;
   let leader: { isLeader(): boolean } = { isLeader: () => false };
@@ -34,6 +41,7 @@ export function setupAccount(options: { store: KeyValueStore; notify(text: strin
     },
     onChange: options.onChange,
     onReplaced: () => options.onReplaced?.(),
+    onSynced: (session) => options.onSynced?.(session),
   });
   leader = electLeader({ locks, store: options.store, timers: realTimers, now: () => Date.now(), id: tabId, onLeader: () => account.lead(), onLost: () => {} });
   const store = observeKeys(options.store, PROFILE_KEYS, () => account.saveChanged());

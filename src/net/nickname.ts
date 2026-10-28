@@ -20,6 +20,9 @@ export function sanitizeNickname(raw: unknown): string {
   return [...clean].slice(0, NICKNAME_MAX).join('').trim();
 }
 
+/** A nickname the server accepts on a public profile: non-empty and already clean (server `rules.ValidateNickname`). */
+export const isPublicNickname = (raw: unknown): raw is string => typeof raw === 'string' && raw !== '' && sanitizeNickname(raw) === raw;
+
 const SUFFIX = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** "<base>-XYZ": three characters hashed from the peer id. */

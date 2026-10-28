@@ -93,6 +93,18 @@ function fakeBackend() {
       if (down) return fail(down as never);
       return { ok: true, value: { tier, entries: [] } };
     },
+    async getProfile() {
+      calls.push('getProfile');
+      return { ok: true, value: null };
+    },
+    async createProfile(_token, _userId, fields) {
+      calls.push('createProfile');
+      return { ok: true, value: { id: 'p1', ...fields } };
+    },
+    async updateProfile(_token, profileId, fields) {
+      calls.push('updateProfile');
+      return { ok: true, value: { id: profileId, ...fields } };
+    },
   };
   return {
     api,
@@ -161,6 +173,7 @@ function device(backend: ReturnType<typeof fakeBackend>, storage: KeyValueStore 
   const notices: { notice: Notice; undo?: string }[] = [];
   const timers = manualTimers();
   let replaced = 0;
+  const synced: string[] = [];
   const account = createAccount({
     api: backend.api,
     store: storage,
@@ -170,6 +183,7 @@ function device(backend: ReturnType<typeof fakeBackend>, storage: KeyValueStore 
     onNotice: (notice, undo) => notices.push(undo ? { notice, undo } : { notice }),
     onChange: () => {},
     onReplaced: () => replaced++,
+    onSynced: (session) => synced.push(session.userId),
   });
   const game = observeKeys(storage, PROFILE_KEYS, () => account.saveChanged());
   return {
@@ -180,6 +194,7 @@ function device(backend: ReturnType<typeof fakeBackend>, storage: KeyValueStore 
     notices,
     names: () => notices.map((n) => n.notice),
     replaced: () => replaced,
+    synced,
     local: () => loadSave(storage),
     profile: () => readProfile(storage),
     /** Lets the debounce and pending requests run. */
@@ -199,6 +214,28 @@ describe('guest play', () => {
     await d.idle();
     expect(backend.calls).toEqual([]);
     expect(d.account.state()).toEqual({ kind: 'guest' });
+  });
+});
+
+describe('the synced session (public profile)', () => {
+  it('is reported after a sign-in and after each push, never for a guest', async () => {
+    const backend = fakeBackend();
+    const guest = device(backend);
+    await guest.account.start();
+    writeSave(guest.game, save(5));
+    await guest.idle();
+    expect(guest.synced).toEqual([]);
+
+    const d = device(backend);
+    writeSave(d.game, save(100));
+    await d.account.register('ana@example.com', 'password1');
+    await d.idle();
+    expect(d.synced.length).toBeGreaterThan(0);
+    const before = d.synced.length;
+    writeSave(d.game, save(120));
+    await d.idle();
+    expect(d.synced.length).toBeGreaterThan(before);
+    expect(new Set(d.synced).size).toBe(1);
   });
 });
 

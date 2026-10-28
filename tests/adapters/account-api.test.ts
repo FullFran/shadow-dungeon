@@ -149,3 +149,33 @@ describe('Sima global ranking', () => {
     expect(await httpAccountApi(BASE, fakeFetch(new TypeError('Failed to fetch')).fetchFn).ranking('easy')).toEqual({ ok: false, error: { kind: 'offline' } });
   });
 });
+
+describe('public profile', () => {
+  it("reads the account's own profile by user, or none", async () => {
+    const { seen, fetchFn } = fakeFetch([
+      { status: 200, body: { items: [{ id: 'p1', user: 'u1', nickname: 'Ana', avatarSpecies: 'zorua' }] } },
+      { status: 200, body: { items: [] } },
+    ]);
+    const api = httpAccountApi(BASE, fetchFn);
+    expect(await api.getProfile('T', 'u1')).toEqual({ ok: true, value: { id: 'p1', nickname: 'Ana', avatarSpecies: 'zorua' } });
+    expect(await api.getProfile('T', 'u1')).toEqual({ ok: true, value: null });
+    expect(seen[0]!.url).toBe(`${BASE}/api/collections/profiles/records?filter=%28user%3D%27u1%27%29&perPage=1`);
+    expect(seen[0]!.headers.Authorization).toBe('T');
+    expect(await api.getProfile('T', "u1' || 1=1")).toEqual({ ok: false, error: { kind: 'rejected' } });
+    expect(seen).toHaveLength(2);
+  });
+
+  it('creates it for its own user and updates it by id', async () => {
+    const { seen, fetchFn } = fakeFetch([
+      { status: 200, body: { id: 'p1', nickname: 'Ana', avatarSpecies: 'zorua' } },
+      { status: 200, body: { id: 'p1', nickname: 'Bea', avatarSpecies: '' } },
+    ]);
+    const api = httpAccountApi(BASE, fetchFn);
+    expect(await api.createProfile('T', 'u1', { nickname: 'Ana', avatarSpecies: 'zorua' })).toEqual({ ok: true, value: { id: 'p1', nickname: 'Ana', avatarSpecies: 'zorua' } });
+    expect(seen[0]).toMatchObject({ method: 'POST', url: `${BASE}/api/collections/profiles/records`, body: { user: 'u1', nickname: 'Ana', avatarSpecies: 'zorua' } });
+    expect(await api.updateProfile('T', 'p1', { nickname: 'Bea', avatarSpecies: '' })).toEqual({ ok: true, value: { id: 'p1', nickname: 'Bea', avatarSpecies: '' } });
+    expect(seen[1]).toMatchObject({ method: 'PATCH', url: `${BASE}/api/collections/profiles/records/p1`, body: { nickname: 'Bea', avatarSpecies: '' } });
+    expect(seen[1]!.body).not.toHaveProperty('user');
+    expect(await api.updateProfile('T', '../x', { nickname: 'Bea', avatarSpecies: '' })).toEqual({ ok: false, error: { kind: 'rejected' } });
+  });
+});

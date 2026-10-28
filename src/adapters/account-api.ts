@@ -40,6 +40,15 @@ export interface SimaRanking {
   entries: RankingEntry[];
 }
 
+/** The account's public profile (`profiles`: anyone reads, only the owner writes). */
+export interface PublicProfile {
+  id: string;
+  nickname: string;
+  avatarSpecies: string;
+}
+
+export type ProfileFields = Pick<PublicProfile, 'nickname' | 'avatarSpecies'>;
+
 export type ApiError =
   /** No answer (offline, DNS, CORS, timeout). */
   | { kind: 'offline' }
@@ -66,6 +75,10 @@ export interface AccountApi {
   deleteAccount(token: string, userId: string): Promise<ApiResult<void>>;
   /** The Sima global ranking of `tier`: public, no token (server/README.md, "Sima ranking"). */
   ranking(tier: Difficulty): Promise<ApiResult<SimaRanking>>;
+  /** The account's own public profile, or null when it has none yet. */
+  getProfile(token: string, userId: string): Promise<ApiResult<PublicProfile | null>>;
+  createProfile(token: string, userId: string, fields: ProfileFields): Promise<ApiResult<PublicProfile>>;
+  updateProfile(token: string, profileId: string, fields: ProfileFields): Promise<ApiResult<PublicProfile>>;
 }
 
 export const DEFAULT_API_URL = 'https://sd-api.fullfran.com';
@@ -102,6 +115,11 @@ function rankingEntry(raw: unknown): RankingEntry | null {
   if (!wholeAt(rank, 1) || !wholeAt(floor, 1) || !wholeAt(clockMs, 0) || !wholeAt(level, 1)) return null;
   if (typeof nickname !== 'string' || !nickname || typeof species !== 'string' || typeof date !== 'string' || (mode !== 'daily' && mode !== 'free')) return null;
   return { rank, nickname, avatarSpecies: typeof avatarSpecies === 'string' ? avatarSpecies : '', floor, clockMs, species, level, mode, date };
+}
+
+function publicProfile(raw: unknown): PublicProfile | null {
+  if (!isObject(raw) || typeof raw.id !== 'string' || typeof raw.nickname !== 'string') return null;
+  return { id: raw.id, nickname: raw.nickname, avatarSpecies: typeof raw.avatarSpecies === 'string' ? raw.avatarSpecies : '' };
 }
 
 function simaRanking(body: unknown): SimaRanking | null {
@@ -193,6 +211,24 @@ export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) =>
     async ranking(tier) {
       if (!isDifficulty(tier)) return fail('rejected');
       return call('GET', `/api/sd/ranking/sima?tier=${tier}`, {}, simaRanking);
+    },
+    async getProfile(token, userId) {
+      if (!RECORD_ID.test(userId)) return fail('rejected');
+      const query = new URLSearchParams({ filter: `(user='${userId}')`, perPage: '1' });
+      const result = await call('GET', `/api/collections/profiles/records?${query}`, { token }, (body) => {
+        if (!isObject(body) || !Array.isArray(body.items)) return null;
+        return body.items.length === 0 ? ('none' as const) : publicProfile(body.items[0]);
+      });
+      if (!result.ok) return result;
+      return { ok: true, value: result.value === 'none' ? null : result.value };
+    },
+    async createProfile(token, userId, fields) {
+      if (!RECORD_ID.test(userId)) return fail('rejected');
+      return call('POST', '/api/collections/profiles/records', { token, body: { user: userId, ...fields } }, publicProfile);
+    },
+    async updateProfile(token, profileId, fields) {
+      if (!RECORD_ID.test(profileId)) return fail('rejected');
+      return call('PATCH', `/api/collections/profiles/records/${profileId}`, { token, body: { ...fields } }, publicProfile);
     },
   };
 }

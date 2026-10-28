@@ -115,6 +115,8 @@ export interface AccountDeps {
   onChange(): void;
   /** The local profile was replaced (pull, choice, restore): screens showing it should redraw. */
   onReplaced(): void;
+  /** The session is in sync with the cloud (after a login, a resume or check, and each push): the public profile follows it (app/profile-publish.ts). */
+  onSynced?(session: { token: string; userId: string }): void;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -203,6 +205,7 @@ export function createAccount(deps: AccountDeps): Account {
       pushed: (remote, sent) => {
         setSync({ saveId: remote.id, rev: remote.rev, ...bases(sent), syncedAt: deps.now(), status: sync().status === 'resolved' ? 'resolved' : 'synced' });
         deps.onChange();
+        synced();
       },
       conflict: (current) => reconcile(current, 'conflict'),
       onAuthLost: () => {
@@ -274,6 +277,17 @@ export function createAccount(deps: AccountDeps): Account {
       }
     }
     deps.onChange();
+    synced();
+  }
+
+  /** Tells the profile publisher; a failing listener never breaks sync. */
+  function synced(): void {
+    if (!session) return;
+    try {
+      deps.onSynced?.({ token: session.token, userId: session.userId });
+    } catch {
+      // The public profile is best effort.
+    }
   }
 
   async function signedIn(email: string, password: string): Promise<AuthOutcome> {

@@ -34,6 +34,7 @@ Guests (no account) do not appear; the board says so.
 - [x] T1 Backend ranking route (pure ranking rule with table tests, route + integration test, README). Route: delegated (one writer across both worktrees; preparation reading + 2+ non-trivial files). Commit `36f8fd1` on `feat/sima-ranking` (mazmorra-backend).
 - [x] T2 Client global board (adapter + town board view + i18n es/en + GDD + tests). Route: delegated (same writer). Commit `bcec027` on `feat/sima-global-ranking`.
 - [ ] T3 Deploy backend and client (pending owner authorization).
+- [x] T4 Client writes its own public profile (owner decision 2026-10-28: "client writes the profile"). While signed in, after each cloud sync (`Account` `onSynced`: login/resume/check reconcile and each push) and when Settings change the nickname or species, `src/app/profile-publish.ts` creates or updates the account's `profiles` record (online nickname, species) through `getProfile`/`createProfile`/`updateProfile` in the account API adapter. Idempotent (remembers what it wrote per account; one call at a time), skipped without a valid nickname (`isPublicNickname`, the server's `ValidateNickname`), best effort (failures retried on the next sync, never thrown). The board tells a signed-in player without a nickname to set one (`endless.global.noNickname`). Server rules already allow it (owner create/update); pinned by new scenarios in `server/internal/hooks/hooks_test.go`. Route: delegated (same writer). Commits: backend `3dd216d` (feat/sima-ranking); client: see Progress.
 
 ## Parity checklist
 
@@ -56,9 +57,9 @@ Backend: `go test ./...` in `server/`. Client: `npm run typecheck`, `npx vitest 
 - The player's own row is matched by the online nickname in Settings (`settings.nickname`), the only nickname the client knows.
 - Unknown difficulty values in a stored score are skipped by the server (the client reads them as easy; the server is stricter on purpose).
 
-## Open issue (needs the owner)
+## Resolved issue
 
-- Nothing creates `profiles` records today: neither the client nor a server hook writes them (only `validateProfile` exists). With "skip players without a profile", the live ranking stays empty until profiles exist. Follow-up choice: the client upserts its profile (nickname + avatarSpecies) when signed in, or the server shows a neutral placeholder for players without one.
+- Nothing created `profiles` records, so the ranking would stay empty. Owner chose "client writes the profile": T4.
 
 ## Progress
 
@@ -66,4 +67,6 @@ Created 2026-10-28.
 
 - T1 done: `36f8fd1` (mazmorra-backend, `feat/sima-ranking`). RED observed first (undefined symbols) for `internal/ranking` and `rankingapi`. `go test ./...` ok, `go vet ./...` clean. About 700 changed lines, mostly table tests and the route integration test; one coherent unit, not split.
 - T2 done: `bcec027`. RED observed first for the adapter (3 failing tests) and `tests/town/global-ranking.test.ts` (module missing). `npm run typecheck` ok; `npx vitest run --testTimeout=30000` 262 files / 3280 tests passed; `npm run build` ok; `npm run prove` 166 cards survivable, 24/24 solver fights.
-- Next: owner decision on the open issue above, then T3 (deploy, needs explicit authorization).
+- T4 done: RED observed first (6 failing tests across adapter, account, nickname, ranking lines; `profile-publish.test.ts` missing module). The server scenarios are characterisation tests (the rules already allowed it; no RED applies). Checks: see the T4 commit.
+- Parity for T4: solo and room town both read the same board lines; the publisher is per account (a second account on the browser gets its own profile, tested); i18n es/en for `endless.global.noNickname` (tested over `LANGUAGES`); GDD Cuentas "Perfil público".
+- Next: T3 (deploy, needs explicit authorization).

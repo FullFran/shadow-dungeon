@@ -480,6 +480,7 @@
   "endless.global.unavailable": "no se puede consultar ahora (sin conexión o servidor no disponible). Tus marcas de este dispositivo siguen arriba.",
   "endless.global.empty": "aún no hay marcas de ninguna cuenta en este nivel. Solo cuentan las cuentas; los invitados no aparecen.",
   "endless.global.guest": "inicia sesión en «Cuenta» para verlo y aparecer en él. Los invitados no aparecen.",
+  "endless.global.noNickname": "pon un apodo en Ajustes (el de jugar en línea) para aparecer en el ranking global.",
   "endless.score": "Sima del Eclipse",
   "endless.score.mode": "Modo",
   "endless.score.time": "Lucidez restante",
