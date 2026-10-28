@@ -35,14 +35,11 @@ const crypt = () => {
 };
 
 describe('fog wall', () => {
-  it('every mid-boss and guardian room of the main and challenge dungeons has one; Sima echoes and generated floors do not', () => {
+  it('every boss room has one: mid-bosses and guardians of the main and challenge dungeons, and every Sima boss (echoes, Eco, heralds, wounds); generated floors do not', () => {
     const floors = roomFloors();
     expect(floors.length).toBeGreaterThan(8);
-    for (const { dungeon, floor } of floors) {
-      const plan = floorPlanOf({ dungeon: dungeon as never, floor });
-      const expected = !dungeonById(dungeon as never).endless && plan.kind === 'room' && plan.role !== 'echo';
-      expect(fogWallFloor({ dungeon: dungeon as never, floor }), `${dungeon} ${floor}`).toBe(expected);
-    }
+    expect(floors.some(({ dungeon }) => dungeonById(dungeon as never).endless)).toBe(true);
+    for (const { dungeon, floor } of floors) expect(fogWallFloor({ dungeon: dungeon as never, floor }), `${dungeon} ${floor}`).toBe(true);
     expect(fogWallFloor({ dungeon: CRYPT.id, floor: 1 })).toBe(false);
     for (const def of CHALLENGES) expect(fogWallFloor({ dungeon: def.id, floor: floorCount({ dungeon: def.id }) })).toBe(true);
   });

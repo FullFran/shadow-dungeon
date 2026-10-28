@@ -4,7 +4,8 @@ import { ECHO_CARDS } from '../data/cards';
 import { behaviourFor } from './tricks';
 import { heraldSeed, withHerald } from './herald/floor';
 import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
-import { chanceAt, CRYPT, dungeonById, floorsOf, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { chanceAt, CRYPT, dungeonById, floorsOf, musicFor, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
+import type { MusicContext } from '../data/music';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
 import { eliteRuleAt } from './sima';
@@ -139,7 +140,8 @@ export const isBossFloor = (run: Pick<RunState, 'floor' | 'dungeon'>): boolean =
  */
 export function fogWallFloor(run: Pick<RunState, 'floor' | 'dungeon'> & Partial<Pick<RunState, 'seed'>>): boolean {
   const plan = floorPlanOf(run);
-  return (plan.kind === 'room' && plan.role !== 'echo' && !dungeonOf(run).endless) || strayHere(run);
+  // Every boss room, the Sima's too (its echoes, Eco, heralds and wounds: odd/tasks/sima-fog-bonfires.md), and a stray floor's lost shadow.
+  return plan.kind === 'room' || strayHere(run);
 }
 
 /** The way down past a lost shadow's fog: stairs in the antechamber, `left` px left of its middle (in view from the start; the shadow is optional). */
@@ -160,6 +162,16 @@ export function withFogWall(run: RunState, world: WorldState): WorldState {
   if (!fogWallFloor(run) || world.fogWall) return world;
   const closed = closeFogWall(world);
   return strayHere(run) ? { ...closed, arena: { ...closed.arena, stairs: strayStairs(closed) } } : closed;
+}
+
+/**
+ * The floor's music as the party meets it (odd/tasks/sima-fog-bonfires.md):
+ * none behind a boss's fog (the antechamber has only its ambience), the
+ * floor's own track otherwise. The game starts the boss track once the fog
+ * is crossed and the boss cinematic, if any, is over.
+ */
+export function floorMusic(run: RunState, world: Pick<WorldState, 'fogWall'>): MusicContext | null {
+  return world.fogWall ? null : musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
 }
 
 /** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
@@ -314,6 +326,13 @@ export function tickRunClock(run: RunState, dtMs: number): RunState {
   if (grace <= 0) return { ...run, clockMs: tickClock(run.clockMs, dtMs) };
   return { ...run, graceMs: Math.max(0, grace - dtMs), clockMs: tickClock(run.clockMs, Math.max(0, dtMs - grace)) };
 }
+
+/**
+ * The clock for one fixed step of the game: it stands still while the party
+ * waits behind a boss's fog (the antechamber is a rest, and the fog costs no
+ * time), and runs as usual otherwise.
+ */
+export const runClockStep = (run: RunState, world: Pick<WorldState, 'fogWall'>, dtMs: number): RunState => (world.fogWall ? run : tickRunClock(run, dtMs));
 
 /** Guest: the host's clock as received (never below 0). */
 export const setClock = (run: RunState, ms: number): RunState => ({ ...run, clockMs: Math.max(0, ms) });
