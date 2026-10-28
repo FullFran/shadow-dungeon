@@ -1,3 +1,4 @@
+import { CRYPT } from '../data/dungeons';
 import { PLEA_STAGE, SIMA_PLEA, type PleaActor } from '../data/sima-plea';
 import type { Vec2 } from '../core/vec';
 
@@ -60,7 +61,17 @@ export function pleaCrowd(state: PleaState, tile: number, actors: readonly PleaA
 /**
  * Whether the town plays the pleas the moment it opens (owner, 2026-10-27:
  * every player who has not seen them must, or they miss them): alone, while
- * they are due, and not under a development start window. Heading for the
- * Sima still checks them too (a room plays none: they wait for a solo visit).
+ * they are due, once `ready`, and not under a development start window.
+ * Heading for the Sima still checks them too (a room plays none: they wait
+ * for a solo visit).
  */
-export const pleaOnArrival = (o: { inRoom: boolean; startWindow: boolean; due: boolean }): boolean => !o.inRoom && !o.startWindow && o.due;
+export const pleaOnArrival = (o: { inRoom: boolean; startWindow: boolean; due: boolean; ready: boolean }): boolean => !o.inRoom && !o.startWindow && o.due && o.ready;
+
+/**
+ * Whether the pleas may play on arrival (owner, 2026-10-28): only once the
+ * Crypt, the first dungeon, is cleared. Right after the prologue and the
+ * quiz the player has not met the Sima Walkers nor its shadow, which the
+ * villagers speak of. `cleared` is the records' cleared dungeons
+ * (`clearedDungeons`, which counts an old victory without the flag).
+ */
+export const pleaReady = (cleared: ReadonlySet<string>): boolean => cleared.has(CRYPT.id);

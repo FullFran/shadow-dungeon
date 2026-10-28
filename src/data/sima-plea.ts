@@ -8,7 +8,9 @@ import type { NpcSpecies } from './town';
  * come up to the player one by one, each with the name of someone who never
  * came back (the Sendas' own losses among them), and ask, please, to look
  * for them; Phantump speaks last. Texts: `sima.plea.<id>.<n>`; speakers: the
- * NPCs' own name keys. Played once per device, alone, before the mouth.
+ * NPCs' own name keys. Played once per device, alone, before the mouth: on
+ * the first solo town arrival after the Crypt is cleared (town/plea.ts
+ * `pleaReady`), or on the way to the Sima if still due.
  */
 export interface PleaActor {
   id: string;

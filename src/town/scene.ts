@@ -127,10 +127,11 @@ export interface TownOptions {
   /**
    * The villagers' pleas before the first descent into the Sima (data/sima-plea.ts):
    * alone, while due, the scene moves to the crater's rim and the villagers
-   * come up one by one: as the town opens (the player then stays on the rim),
-   * or when the player heads for `dungeon` (then it departs).
+   * come up one by one: as the town opens once `ready` (the Crypt cleared;
+   * the player then goes back where the town opened), or when the player
+   * heads for `dungeon` (then it departs).
    */
-  simaPlea?: { dungeon: string; due(): boolean; seen(): void };
+  simaPlea?: { dungeon: string; due(): boolean; ready(): boolean; seen(): void };
   /**
    * This player's Senda progress (the save's `story`): the residents whose
    * wounds the Sendas are recognise the player once a chapter is closed
@@ -546,7 +547,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     };
   }
 
-  /** The pleas are over (or skipped): seen on this device, and on (to the Sima, or nowhere: the player stays on the rim). */
+  /** The pleas are over (or skipped): seen on this device, and on (to the Sima, or back where the player was). */
   function endPlea(): void {
     if (!plea) return;
     plea = null;
@@ -913,8 +914,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
   resize();
-  // The pleas, alone, the first time this device opens the town after they exist (old profiles too): on the crater's rim, then the player stays there.
-  if (options.simaPlea && pleaOnArrival({ inRoom: lobby !== null, startWindow: options.startWindow !== undefined, due: options.simaPlea.due() })) beginPlea(() => markVisited(browserStore(), map.id));
+  // The pleas, alone, the first time this device opens the town once the Crypt is cleared (old profiles too): on the crater's rim, then back where the town opened.
+  const opened = { map, walker };
+  if (options.simaPlea && pleaOnArrival({ inRoom: lobby !== null, startWindow: options.startWindow !== undefined, due: options.simaPlea.due(), ready: options.simaPlea.ready() })) beginPlea(() => enterMap(opened.map, opened.walker));
   if (options.startWindow === 'travel') openShopWindow(openTravel);
   if (options.startWindow === 'menu') openMenu();
   if (options.startWindow === 'account') openShopWindow(options.openAccount);
