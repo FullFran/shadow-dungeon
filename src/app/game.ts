@@ -2,6 +2,7 @@ import { figurationsAt, type FigurationMode } from '../adapters/figurations';
 import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
 import { crossFogWall } from '../core/fog-wall';
+import { simaSceneDue } from './sima-scene-due';
 import { progressSharedTrial, progressTrial, startTrial, trialEpoch, trialHurt, trialStepMs, type BossStop, type TrialState } from '../core/shrine';
 import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
@@ -1076,18 +1077,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const bands = endless.bands;
     const band = simaBand();
     const look = currentLook;
-    const stratum: SimaSceneId | null = bands && band && band.id !== 'crypt' && bandStartsAt(bands, run.floor) ? `stratum-${band.id}` : null;
-    // A boss's own scene plays once the fog is crossed (owner, 2026-10-28); a floor without fog plays it on entry.
-    const boss: SimaSceneId | null =
-      isHeraldFloor(endless, run.floor) ? 'first-name'
-      : world.enemies.some((e) => e.species === 'eclipse-echo') ? 'own-shadow'
-      : strayHere(run) ? (look && !look.silhouette ? 'someone-known' : 'someone')
-      : null;
-    const due: SimaSceneId | null =
-      phase === 'crossed' ? boss
-      : world.fogWall ? stratum
-      : isHeraldFloor(endless, run.floor) ? boss
-      : (stratum ?? boss);
+    const due = simaSceneDue(phase, {
+      stratum: bands && band && band.id !== 'crypt' && bandStartsAt(bands, run.floor) ? `stratum-${band.id}` : null,
+      herald: isHeraldFloor(endless, run.floor),
+      ownShadow: world.enemies.some((e) => e.species === 'eclipse-echo'),
+      stray: strayHere(run) ? (look && !look.silhouette ? 'someone-known' : 'someone') : null,
+      fogged: world.fogWall !== undefined,
+    });
     if (!due || scenes.seen(due)) return then();
     if (net) {
       say(t(simaCardKey(due)), 'warn');

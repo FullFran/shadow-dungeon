@@ -20,8 +20,8 @@
 
 ## Tasks
 
-- [x] T1 Shrine trials behind a fog wall (core trial loading and crossing, game wiring, trial time, tests, GDD). Route: delegated (single writer: `core/shrine.ts`, `app/game.ts`, tests). Commit: see Progress.
-- [ ] T2 The lost shadow's scene on arrival again (game sequence, test, GDD line). Route: delegated (same writer; one mechanical code change plus test and doc).
+- [x] T1 Shrine trials behind a fog wall (core trial loading and crossing, game wiring, trial time, tests, GDD). Route: delegated (single writer: `core/shrine.ts`, `app/game.ts`, tests). Commit `26fe121`.
+- [x] T2 The lost shadow's scene on arrival again (game sequence, test, GDD line). Route: delegated (same writer; one mechanical code change plus test and doc). Commit: see Progress.
 
 ## Parity checklist
 
@@ -31,8 +31,8 @@
 - [x] Trial records: time behind the fog not counted (`trialStepMs`, tested; `game.ts` tally).
 - [x] Net protocol / save: no new fields (the fog syncs as before).
 - [x] i18n: no new lines (the fog prompt texts `leave.fog.*` are shared).
-- [ ] GDD: fog rule (shrine included, "pendiente" note removed), shrine section, line 429 wording restored.
-- [ ] Sim/prove harnesses unaffected; `npm run prove` green.
+- [x] GDD: fog rule (shrine included, "pendiente" note removed), no-bonfire reason for the shrine, shrine «Reflejos» line, stray line restored («sale al llegar a la antesala, antes de decidir»), Sima cinematics line.
+- [x] Sim/prove harnesses unaffected; `npm run prove` 166/166 cards, 24/24 fights.
 
 ## Checks
 
@@ -43,4 +43,5 @@
 Created 2026-10-28.
 
 - T1: RED observed (7 failing in `shrine-fog.test.ts` and the new `boss-music.test.ts` case). GREEN: `startTrial`/`nextArena` apply `withFogWall`; `progressTrial` crosses on `agreed` or (harness) touching the fog, never for a guest; `trialStepMs`; `game.ts` gather/prompt and tally. Existing `tests/core/shrine.test.ts` and `tests/net/shrine-room.test.ts` now cross the fog (or read the boss behind it) before fighting. Checks: typecheck clean; vitest 266 files / 3313 tests passed; build ok; prove 166/166 cards, 24/24 fights.
-- Next: T2.
+- T2: RED observed (`tests/app/sima-scene-due.test.ts`: module missing). GREEN: `src/app/sima-scene-due.ts` (pure timing rule) used by `simaMoment`; the lost shadow's scene plays on arrival behind its fog again; the first herald's and own-shadow scenes stay after the crossing; the stray's music still starts only after crossing (`floorMusic`). Checks: typecheck clean; vitest 267 files / 3318 tests passed; build ok; prove 166/166 cards, 24/24 fights.
+- Next: nothing pending in this feature (deploy is the owner's call).
