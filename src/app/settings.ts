@@ -3,7 +3,7 @@ import { sanitizeNickname } from '../net/nickname';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
 import { isPlayable, SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
-import { lineRoot } from '../data/player-evolutions';
+import { lineRoot, PLAYER_EVOLUTIONS } from '../data/player-evolutions';
 import { padLoadout, validateLoadout } from '../core/loadout';
 import { NEW_PLAYER_DIFFICULTY, isDifficulty, type Difficulty } from '../data/difficulty';
 import { LOCK_TYPES, type LockType } from '../core/state';
@@ -86,15 +86,40 @@ export function withStarter(settings: Settings, species: SpeciesId): Settings {
   return { ...withSpecies(settings, species), starterChosen: true };
 }
 
+/** Evolution steps from the first form of its player line (0 for a first form or a species outside a line). */
+function lineDepth(species: SpeciesId): number {
+  let depth = 0;
+  for (let current = species; depth <= PLAYER_EVOLUTIONS.length; depth++) {
+    const into = PLAYER_EVOLUTIONS.find((e) => e.to === current);
+    if (!into) return depth;
+    current = into.from;
+  }
+  return depth;
+}
+
+/**
+ * The form of the species last played that the player has now: itself when
+ * it is in `roster`, else the furthest form of its evolution line there
+ * (it evolved since; Mimikyu awakens keeping its id). Null for no species,
+ * an unknown one, or a line the roster lacks.
+ */
+export function lastPlayedForm(lastSpecies: string | null, roster: readonly SpeciesId[]): SpeciesId | null {
+  if (!isPlayable(lastSpecies)) return null;
+  if (roster.includes(lastSpecies)) return lastSpecies;
+  const line = roster.filter((id) => lineRoot(id) === lineRoot(lastSpecies));
+  return line.reduce<SpeciesId | null>((best, id) => (best === null || lineDepth(id) > lineDepth(best) ? id : best), null);
+}
+
 /**
  * A returning player (the profile shows progress, `hasProgress`) on a device
  * without a chosen starter: the starter counts as chosen, so the quiz never
- * runs nor overwrites its species; the species it last played is picked when
- * it is in `roster`, else the current one stays. A chosen starter is kept.
+ * runs nor overwrites its species; the species it last played is picked in
+ * the form the player has now (`lastPlayedForm`), else the current one
+ * stays. A chosen starter is kept.
  */
 export function withReturningPlayer(settings: Settings, lastSpecies: string | null, roster: readonly SpeciesId[]): Settings {
   if (settings.starterChosen) return settings;
-  const last = roster.find((id) => id === lastSpecies);
+  const last = lastPlayedForm(lastSpecies, roster);
   return { ...(last ? withSpecies(settings, last) : settings), starterChosen: true };
 }
 

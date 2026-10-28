@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { hasProgress, nextAdventureScreen } from '../../src/app/adventure-route';
 import { EMPTY_SAVE } from '../../src/app/save';
 import { EMPTY_RECORDS } from '../../src/town/records';
-import { defaultSettings, withReturningPlayer, withStarter } from '../../src/app/settings';
+import { defaultSettings, lastPlayedForm, withReturningPlayer, withStarter } from '../../src/app/settings';
+import { rosterOf } from '../../src/core/collection';
+import { lineRoot } from '../../src/data/player-evolutions';
+import { isPlayable, PLAYABLE_SPECIES } from '../../src/data/species';
 import { STARTERS } from '../../src/data/quiz';
-import { isPlayable } from '../../src/data/species';
 
 describe('new adventure routing', () => {
   it('opens with the prologue the first time, whatever the starter', () => {
@@ -73,5 +75,22 @@ describe('new adventure routing', () => {
       const body = main.slice(main.indexOf(fn), main.indexOf('const next', main.indexOf(fn)));
       expect(body, fn).toContain('adoptReturningPlayer();');
     }
+  });
+
+  it('the last species played resolves through its line to the form the player has now, for every playable line', () => {
+    for (const last of PLAYABLE_SPECIES) {
+      for (const now of PLAYABLE_SPECIES.filter((id) => lineRoot(id) === lineRoot(last))) {
+        // The roster holds one form per line: the one the player has now (an evolved starter replaces its first form).
+        const roster = rosterOf({ owned: [now] });
+        expect(lastPlayedForm(last, roster), `${last} -> ${now}`).toBe(now);
+        expect(withReturningPlayer(defaultSettings('es'), last, roster).species, `${last} -> ${now}`).toBe(now);
+      }
+    }
+    // Mimikyu awakens without a new id: it stays itself.
+    expect(lastPlayedForm('mimikyu', rosterOf({ owned: [] }))).toBe('mimikyu');
+    // A line the player no longer has, or junk, resolves to nothing.
+    expect(lastPlayedForm('kadabra', rosterOf({ owned: [] }))).toBeNull();
+    expect(lastPlayedForm('not-a-species', rosterOf({ owned: [] }))).toBeNull();
+    expect(lastPlayedForm(null, rosterOf({ owned: [] }))).toBeNull();
   });
 });
