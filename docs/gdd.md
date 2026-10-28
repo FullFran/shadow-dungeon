@@ -215,7 +215,7 @@ Un altar en el Refugio del Ocaso (y la fila Santuario del menú del pueblo): «D
 
 ### Prólogo y trasfondo *(provisional)*
 
-El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde Opciones (entrada Prólogo).
+El juego se abre con un prólogo de algo más de un minuto, al estilo de la apertura de Dark Souls (narración lenta en texto, cuadros quietos que salen de la oscuridad, mucha calma) pero dibujado con el pixel art de Mundo Misterioso. Se puede saltar, sale solo la primera vez que se pulsa Jugar y se puede volver a ver desde Opciones (entrada Prólogo). Quien ya tiene progreso (partidas, Pokémonedas, especies, capítulos de Senda, mejoras o logros en la partida guardada o los récords, que viajan con la cuenta) no vuelve a ver ni el prólogo ni el test al estrenar dispositivo: cuenta como inicial elegido y se queda con la especie con la que jugó la última vez (`src/app/adventure-route.ts` `hasProgress`), así que el test nunca le cambia la especie.
 
 Lo que cuenta:
 

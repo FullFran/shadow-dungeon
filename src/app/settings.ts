@@ -87,6 +87,18 @@ export function withStarter(settings: Settings, species: SpeciesId): Settings {
 }
 
 /**
+ * A returning player (the profile shows progress, `hasProgress`) on a device
+ * without a chosen starter: the starter counts as chosen, so the quiz never
+ * runs nor overwrites its species; the species it last played is picked when
+ * it is in `roster`, else the current one stays. A chosen starter is kept.
+ */
+export function withReturningPlayer(settings: Settings, lastSpecies: string | null, roster: readonly SpeciesId[]): Settings {
+  if (settings.starterChosen) return settings;
+  const last = roster.find((id) => id === lastSpecies);
+  return { ...(last ? withSpecies(settings, last) : settings), starterChosen: true };
+}
+
+/**
  * Reads settings, keeping each stored field only if it is valid. Unknown fields
  * are dropped; fields added later (sound) take the fallback. The old `lockMode`
  * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).

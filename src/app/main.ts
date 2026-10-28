@@ -43,10 +43,10 @@ import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
-import { nextAdventureScreen, nextPlayScreen } from './adventure-route';
+import { hasProgress, nextAdventureScreen, nextPlayScreen } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
-import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withSpecies, withStarter, type Settings } from './settings';
+import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
@@ -408,8 +408,24 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry = 'settings'): void {
   show(root, [open.element]);
 }
 
+/**
+ * A returning player (the save or records, which travel with the account,
+ * show progress) on a device that never chose a starter: it counts as chosen
+ * and the prologue as seen, so neither replays and the quiz never overwrites
+ * its species (app/adventure-route.ts `hasProgress`).
+ */
+function adoptReturningPlayer(): void {
+  if (settings.starterChosen) return;
+  const save = loadSave(store);
+  const records = readRecords(store);
+  if (!hasProgress(save, records)) return;
+  markPrologueSeen(store);
+  update(withReturningPlayer(settings, records.lastSpecies, rosterOf(save)));
+}
+
 /** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
 function playScreen(root: HTMLElement): void {
+  adoptReturningPlayer();
   const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
   if (next === 'prologue') prologue(root, () => playScreen(root));
   else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
@@ -422,6 +438,7 @@ function playScreen(root: HTMLElement): void {
  * `nextAdventureScreen`; each step comes back here when it ends).
  */
 function newAdventure(root: HTMLElement, dungeon?: DungeonId): void {
+  adoptReturningPlayer();
   const next = nextAdventureScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
   if (next === 'prologue') prologue(root, () => newAdventure(root, dungeon));
   else if (next === 'quiz') quiz(root, () => newAdventure(root, dungeon), () => titleScreen(root, 0));

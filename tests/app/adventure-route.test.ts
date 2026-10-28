@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { nextAdventureScreen } from '../../src/app/adventure-route';
-import { defaultSettings, withStarter } from '../../src/app/settings';
+import { hasProgress, nextAdventureScreen } from '../../src/app/adventure-route';
+import { EMPTY_SAVE } from '../../src/app/save';
+import { EMPTY_RECORDS } from '../../src/town/records';
+import { defaultSettings, withReturningPlayer, withStarter } from '../../src/app/settings';
 import { STARTERS } from '../../src/data/quiz';
 import { isPlayable } from '../../src/data/species';
 
@@ -34,6 +38,40 @@ describe('new adventure routing', () => {
     for (const starter of STARTERS) {
       expect(isPlayable(starter), starter).toBe(true);
       expect(withStarter(defaultSettings('es'), starter).species).toBe(starter);
+    }
+  });
+
+  it('a fresh profile shows no progress; any run, coin, species, chapter, upgrade or achievement does', () => {
+    expect(hasProgress(EMPTY_SAVE, EMPTY_RECORDS)).toBe(false);
+    expect(hasProgress({ ...EMPTY_SAVE, owned: [] , story: {}, achievements: {}, earned: 0 }, EMPTY_RECORDS)).toBe(false);
+    expect(hasProgress(EMPTY_SAVE, { ...EMPTY_RECORDS, runs: 1 })).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, coins: 40 }, EMPTY_RECORDS)).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, earned: 40 }, EMPTY_RECORDS)).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, owned: ['shinx'] }, EMPTY_RECORDS)).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, story: { cubone: 1 } }, EMPTY_RECORDS)).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, upgrades: { vitality: 1 } }, EMPTY_RECORDS)).toBe(true);
+    expect(hasProgress({ ...EMPTY_SAVE, achievements: { 'first-run': '2026-10-01' } }, EMPTY_RECORDS)).toBe(true);
+  });
+
+  it('a returning player on a new device skips the prologue and the quiz, keeping the species it last played', () => {
+    const fresh = defaultSettings('es');
+    const back = withReturningPlayer(fresh, 'cubone', ['mimikyu', 'cubone', 'shinx']);
+    expect(back.starterChosen).toBe(true);
+    expect(back.species).toBe('cubone');
+    expect(nextAdventureScreen({ prologueSeen: true, starterChosen: back.starterChosen })).toBe('loadout');
+    // A last species outside the roster (or none recorded) keeps the current one.
+    expect(withReturningPlayer(fresh, 'not-a-species', ['mimikyu']).species).toBe(fresh.species);
+    expect(withReturningPlayer(fresh, null, ['mimikyu'])).toEqual({ ...fresh, starterChosen: true });
+    // A chosen starter is never touched.
+    const chosen = withStarter(fresh, 'cubone');
+    expect(withReturningPlayer(chosen, 'mimikyu', ['mimikyu', 'cubone'])).toBe(chosen);
+  });
+
+  it('both ways into the first steps (Play and a new adventure) adopt a returning player first', () => {
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    for (const fn of ['function playScreen(', 'function newAdventure(']) {
+      const body = main.slice(main.indexOf(fn), main.indexOf('const next', main.indexOf(fn)));
+      expect(body, fn).toContain('adoptReturningPlayer();');
     }
   });
 });
