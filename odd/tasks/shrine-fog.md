@@ -21,7 +21,7 @@
 ## Tasks
 
 - [x] T1 Shrine trials behind a fog wall (core trial loading and crossing, game wiring, trial time, tests, GDD). Route: delegated (single writer: `core/shrine.ts`, `app/game.ts`, tests). Commit `26fe121`.
-- [x] T2 The lost shadow's scene on arrival again (game sequence, test, GDD line). Route: delegated (same writer; one mechanical code change plus test and doc). Commit: see Progress.
+- [x] T2 The lost shadow's scene on arrival again (game sequence, test, GDD line). Route: delegated (same writer; one mechanical code change plus test and doc). Commit `58c7278`.
 
 ## Parity checklist
 
