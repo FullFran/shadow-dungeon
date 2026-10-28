@@ -1,4 +1,5 @@
 import type { SaveData } from '../app/save';
+import { isDifficulty, type Difficulty } from '../data/difficulty';
 
 /**
  * Account API port (docs/gdd.md, Cuentas): the few calls the client makes to
@@ -17,6 +18,26 @@ export interface RemoteSave {
   id: string;
   rev: number;
   data: unknown;
+}
+
+/** One row of the Sima global ranking (`GET /api/sd/ranking/sima`): only public fields. */
+export interface RankingEntry {
+  rank: number;
+  nickname: string;
+  /** The profile's avatar species ('' when it has none). */
+  avatarSpecies: string;
+  floor: number;
+  clockMs: number;
+  species: string;
+  level: number;
+  mode: 'daily' | 'free';
+  date: string;
+}
+
+/** A tier's global ranking, best first (each account's best score, top 50). */
+export interface SimaRanking {
+  tier: Difficulty;
+  entries: RankingEntry[];
 }
 
 export type ApiError =
@@ -43,6 +64,8 @@ export interface AccountApi {
   createSave(token: string, userId: string, data: SaveData): Promise<ApiResult<RemoteSave>>;
   updateSave(token: string, saveId: string, data: SaveData, rev: number): Promise<ApiResult<RemoteSave>>;
   deleteAccount(token: string, userId: string): Promise<ApiResult<void>>;
+  /** The Sima global ranking of `tier`: public, no token (server/README.md, "Sima ranking"). */
+  ranking(tier: Difficulty): Promise<ApiResult<SimaRanking>>;
 }
 
 export const DEFAULT_API_URL = 'https://sd-api.fullfran.com';
@@ -68,6 +91,22 @@ function authSession(raw: unknown): AuthSession | null {
   if (!isObject(raw) || typeof raw.token !== 'string' || !raw.token || !isObject(raw.record)) return null;
   const { id, email } = raw.record;
   return typeof id === 'string' && typeof email === 'string' ? { token: raw.token, userId: id, email } : null;
+}
+
+const wholeAt = (value: unknown, min: number): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= min;
+
+/** A ranking row with exactly the public fields, or null when any is malformed. */
+function rankingEntry(raw: unknown): RankingEntry | null {
+  if (!isObject(raw)) return null;
+  const { rank, nickname, avatarSpecies, floor, clockMs, species, level, mode, date } = raw;
+  if (!wholeAt(rank, 1) || !wholeAt(floor, 1) || !wholeAt(clockMs, 0) || !wholeAt(level, 1)) return null;
+  if (typeof nickname !== 'string' || !nickname || typeof species !== 'string' || typeof date !== 'string' || (mode !== 'daily' && mode !== 'free')) return null;
+  return { rank, nickname, avatarSpecies: typeof avatarSpecies === 'string' ? avatarSpecies : '', floor, clockMs, species, level, mode, date };
+}
+
+function simaRanking(body: unknown): SimaRanking | null {
+  if (!isObject(body) || !isDifficulty(body.tier) || !Array.isArray(body.entries)) return null;
+  return { tier: body.tier, entries: body.entries.flatMap((e) => rankingEntry(e) ?? []) };
 }
 
 const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => ({ ok: false, error: { kind } as ApiError });
@@ -150,6 +189,10 @@ export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) =>
     async deleteAccount(token, userId) {
       if (!RECORD_ID.test(userId)) return fail('rejected');
       return done(call('DELETE', `/api/collections/users/records/${userId}`, { token }, () => true));
+    },
+    async ranking(tier) {
+      if (!isDifficulty(tier)) return fail('rejected');
+      return call('GET', `/api/sd/ranking/sima?tier=${tier}`, {}, simaRanking);
     },
   };
 }

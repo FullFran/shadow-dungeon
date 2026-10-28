@@ -117,3 +117,35 @@ describe('http account API', () => {
     expect(await httpAccountApi(BASE, fetchFn).logIn('a@b.es', 'secret123')).toEqual({ ok: false, error: { kind: 'server' } });
   });
 });
+
+describe('Sima global ranking', () => {
+  const row = { rank: 1, nickname: 'Ana', avatarSpecies: 'zorua', floor: 9, clockMs: 500, species: 'zorua', level: 14, mode: 'daily', date: '2026-10-25' };
+
+  it('asks for a tier without a token and reads its rows', async () => {
+    const { seen, fetchFn } = fakeFetch([{ status: 200, body: { tier: 'hard', entries: [row] } }]);
+    expect(await httpAccountApi(BASE, fetchFn).ranking('hard')).toEqual({ ok: true, value: { tier: 'hard', entries: [row] } });
+    expect(seen[0]).toMatchObject({ url: `${BASE}/api/sd/ranking/sima?tier=hard`, method: 'GET' });
+    expect(seen[0]!.headers.Authorization).toBeUndefined();
+  });
+
+  it('drops malformed rows and keeps only the public fields', async () => {
+    const { fetchFn } = fakeFetch([
+      {
+        status: 200,
+        body: { tier: 'easy', entries: [{ ...row, email: 'a@b.es', extra: 1 }, { ...row, floor: '9' }, { ...row, mode: 'ranked' }, { ...row, nickname: 7 }, 'nope', { ...row, avatarSpecies: undefined, rank: 2 }] },
+      },
+    ]);
+    const result = await httpAccountApi(BASE, fetchFn).ranking('easy');
+    expect(result).toEqual({ ok: true, value: { tier: 'easy', entries: [row, { ...row, avatarSpecies: '', rank: 2 }] } });
+  });
+
+  it('an unknown tier never leaves the client; failures read like the other calls', async () => {
+    const { seen, fetchFn } = fakeFetch([{ status: 200, body: { nope: true } }, { status: 503 }]);
+    const api = httpAccountApi(BASE, fetchFn);
+    expect(await api.ranking('legend' as never)).toEqual({ ok: false, error: { kind: 'rejected' } });
+    expect(seen).toHaveLength(0);
+    expect(await api.ranking('easy')).toEqual({ ok: false, error: { kind: 'server' } });
+    expect(await api.ranking('easy')).toEqual({ ok: false, error: { kind: 'server' } });
+    expect(await httpAccountApi(BASE, fakeFetch(new TypeError('Failed to fetch')).fetchFn).ranking('easy')).toEqual({ ok: false, error: { kind: 'offline' } });
+  });
+});

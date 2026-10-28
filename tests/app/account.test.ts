@@ -88,6 +88,11 @@ function fakeBackend() {
       for (const [id, s] of saves) if (s.user === userId) saves.delete(id);
       return { ok: true, value: undefined };
     },
+    async ranking(tier) {
+      calls.push('ranking');
+      if (down) return fail(down as never);
+      return { ok: true, value: { tier, entries: [] } };
+    },
   };
   return {
     api,

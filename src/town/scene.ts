@@ -138,6 +138,12 @@ export interface TownOptions {
    * after a run, which leaves the town); absent = none.
    */
   story?: StoryProgress;
+  /**
+   * The Sima global ranking's notice board pages for a tier (src/town/global-ranking.ts):
+   * what is cached now, never waiting on the network. Called once as the town
+   * opens too, so the rows are usually there by the time the board is read.
+   */
+  globalBoard?: (difficulty: Difficulty) => string[];
 }
 
 const MOVE_KEYS: Record<string, Vec2> = {
@@ -199,7 +205,7 @@ function townCamera(focus: Vec2, map: MapShape) {
 }
 
 /** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores; both for the tier picked now. */
-const readBoard = (difficulty: Difficulty): string[] => {
+const readBoard = (difficulty: Difficulty, globalBoard?: (difficulty: Difficulty) => string[]): string[] => {
   const tier = { difficulty, name: t(`difficulty.${difficulty}`) };
   return [
     ...boardLines(
@@ -210,12 +216,23 @@ const readBoard = (difficulty: Difficulty): string[] => {
       tier,
     ),
     ...leaderboardLines(readScores(browserStore()), (key) => t(key), 5, tier),
+    // Every account's best on this tier (the server's; guests see how to appear on it).
+    ...safeLines(globalBoard, difficulty),
     // The heralds met on this device (count only).
     ...bestiaryLines(browserStore(), (key) => t(key)),
     // The Santuario de los Juramentos: reflections open and gauntlets beaten.
     ...shrineBoardLine(readShrine(browserStore()), beatenBosses(readRecords(browserStore())), (key) => t(key)),
   ];
 };
+
+/** The global board's pages, or none if it fails: the notice board never breaks over it. */
+function safeLines(globalBoard: ((difficulty: Difficulty) => string[]) | undefined, difficulty: Difficulty): string[] {
+  try {
+    return globalBoard?.(difficulty) ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export interface TownHandle {
   stop(): void;
@@ -300,6 +317,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   const sprite = playerSprite(options.species, options.shiny);
   const lobby = options.lobby ?? null;
+  // Warm the global ranking of the tier picked now, so the board has it when read.
+  safeLines(options.globalBoard, lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy');
   let presenceAt: number | null = null;
   /** The room window in a corner (lobby only): code and players, redrawn when they change. */
   const roomList = h('ul', { className: 'roster' });
@@ -455,7 +474,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy')), ...(options.openBoard ? { opens: 'board' as const } : {}) }
+        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy', options.globalBoard)), ...(options.openBoard ? { opens: 'board' as const } : {}) }
         : npcDialog(target.npc);
   }
 
