@@ -54,6 +54,9 @@ only the owner creates or updates; only a superuser deletes. The nickname
 must already be clean by the rules of `src/net/nickname.ts`: 1–16 characters,
 no control, format (zero-width, bidi), unassigned or private-use characters,
 no leading/trailing or repeated whitespace. The server rejects; it does not fix.
+The game client writes its own profile while signed in (after each cloud
+sync: the online nickname from Settings and the species played; nothing
+when the nickname is empty), so the Sima ranking can name the player.
 
 **`saves`**: `user` (unique), `data` (JSON), `version`, `rev`, `created`,
 `updated`. Only the owner lists, views, creates and updates; only a superuser
