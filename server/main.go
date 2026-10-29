@@ -15,11 +15,13 @@ import (
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore/loreapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/ranking/rankingapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
+	"github.com/fullfran/mazmorra-sombria/server/internal/turn/turnapi"
 	_ "github.com/fullfran/mazmorra-sombria/server/migrations"
 )
 
 func main() {
 	cfg := setup.FromEnv(setup.Getenv)
+	turn := turnapi.FromEnv(setup.Getenv)
 	os.Args = setup.WithOrigins(os.Args, cfg.Origins)
 
 	app := pocketbase.NewWithConfig(pocketbase.Config{
@@ -48,6 +50,8 @@ func main() {
 		}
 		// Public Sima ranking, derived from the cloud saves (nicknames only).
 		rankingapi.Register(e.Router, e.App)
+		// Short-lived TURN relay credentials for co-op (Cloudflare Realtime); none without a key.
+		turnapi.Register(e.Router, turn)
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)
@@ -55,7 +59,7 @@ func main() {
 		e.App.Logger().Info("shadow dungeon api configured",
 			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits,
 			"smtp", cfg.Mail.SMTPEnabled(), "appURL", cfg.Mail.AppURL,
-			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit)
+			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit, "turn", turn.Configured())
 		if cfg.Mail.SMTPPartial() {
 			e.App.Logger().Warn("SMTP stays off: set SD_SMTP_HOST, SD_SMTP_PASSWORD and SD_MAIL_FROM_ADDRESS")
 		}
