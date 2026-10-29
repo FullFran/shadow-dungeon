@@ -281,6 +281,8 @@
   "net.cutShort.closed": "El anfitrión ha cerrado la partida antes de que acabara la tuya: te llevas lo ganado, con el recorte de una derrota.",
   "net.version": "Versión distinta: recarga la página.",
   "net.versionRefused": "Alguien ha intentado entrar con otra versión del juego: que recargue la página.",
+  "net.versionBoth": "Tu versión ({mine}) y la del anfitrión ({theirs}) no coinciden. Quien tenga la más antigua debe actualizar: recarga la página; si tienes el juego instalado como aplicación, ciérrala y vuelve a abrirla.",
+  "net.versionRefusedBoth": "Alguien ha intentado entrar con otra versión del juego ({theirs}; la tuya es {mine}): quien tenga la más antigua debe recargar la página.",
   "lobby.online": "Jugar en línea",
   "lobby.create": "Crear sala",
   "lobby.join": "Unirse",

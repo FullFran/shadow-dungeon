@@ -66,20 +66,21 @@ export type NetMessage =
   /**
    * A tab joining the session announces its player; the host answers with `start`. Sent again in the
    * lobby when the player picks another species. `v` and `c` are its protocol version and content hash (net/version.ts): the host turns away any other.
+   * `b` is the sender's build label ("v0.9.0 · e60dcb9", issue #7), only to name it in a refusal; absent from older peers.
    */
-  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean; v?: number; c?: string }
+  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean; v?: number; c?: string; b?: string }
   /**
    * Host: the run seed, the current floor, the dungeon id (absent = the first dungeon), the difficulty tier
    * (absent or unknown = easy: an older host) and who is who (sent again whenever someone joins).
    */
-  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[]; trial?: RoomTrial; v?: number; c?: string }
+  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[]; trial?: RoomTrial; v?: number; c?: string; b?: string }
   /** Host, before the run starts: who is in the room so far, the tier and the shrine trial it picked, for the guests to see (sent again on every change). */
-  | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string; trial?: RoomTrial; v?: number; c?: string }
+  | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string; trial?: RoomTrial; v?: number; c?: string; b?: string }
   /**
    * Host: `peer` is turned away: the room already has four players, or (`reason: 'version'`) it runs
-   * another version of the game. An older peer reads either as a full room.
+   * another version of the game (`b`: the host's build label). An older peer reads either as a full room.
    */
-  | { t: 'full'; peer: string; reason?: 'version' }
+  | { t: 'full'; peer: string; reason?: 'version'; b?: string }
   /** Round-trip probe (reliable, ~1 Hz); every peer answers with `pong` to the sender. */
   | { t: 'ping'; at: number }
   | { t: 'pong'; to: string; at: number }
@@ -393,6 +394,15 @@ const isFloor = (v: unknown): v is number => finite(v) && Number.isInteger(v) &&
  * content (species, moves, types, dungeons, players) are checked against
  * this build: an entry with an unknown one is dropped, never trusted.
  */
+/** A build label as shown to players ("v0.9.0 · e60dcb9"): short, plain characters only; anything else is dropped. */
+export const BUILD_LABEL = /^[\w .·+-]{1,40}$/u;
+const buildOf = (b: unknown): { b?: string } => (typeof b === 'string' && BUILD_LABEL.test(b) ? { b } : {});
+/** The wire without its build label, then the label back only when it is a valid one. */
+function checkedBuild(wire: Wire): Wire {
+  const { b, ...rest } = wire;
+  return { ...rest, ...buildOf(b) } as Wire;
+}
+
 export function decodeMessage(text: string): NetMessage | null {
   let wire: Wire;
   try {
@@ -428,15 +438,15 @@ export function decodeMessage(text: string): NetMessage | null {
       };
     case 'hello':
       // The skin flag reads as set only when it is exactly true (absent from an older peer).
-      return { ...wire, species: playerSpecies(wire.species), shiny: wire.shiny === true ? true : undefined, loadout: Array.isArray(wire.loadout) ? wire.loadout.map((m) => (isMove(m) ? m : null)) : [] } as unknown as NetMessage;
+      return { ...checkedBuild(wire), species: playerSpecies(wire.species), shiny: wire.shiny === true ? true : undefined, loadout: Array.isArray(wire.loadout) ? wire.loadout.map((m) => (isMove(m) ? m : null)) : [] } as unknown as NetMessage;
     case 'start':
       // A dungeon this build does not know: the host runs other content (the version gate stops that first).
       if (!finite(wire.seed) || !isFloor(wire.floor) || (wire.dungeon !== undefined && !isDungeonId(wire.dungeon))) return null;
-      return { ...wire, players: decodeList(wire.players, decodeRosterEntry) } as unknown as NetMessage;
+      return { ...checkedBuild(wire), players: decodeList(wire.players, decodeRosterEntry) } as unknown as NetMessage;
     case 'lobby':
-      return { ...wire, players: decodeList(wire.players, decodeRosterEntry) } as unknown as NetMessage;
+      return { ...checkedBuild(wire), players: decodeList(wire.players, decodeRosterEntry) } as unknown as NetMessage;
     case 'full':
-      return typeof wire.peer === 'string' ? { t: 'full', peer: wire.peer, ...(wire.reason === 'version' ? { reason: 'version' as const } : {}) } : null;
+      return typeof wire.peer === 'string' ? { t: 'full', peer: wire.peer, ...(wire.reason === 'version' ? { reason: 'version' as const, ...buildOf(wire.b) } : {}) } : null;
     case 'claim':
       return { t: 'claim', claims: decodeList(wire.claims, decodeClaim) };
     case 'pick':

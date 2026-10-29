@@ -58,7 +58,7 @@ import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { profilePublisher } from './profile-publish';
-import { roomStatus, type TownLobby } from '../town/lobby';
+import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
@@ -263,7 +263,7 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const lag = parseLagParams(window.location.search);
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
-  const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
+  const session = createSession({ transport, scheduler, build: buildLabel(), ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
   // The host left: a run still going ends here, paid as a defeat (its end screen says why); elsewhere a notice and the way back to the menu.
   session.onHostLeft(() => {
     if (current !== session) return;
@@ -1376,16 +1376,17 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now() };
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
-  session.onFull((reason) => {
-    if (current === session) messageScreen(root, t(reason === 'version' ? 'net.version' : 'lobby.full'));
+  // Another version: both builds named, and how to update (issue #7); an older host sent no label and gets the older line.
+  session.onFull((reason, theirs) => {
+    if (current === session) messageScreen(root, reason === 'version' ? versionNotice('guest', buildLabel(), theirs) : t('lobby.full'));
   });
   // A run is under way: this player comes in at the next floor start or bonfire respawn (it keeps walking the town meanwhile).
   session.onWait(() => {
     if (current === session) toast(root, t('net.waitFloor'));
   });
   // Host: someone on another version knocked; say so here too (they see "reload the page").
-  session.onVersionRefused(() => {
-    if (current === session) toast(root, t('net.versionRefused'));
+  session.onVersionRefused((_name, theirs) => {
+    if (current === session) toast(root, versionNotice('host', buildLabel(), theirs));
   });
   session.onStart((start) => {
     if (current !== session) return;

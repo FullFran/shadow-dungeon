@@ -281,6 +281,8 @@
   "net.cutShort.closed": "The host closed the run before yours ended: you keep what you earned, with a defeat's cut.",
   "net.version": "Different version: reload the page.",
   "net.versionRefused": "Someone tried to join with another version of the game: they should reload the page.",
+  "net.versionBoth": "Your version ({mine}) and the host's ({theirs}) do not match. Whoever has the older one must update: reload the page; if you installed the game as an app, close it and open it again.",
+  "net.versionRefusedBoth": "Someone tried to join with another version of the game ({theirs}; yours is {mine}): whoever has the older one must reload the page.",
   "lobby.online": "Play online",
   "lobby.create": "Create room",
   "lobby.join": "Join",

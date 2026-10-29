@@ -65,6 +65,8 @@ export interface SessionOptions {
   renderDelayMs?: number;
   sendEveryTicks?: number;
   maxExtrapolateMs?: number;
+  /** This client's build label ("v0.9.0 · e60dcb9"), sent with the version so a refusal can name both builds (issue #7). */
+  build?: string;
 }
 
 export interface StartInfo {
@@ -128,10 +130,10 @@ export interface NetSession {
   onStart(handler: (start: StartInfo) => void): void;
   /** The roster changed (someone was admitted or left). */
   onRoster(handler: (roster: readonly RosterEntry[]) => void): void;
-  /** Guest: the host turned this player away: the room has four already, or (`version`) one of the two runs another version of the game. */
-  onFull(handler: (reason: RefusedReason) => void): void;
-  /** Host: a player on another version of the game knocked and was turned away (its nickname, sanitised; may be empty). */
-  onVersionRefused(handler: (name: string) => void): void;
+  /** Guest: the host turned this player away: the room has four already, or (`version`) one of the two runs another version of the game (`theirs`: the host's build label, when it sent one). */
+  onFull(handler: (reason: RefusedReason, theirs?: string) => void): void;
+  /** Host: a player on another version of the game knocked and was turned away (its nickname, sanitised; may be empty; `theirs`: its build label, when it sent one). */
+  onVersionRefused(handler: (name: string, theirs?: string) => void): void;
   /** Guest (in the lobby or mid-run): the host left; fires once. */
   onHostLeft(handler: () => void): void;
   /** Not started yet: the other tabs knocking at the same time (for the local host election). */
@@ -170,7 +172,7 @@ export interface NetSession {
 
 const MAX_PLAYERS = 4;
 /** This build's protocol version and content hash, on every hello, lobby and start. */
-const VERSION = { v: PROTOCOL_VERSION, c: CONTENT_HASH } as const;
+const BASE_VERSION = { v: PROTOCOL_VERSION, c: CONTENT_HASH } as const;
 /** Town presence comes at ~10 Hz: draw walkers a bit further in the past than run players. */
 const TOWN_DELAY_MS = 150;
 const PING_EVERY_TICKS = 60;
@@ -224,6 +226,8 @@ export function createSession(options: SessionOptions): NetSession {
   const renderDelayMs = options.renderDelayMs ?? 100;
   const sendEvery = options.sendEveryTicks ?? 3;
   const sampleOptions = { maxExtrapolateMs: options.maxExtrapolateMs ?? 50 };
+  /** The version on every hello, lobby, start and version refusal, with this build's label when the app gave one. */
+  const VERSION = { ...BASE_VERSION, ...(options.build ? { b: options.build } : {}) };
 
   let role: 'host' | 'guest' | null = null;
   let localId: string | null = null;
@@ -246,8 +250,8 @@ export function createSession(options: SessionOptions): NetSession {
   let full = false;
   const startHandlers: Array<(start: StartInfo) => void> = [];
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
-  const fullHandlers: Array<(reason: RefusedReason) => void> = [];
-  const versionHandlers: Array<(name: string) => void> = [];
+  const fullHandlers: Array<(reason: RefusedReason, theirs?: string) => void> = [];
+  const versionHandlers: Array<(name: string, theirs?: string) => void> = [];
   const hostLeftHandlers: Array<() => void> = [];
   const lobbyHandlers: Array<() => void> = [];
   /** Town walkers by transport peer id. */
@@ -314,10 +318,10 @@ export function createSession(options: SessionOptions): NetSession {
   const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}), ...(j.shiny ? { shiny: true } : {}), ...VERSION });
 
   /** Guest: turned away (or the host runs another version); fires once. */
-  const refused = (reason: RefusedReason) => {
+  const refused = (reason: RefusedReason, theirs?: string) => {
     if (started || full) return;
     full = true;
-    for (const handler of fullHandlers) handler(reason);
+    for (const handler of fullHandlers) handler(reason, theirs);
   };
 
   /** Host: gives `peer` a player id; false when the room is full. */
@@ -378,8 +382,8 @@ export function createSession(options: SessionOptions): NetSession {
         }
         // Another version would desync the run (or crash on content it does not know): turned away, on both screens.
         if (!same) {
-          send({ t: 'full', peer: from, reason: 'version' }, true);
-          for (const handler of versionHandlers) handler(name);
+          send({ t: 'full', peer: from, reason: 'version', ...(options.build ? { b: options.build } : {}) }, true);
+          for (const handler of versionHandlers) handler(name, message.b);
           return;
         }
         // Mid-run, between join points: a new player waits for the next floor (a known one just picked again).
@@ -396,7 +400,7 @@ export function createSession(options: SessionOptions): NetSession {
       case 'lobby':
         if (role === 'host') return;
         pending.delete(from);
-        if (!sameVersion(message.v, message.c)) return refused('version');
+        if (!sameVersion(message.v, message.c)) return refused('version', message.b);
         tier = toDifficulty(message.difficulty);
         picked = parseRoomTrial(message.trial);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
@@ -416,7 +420,7 @@ export function createSession(options: SessionOptions): NetSession {
         }
         return;
       case 'full':
-        if (message.peer === transport.selfId) refused(message.reason ?? 'full');
+        if (message.peer === transport.selfId) refused(message.reason ?? 'full', message.b);
         return;
       case 'wait':
         if (message.peer === transport.selfId && !started) for (const handler of waitHandlers) handler();
@@ -433,7 +437,7 @@ export function createSession(options: SessionOptions): NetSession {
       case 'start': {
         if (role === 'host') return;
         pending.delete(from);
-        if (!sameVersion(message.v, message.c)) return refused('version');
+        if (!sameVersion(message.v, message.c)) return refused('version', message.b);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         const me = roster.find((r) => r.peer === transport.selfId);
         if (!me) {
