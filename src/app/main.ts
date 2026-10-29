@@ -194,6 +194,18 @@ const diagLog = createDiagnosticsLog(() => performance.now());
 window.addEventListener('error', (e) => diagLog.error(e.error ?? e.message, e.filename, e.lineno));
 window.addEventListener('unhandledrejection', (e) => diagLog.error(e.reason));
 
+/** Copies the technical report, pretty-printed, to the clipboard, and says whether it worked. */
+async function copyReport(root: HTMLElement): Promise<void> {
+  try {
+    const text = diagnosticsText(await collectDiagnostics());
+    if (!navigator.clipboard) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(text);
+    toast(root, t('lobby.reportCopied'));
+  } catch {
+    toast(root, t('lobby.reportCopyFailed'));
+  }
+}
+
 /** Where the player is, in a word, for the report. */
 function screenContext(): string {
   if (running) return 'run';
@@ -1501,6 +1513,8 @@ function townLobby(root: HTMLElement): void {
           close();
         },
       },
+      // The technical report (issue #6) to paste into a chat or a GitHub issue: the same snapshot a bug report attaches.
+      { label: t('lobby.copyReport'), onConfirm: () => void copyReport(root).then(close) },
       { label: t('lobby.leave'), onConfirm: leave },
     ],
     // The host's call for the group: the Sima del Eclipse is entered as the daily challenge or a free run (its seed goes in `start`).
