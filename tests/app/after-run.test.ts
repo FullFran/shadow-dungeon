@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { cutShortAction, endActions, materialsEarned, returnPlace, townOf } from '../../src/app/after-run';
+import { cutShortAction, endActions, endHeading, materialsEarned, returnPlace, townOf } from '../../src/app/after-run';
 import { dungeonById } from '../../src/data/dungeons';
 import { setLanguage, t } from '../../src/i18n';
 
 describe('after a run', () => {
+  it('a run the host cut short is headed as interrupted, never as the player fainting', () => {
+    expect(endHeading('defeat')).toEqual({ title: 'screen.defeat.title', text: 'screen.defeat.text' });
+    expect(endHeading('victory')).toEqual({ title: 'screen.victory.title', text: 'screen.victory.text' });
+    expect(endHeading('defeat', 'hostLeft')).toEqual({ title: 'screen.cutShort.title', text: null });
+    expect(endHeading('defeat', 'closed')).toEqual({ title: 'screen.cutShort.title', text: null });
+  });
+
   it('a solo or local run offers a retry, then the way back to the town', () => {
     expect(endActions({ online: false })).toEqual(['retry', 'town']);
   });
