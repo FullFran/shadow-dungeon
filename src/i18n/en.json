@@ -380,6 +380,7 @@
   "move.play-rough.description": "A wide melee blow. Hold to charge it.",
   "move.shadow-ball.description": "Throws a ball at range. Hold to charge it.",
   "credits.title": "Credits",
+  "credits.version": "Version",
   "credits.sprites": "Mystery Dungeon-style sprites from PMDCollab SpriteCollab, under CC BY-NC 4.0 (non-commercial use, with attribution). Artists:",
   "credits.font": "Font: Pixelify Sans by Stefie Justprince, under the SIL Open Font License 1.1.",
   "credits.music": "Music under free licenses (CC0 and CC BY; details in CREDITS.md):",

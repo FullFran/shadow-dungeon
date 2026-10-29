@@ -29,6 +29,7 @@ import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
+import { buildLabel } from './build-info';
 import { accountWindow, setupAccount, type AccountView } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
@@ -384,6 +385,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
+    h('p', { className: 'build-label', textContent: buildLabel() }),
   ]);
   pwa.banner(root);
 }
