@@ -249,6 +249,19 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 - `GET /api/collections/_externalAuths/records` lists a user's links;
   unlinking is `DELETE` on one of them (its default rules are owner-only).
 
+## Co-op TURN relay (Cloudflare Realtime)
+
+`GET /api/sd/turn` answers `{"iceServers": [...]}` for co-op rooms. Browsers that cannot reach each other directly (strict NAT, mobile data, privacy settings) are relayed through Cloudflare's TURN. Without a key, or when Cloudflare fails, it answers an empty list and co-op stays direct-only.
+
+- **Key:** `CF_TURN_KEY_ID` and `CF_TURN_API_TOKEN` in `.env` (Cloudflare dashboard: Realtime > TURN Server). They are long-lived secrets that never leave the server.
+- **Credentials:** one per request, valid 2 h.
+- **Limits:** 10 requests per IP every 10 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
+- **Monitoring:**
+  - Cloudflare dashboard, Realtime > TURN: usage. The free allowance is 1,000 GB/month, then $0.05/GB.
+  - Server logs: `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` lines. Each issued line has the credential `username` and a hash of the client IP.
+- **Revoke one credential:** `POST https://rtc.live.cloudflare.com/v1/turn/keys/<key id>/credentials/<username>/revoke` with the API token as Bearer (see the Cloudflare Realtime docs).
+- **Kill switch:** remove both `CF_TURN_*` lines from `.env` and restart the service. Co-op keeps working direct-only. Rotating the key in the dashboard also invalidates every credential issued from it.
+
 ## Run locally
 
 Requires Go 1.27 or newer (`go.mod` says `go 1.27`; an older `go` downloads
