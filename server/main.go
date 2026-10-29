@@ -54,7 +54,7 @@ func main() {
 		// Short-lived TURN relay credentials for co-op (Cloudflare Realtime); none without a key.
 		turnapi.Register(e.Router, turn)
 		// Anonymous bug reports from the game; only superusers read them (issue #9).
-		reportsapi.Register(e.Router, e.App)
+		reportsapi.Register(e.Router, e.App, reportsapi.IPKey(setup.Getenv))
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)

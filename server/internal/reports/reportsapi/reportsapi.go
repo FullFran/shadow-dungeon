@@ -8,6 +8,7 @@ package reportsapi
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -73,15 +74,30 @@ type api struct {
 	app      core.App
 	dailyCap int
 	now      func() time.Time
+	key      []byte
 }
 
-// Register adds `POST /api/sd/reports` to r.
-func Register(r *router.Router[*core.RequestEvent], app core.App) {
-	register(r, app, DailyCap, time.Now)
+// IPKey is the secret behind the stored client hashes: SD_REPORT_IP_KEY when
+// set, else a random key for this server run (hashes then match only within
+// one run, which is enough to spot a flood).
+func IPKey(getenv func(string) string) []byte {
+	if k := strings.TrimSpace(getenv("SD_REPORT_IP_KEY")); k != "" {
+		return []byte(k)
+	}
+	k := make([]byte, 32)
+	if _, err := rand.Read(k); err != nil {
+		panic(err)
+	}
+	return k
 }
 
-func register(r *router.Router[*core.RequestEvent], app core.App, dailyCap int, now func() time.Time) {
-	a := &api{app: app, dailyCap: dailyCap, now: now}
+// Register adds `POST /api/sd/reports` to r; key comes from IPKey.
+func Register(r *router.Router[*core.RequestEvent], app core.App, key []byte) {
+	register(r, app, DailyCap, time.Now, key)
+}
+
+func register(r *router.Router[*core.RequestEvent], app core.App, dailyCap int, now func() time.Time, key []byte) {
+	a := &api{app: app, dailyCap: dailyCap, now: now, key: key}
 	r.POST("/api/sd/reports", a.create)
 }
 
@@ -121,12 +137,13 @@ func (a *api) create(e *core.RequestEvent) error {
 		return e.JSON(http.StatusServiceUnavailable, fieldError{Error: "too many reports today, try again tomorrow"})
 	}
 
-	ref, err := a.store(clean, clientHash(e.RealIP()))
+	ref, err := a.store(clean, clientHash(a.key, a.now(), e.RealIP()))
 	if err != nil {
 		e.App.Logger().Error("reports: storing failed", "error", err)
 		return e.JSON(http.StatusServiceUnavailable, fieldError{Error: "reports are unavailable right now, try again later"})
 	}
-	e.App.Logger().Info("report received", "ref", ref, "category", clean.Category)
+	// No ref here: the request log keeps the IP, and the two must not be joined by time.
+	e.App.Logger().Info("report received", "category", clean.Category)
 	return e.JSON(http.StatusCreated, map[string]string{"ref": ref})
 }
 
@@ -265,8 +282,11 @@ func newRef() string {
 	return "SD-" + string(out)
 }
 
-// clientHash tells repeat reporters apart without keeping their IP.
-func clientHash(ip string) string {
-	sum := sha256.Sum256([]byte("sd-report:" + ip))
-	return hex.EncodeToString(sum[:6])
+// clientHash tells repeat reporters apart on the same day without keeping
+// their IP: an HMAC under the server's secret key and the UTC day, so it can
+// be neither reversed from public code nor followed across days.
+func clientHash(key []byte, at time.Time, ip string) string {
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(at.UTC().Format("2006-01-02") + "|" + ip))
+	return hex.EncodeToString(mac.Sum(nil)[:12])
 }

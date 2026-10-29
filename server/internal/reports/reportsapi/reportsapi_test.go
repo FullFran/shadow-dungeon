@@ -37,7 +37,7 @@ func mux(t *testing.T, app core.App, dailyCap int, now func() time.Time) http.Ha
 	if err != nil {
 		t.Fatal(err)
 	}
-	register(r, app, dailyCap, now)
+	register(r, app, dailyCap, now, testKey)
 	m, err := r.BuildMux()
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +87,7 @@ func TestStoresAValidReportAndAnswersItsRef(t *testing.T) {
 	if r.GetString("device") != "Firefox / Linux / no touch" || r.GetString("version") != "1.2.3" || !strings.Contains(r.GetString("diagnostics"), "58") {
 		t.Fatalf("stored %v", r.FieldsData())
 	}
-	if r.GetString("client") != clientHash(clientIP) || r.GetString("client") == "" {
+	if r.GetString("client") != clientHash(testKey, time.Now(), clientIP) || r.GetString("client") == "" {
 		t.Fatalf("client = %q", r.GetString("client"))
 	}
 }
@@ -220,5 +220,40 @@ func TestRefsAreUnique(t *testing.T) {
 			t.Fatalf("ref %q (dup %v)", ref, seen[ref])
 		}
 		seen[ref] = true
+	}
+}
+
+var testKey = []byte("test-key-0123456789abcdef0123456")
+
+// The stored client value must not be reversible from public code: it needs
+// the server's secret, and it changes every day (issue #9 review).
+func TestClientHashNeedsTheSecretAndRotatesDaily(t *testing.T) {
+	day := time.Date(2026, 10, 29, 10, 0, 0, 0, time.UTC)
+	ip := "203.0.113.7"
+	h := clientHash(testKey, day, ip)
+	if len(h) != 24 {
+		t.Fatalf("hash %q", h)
+	}
+	if h != clientHash(testKey, day.Add(5*time.Hour), ip) {
+		t.Fatal("not stable within a day")
+	}
+	if h == clientHash(testKey, day.Add(24*time.Hour), ip) {
+		t.Fatal("does not rotate daily")
+	}
+	if h == clientHash([]byte("another-key-0123456789abcdef0123"), day, ip) {
+		t.Fatal("does not depend on the key")
+	}
+	if h == clientHash(testKey, day, "203.0.113.8") {
+		t.Fatal("does not tell clients apart")
+	}
+}
+
+func TestIPKeyFromEnvOrRandom(t *testing.T) {
+	if k := IPKey(func(string) string { return "  secret-from-env  " }); string(k) != "secret-from-env" {
+		t.Fatalf("env key = %q", k)
+	}
+	a, b := IPKey(func(string) string { return "" }), IPKey(func(string) string { return "" })
+	if len(a) != 32 || string(a) == string(b) {
+		t.Fatal("without the env a fresh random key is expected each start")
 	}
 }

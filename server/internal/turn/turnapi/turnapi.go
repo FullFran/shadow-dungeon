@@ -8,6 +8,8 @@ package turnapi
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -139,10 +141,21 @@ func username(servers []IceServer) string {
 	return ""
 }
 
+// logKey is secret to this server run, so the client hashes in the logs
+// cannot be reversed from public code.
+var logKey = func() []byte {
+	k := make([]byte, 32)
+	if _, err := rand.Read(k); err != nil {
+		panic(err)
+	}
+	return k
+}()
+
 // clientHash tells repeat clients apart in the logs without keeping their IP.
 func clientHash(ip string) string {
-	sum := sha256.Sum256([]byte("sd-turn:" + ip))
-	return hex.EncodeToString(sum[:6])
+	mac := hmac.New(sha256.New, logKey)
+	mac.Write([]byte(ip))
+	return hex.EncodeToString(mac.Sum(nil)[:6])
 }
 
 func (a *api) generate(ctx context.Context) ([]IceServer, error) {

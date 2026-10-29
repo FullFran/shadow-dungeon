@@ -24,12 +24,14 @@ jq -r '
 	(if type == "object" and has("items") then .items[0] else . end) as $r
 	| if $r == null then error("no report in the file") else . end
 	| def field($k): ($r[$k] // "" | tostring | if . == "" then "_(empty)_" else . end);
+	# Player text goes inside a fence, so mentions, links, HTML and fake headings stay inert.
+	def fenced($k): ($r[$k] // "" | tostring | if . == "" then "_(empty)_" else "~~~text\n" + gsub("~~~"; "~ ~ ~") + "\n~~~" end);
 	"Player report **\($r.ref // "?")** (category: \($r.category // "?")), received \(($r.created // "") | .[0:10]).\n"
-	+ "\n### Description\n\(field("description"))\n"
-	+ "\n### Steps to reproduce\n\(field("steps"))\n"
-	+ "\n### Expected\n\(field("expected"))\n"
-	+ "\n### Observed\n\(field("observed"))\n"
-	+ "\n### Environment\n- Game version: \(field("version"))\n- Device: \(field("device"))\n"
+	+ "\n### Description\n\(fenced("description"))\n"
+	+ "\n### Steps to reproduce\n\(fenced("steps"))\n"
+	+ "\n### Expected\n\(fenced("expected"))\n"
+	+ "\n### Observed\n\(fenced("observed"))\n"
+	+ "\n### Environment\n- Game version: `\(field("version") | gsub("`"; ""))`\n- Device: `\(field("device") | gsub("`"; ""))`\n"
 	+ (if ($r.diagnostics // null) == null or $r.diagnostics == "" then ""
 	   else "\n<details><summary>Diagnostics</summary>\n\n```json\n\($r.diagnostics | tojson)\n```\n</details>\n" end)
 ' "$1"

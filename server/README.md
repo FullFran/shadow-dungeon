@@ -260,7 +260,7 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 - **Limits:** 10 requests per IP every 10 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
 - **Monitoring:**
   - Cloudflare dashboard, Realtime > TURN: usage. The free allowance is 1,000 GB/month, then $0.05/GB.
-  - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP.
+  - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP under a key that is random per server run.
 - **Revoke one credential:** `POST https://rtc.live.cloudflare.com/v1/turn/keys/<key id>/credentials/<username>/revoke` with the API token as Bearer (see the Cloudflare Realtime docs).
 - **Kill switch:** remove both `CF_TURN_*` lines from `.env` and restart the service. Co-op keeps working direct-only. Rotating the key in the dashboard also invalidates every credential issued from it.
 
@@ -283,7 +283,7 @@ Players report problems from the game (title menu and pause menu, "Reportar un p
 
 Text is trimmed and control characters are dropped; unknown fields are rejected. It answers `201 {"ref":"SD-XXXXXX"}`, `400 {"error":"...","field":"..."}` for a bad field, `413` for an oversized body, `429` past 5 reports per IP every 10 minutes (rate-limit rule `/api/sd/reports`), and `503` past `DailyCap` (200) reports per UTC day across all clients.
 
-**What is stored** (collection `reports`): the fields above, `ref`, `status` (`new`, `triaged`, `issue`, `closed`; starts `new`), `githubIssue` (URL, set by the owner), `created`, `updated`, and `client`: a short SHA-256 hash of the client IP, only to spot a flood from one source. Never the IP, an email, an account id or a save. Every API rule is superuser-only: the records API cannot list, view, create, edit or delete reports.
+**What is stored** (collection `reports`): the fields above, `ref`, `status` (`new`, `triaged`, `issue`, `closed`; starts `new`), `githubIssue` (URL, set by the owner), `created`, `updated`, and `client`: an HMAC-SHA256 of the client IP under a server secret (`SD_REPORT_IP_KEY`, or a random key per server run when unset) and the UTC day, only to spot a flood from one source on one day. It cannot be reversed without the secret and does not follow anyone across days. Never the IP, an email, an account id or a save. The success log line carries only the category, never the ref, so a report cannot be matched by time to PocketBase's request log (which keeps IPs). Every API rule is superuser-only: the records API cannot list, view, create, edit or delete reports.
 
 **Triage.**
 
