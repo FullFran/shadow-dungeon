@@ -29,6 +29,8 @@ import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
+import { APP_VERSION, buildLabel } from './build-info';
+import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion } from './patch-notes';
 import { accountWindow, setupAccount, type AccountView } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
@@ -373,6 +375,7 @@ function waitScreen(root: HTMLElement, text: string): void {
 function titleScreen(root: HTMLElement, initial = 0): void {
   leaveNet();
   applyLanguage(settings.language);
+  if (patchNotesOnBoot(root)) return;
   // Three entries only (src/app/title-menu.ts): every service lives in the town and its Esc menu.
   const action: Record<TitleEntry, () => void> = {
     play: () => playScreen(root),
@@ -384,17 +387,44 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
     h('p', { className: 'hint', textContent: t('title.hint') }),
+    h('p', { className: 'build-label', textContent: buildLabel() }),
   ]);
   pwa.banner(root);
 }
 
-/** The title's "Opciones": settings, account, achievements, prologue, credits and the install offer, in the shared described menu. */
+/** The patch notes are checked once per page load, on the first title reached (never over the prologue, the quiz or a cinematic). */
+let patchNotesChecked = false;
+
+/**
+ * Opens "Novedades" instead of the title once after an update to a version
+ * this browser has not seen (src/app/patch-notes.ts); a brand-new install only
+ * records the version. True when the notes are on screen.
+ */
+function patchNotesOnBoot(root: HTMLElement): boolean {
+  if (patchNotesChecked) return false;
+  patchNotesChecked = true;
+  const returningPlayer = settings.starterChosen || hasSeenPrologue(store) || hasProgress(loadSave(store), readRecords(store));
+  const due = patchNotesDue({ lastSeen: readLastSeenVersion(store), current: APP_VERSION, returningPlayer });
+  if (due === 'none') return false;
+  markVersionSeen(store, APP_VERSION);
+  if (due === 'record') return false;
+  newsScreen(root, () => titleScreen(root));
+  return true;
+}
+
+/** "Novedades": every release's notes, newest first; `back` leaves it. */
+function newsScreen(root: HTMLElement, back: () => void): void {
+  show(root, [patchNotesWindow(single(t('menu.back'), back))]);
+}
+
+/** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits and the install offer, in the shared described menu. */
 function optionsScreen(root: HTMLElement, at: OptionsEntry = 'settings'): void {
   const entries = optionsEntries(pwa.offer() !== 'none');
   const action: Record<OptionsEntry, () => void> = {
     settings: () => settingsScreen(root),
     account: () => accountScreen(root, () => optionsScreen(root, 'account')),
     achievements: () => achievementsScreen(root),
+    news: () => newsScreen(root, () => optionsScreen(root, 'news')),
     prologue: () => prologue(root, () => optionsScreen(root, 'prologue')),
     credits: () => creditsScreen(root),
     install: () => pwa.install(root),
@@ -1695,6 +1725,7 @@ function devScreen(root: HTMLElement): boolean {
     quiz: () => quiz(root, () => loadout(root), () => titleScreen(root)),
     settings: () => settingsScreen(root),
     credits: () => creditsScreen(root),
+    news: () => newsScreen(root, () => titleScreen(root)),
     // `&map=mirador&tile=12,9`: one overworld map, optionally at a tile.
     town: () => townScreen(root, devTownPlace()),
     shop: () => shopScreen(root),

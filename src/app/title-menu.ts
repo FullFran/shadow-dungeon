@@ -7,8 +7,8 @@
 export const TITLE_ENTRIES = ['play', 'online', 'options'] as const;
 export type TitleEntry = (typeof TITLE_ENTRIES)[number];
 
-/** The Options submenu, in order; `install` only while the game can be installed. */
-export const OPTIONS_ENTRIES = ['settings', 'account', 'achievements', 'prologue', 'credits', 'install'] as const;
+/** The Options submenu, in order (`news`: the patch notes, src/app/patch-notes.ts); `install` only while the game can be installed. */
+export const OPTIONS_ENTRIES = ['settings', 'account', 'achievements', 'news', 'prologue', 'credits', 'install'] as const;
 export type OptionsEntry = (typeof OPTIONS_ENTRIES)[number];
 
 export const optionsEntries = (installable: boolean): OptionsEntry[] => OPTIONS_ENTRIES.filter((e) => e !== 'install' || installable);
@@ -21,6 +21,7 @@ export const TITLE_LABEL: Record<TitleEntry | OptionsEntry, string> = {
   settings: 'title.settings',
   account: 'title.account',
   achievements: 'title.achievements',
+  news: 'title.news',
   prologue: 'title.prologue',
   credits: 'title.credits',
   install: 'pwa.install',
