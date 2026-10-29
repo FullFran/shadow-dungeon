@@ -52,6 +52,7 @@ import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
+import { fetchIceServers } from '../adapters/turn';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -1292,7 +1293,10 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   waitScreen(root, t('lobby.connecting'));
   let session: NetSession;
   try {
-    const base = transport ? transport() : (await import('../adapters/trystero')).joinTrysteroRoom(code);
+    // The relay credentials come with the room (issue #4); without them the room still opens, direct only.
+    const base = transport
+      ? transport()
+      : await Promise.all([import('../adapters/trystero'), fetchIceServers(apiBaseUrl(import.meta.env.VITE_API_URL))]).then(([trystero, turn]) => trystero.joinTrysteroRoom(code, turn));
     session = sessionOver(root, base);
   } catch {
     messageScreen(root, t('lobby.error'));
