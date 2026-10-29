@@ -138,4 +138,42 @@ describe('lobby', () => {
     b.session.leave();
     expect(told).toBe(0);
   });
+
+  it('a guest the host dropped (its link timed out on the host side only) knocks again and starts with the group', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    // The host's transport, with a way to fire its own peer-leave for one peer (Trystero's 5 s "disconnected" timeout).
+    const base = hub.connect('h');
+    const leaves: Array<(peer: string) => void> = [];
+    const hostTransport = { ...base, onPeerLeave: (fn: (peer: string) => void) => void leaves.push(fn) };
+    const hostSession = createSession({ transport: hostTransport, scheduler });
+    hostSession.host(9, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    a.session.join('mimikyu', LOADOUT);
+    expect(hostSession.roster().map((r) => r.peer)).toEqual(['h', 'a']);
+    for (const fn of leaves) fn('a');
+    // The guest heard its own leave: it is out, so it asks to come in again.
+    expect(hostSession.roster().map((r) => r.peer)).toEqual(['h', 'a']);
+    expect(a.roster.some((r) => r.peer === 'a')).toBe(true);
+    hostSession.begin();
+    expect(a.started).toEqual({ seed: 9, floor: 1, localId: 'p2' });
+  });
+
+  it('a guest left out of a lobby update knocks again even after it had been admitted', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const base = hub.connect('h');
+    const leaves: Array<(peer: string) => void> = [];
+    const hostSession = createSession({ transport: { ...base, onPeerLeave: (fn: (peer: string) => void) => void leaves.push(fn) }, scheduler });
+    hostSession.host(3, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    const b = peer(hub, 'b', scheduler);
+    a.session.join('mimikyu', LOADOUT);
+    b.session.join('mimikyu', LOADOUT);
+    for (const fn of leaves) fn('a');
+    hostSession.begin();
+    expect(a.started?.seed).toBe(3);
+    expect(b.started?.seed).toBe(3);
+    expect(new Set(hostSession.roster().map((r) => r.id)).size).toBe(3);
+  });
 });

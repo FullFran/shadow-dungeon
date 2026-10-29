@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beaconAction, canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue } from '../../src/town/lobby';
+import { ADMIT_TIMEOUT_MS, beaconAction, canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue, roomStatus } from '../../src/town/lobby';
 import { REFUGIO } from '../../src/data/world';
 
 describe('town lobby rules', () => {
@@ -53,5 +53,13 @@ describe('town lobby rules', () => {
     // Solo (no lobby) and a guest never get the host's rows.
     expect(enterRows('eclipse-chasm', 'Entrar', null, depart).map((r) => r.label)).toEqual(['Entrar']);
     expect(enterRows('eclipse-chasm', 'Entrar', { isHost: false, variants }, depart).map((r) => r.label)).toEqual(['Entrar']);
+  });
+
+  it('a guest the host has not let in is connecting, then unreachable after the timeout; the host and an admitted guest are in', () => {
+    expect(roomStatus({ isHost: true, admitted: false, waitedMs: ADMIT_TIMEOUT_MS * 2 })).toBe('in');
+    expect(roomStatus({ isHost: false, admitted: true, waitedMs: ADMIT_TIMEOUT_MS * 2 })).toBe('in');
+    expect(roomStatus({ isHost: false, admitted: false, waitedMs: 0 })).toBe('connecting');
+    expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS - 1 })).toBe('connecting');
+    expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS })).toBe('unreachable');
   });
 });

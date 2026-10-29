@@ -297,6 +297,7 @@
   "lobby.start": "Empezar",
   "lobby.leave": "Salir",
   "lobby.connecting": "Conectando con la sala…",
+  "lobby.unreachable": "El anfitrión no responde. ¿Alguien ha creado la sala con este código y tiene el juego actualizado? Con datos móviles la conexión directa a veces falla: probad con wifi.",
   "lobby.waitingHost": "Esperando a que el anfitrión empiece…",
   "lobby.full": "La sala está llena (máximo 4 jugadores).",
   "lobby.error": "No se ha podido conectar con la sala.",
