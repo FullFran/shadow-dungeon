@@ -5,6 +5,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # The backend has its own checks (server.yml) and is deployed by hand.
+    paths-ignore: ['server/**', '.github/workflows/server.yml']
   workflow_dispatch:
 
 permissions:
