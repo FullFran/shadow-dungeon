@@ -30,6 +30,7 @@ type Config struct {
 	TrustedProxyHeaders []string
 	RateLimits          bool
 	Mail                Mail
+	Backups             Backups
 }
 
 // FromEnv reads the configuration through getenv (os.Getenv in production).
@@ -39,6 +40,7 @@ func FromEnv(getenv func(string) string) Config {
 		TrustedProxyHeaders: splitList(getenv("SD_TRUSTED_PROXY_HEADERS")),
 		RateLimits:          getenv("SD_RATE_LIMITS") != "off",
 		Mail:                mailFromEnv(getenv),
+		Backups:             backupsFromEnv(getenv),
 	}
 	if len(cfg.Origins) == 0 {
 		cfg.Origins = DefaultOrigins
@@ -104,6 +106,7 @@ func Apply(app core.App, cfg Config) error {
 	settings.TrustedProxy.UseLeftmostIP = false
 	settings.Batch.Enabled = false
 	applyMail(settings, cfg.Mail)
+	applyBackups(settings, cfg.Backups)
 	if err := app.Save(settings); err != nil {
 		return err
 	}

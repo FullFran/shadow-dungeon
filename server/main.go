@@ -61,8 +61,11 @@ func main() {
 		}
 		e.App.Logger().Info("shadow dungeon api configured",
 			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits,
-			"smtp", cfg.Mail.SMTPEnabled(), "appURL", cfg.Mail.AppURL,
+			"smtp", cfg.Mail.SMTPEnabled(), "backupCron", cfg.Backups.Cron, "backupsSet", cfg.Backups.Set, "backupS3", cfg.Backups.S3Enabled(), "appURL", cfg.Mail.AppURL,
 			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit, "turn", turn.Configured())
+		if cfg.Backups.S3Partial() {
+			e.App.Logger().Warn("Off-site backups stay off: set SD_BACKUP_S3_ENDPOINT, SD_BACKUP_S3_BUCKET, SD_BACKUP_S3_ACCESS_KEY and SD_BACKUP_S3_SECRET")
+		}
 		if cfg.Mail.SMTPPartial() {
 			e.App.Logger().Warn("SMTP stays off: set SD_SMTP_HOST, SD_SMTP_PASSWORD and SD_MAIL_FROM_ADDRESS")
 		}
