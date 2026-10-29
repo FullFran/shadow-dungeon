@@ -74,6 +74,9 @@ var SignUpLimit = core.RateLimitRule{Label: "users:create", MaxRequests: 5, Dura
 // TurnLimit caps TURN credential requests per IP: 10 per 10 minutes.
 var TurnLimit = core.RateLimitRule{Label: "/api/sd/turn", MaxRequests: 10, Duration: 600}
 
+// ReportLimit caps bug reports per IP: 5 per 10 minutes (issue #9).
+var ReportLimit = core.RateLimitRule{Label: "/api/sd/reports", MaxRequests: 5, Duration: 600}
+
 // RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is
 // in seconds. A collection label ("users:create") wins over its wildcard
 // ("*:create"), whatever the order.
@@ -86,6 +89,8 @@ var RateLimitRules = []core.RateLimitRule{
 	{Label: "/api/batch", MaxRequests: 3, Duration: 1},
 	// TURN relay credentials: one per opened co-op room is plenty (issue #22).
 	TurnLimit,
+	// Player bug reports: a few per sitting is plenty (issue #9).
+	ReportLimit,
 	{Label: "/api/", MaxRequests: 300, Duration: 10},
 }
 
