@@ -3245,6 +3245,7 @@
   "report.observed.placeholder": "Opcional.",
   "report.attachTech": "Adjuntar información técnica",
   "report.attachTech.about": "Se adjuntará la versión del juego y el tipo de dispositivo:",
+  "report.attachTech.session": "También se adjuntarán datos técnicos de esta sesión: dónde estás en el juego, los últimos errores y, si juegas en línea, el estado de la conexión. Nada personal: ni tu nombre, ni tu correo, ni tu partida.",
   "report.on": "Sí",
   "report.off": "No",
   "report.send": "Enviar",

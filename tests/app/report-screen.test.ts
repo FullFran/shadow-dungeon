@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { buildReport, clearDraft, deviceSummary, emptyDraft, loadDraft, REPORT_CATEGORIES, REPORT_DRAFT_KEY, REPORT_LIMITS, reportErrorKey, saveDraft } from '../../src/app/report-screen';
+import { sendReport } from '../../src/adapters/report-api';
+import { buildReport, clearDraft, collectReport, deviceSummary, emptyDraft, loadDraft, REPORT_CATEGORIES, REPORT_DRAFT_KEY, REPORT_LIMITS, reportErrorKey, saveDraft } from '../../src/app/report-screen';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
 const UA = {
@@ -35,6 +36,42 @@ describe('report building', () => {
     });
     const bare = buildReport({ ...draft, attachTech: false }, { version: '1.4.0', device: 'x' });
     expect(bare.ok && bare.report.version === '' && bare.report.device === '').toBe(true);
+  });
+
+  it('attaches the diagnostics snapshot only when technical info is on (issue #6)', () => {
+    const draft = { ...emptyDraft(), description: 'Lost the room' };
+    const diagnostics = { build: 'v0.9.1 · abc1234', screen: 'room town', errors: [] };
+    const on = buildReport(draft, { version: 'v', device: 'd', diagnostics });
+    expect(on.ok && on.report).toMatchObject({ version: 'v', device: 'd', diagnostics });
+    const off = buildReport({ ...draft, attachTech: false }, { version: 'v', device: 'd', diagnostics });
+    expect(off.ok && 'diagnostics' in off.report).toBe(false);
+  });
+
+  it('takes the snapshot only when technical info is on, and posts it with the report', async () => {
+    let taken = 0;
+    const diagnostics = () => {
+      taken++;
+      return Promise.resolve({ build: 'v0.9.1 · abc1234', errors: [] });
+    };
+    const draft = { ...emptyDraft(), description: 'Lost the room' };
+    const off = await collectReport({ ...draft, attachTech: false }, { version: 'v', device: 'd', diagnostics });
+    expect(taken).toBe(0);
+    expect(off.ok && 'diagnostics' in off.report).toBe(false);
+    const on = await collectReport(draft, { version: 'v', device: 'd', diagnostics });
+    expect(taken).toBe(1);
+    const bodies: unknown[] = [];
+    const fetchFn = (_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Promise.resolve(new Response(JSON.stringify({ ref: 'SD-ABC123' }), { status: 201 }));
+    };
+    expect(on.ok).toBe(true);
+    if (on.ok) await sendReport('https://api.test', on.report, fetchFn);
+    expect(bodies[0]).toMatchObject({ description: 'Lost the room', diagnostics: { build: 'v0.9.1 · abc1234', errors: [] } });
+  });
+
+  it('a snapshot that fails to build does not stop the report', async () => {
+    const built = await collectReport({ ...emptyDraft(), description: 'x' }, { version: 'v', device: 'd', diagnostics: () => Promise.reject(new Error('stats')) });
+    expect(built.ok && built.report.description === 'x' && !('diagnostics' in built.report)).toBe(true);
   });
 
   it('requires a description and keeps every field within the server limits', () => {
@@ -89,6 +126,7 @@ describe('report screen text', () => {
         'report.observed',
         'report.attachTech',
         'report.attachTech.about',
+        'report.attachTech.session',
         'report.send',
         'report.sending',
         'report.sent.title',

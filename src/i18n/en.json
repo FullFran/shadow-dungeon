@@ -3245,6 +3245,7 @@
   "report.observed.placeholder": "Optional.",
   "report.attachTech": "Attach technical info",
   "report.attachTech.about": "The game version and the kind of device will be attached:",
+  "report.attachTech.session": "Technical data from this session will also be attached: where you are in the game, the latest errors and, if you play online, the connection state. Nothing personal: not your name, your email or your save.",
   "report.on": "Yes",
   "report.off": "No",
   "report.send": "Send",

@@ -195,15 +195,15 @@ window.addEventListener('error', (e) => diagLog.error(e.error ?? e.message, e.fi
 window.addEventListener('unhandledrejection', (e) => diagLog.error(e.reason));
 
 /** Where the player is, in a word, for the report. */
-function screenContext(root: HTMLElement): string {
+function screenContext(): string {
   if (running) return 'run';
-  const town = root.querySelector('canvas.town') !== null;
+  const town = document.querySelector('canvas.town') !== null;
   if (room) return town ? 'room town' : 'room';
-  return town ? 'town' : root.querySelector('.title-menu') ? 'title' : 'menu';
+  return town ? 'town' : document.querySelector('.title-menu') ? 'title' : 'menu';
 }
 
 /** The snapshot of this session now: build, screen, run, recent errors and, in a room, the connection. */
-async function collectDiagnostics(root: HTMLElement): Promise<Diagnostics> {
+async function collectDiagnostics(): Promise<Diagnostics> {
   const session = room?.session ?? current;
   const r = room;
   const coop = session
@@ -220,7 +220,7 @@ async function collectDiagnostics(root: HTMLElement): Promise<Diagnostics> {
     protocol: PROTOCOL_VERSION,
     lang: getLanguage(),
     touch: isTouchUi(),
-    screen: screenContext(root),
+    screen: screenContext(),
     ...(running ? { run: running.info() } : {}),
     errors: diagLog.errors(),
     transitions: diagLog.transitions(),
@@ -803,13 +803,15 @@ function settingsScreen(root: HTMLElement): void {
 /**
  * "Reportar un problema" (issue #9): the anonymous report form, sent to the
  * game API. The version is attached only when the player keeps technical
- * info on, with the coarse device summary (browser / OS / touch).
+ * info on, with the coarse device summary (browser / OS / touch) and this
+ * session's diagnostics snapshot (issue #6), taken only at send time.
  */
 function reportOptions(onBack: () => void) {
   return {
     store,
     version: buildLabel(),
     device: deviceSummary(navigator),
+    diagnostics: collectDiagnostics,
     send: (report: Parameters<typeof sendReport>[1]) => sendReport(apiBaseUrl(import.meta.env.VITE_API_URL), report),
     onBack,
   };
