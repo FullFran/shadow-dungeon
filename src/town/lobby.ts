@@ -14,8 +14,8 @@ export const PRESENCE_MS = 100;
 /** True when this walker's presence is due again (~10 Hz). */
 export const presenceDue = (lastSentMs: number | null, nowMs: number): boolean => lastSentMs === null || nowMs - lastSentMs >= PRESENCE_MS;
 
-/** How long a guest waits for the host to let it in before the room window says the host cannot be reached. */
-export const ADMIT_TIMEOUT_MS = 15_000;
+/** How long a guest waits for the host to let it in before the room window says the host cannot be reached (over the Internet admission took up to ~9.5 s in tests, 2026-10-29). */
+export const ADMIT_TIMEOUT_MS = 25_000;
 
 /** The room as this player stands in it: in the host's roster, still waiting for the host's answer, or no answer in time. */
 export type RoomStatus = 'in' | 'connecting' | 'unreachable';
