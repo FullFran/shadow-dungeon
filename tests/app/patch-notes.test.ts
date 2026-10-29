@@ -80,7 +80,10 @@ describe('GitHub Release notes from the same changelog', () => {
         expect(markdown.indexOf(`- ${item.es}`)).toBeGreaterThan(es);
         expect(markdown.indexOf(`- ${item.en}`, en)).toBeGreaterThan(en);
       }
-    expect(markdown).toContain(catalog('es')[sectionTitleKey('multiplayer')]!);
-    expect(markdown).toContain(catalog('en')[sectionTitleKey('multiplayer')]!);
+    // Every section the release has gets its heading in both languages.
+    for (const section of CHANGELOG_SECTIONS.filter((s) => (release.sections[s] ?? []).length > 0)) {
+      expect(markdown).toContain(catalog('es')[sectionTitleKey(section)]!);
+      expect(markdown).toContain(catalog('en')[sectionTitleKey(section)]!);
+    }
   });
 });
