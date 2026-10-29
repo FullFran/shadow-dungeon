@@ -145,7 +145,7 @@ export async function startFirefox(port, prefs = {}) {
 export async function seedSettings(page, base, extra = {}) {
   await page.nav(base);
   const settings = { language: 'es', muted: true, touchMode: 'on', starterChosen: true, ...extra };
-  await page.evaluate(`(localStorage.clear(), localStorage.setItem('mazmorra-sombria.settings', ${JSON.stringify(JSON.stringify(settings))}), localStorage.setItem('mazmorra-sombria.cinematicsSeen', JSON.stringify(['aegislash','decidueye','dhelmise','nihilego'].flatMap((s) => [s + ':pre', s + ':post']))), localStorage.setItem('mazmorra-sombria.prologueSeen', '1'), localStorage.setItem('mazmorra-sombria.simaScenes', JSON.stringify(['plea'])), 1)`);
+  await page.evaluate(`(localStorage.clear(), localStorage.setItem('mazmorra-sombria.settings', ${JSON.stringify(JSON.stringify(settings))}), localStorage.setItem('mazmorra-sombria.cinematicsSeen', JSON.stringify(['aegislash','decidueye','dhelmise','nihilego'].flatMap((s) => [s + ':pre', s + ':post']))), localStorage.setItem('mazmorra-sombria.prologueSeen', '1'), localStorage.setItem('mazmorra-sombria.simaScenes', JSON.stringify(['plea'])), localStorage.setItem('mazmorra-sombria.lastSeenVersion', '999.0.0'), 1)`);
 }
 
 export { wait };

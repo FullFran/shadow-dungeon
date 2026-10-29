@@ -54,6 +54,8 @@ await page.addInitScript(({ nickname }) => {
     localStorage.setItem('mazmorra-sombria.cinematicsSeen', JSON.stringify(['aegislash', 'decidueye', 'dhelmise', 'nihilego'].flatMap((s) => [s + ':pre', s + ':post'])));
     localStorage.setItem('mazmorra-sombria.prologueSeen', '1');
     localStorage.setItem('mazmorra-sombria.simaScenes', JSON.stringify(['plea']));
+    // Past any release, so the once-per-update patch notes never take the title's place.
+    localStorage.setItem('mazmorra-sombria.lastSeenVersion', '999.0.0');
   }
   const RTC = window.RTCPeerConnection;
   window.__pcs = [];
