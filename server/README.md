@@ -258,7 +258,7 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 - **Limits:** 10 requests per IP every 10 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
 - **Monitoring:**
   - Cloudflare dashboard, Realtime > TURN: usage. The free allowance is 1,000 GB/month, then $0.05/GB.
-  - Server logs: `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` lines. Each issued line has the credential `username` and a hash of the client IP.
+  - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP.
 - **Revoke one credential:** `POST https://rtc.live.cloudflare.com/v1/turn/keys/<key id>/credentials/<username>/revoke` with the API token as Bearer (see the Cloudflare Realtime docs).
 - **Kill switch:** remove both `CF_TURN_*` lines from `.env` and restart the service. Co-op keeps working direct-only. Rotating the key in the dashboard also invalidates every credential issued from it.
 
