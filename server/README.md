@@ -17,13 +17,15 @@ Guests keep playing without an account; that is all client-side.
 | Path | What it holds |
 |---|---|
 | `main.go` | Starts PocketBase, registers hooks and applies the environment on `serve` |
-| `migrations/` | The schema as Go migrations (`users` changes, `profiles`, `saves`, then password accounts); never edit an applied one, add a new file |
+| `migrations/` | The schema as Go migrations (`users` changes, `profiles`, `saves`, password accounts, then `reports`); never edit an applied one, add a new file |
 | `internal/rules/` | Pure rules: save validation, revision check, nickname rules (table-driven tests) |
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
 | `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
 | `internal/ranking/` | Pure Sima ranking rule over the saves (table-driven tests); `rankingapi/` serves it |
+| `internal/reports/` | Bug report fields and limits; `reportsapi/` serves `POST /api/sd/reports` |
 | `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
 | `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
+| `tools/report-to-issue.sh` | Renders an exported bug report as a GitHub issue body (offline) |
 | `skills/lore/` | Claude Code skill (`lore-sima`) that queries the lore API |
 
 ## Collections
@@ -261,6 +263,72 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
   - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP.
 - **Revoke one credential:** `POST https://rtc.live.cloudflare.com/v1/turn/keys/<key id>/credentials/<username>/revoke` with the API token as Bearer (see the Cloudflare Realtime docs).
 - **Kill switch:** remove both `CF_TURN_*` lines from `.env` and restart the service. Co-op keeps working direct-only. Rotating the key in the dashboard also invalidates every credential issued from it.
+
+## Bug reports
+
+Players report problems from the game (title menu and pause menu, "Reportar un problema"). Reports are anonymous and private: nothing becomes a public GitHub issue on its own; the owner reads each one and decides (issue #9).
+
+**Route.** `POST /api/sd/reports` with a JSON body of at most 32 KB:
+
+| Field | Rule |
+|---|---|
+| `category` | required: `bug`, `online`, `performance`, `interface`, `progress`, `suggestion` or `other` |
+| `description` | required, at most 2000 characters |
+| `steps` | optional, at most 2000 |
+| `expected`, `observed` | optional, at most 1000 each |
+| `version` | optional, at most 40 (game version) |
+| `device` | optional, at most 200 (coarse browser / OS / touch summary) |
+| `diagnostics` | optional JSON object, at most 16 KB |
+| `website` | honeypot: must be empty. If filled, the route answers success with a made-up ref and stores nothing |
+
+Text is trimmed and control characters are dropped; unknown fields are rejected. It answers `201 {"ref":"SD-XXXXXX"}`, `400 {"error":"...","field":"..."}` for a bad field, `413` for an oversized body, `429` past 5 reports per IP every 10 minutes (rate-limit rule `/api/sd/reports`), and `503` past `DailyCap` (200) reports per UTC day across all clients.
+
+**What is stored** (collection `reports`): the fields above, `ref`, `status` (`new`, `triaged`, `issue`, `closed`; starts `new`), `githubIssue` (URL, set by the owner), `created`, `updated`, and `client`: a short SHA-256 hash of the client IP, only to spot a flood from one source. Never the IP, an email, an account id or a save. Every API rule is superuser-only: the records API cannot list, view, create, edit or delete reports.
+
+**Triage.**
+
+1. Dashboard (`/_/`) > Collections > `reports`, filter `status = "new"`, sort by `created`.
+2. Read the report. Spam or duplicate: set `status` to `closed`. Real but not worth an issue yet: `triaged`.
+3. Worth an issue: save the record as JSON (as superuser, `GET /api/collections/reports/records?filter=(ref='SD-XXXXXX')`; the script takes that list answer or a single record) and render the body:
+
+   ```sh
+   tools/report-to-issue.sh report.json > body.md
+   gh issue create --repo FullFran/shadow-dungeon --title "[SD-XXXXXX] <short summary>" --label bug --body-file body.md
+   ```
+
+   Or by hand, with this template:
+
+   ~~~markdown
+   Player report **SD-XXXXXX** (category: bug), received 2026-10-29.
+
+   ### Description
+   <description>
+
+   ### Steps to reproduce
+   <steps>
+
+   ### Expected
+   <expected>
+
+   ### Observed
+   <observed>
+
+   ### Environment
+   - Game version: <version>
+   - Device: <device>
+
+   <details><summary>Diagnostics</summary>
+
+   ```json
+   <diagnostics>
+   ```
+   </details>
+   ~~~
+
+   Nothing personal is stored, so nothing needs stripping; still read the text the player wrote before publishing it (they may have typed a name or an email themselves).
+4. Back in the dashboard set `status` to `issue` and `githubIssue` to the issue URL. Close the report (`closed`) when the issue is fixed.
+
+The player keeps the `SD-XXXXXX` reference and can quote it when writing to the owner.
 
 ## Run locally
 
