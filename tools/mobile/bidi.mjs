@@ -45,7 +45,8 @@ function killGroup(child) {
 }
 
 /** Starts headless Firefox with a throwaway silent profile and opens a BiDi session. */
-export async function startFirefox(port) {
+/** `prefs`: extra about:config entries, e.g. { 'media.peerconnection.ice.relay_only': true }. */
+export async function startFirefox(port, prefs = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'mz-ff-'));
   writeFileSync(
     join(profile, 'user.js'),
@@ -56,6 +57,7 @@ export async function startFirefox(port) {
       'user_pref("browser.shell.checkDefaultBrowser", false);',
       'user_pref("datareporting.policy.dataSubmissionEnabled", false);',
       'user_pref("toolkit.telemetry.reportingpolicy.firstRun", false);',
+      ...Object.entries(prefs).map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`),
     ].join('\n'),
   );
   const child = spawn('firefox', ['--headless', '--no-remote', '--profile', profile, `--remote-debugging-port=${port}`, 'about:blank'], { stdio: 'ignore', detached: true });

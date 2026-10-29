@@ -4,6 +4,7 @@
 // Defaults to the production build; pass --base to point elsewhere.
 //   node tools/mobile/coop-smoke.mjs [--base=https://www.fullfran.com/shadow-dungeon/] [--wait=30000] [--shots=/dir] [--alone]
 // --alone: one guest joins a code nobody created; its room window must say the host is not answering.
+// --relay: both browsers may only use TURN relay candidates, so a pass proves the relay works.
 // Exits 1 when the players do not see each other in time.
 import { mkdirSync } from 'node:fs';
 import { seedSettings, startFirefox, wait } from './bidi.mjs';
@@ -14,6 +15,7 @@ const base = flag('base', 'https://www.fullfran.com/shadow-dungeon/');
 const timeout = Number(flag('wait', '30000'));
 const shots = flag('shots', '');
 const alone = args.includes('--alone');
+const prefs = args.includes('--relay') ? { 'media.peerconnection.ice.relay_only': true } : {};
 if (shots) mkdirSync(shots, { recursive: true });
 
 /** Clicks the first menu row whose label contains `text`. */
@@ -33,7 +35,7 @@ async function until(page, expression, ms) {
 }
 
 async function player(port, nickname) {
-  const ff = await startFirefox(port);
+  const ff = await startFirefox(port, prefs);
   await ff.page.viewport(1280, 800, 1);
   await seedSettings(ff.page, base, { nickname, touchMode: 'off' });
   await ff.page.nav(base);
