@@ -1,6 +1,15 @@
 # Cuentas, rankings en línea y (después) gacha: plan de backend
 
-Estado: propuesta, 2026-10-26. Nada de esto está construido ni desplegado. Toda acción remota (VPS, DNS, consolas de Twitch/Discord/Google) necesita que el dueño autorice de forma explícita el destino, la operación y la credencial (sección 5).
+Estado (actualizado 2026-10-29): **en parte construido y superado.** Este documento conserva la propuesta del 2026-10-26 y sus razones; lo que existe de verdad está en `server/` (ahora en `main`) y en `server/README.md`.
+
+Diferencias con la propuesta:
+- Hooks en Go, no JS `pb_hooks`.
+- Cuentas con email y contraseña; OAuth está preparado pero apagado.
+- Colecciones `profiles`, `saves` (con `rev` optimista) y `reports`. No hay `runs` ni `records`, ni verificador de partidas: el ranking de la Sima sale de los guardados y **no está verificado** (issue #13).
+- Rutas propias: ranking, lore, credenciales TURN y reportes de fallos.
+- Copias automáticas configurables hacia R2.
+
+Lo que sigue es la propuesta original. Toda acción remota (VPS, DNS, consolas de Twitch/Discord/Google) necesita que el dueño autorice de forma explícita el destino, la operación y la credencial (sección 5).
 
 Convenciones del documento:
 

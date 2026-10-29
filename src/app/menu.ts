@@ -23,6 +23,17 @@ export interface MenuActions {
   quit(): void;
   /** Solo restarts of this floor still allowed by the tier (data/difficulty.ts); null or absent = unlimited. */
   restartsLeft?: number | null;
+  /** "Reportar un problema" (issue #9): the report form shown in the menu; `back` returns to it. Absent: no row. */
+  openReport?(back: () => void): { element: HTMLElement; dispose(): void };
+  /** "Copiar informe técnico" (issue #6): copies this session's diagnostics. Absent: no row. */
+  copyReport?(): void;
+}
+
+export type PauseEntry = 'resume' | 'restart' | 'settings' | 'report' | 'copyReport' | 'quit';
+
+/** The Esc menu's rows in order: the report rows only when the app offers them, always before quitting. */
+export function pauseEntries(actions: MenuActions): PauseEntry[] {
+  return ['resume', 'restart', 'settings', ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
 }
 
 /** The Esc menu's restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
@@ -66,12 +77,16 @@ export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actio
   const overlay = h('div', { className: 'overlay pause' });
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  let view: 'main' | 'settings' = 'main';
+  let view: 'main' | 'settings' | 'report' = 'main';
   let list: ReturnType<typeof cursorList> | null = null;
+  let report: { element: HTMLElement; dispose(): void } | null = null;
   let opened = false;
 
   function render(): void {
     list?.dispose();
+    list = null;
+    report?.dispose();
+    report = null;
     const access: MenuSettings = {
       ...settings,
       setLanguage(language) {
@@ -79,25 +94,42 @@ export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actio
         render();
       },
     };
-    const main: ListItem[] = [
-      { label: t('pause.resume'), onConfirm: actions.resume },
+    const back = () => {
+      view = 'main';
+      render();
+    };
+    const rows: Record<PauseEntry, () => ListItem> = {
+      resume: () => ({ label: t('pause.resume'), onConfirm: actions.resume }),
       // Harder tiers limit "Restart floor" per floor (docs/gdd.md §9); with none left the row stays, dimmed and inert.
-      actions.restartsLeft === 0
-        ? { label: restartLabel(0, t), className: 'dim', onConfirm: () => undefined }
-        : { label: restartLabel(actions.restartsLeft, t), onConfirm: actions.restart },
-      {
+      restart: () =>
+        actions.restartsLeft === 0
+          ? { label: restartLabel(0, t), className: 'dim', onConfirm: () => undefined }
+          : { label: restartLabel(actions.restartsLeft, t), onConfirm: actions.restart },
+      settings: () => ({
         label: t('pause.settings'),
         onConfirm: () => {
           view = 'settings';
           render();
         },
-      },
-      { label: t('pause.quit'), onConfirm: actions.quit },
-    ];
-    const back = () => {
-      view = 'main';
-      render();
+      }),
+      report: () => ({
+        label: t('title.report'),
+        onConfirm: () => {
+          view = 'report';
+          render();
+        },
+      }),
+      copyReport: () => ({ label: t('lobby.copyReport'), onConfirm: () => actions.copyReport?.() }),
+      quit: () => ({ label: t('pause.quit'), onConfirm: actions.quit }),
     };
+    // The report form takes the menu's place; its own Back row comes back here.
+    if (view === 'report' && actions.openReport) {
+      report = actions.openReport(back);
+      overlay.setAttribute('aria-label', t('title.report'));
+      overlay.replaceChildren(h('div', { className: 'screen-row' }, [report.element]));
+      return;
+    }
+    const main: ListItem[] = pauseEntries(actions).map((entry) => rows[entry]());
     const current = cursorList({ items: view === 'main' ? main : [], label: t('pause.title') });
     list = current;
     // Settings rows rebuild in place after each change, keeping the cursor.
@@ -118,6 +150,7 @@ export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actio
   parent.append(overlay);
   return () => {
     list?.dispose();
+    report?.dispose();
     overlay.remove();
   };
 }

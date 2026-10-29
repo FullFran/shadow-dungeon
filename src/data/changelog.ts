@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.2',
+    date: '2026-10-29',
+    sections: {
+      improved: [
+        {
+          es: 'El menú de pausa (Esc) de una partida tiene «Reportar un problema» y «Copiar informe técnico», para avisar de un fallo sin salir de la mazmorra.',
+          en: 'The in-run pause menu (Esc) has "Report a problem" and "Copy technical report", to report a bug without leaving the dungeon.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.1',
     date: '2026-10-29',
     sections: {
