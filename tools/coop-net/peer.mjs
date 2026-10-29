@@ -9,6 +9,9 @@
 //         relay = the browser may only use relay candidates (proves TURN works).
 // --run=1: the host walks to the waystone and leads the room into the first dungeon;
 //          both sides then sample the F3 net overlay.
+// --refresh=1 (guest): once in, reload the page and join again; reports the time to get back in.
+// --watch=N (host): for N seconds after everyone is in, record how many guests the room lists (duplicates, drops).
+// --hostLeaves=1 (guest, with --run=1): after sampling, wait for the run to end with the host-left notice.
 // --expect: players the room window must list before measuring (host included); --n names a guest.
 // The host prints `CODE <code>` as soon as the room exists.
 import { chromium, firefox } from 'playwright';
@@ -143,6 +146,29 @@ try {
   mark('together');
   await shot('together');
 
+  if (role === 'guest' && args.refresh === '1') {
+    await wait(3000);
+    mark('reload');
+    await page.reload({ waitUntil: 'load' });
+    if (!(await until(() => click('Jugar en línea'), 20000))) throw new Error('no online entry after reload');
+    await click('Unirse con código');
+    const back = await until(async () => {
+      const t = await roomText();
+      return t.includes('Anfitrion') && t.includes('Invitado') ? t : null;
+    }, 60000);
+    if (!back) throw new Error('not back in after reload');
+    mark('backIn');
+  }
+  if (role === 'host' && args.watch) {
+    const seen = [];
+    for (let i = 0; i < Number(args.watch) * 2; i++) {
+      const n = ((await roomText()).match(/Invitado/g) ?? []).length;
+      if (seen.length === 0 || seen[seen.length - 1][1] !== n) seen.push([Date.now() - t0, n]);
+      await wait(500);
+    }
+    result.guestsListed = seen;
+  }
+
   // RTT of the live links, sampled once a second.
   const rtts = [];
   let selected = [];
@@ -190,6 +216,12 @@ try {
     }
     result.overlay = overlay.filter(Boolean).slice(-3);
     await shot('run');
+    if (role === 'guest' && args.hostLeaves === '1') {
+      const left = Date.now();
+      const notice = await until(() => page.evaluate(() => (/anfitrión se ha ido/i.test(document.body.innerText) ? document.body.innerText.slice(0, 300) : null)), 45000);
+      result.hostLeft = notice ? { afterMs: Date.now() - left, text: notice } : null;
+      await shot('host-left');
+    }
   }
   result.ok = true;
 } catch (e) {
