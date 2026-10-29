@@ -41,6 +41,34 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.1',
+    date: '2026-10-29',
+    sections: {
+      improved: [
+        {
+          es: '«Reportar un problema» puede adjuntar un informe técnico de la sesión (errores recientes y estado de la conexión, nada personal) si dejas marcada la información técnica.',
+          en: '"Report a problem" can attach a technical report of your session (recent errors and connection state, nothing personal) when technical info stays on.',
+        },
+      ],
+      multiplayer: [
+        {
+          es: 'En una sala en línea, el menú (Esc) tiene «Copiar informe técnico» para pegarlo al pedir ayuda.',
+          en: 'In an online room, the Esc menu has "Copy technical report" to paste when asking for help.',
+        },
+        {
+          es: 'Si tu versión y la del anfitrión no coinciden, el aviso dice las dos y cómo actualizar: recarga la página y, si lo tienes instalado, ciérralo y vuelve a abrirlo.',
+          en: 'When your version and the host\'s differ, the notice names both and how to update: reload the page and, if installed, close it and open it again.',
+        },
+      ],
+      known: [
+        {
+          es: 'El modo cooperativo se sigue probando con jugadores. Si tienes problemas al conectar o jugar en grupo, repórtalo desde Opciones.',
+          en: 'Co-op is still being tested with players. If you have trouble connecting or playing together, report it from Options.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.0',
     date: '2026-10-29',
     sections: {

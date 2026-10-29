@@ -5,6 +5,7 @@
 # meet over the real Internet.
 #   HOST_ARGS="--browser=firefox" GUEST_ARGS="--turn=relay" GUEST_AT=vpscontavo tools/coop-net/pair.sh
 # WORK: a local dir holding peer.mjs and node_modules/playwright (see README.md).
+# DOCKER_NET=host lets local peers reach a build served on this machine (vite preview).
 set -euo pipefail
 IMAGE=${IMAGE:-mcr.microsoft.com/playwright:v1.49.1-noble}
 WORK=${WORK:?set WORK to the local work dir}
@@ -13,7 +14,7 @@ GUEST_AT=${GUEST_AT:-local}
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
-run() { docker run --rm --init --ipc=host -u "$(id -u):$(id -g)" -e HOME=/w -v "$1":/w -w /w "$IMAGE" node peer.mjs "${@:2}"; }
+run() { docker run --rm --init --ipc=host ${DOCKER_NET:+--network "$DOCKER_NET"} -u "$(id -u):$(id -g)" -e HOME=/w -v "$1":/w -w /w "$IMAGE" node peer.mjs "${@:2}"; }
 
 run "$WORK" --role=host $HOST_ARGS >"$log" 2>&1 &
 host=$!
