@@ -338,16 +338,20 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (!lobby) return;
     const players = lobby.players();
     const tier = lobby.difficulty?.() ?? null;
-    const key = `${lobby.code()}|${tier}|` + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
+    const status = lobby.status?.() ?? 'in';
+    const key = `${lobby.code()}|${tier}|${status}|` + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
     if (key === roomShown) return;
     roomShown = key;
     roomCode.textContent = lobby.code();
-    roomTier.textContent = tier ? `${t('difficulty.label')}: ${t(`difficulty.${tier}`)}` : '';
+    // The tier is the host's: unknown until it has answered.
+    roomTier.textContent = tier && status === 'in' ? `${t('difficulty.label')}: ${t(`difficulty.${tier}`)}` : '';
     roomList.replaceChildren(
       ...players.map((p) => {
         const tags = [p.host ? t('lobby.host') : null, p.self ? t('lobby.you') : null].filter(Boolean);
         return h('li', {}, [h('span', { className: 'roster-id', textContent: p.name }), tags.length > 0 ? h('span', { className: 'dim', textContent: ` ${tags.join(' · ')}` }) : null]);
       }),
+      // Not let in yet: nobody else is drawn until the host answers, so say why the town looks empty.
+      ...(status === 'in' ? [] : [h('li', { className: `room-status ${status}`, textContent: t(status === 'connecting' ? 'lobby.connecting' : 'lobby.unreachable') })]),
     );
   }
   let targets = targetsOf(map);

@@ -53,7 +53,7 @@ import { pleaReady } from '../town/plea';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { profilePublisher } from './profile-publish';
-import type { TownLobby } from '../town/lobby';
+import { roomStatus, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
@@ -174,7 +174,7 @@ let hideCode = false;
  * The online room this tab is in, kept across its runs: the room walks the
  * town between runs (`townLobby`), and the session outlives each run.
  */
-let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom } | null = null;
+let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; openedAt: number } | null = null;
 
 /** Where the online window was opened from: the title menu, or the Refugio's signal pillar (leaving the room goes back there). */
 type OnlineFrom = 'title' | 'town';
@@ -1299,7 +1299,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     return;
   }
   current = session;
-  room = { session, code, asHost, seed: runSeed(), from };
+  room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now() };
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
   session.onFull((reason) => {
@@ -1380,6 +1380,7 @@ function townLobby(root: HTMLElement): void {
       session.setDifficulty(next);
       update({ difficulty: next });
     },
+    status: () => roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), waitedMs: Date.now() - r.openedAt }),
     variants: (id) => (dungeonById(id).id === id && dungeonById(id).endless ? ENDLESS_MODES.map((m) => ({ label: t(`endless.mode.${m}`), value: m })) : null),
   };
   const depart = (id: string, variant?: string) => {

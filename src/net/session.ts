@@ -409,7 +409,11 @@ export function createSession(options: SessionOptions): NetSession {
           return;
         }
         if (roster.some((r) => r.peer === transport.selfId)) admitted = true;
-        else knock();
+        else {
+          // Left out (the host dropped this peer, its link timed out on that side only): ask to come in again.
+          admitted = false;
+          knock();
+        }
         return;
       case 'full':
         if (message.peer === transport.selfId) refused(message.reason ?? 'full');
@@ -432,7 +436,10 @@ export function createSession(options: SessionOptions): NetSession {
         if (!sameVersion(message.v, message.c)) return refused('version');
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         const me = roster.find((r) => r.peer === transport.selfId);
-        if (!me) return knock();
+        if (!me) {
+          admitted = false;
+          return knock();
+        }
         if (started) return;
         started = true;
         role = 'guest';
@@ -485,13 +492,20 @@ export function createSession(options: SessionOptions): NetSession {
         walkers.set(from, pushSample(buffer, { at: stamp(from, message.at), epoch: 0, value: { map: message.map, pos: message.pos, facing: message.facing, moving: message.moving } }));
         return;
       }
-      case 'leave':
+      case 'leave': {
         if (message.id === 'p1') hostLeft();
-        for (const r of roster) if (r.id === message.id) walkers.delete(r.peer);
+        const dropped = roster.find((r) => r.id === message.id);
+        if (dropped) walkers.delete(dropped.peer);
         players.delete(message.id);
         statuses.delete(message.id);
         setRoster(roster.filter((r) => r.id !== message.id));
+        // The host dropped this very peer (the link timed out on its side only): knock to be let in again.
+        if (dropped?.peer === transport.selfId) {
+          admitted = false;
+          knock();
+        }
         return;
+      }
     }
   });
   /** A new round: forget the last run's remote players, snapshots and pending claims. */
