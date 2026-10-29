@@ -9,7 +9,7 @@
 export const REPORT_CATEGORIES = ['bug', 'online', 'performance', 'interface', 'progress', 'suggestion', 'other'] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
-/** What the game posts (the server also takes `diagnostics`, not sent yet). */
+/** What the game posts; the report screen adds `diagnostics` when the player keeps technical info on. */
 export interface ReportPayload {
   category: ReportCategory;
   description: string;

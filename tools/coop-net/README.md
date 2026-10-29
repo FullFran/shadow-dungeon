@@ -40,6 +40,8 @@ The peers wait `--linger` seconds (default 15) before closing, so the other side
 
 Known limit: Firefox's `getStats` gives no candidate-pair RTT here, so its ICE RTT shows as null. The in-game RTT from the overlay still works.
 
+Players without this harness can send the same facts (issue #6): the room's Esc menu has "Copiar informe técnico", which copies a JSON snapshot with the build, role, admission, per-peer RTT and silence, the selected ICE pair kinds (never addresses), the TURN server count and the recent connection transitions; a bug report with "Adjuntar información técnica" on carries it too. The F3 overlay now also shows whether a guest is admitted and whether each link is direct or relayed (`summary.py` still reads its RTT lines).
+
 ## Results 2026-10-29 (production build `e60dcb9`)
 
 The host ran on the owner's machine (home network). Guests ran on the VPS or on the same machine.

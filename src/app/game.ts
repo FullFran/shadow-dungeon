@@ -236,6 +236,8 @@ export interface RunningGame {
   setLock(settings: { lockType: LockType; clickToLock: boolean }): void;
   /** The host cut the shared run short: it ends now (paid as a defeat), or its end screen due shows now; `onEnd` runs once either way. */
   cutShort(reason: CutShort): void;
+  /** Where the run stands, for the technical report (issue #6): dungeon, floor, tier, shared or not. */
+  info(): { dungeon: string; floor: number; difficulty: string; coop: boolean };
   stop(): void;
 }
 
@@ -1457,6 +1459,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       lockSettings = settings;
       world = { ...world, lock: configureLock(world.lock, settings) };
     },
+    info: () => ({ dungeon: trial ? `trial:${trial.stops[trial.index]?.dungeon ?? '?'}` : dungeonById(options.dungeon).id, floor: run.floor, difficulty, coop: Boolean(net) }),
     cutShort(reason) {
       const action = cutShortAction({ ended, finished });
       if (action === 'end') end('defeat', reason);

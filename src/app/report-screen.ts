@@ -19,7 +19,7 @@ export const REPORT_LIMITS = { description: 2000, steps: 2000, expected: 1000, o
 
 export const REPORT_DRAFT_KEY = 'mazmorra-sombria.reportDraft';
 
-/** What the player is typing. `attachTech` adds the game version and the coarse device summary. */
+/** What the player is typing. `attachTech` adds the game version, the coarse device summary and this session's diagnostics snapshot. */
 export interface ReportDraft {
   category: ReportCategory;
   description: string;
@@ -105,10 +105,20 @@ export function deviceSummary(info: DeviceInfo): string {
   return `${browser} / ${os} / ${touch ? 'touch' : 'no touch'}`;
 }
 
-export type BuildResult = { ok: true; report: ReportPayload } | { ok: false; field: TextField };
+/** The report as posted: the form's fields plus, with technical info on, the session's diagnostics snapshot (the server's `diagnostics`, at most 16 KB: src/app/diagnostics.ts). */
+export type ReportToSend = ReportPayload & { diagnostics?: object };
+
+export type BuildResult = { ok: true; report: ReportToSend } | { ok: false; field: TextField };
+
+/** What technical info can add: the version, the device summary and, if given, the diagnostics snapshot. */
+export interface ReportTech {
+  version: string;
+  device: string;
+  diagnostics?: object;
+}
 
 /** The report to send: trimmed fields, the description required, every field within the server's limits. */
-export function buildReport(draft: ReportDraft, tech: { version: string; device: string }): BuildResult {
+export function buildReport(draft: ReportDraft, tech: ReportTech): BuildResult {
   const text = {} as Record<TextField, string>;
   for (const field of TEXT_FIELDS) {
     text[field] = draft[field].trim();
@@ -122,8 +132,20 @@ export function buildReport(draft: ReportDraft, tech: { version: string; device:
       ...text,
       version: draft.attachTech ? tech.version.trim().slice(0, REPORT_LIMITS.version) : '',
       device: draft.attachTech ? tech.device.trim().slice(0, REPORT_LIMITS.device) : '',
+      ...(draft.attachTech && tech.diagnostics ? { diagnostics: tech.diagnostics } : {}),
     },
   };
+}
+
+/**
+ * The report with its snapshot taken now, only when technical info is on
+ * (nothing is gathered otherwise). A snapshot that fails leaves the report
+ * without it rather than stopping it.
+ */
+export async function collectReport(draft: ReportDraft, tech: { version: string; device: string; diagnostics?: () => Promise<object> }): Promise<BuildResult> {
+  let diagnostics: object | undefined;
+  if (draft.attachTech && tech.diagnostics) diagnostics = await tech.diagnostics().catch(() => undefined);
+  return buildReport(draft, { version: tech.version, device: tech.device, ...(diagnostics ? { diagnostics } : {}) });
 }
 
 export type ReportError = 'rate-limited' | 'unavailable' | 'invalid' | 'description' | 'too-long';
@@ -137,6 +159,8 @@ export interface ReportWindowOptions {
   version: string;
   /** The device summary to attach (`deviceSummary(navigator)`). */
   device: string;
+  /** This session's technical snapshot (src/app/diagnostics.ts), taken at send time only with technical info on. */
+  diagnostics?: () => Promise<object>;
   send(report: ReportPayload): Promise<ReportResult>;
   onBack(): void;
 }
@@ -184,7 +208,8 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   const techValue = h('span');
   const paintTech = () => {
     techValue.textContent = t(draft.attachTech ? 'report.on' : 'report.off');
-    tech.textContent = draft.attachTech ? `${t('report.attachTech.about')} ${options.version} · ${options.device}` : '';
+    const session = options.diagnostics ? ` ${t('report.attachTech.session')}` : '';
+    tech.textContent = draft.attachTech ? `${t('report.attachTech.about')} ${options.version} · ${options.device}.${session}` : '';
   };
   const toggleTech = () => {
     draft.attachTech = !draft.attachTech;
@@ -217,16 +242,19 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
 
   const submit = async () => {
     if (busy) return;
-    const built = buildReport(draft, { version: options.version, device: options.device });
-    if (!built.ok) {
-      fail(built.field === 'description' && !draft.description.trim() ? 'description' : 'too-long');
-      boxes[built.field].focus();
+    // The fields first, before any snapshot is taken.
+    const checked = buildReport(draft, { version: options.version, device: options.device });
+    if (!checked.ok) {
+      fail(checked.field === 'description' && !draft.description.trim() ? 'description' : 'too-long');
+      boxes[checked.field].focus();
       return;
     }
     busy = true;
     keep();
     status.textContent = t('report.sending');
-    const result = await options.send(built.report);
+    const built = await collectReport(draft, options);
+    if (disposed) return;
+    const result = built.ok ? await options.send(built.report) : ({ kind: 'invalid' } as const);
     busy = false;
     if (disposed) return;
     if (result.kind === 'ok') {
