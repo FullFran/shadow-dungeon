@@ -71,6 +71,9 @@ func WithOrigins(args []string, origins []string) []string {
 // SignUpLimit caps account creation per IP: 5 sign-ups per 10 minutes.
 var SignUpLimit = core.RateLimitRule{Label: "users:create", MaxRequests: 5, Duration: 600}
 
+// TurnLimit caps TURN credential requests per IP: 10 per 10 minutes.
+var TurnLimit = core.RateLimitRule{Label: "/api/sd/turn", MaxRequests: 10, Duration: 600}
+
 // RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is
 // in seconds. A collection label ("users:create") wins over its wildcard
 // ("*:create"), whatever the order.
@@ -81,6 +84,8 @@ var RateLimitRules = []core.RateLimitRule{
 	{Label: "saves:update", MaxRequests: 30, Duration: 60},
 	{Label: "*:create", MaxRequests: 20, Duration: 60},
 	{Label: "/api/batch", MaxRequests: 3, Duration: 1},
+	// TURN relay credentials: one per opened co-op room is plenty (issue #22).
+	TurnLimit,
 	{Label: "/api/", MaxRequests: 300, Duration: 10},
 }
 

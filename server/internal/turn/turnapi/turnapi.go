@@ -8,6 +8,8 @@ package turnapi
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,12 +23,15 @@ import (
 )
 
 // credentialTTL is how long Cloudflare keeps a generated credential valid
-// (its maximum is 48 h).
-const credentialTTL = 6 * time.Hour
+// (its maximum is 48 h): long enough for a co-op evening's room, short enough
+// that a leaked one soon stops working.
+const credentialTTL = 2 * time.Hour
 
-// reuseFor is how long one generated credential is handed out before a new
-// one is asked for: every client gets at least credentialTTL-reuseFor of it.
-const reuseFor = time.Hour
+// MaxPerHour caps the credentials generated across all clients in an hour
+// (each opened room asks for one; a client is also limited per IP by the
+// "/api/sd/turn" rate-limit rule). Past it the route answers no relay, so
+// abuse cannot run up the TURN bill; co-op then goes direct-only.
+const MaxPerHour = 120
 
 // Endpoint is Cloudflare's credential generator; %s is the TURN key id.
 const Endpoint = "https://rtc.live.cloudflare.com/v1/turn/keys/%s/credentials/generate-ice-servers"
@@ -63,9 +68,10 @@ type api struct {
 	endpoint string
 	now      func() time.Time
 
-	mu   sync.Mutex
-	body []byte
-	at   time.Time
+	mu     sync.Mutex
+	window time.Time
+	issued int
+	total  int
 }
 
 // Register adds `GET /api/sd/turn` to r.
@@ -83,33 +89,60 @@ func (a *api) turn(e *core.RequestEvent) error {
 	if !a.cfg.Configured() {
 		return e.JSON(http.StatusOK, Response{IceServers: []IceServer{}})
 	}
-	body, err := a.credentials(e.Request.Context())
+	if !a.take() {
+		e.App.Logger().Warn("turn credentials capped", "maxPerHour", MaxPerHour)
+		return e.JSON(http.StatusOK, Response{IceServers: []IceServer{}})
+	}
+	servers, err := a.generate(e.Request.Context())
 	if err != nil {
 		e.App.Logger().Warn("turn credentials unavailable", "error", err)
 		return e.JSON(http.StatusOK, Response{IceServers: []IceServer{}})
 	}
-	return e.Blob(http.StatusOK, "application/json; charset=utf-8", body)
+	// The username is what Cloudflare's revoke endpoint takes; the IP is only hashed.
+	e.App.Logger().Info("turn credential issued", "username", username(servers), "client", clientHash(e.RealIP()), "issuedThisHour", a.count(), "issuedTotal", a.totalIssued())
+	return e.JSON(http.StatusOK, Response{IceServers: servers})
 }
 
-// credentials is the current credential as JSON, generated again once it has
-// been handed out for reuseFor. The lock is held while generating, so a burst
-// of players opening rooms asks Cloudflare once.
-func (a *api) credentials(ctx context.Context) ([]byte, error) {
+// take counts one credential against this hour's MaxPerHour; false when spent.
+func (a *api) take() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.body != nil && a.now().Sub(a.at) < reuseFor {
-		return a.body, nil
+	if now := a.now(); now.Sub(a.window) >= time.Hour {
+		a.window, a.issued = now, 0
 	}
-	servers, err := a.generate(ctx)
-	if err != nil {
-		return nil, err
+	if a.issued >= MaxPerHour {
+		return false
 	}
-	body, err := json.Marshal(Response{IceServers: servers})
-	if err != nil {
-		return nil, err
+	a.issued++
+	a.total++
+	return true
+}
+
+func (a *api) count() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.issued
+}
+
+func (a *api) totalIssued() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.total
+}
+
+func username(servers []IceServer) string {
+	for _, s := range servers {
+		if s.Username != "" {
+			return s.Username
+		}
 	}
-	a.body, a.at = body, a.now()
-	return body, nil
+	return ""
+}
+
+// clientHash tells repeat clients apart in the logs without keeping their IP.
+func clientHash(ip string) string {
+	sum := sha256.Sum256([]byte("sd-turn:" + ip))
+	return hex.EncodeToString(sum[:6])
 }
 
 func (a *api) generate(ctx context.Context) ([]IceServer, error) {

@@ -11,6 +11,8 @@ import (
 
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/tests"
+
+	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
 )
 
 const cloudflareAnswer = `{"iceServers":[
@@ -94,21 +96,57 @@ func TestHandsOutCloudflareServersWithoutPort53(t *testing.T) {
 	}
 }
 
-func TestReusesOneCredentialForAnHour(t *testing.T) {
+func TestOneCredentialPerRequestUpToTheHourlyCap(t *testing.T) {
 	cf, calls := fakeCloudflare(t, http.StatusCreated, cloudflareAnswer)
 	clock := time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)
 	m := mux(t, key, cf.URL+"/v1/turn/keys/%s/credentials/generate-ice-servers", func() time.Time { return clock })
-	get(t, m)
-	get(t, m)
-	clock = clock.Add(reuseFor - time.Second)
-	get(t, m)
-	if calls.Load() != 1 {
-		t.Fatalf("calls = %d, want 1", calls.Load())
+	for i := 0; i < MaxPerHour; i++ {
+		if out := get(t, m); len(out.IceServers) == 0 {
+			t.Fatalf("request %d got no relay", i)
+		}
 	}
-	clock = clock.Add(2 * time.Second)
-	get(t, m)
-	if calls.Load() != 2 {
-		t.Fatalf("calls = %d, want 2", calls.Load())
+	if calls.Load() != MaxPerHour {
+		t.Fatalf("calls = %d, want one per request", calls.Load())
+	}
+	// Past the cap: no relay, and Cloudflare is not asked.
+	if out := get(t, m); len(out.IceServers) != 0 {
+		t.Fatalf("over the cap: %v", out.IceServers)
+	}
+	if calls.Load() != MaxPerHour {
+		t.Fatalf("asked Cloudflare over the cap")
+	}
+	clock = clock.Add(time.Hour)
+	if out := get(t, m); len(out.IceServers) == 0 {
+		t.Fatal("a new hour should hand out credentials again")
+	}
+}
+
+func TestRateLimitedPerClient(t *testing.T) {
+	cf, _ := fakeCloudflare(t, http.StatusCreated, cloudflareAnswer)
+	app, err := tests.NewTestApp(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(app.Cleanup)
+	app.Settings().RateLimits.Enabled = true
+	app.Settings().RateLimits.Rules = setup.RateLimitRules
+	r, err := apis.NewRouter(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	register(r, key, http.DefaultClient, cf.URL+"/v1/turn/keys/%s/credentials/generate-ice-servers", time.Now)
+	m, err := r.BuildMux()
+	if err != nil {
+		t.Fatal(err)
+	}
+	codes := []int{}
+	for i := 0; i <= setup.TurnLimit.MaxRequests; i++ {
+		rec := httptest.NewRecorder()
+		m.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/sd/turn", nil))
+		codes = append(codes, rec.Code)
+	}
+	if codes[setup.TurnLimit.MaxRequests-1] != http.StatusOK || codes[setup.TurnLimit.MaxRequests] != http.StatusTooManyRequests {
+		t.Fatalf("codes = %v", codes)
 	}
 }
 
