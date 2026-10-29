@@ -1,3 +1,4 @@
+import { pushRing, selectedPair, type LinkInfo, type LinkProbe, type Transition } from '../net/diagnostics';
 import type { Transport } from '../net/transport';
 
 /**
@@ -24,24 +25,68 @@ export interface RoomLike {
   leave(): Promise<void>;
 }
 
-export class TrysteroTransport implements Transport<string> {
+/** The part of an `RTCPeerConnection` the diagnostics read (Trystero 0.26 `room.getPeers()` hands them out). */
+interface PeerConnectionLike {
+  iceConnectionState?: string;
+  getStats?(): Promise<{ forEach(fn: (report: Record<string, unknown>) => void): void }>;
+  addEventListener?(type: string, listener: () => void): void;
+}
+
+/** ICE state changes kept for the technical report. */
+const MAX_LINK_EVENTS = 30;
+
+export class TrysteroTransport implements Transport<string>, LinkProbe {
   private readonly action: ActionLike;
   private readonly messageHandlers: Array<(from: string, message: string) => void> = [];
   private readonly joinHandlers: Array<(peer: string) => void> = [];
   private readonly leaveHandlers: Array<(peer: string) => void> = [];
   private closed = false;
+  private readonly events: Transition[] = [];
 
   constructor(
     private readonly room: RoomLike,
     readonly selfId: string,
+    private readonly now: () => number = () => performance.now(),
   ) {
     this.action = room.makeAction('m');
     this.action.onMessage = (data, { peerId }) => {
       if (typeof data !== 'string') return;
       for (const handler of this.messageHandlers) handler(peerId, data);
     };
-    room.onPeerJoin = (peer) => this.joinHandlers.forEach((h) => h(peer));
+    room.onPeerJoin = (peer) => {
+      this.watchIce(peer);
+      this.joinHandlers.forEach((h) => h(peer));
+    };
     room.onPeerLeave = (peer) => this.leaveHandlers.forEach((h) => h(peer));
+  }
+
+  /** Notes the peer's ICE connection state now and on every change (diagnostics, issue #6). */
+  private watchIce(peer: string): void {
+    const pc = this.room.getPeers()[peer] as PeerConnectionLike | undefined;
+    if (!pc) return;
+    const note = () => pushRing(this.events, { tMs: Math.round(this.now()), event: `ice:${pc.iceConnectionState ?? 'unknown'}` }, MAX_LINK_EVENTS);
+    note();
+    pc.addEventListener?.('iceconnectionstatechange', note);
+  }
+
+  /** The selected candidate pair per peer: kinds and protocol only, never addresses. */
+  async links(): Promise<Record<string, LinkInfo | null>> {
+    const entries = Object.entries(this.room.getPeers()).map(async ([peer, raw]): Promise<[string, LinkInfo | null]> => {
+      const pc = raw as PeerConnectionLike;
+      try {
+        if (typeof pc?.getStats !== 'function') return [peer, null];
+        const reports: Array<Record<string, unknown>> = [];
+        (await pc.getStats()).forEach((report) => reports.push(report));
+        return [peer, selectedPair(reports)];
+      } catch {
+        return [peer, null];
+      }
+    });
+    return Object.fromEntries(await Promise.all(entries));
+  }
+
+  linkEvents(): readonly Transition[] {
+    return [...this.events];
   }
 
   peers(): readonly string[] {

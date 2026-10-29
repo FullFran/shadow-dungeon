@@ -1,6 +1,7 @@
 import type { Vec2 } from '../core/vec';
 import type { EntranceState } from './overworld';
 import { stepDifficulty, type Difficulty } from '../data/difficulty';
+import { t } from '../i18n';
 
 /**
  * The online lobby is the town: the room walks it together. Pure rules:
@@ -24,6 +25,18 @@ export type RoomStatus = 'in' | 'connecting' | 'unreachable';
 export function roomStatus({ isHost, admitted, waitedMs }: { isHost: boolean; admitted: boolean; waitedMs: number }): RoomStatus {
   if (isHost || admitted) return 'in';
   return waitedMs < ADMIT_TIMEOUT_MS ? 'connecting' : 'unreachable';
+}
+
+/**
+ * The version-refusal notice (issue #7): the guest's message names both
+ * builds and says how to update, the host's toast names the guest's build.
+ * Without the other side's label (an older peer) the older wording stays.
+ */
+export function versionNotice(side: 'guest' | 'host', mine: string, theirs?: string): string {
+  if (!theirs) return t(side === 'guest' ? 'net.version' : 'net.versionRefused');
+  return t(side === 'guest' ? 'net.versionBoth' : 'net.versionRefusedBoth')
+    .replace('{mine}', mine)
+    .replace('{theirs}', theirs);
 }
 
 export type EntranceAction = 'enter' | 'locked' | 'missing' | 'host-only';

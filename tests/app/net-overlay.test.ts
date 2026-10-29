@@ -39,3 +39,30 @@ describe('net stats overlay text', () => {
     expect(lines[1]).toBe('Role: host · P1');
   });
 });
+
+describe('net stats overlay: admission and link kind (issue #6)', () => {
+  it('adds whether this guest is admitted and, per peer, direct or relay', () => {
+    setLanguage('en');
+    const lines = netStatsLines(
+      { bytesOutPerSec: 0, bytesInPerSec: 0, snapshotsPerSec: 0, avgSnapshotAgeMs: null, rttMs: { h: 50, x: 90 } },
+      {
+        role: 'guest',
+        localId: 'p2',
+        selfPeer: 'g',
+        admitted: false,
+        links: { h: { local: 'srflx', remote: 'srflx', protocol: 'udp' }, x: { local: 'relay', remote: 'srflx', protocol: 'udp', relayProtocol: 'tcp' } },
+        roster: [
+          { peer: 'h', id: 'p1', species: 'mimikyu' },
+          { peer: 'g', id: 'p2', species: 'mimikyu' },
+          { peer: 'x', id: 'p3', species: 'mimikyu' },
+        ],
+      },
+    );
+    expect(lines[1]).toBe('Role: guest · P2 · waiting');
+    expect(lines).toContain('RTT P1: 50 ms · direct');
+    expect(lines).toContain('RTT P3: 90 ms · relay');
+    setLanguage('es');
+    const es = netStatsLines({ bytesOutPerSec: 0, bytesInPerSec: 0, snapshotsPerSec: 0, avgSnapshotAgeMs: null, rttMs: {} }, { role: 'guest', localId: 'p2', selfPeer: 'g', admitted: true, roster: [] });
+    expect(es[1]).toBe('Rol: invitado · P2 · admitido');
+  });
+});

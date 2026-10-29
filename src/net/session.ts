@@ -9,6 +9,7 @@ import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from '
 import { decodeMessage, encodeMessage, parseRoomTrial, type NetMessage, type RoomTrial, type RosterEntry, type TownPresence } from './protocol';
 import { sanitizeNickname } from './nickname';
 import { CONTENT_HASH, PROTOCOL_VERSION, sameVersion } from './version';
+import { pushRing, type LinkInfo, type LinkProbe, type SessionDiagnostics, type Transition } from './diagnostics';
 import { createStatsTracker, type StatsSummary } from './stats';
 import type { Scheduler, Transport } from './transport';
 
@@ -65,6 +66,10 @@ export interface SessionOptions {
   renderDelayMs?: number;
   sendEveryTicks?: number;
   maxExtrapolateMs?: number;
+  /** This client's build label ("v0.9.0 · e60dcb9"), sent with the version so a refusal can name both builds (issue #7). */
+  build?: string;
+  /** The transport under any lag wrapper, when it can tell how each peer is linked (WebRTC: the ICE pair). */
+  probe?: LinkProbe;
 }
 
 export interface StartInfo {
@@ -128,10 +133,10 @@ export interface NetSession {
   onStart(handler: (start: StartInfo) => void): void;
   /** The roster changed (someone was admitted or left). */
   onRoster(handler: (roster: readonly RosterEntry[]) => void): void;
-  /** Guest: the host turned this player away: the room has four already, or (`version`) one of the two runs another version of the game. */
-  onFull(handler: (reason: RefusedReason) => void): void;
-  /** Host: a player on another version of the game knocked and was turned away (its nickname, sanitised; may be empty). */
-  onVersionRefused(handler: (name: string) => void): void;
+  /** Guest: the host turned this player away: the room has four already, or (`version`) one of the two runs another version of the game (`theirs`: the host's build label, when it sent one). */
+  onFull(handler: (reason: RefusedReason, theirs?: string) => void): void;
+  /** Host: a player on another version of the game knocked and was turned away (its nickname, sanitised; may be empty; `theirs`: its build label, when it sent one). */
+  onVersionRefused(handler: (name: string, theirs?: string) => void): void;
   /** Guest (in the lobby or mid-run): the host left; fires once. */
   onHostLeft(handler: () => void): void;
   /** Not started yet: the other tabs knocking at the same time (for the local host election). */
@@ -165,18 +170,26 @@ export interface NetSession {
   /** Guest: the host's latest clock since the last call, if any. */
   takeClock(): { ms: number; floor: number } | null;
   stats(): NetStats;
+  /** Role, admission, roster, peers and recent transitions, for the technical report (issue #6). */
+  diagnostics(): SessionDiagnostics;
+  /** The selected ICE pair per transport peer id (empty when the transport cannot tell). */
+  links(): Promise<Record<string, LinkInfo | null>>;
+  /** Recent link transitions from the transport (ICE states), when it records them. */
+  linkEvents(): readonly Transition[];
   leave(): void;
 }
 
 const MAX_PLAYERS = 4;
 /** This build's protocol version and content hash, on every hello, lobby and start. */
-const VERSION = { v: PROTOCOL_VERSION, c: CONTENT_HASH } as const;
+const BASE_VERSION = { v: PROTOCOL_VERSION, c: CONTENT_HASH } as const;
 /** Town presence comes at ~10 Hz: draw walkers a bit further in the past than run players. */
 const TOWN_DELAY_MS = 150;
 const PING_EVERY_TICKS = 60;
 /** A player silent this long is away (its tab hidden: the browser stops its frames) and is not waited for (ms). */
 export const STALE_MS = 3000;
 const SNAP_DISTANCE = 64;
+/** Connection transitions kept for the technical report. */
+const MAX_TRANSITIONS = 40;
 
 const pick = <T>(a: T, b: T, t: number): T => (t < 1 ? a : b);
 
@@ -224,6 +237,8 @@ export function createSession(options: SessionOptions): NetSession {
   const renderDelayMs = options.renderDelayMs ?? 100;
   const sendEvery = options.sendEveryTicks ?? 3;
   const sampleOptions = { maxExtrapolateMs: options.maxExtrapolateMs ?? 50 };
+  /** The version on every hello, lobby, start and version refusal, with this build's label when the app gave one. */
+  const VERSION = { ...BASE_VERSION, ...(options.build ? { b: options.build } : {}) };
 
   let role: 'host' | 'guest' | null = null;
   let localId: string | null = null;
@@ -246,8 +261,8 @@ export function createSession(options: SessionOptions): NetSession {
   let full = false;
   const startHandlers: Array<(start: StartInfo) => void> = [];
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
-  const fullHandlers: Array<(reason: RefusedReason) => void> = [];
-  const versionHandlers: Array<(name: string) => void> = [];
+  const fullHandlers: Array<(reason: RefusedReason, theirs?: string) => void> = [];
+  const versionHandlers: Array<(name: string, theirs?: string) => void> = [];
   const hostLeftHandlers: Array<() => void> = [];
   const lobbyHandlers: Array<() => void> = [];
   /** Town walkers by transport peer id. */
@@ -279,6 +294,16 @@ export function createSession(options: SessionOptions): NetSession {
   let own = { ready: false, afk: false };
   const statuses = new Map<string, { ready: boolean; afk: boolean; floor: number; heardAt: number }>();
   const stats: NetStats = { snapshotBytes: 0, stateBytes: 0, snapshotsReceived: 0 };
+  /** Diagnostics: recent transitions, when each peer was last heard, and why this guest was turned away. */
+  const transitions: Transition[] = [];
+  const lastHeard = new Map<string, number>();
+  let refusedFor: RefusedReason | null = null;
+  const note = (event: string) => pushRing(transitions, { tMs: scheduler.now(), event }, MAX_TRANSITIONS);
+  /** Guest: marks it in the host's roster (or out of it), noting the change. */
+  const setAdmitted = (value: boolean) => {
+    if (value !== admitted) note(value ? 'admitted' : 'dropped');
+    admitted = value;
+  };
 
   const send = (message: NetMessage, reliable: boolean): number => {
     const wire = encodeMessage(message);
@@ -295,6 +320,7 @@ export function createSession(options: SessionOptions): NetSession {
   const hostLeft = () => {
     if (role === 'host' || hostGone || !(started || admitted)) return;
     hostGone = true;
+    note('hostLeft');
     for (const handler of hostLeftHandlers) handler();
   };
 
@@ -314,10 +340,12 @@ export function createSession(options: SessionOptions): NetSession {
   const helloOf = (j: { species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean }): NetMessage => ({ t: 'hello', species: j.species, loadout: j.loadout, ...(j.name ? { name: j.name } : {}), ...(j.shiny ? { shiny: true } : {}), ...VERSION });
 
   /** Guest: turned away (or the host runs another version); fires once. */
-  const refused = (reason: RefusedReason) => {
+  const refused = (reason: RefusedReason, theirs?: string) => {
     if (started || full) return;
     full = true;
-    for (const handler of fullHandlers) handler(reason);
+    refusedFor = reason;
+    note(`refused:${reason}`);
+    for (const handler of fullHandlers) handler(reason, theirs);
   };
 
   /** Host: gives `peer` a player id; false when the room is full. */
@@ -346,6 +374,8 @@ export function createSession(options: SessionOptions): NetSession {
   }
 
   function dropPeer(peer: string): void {
+    note('peerLeave');
+    lastHeard.delete(peer);
     const entry = roster.find((r) => r.peer === peer);
     held.delete(peer);
     tracker.forget(peer);
@@ -366,6 +396,7 @@ export function createSession(options: SessionOptions): NetSession {
 
   transport.onMessage((from, wire) => {
     tracker.received(wire.length, scheduler.now());
+    lastHeard.set(from, scheduler.now());
     const message = decodeMessage(wire);
     if (!message) return;
     switch (message.t) {
@@ -378,8 +409,9 @@ export function createSession(options: SessionOptions): NetSession {
         }
         // Another version would desync the run (or crash on content it does not know): turned away, on both screens.
         if (!same) {
-          send({ t: 'full', peer: from, reason: 'version' }, true);
-          for (const handler of versionHandlers) handler(name);
+          send({ t: 'full', peer: from, reason: 'version', ...(options.build ? { b: options.build } : {}) }, true);
+          note('versionRefused');
+          for (const handler of versionHandlers) handler(name, message.b);
           return;
         }
         // Mid-run, between join points: a new player waits for the next floor (a known one just picked again).
@@ -396,30 +428,34 @@ export function createSession(options: SessionOptions): NetSession {
       case 'lobby':
         if (role === 'host') return;
         pending.delete(from);
-        if (!sameVersion(message.v, message.c)) return refused('version');
+        if (!sameVersion(message.v, message.c)) return refused('version', message.b);
         tier = toDifficulty(message.difficulty);
         picked = parseRoomTrial(message.trial);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         if (started && roster.some((r) => r.peer === transport.selfId)) {
           // The host brought the room back to the town after a run: wait for its next start.
           started = false;
-          admitted = true;
+          setAdmitted(true);
+          note('lobby');
           resetRun();
           for (const handler of lobbyHandlers) handler();
           return;
         }
-        if (roster.some((r) => r.peer === transport.selfId)) admitted = true;
+        if (roster.some((r) => r.peer === transport.selfId)) setAdmitted(true);
         else {
           // Left out (the host dropped this peer, its link timed out on that side only): ask to come in again.
-          admitted = false;
+          setAdmitted(false);
           knock();
         }
         return;
       case 'full':
-        if (message.peer === transport.selfId) refused(message.reason ?? 'full');
+        if (message.peer === transport.selfId) refused(message.reason ?? 'full', message.b);
         return;
       case 'wait':
-        if (message.peer === transport.selfId && !started) for (const handler of waitHandlers) handler();
+        if (message.peer === transport.selfId && !started) {
+          note('wait');
+          for (const handler of waitHandlers) handler();
+        }
         return;
       case 'retry':
         if (role === 'guest') retry = { floor: message.floor, go: message.go };
@@ -433,15 +469,16 @@ export function createSession(options: SessionOptions): NetSession {
       case 'start': {
         if (role === 'host') return;
         pending.delete(from);
-        if (!sameVersion(message.v, message.c)) return refused('version');
+        if (!sameVersion(message.v, message.c)) return refused('version', message.b);
         setRoster(message.players.map((r) => ({ ...r, ...(r.name !== undefined ? { name: sanitizeNickname(r.name) } : {}) })));
         const me = roster.find((r) => r.peer === transport.selfId);
         if (!me) {
-          admitted = false;
+          setAdmitted(false);
           return knock();
         }
         if (started) return;
         started = true;
+        note('start');
         role = 'guest';
         localId = me.id;
         seed = message.seed;
@@ -501,7 +538,7 @@ export function createSession(options: SessionOptions): NetSession {
         setRoster(roster.filter((r) => r.id !== message.id));
         // The host dropped this very peer (the link timed out on its side only): knock to be let in again.
         if (dropped?.peer === transport.selfId) {
-          admitted = false;
+          setAdmitted(false);
           knock();
         }
         return;
@@ -525,7 +562,10 @@ export function createSession(options: SessionOptions): NetSession {
   }
 
   transport.onPeerLeave(dropPeer);
-  transport.onPeerJoin(() => knock());
+  transport.onPeerJoin(() => {
+    note('peerJoin');
+    knock();
+  });
 
   return {
     role: () => role,
@@ -533,6 +573,7 @@ export function createSession(options: SessionOptions): NetSession {
     peerId: () => transport.selfId,
     roster: () => roster,
     host(runSeed, floor, species, hostOptions) {
+      note('host');
       role = 'host';
       started = true;
       localId = 'p1';
@@ -587,6 +628,7 @@ export function createSession(options: SessionOptions): NetSession {
     },
     join(species, loadout, name, shiny = false) {
       const clean = sanitizeNickname(name);
+      note('knock');
       joining = { species, loadout, ...(clean ? { name: clean } : {}), shiny };
       send(helloOf(joining), true);
     },
@@ -719,6 +761,28 @@ export function createSession(options: SessionOptions): NetSession {
       return latest;
     },
     stats: () => ({ ...stats }),
+    diagnostics() {
+      const now = scheduler.now();
+      const rtt = tracker.summary(now).rttMs;
+      return {
+        role,
+        localId,
+        admitted: role === 'host' || admitted,
+        started,
+        refused: refusedFor,
+        hostLeft: hostGone,
+        rosterSize: roster.length,
+        peersConnected: transport.peers().length,
+        peers: transport.peers().map((peer) => {
+          const id = roster.find((r) => r.peer === peer)?.id;
+          const heard = lastHeard.get(peer);
+          return { peer, ...(id ? { id } : {}), ...(rtt[peer] !== undefined ? { rttMs: Math.round(rtt[peer]!) } : {}), ...(heard !== undefined ? { msSinceLastMessage: Math.round(now - heard) } : {}) };
+        }),
+        transitions: [...transitions],
+      };
+    },
+    links: () => options.probe?.links() ?? Promise.resolve({}),
+    linkEvents: () => options.probe?.linkEvents() ?? [],
     leave() {
       if (left) return;
       left = true;

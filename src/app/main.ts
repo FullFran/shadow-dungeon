@@ -58,7 +58,7 @@ import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { profilePublisher } from './profile-publish';
-import { roomStatus, type TownLobby } from '../town/lobby';
+import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
@@ -89,7 +89,10 @@ import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { awakenedOf, currentForm, rosterOf } from '../core/collection';
 import { hasShiny, wearsShiny } from '../core/shiny';
 import { coinLines } from './coin-lines';
-import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
+import { isTouchUi, setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
+import { buildDiagnostics, createDiagnosticsLog, diagnosticsText, type Diagnostics } from './diagnostics';
+import { isLinkProbe } from '../net/diagnostics';
+import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
 import { endActions, endHeading, materialsEarned, returnPlace, victoryLine, townOf, type ReturnPlace } from './after-run';
@@ -179,7 +182,63 @@ let hideCode = false;
  * The online room this tab is in, kept across its runs: the room walks the
  * town between runs (`townLobby`), and the session outlives each run.
  */
-let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; openedAt: number } | null = null;
+let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; openedAt: number; turnServers: number } | null = null;
+
+/**
+ * The technical report (issue #6, src/app/diagnostics.ts): the page's recent
+ * errors and room transitions, kept in memory only. It leaves the browser
+ * only inside a bug report with "Adjuntar información técnica" on, or when
+ * the player copies it from the room menu.
+ */
+const diagLog = createDiagnosticsLog(() => performance.now());
+window.addEventListener('error', (e) => diagLog.error(e.error ?? e.message, e.filename, e.lineno));
+window.addEventListener('unhandledrejection', (e) => diagLog.error(e.reason));
+
+/** Copies the technical report, pretty-printed, to the clipboard, and says whether it worked. */
+async function copyReport(root: HTMLElement): Promise<void> {
+  try {
+    const text = diagnosticsText(await collectDiagnostics());
+    if (!navigator.clipboard) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(text);
+    toast(root, t('lobby.reportCopied'));
+  } catch {
+    toast(root, t('lobby.reportCopyFailed'));
+  }
+}
+
+/** Where the player is, in a word, for the report. */
+function screenContext(): string {
+  if (running) return 'run';
+  const town = document.querySelector('canvas.town') !== null;
+  if (room) return town ? 'room town' : 'room';
+  return town ? 'town' : document.querySelector('.title-menu') ? 'title' : 'menu';
+}
+
+/** The snapshot of this session now: build, screen, run, recent errors and, in a room, the connection. */
+async function collectDiagnostics(): Promise<Diagnostics> {
+  const session = room?.session ?? current;
+  const r = room;
+  const coop = session
+    ? {
+        session: session.diagnostics(),
+        roomStatus: r ? roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), waitedMs: Date.now() - r.openedAt }) : 'local',
+        turnServers: r?.turnServers ?? 0,
+        links: await session.links().catch(() => ({})),
+        linkEvents: session.linkEvents(),
+      }
+    : undefined;
+  return buildDiagnostics({
+    build: buildLabel(),
+    protocol: PROTOCOL_VERSION,
+    lang: getLanguage(),
+    touch: isTouchUi(),
+    screen: screenContext(),
+    ...(running ? { run: running.info() } : {}),
+    errors: diagLog.errors(),
+    transitions: diagLog.transitions(),
+    ...(coop ? { coop } : {}),
+  });
+}
 
 /** Where the online window was opened from: the title menu, or the Refugio's signal pillar (leaving the room goes back there). */
 type OnlineFrom = 'title' | 'town';
@@ -263,7 +322,7 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const lag = parseLagParams(window.location.search);
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
-  const session = createSession({ transport, scheduler, ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
+  const session = createSession({ transport, scheduler, build: buildLabel(), ...(isLinkProbe(base) ? { probe: base } : {}), ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
   // The host left: a run still going ends here, paid as a defeat (its end screen says why); elsewhere a notice and the way back to the menu.
   session.onHostLeft(() => {
     if (current !== session) return;
@@ -756,13 +815,15 @@ function settingsScreen(root: HTMLElement): void {
 /**
  * "Reportar un problema" (issue #9): the anonymous report form, sent to the
  * game API. The version is attached only when the player keeps technical
- * info on, with the coarse device summary (browser / OS / touch).
+ * info on, with the coarse device summary (browser / OS / touch) and this
+ * session's diagnostics snapshot (issue #6), taken only at send time.
  */
 function reportOptions(onBack: () => void) {
   return {
     store,
     version: buildLabel(),
     device: deviceSummary(navigator),
+    diagnostics: collectDiagnostics,
     send: (report: Parameters<typeof sendReport>[1]) => sendReport(apiBaseUrl(import.meta.env.VITE_API_URL), report),
     onBack,
   };
@@ -1362,30 +1423,37 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   leaveNet();
   waitScreen(root, t('lobby.connecting'));
   let session: NetSession;
+  let turnServers = 0;
   try {
     // The relay credentials come with the room (issue #4); without them the room still opens, direct only.
     const base = transport
       ? transport()
-      : await Promise.all([import('../adapters/trystero'), fetchIceServers(apiBaseUrl(import.meta.env.VITE_API_URL))]).then(([trystero, turn]) => trystero.joinTrysteroRoom(code, turn));
+      : await Promise.all([import('../adapters/trystero'), fetchIceServers(apiBaseUrl(import.meta.env.VITE_API_URL))]).then(([trystero, turn]) => {
+          turnServers = turn.length;
+          return trystero.joinTrysteroRoom(code, turn);
+        });
     session = sessionOver(root, base);
   } catch {
+    diagLog.transition('roomError');
     messageScreen(root, t('lobby.error'));
     return;
   }
+  diagLog.transition(asHost ? 'joinedRoom:host' : 'joinedRoom:guest');
   current = session;
-  room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now() };
+  room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now(), turnServers };
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
-  session.onFull((reason) => {
-    if (current === session) messageScreen(root, t(reason === 'version' ? 'net.version' : 'lobby.full'));
+  // Another version: both builds named, and how to update (issue #7); an older host sent no label and gets the older line.
+  session.onFull((reason, theirs) => {
+    if (current === session) messageScreen(root, reason === 'version' ? versionNotice('guest', buildLabel(), theirs) : t('lobby.full'));
   });
   // A run is under way: this player comes in at the next floor start or bonfire respawn (it keeps walking the town meanwhile).
   session.onWait(() => {
     if (current === session) toast(root, t('net.waitFloor'));
   });
   // Host: someone on another version knocked; say so here too (they see "reload the page").
-  session.onVersionRefused(() => {
-    if (current === session) toast(root, t('net.versionRefused'));
+  session.onVersionRefused((_name, theirs) => {
+    if (current === session) toast(root, versionNotice('host', buildLabel(), theirs));
   });
   session.onStart((start) => {
     if (current !== session) return;
@@ -1445,6 +1513,8 @@ function townLobby(root: HTMLElement): void {
           close();
         },
       },
+      // The technical report (issue #6) to paste into a chat or a GitHub issue: the same snapshot a bug report attaches.
+      { label: t('lobby.copyReport'), onConfirm: () => void copyReport(root).then(close) },
       { label: t('lobby.leave'), onConfirm: leave },
     ],
     // The host's call for the group: the Sima del Eclipse is entered as the daily challenge or a free run (its seed goes in `start`).
