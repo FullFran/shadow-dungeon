@@ -46,6 +46,18 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
+          es: '«Novedades», en Opciones: lo que cambia en cada versión. Aparece sola una vez después de cada actualización.',
+          en: '"What\'s new", in Options: what changes in each version. It opens once by itself after every update.',
+        },
+        {
+          es: 'La versión del juego se ve en el título y en los créditos.',
+          en: 'The game version shows on the title screen and in the credits.',
+        },
+        {
+          es: '«Reportar un problema», en Opciones y en los Ajustes del pueblo: cuéntanos qué ha fallado sin necesidad de cuenta y recibe un número de referencia.',
+          en: '"Report a problem", in Options and in the town Settings: tell us what went wrong, no account needed, and get a reference number.',
+        },
+        {
           es: 'El Tablón del pueblo muestra la clasificación global de la Sima. Para aparecer en ella, inicia sesión y elige un apodo en Ajustes.',
           en: 'The town notice board shows the global Sima ranking. To appear on it, sign in and pick a nickname in Settings.',
         },
@@ -112,6 +124,10 @@ export const CHANGELOG: readonly Release[] = [
       ],
       multiplayer: [
         {
+          es: 'Si el anfitrión se va a mitad de partida, la pantalla final dice «Partida interrumpida» en lugar de que tu Pokémon se ha debilitado.',
+          en: 'If the host leaves mid-run, the end screen says "Run cut short" instead of saying your Pokémon fainted.',
+        },
+        {
           es: 'Si a un invitado se le cae la conexión, ahora puede volver a entrar en la sala.',
           en: 'Guests whose connection dropped can now get back into the room.',
         },
@@ -120,8 +136,8 @@ export const CHANGELOG: readonly Release[] = [
           en: 'While the host lets you in, the room says "Connecting…", and if the host does not answer it explains why that may be.',
         },
         {
-          es: 'Cuando dos jugadores no pueden conectarse directamente, la partida en cooperativo pasa por un servidor de retransmisión: ya se puede jugar desde redes estrictas o con datos móviles.',
-          en: 'When two players cannot connect directly, co-op now goes through a relay server, so players behind strict networks or on mobile data can play together.',
+          es: 'Cuando dos jugadores no pueden conectarse directamente, la partida en cooperativo pasa por un servidor de retransmisión: así quienes juegan desde redes estrictas o con datos móviles deberían poder conectarse.',
+          en: 'When two players cannot connect directly, co-op now goes through a relay server, so players behind strict networks or on mobile data should be able to connect.',
         },
       ],
       known: [

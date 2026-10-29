@@ -54,6 +54,16 @@ export function cutShortAction(run: { ended: boolean; finished: boolean }): 'end
  * peer that does not own the line). `tr` is the i18n lookup.
  */
 /** A challenge's closing line after its boss falls (its lore's `victoryKey`), null for any other end. */
+/**
+ * The end screen's heading (i18n keys): a run the host cut short is told as
+ * interrupted, not as this player's Pokémon fainting (it did not); its reason
+ * comes in the `net.cutShort.*` line below.
+ */
+export function endHeading(result: string, cutShort?: CutShort): { title: string; text: string | null } {
+  if (cutShort) return { title: 'screen.cutShort.title', text: null };
+  return { title: `screen.${result}.title`, text: `screen.${result}.text` };
+}
+
 export const victoryLine = (dungeon: DungeonDef, result: string): string | null => (result === 'victory' ? (dungeon.lore.victoryKey ?? null) : null);
 
 export function materialsEarned(dungeon: DungeonDef, difficulty: Difficulty, before: Pick<Collection, 'materials'>, after: Pick<Collection, 'materials'>, tr: (key: string) => string): string | null {

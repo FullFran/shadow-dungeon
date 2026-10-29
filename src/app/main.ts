@@ -55,6 +55,8 @@ import { pleaReady } from '../town/plea';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { fetchIceServers } from '../adapters/turn';
+import { sendReport } from '../adapters/report-api';
+import { deviceSummary, reportWindow } from './report-screen';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -90,7 +92,7 @@ import { coinLines } from './coin-lines';
 import { setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
-import { endActions, materialsEarned, returnPlace, victoryLine, townOf, type ReturnPlace } from './after-run';
+import { endActions, endHeading, materialsEarned, returnPlace, victoryLine, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
@@ -417,8 +419,8 @@ function newsScreen(root: HTMLElement, back: () => void): void {
   show(root, [patchNotesWindow(single(t('menu.back'), back))]);
 }
 
-/** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits and the install offer, in the shared described menu. */
-function optionsScreen(root: HTMLElement, at: OptionsEntry = 'settings'): void {
+/** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits, the bug report and the install offer, in the shared described menu. */
+function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' = 'settings'): void {
   const entries = optionsEntries(pwa.offer() !== 'none');
   const action: Record<OptionsEntry, () => void> = {
     settings: () => settingsScreen(root),
@@ -431,10 +433,14 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry = 'settings'): void {
   };
   const open = menuWindow({
     title: t('title.options'),
-    rows: entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
+    rows: [
+      ...entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
+      // Players report problems from the game, anonymously (issue #9).
+      { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
+    ],
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: Math.max(0, entries.indexOf(at)),
+    initial: at === 'report' ? entries.length : Math.max(0, entries.indexOf(at)),
   });
   show(root, [open.element]);
 }
@@ -747,6 +753,29 @@ function settingsScreen(root: HTMLElement): void {
   ]);
 }
 
+/**
+ * "Reportar un problema" (issue #9): the anonymous report form, sent to the
+ * game API. The version is attached only when the player keeps technical
+ * info on, with the coarse device summary (browser / OS / touch).
+ */
+function reportOptions(onBack: () => void) {
+  return {
+    store,
+    version: buildLabel(),
+    device: deviceSummary(navigator),
+    send: (report: Parameters<typeof sendReport>[1]) => sendReport(apiBaseUrl(import.meta.env.VITE_API_URL), report),
+    onBack,
+  };
+}
+
+function reportScreen(root: HTMLElement, back: () => void): void {
+  const open = reportWindow(reportOptions(() => {
+    open.dispose();
+    back();
+  }));
+  show(root, [open.element]);
+}
+
 /** The account screen (log in, sign up, log out, delete; cloud sync choices, status and backups), from the title or Settings. */
 function accountScreen(root: HTMLElement, back: () => void, view: AccountView = 'main'): void {
   accountRedraw = () => accountScreen(root, back);
@@ -963,18 +992,29 @@ const townAchievements = (parent: HTMLElement, onClose: () => void): (() => void
 
 /** The settings over the town (its Esc menu): the same rows as the Settings screen; a language change redraws them in place. */
 function townSettings(parent: HTMLElement, onClose: () => void): () => void {
-  const list = cursorList({ items: [], onBack: onClose, label: t('title.settings') });
-  const access: SettingsAccess = {
-    get: () => settings,
-    update,
-    setLanguage: (language) => {
-      applyLanguage(language);
-      refresh();
-    },
+  let close = (): void => undefined;
+  const open = (): void => {
+    close();
+    const list = cursorList({ items: [], onBack: onClose, label: t('title.settings') });
+    const access: SettingsAccess = {
+      get: () => settings,
+      update,
+      setLanguage: (language) => {
+        applyLanguage(language);
+        refresh();
+      },
+    };
+    // "Reportar un problema" over the town (issue #9); Back returns to these settings.
+    const report = (): void => {
+      close();
+      close = townWindow(parent, reportWindow(reportOptions(open)));
+    };
+    const refresh = (): void => list.setItems([...settingItems(access, refresh), nicknameRow(), { label: t('title.report'), onConfirm: report }, { label: t('menu.back'), onConfirm: onClose }]);
+    refresh();
+    close = townWindow(parent, { element: mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]), dispose: () => list.dispose() });
   };
-  const refresh = (): void => list.setItems([...settingItems(access, refresh), nicknameRow(), { label: t('menu.back'), onConfirm: onClose }]);
-  refresh();
-  return townWindow(parent, { element: mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]), dispose: () => list.dispose() });
+  open();
+  return () => close();
 }
 
 /** Mimikyu's gacha stall over the town. */
@@ -1497,9 +1537,11 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
     mdWindow({ className: `result ${result}` }, [
-      h('h1', { textContent: t(`screen.${result}.title`) }),
-      // Victory names the dungeon's guardian, defeat the player's Pokémon.
-      h('p', { textContent: t(`screen.${result}.text`).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) }),
+      h('h1', { textContent: t(endHeading(result, summary.cutShort).title) }),
+      // Victory names the dungeon's guardian, defeat the player's Pokémon (a run the host cut short says neither).
+      ...(endHeading(result, summary.cutShort).text
+        ? [h('p', { textContent: t(endHeading(result, summary.cutShort).text!).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) })]
+        : []),
       // The host cut the run short: why it ended, and what was kept.
       ...(summary.cutShort ? [h('p', { className: 'dim', textContent: t(`net.cutShort.${summary.cutShort}`) })] : []),
       // A challenge's own closing line (its trial's lore).
