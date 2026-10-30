@@ -83,6 +83,11 @@ var PasswordResetLimit = core.RateLimitRule{Label: "users:requestPasswordReset",
 // ReportLimit caps bug reports per IP: 5 per 10 minutes (issue #9).
 var ReportLimit = core.RateLimitRule{Label: "/api/sd/reports", MaxRequests: 5, Duration: 600}
 
+// FriendRequestLimit caps sending friend requests per IP: 20 per 10 minutes.
+// Plenty to add a group, far too few to walk the codes. Only POST, this exact
+// path: accepting and the heartbeat fall under the general "/api/" rule.
+var FriendRequestLimit = core.RateLimitRule{Label: "POST /api/sd/friends/requests", MaxRequests: 20, Duration: 600}
+
 // RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is
 // in seconds. A collection label ("users:create") wins over its wildcard
 // ("*:create"), whatever the order.
@@ -98,6 +103,8 @@ var RateLimitRules = []core.RateLimitRule{
 	TurnLimit,
 	// Player bug reports: a few per sitting is plenty (issue #9).
 	ReportLimit,
+	// Friend requests: enough to add a group, not to guess codes.
+	FriendRequestLimit,
 	{Label: "/api/", MaxRequests: 300, Duration: 10},
 }
 
