@@ -10,9 +10,9 @@ describe('room for the floating "Atrás" button on touch', () => {
     const rule = read('index.html').match(/html\.touch #app:not\(:has\(([^)]*)\)\) \{ padding-top: calc\(max\(8px, env\(safe-area-inset-top\)\) \+ (\d+)px\); \}/);
     expect(rule).not.toBeNull();
     // The button's top (8) and height (44), and the window title's overhang.
-    expect(Number(rule![2])).toBeGreaterThanOrEqual(44 + 20);
+    expect(Number(rule![2]!)).toBeGreaterThanOrEqual(44 + 20);
     // Only the screens where the button is hidden go without it.
-    expect(rule![1].split(',').map((s) => s.trim())).toEqual(['.title-logo', '.prologue', 'canvas.game', '.overlay', '.result']);
+    expect(rule![1]!.split(',').map((s) => s.trim())).toEqual(['.title-logo', '.prologue', 'canvas.game', '.overlay', '.result']);
   });
   it('no screen keeps its own margin for it any more', () => {
     for (const file of ['src/app/gamepad-help.ts', 'src/app/tickets-screen.ts', 'src/app/report-screen.ts']) expect(read(file), file).not.toMatch(/html\.touch \.[a-z-]*window \{ margin-top/);
