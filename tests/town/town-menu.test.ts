@@ -119,6 +119,7 @@ describe('town Esc menu', () => {
       account: 'openAccount',
       gallery: 'openGallery',
       settings: 'openSettings',
+      controls: 'openControls',
     };
     for (const [service, key] of Object.entries(keys)) expect(solo, service).toContain(`${key}:`);
     const room = main.slice(main.indexOf('function townLobby('), main.indexOf('function backToRoom('));
