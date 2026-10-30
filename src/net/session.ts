@@ -5,7 +5,7 @@ import type { GameEvent, HitClaim, WorldState } from '../core/state';
 import { applyBerryClaims, berryGranted, type BerryClaim } from '../core/berries';
 import { applyHitClaims, applyHostSnapshot, applyRemotePlayers, hostSnapshot, playerSnapshot, removeRemote, type HostSnapshot, type PlayerSnapshot } from '../core/sync';
 import { applyHolds, holdClaimedHits, type HpHold } from './hold';
-import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer } from './interpolation';
+import { createBuffer, lerpPos, pushSample, sampleAt, type InterpBuffer, type Sample } from './interpolation';
 import { decodeMessage, encodeMessage, parseRoomTrial, type NetMessage, type RoomTrial, type RosterEntry, type TownPresence } from './protocol';
 import { sanitizeNickname } from './nickname';
 import { CONTENT_HASH, PROTOCOL_VERSION, sameVersion } from './version';
@@ -233,6 +233,17 @@ function mixSnapshot(a: HostSnapshot, b: HostSnapshot, t: number): HostSnapshot 
     enemies: base.enemies.map((e) => ({ ...e, pos: at(e.id, e.pos, fromA, toB) })),
     projectiles: base.projectiles.map((p) => ({ ...p, pos: at(p.id, p.pos, projA, projB) })),
   };
+}
+
+/**
+ * A peer's newest word on where it is: another epoch sent later starts the buffer anew, even a lower one (a bonfire
+ * respawn goes back to an earlier floor), and a straggler sent before the newest sample is ignored, whatever its epoch.
+ */
+function pushLatest<T>(buffer: InterpBuffer<T>, sample: Sample<T>): InterpBuffer<T> {
+  const newest = buffer.samples.at(-1);
+  const otherEpoch = newest !== undefined && sample.epoch !== newest.epoch;
+  if (otherEpoch && sample.at < newest.at) return buffer;
+  return pushSample(otherEpoch ? createBuffer<T>(buffer.capacity) : buffer, sample);
 }
 
 export function createSession(options: SessionOptions): NetSession {
@@ -494,7 +505,7 @@ export function createSession(options: SessionOptions): NetSession {
         if (message.p.id === localId) return;
         statuses.set(message.p.id, { ready: message.ready === true, afk: message.afk === true, floor: message.floor, heardAt: scheduler.now() });
         const buffer = players.get(message.p.id) ?? createBuffer<PlayerSnapshot>();
-        players.set(message.p.id, pushSample(buffer, { at: stamp(from, message.at), epoch: message.floor, value: message.p }));
+        players.set(message.p.id, pushLatest(buffer, { at: stamp(from, message.at), epoch: message.floor, value: message.p }));
         return;
       }
       case 'snap':
@@ -505,7 +516,7 @@ export function createSession(options: SessionOptions): NetSession {
           const at = stamp(from, message.at);
           // Age: the delay above the fastest path seen, plus half the measured round trip.
           tracker.snapshot(scheduler.now() - at + (tracker.rttOf(from) ?? 0) / 2, scheduler.now());
-          snapshots = pushSample(snapshots, { at, epoch: message.floor, value: message.s });
+          snapshots = pushLatest(snapshots, { at, epoch: message.floor, value: message.s });
         }
         return;
       case 'claim':
