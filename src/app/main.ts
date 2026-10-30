@@ -58,6 +58,8 @@ import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { adminAccess, ticketsWindow } from './tickets-screen';
+import { friendsHeartbeat, friendsWindow, type Heartbeat } from './friends-screen';
+import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
 import { controlsWindow } from './gamepad-help';
@@ -127,6 +129,10 @@ const publicProfile = profilePublisher({ api: publicApi, nickname: () => setting
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
 /** The tickets inbox while it is open, and whose it is. */
 let openTickets: { email: string | null; leave(): void } | null = null;
+/** The friends window while it is open, and whose it is. */
+let openFriends: { email: string | null; leave(): void } | null = null;
+/** Tells the server this account is here (app/friends-screen.ts); set right after the account, whose start may report a change at once. */
+let friendsBeat: Heartbeat | null = null;
 const signedInEmail = (): string | null => {
   const state = account.state();
   return state.kind === 'signed-in' ? state.email : null;
@@ -142,6 +148,8 @@ const { account, store } = setupAccount({
   onChange: () => {
     // The inbox is for the account that opened it: logging out, here or in another tab, closes it.
     if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
+    if (openFriends && openFriends.email !== signedInEmail()) openFriends.leave();
+    friendsBeat?.sync();
     const app = document.getElementById('app');
     if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
   },
@@ -160,6 +168,7 @@ const gamepads = createGamepads({
   },
 });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
+const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
@@ -205,6 +214,21 @@ let hideCode = false;
  * town between runs (`townLobby`), and the session outlives each run.
  */
 let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; openedAt: number; turnServers: number } | null = null;
+// The heartbeat reads the room above, so it starts here.
+friendsBeat = friendsHeartbeat({
+  session: () => {
+    const token = account.token();
+    const who = signedInEmail();
+    return token && who ? { who, token } : null;
+  },
+  room: () => room?.code ?? null,
+  visible: () => !document.hidden,
+  send: (token, code) => void friendsApi.presence(token, code),
+  start: (tick, ms) => setInterval(tick, ms),
+  stop: (timer) => clearInterval(timer as ReturnType<typeof setInterval>),
+});
+friendsBeat.sync();
+document.addEventListener('visibilitychange', () => friendsBeat?.sync());
 
 /**
  * The technical report (issue #6, src/app/diagnostics.ts): the page's recent
@@ -359,6 +383,7 @@ function leaveNet(): void {
   if (room && room.session !== current) room.session.leave();
   current = null;
   room = null;
+  friendsBeat?.sync();
 }
 
 async function connectLocal(root: HTMLElement, seed: number, floor: number, dungeon: DungeonId): Promise<NetJoin> {
@@ -501,7 +526,7 @@ function newsScreen(root: HTMLElement, back: () => void): void {
 }
 
 /** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits, the bug report and the install offer, in the shared described menu. */
-function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'controls' | 'tickets' = 'settings'): void {
+function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'controls' | 'friends' | 'tickets' = 'settings'): void {
   const entries = optionsEntries(pwa.offer() !== 'none');
   const action: Record<OptionsEntry, () => void> = {
     settings: () => settingsScreen(root),
@@ -519,12 +544,13 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'control
       // Players report problems from the game, anonymously (issue #9).
       { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
       { label: t('title.controls'), about: t('options.about.controls'), onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) },
+      { label: t('title.friends'), about: t('options.about.friends'), onConfirm: () => friendsScreen(root, () => optionsScreen(root, 'friends')) },
       // The server says who is an admin; a yes that arrives later redraws this menu below.
       ...(ticketAdmin.known() ? [{ label: t('title.tickets'), about: t('options.about.tickets'), onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
     ],
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: at === 'report' ? entries.length : at === 'controls' ? entries.length + 1 : at === 'tickets' ? entries.length + 2 : Math.max(0, entries.indexOf(at)),
+    initial: at === 'report' ? entries.length : at === 'controls' ? entries.length + 1 : at === 'friends' ? entries.length + 2 : at === 'tickets' ? entries.length + 3 : Math.max(0, entries.indexOf(at)),
   });
   show(root, [open.element]);
   if (!ticketAdmin.known()) {
@@ -892,6 +918,70 @@ function ticketsScreen(root: HTMLElement, back: () => void): void {
   show(root, [open.element]);
 }
 
+/** "Amigos", from Options on the title. */
+function friendsScreen(root: HTMLElement, back: () => void): void {
+  const close = () => {
+    openFriends = null;
+    open.dispose();
+  };
+  const leave = () => {
+    close();
+    back();
+  };
+  const open = friendsWindow({
+    api: friendsApi,
+    token: () => account.token(),
+    myRoom: () => room?.code ?? null,
+    onLoaded: () => friendsBeat?.now(),
+    onBack: leave,
+    onAccount: () => {
+      close();
+      accountScreen(root, () => friendsScreen(root, back));
+    },
+    onJoin: (code) => {
+      close();
+      void openLobby(root, code, false, undefined, 'title');
+    },
+  });
+  openFriends = { email: signedInEmail(), leave };
+  show(root, [open.element]);
+}
+
+/** The same window over the town, solo or in a room; joining a friend leaves the town (and any room) for theirs. */
+const townFriends =
+  (root: HTMLElement) =>
+  (parent: HTMLElement, onClose: () => void, leaveTown: (go: () => void) => void): (() => void) => {
+    let closeInner = () => {};
+    const showFriends = () => {
+      closeInner = townWindow(
+        parent,
+        friendsWindow({
+          api: friendsApi,
+          token: () => account.token(),
+          myRoom: () => room?.code ?? null,
+          onLoaded: () => friendsBeat?.now(),
+          onBack: onClose,
+          onAccount: () => {
+            // The account window takes over: signing in there must not close it as this window's account changing would.
+            openFriends = null;
+            closeInner();
+            closeInner = townAccount(parent, () => {
+              closeInner();
+              showFriends();
+            });
+          },
+          onJoin: (code) => leaveTown(() => void openLobby(root, code, false, undefined, room?.from ?? 'town')),
+        }),
+      );
+      openFriends = { email: signedInEmail(), leave: onClose };
+    };
+    showFriends();
+    return () => {
+      openFriends = null;
+      closeInner();
+    };
+  };
+
 function reportScreen(root: HTMLElement, back: () => void): void {
   const open = reportWindow(reportOptions(() => {
     open.dispose();
@@ -1047,7 +1137,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1545,6 +1635,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   diagLog.transition(asHost ? 'joinedRoom:host' : 'joinedRoom:guest');
   current = session;
   room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now(), turnServers };
+  friendsBeat?.sync();
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
   // Another version: both builds named, and how to update (issue #7); an older host sent no label and gets the older line.
@@ -1649,7 +1740,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn(), femaleOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn(), femaleOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */

@@ -144,7 +144,11 @@
 
       .online { min-width: 24rem; }
       .join-row .md-value { gap: 0; }
-      input.code-input { font: inherit; color: var(--md-cursor); background: var(--md-ink); border: 2px solid var(--md-border-shade); border-radius: 6px; padding: 2px 8px; width: 6.5em; text-transform: uppercase; letter-spacing: 0.2em; }
+      /* Codes in the system's monospace: the pixel font draws Z/2, S/5, B/8 and G/6 almost alike. */
+      :root { --md-code-font: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace; }
+      .room-code, .town-room-code, .report-ref, .tickets-ref, .code-input { font-family: var(--md-code-font); }
+      .code-input.account-input, .code-input.nickname-input { font-family: inherit; }
+      input.code-input { font-size: inherit; color: var(--md-cursor); background: var(--md-ink); border: 2px solid var(--md-border-shade); border-radius: 6px; padding: 2px 8px; width: 6.5em; text-transform: uppercase; letter-spacing: 0.2em; }
       input.code-input:focus { outline: none; border-color: var(--md-cursor); }
       .lobby-error { color: var(--md-danger); margin: 8px 0 0; font-size: 16px; }
       .lobby-error:empty { display: none; }

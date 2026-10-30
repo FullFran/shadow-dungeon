@@ -429,3 +429,10 @@ func TestPasswordResetRateLimit(t *testing.T) {
 		t.Fatalf("over the limit answered %d", code)
 	}
 }
+
+func TestTurnLimitLetsAGroupRetry(t *testing.T) {
+	// Each room opened asks once, and retrying a failed connection is normal: the wait must stay short.
+	if TurnLimit.MaxRequests < 10 || TurnLimit.Duration > 120 {
+		t.Fatalf("turn limit %d per %d s", TurnLimit.MaxRequests, TurnLimit.Duration)
+	}
+}

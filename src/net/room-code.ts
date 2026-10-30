@@ -1,9 +1,10 @@
 /**
  * Room codes for online play (docs/gdd.md §12): short enough to read out on
  * stream or type from a friend's message. The alphabet leaves out characters
- * that read alike (0/O, 1/I/L), so a code read aloud is typed right.
+ * that read alike (0/O, 1/I/L) and those the game font draws alike (Z/2, S/5,
+ * B/8, G/6, Q/9, U/V), so a code read aloud or off the screen is typed right.
  */
-export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const ROOM_CODE_ALPHABET = 'ACDEFHJKMNPRTUWXY3479';
 export const ROOM_CODE_LENGTH = 5;
 
 /** A fresh code; `random` is uniform in [0, 1). */
