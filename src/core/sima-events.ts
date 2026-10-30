@@ -346,7 +346,18 @@ function sealed(state: WorldState, event: SimaEventState, closed: boolean): Worl
   const tiles = withDoors(grid, event.doors, closed);
   const arena = { ...state.arena, tiles };
   const enemies = closed ? state.enemies.map((e) => (e.alive && inDoorway(grid, event.doors!, e) ? intoRoom(arena, event.rect, e) : e)) : state.enemies;
-  return { ...state, arena, enemies, simaEvent: { ...event, sealed: closed } };
+  return { ...state, arena, enemies, player: closed ? playerIntoRoom(arena, event.rect, state.player) : state.player, simaEvent: { ...event, sealed: closed } };
+}
+
+/**
+ * Whoever is outside when the doors close is brought in: the stairs stay sealed
+ * until the room is cleared, so nobody may be left out, and nobody inside may be
+ * left to fall with the rest unable to reach them. Each peer moves its own player.
+ */
+function playerIntoRoom(arena: WorldState['arena'], rect: Rect, player: PlayerState): PlayerState {
+  if (insideRect(player.pos, rect)) return player;
+  const to = roomTileNear(arena, rect, player.pos);
+  return to ? { ...player, pos: confineCircle(arena, tileCenter(to), TUNING.player.radius) } : player;
 }
 
 /** The enemy's circle touches one of the door tiles. */
@@ -362,13 +373,18 @@ function inDoorway(grid: TileGrid, doors: readonly number[], enemy: EnemyState):
 
 /** The nearest floor tile of the room (the sealed grid), the enemy's circle confined there. */
 function intoRoom(arena: WorldState['arena'], rect: Rect, enemy: EnemyState): EnemyState {
+  const to = roomTileNear(arena, rect, enemy.pos);
+  return to ? { ...enemy, pos: confineCircle(arena, tileCenter(to), enemy.radius), knockback: { x: 0, y: 0 } } : enemy;
+}
+
+/** The room's floor tile nearest to `pos`. */
+function roomTileNear(arena: WorldState['arena'], rect: Rect, pos: Vec2) {
   const grid = arena.tiles!;
   const x0 = Math.round(rect.x / TILE);
   const y0 = Math.round(rect.y / TILE);
   const x1 = x0 + Math.round(rect.width / TILE);
   const y1 = y0 + Math.round(rect.height / TILE);
-  const to = nearestTile(grid, tileOf(enemy.pos), (x, y) => x >= x0 && y >= y0 && x < x1 && y < y1 && !isWall(grid, x, y));
-  return to ? { ...enemy, pos: confineCircle(arena, tileCenter(to), enemy.radius), knockback: { x: 0, y: 0 } } : enemy;
+  return nearestTile(grid, tileOf(pos), (x, y) => x >= x0 && y >= y0 && x < x1 && y < y1 && !isWall(grid, x, y));
 }
 
 /**
@@ -483,7 +499,8 @@ export function applySimaSync(state: WorldState, sync: SimaSync | undefined): Wo
   if (event && sync.e) {
     const merged: SimaEventState = { ...event, ...sync.e };
     if ((sync.e.sealed ?? false) !== (event.sealed ?? false) && event.doors && next.arena.tiles) {
-      next = { ...next, arena: { ...next.arena, tiles: withDoors(next.arena.tiles, event.doors, sync.e.sealed === true) } };
+      const arena = { ...next.arena, tiles: withDoors(next.arena.tiles, event.doors, sync.e.sealed === true) };
+      next = { ...next, arena, player: sync.e.sealed === true ? playerIntoRoom(arena, event.rect, next.player) : next.player };
     }
     next = { ...next, simaEvent: merged };
   }

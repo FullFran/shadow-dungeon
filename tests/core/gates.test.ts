@@ -15,6 +15,8 @@ import { decodeMessage, encodeMessage, type NetMessage } from '../../src/net/pro
 import { IDLE } from './helpers';
 import { spawnEnemy } from '../../src/core/world';
 import { floatsOf } from '../../src/data/enemies';
+import { applySimaSync } from '../../src/core/sima-events';
+import { insideRect } from '../../src/core/geometry';
 
 const floorsOf = (d: DungeonDef): number[] => Array.from({ length: d.endless ? 30 : d.plan.length }, (_, i) => i + 1).filter((f) => planAt(d, f)?.kind === 'generated');
 
@@ -349,3 +351,63 @@ describe('gates with the out-of-bounds safety net', () => {
     expect(progressRun(run, onStairs(ended)).entered).toBe(true);
   });
 });
+
+describe('a wave room in a shared run (ticket SD-OKCVHT)', () => {
+  const setup = () => {
+    const { run, world } = findGate(ECLIPSE, 'waves');
+    const rect = world.simaEvent!.rect;
+    const inside = vec(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return { run, world, rect, inside };
+  };
+  const away = (w: WorldState, rect: { x: number; y: number; width: number; height: number }) => {
+    const tiles = w.arena.tiles!;
+    for (let y = 0; y < tiles.rows; y++) {
+      for (let x = 0; x < tiles.cols; x++) {
+        const pos = vec(x * 32 + 16, y * 32 + 16);
+        if (!isWall(tiles, x, y) && !insideRect(pos, rect) && Math.hypot(pos.x - rect.x, pos.y - rect.y) > 200) return pos;
+      }
+    }
+    throw new Error('no floor outside the room');
+  };
+
+  it('the door closes with nobody left outside: a teammate entering brings the host in', () => {
+    const { world, rect, inside } = setup();
+    const outside = away(world, rect);
+    const mate = { id: 'p2', player: { ...world.player, pos: inside }, projectiles: [] };
+    const hosted = { ...world, role: 'host' as const, player: { ...world.player, pos: outside }, remotes: [mate] };
+    const next = step(hosted, IDLE, FIXED_DT_MS);
+    expect(next.simaEvent?.sealed).toBe(true);
+    expect(insideRect(next.player.pos, rect)).toBe(true);
+  });
+
+  it('a guest outside when the host says the doors closed is brought in, on floor, once', () => {
+    const { world, rect } = setup();
+    const outside = { ...world, role: 'guest' as const, player: { ...world.player, pos: away(world, rect) } };
+    const closed = applySimaSync(outside, { e: { done: false, sealed: true, wave: 1 } });
+    expect(closed.simaEvent?.sealed).toBe(true);
+    expect(insideRect(closed.player.pos, rect)).toBe(true);
+    const tile = { x: Math.floor(closed.player.pos.x / 32), y: Math.floor(closed.player.pos.y / 32) };
+    expect(isWall(closed.arena.tiles!, tile.x, tile.y)).toBe(false);
+    // Walking back to the wall later is the player's own business: the same flag again moves nobody.
+    const moved = { ...closed, player: { ...closed.player, pos: away(world, rect) } };
+    expect(applySimaSync(moved, { e: { done: false, sealed: true, wave: 1 } }).player.pos).toEqual(moved.player.pos);
+  });
+
+  it('a player already inside stays exactly where it is, alone or with a group', () => {
+    const { world, rect, inside } = setup();
+    const solo = step({ ...world, player: { ...world.player, pos: inside } }, IDLE, FIXED_DT_MS);
+    expect(solo.simaEvent?.sealed).toBe(true);
+    expect(insideRect(solo.player.pos, rect)).toBe(true);
+    expect(solo.player.pos).toEqual(inside);
+    const guest = { ...world, role: 'guest' as const, player: { ...world.player, pos: inside } };
+    expect(applySimaSync(guest, { e: { done: false, sealed: true, wave: 1 } }).player.pos).toEqual(inside);
+  });
+
+  it('the doors opening moves nobody', () => {
+    const { world, rect } = setup();
+    const outside = away(world, rect);
+    const closed = { ...world, role: 'guest' as const, player: { ...world.player, pos: outside }, simaEvent: { ...world.simaEvent!, sealed: true } };
+    expect(applySimaSync(closed, { e: { done: true, sealed: false } }).player.pos).toEqual(outside);
+  });
+});
+
