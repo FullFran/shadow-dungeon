@@ -86,7 +86,8 @@ function fnv(text: string): string {
  * in the digest): with `CRYPT.events` removed it still gives 'df4db47e'. A change
  * to the simulation changes it: re-record it only on purpose.
  */
-const PRE_TIER_DIGEST = '68fd7315';
+// 'd0d94354' (more chests, odd/tasks/boss-items-events.md): with the event weights and chances put back on the merged 0.9.8 code it gives '68fd7315'.
+const PRE_TIER_DIGEST = 'd0d94354';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {

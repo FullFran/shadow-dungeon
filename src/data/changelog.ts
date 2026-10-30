@@ -41,6 +41,38 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.8',
+    date: '2026-10-30',
+    sections: {
+      new: [
+        {
+          es: 'Amigos: añade a tus amigos con su código (en el menú del pueblo y en Opciones), mira quién está conectado y entra en su sala con «Unirse». Necesitas una cuenta.',
+          en: 'Friends: add your friends by their code (in the town menu and Options), see who is online and enter their room with "Join". You need an account.',
+        },
+        {
+          es: 'Sucesos en todas las mazmorras: cofres con guardianes, mercader, altares, emboscadas, nidos, casas de monstruos y salas de oleadas.',
+          en: 'Events in every dungeon: guarded chests, a merchant, altars, ambushes, nests, monster houses and wave rooms.',
+        },
+      ],
+      improved: [
+        {
+          es: 'Ya no eliges objeto en cada planta: eliges tras cada jefe, y los demás se ganan en cofres y sucesos. Esto cambia mucho la dificultad, y seguiremos ajustándola: contadnos qué tal.',
+          en: 'You no longer pick an item on every floor: you pick after each boss, and the rest are won from chests and events. This changes the difficulty a lot, and we will keep adjusting it: tell us how it feels.',
+        },
+        {
+          es: 'Los códigos de sala se leen mejor: otra letra, y sin caracteres que se confunden. Un código creado antes de esta versión quizá no valga: crea la sala de nuevo.',
+          en: 'Room codes are easier to read: another font, and no characters that look alike. A code made before this version may not work: create the room again.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Cooperativo: al volver a la hoguera, el grupo podía quedarse bloqueado con un compañero que se veía muerto o congelado. ¡Gracias por el reporte SD-Q090F7!',
+          en: 'Co-op: after going back to the bonfire, the group could get stuck with a teammate who looked dead or frozen. Thanks for report SD-Q090F7!',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.7',
     date: '2026-10-30',
     sections: {
