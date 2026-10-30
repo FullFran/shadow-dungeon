@@ -362,7 +362,7 @@ Accounts add each other by a friend code, to see who is online and join their ro
 
 `id` is the opaque id of the link between the two accounts, never a user id. `state` is `offline`, `online` or `room`; `room` comes only with `room`.
 
-**Limits.** 50 friends; 50 requests sent and 50 waiting for an account (`internal/friends`). A heartbeat counts for 3 minutes; the client sends one a minute with its tab visible, on entering or leaving a room, and on signing out while in one.
+**Limits.** 50 friends; 50 requests sent and 50 waiting for an account (`internal/friends`). A heartbeat counts for 3 minutes; the client sends one a minute with its tab visible (in a room, also hidden), on opening the friends window, on entering or leaving a room, and on signing out while in one.
 
 **Privacy.** What an accepted friend gets: nickname (from `profiles`), state, and the room code while in a room. What whoever you ask gets: your nickname, so they know who asks. What whoever you add gets from you adding them: nothing about them, only the code you typed; a target with no room answers like an unknown code. Never an email, a user id or an IP. Nicknames are not unique and cannot be searched: a code is how you add someone.
 

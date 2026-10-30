@@ -15,29 +15,33 @@ Objective: add friends by a code and join the room they are in. Branch `feat/fri
 - S9 Pending, not dropped: invitations pushed to a friend, chat, blocking beyond removing, friends for guests, seeing what a friend is playing.
 - Assumption (code on existing accounts): lazily, the first time an account opens the window. The migration touches no existing row, and an account that never uses friends stores nothing.
 - Assumption (presence): a signed-in account with no friends and no card stores nothing; its heartbeat is answered and dropped. A signed-in solo player still sends the heartbeat (S5 "while the game is open and signed in"); a guest never does.
+- Assumption (hidden tab): in a room the heartbeat also runs with the tab hidden, because a host waiting for friends on a chat is the main case and would otherwise read as offline after 3 minutes. Out of a room it stops when hidden, as S5 says.
 
 ## Tasks
 
-- T1 S2, S3, S5, S6 server: migration, `internal/friends`, `friendsapi`, rate limit, README. Delegated writer (parent's parallel units). Commit: see Log.
-- T2 S1, S4, S5, S7, S8 client: adapter, screen, heartbeat, town and title entries, i18n, GDD. Delegated writer. Commit: see Log.
-- T3 S4, S5 real-browser run over a local server binary, phone layout. Delegated writer.
+- T1 S2, S3, S5, S6 server: migration, `internal/friends`, `friendsapi`, rate limit, README. Delegated writer (parent's parallel units). Commit a641a01. RED: every route test failed against a 501 stub (guest and superuser refusals passed there, the guard being in the stub); GREEN after the routes.
+- T2 S1, S4, S5, S7, S8 client: adapter, screen, heartbeat, town and title entries, i18n, GDD. Delegated writer. Commit: see Log L4. RED: both test files failed on a missing module before the code existed.
+- T3 S4, S5 real-browser run over a local server binary, phone layout. Delegated writer. Done, L2 and L3.
 
 Risk: item 2 (auth, permissions), item 1 (new stored data, additive).
 
 ## Parity checklist
 
-- [ ] Solo unaffected: guests send nothing; no run reads friends.
-- [ ] Co-op join path: "Unirse" goes through `normalizeRoomCode` and `openLobby`.
-- [ ] Town entry and title entry.
-- [ ] i18n es/en.
-- [ ] GDD.
-- [ ] `server/README.md`.
-- [ ] Save untouched: nothing in the save or the sync.
-- [ ] Account deletion cascades.
-- [ ] Logout closes the window and stops the heartbeat.
-- [ ] Phone layout (`tools/mobile/menu-fit.mjs`).
+- [x] Solo unaffected: guests send nothing; no run reads friends. Evidence: a guest's title and town visits, friends window and account step left no request in the server's request log (a control curl did appear there).
+- [x] Co-op join path: "Unirse" goes through `normalizeRoomCode` and `openLobby`. Evidence: `joinableRoom` test; real browsers joined from the title and from the town menu, same room code on both.
+- [x] Town entry and title entry. Evidence: `tests/town/town-menu.test.ts`, real browser in the solo town and the room town.
+- [x] i18n es/en. Evidence: `tests/app/friends-screen.test.ts`, `tests/i18n.test.ts`.
+- [x] GDD. Evidence: Cuentas, «Amigos».
+- [x] `server/README.md`. Evidence: section Friends.
+- [x] Save untouched: nothing in the save or the sync. Evidence: no change under `src/app/save.ts` or the cloud sync.
+- [x] Account deletion cascades. Evidence: `TestDeletingAnAccountRemovesItsCardAndLinks`.
+- [x] Logout closes the window and stops the heartbeat. Evidence: heartbeat tests; real browser, a removed session in another tab closed the window.
+- [x] Phone layout (`tools/mobile/menu-fit.mjs`). Evidence: `menu-fit.mjs` ok at 4 sizes for the guest view; screenshots of the signed-in list at 390x844 and 844x390.
 - [ ] Pending, not dropped: invitations pushed to a friend, chat, blocking beyond removing, friends for guests, seeing what a friend is playing.
 
 ## Log
 
 - L1 2026-10-30 owner: "añade que se pueda agregar amigos para poder jugar con amigos y ya"
+- L2 2026-10-30 real browsers (two Firefox profiles) over a local server binary: add, accept, online, a room opened, "Unirse", joined; from the title and from the town. The first run showed a friend as offline until the next tick: a beat before the card exists stores nothing. Fixed: the window beats once when it first loads, pinned by a test.
+- L3 2026-10-30 leaving through the room menu cleared the room at once; a reload too. Removing a friend reached the other side. Not run: the 60 s tick and the 3 minute expiry in real time (Go and heartbeat tests with a test clock cover them), a physical phone, and a gamepad in this window.
+- L4 2026-10-30 Client commit: the `feat(friends)` commit that follows a641a01. `docs/legal-risk-notes.md` left as is: it covers rights holders and has no privacy section; the line lives in the window (S8), the README and the GDD.

@@ -43,6 +43,14 @@ describe('town Esc menu', () => {
     expect(room).toContain('session.repick(settings.species, settings.loadout, skinOn(), femaleOn())');
   });
 
+  it('the friends window is one step from the menu, alone and in a room, and joining leaves the town', () => {
+    expect(townMenuServices(ALL, false)).toContain('friends');
+    expect(townMenuServices(ALL, true)).toContain('friends');
+    const scene = readFileSync(join(__dirname, '../../src/town/scene.ts'), 'utf8');
+    expect(scene).toMatch(/case 'friends':\s*return openShopWindow\(friendsOpener\(\)\);/);
+    expect(scene.slice(scene.indexOf('const friendsOpener'), scene.indexOf('function serviceAction('))).toContain('leaveTown(go)');
+  });
+
   it('shows only the services the app wired, and no online window inside a room', () => {
     expect(townMenuServices(new Set(['travel', 'shop']), false)).toEqual(['travel', 'shop']);
     expect(townMenuServices(ALL, true)).not.toContain('online');
@@ -116,6 +124,7 @@ describe('town Esc menu', () => {
       achievements: 'openAchievements',
       shrine: 'openShrine',
       online: 'openOnline',
+      friends: 'openFriends',
       account: 'openAccount',
       gallery: 'openGallery',
       settings: 'openSettings',

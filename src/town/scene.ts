@@ -121,6 +121,8 @@ export interface TownOptions {
   openPokemon?(): void;
   /** The account window over the town (its Esc menu), like `openShop`: in a room the room stays. */
   openAccount?: TownWindowOpener;
+  /** Friends, over the town; `leave` closes it and the town, then goes on (joining a friend's room). */
+  openFriends?: (parent: HTMLElement, onClose: () => void, leave: (go: () => void) => void) => () => void;
   /**
    * The gallery over the town (its Esc menu), like `openShop`: the cinematics
    * already seen, to watch again. `replayPlea` plays the villagers' pleas
@@ -707,6 +709,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       achievements: !!options.openAchievements,
       shrine: !!options.openShrine,
       online: !!options.openOnline,
+      friends: !!options.openFriends,
       account: !!options.openAccount,
       gallery: !!options.openGallery,
       settings: !!options.openSettings,
@@ -728,6 +731,17 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const galleryOpener = (): TownWindowOpener | undefined => {
     const open = options.openGallery;
     return open ? (parent, onClose) => open(parent, onClose, lobby ? null : replayPlea) : undefined;
+  };
+
+  const friendsOpener = (): TownWindowOpener | undefined => {
+    const open = options.openFriends;
+    return open
+      ? (parent, onClose) =>
+          open(parent, onClose, (go) => {
+            onClose();
+            leaveTown(go);
+          })
+      : undefined;
   };
 
   /** What a row of the Esc menu does (the same windows the NPCs and places open). */
@@ -761,6 +775,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return leaveTown(options.openShrine);
       case 'online':
         return leaveTown(options.openOnline);
+      case 'friends':
+        return openShopWindow(friendsOpener());
       case 'account':
         return openShopWindow(options.openAccount);
       case 'gallery':
