@@ -25,9 +25,8 @@ import { updateSimaEvent } from './sima-events';
 import { keepEnemiesInBounds } from './bounds';
 import { breakBands, updateLeaders } from './leaders';
 import { updateGate } from './gates';
-import { endlessSpawns } from './endless';
-import { ENDLESS } from '../data/endless';
-import { SIMA_EVENTS } from '../data/sima';
+import { dungeonById } from '../data/dungeons';
+import { eventRulesOf, floorEventPool } from './floor-spawns';
 import { holdAtFogWall } from './fog-wall';
 
 export { enemyTimeScale } from './time';
@@ -75,9 +74,9 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   };
 }
 
-/** Host: the Sima's floor event (sima-events.ts), with the depth's pool for the enemies it brings. */
+/** Host: the floor's event (sima-events.ts), by its dungeon's rules, with the depth's pool for the enemies it brings. */
 const simaEventStep = (state: WorldState, dtMs: number): WorldState =>
-  state.simaEvent && !state.simaEvent.done ? updateSimaEvent(state, dtMs, SIMA_EVENTS, endlessSpawns(ENDLESS, state.depth).pool) : state;
+  state.simaEvent && !state.simaEvent.done ? updateSimaEvent(state, dtMs, eventRulesOf(state.simaEvent), floorEventPool(dungeonById(state.simaEvent.dungeon ?? 'eclipse-chasm'), state.depth)) : state;
 
 /** Lands a hit on the player outside a step (enemy systems, tests). Appends to the state's events. */
 export function hitPlayer(state: WorldState, hit: IncomingHit): WorldState {

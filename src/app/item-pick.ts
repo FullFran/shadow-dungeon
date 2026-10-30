@@ -4,8 +4,8 @@ import { cursorList } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
 
 /**
- * The pick-1-of-3 held item overlay shown on entering each floor after the
- * first (docs/gdd.md §3). Three cards (name, short description, rarity
+ * The pick-1-of-3 held item overlay shown after a boss falls, at a chest and
+ * after a wave room (docs/gdd.md §3). Three cards (name, short description, rarity
  * colour), picked with a click or the 1/2/3 keys. Solo it is modal and the
  * simulation pauses (same policy as the Esc menu). In a shared run nothing
  * pauses: the overlay is a strip at the bottom of the screen, the player keeps

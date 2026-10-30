@@ -10,7 +10,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { input } from './helpers';
-import { CAVES, CHALLENGES, CRYPT, DUNGEONS, ECLIPSE, floorsOf, planAt, type DungeonDef } from '../../src/data/dungeons';
+import { CAVES, CHALLENGES, CRYPT, DUNGEONS, ECLIPSE, floorsOf, planAt, roadFor, type DungeonDef } from '../../src/data/dungeons';
 import { PROGRESSION } from '../../src/data/progression';
 import { SPECIES } from '../../src/data/species';
 import { expectedFloorXp, expectedLevel, hitCap, referenceMaxHp, speciesMaxHpAt } from '../../src/core/fairness';
@@ -89,7 +89,12 @@ describe('reference level after meaningful encounters', () => {
       for (const tier of ['easy', 'nightmare'] as const)
         for (let f = 2; f <= lastFloor(d); f++) {
           if (!generated(d, f)) continue;
+          // The yardstick counts the generator's rooms alone: a floor event's own enemies pay on top (they only put the player above the expected level).
+          const road = roadFor(d, tier);
+          const { events } = road;
+          delete road.events;
           const mean = [1, 2, 3, 4, 5, 6, 7, 8].reduce((sum, seed) => sum + realFloorXp(d, f, seed, tier), 0) / 8;
+          if (events) road.events = events;
           expect(expectedFloorXp(d.id, f, tier), `${d.id} F${f} ${tier}`).toBeCloseTo(mean, 6);
         }
   });

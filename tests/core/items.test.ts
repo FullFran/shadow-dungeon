@@ -5,7 +5,8 @@ import { TUNING } from '../../src/data/tuning';
 import { computeDamage } from '../../src/core/damage';
 import { addItem, itemCount, offerItems, onHitDealt, onTick, playerStats } from '../../src/core/items';
 import { classifyHit } from '../../src/core/player';
-import { chooseItem, progressRun, startRun, type RunProgress } from '../../src/core/run';
+import { chooseItem, progressRun, startRun, withRewardOffer, type RunProgress } from '../../src/core/run';
+import { rewardOffer } from '../../src/core/sima-events';
 import type { EnemyState, GameEvent, PlayerInput, PlayerState, WorldState } from '../../src/core/state';
 import { hitPlayer, step } from '../../src/core/step';
 import { FIXED_DT_MS } from '../../src/core/timestep';
@@ -77,24 +78,25 @@ describe('item offers', () => {
     expect(counts.rare).toBeGreaterThan(0);
   });
 
-  it('come on entering every floor after the first, fixed rooms included (the vault on 3), and picking one holds it', () => {
+  it('never come on entering a floor; picking one of a reward offer holds it', () => {
     let progress: RunProgress = { ...startRun(SEED, {}), entered: false, outcome: null };
     expect(progress.run.offer).toBeNull();
-    for (const floor of [2, 3]) {
-      progress = progressRun(progress.run, toStairs(progress.world));
-      expect(progress.run.floor).toBe(floor);
-      expect(progress.run.offer).toEqual(offerItems(SEED, floor, 'p1', progress.world.player.items));
-      const choice = progress.run.offer![1]!;
-      const picked = chooseItem(progress.run, progress.world, 1);
-      expect(picked.run.offer).toBeNull();
-      expect(picked.world.player.items.at(-1)).toBe(choice);
-      progress = { ...progress, ...picked };
-      if (floor === 3) break;
-    }
+    progress = progressRun(progress.run, toStairs(progress.world));
+    expect(progress.run.floor).toBe(2);
+    expect(progress.run.offer).toBeNull();
+    const offered = withRewardOffer(progress.run, progress.world);
+    expect(offered.offer).toEqual(rewardOffer(SEED, 2, 'p1', progress.world.player.items));
+    const choice = offered.offer![1]!;
+    const picked = chooseItem(offered, progress.world, 1);
+    expect(picked.run.offer).toBeNull();
+    expect(picked.world.player.items.at(-1)).toBe(choice);
   });
 
   it('ignore a pick with no offer or out of range', () => {
-    const { run, world } = startRun(SEED, {}, 2);
+    const started = startRun(SEED, {}, 2);
+    const world = started.world;
+    const run = withRewardOffer(started.run, world);
+    expect(chooseItem(started.run, world, 0)).toEqual({ run: started.run, world });
     expect(chooseItem(run, world, 5)).toEqual({ run, world });
     const picked = chooseItem(run, world, 0);
     expect(chooseItem(picked.run, picked.world, 0)).toEqual(picked);

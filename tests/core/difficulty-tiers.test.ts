@@ -78,10 +78,15 @@ function fnv(text: string): string {
  * scripted Easy Crypt still gives '530cec91'. The cap's yardstick
  * (`referenceLevel`, now read from the new spawns and experience rule) is
  * stripped by `plain` like the tier; the digest holding shows no scripted Easy hit
- * changed under the cap. A
- * change to the simulation changes it: re-record it only on purpose.
+ * changed under the cap. Re-recorded on purpose for the owner's rule of
+ * 2026-10-30 (odd/tasks/boss-items-events.md): nothing on offer on entering a
+ * floor, so `run.offer` in the digested run is null; with the old offer put back
+ * the same play still gives '6e22f931' ('df4db47e' with the offer gone). The
+ * same rule brings floor events to the Crypt (its enemies and its `simaEvent` go
+ * in the digest): with `CRYPT.events` removed it still gives 'df4db47e'. A change
+ * to the simulation changes it: re-record it only on purpose.
  */
-const PRE_TIER_DIGEST = '6e22f931';
+const PRE_TIER_DIGEST = '68fd7315';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
@@ -182,9 +187,13 @@ describe('difficulty tiers: harder tiers', () => {
       expect({ ...tiered, budget: { ...tiered.budget!, maxRoles: undefined } }).toEqual({ ...CRYPT_SPAWNS, budget: { ...CRYPT_SPAWNS.budget!, maxRoles: undefined } });
       expect(tiered.budget!.maxRoles).toBe(ROLES_PER_ROOM[d]);
     }
+    // The rooms, without the floor events: those come more often on harder tiers by design (`encounters.frequency`) and bring their own enemies (odd/tasks/boss-items-events.md).
+    const { events } = CRYPT;
+    delete CRYPT.events;
     const count = (d: Difficulty) => [...Array(40).keys()].reduce((sum, seed) => sum + startRun(seed + 1, { difficulty: d }, 2).world.enemies.length, 0);
     expect(count('nightmare')).toBeLessThanOrEqual(count('easy') * 1.15);
     for (const seed of [1, 2, 3, 4]) expect(startRun(seed, { difficulty: 'normal' }, 2).world.enemies.map((e) => e.species)).toEqual(startRun(seed, {}, 2).world.enemies.map((e) => e.species));
+    CRYPT.events = events;
   });
 
   it('makes elites from the floor seed only (the same on every peer), none on easy, more on nightmare', () => {

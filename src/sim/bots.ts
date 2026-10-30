@@ -88,6 +88,8 @@ export interface BotContext {
   urgent?: boolean;
   /** A floor gate still shut (core/gates.ts): where the marked enemy stands (minimap); its fall opens the gate. */
   gate?: { marked: Vec2 | null };
+  /** A floor event still to reach for its pick (a vault's chest): the bot goes there before anything but fighting. */
+  event?: Vec2;
 }
 
 export interface Bot {
@@ -257,7 +259,7 @@ export function createBot(kind: BotKind, seed: number, profile: BotProfile = BOT
         }
       });
       const exit = context.exit;
-      const target = goal ?? context.gate?.marked ?? (exit ? vec(exit.x + exit.width / 2, exit.y + exit.height / 2) : null);
+      const target = context.event ?? goal ?? context.gate?.marked ?? (exit ? vec(exit.x + exit.width / 2, exit.y + exit.height / 2) : null);
       return target ? nav.direction(arena, me, target) : vec(0, 0);
     }
     // A fixed room: look for the enemies in the middle, then take the exit once it opens.

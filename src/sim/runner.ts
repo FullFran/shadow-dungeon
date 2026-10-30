@@ -6,7 +6,8 @@ import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import { addItem } from '../core/items';
-import { chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock, type RunState } from '../core/run';
+import { rewardsItems } from '../core/sima-events';
+import { bossPickDue, chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock, withRewardOffer, type RunState } from '../core/run';
 import type { Rect, WorldState } from '../core/state';
 import { step } from '../core/step';
 import { FIXED_DT_MS } from '../core/timestep';
@@ -33,6 +34,8 @@ export interface FloorResult extends FloorMetrics {
   /** The fixed arena's first enemy (its guardian, mid-boss or echo); null on generated floors. */
   boss: SpeciesId | null;
   outcome: FloorOutcome;
+  /** Held items on leaving the floor. */
+  items: number;
 }
 
 export interface RunResult {
@@ -81,6 +84,12 @@ function gateOf(world: WorldState): Pick<BotContext, 'gate'> {
   return { gate: { marked: marked ? marked.pos : null } };
 }
 
+/** A vault's chest still shut: the bot walks up to it, as a player after its item would. */
+function eventOf(world: WorldState): Pick<BotContext, 'event'> {
+  const event = world.simaEvent;
+  return event?.kind === 'vault' && !event.done ? { event: event.pos } : {};
+}
+
 function exitOf(run: RunState, world: WorldState): Rect | null {
   const plan = floorPlanOf(run);
   if (plan.kind === 'generated') return world.arena.stairs ?? null;
@@ -104,7 +113,8 @@ export function arenaFloors(dungeon: DungeonId, maxFloors = 10): number[] {
 
 /**
  * Plays from `startFloor` floor by floor: HP, level and items carry over as in
- * a real run (the bot takes the first item offered). Stops at the first death,
+ * a real run (the bot takes the first item of each pick: a boss down, a chest,
+ * a cleared wave room). Stops at the first death,
  * a timeout, victory, or (the endless Sima) `maxFloors` floors played. With `single`, plays only
  * the first floor (an arena in isolation).
  */
@@ -122,10 +132,18 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   let meta = floorMeta(run);
   let recorder = new FloorRecorder(world);
   let floorStart = world.timeMs;
-  const close = (outcome: FloorOutcome) => floors.push({ ...meta, ...recorder.finish(), outcome });
+  const close = (outcome: FloorOutcome) => floors.push({ ...meta, ...recorder.finish(), outcome, items: world.player.items.length });
+  /** The floors whose boss paid its pick, and whether this floor's chest or wave room did. */
+  const bossPicks = new Set<number>();
+  let eventPicked = false;
+  const takeReward = () => {
+    const picked = chooseItem(withRewardOffer(run, world), world, 0);
+    run = picked.run;
+    world = picked.world;
+  };
   for (;;) {
     const before = options.inject ? options.inject(world) : world;
-    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before) });
+    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before), ...eventOf(before) });
     const after = step(before, input, FIXED_DT_MS);
     recorder.record(before, after);
     const progress = progressRun(tickRunClock(run, FIXED_DT_MS), after);
@@ -136,9 +154,9 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
     if (progress.entered) {
       close('cleared');
       if (single || (endless && floors.length >= maxFloors)) return { scenario: s, floors, outcome: 'depth' };
-      const picked = chooseItem(progress.run, progress.world, 0);
-      run = picked.run;
-      world = applyParty(picked.world, s.party);
+      run = progress.run;
+      world = applyParty(progress.world, s.party);
+      eventPicked = false;
       meta = floorMeta(run);
       recorder = new FloorRecorder(world);
       floorStart = world.timeMs;
@@ -146,6 +164,14 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
     }
     run = progress.run;
     world = progress.world;
+    if (bossPickDue(run, world, bossPicks)) {
+      bossPicks.add(run.floor);
+      takeReward();
+    }
+    if (!eventPicked && rewardsItems(world.simaEvent)) {
+      eventPicked = true;
+      takeReward();
+    }
     // A fixed arena in isolation is over once its enemies are down (a mid-boss room then waits for its exit).
     if (single && meta.kind === 'room' && world.enemies.every((e) => !e.alive)) {
       close('cleared');

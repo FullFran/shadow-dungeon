@@ -19,7 +19,22 @@ const generatedFloors = (d: DungeonDef): number[] =>
   Array.from({ length: d.endless ? 24 : d.plan.length }, (_, i) => i + 1).filter((f) => planAt(d, f)?.kind === 'generated');
 
 /** Average enemies and experience per generated floor at Easy, over SEEDS (the nest and the hunter are not enemies to farm). */
+/** The generator's budget alone: a dungeon's floor events bring their own enemies on top (odd/tasks/boss-items-events.md). */
+function withoutEvents<T>(d: DungeonDef, measure: () => T): T {
+  const { events } = d;
+  delete d.events;
+  try {
+    return measure();
+  } finally {
+    if (events) d.events = events;
+  }
+}
+
 function floorAverages(d: DungeonDef): { enemies: number; xp: number } {
+  return withoutEvents(d, () => budgetAverages(d));
+}
+
+function budgetAverages(d: DungeonDef): { enemies: number; xp: number } {
   let enemies = 0;
   let xp = 0;
   const floors = generatedFloors(d);

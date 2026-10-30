@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { offerItems } from '../../src/core/items';
 import { POOCHYENA } from '../../src/data/enemies';
 import { TUNING } from '../../src/data/tuning';
 import { flowFieldFrom } from '../../src/core/flow';
@@ -224,10 +223,9 @@ describe('shared run: the host moves everyone', () => {
     const guest = startRun(SEED, { localId: 'p2', role: 'guest' });
     const moved = progressRun(host.run, { ...host.world, player: { ...host.world.player, pos: stairsPos(host.world) } });
     const followed = followToFloor(guest.run, guest.world, moved.run.floor);
-    // Same floor; the item offer is each player's own (seeded by player id).
-    expect({ ...followed.run, offer: null }).toEqual({ ...moved.run, offer: null });
-    expect(followed.run.offer).toEqual(offerItems(SEED, 2, 'p2', []));
-    expect(moved.run.offer).toEqual(offerItems(SEED, 2, 'p1', []));
+    // Same floor; nothing on offer on entering it (a reward pick is each player's own: tests/core/boss-pick.test.ts).
+    expect(followed.run).toEqual(moved.run);
+    expect(followed.run.offer).toBeNull();
     expect(followed.world.arena).toEqual(moved.world.arena);
     expect(followed.world.player.pos).toEqual(moved.world.player.pos);
     expect(followed.world.role).toBe('guest');
