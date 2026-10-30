@@ -12,6 +12,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 
+	"github.com/fullfran/mazmorra-sombria/server/internal/friends/friendsapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/hooks"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore/loreapi"
@@ -60,6 +61,8 @@ func main() {
 		// Anonymous bug reports from the game (issue #9), announced to the admins, who triage them in the game.
 		reportsapi.Register(e.Router, e.App, reportsapi.IPKey(setup.Getenv), reportmail.New(e.App, time.Now))
 		reportsadmin.Register(e.Router, e.App)
+		// Friends: add by code, see who is online, join their room (accounts only).
+		friendsapi.Register(e.Router)
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)

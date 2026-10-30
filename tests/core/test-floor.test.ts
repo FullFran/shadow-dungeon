@@ -13,6 +13,12 @@ describe('dev test floor (?spawn=)', () => {
     expect(parseSpawnList(Array(20).fill('zubat').join(','))).toHaveLength(TEST_FLOOR.maxEnemies);
   });
 
+  it('leaves the floor event behind, even on a floor 1 that drew a chest', () => {
+    let seed = 1;
+    while (!startRun(seed, {}).world.simaEvent) seed++;
+    expect(loadTestFloor(startRun(seed, {}).world, ['koffing']).simaEvent).toBeUndefined();
+  });
+
   it('replaces the floor with an open arena and the enemies awake on an arc in front of the player', () => {
     const { world } = startRun(7, {});
     const floor = loadTestFloor(world, ['koffing', 'grimer', 'croagunk', 'corphish']);

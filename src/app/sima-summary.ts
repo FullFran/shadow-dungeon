@@ -4,7 +4,7 @@ import type { SimaRecord } from '../core/sima-events';
 export const SUMMARY_LINES = 4;
 
 /**
- * The Sima's end screen block: the floor events of the run in plain words
+ * The end screen's block: the floor events of the run in plain words
  * ("Planta 4 · Altar del Eclipse: pacto aceptado"), the latest last.
  */
 export function simaEventLines(records: readonly SimaRecord[], t: (key: string) => string): string[] {

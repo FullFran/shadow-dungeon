@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RUN, RUN_PLAN } from '../../src/data/dungeon';
 import { generateFloor, type Floor } from '../../src/core/dungeon';
 import { withDoors } from '../../src/core/sima-events';
-import { chooseItem, floorPlanOf, floorSeed, progressRun, startRun, type RunProgress } from '../../src/core/run';
+import { chooseItem, floorPlanOf, floorSeed, progressRun, startRun, withRewardOffer, type RunProgress } from '../../src/core/run';
 import { ROOMS } from '../../src/data/rooms';
 import type { PlayerInput, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
@@ -147,7 +147,7 @@ describe('run structure', () => {
       let progress: RunProgress = { ...startRun(seed, {}), entered: false, outcome: null };
       for (let floor = 1; floor <= 5; floor++) {
         progress = descend(fight(progress));
-        progress = { ...progress, ...chooseItem(progress.run, progress.world, floor % 3) };
+        progress = { ...progress, ...chooseItem(withRewardOffer(progress.run, progress.world), progress.world, floor % 3) };
       }
       return progress;
     };

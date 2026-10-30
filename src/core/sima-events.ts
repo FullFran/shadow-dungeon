@@ -2,6 +2,7 @@ import { atLeast, type Difficulty } from '../data/difficulty';
 import { encounterChance, encounterWaves, worldDifficulty } from './difficulty';
 import type { CoinBreakdown } from './coins';
 import type { FloorKind } from '../data/dungeon';
+import type { DungeonId } from '../data/dungeons';
 import type { ItemId } from '../data/items';
 import type { PactEffect, PactId, SimaEventKind, SimaEvents, SimaPact } from '../data/sima';
 import type { SpeciesId } from '../data/species';
@@ -20,8 +21,9 @@ import { distance, type Vec2 } from './vec';
 import { spawnEnemy } from './world';
 
 /**
- * The Sima del Eclipse's floor events (docs/gdd.md §3), pure. One may sit on
- * a generated floor (data/sima.ts `SIMA_EVENTS`): a treasure vault, an
+ * The floor events (docs/gdd.md §3), born in the Sima del Eclipse and now in
+ * every dungeon, each with its own data (data/sima.ts `SIMA_EVENTS`,
+ * `floorEvents`), pure. One may sit on a generated floor: a treasure vault, an
  * eclipse shrine (pacts), a monster house, a time crystal, a merchant echo,
  * a monster nest, a wave room, an ambush or a hunter. Every peer places the
  * same event from the run seed; only the host (or solo) runs it, and guests
@@ -32,6 +34,8 @@ export type SimaOutcome = 'opened' | 'accepted' | 'declined' | 'cleared' | 'take
 
 export interface SimaEventState {
   kind: SimaEventKind;
+  /** The dungeon whose rules it follows (core/floor-spawns.ts `eventRulesOf`); absent in the Sima. */
+  dungeon?: DungeonId;
   /** Index of its room in the floor's rooms. */
   room: number;
   /** That room, in px. */
@@ -83,7 +87,7 @@ const REWARD_SALT = 7000;
 const MERCHANT_SALT = 9000;
 
 /** Chance of an event on a floor at tier `d`: the depth's chance scaled by the tier's set-piece frequency (core/difficulty.ts `encounterChance`). */
-export const simaEventChance = (def: SimaEvents, floor: number, d: Difficulty = 'easy'): number => encounterChance(rising(def, floor), d);
+export const simaEventChance = (def: SimaEvents, floor: number, d: Difficulty = 'easy'): number => Math.min(def.cap ?? 1, encounterChance(rising(def, floor), d));
 
 /** Waves of a wave room at tier `d`: the data's, plus the tier's extra waves (Nightmare +1; `encounterWaves`). */
 export const simaWaves = (def: SimaEvents, d: Difficulty = 'easy'): number => encounterWaves(def.waves.waves.length, d);

@@ -12,6 +12,7 @@ const floor = (patch: Partial<FloorResult> = {}): FloorResult => ({
   floor: 6,
   kind: 'room',
   boss: 'aegislash',
+  items: 0,
   outcome: 'cleared',
   timeMs: 60_000,
   damage: 10,

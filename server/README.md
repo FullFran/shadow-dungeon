@@ -17,12 +17,13 @@ Guests keep playing without an account; that is all client-side.
 | Path | What it holds |
 |---|---|
 | `main.go` | Starts PocketBase, registers hooks and applies the environment on `serve` |
-| `migrations/` | The schema as Go migrations (`users` changes, `profiles`, `saves`, password accounts, then `reports`); never edit an applied one, add a new file |
+| `migrations/` | The schema as Go migrations (`users` changes, `profiles`, `saves`, password accounts, `reports`, `admins`, then `friend_cards` and `friendships`); never edit an applied one, add a new file |
 | `internal/rules/` | Pure rules: save validation, revision check, nickname rules (table-driven tests) |
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
 | `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
 | `internal/ranking/` | Pure Sima ranking rule over the saves (table-driven tests); `rankingapi/` serves it |
 | `internal/reports/` | Bug report fields and limits; `reportsapi/` serves `POST /api/sd/reports`, `reportsadmin/` the admins' routes, `reportmail/` announces new reports |
+| `internal/friends/` | Friend code and room code formats, caps and the presence rule; `friendsapi/` serves `/api/sd/friends` |
 | `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
 | `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
 | `tools/report-to-issue.sh` | Renders an exported bug report as a GitHub issue body (offline) |
@@ -260,7 +261,7 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 
 - **Key:** `CF_TURN_KEY_ID` and `CF_TURN_API_TOKEN` in `.env` (Cloudflare dashboard: Realtime > TURN Server). They are long-lived secrets that never leave the server.
 - **Credentials:** one per request, valid 2 h.
-- **Limits:** 10 requests per IP every 10 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
+- **Limits:** 10 requests per IP every 2 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
 - **Monitoring:**
   - Cloudflare dashboard, Realtime > TURN: usage. The free allowance is 1,000 GB/month, then $0.05/GB.
   - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP under a key that is random per server run.
@@ -344,6 +345,28 @@ Text is trimmed and control characters are dropped; unknown fields are rejected.
 4. Back in the dashboard set `status` to `issue` and `githubIssue` to the issue URL. Close the report (`closed`) when the issue is fixed.
 
 The player keeps the `SD-XXXXXX` reference and can quote it when writing to the owner.
+
+## Friends
+
+Accounts add each other by a friend code, to see who is online and join their room. Guests have no friends and the game makes no request for them. Nothing here touches the save.
+
+**Routes.** All need a player token: 401 without one, 403 for a superuser. All answer `Cache-Control: no-store`.
+
+| Route | Answer |
+|---|---|
+| `GET /api/sd/friends` | `200 {"code","friends":[{"id","nickname","state","room"?}],"incoming":[{"id","nickname"}],"outgoing":[{"id","code"}]}`. Draws the account's code the first time |
+| `POST /api/sd/friends/requests` with `{"code"}` | `200 {"status":"pending"}`, or `{"status":"friends"}` when already friends or when the other had already asked. `400 {"error":"self"}` for your own code. `404 {"error":"refused"}` for a malformed or unknown code, or a target with no room. `409 {"error":"limit"}` when you are at a cap. `429` past 20 per IP every 10 minutes (rate-limit rule `POST /api/sd/friends/requests`) |
+| `POST /api/sd/friends/requests/{id}/accept` | `200 {"status":"friends"}`; only the one asked. `404` for anything else, `409` when either side is at the friends cap |
+| `DELETE /api/sd/friends/{id}` | `204`: decline, cancel or remove, either side. `404` when the id is unknown or not yours; no trace stays |
+| `POST /api/sd/friends/presence` with `{"room":"ABCDE"}` or `{"room":null}` | `204`. `400` for a bad body or room code, and nothing changes |
+
+`id` is the opaque id of the link between the two accounts, never a user id. `state` is `offline`, `online` or `room`; `room` comes only with `room`.
+
+**Limits.** 50 friends; 50 requests sent and 50 waiting for an account (`internal/friends`). A heartbeat counts for 3 minutes; the client sends one a minute with its tab visible (in a room, also hidden), on opening the friends window, on entering or leaving a room, and on signing out while in one.
+
+**Privacy.** What an accepted friend gets: nickname (from `profiles`), state, and the room code while in a room. What whoever you ask gets: your nickname, so they know who asks. What whoever you add gets from you adding them: nothing about them, only the code you typed; a target with no room answers like an unknown code. Never an email, a user id or an IP. Nicknames are not unique and cannot be searched: a code is how you add someone.
+
+**What is stored.** `friend_cards`: account, code, last heartbeat, room code. `friendships`: the pair, who asked, who was asked, accepted or not. An account that has not opened the friends window has no card, and its heartbeats store nothing unless it has a friend. The migration adds both collections and touches no existing row; codes come lazily so that existing accounts that never use friends store nothing. Deleting an account removes its card and links (cascade). Every API rule is nil: the records API cannot list, view, create, edit or delete them, and `profiles` filters and expands cannot reach them (`friendsapi_test.go`).
 
 ## Run locally
 

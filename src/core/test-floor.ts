@@ -37,6 +37,7 @@ export function loadTestFloor(state: WorldState, species: readonly SpeciesId[]):
     ...entered,
     arena: { width: TEST_FLOOR.width, height: TEST_FLOOR.height },
     flow: undefined,
+    simaEvent: undefined,
     player: { ...entered.player, pos: start, roll: null, facing: vec(1, 0) },
   };
   const count = Math.min(species.length, TEST_FLOOR.maxEnemies);

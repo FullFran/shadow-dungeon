@@ -14,6 +14,7 @@ const SCREENS = [
   ['controls', ['Opciones', 'Controles del mando']],
   ['report', ['Opciones', 'Reportar un problema']],
   ['account', ['Opciones', 'Cuenta']],
+  ['friends', ['Opciones', 'Amigos']],
   ['settings', ['Opciones', 'Ajustes']],
   ['news', ['Opciones', 'Novedades']],
   ['credits', ['Opciones', 'Créditos']],

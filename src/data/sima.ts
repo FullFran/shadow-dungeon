@@ -164,6 +164,8 @@ export interface SimaEvents {
   start: number;
   perFloor: number;
   max: number;
+  /** The most that chance can reach after the difficulty tier scales it (plain floors must stay); none in the Sima. */
+  cap?: number;
   kinds: readonly SimaEventWeight[];
   /** A player this close to an event's object touches it (px). */
   touchRadius: number;
@@ -222,3 +224,30 @@ export const SIMA_EVENTS: SimaEvents = {
   ambush: { count: 3, tellMs: 900 },
   hunter: { species: 'eclipse-hunter', delayMs: 7000 },
 };
+
+/** What the floor events of a dungeon other than the Sima tune: how often they come and which, from which floor. */
+export interface FloorEventTuning {
+  fromFloor: number;
+  start: number;
+  perFloor: number;
+  max: number;
+  cap: number;
+  kinds: readonly SimaEventWeight[];
+}
+
+/**
+ * The Sima's events as a dungeon without its clock plays them (owner 2026-10-30,
+ * odd/tasks/boss-items-events.md): most held items outside bosses come from them,
+ * so a chest weighs most. Every value is provisional. No time crystal (it only
+ * pays clock) nor hunter (it only works under the clock's pressure); no pact paid
+ * in time, and a cleared wave room pays only its pick. Coins are not halved here as in the
+ * Sima, so the merchant asks more; a monster house is smaller, its floors shallower.
+ */
+export const floorEvents = (tuning: FloorEventTuning): SimaEvents => ({
+  ...SIMA_EVENTS,
+  ...tuning,
+  monsterHouse: { extra: 3 },
+  merchant: { ...SIMA_EVENTS.merchant, berryPrice: 12, itemPrice: 30 },
+  shrine: { ...SIMA_EVENTS.shrine, pacts: SIMA_EVENTS.shrine.pacts.filter((p) => !p.blessing.timeMs) },
+  waves: { ...SIMA_EVENTS.waves, bonusMs: 0 },
+});
