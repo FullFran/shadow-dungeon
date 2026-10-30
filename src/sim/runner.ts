@@ -84,6 +84,12 @@ function gateOf(world: WorldState): Pick<BotContext, 'gate'> {
   return { gate: { marked: marked ? marked.pos : null } };
 }
 
+/** A vault's chest still shut: the bot walks up to it, as a player after its item would. */
+function eventOf(world: WorldState): Pick<BotContext, 'event'> {
+  const event = world.simaEvent;
+  return event?.kind === 'vault' && !event.done ? { event: event.pos } : {};
+}
+
 function exitOf(run: RunState, world: WorldState): Rect | null {
   const plan = floorPlanOf(run);
   if (plan.kind === 'generated') return world.arena.stairs ?? null;
@@ -137,7 +143,7 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
   };
   for (;;) {
     const before = options.inject ? options.inject(world) : world;
-    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before) });
+    const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before), ...eventOf(before) });
     const after = step(before, input, FIXED_DT_MS);
     recorder.record(before, after);
     const progress = progressRun(tickRunClock(run, FIXED_DT_MS), after);

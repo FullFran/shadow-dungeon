@@ -12,6 +12,7 @@ import { LITWICK_ROADS } from './story/litwick';
 import type { SendaRoad } from './story/roads';
 import { ZORUA_ROADS } from './story/zorua';
 import { SIMA_STORY, simaStoryBossOf } from './sima-story';
+import { floorEvents, type SimaEvents } from './sima';
 import { ABRA_ROADS } from './story/abra';
 import { PIPLUP_ROADS } from './story/piplup';
 import { SHINX_ROADS } from './story/shinx';
@@ -94,6 +95,8 @@ export interface DungeonDef {
   toxicPools?: true;
   /** Mandatory kills on some generated floors (core/gates.ts): a sealed stairs, a locked door, a wave room. */
   gates?: GateTuning;
+  /** Floor events of its generated floors (core/sima-events.ts); the endless dungeon keeps its own in `endless.events`. */
+  events?: SimaEvents;
   /** A challenge dungeon only (`CHALLENGES`): the line it belongs to (its first form) and the materials a clear pays (core/challenge.ts). */
   challenge?: { line: ChallengeLine; materials: number };
   /** A Senda line's challenge (chapter I's road): the roads a Hard and a Nightmare run walk instead (`roadFor`). */
@@ -107,6 +110,29 @@ export interface WispDef {
 }
 
 const loreOf = (id: string): DungeonLore => DUNGEON_LORE.find((l) => l.id === id)!;
+
+/**
+ * Floor events by dungeon (docs/gdd.md §3 "Sucesos"), provisional: tuned for
+ * about 3 to 5 held items per run, the boss's included (S5, measured in
+ * tests/core/dungeon-events.test.ts), with half the floors or more left plain.
+ * Short dungeons have few floors free of a boss or a hurry, so they ask for a
+ * higher chance. Chests from the first floors, the set pieces deeper in.
+ */
+const eventKinds = (merchant: number, ambush: number, shrine: number, nest: number, waves: number, monsterHouse: number) =>
+  [
+    { kind: 'vault', minDepth: 1, weight: 6 },
+    { kind: 'merchant', minDepth: merchant, weight: 2 },
+    { kind: 'ambush', minDepth: ambush, weight: 1 },
+    { kind: 'shrine', minDepth: shrine, weight: 2 },
+    { kind: 'nest', minDepth: nest, weight: 1 },
+    { kind: 'waves', minDepth: waves, weight: 2 },
+    { kind: 'monsterHouse', minDepth: monsterHouse, weight: 1 },
+  ] as const;
+
+const CRYPT_EVENTS = floorEvents({ fromFloor: 1, start: 0.55, perFloor: 0.1, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 4, 4, 4, 5) });
+const FOREST_EVENTS = floorEvents({ fromFloor: 1, start: 0.5, perFloor: 0.08, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 5, 5, 6) });
+const DEEP_EVENTS = floorEvents({ fromFloor: 2, start: 0.75, perFloor: 0.03, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 4, 6, 7) });
+const SENDA_EVENTS = floorEvents({ fromFloor: 2, start: 0.45, perFloor: 0.05, max: 0.7, cap: 0.75, kinds: eventKinds(2, 2, 4, 4, 5, 5) });
 
 export const CRYPT: DungeonDef = {
   id: 'crypt-of-the-sword-king',
@@ -133,6 +159,7 @@ export const CRYPT: DungeonDef = {
   },
   unlockedBy: null,
   decor: 'crypt',
+  events: CRYPT_EVENTS,
   // Floors 1..5 (3 is the vault): never floor 1; the locked door from floor 4.
   gates: {
     chance: [0, 0.35, 0, 0.45, 0.5],
@@ -213,6 +240,7 @@ export const FOREST: DungeonDef = {
   },
   unlockedBy: 'crypt-of-the-sword-king',
   decor: 'forest',
+  events: FOREST_EVENTS,
   // A spirit light on about a third of the generated floors from floor 2 (more often deeper), three berries.
   wisp: { chance: [0, 0.35, 0.35, 0, 0.35, 0.4, 0.4], berries: 3 },
   // Floors 1..7 (4 is the hollow): the locked door from floor 3.
@@ -295,6 +323,7 @@ export const CAVES: DungeonDef = {
   },
   unlockedBy: 'misty-forest',
   decor: 'caves',
+  events: DEEP_EVENTS,
   water: { poolChance: 0.55 },
   // Floors 1..9 (5 is the grotto).
   gates: {
@@ -378,6 +407,7 @@ export const SWAMP: DungeonDef = {
   },
   unlockedBy: 'flooded-caves',
   decor: 'swamp',
+  events: DEEP_EVENTS,
   toxicPools: true,
   // Floors 1..9 (5 is the den).
   gates: {
@@ -490,6 +520,7 @@ const challenge = (line: ChallengeLine, base: DungeonDef, room: RoomId, pool: re
   ...(base.water ? { water: base.water } : {}),
   ...(base.toxicPools ? { toxicPools: base.toxicPools } : {}),
   challenge: { line, materials: CHALLENGE_MATERIALS },
+  events: SENDA_EVENTS,
 });
 
 /**

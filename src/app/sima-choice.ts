@@ -2,7 +2,7 @@ import { cursorList } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
 
 /**
- * A Sima del Eclipse choice (the eclipse shrine's pact, the merchant echo's
+ * A floor event's choice (the eclipse shrine's pact, the merchant echo's
  * wares): a few cards in the item pick's look, picked with a click, the
  * cursor or 1/2/3. Solo it is modal and the run pauses (the game decides);
  * in a shared run it is a strip that never takes the keyboard.

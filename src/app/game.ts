@@ -21,6 +21,7 @@ import { MOVES, type MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
+import { floorEventRules } from '../core/floor-spawns';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { atLeavingPoint, bossFell, bossPickDue, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, picksAfterReturn, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, withRewardOffer, floorMusic, type RunState } from '../core/run';
@@ -448,7 +449,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
   /** Title card of the current floor; game input keeps working while it shows. */
   let card: FloorCard | null = null;
-  /** Sima floor events (sima-events.ts): the shrine's or merchant's choice on screen and its pick handler. */
+  /** Floor events (sima-events.ts): the shrine's or merchant's choice on screen and its pick handler. */
   let closeChoice: (() => void) | null = null;
   let choicePick: ((index: number) => void) | null = null;
   /** The player walked away from (or used) the shrine or merchant: it opens again only after leaving its reach. */
@@ -841,6 +842,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     run = { ...bonfireReturn(back.run, run), offer: run.offer };
     // The floors after the bonfire come again, and pay again; its own boss does not.
     bossPicks = picksAfterReturn(bossPicks, back.run.floor);
+    // Those floors' events come again too: the end screen lists each once.
+    simaLog.splice(0, simaLog.length, ...simaLog.filter((r) => r.floor < back.run.floor));
     world = { ...back.world, lock: configureLock(back.world.lock, lockSettings) };
     if (bonfire) {
       tally = bonfire.tally;
@@ -891,7 +894,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   /** Each step: tells the log what the floor's event did, records it, hands out its item pick, and opens the shrine or merchant on reaching them. */
   function watchSimaEvent(): void {
-    const events = dungeonOf(run).endless?.events;
+    const events = floorEventRules(dungeonOf(run));
     if (!events) return;
     const now = world.simaEvent;
     for (const key of simaNews(lastEvent, now)) say(t(key), 'warn');

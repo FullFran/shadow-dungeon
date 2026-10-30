@@ -7,7 +7,7 @@ import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, musicFor, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { ROOMS, type RoomRect } from '../data/rooms';
-import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
+import { addTime, depthScale, descendBonusMs, tickClock } from './endless';
 import { eliteRuleAt } from './sima';
 import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent, rewardOffer } from './sima-events';
 import { insideRect } from './geometry';
@@ -20,7 +20,7 @@ import { chooseGate, gateShut, placeGate } from './gates';
 import type { SimaEventKind } from '../data/sima';
 import { worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
-import { generatedFloor } from './floor-spawns';
+import { floorEventPool, floorEventRules, generatedFloor } from './floor-spawns';
 import { addItem, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
@@ -274,10 +274,13 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const pooled = dungeonOf(run).toxicPools ? { ...placed, pools: placePools(floor, seed) } : placed;
   // The floor's gate, if any (core/gates.ts): at most one, never on floor 1 or an urgent floor.
   const drawnGate = chooseGate(run.seed, run.floor, run.kind, dungeonOf(run).gates);
-  // The Sima's floor event, if this floor has one (sima-events.ts); a wave gate is its wave room.
-  const rolled = endless?.events ? chooseSimaEvent(seed, run.floor, floor, run.kind, endless.events, tier) : null;
-  const event = drawnGate === 'waves' && endless?.events ? waveRoomOf(floor, rolled) : rolled;
-  const evented = event && endless?.events ? placeSimaEvent(pooled, event, floor, seed, run.floor, endless.events, endlessSpawns(endless, run.floor).pool, tier) : pooled;
+  // The floor's event, if it has one (sima-events.ts); a wave gate is its wave room.
+  const rules = floorEventRules(dungeonOf(run));
+  const rolled = rules ? chooseSimaEvent(seed, run.floor, floor, run.kind, rules, tier) : null;
+  const event = drawnGate === 'waves' && rules ? waveRoomOf(floor, rolled) : rolled;
+  const withEvent = event && rules ? placeSimaEvent(pooled, event, floor, seed, run.floor, rules, floorEventPool(dungeonOf(run), run.floor), tier) : pooled;
+  // Outside the Sima the event names its dungeon: the step and the HUD follow that dungeon's rules.
+  const evented = withEvent.simaEvent && !endless ? { ...withEvent, simaEvent: { ...withEvent.simaEvent, dungeon: run.dungeon } } : withEvent;
   // The hunter already pushes (no gate then); a key gate beside a wave room becomes a seal (their doors must not mix).
   const gate = event?.kind === 'hunter' ? null : drawnGate === 'key' && event?.kind === 'waves' ? 'seal' : drawnGate;
   return gate ? placeGate(evented, gate, floor) : evented;
@@ -372,9 +375,9 @@ function payEcho(run: RunState, world: WorldState): { run: RunState; bonusMs: nu
   return { run: { ...run, clockMs, echoPaid: true }, bonusMs: clockMs - run.clockMs };
 }
 
-/** Sima: a floor event that pays time (the crystal touched, a wave room cleared) pays it once (the host's clock). */
+/** A floor event that pays time (the crystal touched, a wave room cleared) pays it once (the host's clock): the Sima only, the other dungeons have no clock. */
 function payEvent(run: RunState, world: WorldState): { run: RunState; bonusMs: number } {
-  const events = dungeonOf(run).endless?.events;
+  const events = floorEventRules(dungeonOf(run));
   const due = events ? eventBonusMs(world.simaEvent, events) : 0;
   if (due <= 0 || run.eventPaid || run.clockMs === undefined) return { run, bonusMs: 0 };
   const clockMs = addTime(run.clockMs, due);

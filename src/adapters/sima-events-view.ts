@@ -1,3 +1,4 @@
+import { eventRulesOf } from '../core/floor-spawns';
 import { simaWaves, type SimaEventState, type SimaPactState } from '../core/sima-events';
 import type { Difficulty } from '../data/difficulty';
 import type { Vec2 } from '../core/vec';
@@ -7,7 +8,7 @@ import { pixelText } from '../ui/canvas';
 import { canvasFont, PALETTE } from '../ui/tokens';
 
 /**
- * The Sima del Eclipse's floor events on screen (presentation only): their
+ * The floor events on screen (presentation only): their
  * objects drawn in code (the vault's chest, the shrine's eclipse altar, the
  * time crystal, the merchant echo, the nest), the wave room's sealed doors,
  * the ambush's tell, and a line of HUD under the run clock (wave counter,
@@ -231,7 +232,7 @@ export function drawSimaEvent(ctx: CanvasRenderingContext2D, event: SimaEventSta
 export function drawSimaHud(ctx: CanvasRenderingContext2D, event: SimaEventState | undefined, pact: SimaPactState | undefined, width: number, timeMs: number, difficulty: Difficulty = 'easy'): void {
   const lines: { text: string; color: string }[] = [];
   if (event && !event.done) {
-    if (event.kind === 'waves' && (event.wave ?? 0) > 0) lines.push({ text: t('sima.hud.wave').replace('{wave}', String(event.wave)).replace('{waves}', String(simaWaves(SIMA_EVENTS, difficulty))), color: PALETTE.danger });
+    if (event.kind === 'waves' && (event.wave ?? 0) > 0) lines.push({ text: t('sima.hud.wave').replace('{wave}', String(event.wave)).replace('{waves}', String(simaWaves(eventRulesOf(event), difficulty))), color: PALETTE.danger });
     if (event.kind === 'crystal') lines.push({ text: t('sima.hud.crystal').replace('{s}', String(Math.ceil((event.remainingMs ?? 0) / 1000))), color: '#7fe3ff' });
     if (event.kind === 'hunter' && (event.remainingMs ?? 0) < 3000) lines.push({ text: t('sima.hud.hunter'), color: Math.floor(timeMs / 250) % 2 === 0 ? PALETTE.danger : PALETTE.text });
   }
