@@ -120,7 +120,7 @@ const loreOf = (id: string): DungeonLore => DUNGEON_LORE.find((l) => l.id === id
  */
 const eventKinds = (merchant: number, ambush: number, shrine: number, nest: number, waves: number, monsterHouse: number) =>
   [
-    { kind: 'vault', minDepth: 1, weight: 6 },
+    { kind: 'vault', minDepth: 1, weight: 12 },
     { kind: 'merchant', minDepth: merchant, weight: 2 },
     { kind: 'ambush', minDepth: ambush, weight: 1 },
     { kind: 'shrine', minDepth: shrine, weight: 2 },
@@ -129,10 +129,10 @@ const eventKinds = (merchant: number, ambush: number, shrine: number, nest: numb
     { kind: 'monsterHouse', minDepth: monsterHouse, weight: 1 },
   ] as const;
 
-const CRYPT_EVENTS = floorEvents({ fromFloor: 1, start: 0.55, perFloor: 0.1, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 4, 4, 4, 5) });
-const FOREST_EVENTS = floorEvents({ fromFloor: 1, start: 0.5, perFloor: 0.08, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 5, 5, 6) });
-const DEEP_EVENTS = floorEvents({ fromFloor: 2, start: 0.75, perFloor: 0.03, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 4, 6, 7) });
-const SENDA_EVENTS = floorEvents({ fromFloor: 2, start: 0.45, perFloor: 0.05, max: 0.7, cap: 0.75, kinds: eventKinds(2, 2, 4, 4, 5, 5) });
+const CRYPT_EVENTS = floorEvents({ fromFloor: 1, start: 0.6, perFloor: 0.1, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 4, 4, 4, 5) });
+const FOREST_EVENTS = floorEvents({ fromFloor: 1, start: 0.65, perFloor: 0.08, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 5, 5, 6) });
+const DEEP_EVENTS = floorEvents({ fromFloor: 2, start: 0.9, perFloor: 0.03, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 3, 4, 6, 7) });
+const SENDA_EVENTS = floorEvents({ fromFloor: 2, start: 0.7, perFloor: 0.05, max: 0.9, cap: 0.95, kinds: eventKinds(2, 2, 4, 4, 5, 5) });
 
 export const CRYPT: DungeonDef = {
   id: 'crypt-of-the-sword-king',

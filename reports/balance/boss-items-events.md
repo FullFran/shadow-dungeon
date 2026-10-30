@@ -97,3 +97,8 @@ Una partida por semilla, 10 semillas, en solitario, con Mimikyu, sin Mejoras. `d
 - `npm run balance -- --quick` (lo que comprueba CI): antes 0 fallos, 39 avisos, 74 correctos; ahora 0 fallos, 43 avisos, 70 correctos, **con una violación conocida añadida** (`unseen-threats` en el Pantano, easy, F3, 2 a la vez).
 - `npm run balance` (barrido completo): antes 1 fallo (`unseen-threats` Pantano normal, F6, 2 a la vez), 111 avisos, 208 correctos; ahora 1 fallo (`blind-hits` Cripta normal, 1, en Aegislash F6), 125 avisos, 194 correctos.
 - `npm run prove`: 166 cartas y 24 de 24 combates del solver, igual antes y después (no juega con objetos de la partida).
+
+## Second pass: more chests (owner's go-ahead, 2026-10-30)
+
+Vault weight 6 to 12, and higher event chances per dungeon. Measured on 120 seeds, bosses plus chests and wave rooms, then with merchants: Crypt 2.7 to 3.2 (3.4), Caves 3.6 (4.0), Sendas 3.6 to 4.0 (4.3). Plain floors 54 to 67 %. The Crypt stays near 3 because it has only 6 floors. The bot win tables above were measured before this pass.
+
