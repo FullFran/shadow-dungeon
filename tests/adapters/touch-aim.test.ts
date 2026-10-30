@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { EnemyState } from '../../src/core/state';
-import { AIM_DRAG, dragAim, IDLE_TOUCH, slotCastMode, touchToPlayerInput, type TouchAimContext, type TouchFrame } from '../../src/adapters/touch';
+import type { EnemyState, PlayerInput, WorldState } from '../../src/core/state';
+import { step } from '../../src/core/step';
+import { FIXED_DT_MS } from '../../src/core/timestep';
+import { createWorld } from '../../src/core/world';
+import { AIM_DRAG, dragAim, IDLE_TOUCH, mergeInputs, slotCastMode, touchToPlayerInput, type TouchAimContext, type TouchFrame } from '../../src/adapters/touch';
 import { MOVES } from '../../src/data/moves';
 
 const view = { x: 0, y: 0, width: 512, height: 320 };
@@ -54,5 +57,38 @@ describe('cast mode per slot', () => {
     expect(slotCastMode(1, plain)).toBe('release');
     expect(slotCastMode(2, plain)).toBe('release');
     expect(slotCastMode(3, plain)).toBe('release');
+  });
+});
+
+describe('releasing a charged move from a touch button', () => {
+  // On a phone the mouse never moved: the keyboard side of the input aims at the corner of the view.
+  const idleKeys: PlayerInput = { move: { x: 0, y: 0 }, aim: { x: 0, y: 0 }, aimPointer: false, roll: false, slots: [false, false], slotMouse: [false, false], lock: false, click: false, wheel: 0, view };
+  const playFrame = (world: WorldState, touch: TouchFrame): WorldState =>
+    step(world, mergeInputs(idleKeys, touchToPlayerInput(touch, ctx({ playerPos: world.player.pos, facing: world.player.facing }))), FIXED_DT_MS);
+  const chargeThenRelease = (dir: { x: number; y: number } | null): WorldState => {
+    let world = createWorld({ seed: 1, arena: { width: 800, height: 600 }, playerPos: { x: 400, y: 300 }, loadout: ['shadow-claw', 'play-rough'] });
+    const holding = frame({ heavy: true, aim: { slot: 1, dir } });
+    for (let i = 0; i < 5; i++) world = playFrame(world, holding);
+    return playFrame(world, frame({ aim: { slot: 1, dir } }));
+  };
+
+  it.each([
+    ['right', { x: 1, y: 0 }],
+    ['down', { x: 0, y: 1 }],
+    ['left', { x: -1, y: 0 }],
+  ])('fires along the drag: %s', (_name, dir) => {
+    const action = chargeThenRelease(dir).player.action;
+    expect(action?.phase).toBe('windup');
+    expect(action?.aimDir.x).toBeCloseTo(dir.x);
+    expect(action?.aimDir.y).toBeCloseTo(dir.y);
+  });
+
+  it('an idle touch frame still leaves the aim to the mouse', () => {
+    expect(mergeInputs(idleKeys, touchToPlayerInput(IDLE_TOUCH, ctx())).aim).toEqual(idleKeys.aim);
+  });
+
+  it('a press without a drag fires along the facing, not at the corner of the view', () => {
+    const world = chargeThenRelease(null);
+    expect(world.player.action?.aimDir).toEqual(world.player.facing);
   });
 });
