@@ -78,6 +78,8 @@ export interface Account {
   online(): void;
   register(email: string, password: string): Promise<AuthOutcome>;
   logIn(email: string, password: string): Promise<AuthOutcome>;
+  /** Mails a link to choose a new password: to the signed-in account's email, else to `email`. The session stays until the password changes. */
+  requestPasswordReset(email?: string): Promise<AuthOutcome>;
   /** The open choice, if any. */
   pendingChoice(): Choice | null;
   answer(answer: ChoiceAnswer): Promise<void>;
@@ -423,6 +425,12 @@ export function createAccount(deps: AccountDeps): Account {
     },
     logIn(email, password) {
       return signedIn(email.trim(), password);
+    },
+    async requestPasswordReset(email = '') {
+      const clean = session?.email ?? email.trim();
+      if (!EMAIL.test(clean)) return { ok: false, error: 'invalid-email' };
+      const asked = await deps.api.requestPasswordReset(clean);
+      return asked.ok ? { ok: true } : { ok: false, error: errorOf(asked.error) };
     },
     pendingChoice() {
       if (!pending) return null;

@@ -179,3 +179,19 @@ describe('public profile', () => {
     expect(await api.updateProfile('T', '../x', { nickname: 'Bea', avatarSpecies: '' })).toEqual({ ok: false, error: { kind: 'rejected' } });
   });
 });
+
+describe('asking for a password reset', () => {
+  it('posts the email to the reset route, with no token', async () => {
+    const { seen, fetchFn } = fakeFetch([{ status: 204 }]);
+    expect(await httpAccountApi(BASE, fetchFn).requestPasswordReset('ana@example.com')).toEqual({ ok: true, value: undefined });
+    expect(seen[0]).toMatchObject({ url: `${BASE}/api/collections/users/request-password-reset`, method: 'POST', body: { email: 'ana@example.com' } });
+    expect(seen[0]!.headers.Authorization).toBeUndefined();
+  });
+  it('reports the limit and a failing server', async () => {
+    const limited = fakeFetch([{ status: 429 }]);
+    expect(await httpAccountApi(BASE, limited.fetchFn).requestPasswordReset('a@b.co')).toEqual({ ok: false, error: { kind: 'rate-limited' } });
+    const failing = fakeFetch([{ status: 500 }]);
+    expect(await httpAccountApi(BASE, failing.fetchFn).requestPasswordReset('a@b.co')).toEqual({ ok: false, error: { kind: 'server' } });
+  });
+});
+

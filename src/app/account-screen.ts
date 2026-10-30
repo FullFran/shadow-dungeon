@@ -204,6 +204,12 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
     if (result.ok) options.refresh(after);
     else status.textContent = t(`account.error.${result.error}`);
   };
+  const askReset = (sent: string, email?: string) =>
+    void run(async () => {
+      const result = await account.requestPasswordReset(email);
+      if (result.ok) flash = t(sent);
+      return result;
+    });
   const go = (next: AccountView) => options.refresh(next);
   const answer = (a: ChoiceAnswer) => void account.answer(a).then(() => options.refresh('main'));
   const state = account.state();
@@ -211,7 +217,7 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
   const info = account.syncInfo();
   let body: Node[];
   let items: ListItem[];
-  let note = state.kind === 'guest' ? `${t('account.privacy')} ${t('account.forgot')}` : t('account.privacy');
+  let note = t('account.privacy');
 
   if (view === 'delete' && state.kind === 'signed-in') {
     body = [h('p', { textContent: t('account.deleteConfirm') })];
@@ -288,6 +294,8 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
     items = [
       ...(info.status === 'choice' ? [{ label: t('sync.check'), onConfirm: () => void account.check().then(() => go('main')) }] : []),
       { label: t('sync.backups'), onConfirm: () => go('backups') },
+      // An account with no email (OAuth2) has nowhere to send the link.
+      ...(state.email ? [{ label: t('account.changePassword'), onConfirm: () => askReset('account.resetSentOwn') }] : []),
       {
         label: t('account.logOut'),
         onConfirm: () => {
@@ -320,6 +328,7 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
       { label: password, className: 'account-row', onConfirm: () => password.focus() },
       { label: t('account.logIn'), onConfirm: logIn },
       { label: t('account.register'), onConfirm: register },
+      { label: t('account.forgot'), onConfirm: () => askReset('account.resetSent', email.value) },
       { label: t('sync.backups'), onConfirm: () => go('backups') },
       { label: t('sync.wipe'), className: 'danger', onConfirm: () => go('wipe') },
       { label: t('menu.back'), onConfirm: options.onBack },

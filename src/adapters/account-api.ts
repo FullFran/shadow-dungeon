@@ -68,6 +68,8 @@ export type ApiResult<T> = { ok: true; value: T } | { ok: false; error: ApiError
 export interface AccountApi {
   signUp(email: string, password: string): Promise<ApiResult<void>>;
   logIn(email: string, password: string): Promise<ApiResult<AuthSession>>;
+  /** Mails a link to choose a new password; the server answers the same whether or not the account exists. */
+  requestPasswordReset(email: string): Promise<ApiResult<void>>;
   refresh(token: string): Promise<ApiResult<AuthSession>>;
   getSave(token: string, userId: string): Promise<ApiResult<RemoteSave | null>>;
   createSave(token: string, userId: string, data: SaveData): Promise<ApiResult<RemoteSave>>;
@@ -188,6 +190,7 @@ export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) =>
       // PocketBase answers wrong credentials with 400.
       return !result.ok && result.error.kind === 'rejected' ? fail('unauthorized') : result;
     },
+    requestPasswordReset: (email) => done(call('POST', '/api/collections/users/request-password-reset', { body: { email } }, () => true as const)),
     refresh: (token) => call('POST', '/api/collections/users/auth-refresh', { token }, authSession),
     async getSave(token, userId) {
       if (!RECORD_ID.test(userId)) return fail('rejected');
