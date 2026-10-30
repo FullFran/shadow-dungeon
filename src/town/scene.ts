@@ -115,6 +115,8 @@ export interface TownOptions {
   openAchievements?: TownWindowOpener;
   /** The settings over the town (its Esc menu), like `openShop`. */
   openSettings?: TownWindowOpener;
+  /** Opens the controller's button list, like `openShop`. */
+  openControls?: TownWindowOpener;
   /** Leaves the town for the screen that changes the Pokémon and its moves (the town's sprite is the species, so it reopens after). */
   openPokemon?(): void;
   /** The account window over the town (its Esc menu), like `openShop`: in a room the room stays. */
@@ -708,6 +710,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       account: !!options.openAccount,
       gallery: !!options.openGallery,
       settings: !!options.openSettings,
+      controls: !!options.openControls,
     };
     return new Set(TOWN_SERVICES.filter((s) => wired[s]));
   }
@@ -752,6 +755,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return openShopWindow(options.openAchievements);
       case 'settings':
         return openShopWindow(options.openSettings);
+      case 'controls':
+        return openShopWindow(options.openControls);
       case 'shrine':
         return leaveTown(options.openShrine);
       case 'online':
