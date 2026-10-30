@@ -27,6 +27,8 @@ export interface Collection {
   shinyWorn?: readonly SpeciesId[];
   /** Gacha pulls since the last shiny (its own pity counter). */
   shinyPity?: number;
+  /** Lines picked as female (absent = all male; cosmetic; core/gender.ts). */
+  females?: readonly SpeciesId[];
 }
 
 /** A line's materials, per tier. */

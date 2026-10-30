@@ -1019,6 +1019,15 @@ Mimikyu atiende el puesto de la suerte en el pueblo (decisión del 26-10-2026: q
 - Se pone y se quita cuando quieras, por línea: en la elección de movimientos («Aspecto shiny: Sí/No») y en la ventana de Phantump («Shiny de Zorua»). Al conseguirlo se pone solo. Se guarda en la partida (`shinies`, `shinyWorn`, `shinyPity`; campos opcionales, sin cambiar la versión del guardado).
 - En cooperativo viaja en el saludo, en la lista de jugadores y en el estado de cada jugador, así que los compañeros lo ven en la mazmorra y en el pueblo (versión del protocolo 4).
 
+#### Género
+
+- Solo es aspecto: ninguna regla lo lee, solo la elección de la hoja (un test juega cada especie jugable con y sin él y comprueba que la partida es idéntica). Por defecto, macho.
+- Se elige en la elección de movimientos («Género: Macho/Hembra»), y la fila solo sale en las especies con arte de hembra: hoy Shinx, Luxio y Luxray (de PMDCollab, carpetas `<dex>/<forma>/0000/0002` y, la shiny, `<dex>/<forma>/0001/0002`). La lista es un dato (`FEMALE_ART` en `core/gender.ts`, y la misma en `tools/fetch-sprites.mjs`), así que Eevee, Combusken y Blaziken podrán entrar cuando sean jugables (issue #33).
+- Es de la línea, como el aspecto shiny: evolucionar no lo quita. Se combina con el shiny (hembra shiny). Una forma sin arte de hembra dibuja su única hoja.
+- Se guarda en la partida (`females`; campo opcional, sin cambiar la versión del guardado).
+- En cooperativo viaja por el mismo camino que el shiny (saludo, lista de jugadores, estado de cada jugador), con campos opcionales, así que los compañeros lo ven en la mazmorra y en el pueblo. No cambia la versión del protocolo ni el hash de contenido: quien no lo envía se lee como macho.
+- Pendiente, no descartado: las cinemáticas (`adapters/sima-scenes.ts`, `adapters/story-scenes.ts`), el Eco del Eclipse (copia solo la especie, con su filtro), la revelación del gacha y la ventana de Phantump dibujan o listan sin el género, igual que hoy las cinemáticas y el Eco no llevan el shiny.
+
 Las evoluciones no están en el puesto: las hace Phantump, la vidente del Lago, en su propia ventana (decisión del 26-10-2026). Evolucionan las líneas del gacha y también los iniciales (decisión del 26-10-2026): Zorua en Zoroark, Litwick en Lampent y luego Chandelure, Cubone en Marowak. Se paga con Pokémonedas y Esencias de su línea. Cada Esencia tiene el nivel de la dificultad con la que ganaste el reto (Normal, Difícil o Pesadilla; Fácil no da Esencias), y un nivel alto no sustituye a uno bajo (decisión del 26-10-2026). Así la última evolución es imposible sin ganar un reto en Pesadilla:
 
 | Paso | Precio | Esencias | Bono de PS y daño |

@@ -1,7 +1,8 @@
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
-import { shinyKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
+import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
+import { hasFemaleArt } from '../core/gender';
 import type { PokemonType } from '../data/types';
 import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
@@ -57,6 +58,8 @@ export interface LoadoutOptions {
    * picked species' line once unlocked. Absent: no skins.
    */
   skin?: ShinySkins;
+  /** The picked gender per line (odd/tasks/pokemon-gender.md): the portraits show it, and the moves step's row changes it. Absent: all male, no row. */
+  gender?: LineGender;
 }
 
 /** The player's shiny skins, per line (any form of the line answers for it). */
@@ -65,6 +68,23 @@ export interface ShinySkins {
   worn(species: SpeciesId): boolean;
   /** Puts the line's skin on or off (persisted by the caller). */
   wear(species: SpeciesId, on: boolean): void;
+}
+
+/** The gender picked per line (any form of the line answers for it). */
+export interface LineGender {
+  female(species: SpeciesId): boolean;
+  /** Picks the line's gender (persisted by the caller). */
+  set(species: SpeciesId, female: boolean): void;
+}
+
+/** The moves step's gender row: only a species with female art has one (a confirm or ◀ ▶ flips it, then `redraw`). */
+export function genderRow(species: SpeciesId, gender: LineGender, redraw: () => void): ListItem | null {
+  if (!hasFemaleArt(species)) return null;
+  const flip = () => {
+    gender.set(species, !gender.female(species));
+    redraw();
+  };
+  return { label: t('loadout.gender'), value: t(gender.female(species) ? 'loadout.gender.female' : 'loadout.gender.male'), className: 'gender-row', onAdjust: flip, onConfirm: flip };
 }
 
 /** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
@@ -84,10 +104,9 @@ export function typeBadge(type: PokemonType): HTMLElement {
   return h('span', { className: `type-badge type-${type}`, textContent: t(`type.${type}`) });
 }
 
-/** A species' idle animation on a small canvas, scaled by a whole number; its shiny sheet with `shiny`. */
-export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE, shiny = false): HTMLCanvasElement {
-  const base = SPRITE_KEYS[SPECIES[species].sprite];
-  const key = shiny ? shinyKey(base) : base;
+/** A species' idle animation on a small canvas, scaled by a whole number; its shiny sheet with `shiny`, its female with `female`. */
+export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE, shiny = false, female = false): HTMLCanvasElement {
+  const key = lookKey(SPRITE_KEYS[SPECIES[species].sprite], shiny, female);
   const meta = SPRITES.sprites[key]?.anims.Idle;
   const canvas = h('canvas', { className: 'portrait' });
   canvas.width = meta?.frameWidth ?? 32;
@@ -113,11 +132,11 @@ export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale 
 }
 
 /** Portrait, types and passive of a species (the info window's content). */
-function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId, shiny = false): HTMLElement[] {
+function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId, shiny = false, female = false): HTMLElement[] {
   const species = SPECIES[id];
   const passive = species.passive;
   const out: HTMLElement[] = [
-    h('div', { className: `portrait-frame${shiny ? ' is-shiny' : ''}` }, [portrait(sheets, id, SCALE, shiny)]),
+    h('div', { className: `portrait-frame${shiny ? ' is-shiny' : ''}` }, [portrait(sheets, id, SCALE, shiny, female)]),
     h('div', { className: 'type-row' }, species.types.map(typeBadge)),
     h('p', { className: 'ability', textContent: t('loadout.ability') }),
   ];
@@ -159,6 +178,7 @@ const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context
 
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
   const worn = (id: SpeciesId) => options.skin?.worn(id) ?? false;
+  const female = (id: SpeciesId) => options.gender?.female(id) ?? false;
   const roster = options.roster ?? STARTER_SPECIES;
   const items: ListItem[] = [
     ...roster.map((id) => ({
@@ -183,9 +203,9 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
     if (!id) return;
     const title = info?.querySelector('.md-window-title');
     if (title) title.textContent = t(`species.${id}`);
-    desc.live.replaceChildren(...speciesInfo(options.sheets, id, worn(id)));
+    desc.live.replaceChildren(...speciesInfo(options.sheets, id, worn(id), female(id)));
   }
-  const desc = description(list, { describe: preview, children: speciesInfo(options.sheets, options.species, worn(options.species)) });
+  const desc = description(list, { describe: preview, children: speciesInfo(options.sheets, options.species, worn(options.species), female(options.species)) });
   info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, [desc.element]);
   desc.update();
   return [
@@ -241,6 +261,12 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
       };
       out.push({ label: t('loadout.shiny'), value: t(skin.worn(species.id) ? 'menu.on' : 'menu.off'), className: 'shiny-row', onAdjust: flip, onConfirm: flip });
     }
+    // The line's gender, where there is female art.
+    const gender = options.gender && genderRow(species.id, options.gender, () => {
+      showInfo();
+      list.setItems(items());
+    });
+    if (gender) out.push(gender);
     if (tier && options.difficulty) {
       const pick = options.difficulty;
       out.push(
@@ -260,12 +286,12 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
   const first = items();
   const list = cursorList({ items: first, initial: first.length - 2, onBack: options.onBack, label: t('loadout.moves') });
 
-  const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false));
+  const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false, options.gender?.female(species.id) ?? false));
   /** Redraws the info window (the skin changed). */
   function showInfo(): void {
     const title = info.querySelector('.md-window-title');
     for (const child of [...info.children]) if (child !== title) child.remove();
-    info.append(...speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false));
+    info.append(...speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false, options.gender?.female(species.id) ?? false));
   }
   const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
   return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : []), ...(options.buildHint ? [h('p', { className: 'dim loadout-build', textContent: options.buildHint })] : [])])])];

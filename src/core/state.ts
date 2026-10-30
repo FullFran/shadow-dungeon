@@ -140,6 +140,8 @@ export interface PlayerState {
   species: SpeciesId;
   /** Wears its line's shiny skin (core/shiny.ts): cosmetic only, never read by the simulation. */
   shiny?: boolean;
+  /** Its line was picked as female (core/gender.ts): cosmetic only, never read by the simulation. */
+  female?: boolean;
   types: readonly PokemonType[];
   pos: Vec2;
   /** Unit vector of the last movement direction; a roll with no direction, no lock and no live cursor goes this way. */

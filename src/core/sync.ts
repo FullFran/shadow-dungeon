@@ -65,6 +65,8 @@ export interface PlayerSnapshot {
   revive?: number;
   /** Wears its line's shiny skin (cosmetic; odd/tasks/shiny-echo.md). */
   shiny?: boolean;
+  /** Its line was picked as female (cosmetic; odd/tasks/pokemon-gender.md). */
+  female?: boolean;
 }
 
 export interface EnemySnapshot {
@@ -153,6 +155,7 @@ export function playerSnapshot(state: WorldState): PlayerSnapshot {
     ...(illusionActive(p) ? { hidden: true } : {}),
     ...(p.hp <= 0 && state.revive && state.revive.ms > 0 ? { revive: state.revive.ms } : {}),
     ...(p.shiny ? { shiny: true } : {}),
+    ...(p.female ? { female: true } : {}),
   };
 }
 
@@ -172,6 +175,7 @@ function remoteFrom(snapshot: PlayerSnapshot, previous: PlayerState | undefined)
     action,
     illusionBroken: !snapshot.hidden,
     shiny: snapshot.shiny ? true : undefined,
+    female: snapshot.female ? true : undefined,
   };
 }
 

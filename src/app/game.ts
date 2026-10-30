@@ -156,6 +156,8 @@ export interface GameOptions {
   awakened?: number;
   /** The local player wears its line's shiny skin (cosmetic; odd/tasks/shiny-echo.md). */
   shiny?: boolean;
+  /** The local player's line was picked as female (cosmetic; odd/tasks/pokemon-gender.md). */
+  female?: boolean;
   lockType: LockType;
   clickToLock: boolean;
   seed?: number;
@@ -317,6 +319,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ...(options.moveRanks ? { moveRanks: options.moveRanks } : {}),
     ...(options.awakened ? { awakened: options.awakened } : {}),
     ...(options.shiny ? { shiny: true } : {}),
+    ...(options.female ? { female: true } : {}),
     // Co-op scaling (core/party.ts): the room's roster at the start counts for floor 1; later floors count the players present.
     ...(net ? { localId: net.localId, role: net.role, party: net.session.roster().length } : {}),
     ...(options.difficulty && options.difficulty !== DEFAULT_DIFFICULTY ? { difficulty: options.difficulty } : {}),

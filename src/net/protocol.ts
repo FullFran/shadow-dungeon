@@ -29,6 +29,8 @@ export interface RosterEntry {
   name?: string;
   /** It wears its line's shiny skin (cosmetic; odd/tasks/shiny-echo.md). */
   shiny?: boolean;
+  /** Its line was picked as female (cosmetic; odd/tasks/pokemon-gender.md). */
+  female?: boolean;
 }
 
 /** Where a peer's walker is in the town (lobby). */
@@ -68,7 +70,7 @@ export type NetMessage =
    * lobby when the player picks another species. `v` and `c` are its protocol version and content hash (net/version.ts): the host turns away any other.
    * `b` is the sender's build label ("v0.9.0 · e60dcb9", issue #7), only to name it in a refusal; absent from older peers.
    */
-  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean; v?: number; c?: string; b?: string }
+  | { t: 'hello'; species: SpeciesId; loadout: readonly (MoveId | null)[]; name?: string; shiny?: boolean; female?: boolean; v?: number; c?: string; b?: string }
   /**
    * Host: the run seed, the current floor, the dungeon id (absent = the first dungeon), the difficulty tier
    * (absent or unknown = easy: an older host) and who is who (sent again whenever someone joins).
@@ -322,8 +324,8 @@ export function encodeMessage(message: NetMessage): string {
   let wire: Wire;
   switch (message.t) {
     case 'state':
-      // `sh`: the player wears its shiny skin (outside the positional player array, optional).
-      wire = { t: 'state', at: r1(message.at), f: message.floor, p: encodePlayer(message.p), ...(message.ready ? { r: 1 } : {}), ...(message.afk ? { a: 1 } : {}), ...(message.p.shiny ? { sh: 1 } : {}) };
+      // `sh`: the player wears its shiny skin; `fe`: its line was picked as female (outside the positional player array, optional).
+      wire = { t: 'state', at: r1(message.at), f: message.floor, p: encodePlayer(message.p), ...(message.ready ? { r: 1 } : {}), ...(message.afk ? { a: 1 } : {}), ...(message.p.shiny ? { sh: 1 } : {}), ...(message.p.female ? { fe: 1 } : {}) };
       break;
     case 'snap':
       wire = {
@@ -373,7 +375,7 @@ function decodeRosterEntry(raw: unknown): RosterEntry | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
   if (typeof r.peer !== 'string' || typeof r.id !== 'string' || !PLAYER_ID.test(r.id)) return null;
-  return { peer: r.peer, id: r.id, species: playerSpecies(r.species), ...(typeof r.name === 'string' ? { name: r.name } : {}), ...(r.shiny === true ? { shiny: true } : {}) };
+  return { peer: r.peer, id: r.id, species: playerSpecies(r.species), ...(typeof r.name === 'string' ? { name: r.name } : {}), ...(r.shiny === true ? { shiny: true } : {}), ...(r.female === true ? { female: true } : {}) };
 }
 
 /** A guest's hit claim, or null when an id or a number is off (the host applies it to its world). */
@@ -417,7 +419,7 @@ export function decodeMessage(text: string): NetMessage | null {
     case 'state': {
       const p = decodePlayer(wire.p);
       if (!p || !finite(wire.at) || !isFloor(wire.f)) return null;
-      return { t: 'state', at: wire.at, floor: wire.f, p: wire.sh === 1 ? { ...p, shiny: true } : p, ...(wire.r === 1 ? { ready: true as const } : {}), ...(wire.a === 1 ? { afk: true as const } : {}) };
+      return { t: 'state', at: wire.at, floor: wire.f, p: { ...p, ...(wire.sh === 1 ? { shiny: true } : {}), ...(wire.fe === 1 ? { female: true } : {}) }, ...(wire.r === 1 ? { ready: true as const } : {}), ...(wire.a === 1 ? { afk: true as const } : {}) };
     }
     case 'snap':
       if (!finite(wire.at) || !isFloor(wire.f) || !finite(wire.k)) return null;
@@ -437,8 +439,8 @@ export function decodeMessage(text: string): NetMessage | null {
         },
       };
     case 'hello':
-      // The skin flag reads as set only when it is exactly true (absent from an older peer).
-      return { ...checkedBuild(wire), species: playerSpecies(wire.species), shiny: wire.shiny === true ? true : undefined, loadout: Array.isArray(wire.loadout) ? wire.loadout.map((m) => (isMove(m) ? m : null)) : [] } as unknown as NetMessage;
+      // The skin and gender flags read as set only when exactly true (absent from an older peer).
+      return { ...checkedBuild(wire), species: playerSpecies(wire.species), shiny: wire.shiny === true ? true : undefined, female: wire.female === true ? true : undefined, loadout: Array.isArray(wire.loadout) ? wire.loadout.map((m) => (isMove(m) ? m : null)) : [] } as unknown as NetMessage;
     case 'start':
       // A dungeon this build does not know: the host runs other content (the version gate stops that first).
       if (!finite(wire.seed) || !isFloor(wire.floor) || (wire.dungeon !== undefined && !isDungeonId(wire.dungeon))) return null;
