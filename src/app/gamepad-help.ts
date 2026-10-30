@@ -59,9 +59,8 @@ export const GAMEPAD_HELP: { combat: readonly HelpRow[]; menus: readonly HelpRow
 
 const STYLE = `
 .controls-window { width: min(640px, calc(100vw - 16px)); }
-/* A tall list on a phone: the body scrolls inside the screen, clear of the footer and the touch "Atrás" button. */
+/* A tall list on a phone: the body scrolls inside the screen, clear of the footer. */
 .controls-window .md-window-body { max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-cursor) transparent; }
-html.touch .controls-window { margin-top: 52px; }
 .controls-window table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 14px; }
 .controls-window th { text-align: left; color: var(--md-cursor); font-weight: normal; }
 .controls-window td, .controls-window th { padding: 2px 8px 2px 0; }
