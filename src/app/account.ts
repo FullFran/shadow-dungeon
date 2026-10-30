@@ -78,6 +78,8 @@ export interface Account {
   online(): void;
   register(email: string, password: string): Promise<AuthOutcome>;
   logIn(email: string, password: string): Promise<AuthOutcome>;
+  /** Mails a link to choose a new password: to the signed-in account's email, else to `email`. The session stays until the password changes. */
+  requestPasswordReset(email?: string): Promise<AuthOutcome>;
   /** The open choice, if any. */
   pendingChoice(): Choice | null;
   answer(answer: ChoiceAnswer): Promise<void>;
@@ -194,7 +196,14 @@ export function createAccount(deps: AccountDeps): Account {
     pusher = createPusher({
       api: {
         create: (data) => deps.api.createSave(session!.token, session!.userId, data),
-        update: (saveId, data, rev) => deps.api.updateSave(session!.token, saveId, data, rev),
+        update: async (saveId, data, rev) => {
+          const token = session!.token;
+          const result = await deps.api.updateSave(token, saveId, data, rev);
+          // A dead token (the password changed) reads as a guest, so the server answers 404, not 401: only a refresh tells them apart.
+          if (result.ok || result.error.kind !== 'rejected') return result;
+          const alive = await deps.api.refresh(token);
+          return !alive.ok && alive.error.kind === 'unauthorized' ? alive : result;
+        },
       },
       timers: deps.timers,
       // Only this account's own sync state allows a push; an open choice blocks it too.
@@ -423,6 +432,14 @@ export function createAccount(deps: AccountDeps): Account {
     },
     logIn(email, password) {
       return signedIn(email.trim(), password);
+    },
+    async requestPasswordReset(email = '') {
+      const clean = session?.email ?? email.trim();
+      if (!EMAIL.test(clean)) return { ok: false, error: 'invalid-email' };
+      const asked = await deps.api.requestPasswordReset(clean);
+      if (asked.ok) return { ok: true };
+      // The server answers the same for any account, so a refusal can only be the address's format.
+      return { ok: false, error: asked.error.kind === 'rejected' ? 'invalid-email' : errorOf(asked.error) };
     },
     pendingChoice() {
       if (!pending) return null;

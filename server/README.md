@@ -185,6 +185,9 @@ With SMTP on:
 - **Sign-up sends the verification email** (a hook, right after the account
   is created; a failed send is logged and the sign-up still succeeds, the
   client can ask again with `request-verification`).
+- The game's "I forgot my password" and "Change password" rows both use
+  `request-password-reset`. The link opens PocketBase's own page (`/_/`), in
+  English. Changing the password logs every device out.
 - `request-verification`, `request-password-reset` and `request-email-change`
   send their emails (PocketBase sends these in the background and answers 204
   whether or not the email exists).

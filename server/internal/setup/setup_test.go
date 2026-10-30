@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 
@@ -392,5 +393,39 @@ func TestAccountEmails(t *testing.T) {
 	}
 	for _, scenario := range scenarios {
 		scenario.Test(t)
+	}
+}
+
+func TestPasswordResetRateLimit(t *testing.T) {
+	app, err := tests.NewTestApp(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Cleanup()
+	if err := Apply(app, Config{RateLimits: true}); err != nil {
+		t.Fatal(err)
+	}
+	r, err := apis.NewRouter(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux, err := r.BuildMux()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ask := func() int {
+		req := httptest.NewRequest(http.MethodPost, "/api/collections/users/request-password-reset", strings.NewReader(`{"email":"nobody@example.com"}`))
+		req.Header.Set("content-type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for i := range PasswordResetLimit.MaxRequests {
+		if code := ask(); code != http.StatusNoContent {
+			t.Fatalf("request %d answered %d", i, code)
+		}
+	}
+	if code := ask(); code != http.StatusTooManyRequests {
+		t.Fatalf("over the limit answered %d", code)
 	}
 }

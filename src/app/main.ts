@@ -45,7 +45,7 @@ import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
-import { hasProgress, nextAdventureScreen, nextPlayScreen } from './adventure-route';
+import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
@@ -59,6 +59,7 @@ import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { adminAccess, ticketsWindow } from './tickets-screen';
 import { httpAdminApi } from '../adapters/admin-api';
+import { createGamepads } from '../adapters/gamepad';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -147,6 +148,13 @@ const { account, store } = setupAccount({
     settings = loadSettings(store, settings, rosterOf(loadSave(store)));
     const app = document.getElementById('app');
     if (app?.querySelector('.title-logo')) titleScreen(app);
+  },
+});
+/** The controller, for the whole page: every screen hears it as keys, a run takes it over (adapters/gamepad.ts). */
+const gamepads = createGamepads({
+  onConnect: () => {
+    const app = document.getElementById('app');
+    if (app) toast(app, t('gamepad.connected'));
   },
 });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
@@ -452,7 +460,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
   // Three entries only (src/app/title-menu.ts): every service lives in the town and its Esc menu.
   const action: Record<TitleEntry, () => void> = {
     play: () => playScreen(root),
-    online: () => onlineScreen(root),
+    online: () => onlineEntry(root),
     options: () => optionsScreen(root),
   };
   const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: t(TITLE_LABEL[entry]), onConfirm: action[entry] })) });
@@ -545,6 +553,15 @@ function playScreen(root: HTMLElement): void {
   if (next === 'prologue') prologue(root, () => playScreen(root));
   else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
   else townScreen(root);
+}
+
+/** The title's "Play online": the same first-time steps as Play, so a new player chooses a starter before reaching a room. */
+function onlineEntry(root: HTMLElement): void {
+  adoptReturningPlayer();
+  const next = nextOnlineScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
+  if (next === 'prologue') prologue(root, () => onlineEntry(root));
+  else if (next === 'quiz') quiz(root, () => onlineEntry(root), () => titleScreen(root, 1));
+  else onlineScreen(root);
 }
 
 /**
@@ -1015,7 +1032,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1282,6 +1299,37 @@ interface TrialRun {
 
 /** A shrine trial: its first arena's dungeon, the request's tier, a fresh seed, the picked species and moves. */
 const playTrial = (root: HTMLElement, request: TrialRequest, from: ShrineFrom, pick: TrialPick): Promise<void> => play(root, undefined, request.stops[0]!.dungeon, undefined, { request, from, pick });
+
+/**
+ * "Cambiar Pokémon" in the town's menu: the Pokémon, then its moves, and back
+ * to the town. In a room `repick` tells the others; the session stays open
+ * meanwhile, so the host starting a run still brings this player along.
+ */
+function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void, stage: 'species' | 'moves' = 'species'): void {
+  show(root, [
+    ...loadoutScreen({
+      stage,
+      species: settings.species,
+      loadout: settings.loadout,
+      roster: rosterOf(loadSave(store)),
+      sheets: sheetsReady(),
+      ...tutorView(settings.species),
+      ...skins(repick),
+      startLabel: t('shrine.ready'),
+      onSpecies: (species) => {
+        update(withSpecies(settings, species));
+        repick?.();
+        pokemonScreen(root, back, repick, 'moves');
+      },
+      onChange: (next) => update({ loadout: next }),
+      onStart: () => {
+        repick?.();
+        back();
+      },
+      onBack: () => (stage === 'moves' ? pokemonScreen(root, back, repick, 'species') : back()),
+    }),
+  ]);
+}
 
 /** The online room's guest at the altar: the host's pick (read-only) and its own Pokémon and moves; the host begins. */
 function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' = 'menu'): void {
@@ -1576,7 +1624,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -1747,6 +1795,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
+    gamepad: gamepads,
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
     openMenu: (actions, held) =>
       openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),

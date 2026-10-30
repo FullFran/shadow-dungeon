@@ -41,6 +41,44 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.4',
+    date: '2026-10-30',
+    sections: {
+      new: [
+        {
+          es: '¿Olvidaste tu contraseña? En Cuenta ya puedes pedir un enlace por correo para elegir otra. Y con la sesión iniciada, «Cambiar contraseña» hace lo mismo.',
+          en: 'Forgot your password? In Account you can now ask for an email link to choose a new one. And when logged in, "Change password" does the same.',
+        },
+        {
+          es: '«Cambiar Pokémon» en el menú del pueblo (Esc o el botón «Menú»): cambia de Pokémon y de movimientos sin salir, también en una sala en línea, y los demás ven el cambio.',
+          en: '"Change Pokémon" in the town menu (Esc or the "Menu" button): switch Pokémon and moves without leaving, also in an online room, and the others see the change.',
+        },
+        {
+          es: '¡Soporte para mando! Combate, pueblo, menús y cinemáticas, con stick analógico y apuntado con el stick derecho. La lista de botones está en Ajustes. Para escribir (código de sala, cuenta) aún hace falta teclado.',
+          en: 'Controller support! Combat, town, menus and cinematics, with an analogue stick and right stick aiming. The button list is in Settings. Typing (room code, account) still needs a keyboard.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'En cooperativo se ven los ataques del compañero: sus golpes, sus áreas y la carga de sus movimientos fuertes, y sus disparos con el color de su tipo.',
+          en: 'In co-op you now see your teammate\'s attacks: swings, areas and the charge of heavy moves, and shots in their type\'s colour.',
+        },
+        {
+          es: 'Los Restos ya no curan esperando junto a una hoguera sin nada que combatir.',
+          en: 'Leftovers no longer heal while you wait by a bonfire with nothing left to fight.',
+        },
+        {
+          es: 'Al vencer a un jefe, su música termina y suena una fanfarria de victoria.',
+          en: 'When you beat a boss, its music ends and a victory fanfare plays.',
+        },
+        {
+          es: 'Quien entraba por primera vez por «Jugar en línea» se saltaba el prólogo y el test de personalidad y jugaba con el Pokémon por defecto. Ya pasa por ellos, como en «Jugar». Si te lo perdiste, lo tienes en Ajustes: «Repetir test».',
+          en: 'Players whose first time was through "Play online" skipped the prologue and the personality test and played the default Pokémon. Now they go through them, as in "Play". If you missed it, it is in Settings: "Retake test".',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.3',
     date: '2026-10-30',
     sections: {

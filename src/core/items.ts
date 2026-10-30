@@ -186,7 +186,9 @@ export function onTick(state: WorldState, dtMs: number, events: GameEvent[]): Wo
   let player = refillBell(state.player, dtMs);
   if (player.hp <= 0 || player.items.length === 0) return player === state.player ? state : { ...state, player };
   const leftovers = itemCount(player, 'leftovers');
-  if (leftovers > 0 && player.hp < player.maxHp) player = healed(player, (ITEM_EFFECTS.leftoversPerSecond * leftovers * player.maxHp * dtMs) / 1000);
+  // Waiting by a lit bonfire is not a way to heal for free: the fight on its floor still counts.
+  const resting = state.bonfireLit === true && state.enemies.every((e) => !e.alive);
+  if (leftovers > 0 && !resting && player.hp < player.maxHp) player = healed(player, (ITEM_EFFECTS.leftoversPerSecond * leftovers * player.maxHp * dtMs) / 1000);
   if (player.hp < ITEM_EFFECTS.sitrusThreshold * player.maxHp && usesOf(player, 'sitrus-berry') < itemCount(player, 'sitrus-berry')) {
     events.push({ type: 'itemTriggered', item: 'sitrus-berry' });
     player = healed(used(player, 'sitrus-berry'), ITEM_EFFECTS.sitrusHeal * player.maxHp);

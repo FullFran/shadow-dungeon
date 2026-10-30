@@ -145,4 +145,4 @@ export function settingItems(access: SettingsAccess, refresh: () => void): ListI
 }
 
 /** The in-game key list, shown on the Settings screen. */
-export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'boost', 'area', 'lock', 'clickLock', 'minimap', 'pick', 'mute', 'menu', 'netStats'] as const;
+export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'boost', 'area', 'lock', 'clickLock', 'minimap', 'pick', 'mute', 'menu', 'netStats', 'gamepad'] as const;

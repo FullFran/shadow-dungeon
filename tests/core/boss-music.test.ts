@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { SOUND_IDS } from '../../src/adapters/audio';
 import { describe, expect, it } from 'vitest';
 import { crossFogWall } from '../../src/core/fog-wall';
-import { dungeonOf, floorCount, floorMusic, floorPlanOf, fogWallFloor, startRun, withFogWall } from '../../src/core/run';
+import { bossFell, dungeonOf, floorCount, floorMusic, floorPlanOf, fogWallFloor, startRun, withFogWall } from '../../src/core/run';
 import { CHALLENGES, DUNGEONS, musicFor, SENDA_ROADS } from '../../src/data/dungeons';
 import { heraldStop, SHRINE_BOSSES, startTrial } from '../../src/core/shrine';
 
@@ -40,6 +41,41 @@ describe('boss music after the fog', () => {
       const boss = musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
       expect(floorMusic(run, crossFogWall(fogged)), `${dungeon} ${floor}`).toBe(boss);
     }
+  });
+
+  it('the boss track ends when the boss falls, in every boss room', () => {
+    for (const { dungeon, floor } of fogFloors()) {
+      const { run, world } = startRun(SEED, {}, floor, dungeon as never);
+      const fought = crossFogWall(withFogWall(run, world));
+      expect(floorMusic(run, fought), `${dungeon} ${floor}`).not.toBeNull();
+      const won = { ...fought, enemies: fought.enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
+      expect(floorMusic(run, won), `${dungeon} ${floor}`).toBeNull();
+      expect(bossFell(run, fought, won), `${dungeon} ${floor}`).toBe(true);
+      expect(bossFell(run, won, won), `${dungeon} ${floor}`).toBe(false);
+    }
+  });
+
+  it('a floor without a boss keeps its track when it empties, and nothing has fallen', () => {
+    const { run, world } = startRun(SEED, {}, 1, 'crypt-of-the-sword-king' as never);
+    const cleared = { ...world, enemies: world.enemies.map((e) => ({ ...e, alive: false })) };
+    expect(floorMusic(run, cleared)).toBe(floorMusic(run, world));
+    expect(bossFell(run, world, cleared)).toBe(false);
+  });
+
+  it('every shrine trial arena: its track ends when its boss falls', () => {
+    for (const stop of [...SHRINE_BOSSES, heraldStop(12345)]) {
+      const { run, world } = startTrial(SEED, {}, [stop]);
+      const fought = crossFogWall(world);
+      const won = { ...fought, enemies: fought.enemies.map((e) => ({ ...e, alive: false })) };
+      expect(floorMusic(run, won), stop.boss).toBeNull();
+      expect(bossFell(run, fought, won), stop.boss).toBe(true);
+    }
+  });
+
+  it('the fanfare is one of the sounds, and the game plays it where the boss falls, then stops the track', () => {
+    expect(SOUND_IDS).toContain('bossDefeated');
+    const game = readFileSync(join(__dirname, '../../src/app/game.ts'), 'utf8');
+    expect(game).toMatch(/bossFell\(run, before, world\)\) \{\s+audio\?\.play\('bossDefeated'\);\s+music\(\);/);
   });
 
   it('every shrine trial arena: no music behind its fog, its track once crossed', () => {

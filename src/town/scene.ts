@@ -113,6 +113,8 @@ export interface TownOptions {
   openAchievements?: TownWindowOpener;
   /** The settings over the town (its Esc menu), like `openShop`. */
   openSettings?: TownWindowOpener;
+  /** Leaves the town for the screen that changes the Pokémon and its moves (the town's sprite is the species, so it reopens after). */
+  openPokemon?(): void;
   /** The account window over the town (its Esc menu), like `openShop`: in a room the room stays. */
   openAccount?: TownWindowOpener;
   /**
@@ -689,6 +691,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** The services the app wired for this town (the Esc menu lists them). */
   function services(): Set<TownService> {
     const wired: Record<TownService, boolean> = {
+      pokemon: !!options.openPokemon,
       travel: true,
       dungeons: true,
       challenges: !!options.openChallenges,
@@ -725,6 +728,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** What a row of the Esc menu does (the same windows the NPCs and places open). */
   function serviceAction(service: TownService): void {
     switch (service) {
+      case 'pokemon':
+        return leaveTown(options.openPokemon);
       case 'travel':
         return openShopWindow(openTravel);
       case 'dungeons':

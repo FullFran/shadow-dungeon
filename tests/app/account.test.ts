@@ -31,6 +31,11 @@ function fakeBackend() {
     return { token, userId, email: [...users.values()].find((u) => u.id === userId)!.email };
   };
   const api: AccountApi = {
+    async requestPasswordReset(email) {
+      calls.push(`reset:${email}`);
+      if (down) return fail(down as never);
+      return { ok: true, value: undefined };
+    },
     async signUp(email, password) {
       calls.push('signUp');
       if (down) return fail(down as never);
@@ -74,7 +79,8 @@ function fakeBackend() {
       calls.push(`updateSave@${rev}`);
       if (down) return fail(down as never);
       const found = saves.get(saveId);
-      if (!found || userOf(token) !== found.user) return fail('unauthorized');
+      // PocketBase treats a dead token as a guest, and a guest cannot see the record: 404, not 401.
+      if (!found || userOf(token) !== found.user) return fail('rejected');
       if (found.rev !== rev) return { ok: false, error: { kind: 'conflict', current: { id: found.id, rev: found.rev, data: found.data } } };
       found.rev += 1;
       found.data = data;
@@ -109,6 +115,9 @@ function fakeBackend() {
   return {
     api,
     calls,
+    /** Every session ends, as changing a password does. */
+    revokeTokens: () => tokens.clear(),
+    dropSaves: () => saves.clear(),
     setDown: (kind: ApiError['kind'] | null) => {
       down = kind;
     },
@@ -378,6 +387,23 @@ describe('a linked browser', () => {
     return { backend, d, storage: d.storage };
   }
 
+  it('a tab left open when the password changes says the session expired on its next push, and keeps the local save', async () => {
+    const { backend, d } = await linked();
+    backend.revokeTokens();
+    writeSave(d.game, save(150));
+    await d.idle();
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+    expect(d.names()).toContain('expired');
+    expect(d.local().coins).toBe(150);
+  });
+  it('a save the server refuses for a live session stays quiet, as before', async () => {
+    const { backend, d } = await linked();
+    backend.dropSaves();
+    writeSave(d.game, save(150));
+    await d.idle();
+    expect(d.account.state()).toEqual({ kind: 'signed-in', email: 'ana@example.com' });
+    expect(d.names()).not.toContain('expired');
+  });
   it('pushes every progress write after the debounce, with the baseRev', async () => {
     const { backend, d } = await linked();
     writeSave(d.game, save(150));
@@ -689,6 +715,46 @@ describe('backups from the account screen', () => {
   });
 });
 
+describe('a forgotten or changed password', () => {
+  const resets = (backend: ReturnType<typeof fakeBackend>) => backend.calls.filter((c) => c.startsWith('reset:'));
+
+  it('a guest asks for the email they type, trimmed, and stays a guest', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    expect(await d.account.requestPasswordReset('  ana@example.com ')).toEqual({ ok: true });
+    expect(resets(backend)).toEqual(['reset:ana@example.com']);
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+  });
+  it('a malformed or missing email never reaches the server', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    expect(await d.account.requestPasswordReset('nope')).toEqual({ ok: false, error: 'invalid-email' });
+    expect(await d.account.requestPasswordReset()).toEqual({ ok: false, error: 'invalid-email' });
+    expect(resets(backend)).toEqual([]);
+  });
+  it('signed in, it goes to the account email, whatever is passed, and the session stays', async () => {
+    const backend = fakeBackend();
+    backend.addUser('ana@example.com', 'password1');
+    const d = device(backend);
+    await d.account.logIn('ana@example.com', 'password1');
+    expect(await d.account.requestPasswordReset('other@example.com')).toEqual({ ok: true });
+    expect(resets(backend)).toEqual(['reset:ana@example.com']);
+    expect(d.account.state()).toEqual({ kind: 'signed-in', email: 'ana@example.com' });
+  });
+  it('says what went wrong', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    backend.setDown('rate-limited');
+    expect(await d.account.requestPasswordReset('ana@example.com')).toEqual({ ok: false, error: 'rate-limited' });
+  });
+  it('a format only the server refuses reads as a bad email, not as a failed sign-up', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    backend.setDown('rejected');
+    expect(await d.account.requestPasswordReset('foo@bar..com')).toEqual({ ok: false, error: 'invalid-email' });
+  });
+});
+
 describe('storage that fails', () => {
   it('accounts still work for the page when localStorage throws', async () => {
     const backend = fakeBackend();
@@ -721,13 +787,14 @@ describe('storage that fails', () => {
 
 describe('account strings', () => {
   it('every notice and error has a line in each language, without em dashes', () => {
-    const keys = [...NOTICES.map((n) => `account.notice.${n}`), ...ACCOUNT_ERRORS.map((e) => `account.error.${e}`), 'account.forgot', 'account.privacy', 'title.account'];
+    const keys = [...NOTICES.map((n) => `account.notice.${n}`), ...ACCOUNT_ERRORS.map((e) => `account.error.${e}`), 'account.forgot', 'account.changePassword', 'account.resetSent', 'account.resetSentOwn', 'account.privacy', 'title.account'];
     for (const language of LANGUAGES) {
       const lines = catalog(language);
       expect(keys.filter((key) => !lines[key])).toEqual([]);
       expect(Object.entries(lines).filter(([key, text]) => (key.startsWith('account.') || key.startsWith('sync.') || key === 'title.account') && text.includes('—'))).toEqual([]);
     }
     expect(catalog('es')['account.notice.cloud-loaded']).toBe('Datos de la nube cargados.');
-    expect(catalog('es')['account.forgot']).toMatch(/si olvidas la contraseña, escríbenos/i);
+    expect(catalog('es')['account.forgot']).toBe('He olvidado mi contraseña');
+    for (const language of LANGUAGES) expect(catalog(language)['account.privacy']).not.toMatch(/escr[ií]b|write to us/i);
   });
 });

@@ -74,6 +74,11 @@ var SignUpLimit = core.RateLimitRule{Label: "users:create", MaxRequests: 5, Dura
 // TurnLimit caps TURN credential requests per IP: 10 per 10 minutes.
 var TurnLimit = core.RateLimitRule{Label: "/api/sd/turn", MaxRequests: 10, Duration: 600}
 
+// PasswordResetLimit caps reset requests per IP: 5 per 10 minutes. PocketBase
+// already mails an account at most once per 2 minutes; this keeps one client
+// from spending, across many accounts, the quota verification emails share.
+var PasswordResetLimit = core.RateLimitRule{Label: "users:requestPasswordReset", MaxRequests: 5, Duration: 600}
+
 // ReportLimit caps bug reports per IP: 5 per 10 minutes (issue #9).
 var ReportLimit = core.RateLimitRule{Label: "/api/sd/reports", MaxRequests: 5, Duration: 600}
 
@@ -83,6 +88,7 @@ var ReportLimit = core.RateLimitRule{Label: "/api/sd/reports", MaxRequests: 5, D
 var RateLimitRules = []core.RateLimitRule{
 	{Label: "*:auth", MaxRequests: 10, Duration: 60},
 	SignUpLimit,
+	PasswordResetLimit,
 	{Label: "saves:create", MaxRequests: 10, Duration: 60},
 	{Label: "saves:update", MaxRequests: 30, Duration: 60},
 	{Label: "*:create", MaxRequests: 20, Duration: 60},
