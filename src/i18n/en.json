@@ -730,6 +730,8 @@
   "townMenu.shrine.about": "The Sanctum of Oaths: the guardians' reflections and trials.",
   "townMenu.online": "Play online",
   "townMenu.online.about": "Create a room or join one with its code.",
+  "townMenu.pokemon": "Change Pokémon",
+  "townMenu.pokemon.about": "Choose which Pokémon you play and its moves.",
   "townMenu.account": "Account",
   "townMenu.account.about": "Sign in to keep your progress in the cloud.",
   "townMenu.settings": "Settings",

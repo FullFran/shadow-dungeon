@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hasProgress, nextAdventureScreen } from '../../src/app/adventure-route';
+import { hasProgress, nextAdventureScreen, nextOnlineScreen } from '../../src/app/adventure-route';
 import { EMPTY_SAVE } from '../../src/app/save';
 import { EMPTY_RECORDS } from '../../src/town/records';
 import { defaultSettings, lastPlayedForm, withReturningPlayer, withStarter } from '../../src/app/settings';
@@ -94,3 +94,19 @@ describe('new adventure routing', () => {
     expect(lastPlayedForm(null, rosterOf({ owned: [] }))).toBeNull();
   });
 });
+
+describe('the first time through Play online', () => {
+  it('goes through the same first steps as Play, then to the online menu', () => {
+    expect(nextOnlineScreen({ prologueSeen: false, starterChosen: false })).toBe('prologue');
+    expect(nextOnlineScreen({ prologueSeen: true, starterChosen: false })).toBe('quiz');
+    expect(nextOnlineScreen({ prologueSeen: true, starterChosen: true })).toBe('online');
+  });
+  it('the title sends Play online through it, adopting a returning player first', () => {
+    const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
+    expect(main).toContain('online: () => onlineEntry(root),');
+    const entry = main.slice(main.indexOf('function onlineEntry('), main.indexOf('function onlineEntry(') + 400);
+    expect(entry).toContain('adoptReturningPlayer();');
+    expect(entry).toContain('nextOnlineScreen(');
+  });
+});
+

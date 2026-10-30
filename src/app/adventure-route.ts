@@ -31,6 +31,14 @@ export function nextPlayScreen(progress: AdventureProgress): PlayScreen {
   return next === 'loadout' ? 'town' : next;
 }
 
+/** The screens the title's "Play online" goes through: the same first-time steps, so nobody reaches a room without a starter. */
+export type OnlineScreen = 'prologue' | 'quiz' | 'online';
+
+export function nextOnlineScreen(progress: AdventureProgress): OnlineScreen {
+  const next = nextAdventureScreen(progress);
+  return next === 'loadout' ? 'online' : next;
+}
+
 /**
  * Whether this profile already played (the save and records, which travel
  * with the cloud profile): any run, Pokémonedas, an owned species, a Senda

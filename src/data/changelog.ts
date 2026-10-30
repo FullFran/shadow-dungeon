@@ -49,6 +49,16 @@ export const CHANGELOG: readonly Release[] = [
           es: '¿Olvidaste tu contraseña? En Cuenta ya puedes pedir un enlace por correo para elegir otra. Y con la sesión iniciada, «Cambiar contraseña» hace lo mismo.',
           en: 'Forgot your password? In Account you can now ask for an email link to choose a new one. And when logged in, "Change password" does the same.',
         },
+        {
+          es: '«Cambiar Pokémon» en el menú del pueblo (Esc o el botón «Menú»): cambia de Pokémon y de movimientos sin salir, también en una sala en línea, y los demás ven el cambio.',
+          en: '"Change Pokémon" in the town menu (Esc or the "Menu" button): switch Pokémon and moves without leaving, also in an online room, and the others see the change.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Quien entraba por primera vez por «Jugar en línea» se saltaba el prólogo y el test de personalidad y jugaba con el Pokémon por defecto. Ya pasa por ellos, como en «Jugar». Si te lo perdiste, lo tienes en Ajustes: «Repetir test».',
+          en: 'Players whose first time was through "Play online" skipped the prologue and the personality test and played the default Pokémon. Now they go through them, as in "Play". If you missed it, it is in Settings: "Retake test".',
+        },
       ],
     },
   },

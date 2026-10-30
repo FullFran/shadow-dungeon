@@ -730,6 +730,8 @@
   "townMenu.shrine.about": "El Santuario de los Juramentos: reflejos y desafíos de los guardianes.",
   "townMenu.online": "Jugar en línea",
   "townMenu.online.about": "Crea una sala o únete a una con su código.",
+  "townMenu.pokemon": "Cambiar Pokémon",
+  "townMenu.pokemon.about": "Elige con qué Pokémon juegas y sus movimientos.",
   "townMenu.account": "Cuenta",
   "townMenu.account.about": "Inicia sesión para guardar tu partida en la nube.",
   "townMenu.settings": "Ajustes",
