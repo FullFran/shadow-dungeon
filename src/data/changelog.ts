@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.4',
+    date: '2026-10-30',
+    sections: {
+      new: [
+        {
+          es: '¿Olvidaste tu contraseña? En Cuenta ya puedes pedir un enlace por correo para elegir otra. Y con la sesión iniciada, «Cambiar contraseña» hace lo mismo.',
+          en: 'Forgot your password? In Account you can now ask for an email link to choose a new one. And when logged in, "Change password" does the same.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.3',
     date: '2026-10-30',
     sections: {
