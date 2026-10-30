@@ -326,7 +326,7 @@
   "item.choice-band": "Choice Band",
   "item.choice-band.description": "30% more damage, but moves and rolls cost 30% more stamina.",
   "item.leftovers": "Leftovers",
-  "item.leftovers.description": "Slowly restores 1% of max HP per second.",
+  "item.leftovers.description": "Slowly restores 1% of max HP per second, except by a bonfire with nothing left to fight.",
   "item.quick-claw": "Quick Claw",
   "item.quick-claw.description": "Your moves start and recover 15% sooner.",
   "item.sitrus-berry": "Sitrus Berry",

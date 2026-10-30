@@ -121,6 +121,25 @@ describe('item effects', () => {
     expect(TUNING.stamina.max - rolled.player.stamina).toBeCloseTo(TUNING.roll.staminaCost * 1.3);
   });
 
+  it('Leftovers does not heal at a lit bonfire with nothing left to fight', () => {
+    const hurt = { ...withPlayer(arena(['leftovers']), { hp: 50 }), bonfireLit: true };
+    let state: WorldState = hurt;
+    for (let i = 0; i < ticksFor(1000); i++) state = step(state, IDLE, FIXED_DT_MS);
+    expect(state.player.hp).toBe(50);
+  });
+
+  it('Leftovers heals again in the fight on a bonfire floor (a Sima boss past its fog)', () => {
+    const fighting = spawnEnemy({ ...withPlayer(arena(['leftovers']), { hp: 50 }), bonfireLit: true }, 'koffing', vec(700, 500), { dormant: true });
+    const state = onTick(fighting, 1000, []);
+    expect(state.player.hp).toBeCloseTo(50 + ITEM_EFFECTS.leftoversPerSecond * state.player.maxHp, 1);
+  });
+
+  it('a Sitrus Berry still works at a bonfire: it is one heal, not healing over time', () => {
+    const low = { ...withPlayer(arena(['sitrus-berry']), { hp: 10 }), bonfireLit: true };
+    const events: GameEvent[] = [];
+    expect(onTick(low, FIXED_DT_MS, events).player.hp).toBeGreaterThan(10);
+  });
+
   it('Leftovers: slow regeneration, never above max HP', () => {
     const hurt = withPlayer(arena(['leftovers']), { hp: 50 });
     let state = hurt;

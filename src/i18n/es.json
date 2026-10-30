@@ -326,7 +326,7 @@
   "item.choice-band": "Cinta Elegida",
   "item.choice-band.description": "Un 30 % más de daño, pero los movimientos y rodar gastan un 30 % más de estamina.",
   "item.leftovers": "Restos",
-  "item.leftovers.description": "Recuperas poco a poco un 1 % de la vida máxima por segundo.",
+  "item.leftovers.description": "Recuperas poco a poco un 1 % de la vida máxima por segundo, salvo junto a una hoguera sin nada que combatir.",
   "item.quick-claw": "Garra Rápida",
   "item.quick-claw.description": "Tus movimientos arrancan y se recuperan un 15 % antes.",
   "item.sitrus-berry": "Baya Zidra",

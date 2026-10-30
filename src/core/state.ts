@@ -640,6 +640,8 @@ export interface WorldState {
   gate?: GateState;
   /** A boss room before the party crossed its fog (core/fog-wall.ts): the antechamber's line and the held-back boss. */
   fogWall?: FogWall;
+  /** This floor's bonfire is lit (core/bonfire.ts): healing over time stops while nothing is left to fight. */
+  bonfireLit?: boolean;
   events: GameEvent[];
 }
 

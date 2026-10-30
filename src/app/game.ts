@@ -861,6 +861,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Each step: the mid-boss just fell, so its bonfire lights and this peer's state is kept (core/bonfire.ts). */
   function watchBonfire(): void {
     if (trial || !bonfireLights(run, world, bonfire !== null)) return;
+    world = { ...world, bonfireLit: true };
     bonfire = { run, world: bonfireSnapshot(world), tally };
     say(t('bonfire.lit'), 'good');
     audio?.play('item');

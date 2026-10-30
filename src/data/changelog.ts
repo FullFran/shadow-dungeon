@@ -60,6 +60,10 @@ export const CHANGELOG: readonly Release[] = [
       ],
       fixed: [
         {
+          es: 'Los Restos ya no curan esperando junto a una hoguera sin nada que combatir.',
+          en: 'Leftovers no longer heal while you wait by a bonfire with nothing left to fight.',
+        },
+        {
           es: 'Al vencer a un jefe, su música termina y suena una fanfarria de victoria.',
           en: 'When you beat a boss, its music ends and a victory fanfare plays.',
         },
