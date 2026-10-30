@@ -39,13 +39,29 @@ describe('no item pick on entering a floor (S1)', () => {
     expect(followToFloor(guest.run, guest.world, 2).run.offer).toBeNull();
   });
 
-  it('an unpicked offer of a shared run stays with the player down the stairs (it is not lost, nor replaced)', () => {
+  it('an unpicked offer is not lost down the stairs: the player keeps its first card, and no offer travels', () => {
     const host = startRun(SEED, { localId: 'p1' });
     const offered = withRewardOffer(host.run, host.world);
     const down = progressRun(offered, onTheStairs(host.world));
     expect(down.run.floor).toBe(2);
-    expect(down.run.offer).toEqual(offered.offer);
-    expect(chooseItem(down.run, down.world, 0).world.player.items).toEqual([offered.offer![0]]);
+    expect(down.run.offer).toBeNull();
+    expect(down.world.player.items).toEqual([offered.offer![0]]);
+  });
+  it('a guest following the host keeps its first card too, and a later reward has nothing to replace', () => {
+    const guest = startRun(SEED, { localId: 'p2', role: 'guest' });
+    const offered = withRewardOffer(guest.run, guest.world);
+    const down = followToFloor(offered, guest.world, 2);
+    expect(down.run.offer).toBeNull();
+    expect(down.world.player.items).toEqual([offered.offer![0]]);
+    const next = withRewardOffer(down.run, down.world);
+    expect(chooseItem(next, down.world, 0).world.player.items).toEqual([offered.offer![0], next.offer![0]]);
+  });
+  it('the game keeps that card in the bonfire, and a return keeps only an offer of the bonfire floor', () => {
+    const game = readFileSync(join(__dirname, '../../src/app/game.ts'), 'utf8');
+    const enter = game.slice(game.indexOf('function enterFloor('), game.indexOf('function enterFloor(') + 700);
+    expect(enter).toContain('bonfire.run.floor === run.floor');
+    expect(enter).toContain('chooseItem(run, bonfire.world, 0)');
+    expect(game).toContain('offer: run.floor === back.run.floor ? run.offer : null');
   });
 });
 

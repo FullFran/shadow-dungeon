@@ -55,7 +55,8 @@ export interface RunState {
    * Held items on offer to the local player, until it picks one (`chooseItem`):
    * after a boss falls (`bossPickDue`), from a vault's chest or a cleared wave
    * room (core/sima-events.ts `rewardsItems`). Nothing is offered on entering a
-   * floor; in a shared run an unpicked offer stays through the stairs.
+   * floor; in a shared run an unpicked offer is not carried down the stairs: the
+   * player keeps its first card (`goDown`).
    */
   offer: readonly ItemId[] | null;
   /** Endless dungeon only: the run clock, ms left (the host's in a shared run). Absent elsewhere. */
@@ -336,7 +337,9 @@ function heal(world: WorldState): WorldState {
 }
 
 /** Moves the run to `floor` (the next one): records a collapse escape, heals, and loads it. */
-function goDown(run: RunState, world: WorldState, floor: number): { run: RunState; world: WorldState; bonusMs: number } {
+function goDown(leaving: RunState, leavingWorld: WorldState, floor: number): { run: RunState; world: WorldState; bonusMs: number } {
+  // An offer left unpicked (a shared run does not wait) is never lost: the first card goes with the player.
+  const { run, world } = chooseItem(leaving, leavingWorld, 0);
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
   const endless = dungeonOf(run).endless;
   const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;

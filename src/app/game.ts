@@ -839,7 +839,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // A Sima boss floor anew is met behind its fog again, like the snapshot the others kept.
     const back = bonfire ?? (dungeonOf(run).endless ? { run: fresh!.run, world: withFogWall(fresh!.run, fresh!.world) } : fresh!);
     // The Sima's clock never goes back with it (core/bonfire.ts `bonfireReturn`); a pick still on offer stays open.
-    run = { ...bonfireReturn(back.run, run), offer: run.offer };
+    // An offer of the bonfire's own floor stays; one from a later floor's boss comes again with that boss.
+    run = { ...bonfireReturn(back.run, run), offer: run.floor === back.run.floor ? run.offer : null };
     // The floors after the bonfire come again, and pay again; its own boss does not.
     bossPicks = picksAfterReturn(bossPicks, back.run.floor);
     // Those floors' events come again too: the end screen lists each once.
@@ -1192,6 +1193,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
+    // The first card of an unpicked offer goes down with the player (core/run.ts `goDown`): the bonfire of this floor keeps it too.
+    const unpicked = run.offer?.[0];
+    if (unpicked) {
+      if (bonfire && bonfire.run.floor === run.floor) bonfire = { ...bonfire, world: chooseItem(run, bonfire.world, 0).world };
+      say(itemPickedText(world.player.species, unpicked), 'item');
+      hidePick();
+    }
     const left = floorPlanOf(run);
     tally = tallyFloor(tally, run.floor, next.run.escape?.floor === run.floor ? next.run.escape.ms : null, left.kind === 'room' && left.role === 'midboss');
     floorStartTally = tally;
