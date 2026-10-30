@@ -60,6 +60,10 @@ export const CHANGELOG: readonly Release[] = [
       ],
       fixed: [
         {
+          es: 'En cooperativo se ven los ataques del compañero: sus golpes, sus áreas y la carga de sus movimientos fuertes, y sus disparos con el color de su tipo.',
+          en: 'In co-op you now see your teammate\'s attacks: swings, areas and the charge of heavy moves, and shots in their type\'s colour.',
+        },
+        {
           es: 'Los Restos ya no curan esperando junto a una hoguera sin nada que combatir.',
           en: 'Leftovers no longer heal while you wait by a bonfire with nothing left to fight.',
         },

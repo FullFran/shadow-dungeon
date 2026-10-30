@@ -541,6 +541,8 @@ export interface RemotePlayer {
 
 /** Enough of another player's projectile to draw it. */
 export interface RemoteProjectile {
+  /** The move's type, for its colour (an older peer sends none). */
+  type?: PokemonType;
   id: string;
   pos: Vec2;
   vel: Vec2;

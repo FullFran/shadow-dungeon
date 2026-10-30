@@ -181,7 +181,7 @@ export function applyRemotePlayers(state: WorldState, snapshots: readonly Player
   for (const snapshot of snapshots) {
     if (snapshot.id === state.localId) continue;
     const previous = remotes.find((r) => r.id === snapshot.id);
-    const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius }));
+    const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius, type: p.type }));
     const next: RemotePlayer = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player), projectiles, ...(snapshot.revive ? { revive: snapshot.revive } : {}) };
     remotes = previous ? remotes.map((r) => (r.id === snapshot.id ? next : r)) : [...remotes, next];
   }

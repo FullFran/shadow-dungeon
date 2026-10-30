@@ -22,7 +22,7 @@ import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
 import { collapseFront, type CollapseState } from '../core/collapse';
-import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState } from '../core/state';
+import type { EnemyState, Obstacle, ProjectileState, Rect, WorldState, PlayerState } from '../core/state';
 import { isWall, tileOf, type TileGrid } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { AIM_DRAG } from './touch';
@@ -1508,8 +1508,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.stroke();
   }
 
-  function chargeRing(state: WorldState, pos: Vec2): void {
-    const action = state.player.action;
+  function chargeRing(player: PlayerState, pos: Vec2): void {
+    const action = player.action;
     if (!action || action.phase !== 'charging') return;
     const levels = MOVES[action.moveId].charge ?? [];
     const maxHold = levels.at(-1)?.holdMs ?? 1;
@@ -1605,6 +1605,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const enemy of current.enemies) if (enemy.species === 'eclipse-echo') drawEclipseZones(ctx, current, enemy, posOf(enemy.id, enemy.pos), timeMs);
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs);
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
+    // Everyone's swings: the action comes with each peer's state (hits and their numbers stay with whoever dealt them).
+    for (const remote of current.remotes) drawPlayerVfx(ctx, playerVfx(remote.player), posOf(`remote:${remote.id}`, remote.player.pos), timeMs);
 
     const drawables: Drawable[] = [];
     for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect, frame.decor ?? null, timeMs));
@@ -1659,7 +1661,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       y: playerPos.y,
       draw: () => {
         shadow(playerPos, TUNING.player.radius);
-        chargeRing(current, playerPos);
+        chargeRing(current.player, playerPos);
         if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
         // Under Illusion (Zorua) the player shimmers, half see-through.
         const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
@@ -1674,6 +1676,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         y: pos.y,
         draw: () => {
           shadow(pos, TUNING.player.radius);
+          chargeRing(remote.player, pos);
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
           drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, remote.player.hp > 0 ? 1 : 0.7);
           nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
@@ -1687,7 +1690,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push((p.owner === 'enemy' ? enemyShot(p, pos, timeMs) : null) ?? projectile(p, pos, timeMs));
     }
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
-    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius }, p.pos, timeMs));
+    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, ...(p.type ? { type: p.type } : {}) }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
     // Figuraciones: flat black shapes with a faint rim, over the floor and under the HUD.
     for (const f of frame.figurations ?? []) {
