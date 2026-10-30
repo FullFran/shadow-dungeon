@@ -74,7 +74,8 @@ import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
 import { isTouchUi } from '../adapters/touch-mode';
 import { holdWakeLock } from '../adapters/wake-lock';
-import { mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
+import { IDLE_TOUCH, mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
+import type { Gamepads } from '../adapters/gamepad';
 import { hapticPulse, vibrate } from '../adapters/haptics';
 import { createTouchControls } from '../ui/touch-controls';
 import { slotButtonState } from '../adapters/touch-slots';
@@ -207,6 +208,8 @@ export interface GameOptions {
   net?: { session: NetSession; role: 'host' | 'guest'; localId: string; keepSession?: boolean };
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
   touch?: { autoAim(): boolean; haptics(): boolean };
+  /** The controller: in combat it plays, otherwise it acts as keys (adapters/gamepad.ts). */
+  gamepad?: Pick<Gamepads, 'take' | 'setCombat'>;
   /**
    * The Sima as this player remembers it (app/sima-lore.ts): names, epithets
    * and silhouettes of its bosses. Presentation only; absent, every boss goes
@@ -279,16 +282,20 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ],
   });
   (canvas.parentElement ?? document.body).append(touch.element);
-  /** Keyboard + mouse and touch, suspended and disposed together. */
+  let inputSuspended = false;
+  /** Keyboard + mouse, touch and the controller, suspended and disposed together. */
   const input = {
     take: () => keyboard.take(),
-    setSuspended(suspended: boolean) {
-      keyboard.setSuspended(suspended);
-      touch.setSuspended(suspended);
+    setSuspended(next: boolean) {
+      inputSuspended = next;
+      keyboard.setSuspended(next);
+      touch.setSuspended(next);
+      if (next) options.gamepad?.setCombat(false);
     },
     dispose() {
       keyboard.dispose();
       touch.dispose();
+      options.gamepad?.setCombat(false);
     },
   };
   // Touch devices: keep the screen awake while the run lasts.
@@ -1219,7 +1226,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     accumulator = clock.accumulatorMs;
     for (let i = 0; i < clock.steps; i++) {
       const keys = toPlayerInput(input.take(), view, pixelScale);
-      const touchInput = touchToPlayerInput(touch.take(), {
+      const aimContext = {
         view,
         pixelScale,
         playerPos: world.player.pos,
@@ -1228,8 +1235,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         lockType: world.lock.lockType,
         locked: world.lock.targetId !== null,
         autoAim: options.touch?.autoAim() ?? true,
-      });
-      const raw = mergeInputs(keys, touchInput);
+      };
+      // The controller plays only while nothing is open: a shared run keeps going under a pick, where it acts as keys.
+      options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory);
+      const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext));
       const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
       if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;

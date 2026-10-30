@@ -59,6 +59,7 @@ import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { adminAccess, ticketsWindow } from './tickets-screen';
 import { httpAdminApi } from '../adapters/admin-api';
+import { createGamepads } from '../adapters/gamepad';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -147,6 +148,13 @@ const { account, store } = setupAccount({
     settings = loadSettings(store, settings, rosterOf(loadSave(store)));
     const app = document.getElementById('app');
     if (app?.querySelector('.title-logo')) titleScreen(app);
+  },
+});
+/** The controller, for the whole page: every screen hears it as keys, a run takes it over (adapters/gamepad.ts). */
+const gamepads = createGamepads({
+  onConnect: () => {
+    const app = document.getElementById('app');
+    if (app) toast(app, t('gamepad.connected'));
   },
 });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
@@ -1787,6 +1795,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     audio,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
+    gamepad: gamepads,
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
     openMenu: (actions, held) =>
       openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),

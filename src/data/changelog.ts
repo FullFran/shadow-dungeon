@@ -53,6 +53,10 @@ export const CHANGELOG: readonly Release[] = [
           es: '«Cambiar Pokémon» en el menú del pueblo (Esc o el botón «Menú»): cambia de Pokémon y de movimientos sin salir, también en una sala en línea, y los demás ven el cambio.',
           en: '"Change Pokémon" in the town menu (Esc or the "Menu" button): switch Pokémon and moves without leaving, also in an online room, and the others see the change.',
         },
+        {
+          es: '¡Soporte para mando! Combate, pueblo, menús y cinemáticas, con stick analógico y apuntado con el stick derecho. La lista de botones está en Ajustes. Para escribir (código de sala, cuenta) aún hace falta teclado.',
+          en: 'Controller support! Combat, town, menus and cinematics, with an analogue stick and right stick aiming. The button list is in Settings. Typing (room code, account) still needs a keyboard.',
+        },
       ],
       fixed: [
         {

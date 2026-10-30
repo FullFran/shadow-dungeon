@@ -208,6 +208,8 @@
   "menu.mute": "Mute",
   "menu.start": "Start",
   "menu.controls": "Controls",
+  "menu.controls.gamepad": "Controller: left stick to move, A to roll, X fast, Y heavy (hold to charge), LB boost, RB area, right stick to aim, LT or R3 to lock, D-pad sides to switch target, Start menu, Back minimap. In menus: A confirm, B back; X, Y and RB pick an item.",
+  "gamepad.connected": "Controller connected.",
   "menu.controls.move": "WASD or arrows: move",
   "menu.controls.roll": "Space: roll the way you hold (no direction: at the cursor; invulnerable; costs stamina)",
   "menu.controls.fast": "Left click or Q: fast move (the click aims at the cursor, Q where you face)",
