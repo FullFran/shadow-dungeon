@@ -166,13 +166,24 @@ export function withFogWall(run: RunState, world: WorldState): WorldState {
 
 /**
  * The floor's music as the party meets it (odd/tasks/sima-fog-bonfires.md):
- * none behind a boss's fog (the antechamber has only its ambience), the
- * floor's own track otherwise. The game starts the boss track once the fog
+ * none behind a boss's fog (the antechamber has only its ambience) or once the
+ * boss has fallen, the floor's own track otherwise. The game starts the boss track once the fog
  * is crossed and the boss cinematic, if any, is over.
  */
-export function floorMusic(run: RunState, world: Pick<WorldState, 'fogWall'>): MusicContext | null {
-  return world.fogWall ? null : musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
+export function floorMusic(run: RunState, world: Pick<WorldState, 'fogWall' | 'enemies'>): MusicContext | null {
+  return world.fogWall || bossGone(run, world) ? null : musicFor(dungeonOf(run), floorPlanOf(run), run.kind, run.floor);
 }
+
+/** This floor's boss has fallen: a boss room emptied, or a herald down on its floor. */
+function bossGone(run: RunState, world: Pick<WorldState, 'fogWall' | 'enemies'>): boolean {
+  if (world.fogWall) return false;
+  if (floorPlanOf(run).kind === 'room') return world.enemies.every((e) => !e.alive);
+  const heralds = world.enemies.filter((e) => e.herald);
+  return heralds.length > 0 && heralds.every((e) => !e.alive);
+}
+
+/** The boss fell between these two states: its track ends and the fanfare sounds. Read from the state, so a guest hears it for a boss the host finished. */
+export const bossFell = (run: RunState, before: Pick<WorldState, 'fogWall' | 'enemies'>, after: Pick<WorldState, 'fogWall' | 'enemies'>): boolean => !bossGone(run, before) && bossGone(run, after);
 
 /** Which meeting with this floor's guardian echo it is in the run (1 on its first floor; the echoes come round in turn). */
 function guardianEncounter(endless: EndlessDef, floor: number): number {

@@ -60,6 +60,10 @@ export const CHANGELOG: readonly Release[] = [
       ],
       fixed: [
         {
+          es: 'Al vencer a un jefe, su música termina y suena una fanfarria de victoria.',
+          en: 'When you beat a boss, its music ends and a victory fanfare plays.',
+        },
+        {
           es: 'Quien entraba por primera vez por «Jugar en línea» se saltaba el prólogo y el test de personalidad y jugaba con el Pokémon por defecto. Ya pasa por ellos, como en «Jugar». Si te lo perdiste, lo tienes en Ajustes: «Repetir test».',
           en: 'Players whose first time was through "Play online" skipped the prologue and the personality test and played the default Pokémon. Now they go through them, as in "Play". If you missed it, it is in Settings: "Retake test".',
         },

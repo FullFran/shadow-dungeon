@@ -21,6 +21,7 @@ import { cardInfo } from '../data/cards';
  * the first user gesture (`unlock`).
  */
 export const SOUND_IDS = [
+  'bossDefeated',
   'swingFast',
   'swingHeavy',
   'release',
@@ -506,6 +507,16 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     },
   },
   click: { ms: 30, play: (s, t) => tone(s, t, { type: 'square', from: 1000, dur: 0.025, gain: 0.05, attack: 0.002 }) },
+  bossDefeated: {
+    ms: 1500,
+    // The boss is down: a low hit, a bright climbing fanfare and a held chord over a soft swell.
+    play: (s, t) => {
+      noise(s, t, { filter: 'lowpass', from: 1400, to: 100, dur: 0.5, gain: 0.3 });
+      tone(s, t, { type: 'sine', from: 140, to: 50, dur: 0.5, gain: 0.3 });
+      arpeggio(s, t + 0.28, 'square', [392, 523, 659, 784], 0.1, 0.4, 0.09);
+      arpeggio(s, t + 0.7, 'triangle', [784, 988, 1175], 0.02, 0.8, 0.09);
+    },
+  },
   victory: { ms: 900, play: (s, t) => arpeggio(s, t, 'square', [440, 523, 659, 880], 0.12, 0.55, 0.09) },
   defeat: { ms: 1300, play: (s, t) => arpeggio(s, t, 'triangle', [330, 262, 220, 165], 0.22, 0.7, 0.16) },
   stairs: {

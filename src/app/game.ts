@@ -23,7 +23,7 @@ import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, floorMusic, type RunState } from '../core/run';
+import { atLeavingPoint, bossFell, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, floorMusic, type RunState } from '../core/run';
 import { lookText, simaFoeLook, type SimaMemory } from './sima-lore';
 import { simaCardKey, type SimaSceneId } from '../data/sima-scenes';
 import type { SimaSceneInfo } from './sima-cinematic';
@@ -1273,6 +1273,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         }
       }
       watchClock(clockBefore);
+      if (bossFell(run, before, world)) {
+        audio?.play('bossDefeated');
+        music();
+      }
       // Captured spell cards (guardians' and heralds' alike, core/cards.ts `updateCapture`) are counted from the step's events.
       // A trial's time does not run while the party waits behind its arena's fog (core/shrine.ts `trialStepMs`).
       tally = tallyStep(tally, before, world, trial ? trialStepMs(before, FIXED_DT_MS) : FIXED_DT_MS);
