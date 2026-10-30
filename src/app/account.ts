@@ -68,6 +68,8 @@ export interface SyncInfo {
 
 export interface Account {
   state(): AccountState;
+  /** The session's token, or null as a guest. */
+  token(): string | null;
   /** Restores a stored session; the leader tab also refreshes it and syncs. Never throws. */
   start(): Promise<void>;
   /** This tab became the leader (it pushes and syncs). */
@@ -381,6 +383,7 @@ export function createAccount(deps: AccountDeps): Account {
 
   return {
     state: () => (session ? { kind: 'signed-in', email: session.email } : { kind: 'guest' }),
+    token: () => session?.token ?? null,
     async start() {
       const stored = readStored(deps.store);
       if (!stored) return;
