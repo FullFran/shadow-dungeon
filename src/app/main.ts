@@ -962,6 +962,8 @@ const townFriends =
           onLoaded: () => friendsBeat?.now(),
           onBack: onClose,
           onAccount: () => {
+            // The account window takes over: signing in there must not close it as this window's account changing would.
+            openFriends = null;
             closeInner();
             closeInner = townAccount(parent, () => {
               closeInner();

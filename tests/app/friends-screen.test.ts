@@ -223,6 +223,9 @@ describe('wiring', () => {
   });
   it('the window is one step from the town menu, in both towns, and from Options', () => {
     expect(main.match(/openFriends: townFriends\(root\)/g)).toHaveLength(2);
+    // Signing in from the window must not close it through onChange: the account window over it shows the cloud choice.
+    const town = main.slice(main.indexOf('const townFriends ='), main.indexOf('const townFriends =') + 1400);
+    expect(town.slice(town.indexOf('onAccount: () => {'), town.indexOf('closeInner = townAccount('))).toContain('openFriends = null;');
     expect(main.slice(main.indexOf('function optionsScreen('), main.indexOf('function optionsScreen(') + 1600)).toContain('friendsScreen(root');
   });
 });
