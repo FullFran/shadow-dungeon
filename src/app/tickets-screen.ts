@@ -33,7 +33,7 @@ export function diagnosticsText(diagnostics: unknown): string {
   return diagnostics === null || diagnostics === undefined || diagnostics === '' ? '' : JSON.stringify(diagnostics, null, 2);
 }
 
-/** Who may see the entry: asks the server once per token, and forgets it when the token changes (log out, another account). */
+/** Who may see the entry: asks the server until it says yes for this token, and forgets it when the token changes (log out, another account). */
 export function adminAccess(deps: { token(): string | null; isAdmin(token: string): Promise<boolean> }): { known(): boolean; check(): Promise<boolean> } {
   let asked: string | null = null;
   let answer = false;
@@ -45,7 +45,8 @@ export function adminAccess(deps: { token(): string | null; isAdmin(token: strin
       if (!token) return false;
       if (asked === token) return answer;
       const result = await deps.isAdmin(token);
-      asked = token;
+      // Only a yes is kept: a no may be a failed request, or an admin named a moment ago.
+      asked = result ? token : null;
       answer = result;
       return known();
     },
@@ -154,6 +155,7 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
       const result = token ? await options.api.setStatus(token, ticket.ref, next) : ({ ok: false, error: 'denied' } as const);
       if (disposed) return;
       if (!result.ok) {
+        if (result.error === 'denied') return denied();
         status.textContent = t(errorKey(result.error));
         return;
       }
@@ -185,12 +187,21 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
     );
   }
 
+  /** The server refused this session: nothing it loaded stays on screen. */
+  function denied(): void {
+    tickets = [];
+    total = 0;
+    showInbox();
+    status.textContent = t('tickets.error.denied');
+  }
+
   async function load(): Promise<void> {
     const token = options.token();
     status.textContent = t('tickets.loading');
     const result = token ? await options.api.list(token) : ({ ok: false, error: 'denied' } as const);
     if (disposed) return;
     if (!result.ok) {
+      if (result.error === 'denied') return denied();
       status.textContent = t(errorKey(result.error));
       return;
     }

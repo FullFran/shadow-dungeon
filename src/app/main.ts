@@ -122,6 +122,12 @@ const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 /** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
 const publicProfile = profilePublisher({ api: publicApi, nickname: () => settings.nickname, species: () => settings.species });
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
+/** The tickets inbox while it is open, and whose it is. */
+let openTickets: { email: string | null; leave(): void } | null = null;
+const signedInEmail = (): string | null => {
+  const state = account.state();
+  return state.kind === 'signed-in' ? state.email : null;
+};
 const { account, store } = setupAccount({
   store: browserStore(),
   onSynced: (session) => publicProfile.synced(session),
@@ -131,6 +137,8 @@ const { account, store } = setupAccount({
   },
   // Sync moved (status, a choice, another tab): a signed-in account screen shows it at once; the title redraws for a replaced profile.
   onChange: () => {
+    // The inbox is for the account that opened it: logging out, here or in another tab, closes it.
+    if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
     const app = document.getElementById('app');
     if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
   },
@@ -842,14 +850,13 @@ function reportOptions(onBack: () => void) {
 
 /** "Tickets": the admins' inbox of player reports. */
 function ticketsScreen(root: HTMLElement, back: () => void): void {
-  const open = ticketsWindow({
-    api: adminApi,
-    token: () => account.token(),
-    onBack: () => {
-      open.dispose();
-      back();
-    },
-  });
+  const leave = () => {
+    openTickets = null;
+    open.dispose();
+    back();
+  };
+  const open = ticketsWindow({ api: adminApi, token: () => account.token(), onBack: leave });
+  openTickets = { email: signedInEmail(), leave };
   show(root, [open.element]);
 }
 

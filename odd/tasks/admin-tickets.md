@@ -26,7 +26,7 @@ Route evidence: no Writer trigger (single behaviour, sequential). Verification t
 - [x] i18n es and en for every new string (`tests/app/tickets-screen.test.ts`).
 - [x] `server/README.md` routes, triage and how to add an admin.
 - [x] GDD: mention of the panel next to the report entry.
-- [ ] Save, sim, prove, net protocol, co-op: not touched (no game state involved); checked by the gate.
+- [x] Save, sim, prove, net protocol, co-op: not touched (no game state involved); gate green.
 
 ## Log
 
@@ -35,3 +35,4 @@ Route evidence: no Writer trigger (single behaviour, sequential). Verification t
 - L3 2026-10-30 owner: "asegurate de seguir bien la arquitectura y que las dependencias esten bien, los distintos concerns y asi evitamos que tocando una cosa rompamos otra"
 - L4 Design change from the proposal: routes under `/api/sd/admin` with an explicit guard instead of opening `reports` API rules. `reports` stays closed to the records API, so the existing test and default-deny hold; projection keeps the client hash out.
 - L5 2026-10-30 end-to-end run: real Go server (temp dir) and real Firefox, as a plain player and as an admin; inert markup, search, close, reload all passed. Mail not sent for real yet (no SMTP locally).
+- L6 2026-10-30 independent verifier: S1-S6 pass on the server (access, exposure, migration up and down on baseline data, intake differential identical). One blocker, B1: tickets stayed on screen after the session ended elsewhere. Fixed: `main.ts` closes the inbox on account change, a denied answer clears it. Advisory decisions: an admin may close a report out of `issue` (documented); a failed admin check is no longer cached; trailing-brace JSON left as is (same as baseline intake).

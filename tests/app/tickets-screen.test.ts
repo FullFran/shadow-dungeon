@@ -63,6 +63,17 @@ describe('who sees the entry', () => {
   });
 });
 
+describe('asking again', () => {
+  it('a no is not kept: a failed request or a new admin shows up at the next check', async () => {
+    let yes = false;
+    const access = adminAccess({ token: () => 'a', isAdmin: async () => yes });
+    expect(await access.check()).toBe(false);
+    yes = true;
+    expect(await access.check()).toBe(true);
+    expect(access.known()).toBe(true);
+  });
+});
+
 describe('the tickets screen wiring', () => {
   const read = (path: string) => readFileSync(join(__dirname, '../..', path), 'utf8');
   it('has every string in every language', () => {
@@ -74,6 +85,14 @@ describe('the tickets screen wiring', () => {
   });
   it('shows the entry in Options only to a known admin', () => {
     expect(read('src/app/main.ts')).toMatch(/ticketAdmin\.known\(\) \? \[\{ label: t\('title\.tickets'\)/);
+  });
+  it('closes the inbox when the account that opened it is gone', () => {
+    expect(read('src/app/main.ts')).toContain('if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();');
+  });
+  it('clears what it loaded when the server refuses the session', () => {
+    const screen = read('src/app/tickets-screen.ts');
+    expect(screen.slice(screen.indexOf('function denied()'), screen.indexOf('async function load()'))).toContain('tickets = [];');
+    expect(screen.match(/result\.error === 'denied'\) return denied\(\)/g)).toHaveLength(2);
   });
   it('carries no list of admins and no email in the client', () => {
     const sources = read('src/app/tickets-screen.ts') + read('src/adapters/admin-api.ts');
