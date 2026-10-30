@@ -71,8 +71,9 @@ func WithOrigins(args []string, origins []string) []string {
 // SignUpLimit caps account creation per IP: 5 sign-ups per 10 minutes.
 var SignUpLimit = core.RateLimitRule{Label: "users:create", MaxRequests: 5, Duration: 600}
 
-// TurnLimit caps TURN credential requests per IP: 10 per 10 minutes.
-var TurnLimit = core.RateLimitRule{Label: "/api/sd/turn", MaxRequests: 10, Duration: 600}
+// TurnLimit caps TURN credential requests per IP: 10 per 2 minutes. Each room
+// opened asks once, and retrying a failed connection is normal.
+var TurnLimit = core.RateLimitRule{Label: "/api/sd/turn", MaxRequests: 10, Duration: 120}
 
 // PasswordResetLimit caps reset requests per IP: 5 per 10 minutes. PocketBase
 // already mails an account at most once per 2 minutes; this keeps one client

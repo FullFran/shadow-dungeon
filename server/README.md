@@ -260,7 +260,7 @@ while `pb.authStore` holds the user's token. Things to settle before offering it
 
 - **Key:** `CF_TURN_KEY_ID` and `CF_TURN_API_TOKEN` in `.env` (Cloudflare dashboard: Realtime > TURN Server). They are long-lived secrets that never leave the server.
 - **Credentials:** one per request, valid 2 h.
-- **Limits:** 10 requests per IP every 10 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
+- **Limits:** 10 requests per IP every 2 minutes (rate-limit rule `/api/sd/turn`), and at most `MaxPerHour` (120) credentials per hour across all clients. Past either limit the client gets no relay.
 - **Monitoring:**
   - Cloudflare dashboard, Realtime > TURN: usage. The free allowance is 1,000 GB/month, then $0.05/GB.
   - PocketBase logs (dashboard > Logs; they are stored in `pb_data`, not printed by `docker logs`): `turn credential issued`, `turn credentials capped` and `turn credentials unavailable` entries. Each issued entry has the credential `username` and a hash of the client IP under a key that is random per server run.
