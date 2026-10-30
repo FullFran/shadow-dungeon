@@ -1,7 +1,8 @@
 import { ENDLESS } from '../../data/endless';
 import { deriveSeed } from '../rng';
 import { worldDifficulty } from '../difficulty';
-import type { WorldState } from '../state';
+import type { Difficulty } from '../../data/difficulty';
+import type { EnemyState, WorldState } from '../state';
 import { SPECIES } from '../../data/species';
 import { heraldCardCount, heraldHpScale, heraldWear } from './generate';
 
@@ -26,18 +27,17 @@ export function devHeraldFloor(floor: number): number {
   return f + ((h.offset - (f % h.every) + h.every) % h.every);
 }
 
+/** The `sima-herald` enemy as herald `seed` at `depth`: its types and its HP. */
+export function asHerald(e: EnemyState, seed: number, depth: number, difficulty: Difficulty): EnemyState {
+  const types = SPECIES[heraldWear(seed).source].types;
+  const scale = heraldHpScale(heraldCardCount(depth, difficulty));
+  // Already a herald (the dev route swaps it): back to the base herald's HP first.
+  const base = e.herald ? e.maxHp / heraldHpScale(heraldCardCount(e.herald.depth, difficulty)) : e.maxHp;
+  const maxHp = Math.round(base * scale);
+  return { ...e, herald: { seed, depth }, types, maxHp, hp: maxHp };
+}
+
 /** Turns the room's `sima-herald` into herald `seed` at `depth`. */
 export function withHerald(world: WorldState, seed: number, depth: number): WorldState {
-  const types = SPECIES[heraldWear(seed).source].types;
-  const scale = heraldHpScale(heraldCardCount(depth, worldDifficulty(world)));
-  return {
-    ...world,
-    enemies: world.enemies.map((e) => {
-      if (e.species !== 'sima-herald') return e;
-      // Already a herald (the dev route swaps it): back to the base herald's HP first.
-      const base = e.herald ? e.maxHp / heraldHpScale(heraldCardCount(e.herald.depth, worldDifficulty(world))) : e.maxHp;
-      const maxHp = Math.round(base * scale);
-      return { ...e, herald: { seed, depth }, types, maxHp, hp: maxHp };
-    }),
-  };
+  return { ...world, enemies: world.enemies.map((e) => (e.species === 'sima-herald' ? asHerald(e, seed, depth, worldDifficulty(world)) : e)) };
 }

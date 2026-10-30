@@ -307,6 +307,22 @@ function withStatuses(enemies: EnemySnapshot[], wire: unknown): EnemySnapshot[] 
   return enemies.map((e) => (byId.has(e.id) ? { ...e, ...byId.get(e.id) } : e));
 }
 
+/** Heralds of the snap on the wire: [id, seed, depth], only the enemies that are one. */
+type HeraldWire = [string, number, number];
+
+const encodeHeralds = (enemies: readonly EnemySnapshot[]): HeraldWire[] => enemies.flatMap((e) => (e.herald ? [[e.id, e.herald.seed, e.herald.depth] as HeraldWire] : []));
+
+/** The snap's enemies with their herald from the wire (malformed entries are dropped; an older host sends none). */
+function withHeralds(enemies: EnemySnapshot[], wire: unknown): EnemySnapshot[] {
+  if (!Array.isArray(wire)) return enemies;
+  const byId = new Map<string, { seed: number; depth: number }>();
+  for (const entry of wire) {
+    if (!Array.isArray(entry) || entry.length !== 3 || typeof entry[0] !== 'string' || !finite(entry[1]) || !finite(entry[2])) continue;
+    byId.set(entry[0], { seed: entry[1], depth: entry[2] });
+  }
+  return enemies.map((e) => (byId.has(e.id) ? { ...e, herald: byId.get(e.id)! } : e));
+}
+
 /** A gate's progress on the wire: [done, outcome, key x, key y] (key and outcome optional). */
 function encodeGate(g: GateSync): unknown[] {
   return [g.done ? 1 : 0, g.outcome ?? null, ...(g.key ? [r1(g.key.x), r1(g.key.y)] : [])];
@@ -345,6 +361,8 @@ export function encodeMessage(message: NetMessage): string {
         ...(message.s.fogWall ? { w: 1 } : {}),
         // Rank-effect marks and weakenings on enemies (optional: an older guest ignores them).
         ...(encodeStatuses(message.s.enemies).length > 0 ? { x: encodeStatuses(message.s.enemies) } : {}),
+        // Which herald an enemy is (optional: an older guest ignores it).
+        ...(encodeHeralds(message.s.enemies).length > 0 ? { h: encodeHeralds(message.s.enemies) } : {}),
       };
       break;
     case 'town':
@@ -430,7 +448,7 @@ export function decodeMessage(text: string): NetMessage | null {
         s: {
           tick: wire.k,
           berries: Array.isArray(wire.b) ? wire.b.filter((b): b is string => typeof b === 'string') : [],
-          enemies: withStatuses(decodeList(wire.e, decodeEnemy), wire.x),
+          enemies: withHeralds(withStatuses(decodeList(wire.e, decodeEnemy), wire.x), wire.h),
           projectiles: decodeList(wire.p, decodeProjectile),
           ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
           ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),
