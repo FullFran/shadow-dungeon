@@ -22,7 +22,7 @@ Guests keep playing without an account; that is all client-side.
 | `internal/hooks/` | Binds the rules to PocketBase events (integration tests with `pocketbase/tests`) |
 | `internal/setup/` | Reads the environment: CORS, OAuth2 providers, rate limits, proxy headers, SMTP and the email templates (`mail.go`) |
 | `internal/ranking/` | Pure Sima ranking rule over the saves (table-driven tests); `rankingapi/` serves it |
-| `internal/reports/` | Bug report fields and limits; `reportsapi/` serves `POST /api/sd/reports` |
+| `internal/reports/` | Bug report fields and limits; `reportsapi/` serves `POST /api/sd/reports`, `reportsadmin/` the admins' routes, `reportmail/` announces new reports |
 | `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
 | `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
 | `tools/report-to-issue.sh` | Renders an exported bug report as a GitHub issue body (offline) |
@@ -285,9 +285,21 @@ Text is trimmed and control characters are dropped; unknown fields are rejected.
 
 **What is stored** (collection `reports`): the fields above, `ref`, `status` (`new`, `triaged`, `issue`, `closed`; starts `new`), `githubIssue` (URL, set by the owner), `created`, `updated`, and `client`: an HMAC-SHA256 of the client IP under a server secret (`SD_REPORT_IP_KEY`, or a random key per server run when unset) and the UTC day, only to spot a flood from one source on one day. It cannot be reversed without the secret and does not follow anyone across days. Never the IP, an email, an account id or a save. The success log line carries only the category, never the ref, so a report cannot be matched by time to PocketBase's request log (which keeps IPs). Every API rule is superuser-only: the records API cannot list, view, create, edit or delete reports.
 
+**Admins.** The collection `admins` lists the player accounts that triage reports. Only superusers edit it: Dashboard (`/_/`) > Collections > `admins` > New record, and pick the account, one whose email is verified: an email can be registered by anyone until verified. An email is never what makes someone an admin. Deleting the account removes the admin.
+
+**Admin routes.** All need the token of an account in `admins`: 401 without a token, 403 otherwise. The client hash is never answered.
+
+| Route | Answer |
+|---|---|
+| `GET /api/sd/admin/me` | `200 {"admin":true}`: how the game knows to show the panel |
+| `GET /api/sd/admin/reports?status=` | The newest 200 (of that status, when given) and `total` |
+| `PATCH /api/sd/admin/reports/{ref}` with `{"status":...}` | `new`, `triaged` or `closed` (also out of `issue`, keeping its link); nothing else can change |
+
+**Email.** Each admin gets a plain-text mail per new report, while SMTP is on, for the first 20 reports of each UTC day. Past that they wait in the inbox, so a flood cannot spend the quota account verification emails share.
+
 **Triage.**
 
-1. Dashboard (`/_/`) > Collections > `reports`, filter `status = "new"`, sort by `created`.
+1. In the game: Options > Tickets (or Dashboard (`/_/`) > Collections > `reports`, filter `status = "new"`, sort by `created`).
 2. Read the report. Spam or duplicate: set `status` to `closed`. Real but not worth an issue yet: `triaged`.
 3. Worth an issue: save the record as JSON (as superuser, `GET /api/collections/reports/records?filter=(ref='SD-XXXXXX')`; the script takes that list answer or a single record) and render the body:
 

@@ -3,6 +3,8 @@
 package main
 
 import (
+	"time"
+
 	"log"
 	"os"
 
@@ -14,6 +16,8 @@ import (
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore/loreapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/ranking/rankingapi"
+	"github.com/fullfran/mazmorra-sombria/server/internal/reports/reportmail"
+	"github.com/fullfran/mazmorra-sombria/server/internal/reports/reportsadmin"
 	"github.com/fullfran/mazmorra-sombria/server/internal/reports/reportsapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
 	"github.com/fullfran/mazmorra-sombria/server/internal/turn/turnapi"
@@ -53,8 +57,9 @@ func main() {
 		rankingapi.Register(e.Router, e.App)
 		// Short-lived TURN relay credentials for co-op (Cloudflare Realtime); none without a key.
 		turnapi.Register(e.Router, turn)
-		// Anonymous bug reports from the game; only superusers read them (issue #9).
-		reportsapi.Register(e.Router, e.App, reportsapi.IPKey(setup.Getenv))
+		// Anonymous bug reports from the game (issue #9), announced to the admins, who triage them in the game.
+		reportsapi.Register(e.Router, e.App, reportsapi.IPKey(setup.Getenv), reportmail.New(e.App, time.Now))
+		reportsadmin.Register(e.Router, e.App)
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)

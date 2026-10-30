@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.3',
+    date: '2026-10-30',
+    sections: {
+      fixed: [
+        {
+          es: 'En táctil, los ataques fuertes que se cargan salían siempre en la misma dirección. Ahora van hacia donde arrastras el dedo. ¡Gracias a quien nos lo avisó con el reporte SD-AM7I1B! Este arreglo es gracias a ti.',
+          en: 'On touch, charged heavy moves always fired in the same direction. Now they go where you drag your finger. Thanks to whoever told us with report SD-AM7I1B! This fix is thanks to you.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.2',
     date: '2026-10-29',
     sections: {

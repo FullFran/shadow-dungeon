@@ -100,6 +100,8 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
   let aiming: { id: string; slot: number; dir: Vec2 | null } | null = null;
   /** Release-mode casts waiting for the next step: the slot is held for that one step with the aim it was lifted with. */
   const casts: { id: string; slot: number; dir: Vec2 | null }[] = [];
+  /** A charging button just lifted: its aim lasts one more step, the one that fires the move. */
+  let lifted: { slot: number; dir: Vec2 | null } | null = null;
   const buttons = new Map<string, HTMLButtonElement>();
   const specs = new Map<string, TouchButtonSpec>();
   const gestures = new Map<number, Gesture>();
@@ -173,7 +175,10 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
     const end = () => {
       busy.delete(spec.id);
       held.delete(spec.id);
-      if (aiming?.id === spec.id) aiming = null;
+      if (aiming?.id === spec.id) {
+        if (mode === 'hold') lifted = { slot: aiming.slot, dir: aiming.dir };
+        aiming = null;
+      }
       button.classList.remove('is-pressed', 'is-aiming');
     };
     return {
@@ -306,7 +311,9 @@ export function createTouchControls(options: TouchControlsOptions): TouchControl
       // One release-mode cast per step, held for that step with the aim it was lifted with.
       const cast = casts.shift();
       const on = (id: string) => held.has(id) || cast?.id === id;
-      const aim = cast ? { slot: cast.slot, dir: cast.dir } : aiming && held.has(aiming.id) ? { slot: aiming.slot, dir: aiming.dir } : null;
+      const release = cast ? null : lifted;
+      if (release) lifted = null;
+      const aim = cast ? { slot: cast.slot, dir: cast.dir } : (release ?? (aiming && held.has(aiming.id) ? { slot: aiming.slot, dir: aiming.dir } : null));
       const frame: TouchFrame = { move, roll, fast: on('fast'), heavy: on('heavy'), boost: on('boost'), area: on('area'), lockHeld: held.has('lock'), lockTap, swipe, tap, aim };
       roll = false;
       lockTap = false;

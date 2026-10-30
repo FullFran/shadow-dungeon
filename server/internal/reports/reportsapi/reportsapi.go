@@ -2,8 +2,8 @@
 // (issue #9). Reports are anonymous: the route keeps only what the player
 // typed, a coarse device summary, the game version and a hash of the client
 // IP for spotting floods; never the IP, an email or an account id. Nothing
-// becomes public: the owner triages them in the dashboard and opens GitHub
-// issues by hand (server/README.md, "Bug reports").
+// becomes public: the admins triage them (reportsadmin) and the owner opens
+// GitHub issues by hand (server/README.md, "Bug reports").
 package reportsapi
 
 import (
@@ -75,6 +75,7 @@ type api struct {
 	dailyCap int
 	now      func() time.Time
 	key      []byte
+	notify   func(reports.Notice)
 }
 
 // IPKey is the secret behind the stored client hashes: SD_REPORT_IP_KEY when
@@ -91,13 +92,14 @@ func IPKey(getenv func(string) string) []byte {
 	return k
 }
 
-// Register adds `POST /api/sd/reports` to r; key comes from IPKey.
-func Register(r *router.Router[*core.RequestEvent], app core.App, key []byte) {
-	register(r, app, DailyCap, time.Now, key)
+// Register adds `POST /api/sd/reports` to r; key comes from IPKey and notify
+// hears of each stored report.
+func Register(r *router.Router[*core.RequestEvent], app core.App, key []byte, notify func(reports.Notice)) {
+	register(r, app, DailyCap, time.Now, key, notify)
 }
 
-func register(r *router.Router[*core.RequestEvent], app core.App, dailyCap int, now func() time.Time, key []byte) {
-	a := &api{app: app, dailyCap: dailyCap, now: now, key: key}
+func register(r *router.Router[*core.RequestEvent], app core.App, dailyCap int, now func() time.Time, key []byte, notify func(reports.Notice)) {
+	a := &api{app: app, dailyCap: dailyCap, now: now, key: key, notify: notify}
 	r.POST("/api/sd/reports", a.create)
 }
 
@@ -144,6 +146,7 @@ func (a *api) create(e *core.RequestEvent) error {
 	}
 	// No ref here: the request log keeps the IP, and the two must not be joined by time.
 	e.App.Logger().Info("report received", "category", clean.Category)
+	a.notify(reports.Notice{Ref: ref, Category: clean.Category, Description: clean.Description, Steps: clean.Steps, Expected: clean.Expected, Observed: clean.Observed, Version: clean.Version, Device: clean.Device})
 	return e.JSON(http.StatusCreated, map[string]string{"ref": ref})
 }
 
