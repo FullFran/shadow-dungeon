@@ -423,8 +423,13 @@ section 5.4:
 
 ## Backups
 
-All state is the `pb_data` volume (SQLite). Off-site backups to R2 are
-blocked until R2 is activated (`vps-infra` T3). Until then, use PocketBase's
-built-in backups (dashboard → Settings → Backups, with a cron) and copy the
-archives off the VPS; a backup is only proven once it restores locally.
-Do not copy `data.db` while the server is running.
+All state is the `pb_data` volume (SQLite). PocketBase's automatic backup is configured from the environment, and every start writes it to the settings (`internal/setup/backups.go`):
+
+- `SD_BACKUP_CRON` (default `0 4 * * *`, daily at 04:00 UTC) and `SD_BACKUP_KEEP` (default 14 archives).
+- Off-site copy to Cloudflare R2, or any S3-compatible bucket: set all four of `SD_BACKUP_S3_ENDPOINT` (`https://<account id>.r2.cloudflarestorage.com`), `SD_BACKUP_S3_BUCKET`, `SD_BACKUP_S3_ACCESS_KEY` and `SD_BACKUP_S3_SECRET`.
+  - `SD_BACKUP_S3_REGION` defaults to `auto`, which R2 expects.
+  - With only some of the four set, backups stay local and the log warns.
+- With no `SD_BACKUP_*` value at all, the settings are left untouched (whatever the dashboard set).
+- R2 credentials: Cloudflare dashboard, R2, Manage API tokens. Create a token with "Object Read & Write" scoped to the backup bucket only.
+
+A backup is only proven once it restores locally: download an archive (dashboard, Settings, Backups, or the bucket), unzip it into an empty `pb_data` and run `go run . serve` against it. Do not copy `data.db` while the server is running. Before a migration that changes data, also stop the service and tar the volume (`docker run --rm -v sd-api_pb_data:/d:ro -v /home/fran/backups:/b alpine tar czf /b/<name>.tgz -C /d .`).
