@@ -78,10 +78,13 @@ function fnv(text: string): string {
  * scripted Easy Crypt still gives '530cec91'. The cap's yardstick
  * (`referenceLevel`, now read from the new spawns and experience rule) is
  * stripped by `plain` like the tier; the digest holding shows no scripted Easy hit
- * changed under the cap. A
- * change to the simulation changes it: re-record it only on purpose.
+ * changed under the cap. Re-recorded on purpose for the owner's rule of
+ * 2026-10-30 (odd/tasks/boss-items-events.md): nothing on offer on entering a
+ * floor, so `run.offer` in the digested run is null; with the old offer put back
+ * the same play still gives '6e22f931'. A change to the simulation changes it:
+ * re-record it only on purpose.
  */
-const PRE_TIER_DIGEST = '6e22f931';
+const PRE_TIER_DIGEST = 'df4db47e';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {

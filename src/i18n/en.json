@@ -353,6 +353,7 @@
   "rarity.common": "Common",
   "rarity.uncommon": "Uncommon",
   "rarity.rare": "Rare",
+  "pick.boss": "The boss has fallen and leaves something behind: pick an item.",
   "pick.title": "Pick a held item",
   "pick.hint": "Click a card or press 1, 2 or 3",
   "pick.held": "Held: {count} of {max}",

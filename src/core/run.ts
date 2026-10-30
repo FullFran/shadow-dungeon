@@ -9,7 +9,7 @@ import type { MusicContext } from '../data/music';
 import { ROOMS, type RoomRect } from '../data/rooms';
 import { addTime, depthScale, descendBonusMs, endlessSpawns, tickClock } from './endless';
 import { eliteRuleAt } from './sima';
-import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent } from './sima-events';
+import { chooseSimaEvent, descendPact, eventBonusMs, placeSimaEvent, rewardOffer } from './sima-events';
 import { insideRect } from './geometry';
 import type { ItemId } from '../data/items';
 import { placeBerries } from './berries';
@@ -21,7 +21,7 @@ import type { SimaEventKind } from '../data/sima';
 import { worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
 import { generatedFloor } from './floor-spawns';
-import { addItem, offerItems, playerStats } from './items';
+import { addItem, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
 import { partyDefeated, partyField, partySizeOf, presentPartySize } from './party';
@@ -52,9 +52,10 @@ export interface RunState {
   /** Set on entering the floor right after a collapse floor: how long the escape took, for its title card. */
   escape: { floor: number; ms: number } | null;
   /**
-   * Held items offered to the local player on entering this floor (every
-   * floor after the first), until it picks one (`chooseItem`). Entering the
-   * next floor first replaces an unpicked offer.
+   * Held items on offer to the local player, until it picks one (`chooseItem`):
+   * after a boss falls (`bossPickDue`), from a vault's chest or a cleared wave
+   * room (core/sima-events.ts `rewardsItems`). Nothing is offered on entering a
+   * floor; in a shared run an unpicked offer stays through the stairs.
    */
   offer: readonly ItemId[] | null;
   /** Endless dungeon only: the run clock, ms left (the host's in a shared run). Absent elsewhere. */
@@ -182,6 +183,23 @@ function bossGone(run: RunState, world: Pick<WorldState, 'fogWall' | 'enemies'>)
   return heralds.length > 0 && heralds.every((e) => !e.alive);
 }
 
+/**
+ * This floor's boss is down and the run goes on, so it owes each peer a pick of
+ * three (docs/gdd.md §3): a mid-boss, a Sima echo, wound or herald, a lost
+ * shadow; never the last floor's guardian (nothing follows it). `paid`: the
+ * floors whose boss already gave one this run. Read from the state, so a guest
+ * gets it for a boss the host finished. A shrine trial gives none (the game's
+ * caller; it has no run to go on with).
+ */
+export const bossPickDue = (run: RunState, world: Pick<WorldState, 'fogWall' | 'enemies'>, paid: ReadonlySet<number>): boolean =>
+  !paid.has(run.floor) && run.floor < floorCount(run) && bossGone(run, world);
+
+/** The bosses still paid after going back to a bonfire on `floor`: the floors after it come again, so they pay again; it and the ones before do not. */
+export const picksAfterReturn = (paid: ReadonlySet<number>, floor: number): Set<number> => new Set([...paid].filter((f) => f <= floor));
+
+/** The run with this floor's reward pick on offer to the local player (a boss down, a chest, a wave room; seeded per floor and player). */
+export const withRewardOffer = (run: RunState, world: Pick<WorldState, 'localId' | 'player'>): RunState => ({ ...run, offer: rewardOffer(run.seed, run.floor, world.localId, world.player.items) });
+
 /** The boss fell between these two states: its track ends and the fanfare sounds. Read from the state, so a guest hears it for a boss the host finished. */
 export const bossFell = (run: RunState, before: Pick<WorldState, 'fogWall' | 'enemies'>, after: Pick<WorldState, 'fogWall' | 'enemies'>): boolean => !bossGone(run, before) && bossGone(run, after);
 
@@ -275,13 +293,9 @@ function waveRoomOf(floor: Floor, rolled: { kind: SimaEventKind; room: number } 
   return room >= 0 ? { kind: 'waves', room } : rolled;
 }
 
-/** The offer of a floor for the world's local player: none on floor 1. */
-const offerFor = (run: Pick<RunState, 'seed' | 'floor'>, world: WorldState): readonly ItemId[] | null =>
-  run.floor > 1 ? offerItems(run.seed, run.floor, world.localId, world.player.items) : null;
-
 /**
  * Starts a run of `dungeon` (the Crypt by default) on floor 1, or on `floor`
- * for development: the same floor that seed would reach, with its item offer.
+ * for development: the same floor that seed would reach.
  */
 export function startRun(
   seed: number,
@@ -299,7 +313,7 @@ export function startRun(
     floor: start,
     kind: floorKind(seed, start, def),
     escape: null,
-    offer: offerFor({ seed, floor: start }, base),
+    offer: null,
     ...(def.endless ? { clockMs: def.endless.clock.startMs, echoPaid: false, ...(def.endless.clock.graceMs ? { graceMs: def.endless.clock.graceMs } : {}) } : {}),
   };
   return { run, world: enterFloor(base, run, partySizeOf(base)) };
@@ -325,7 +339,7 @@ function goDown(run: RunState, world: WorldState, floor: number): { run: RunStat
   const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;
   const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
   const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
-  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, offer: offerItems(run.seed, floor, world.localId, world.player.items), ...clock };
+  const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, ...clock };
   return { run: next, world: enterFloor(descendPact(heal(world)), next), bonusMs };
 }
 

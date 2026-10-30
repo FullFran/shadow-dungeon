@@ -10,7 +10,7 @@ import { echoTitle } from '../core/eclipse-escalation';
 import { echoMimic } from '../core/eclipse-echo';
 import { echoLine, echoName } from '../adapters/eclipse-echo-view';
 import { heraldCardName, heraldHere, heraldIntro } from './herald-run';
-import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardOffer, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
+import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
 import { addTime } from '../core/endless';
 import { addItem } from '../core/items';
 import type { PactEffect, SimaEvents } from '../data/sima';
@@ -23,7 +23,7 @@ import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
-import { atLeavingPoint, bossFell, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, floorMusic, type RunState } from '../core/run';
+import { atLeavingPoint, bossFell, bossPickDue, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, picksAfterReturn, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, withRewardOffer, floorMusic, type RunState } from '../core/run';
 import { lookText, simaFoeLook, type SimaMemory } from './sima-lore';
 import { simaCardKey, type SimaSceneId } from '../data/sima-scenes';
 import type { SimaSceneInfo } from './sima-cinematic';
@@ -251,10 +251,10 @@ export interface RunningGame {
  * the run (generated floors 1-3 -> stairs -> boss floor; death or the boss falling ends it),
  * with sound driven by the same events and the music following the room.
  * Esc opens the menu: game input is cut off and, per the pause policy in
- * `menu.ts`, the simulation stands still until it closes. Entering a floor
- * after the first offers three held items (item-pick.ts): solo, input is cut
- * off and the game pauses until one is picked; a shared run keeps running
- * and only clicks on the cards or 1/2/3 pick.
+ * `menu.ts`, the simulation stands still until it closes. A boss down (when
+ * the run goes on), a chest or a cleared wave room offer three held items
+ * (item-pick.ts): solo, input is cut off and the game pauses until one is
+ * picked; a shared run keeps running and only clicks on the cards or 1/2/3 pick.
  */
 /** Player id -> nickname (or the "Jugador-XYZ" fallback) for the tags over remote players. */
 export function rosterNames(roster: readonly RosterEntry[]): Map<string, string> {
@@ -419,8 +419,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const silhouettes = new Set<string>();
   /** The Sima boss of this floor as this player remembers it (app/sima-lore.ts). */
   let currentLook: ReturnType<typeof simaFoeLook> = null;
-  /** A lost shadow felled on this floor already offered its item. */
-  let strayRewarded = false;
+  /** The floors whose boss already offered its pick this run: "Restart floor" and a bonfire return give no second one. */
+  let bossPicks = new Set<number>();
   let nowPlaying: NowPlaying | null = null;
   let playing: MusicContext | null = null;
   /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
@@ -464,10 +464,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let lastInputAt = 0;
   let waiting = 0;
   /**
-   * The mid-boss bonfire (core/bonfire.ts): this peer's run, world and coin tally as it was lit, the respawns used this
+   * The mid-boss bonfire (core/bonfire.ts): this peer's run, world, coin tally and merchant spending as it was lit, the respawns used this
    * run, and a full wipe waiting for the decision (the host's, or this player's solo).
    */
-  let bonfire: { run: RunState; world: WorldState; tally: CoinTally } | null = null;
+  let bonfire: { run: RunState; world: WorldState; tally: CoinTally; spent: number } | null = null;
   let bonfireUsed = 0;
   let wiped = false;
   /** Co-op, fainted: the teammate the camera follows (./spectate.ts), and the button that moves on to the next one (touch and mouse; Q on the keyboard). */
@@ -837,10 +837,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const fresh = bonfire ? null : returnToFloor(run, world, floor);
     // A Sima boss floor anew is met behind its fog again, like the snapshot the others kept.
     const back = bonfire ?? (dungeonOf(run).endless ? { run: fresh!.run, world: withFogWall(fresh!.run, fresh!.world) } : fresh!);
-    // The Sima's clock never goes back with it (core/bonfire.ts `bonfireReturn`).
-    run = bonfireReturn(back.run, run);
+    // The Sima's clock never goes back with it (core/bonfire.ts `bonfireReturn`); a pick still on offer stays open.
+    run = { ...bonfireReturn(back.run, run), offer: run.offer };
+    // The floors after the bonfire come again, and pay again; its own boss does not.
+    bossPicks = picksAfterReturn(bossPicks, back.run.floor);
     world = { ...back.world, lock: configureLock(back.world.lock, lockSettings) };
-    if (bonfire) tally = bonfire.tally;
+    if (bonfire) {
+      tally = bonfire.tally;
+      simaSpent = bonfire.spent;
+    }
     floorStart = world;
     floorStartTally = tally;
     floorStartSpent = simaSpent;
@@ -865,7 +870,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function watchBonfire(): void {
     if (trial || !bonfireLights(run, world, bonfire !== null)) return;
     world = { ...world, bonfireLit: true };
-    bonfire = { run, world: bonfireSnapshot(world), tally };
+    bonfire = { run, world: bonfireSnapshot(world), tally, spent: simaSpent };
     say(t('bonfire.lit'), 'good');
     audio?.play('item');
   }
@@ -894,7 +899,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       simaLog.push({ floor: run.floor, kind: now.kind, outcome: now.outcome });
       if (rewardsItems(now) && !eventRewarded) {
         eventRewarded = true;
-        run = { ...run, offer: rewardOffer(run.seed, run.floor, world.localId, world.player.items) };
+        run = withRewardOffer(run, world);
         offerPick();
       }
     }
@@ -914,12 +919,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     else openMerchant(events);
   }
 
-  /** A lost shadow felled: its item pick, once (each peer its own offer, like a vault's). */
-  function watchStray(): void {
-    if (strayRewarded || !strayHere(run) || !roomCleared(world)) return;
-    strayRewarded = true;
-    say(t('sima.stray.reward'), 'item');
-    run = { ...run, offer: rewardOffer(run.seed, run.floor, world.localId, world.player.items) };
+  /** A boss down and the run goes on: its item pick, once (each peer its own offer, like a vault's). Shrine trials hold no items. */
+  function watchBossPick(): void {
+    if (trial || !bossPickDue(run, world, bossPicks)) return;
+    bossPicks.add(run.floor);
+    say(t(strayHere(run) ? 'sima.stray.reward' : 'pick.boss'), 'item');
+    run = withRewardOffer(run, world);
     offerPick();
   }
 
@@ -930,13 +935,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!net && !closeMenu) input.setSuspended(false);
   }
 
-  /** Takes card `index` of the floor's offer; "Restart floor" keeps the item. */
+  /** Takes card `index` of the offer; "Restart floor" keeps the item, and so does a bonfire lit on this floor (its boss gives no second pick). */
   function choose(index: number): void {
     if (!closePick) return;
     const item = run.offer?.[index];
     const picked = chooseItem(run, world, index);
     if (picked.run === run) return;
     floorStart = chooseItem(run, floorStart, index).world;
+    if (bonfire && bonfire.run.floor === run.floor) bonfire = { ...bonfire, world: chooseItem(run, bonfire.world, index).world };
     run = picked.run;
     world = picked.world;
     audio?.play('item');
@@ -944,7 +950,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     hidePick();
   }
 
-  /** Shows the current floor's held item offer, if any. */
+  /** Shows the held item offer, if any. */
   function offerPick(): void {
     hidePick();
     if (!run.offer || run.offer.length === 0 || ended) return;
@@ -1202,14 +1208,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     merchantSold = false;
     shrineTimePaid = false;
     eventRewarded = false;
-    strayRewarded = false;
     lastEvent = world.simaEvent;
     prev = world;
     camera = world.player.pos;
     defeatedAt.clear();
     music();
     announceFloor(true);
-    // The guardian's floor opens with its cinematic (a herald's with its intro); the held item pick waits for it.
+    // The guardian's floor opens with its cinematic (a herald's with its intro); a pick carried down the stairs (shared run) waits for it.
     simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
   }
 
@@ -1335,7 +1340,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           hideChoice();
         }
         watchSimaEvent();
-        watchStray();
+        watchBossPick();
         watchLeave();
         watchBonfire();
         watchStory(events);
@@ -1467,7 +1472,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   music();
   lastEvent = world.simaEvent;
   announceFloor(false);
-  // Development start below floor 1 (`?floor=`): that floor's offer (after the guardian's cinematic on its floor).
+  // Development start below floor 1 (`?floor=`): the guardian's cinematic on its floor.
   simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);

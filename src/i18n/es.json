@@ -353,6 +353,7 @@
   "rarity.common": "Común",
   "rarity.uncommon": "Poco común",
   "rarity.rare": "Rara",
+  "pick.boss": "El jefe ha caído y deja algo tras de sí: elige un objeto.",
   "pick.title": "Elige un objeto",
   "pick.hint": "Haz clic en una carta o pulsa 1, 2 o 3",
   "pick.held": "Llevas {count} de {max}",
