@@ -79,7 +79,8 @@ function fakeBackend() {
       calls.push(`updateSave@${rev}`);
       if (down) return fail(down as never);
       const found = saves.get(saveId);
-      if (!found || userOf(token) !== found.user) return fail('unauthorized');
+      // PocketBase treats a dead token as a guest, and a guest cannot see the record: 404, not 401.
+      if (!found || userOf(token) !== found.user) return fail('rejected');
       if (found.rev !== rev) return { ok: false, error: { kind: 'conflict', current: { id: found.id, rev: found.rev, data: found.data } } };
       found.rev += 1;
       found.data = data;
@@ -114,6 +115,9 @@ function fakeBackend() {
   return {
     api,
     calls,
+    /** Every session ends, as changing a password does. */
+    revokeTokens: () => tokens.clear(),
+    dropSaves: () => saves.clear(),
     setDown: (kind: ApiError['kind'] | null) => {
       down = kind;
     },
@@ -383,6 +387,23 @@ describe('a linked browser', () => {
     return { backend, d, storage: d.storage };
   }
 
+  it('a tab left open when the password changes says the session expired on its next push, and keeps the local save', async () => {
+    const { backend, d } = await linked();
+    backend.revokeTokens();
+    writeSave(d.game, save(150));
+    await d.idle();
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+    expect(d.names()).toContain('expired');
+    expect(d.local().coins).toBe(150);
+  });
+  it('a save the server refuses for a live session stays quiet, as before', async () => {
+    const { backend, d } = await linked();
+    backend.dropSaves();
+    writeSave(d.game, save(150));
+    await d.idle();
+    expect(d.account.state()).toEqual({ kind: 'signed-in', email: 'ana@example.com' });
+    expect(d.names()).not.toContain('expired');
+  });
   it('pushes every progress write after the debounce, with the baseRev', async () => {
     const { backend, d } = await linked();
     writeSave(d.game, save(150));
@@ -725,6 +746,12 @@ describe('a forgotten or changed password', () => {
     const d = device(backend);
     backend.setDown('rate-limited');
     expect(await d.account.requestPasswordReset('ana@example.com')).toEqual({ ok: false, error: 'rate-limited' });
+  });
+  it('a format only the server refuses reads as a bad email, not as a failed sign-up', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    backend.setDown('rejected');
+    expect(await d.account.requestPasswordReset('foo@bar..com')).toEqual({ ok: false, error: 'invalid-email' });
   });
 });
 
