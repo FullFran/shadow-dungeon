@@ -1,6 +1,7 @@
 // Package reports holds the shape of a player's bug report (issue #9): its
 // collection name, categories, statuses and field limits, shared by the
-// migration that creates the collection and the route that fills it.
+// migration that creates the collection, the route that fills it, the admin
+// routes that triage it and the mail that announces it.
 package reports
 
 // Collection is the PocketBase collection that stores the reports.
@@ -28,3 +29,16 @@ var Statuses = []string{"new", "triaged", "issue", "closed"}
 
 // StatusNew is where every report starts.
 const StatusNew = "new"
+
+// TriageStatuses are the ones an admin sets from the game; "issue" goes with
+// a GitHub link, which the owner sets by hand.
+var TriageStatuses = []string{StatusNew, "triaged", "closed"}
+
+// AdminsCollection lists the accounts allowed to triage reports. Only
+// superusers edit it.
+const AdminsCollection = "admins"
+
+// Notice is what a new report announces to whoever is told about it.
+type Notice struct {
+	Ref, Category, Description, Steps, Expected, Observed, Version, Device string
+}

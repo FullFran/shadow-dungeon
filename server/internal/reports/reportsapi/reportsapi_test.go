@@ -13,6 +13,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 
+	"github.com/fullfran/mazmorra-sombria/server/internal/reports"
 	"github.com/fullfran/mazmorra-sombria/server/internal/setup"
 	_ "github.com/fullfran/mazmorra-sombria/server/migrations"
 )
@@ -33,11 +34,16 @@ func newApp(t *testing.T) *tests.TestApp {
 
 func mux(t *testing.T, app core.App, dailyCap int, now func() time.Time) http.Handler {
 	t.Helper()
+	return muxHearing(t, app, dailyCap, now, &[]reports.Notice{})
+}
+
+func muxHearing(t *testing.T, app core.App, dailyCap int, now func() time.Time, notified *[]reports.Notice) http.Handler {
+	t.Helper()
 	r, err := apis.NewRouter(app)
 	if err != nil {
 		t.Fatal(err)
 	}
-	register(r, app, dailyCap, now, testKey)
+	register(r, app, dailyCap, now, testKey, func(n reports.Notice) { *notified = append(*notified, n) })
 	m, err := r.BuildMux()
 	if err != nil {
 		t.Fatal(err)
@@ -255,5 +261,30 @@ func TestIPKeyFromEnvOrRandom(t *testing.T) {
 	a, b := IPKey(func(string) string { return "" }), IPKey(func(string) string { return "" })
 	if len(a) != 32 || string(a) == string(b) {
 		t.Fatal("without the env a fresh random key is expected each start")
+	}
+}
+
+func TestAnnouncesOnlyReportsItStored(t *testing.T) {
+	app := newApp(t)
+	var notified []reports.Notice
+	m := muxHearing(t, app, 1, time.Now, &notified)
+	if rec := post(m, `{"category":"bug","description":"filled honeypot","website":"spam"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("honeypot: %d", rec.Code)
+	}
+	if rec := post(m, `{"category":"nope","description":"x"}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid: %d", rec.Code)
+	}
+	if len(notified) != 0 {
+		t.Fatalf("announced %+v", notified)
+	}
+	rec := post(m, valid)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("valid: %d", rec.Code)
+	}
+	if len(notified) != 1 || !strings.Contains(rec.Body.String(), notified[0].Ref) || notified[0].Description != "The boss froze on floor 3" {
+		t.Fatalf("%+v %s", notified, rec.Body.String())
+	}
+	if rec := post(m, valid); rec.Code != http.StatusServiceUnavailable || len(notified) != 1 {
+		t.Fatalf("past the cap: %d, %d announced", rec.Code, len(notified))
 	}
 }

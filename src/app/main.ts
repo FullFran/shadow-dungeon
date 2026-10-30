@@ -57,6 +57,8 @@ import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
+import { adminAccess, ticketsWindow } from './tickets-screen';
+import { httpAdminApi } from '../adapters/admin-api';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -120,6 +122,12 @@ const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 /** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
 const publicProfile = profilePublisher({ api: publicApi, nickname: () => settings.nickname, species: () => settings.species });
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
+/** The tickets inbox while it is open, and whose it is. */
+let openTickets: { email: string | null; leave(): void } | null = null;
+const signedInEmail = (): string | null => {
+  const state = account.state();
+  return state.kind === 'signed-in' ? state.email : null;
+};
 const { account, store } = setupAccount({
   store: browserStore(),
   onSynced: (session) => publicProfile.synced(session),
@@ -129,6 +137,8 @@ const { account, store } = setupAccount({
   },
   // Sync moved (status, a choice, another tab): a signed-in account screen shows it at once; the title redraws for a replaced profile.
   onChange: () => {
+    // The inbox is for the account that opened it: logging out, here or in another tab, closes it.
+    if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
     const app = document.getElementById('app');
     if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
   },
@@ -139,6 +149,8 @@ const { account, store } = setupAccount({
     if (app?.querySelector('.title-logo')) titleScreen(app);
   },
 });
+const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
+const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
 const globalRanking = globalRankingSource({ api: publicApi, signedIn: () => account.state().kind === 'signed-in', now: () => Date.now() });
@@ -479,7 +491,7 @@ function newsScreen(root: HTMLElement, back: () => void): void {
 }
 
 /** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits, the bug report and the install offer, in the shared described menu. */
-function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' = 'settings'): void {
+function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'tickets' = 'settings'): void {
   const entries = optionsEntries(pwa.offer() !== 'none');
   const action: Record<OptionsEntry, () => void> = {
     settings: () => settingsScreen(root),
@@ -496,12 +508,19 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' = 'setting
       ...entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
       // Players report problems from the game, anonymously (issue #9).
       { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
+      // The server says who is an admin; a yes that arrives later redraws this menu below.
+      ...(ticketAdmin.known() ? [{ label: t('title.tickets'), about: t('options.about.tickets'), onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
     ],
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: at === 'report' ? entries.length : Math.max(0, entries.indexOf(at)),
+    initial: at === 'report' ? entries.length : at === 'tickets' ? entries.length + 1 : Math.max(0, entries.indexOf(at)),
   });
   show(root, [open.element]);
+  if (!ticketAdmin.known()) {
+    void ticketAdmin.check().then((admin) => {
+      if (admin && open.element.isConnected) optionsScreen(root, at);
+    });
+  }
 }
 
 /**
@@ -827,6 +846,18 @@ function reportOptions(onBack: () => void) {
     send: (report: Parameters<typeof sendReport>[1]) => sendReport(apiBaseUrl(import.meta.env.VITE_API_URL), report),
     onBack,
   };
+}
+
+/** "Tickets": the admins' inbox of player reports. */
+function ticketsScreen(root: HTMLElement, back: () => void): void {
+  const leave = () => {
+    openTickets = null;
+    open.dispose();
+    back();
+  };
+  const open = ticketsWindow({ api: adminApi, token: () => account.token(), onBack: leave });
+  openTickets = { email: signedInEmail(), leave };
+  show(root, [open.element]);
 }
 
 function reportScreen(root: HTMLElement, back: () => void): void {
