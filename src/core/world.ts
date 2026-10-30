@@ -44,6 +44,8 @@ export interface WorldOptions {
   awakened?: number;
   /** The local player wears its line's shiny skin (cosmetic only; core/shiny.ts). */
   shiny?: boolean;
+  /** The local player's line was picked as female (cosmetic only; core/gender.ts). */
+  female?: boolean;
 }
 
 /**
@@ -107,9 +109,10 @@ export function createWorld({
   party,
   awakened,
   shiny,
+  female,
 }: WorldOptions): WorldState {
   const created = withRollTier(createPlayer(playerPos, species, loadout, upgrades, party ?? 1, awakened ?? 0), difficulty);
-  const player = shiny ? { ...created, shiny: true } : created;
+  const player = { ...created, ...(shiny ? { shiny: true } : {}), ...(female ? { female: true } : {}) };
   return {
     tick: 0,
     ...(difficulty ? { difficulty } : {}),

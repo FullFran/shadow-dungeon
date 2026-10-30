@@ -40,7 +40,7 @@ describe('town Esc menu', () => {
     const screen = main.slice(main.indexOf('function pokemonScreen('), main.indexOf('function pokemonScreen(') + 1100);
     expect(screen.match(/repick\?\.\(\)/g)).toHaveLength(2);
     const room = main.slice(main.indexOf('function townLobby('), main.indexOf('function backToRoom('));
-    expect(room).toContain('session.repick(settings.species, settings.loadout, skinOn())');
+    expect(room).toContain('session.repick(settings.species, settings.loadout, skinOn(), femaleOn())');
   });
 
   it('shows only the services the app wired, and no online window inside a room', () => {

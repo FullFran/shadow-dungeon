@@ -1,6 +1,6 @@
 import { bestiaryLines } from './bestiary';
 import { devPerfProbe } from '../adapters/perf-probe';
-import { shinyKey, SPRITE_KEYS } from '../data/sprites';
+import { lookKey, SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
 import { DUNGEONS } from '../data/dungeons';
@@ -67,6 +67,8 @@ export interface TownOptions {
   species: string;
   /** The player wears its line's shiny skin (odd/tasks/shiny-echo.md). */
   shiny?: boolean;
+  /** The player's line was picked as female (odd/tasks/pokemon-gender.md). */
+  female?: boolean;
   /** Replaces the page with the town's nodes (no menu backdrop). */
   show: (nodes: Node[]) => void;
   /** The dungeons open on this device, in select order (the exit window lists them). */
@@ -192,10 +194,10 @@ export async function loadTownImages(): Promise<TownImages> {
 
 export const tileCentre = (x: number, y: number): Vec2 => ({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE });
 
-/** A walker's sheet: its species' (Mimikyu for an unknown name), or its shiny. */
-export function playerSprite(species: string, shiny = false): string {
+/** A walker's sheet: its species' (Mimikyu for an unknown name), its shiny, its female. */
+export function playerSprite(species: string, shiny = false, female = false): string {
   const key = Object.hasOwn(SPRITE_KEYS, species) ? SPRITE_KEYS[species as keyof typeof SPRITE_KEYS] : SPRITE_KEYS.mimikyu;
-  return shiny ? shinyKey(key) : key;
+  return lookKey(key, shiny, female);
 }
 
 /**
@@ -320,7 +322,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   /** When the current map's name banner started (view time). */
   let bannerAt = 0;
 
-  const sprite = playerSprite(options.species, options.shiny);
+  const sprite = playerSprite(options.species, options.shiny, options.female);
   const lobby = options.lobby ?? null;
   // Warm the global ranking of the tier picked now, so the board has it when read.
   safeLines(options.globalBoard, lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy');
@@ -811,7 +813,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const state = wanderers.get(w.id);
       return state ? [{ sprite: npcSprite(w.species), pos: state.pos, facing: state.facing, moving: state.target !== null && state.waitMs <= 0, floats: FLOATERS.has(w.species) }] : [];
     });
-    const others = (lobby?.walkers() ?? []).filter((w) => w.map === map.id).map((w): TownCharacter => ({ sprite: playerSprite(w.species, w.shiny), pos: w.pos, facing: w.facing, moving: w.moving }));
+    const others = (lobby?.walkers() ?? []).filter((w) => w.map === map.id).map((w): TownCharacter => ({ sprite: playerSprite(w.species, w.shiny, w.female), pos: w.pos, facing: w.facing, moving: w.moving }));
     // The villagers of the pleas: the crowd at their places, and the one coming (facing the player while it speaks).
     const crowd = plea ? pleaCrowd(plea, TILE).map((c): TownCharacter => ({ sprite: npcSprite(c.actor.species), pos: c.pos, facing: { x: walker.pos.x - c.pos.x, y: walker.pos.y - c.pos.y }, moving: false, floats: FLOATERS.has(c.actor.species) })) : [];
     const coming = plea ? pleaActor(plea) : null;

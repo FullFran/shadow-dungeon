@@ -42,6 +42,7 @@ export const SAVE_FIELD_RULES = {
   shinies: 'economy',
   shinyWorn: 'economy',
   shinyPity: 'economy',
+  females: 'economy',
   // Senda chapters gate tiered materials and bond lines, so they travel with the economy they paid for.
   story: 'economy',
 } as const satisfies Record<keyof SaveData, FieldRule>;

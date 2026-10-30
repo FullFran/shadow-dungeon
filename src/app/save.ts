@@ -7,6 +7,7 @@ import { lineOf } from '../core/evolution';
 import type { Materials } from '../core/collection';
 import { awakeningsOf, MATERIAL_TIERS } from '../data/player-evolutions';
 import { challengeReward } from '../core/challenge';
+import { FEMALE_LINES, setFemale } from '../core/gender';
 import { challengeShiny, SHINY_LINES, wearShiny } from '../core/shiny';
 import { GACHA } from '../data/gacha';
 import type { DungeonDef } from '../data/dungeons';
@@ -35,6 +36,7 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
  *    starters, `materials` the starters' lines, and `awakened` Mimikyu's awakening steps.
  * 4: achievements, lifetime Pokémonedas and missions (odd/tasks/achievements-missions.md); a v3 save reads with none.
  *    Since odd/tasks/shiny-echo.md (same version, optional fields only): `shinies`, `shinyWorn` and `shinyPity`.
+ *    Since odd/tasks/pokemon-gender.md (same version, optional field only): `females`.
  */
 export const SAVE_VERSION = 4;
 
@@ -66,6 +68,8 @@ export interface SaveData {
   shinyWorn?: readonly SpeciesId[];
   /** Gacha pulls since the last shiny (absent = 0). */
   shinyPity?: number;
+  /** Lines picked as female, by first form (absent = all male; core/gender.ts). */
+  females?: readonly SpeciesId[];
   /** Senda chapters closed per challenge line, 1..3 (absent = none; core/story.ts). */
   story?: StoryProgress;
 }
@@ -112,6 +116,7 @@ export function sanitize(raw: unknown): SaveData {
   const shinies = sanitizeLines(raw.shinies);
   const shinyWorn = shinies ? sanitizeLines(raw.shinyWorn)?.filter((line) => shinies.includes(line)) : null;
   const shinyPity = Math.min(wholeCount(raw.shinyPity), GACHA.shinyPity - 1);
+  const females = sanitizeLines(raw.females)?.filter((line) => FEMALE_LINES.includes(line));
   const story = sanitizeStory(raw.story);
   return {
     version: SAVE_VERSION,
@@ -129,6 +134,7 @@ export function sanitize(raw: unknown): SaveData {
     ...(shinies ? { shinies } : {}),
     ...(shinyWorn && shinyWorn.length > 0 ? { shinyWorn } : {}),
     ...(shinyPity > 0 ? { shinyPity } : {}),
+    ...(females && females.length > 0 ? { females } : {}),
     ...(story ? { story } : {}),
   };
 }
@@ -284,6 +290,14 @@ export function earnCoins(store: KeyValueStore, amount: number): SaveData {
   const next = sanitize({ ...save, coins: save.coins + gain, earned: (save.earned ?? 0) + gain });
   writeSave(store, next);
   return next;
+}
+
+/** Picks `species`' line as female or male in the stored save and returns it (unchanged when the line has no female art). */
+export function setFemaleAt(store: KeyValueStore, species: SpeciesId, female: boolean): SaveData {
+  const save = loadSave(store);
+  const next = setFemale(save, species, female);
+  if (next !== save) writeSave(store, next);
+  return loadSave(store);
 }
 
 /** Puts `species`' line skin on or off in the stored save and returns it (unchanged when the skin is locked). */

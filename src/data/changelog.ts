@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.6',
+    date: '2026-10-30',
+    sections: {
+      new: [
+        {
+          es: 'Género de los Pokémon: en la pantalla de Pokémon eliges macho o hembra en las especies con dibujo propio, de momento Shinx, Luxio y Luxray. Es solo de aspecto, y en cooperativo lo ven los demás.',
+          en: 'Pokémon gender: in the Pokémon screen you pick male or female for species with their own art, for now Shinx, Luxio and Luxray. It only changes the look, and others see it in co-op.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.5',
     date: '2026-10-30',
     sections: {

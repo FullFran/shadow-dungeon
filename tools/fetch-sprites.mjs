@@ -9,10 +9,14 @@
 //     rest of sprite-meta.json is kept, CREDITS.md is regenerated in full)
 //   node tools/fetch-sprites.mjs --add=drowzee,hypno   (only those species'
 //     sheets; the rest of sprite-meta.json is kept, CREDITS.md in full)
+//   node tools/fetch-sprites.mjs --only=female   (only the female sheets; the
+//     rest of sprite-meta.json is kept, CREDITS.md is regenerated in full)
 //
 // SpriteCollab layout: sprite/<dex4>/ is the base form, sprite/<dex4>/<form4>/
 // an alternate form and sprite/<dex4>/<form4>/0001/ its shiny (local folder
-// public/sprites/<dex4>/<form4>/0001/, meta key "<dex4>/<form4>/0001"). Sheets have one column per frame and one row per
+// public/sprites/<dex4>/<form4>/0001/, meta key "<dex4>/<form4>/0001"). A female sheet lives in
+// sprite/<dex4>/<form4>/0000/0002/, its shiny in sprite/<dex4>/<form4>/0001/0002/ (the same paths locally
+// and in the meta key). Sheets have one column per frame and one row per
 // direction (see DIRECTIONS). Frame durations are in 1/60 s ticks.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -181,7 +185,15 @@ const TARGETS = [
 // Idle, Walk, Attack, Shoot, Charge and Hurt). Busted Mimikyu is a playable sheet too.
 const PLAYABLE = new Set(['mimikyu', 'zorua', 'litwick', 'cubone', 'abra', 'kadabra', 'alakazam', 'piplup', 'prinplup', 'empoleon', 'shinx', 'luxio', 'luxray', 'axew', 'fraxure', 'haxorus', 'zoroark', 'lampent', 'chandelure', 'marowak']);
 const SHINY_TARGETS = TARGETS.filter((t) => PLAYABLE.has(t.species)).map((t) => ({ ...t, shiny: '0001', formName: `${t.formName}-shiny` }));
-const ALL_TARGETS = [...TARGETS, ...SHINY_TARGETS];
+
+// The species with female art (odd/tasks/pokemon-gender.md; verified in SpriteCollab 2026-10-30, normal and shiny;
+// Alakazam's folder 404s). Keep it in step with FEMALE_ART in src/core/gender.ts (tests/data/female-sprites.test.ts).
+const FEMALE_ART = new Set(['shinx', 'luxio', 'luxray']);
+const FEMALE_TARGETS = TARGETS.filter((t) => FEMALE_ART.has(t.species)).flatMap((t) => [
+  { ...t, female: '0002', formName: `${t.formName}-female` },
+  { ...t, shiny: '0001', female: '0002', formName: `${t.formName}-female-shiny` },
+]);
+const ALL_TARGETS = [...TARGETS, ...SHINY_TARGETS, ...FEMALE_TARGETS];
 
 // Animations the game uses, with fallbacks when a sheet does not exist.
 const WANTED = {
@@ -217,8 +229,9 @@ async function fetchText(url) {
 }
 
 /** The target's folder under sprite/ (and under public/sprites/, with the base form's "0000"). */
-const remotePath = (target) => `${target.dex}${target.form === '0000' && !target.shiny ? '' : `/${target.form}`}${target.shiny ? `/${target.shiny}` : ''}`;
-const localKey = (target) => `${target.dex}/${target.form}${target.shiny ? `/${target.shiny}` : ''}`;
+const femalePath = (target) => `${target.dex}/${target.form}/${target.shiny ?? '0000'}/${target.female}`;
+const remotePath = (target) => (target.female ? femalePath(target) : `${target.dex}${target.form === '0000' && !target.shiny ? '' : `/${target.form}`}${target.shiny ? `/${target.shiny}` : ''}`);
+const localKey = (target) => (target.female ? femalePath(target) : `${target.dex}/${target.form}${target.shiny ? `/${target.shiny}` : ''}`);
 const folderUrl = (target) => `${RAW}/sprite/${remotePath(target)}`;
 
 async function downloadTarget(target) {
@@ -277,7 +290,7 @@ async function collectCredits(targets, names) {
     for (const credit of parseCredits(text)) {
       const { name, contact } = resolveAuthor(names, credit.author);
       const entry = perArtist.get(name) ?? { contact, sprites: new Set() };
-      entry.sprites.add(`${target.species}${target.shiny ? ' shiny' : ''} (${remotePath(target)})`);
+      entry.sprites.add(`${target.species}${target.female ? ' female' : ''}${target.shiny ? ' shiny' : ''} (${remotePath(target)})`);
       perArtist.set(name, entry);
     }
   }
@@ -286,13 +299,14 @@ async function collectCredits(targets, names) {
 
 async function main() {
   const onlyShiny = process.argv.includes('--only=shiny');
+  const onlyFemale = process.argv.includes('--only=female');
   const added = new Set((process.argv.find((a) => a.startsWith('--add='))?.slice('--add='.length) ?? '').split(',').filter(Boolean));
-  const partial = onlyShiny || added.size > 0;
+  const partial = onlyShiny || onlyFemale || added.size > 0;
   const kept = partial ? JSON.parse(await readFile(OUT_META, 'utf8')).sprites : {};
   const meta = { directions: DIRECTIONS, ticksPerSecond: 60, sprites: {} };
   for (const target of ALL_TARGETS) {
     const key = localKey(target);
-    const fresh = added.size > 0 ? added.has(target.species) : target.shiny;
+    const fresh = added.size > 0 ? added.has(target.species) : onlyFemale ? target.female : target.shiny && !target.female;
     meta.sprites[key] = partial && !fresh && kept[key] ? kept[key] : await downloadTarget(target);
   }
   await writeFile(OUT_META, `${JSON.stringify(meta, null, 2)}\n`);

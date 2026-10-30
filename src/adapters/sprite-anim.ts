@@ -3,7 +3,7 @@ import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { TUTOR_MOVE_IDS, type TutorMoveId } from '../data/tutor-moves';
 import { LINE_MOVE_IDS, type LineMoveId } from '../data/line-moves';
 import { SPECIES, type SpeciesId } from '../data/species';
-import { shinyKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type ShinySpriteKey } from '../data/sprites';
+import { lookKey, SPRITE_KEYS, SPRITES, type AnimMeta, type BaseSpriteKey, type FemaleSpriteKey, type ShinySpriteKey } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { STORY_BOSSES } from '../data/story/bosses';
 import type { EnemyState, PlayerState } from '../core/state';
@@ -15,8 +15,8 @@ import type { Vec2 } from '../core/vec';
  * `SPRITES.directions` (down, downRight, right, upRight, up, upLeft, left,
  * downLeft). Durations are in 1/60 s ticks.
  */
-/** A sheet folder: a species' own, or its shiny (odd/tasks/shiny-echo.md). */
-export type SpriteKey = BaseSpriteKey | ShinySpriteKey;
+/** A sheet folder: a species' own, its shiny (odd/tasks/shiny-echo.md) or its female (odd/tasks/pokemon-gender.md). */
+export type SpriteKey = BaseSpriteKey | ShinySpriteKey | FemaleSpriteKey;
 
 /** Sheet row for a facing vector (screen y grows down). */
 export function directionRow(dir: Vec2): number {
@@ -188,11 +188,11 @@ export function attackSheet(sprite: SpriteKey, moveId: MoveId): string {
   return RELEASE_FALLBACKS.find(usable) ?? 'Attack';
 }
 
-/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form); its shiny when it wears the skin. */
-export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken' | 'shiny'>): SpriteKey {
+/** Sheet of a player: its species' sprite, or the spent one once its passive is used up (Mimikyu's Busted form); its shiny when it wears the skin, its female when picked and drawn. */
+export function playerSprite(player: Pick<PlayerState, 'species' | 'disguiseBroken' | 'shiny' | 'female'>): SpriteKey {
   const species = SPECIES[player.species];
   const key = SPRITE_KEYS[species.spentSprite && player.disguiseBroken ? species.spentSprite : species.sprite];
-  return player.shiny ? shinyKey(key) : key;
+  return lookKey(key, player.shiny, player.female);
 }
 
 export interface PlayerAnimContext {

@@ -34,7 +34,7 @@ import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion }
 import { accountWindow, setupAccount, type AccountView } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
-import { loadoutScreen, type ShinySkins } from './loadout';
+import { loadoutScreen, type LineGender, type ShinySkins } from './loadout';
 import { openPauseMenu } from './menu';
 import { prologueScreen, type PrologueOptions } from './prologue';
 import { readSimaMemory } from './sima-lore';
@@ -74,7 +74,7 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import type { SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { earnChallengeReward, earnCoins, loadSave, wearShinyAt, writeSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast, holdToasts, releaseToasts } from './achievements';
@@ -91,6 +91,7 @@ import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { awakenedOf, currentForm, rosterOf } from '../core/collection';
+import { isFemale } from '../core/gender';
 import { hasShiny, wearsShiny } from '../core/shiny';
 import { coinLines } from './coin-lines';
 import { isTouchUi, setTouchMode, setTouchPrefs } from '../adapters/touch-mode';
@@ -1046,7 +1047,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1055,23 +1056,33 @@ function tutorView(species: SpeciesId): { known: MoveId[]; ranks: Partial<Record
   return { known: knownMoves(save, species), ranks: { ...runRanks(save, species) }, buildHint: buildHint(species) };
 }
 
-/** A run's Mejoras, awakening steps and shiny skin of `species` (none: no field). */
-function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>>; awakened?: number; shiny?: boolean } {
+/** A run's Mejoras, awakening steps, shiny skin and gender of `species` (none: no field). */
+function ranksOf(species: SpeciesId): { moveRanks?: Partial<Record<MoveId, number>>; awakened?: number; shiny?: boolean; female?: boolean } {
   const save = loadSave(store);
   const ranks = runRanks(save, species);
   const awakened = awakenedOf(save, species);
-  return { ...(ranks ? { moveRanks: ranks } : {}), ...(awakened > 0 ? { awakened } : {}), ...(wearsShiny(save, species) ? { shiny: true } : {}) };
+  return { ...(ranks ? { moveRanks: ranks } : {}), ...(awakened > 0 ? { awakened } : {}), ...(wearsShiny(save, species) ? { shiny: true } : {}), ...(isFemale(save, species) ? { female: true } : {}) };
 }
 
 /** Whether `species` (the picked one by default) wears its line's shiny skin (odd/tasks/shiny-echo.md). */
 const skinOn = (species: SpeciesId = settings.species): boolean => wearsShiny(loadSave(store), species);
 
+/** Whether `species`' line (the picked one's by default) was picked as female (odd/tasks/pokemon-gender.md). */
+const femaleOn = (species: SpeciesId = settings.species): boolean => isFemale(loadSave(store), species);
+
 /**
- * The loadout's shiny skins, read from and written to the save; `after` runs
- * after a change (a room hears it through the hello).
+ * The loadout's shiny skins and line genders, read from and written to the
+ * save; `after` runs after a change (a room hears it through the hello).
  */
-function skins(after?: () => void): { skin: ShinySkins } {
+function skins(after?: () => void): { skin: ShinySkins; gender: LineGender } {
   return {
+    gender: {
+      female: (species) => femaleOn(species),
+      set: (species, female) => {
+        setFemaleAt(store, species, female);
+        after?.();
+      },
+    },
     skin: {
       unlocked: (species) => hasShiny(loadSave(store), species),
       worn: (species) => skinOn(species),
@@ -1284,13 +1295,13 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       roster: rosterOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
-      ...skins(() => r?.session.repick(settings.species, settings.loadout, skinOn())),
+      ...skins(() => r?.session.repick(settings.species, settings.loadout, skinOn(), femaleOn())),
       startLabel: t('shrine.start'),
       context: requestLine(request),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
         // The room sees the host's new species too.
-        r?.session.repick(settings.species, settings.loadout, skinOn());
+        r?.session.repick(settings.species, settings.loadout, skinOn(), femaleOn());
         shrineStep(root, from, loadoutSpecies(request));
       },
       onChange: (next) => update({ loadout: next }),
@@ -1371,7 +1382,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         onChange: (next) => update({ loadout: next }),
         // Ready: the host's roster gets this species; the moves stay on this device (each player plays its own).
         onStart: () => {
-          r.session.repick(settings.species, settings.loadout, skinOn());
+          r.session.repick(settings.species, settings.loadout, skinOn(), femaleOn());
           back();
         },
         onBack: () => roomShrineGuest(root, stage === 'moves' ? 'species' : 'menu'),
@@ -1403,7 +1414,7 @@ function startRoomTrial(root: HTMLElement, request: TrialRequest, pick: TrialPic
   const r = liveRoom('room');
   if (!r) return titleScreen(root);
   const dungeon = request.stops[0]!.dungeon;
-  r.session.repick(pick.species, pick.loadout, skinOn(pick.species));
+  r.session.repick(pick.species, pick.loadout, skinOn(pick.species), femaleOn(pick.species));
   r.session.setDifficulty(request.difficulty);
   r.session.begin(dungeon, r.seed, roomTrialOf(request));
   const group = r.session.roster().length > 1;
@@ -1565,8 +1576,8 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     if (!root.querySelector('canvas.town')) townLobby(root);
   });
   const name = sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() });
-  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty, shiny: skinOn() });
-  else session.join(settings.species, settings.loadout, name, skinOn());
+  if (asHost) session.host(room.seed, 1, settings.species, { lobby: true, name, difficulty: settings.difficulty, shiny: skinOn(), female: femaleOn() });
+  else session.join(settings.species, settings.loadout, name, skinOn(), femaleOn());
   townLobby(root);
 }
 
@@ -1595,7 +1606,7 @@ function townLobby(root: HTMLElement): void {
     selfName: sanitizeNickname(settings.nickname) || nameOf({ peer: session.peerId() }),
     code: () => (hideCode ? '•'.repeat(r.code.length) : r.code),
     players: () => session.roster().map((e) => ({ name: nameOf(e), host: e.id === 'p1', self: e.peer === session.peerId() })),
-    walkers: () => session.townWalkers().map((w) => ({ id: w.id, name: nameOf(w), species: w.species, ...(w.shiny ? { shiny: true } : {}), map: w.map, pos: w.pos, facing: w.facing, moving: w.moving })),
+    walkers: () => session.townWalkers().map((w) => ({ id: w.id, name: nameOf(w), species: w.species, ...(w.shiny ? { shiny: true } : {}), ...(w.female ? { female: true } : {}), map: w.map, pos: w.pos, facing: w.facing, moving: w.moving })),
     sendPresence: (presence) => session.sendPresence(presence),
     menu: (close) => [
       { label: t('lobby.copy'), onConfirm: () => void navigator.clipboard?.writeText(r.code).then(close, close) },
@@ -1638,7 +1649,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn(), femaleOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */

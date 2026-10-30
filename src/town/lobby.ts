@@ -66,6 +66,8 @@ export interface TownLobbyWalker {
   species: string;
   /** Wears its line's shiny skin. */
   shiny?: boolean;
+  /** Its line was picked as female. */
+  female?: boolean;
   map: string;
   pos: Vec2;
   facing: Vec2;

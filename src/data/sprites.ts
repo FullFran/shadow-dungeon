@@ -175,3 +175,16 @@ export type ShinySpriteKey = `${BaseSpriteKey}/0001`;
 
 /** The shiny sheet of `key` (playable species only have one: tests/data/shiny.test.ts). */
 export const shinyKey = (key: BaseSpriteKey): ShinySpriteKey => `${key}/0001`;
+
+/** A female sheet folder: SpriteCollab keeps them in `<form>/0000/0002`, the shiny's in `<form>/0001/0002` (odd/tasks/pokemon-gender.md). */
+export type FemaleSpriteKey = `${BaseSpriteKey}/${'0000' | '0001'}/0002`;
+
+/** The female sheet of `key`, or its shiny (only the species of core/gender.ts `FEMALE_ART` have one: tests/data/female-sprites.test.ts). */
+export const femaleKey = (key: BaseSpriteKey, shiny = false): FemaleSpriteKey => `${key}/${shiny ? '0001' : '0000'}/0002`;
+
+/** The sheet a player's look draws: female where that sheet exists (any other species ignores the flag), shiny if worn. */
+export function lookKey(key: BaseSpriteKey, shiny = false, female = false): BaseSpriteKey | ShinySpriteKey | FemaleSpriteKey {
+  const her = femaleKey(key, shiny);
+  if (female && SPRITES.sprites[her]) return her;
+  return shiny ? shinyKey(key) : key;
+}
