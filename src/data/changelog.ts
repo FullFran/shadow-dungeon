@@ -41,6 +41,24 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.5',
+    date: '2026-10-30',
+    sections: {
+      improved: [
+        {
+          es: '«Controles del mando», en Opciones y en el menú del pueblo: qué hace cada botón de un mando de Xbox o PlayStation.',
+          en: '"Controller buttons", in Options and the town menu: what each button does on an Xbox or PlayStation pad.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Sima, en cooperativo: al cerrarse las puertas de una sala de oleadas, quien seguía fuera se quedaba sin poder entrar ni avanzar. Ahora todo el grupo aparece dentro. ¡Gracias por el reporte SD-OKCVHT!',
+          en: 'Sima, in co-op: when a wave room\'s doors closed, anyone still outside could neither enter nor go on. Now the whole group appears inside. Thanks for report SD-OKCVHT!',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.4',
     date: '2026-10-30',
     sections: {

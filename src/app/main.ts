@@ -60,6 +60,7 @@ import { deviceSummary, reportWindow } from './report-screen';
 import { adminAccess, ticketsWindow } from './tickets-screen';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
+import { controlsWindow } from './gamepad-help';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -499,7 +500,7 @@ function newsScreen(root: HTMLElement, back: () => void): void {
 }
 
 /** The title's "Opciones": settings, account, achievements, patch notes, prologue, credits, the bug report and the install offer, in the shared described menu. */
-function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'tickets' = 'settings'): void {
+function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'controls' | 'tickets' = 'settings'): void {
   const entries = optionsEntries(pwa.offer() !== 'none');
   const action: Record<OptionsEntry, () => void> = {
     settings: () => settingsScreen(root),
@@ -516,12 +517,13 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'tickets
       ...entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
       // Players report problems from the game, anonymously (issue #9).
       { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
+      { label: t('title.controls'), about: t('options.about.controls'), onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) },
       // The server says who is an admin; a yes that arrives later redraws this menu below.
       ...(ticketAdmin.known() ? [{ label: t('title.tickets'), about: t('options.about.tickets'), onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
     ],
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: at === 'report' ? entries.length : at === 'tickets' ? entries.length + 1 : Math.max(0, entries.indexOf(at)),
+    initial: at === 'report' ? entries.length : at === 'controls' ? entries.length + 1 : at === 'tickets' ? entries.length + 2 : Math.max(0, entries.indexOf(at)),
   });
   show(root, [open.element]);
   if (!ticketAdmin.known()) {
@@ -865,6 +867,18 @@ function reportOptions(onBack: () => void) {
   };
 }
 
+/** "Controles del mando": what each button does. */
+function controlsScreen(root: HTMLElement, back: () => void): void {
+  const open = controlsWindow(() => {
+    open.dispose();
+    back();
+  });
+  show(root, [open.element]);
+}
+
+/** The same help over the town, like its other windows. */
+const townControls = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, controlsWindow(onClose));
+
 /** "Tickets": the admins' inbox of player reports. */
 function ticketsScreen(root: HTMLElement, back: () => void): void {
   const leave = () => {
@@ -1032,7 +1046,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1624,7 +1638,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
