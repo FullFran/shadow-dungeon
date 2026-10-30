@@ -16,6 +16,8 @@ const check = (name, ok, detail) => {
 };
 const centre = (id) => page.evaluate(`(() => { const b = document.querySelector('.touch-${id}'); if (!b || b.hidden) return null; const r = b.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2, r.width]; })()`);
 const action = () => page.evaluate(`(() => { const a = globalThis.__mzWorld().player.action; return a ? { slot: a.slotIndex, move: a.moveId, dir: a.aimDir, phase: a.phase } : null; })()`);
+/** The move once its charge has ended (the lift reaches the page after the touch action returns). */
+const released = () => page.evaluate(`new Promise((done) => { const from = performance.now(); const t = setInterval(() => { const a = globalThis.__mzWorld().player.action; if ((a && a.phase !== 'charging') || performance.now() - from > 2000) { clearInterval(t); done(a ? { slot: a.slotIndex, move: a.moveId, dir: a.aimDir, phase: a.phase } : null); } }, 5); })`);
 /** Slots that started a move since the last call (sampled every 10 ms in the page). */
 const watchSlots = () => page.evaluate(`(clearInterval(globalThis.__mzWatch), globalThis.__mzSeen = [], globalThis.__mzWatch = setInterval(() => { const a = globalThis.__mzWorld().player.action; if (a && !globalThis.__mzSeen.some((s) => s.slot === a.slotIndex)) globalThis.__mzSeen.push({ slot: a.slotIndex, dir: a.aimDir }); }, 10), 1)`);
 const seenSlots = () => page.evaluate(`globalThis.__mzSeen`);
@@ -70,7 +72,9 @@ try {
     await page.screenshot(`${dir}/combat-aim-heavy-${tag}.png`);
     const charging = await action();
     await drag;
+    const fired = await released();
     check(`${tag} drag on a charged move aims it`, charging?.slot === 1 && charging.dir.y < -0.9, charging);
+    check(`${tag} a lifted charged move fires along the drag`, fired?.slot === 1 && fired.phase !== 'charging' && fired.dir.y < -0.9, fired);
     await ready();
 
     // 4. Area (release-cast): drag left and lift: it casts leftwards on release, not on press.

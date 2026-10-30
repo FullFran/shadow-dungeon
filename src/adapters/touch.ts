@@ -45,7 +45,8 @@ export interface TouchFrame {
   /**
    * Level: the slot whose button is held for aiming, and the drag's direction
    * past the dead zone (null: not dragged yet, the stand-in aim; the move still
-   * counts as aimed so a drag during a charge steers it).
+   * counts as aimed so a drag during a charge steers it). A lifted charging
+   * button keeps it for one more step, the one that fires the move.
    */
   aim: { slot: number; dir: Vec2 | null } | null;
 }
@@ -150,7 +151,8 @@ export function touchToPlayerInput(frame: TouchFrame, ctx: TouchAimContext): Pla
 const slotRange = (a: PlayerInput, b: PlayerInput): number[] => Array.from({ length: Math.max(a.slots.length, b.slots.length) }, (_, i) => i);
 
 export function mergeInputs(keyboard: PlayerInput, touch: PlayerInput): PlayerInput {
-  const touchAims = touch.click || touch.lock || touch.slots.some(Boolean);
+  // A slot aimed but not held is a charged move being lifted: the step that fires it still aims with touch.
+  const touchAims = touch.click || touch.lock || touch.slots.some(Boolean) || touch.slotMouse.some(Boolean);
   return {
     move: length(touch.move) > 0 ? touch.move : keyboard.move,
     aim: touchAims ? touch.aim : keyboard.aim,
