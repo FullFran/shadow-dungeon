@@ -64,7 +64,6 @@ const STYLE = `
 .tickets-window .tickets-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 8px; }
 .tickets-window .tickets-label { margin: 8px 0 0; font-size: 14px; }
 .tickets-window pre.tickets-text { font-size: 12px; }
-html.touch .tickets-window { margin-top: 52px; }
 `;
 
 export interface TicketsWindowOptions {

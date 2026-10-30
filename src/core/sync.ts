@@ -1,4 +1,6 @@
 import { crossFogWall } from './fog-wall';
+import { worldDifficulty } from './difficulty';
+import { asHerald } from './herald/floor';
 import { UNKILLABLE } from '../data/sima';
 import { cardHolds, cardHpFloor } from './cards';
 import { applySimaSync, simaSync, type SimaSync } from './sima-events';
@@ -87,6 +89,8 @@ export interface EnemySnapshot {
   elite?: EliteTrait;
   armor?: true;
   pierceRoll?: true;
+  /** Which herald it is (core/herald): a guest that first hears of it from the host needs this to wear its look. */
+  herald?: { seed: number; depth: number };
   /** Rank effects the host keeps on it (core/rank-effects.ts): a pending mark, a weakening (the guest draws them; a weakened enemy's contact hits it softer). */
   mark?: EnemyMark;
   weakened?: EnemyWeaken;
@@ -219,6 +223,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
       ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex, ...(e.boss.spell ? { spell: e.boss.spell } : {}), ...(e.boss.held ? { held: true as const } : {}) } } : {}),
       ...(e.spent ? { spent: true } : {}),
       ...(e.elite ? { elite: e.elite } : {}),
+      ...(e.herald ? { herald: e.herald } : {}),
       ...(e.armor ? { armor: true as const } : {}),
       ...(e.pierceRoll ? { pierceRoll: true as const } : {}),
       ...(e.mark ? { mark: e.mark } : {}),
@@ -292,7 +297,10 @@ export function applyHostSnapshot(seen: WorldState, snapshot: HostSnapshot): Wor
       return { ...e, maxHp, hp: maxHp };
     };
     // The burn, the mark and the weakening are the host's: the latest snapshot says which hold (absent = none).
-    const { dot: _dot, mark: _mark, weakened: _weakened, ...base } = rescaled ?? fresh();
+    const known = rescaled ?? fresh();
+    // The herald's look, types and HP bar: a guest that has not placed this herald itself takes them from the host.
+    const shaped = s.herald && !known.herald ? asHerald(known, s.herald.seed, s.herald.depth, worldDifficulty(counted)) : known;
+    const { dot: _dot, mark: _mark, weakened: _weakened, ...base } = shaped;
     const contact = local && sameAttack(local, s) ? local.ai.contact : 'none';
     return {
       ...base,

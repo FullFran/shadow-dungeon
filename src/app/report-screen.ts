@@ -173,9 +173,8 @@ const STYLE = `
 .report-window textarea.report-input:focus { outline: none; border-color: var(--md-cursor); }
 .report-window .report-ref { font-size: 2em; letter-spacing: 0.15em; color: var(--md-cursor); text-align: center; margin: 12px 0; user-select: all; }
 .report-window .report-tech { font-size: 14px; margin: 4px 0 0; overflow-wrap: anywhere; }
-/* A tall form on a phone: the body scrolls inside the screen, and the window clears the touch "Atrás" button. */
+/* A tall form on a phone: the body scrolls inside the screen. */
 .report-window .md-window-body { max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
-html.touch .report-window { margin-top: 52px; }
 `;
 
 /**
