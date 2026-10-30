@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.9.7',
+    date: '2026-10-30',
+    sections: {
+      fixed: [
+        {
+          es: 'En el móvil, el botón «Atrás» tapaba el título de muchas ventanas, y el logo no cabía en las pantallas más estrechas. ¡Gracias por el reporte SD-8AAYCK!',
+          en: 'On phones, the "Back" button covered the title of many windows, and the logo did not fit the narrowest screens. Thanks for report SD-8AAYCK!',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.6',
     date: '2026-10-30',
     sections: {
