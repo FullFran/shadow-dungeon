@@ -144,7 +144,10 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
   function detail(ticket: Ticket): void {
     inbox = null;
     title.textContent = ticket.ref;
-    const back = () => showInbox();
+    const back = () => {
+      status.textContent = '';
+      showInbox();
+    };
     const move = (next: TriageStatus) => async () => {
       const token = options.token();
       status.textContent = t('tickets.saving');
