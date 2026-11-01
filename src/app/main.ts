@@ -76,6 +76,7 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import type { SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
+import { unlockEverything } from './dev-unlock';
 import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
@@ -2107,5 +2108,7 @@ if (root) {
   root.addEventListener('click', (e) => {
     if (e.target instanceof Element && e.target.closest('button')) audio.play('click');
   });
+  // Development server only: `?unlock=all` opens everything in this browser's local save.
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'all') unlockEverything(store);
   if (!devScreen(root)) titleScreen(root);
 }

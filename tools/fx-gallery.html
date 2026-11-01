@@ -1,0 +1,321 @@
+<!doctype html>
+<!-- Dev tool, not part of the build: `npm run dev`, then /tools/fx-gallery.html.
+     Every move on Mimikyu: the old hand-drawn look next to the new one, with a verdict and a comment for each,
+     saved to reports/fx/feedback.json (tools/fx-feedback-plugin.ts). ?only=fury-swipes,slash ?slow=4 ?at=0.3 (freeze) -->
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Efectos: antes y ahora</title>
+<style>
+  body { margin: 0; background: #14121c; color: #d8d4e4; font: 13px monospace; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: #14121c; flex-wrap: wrap; }
+  input { background: #22202e; color: inherit; border: 1px solid #4a4660; padding: 4px 8px; font: inherit; }
+  canvas { display: block; image-rendering: pixelated; max-width: 100%; }
+  #cards { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 12px 40px; }
+  .card { background: #1b1924; border: 1px solid #2c2940; border-radius: 6px; padding: 6px; }
+  .card.rated { border-color: #57805a; }
+  .card h3 { margin: 2px 2px 6px; font: bold 13px monospace; }
+  .card h3 small { font-weight: normal; color: #8d88a0; }
+  .votes { display: flex; gap: 6px; margin: 6px 0; }
+  .votes button { flex: 1; background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 6px; font: inherit; cursor: pointer; }
+  .votes button.on { background: #57805a; border-color: #9ad08f; color: #fff; font-weight: bold; }
+  textarea { box-sizing: border-box; width: 100%; height: 44px; background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 4px 6px; font: inherit; resize: vertical; }
+  #general { width: 320px; height: 28px; }
+  #saved.bad { color: #ff8a8a; }
+</style>
+</head>
+<body>
+<header>
+  <label>Buscar <input id="search" placeholder="golpes furia" /></label>
+  <label>Velocidad <select id="speed"><option value="1">normal</option><option value="2">x0,5</option><option value="4">x0,25</option></select></label>
+  <label>Ver <select id="filter"><option value="all">todos</option><option value="todo">sin valorar</option><option value="done">valorados</option><option value="old">prefiero antes</option><option value="new">prefiero ahora</option><option value="neither">ninguno me convence</option></select></label>
+  <label>Comentario general <textarea id="general" placeholder="Algo sobre todos..."></textarea></label>
+  <span id="progress"></span>
+  <span id="saved"></span>
+  <span id="stats"></span>
+</header>
+<div id="cards"></div>
+<script type="module">
+  import es from '../src/i18n/es.json';
+  import { MOVES } from '../src/data/moves.ts';
+  import { SPRITE_KEYS, SPRITES } from '../src/data/sprites.ts';
+  import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
+  import { drawFxFrame, fitScale, frameAt, FxSystem } from '../src/adapters/fx/system.ts';
+  import { cueKey, cueOfDrain, cueRequest, ERUPTION_CUE, HAND_DRAWN_SHOTS, impactCue, moveWindup, projectileCue } from '../src/adapters/fx/cues.ts';
+  import { isGroundEruption, moveSpawn, SHOT_HEIGHT, vanishAlpha } from '../src/adapters/fx/director.ts';
+  import { drawPlayerVfx, drawProjectileVfx, playerVfx } from '../src/adapters/move-vfx.ts';
+
+  const params = new URLSearchParams(location.search);
+  const AT = params.get('at');
+  const PANEL = { w: 190, h: 120 };
+  const SCALE = Number(params.get('scale') ?? 1.5);
+    const PERIOD_MS = 2300;
+  const all = Object.values(MOVES).map((m) => ({ move: m, name: es[`move.${m.id}`] ?? m.id }));
+  const only = params.get('only')?.split(',');
+  const shown = only ? all.filter((e) => only.includes(e.move.id)) : all;
+  const cardsEl = document.getElementById('cards');
+  const search = document.getElementById('search');
+  const speed = document.getElementById('speed');
+  const filter = document.getElementById('filter');
+  const general = document.getElementById('general');
+  const savedEl = document.getElementById('saved');
+  if (params.get('slow')) speed.value = params.get('slow');
+  const normal = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let ctx = null;
+
+  // The verdicts: the server's file first, this browser's copy if the server is out of reach.
+  const LOCAL_KEY = 'mazmorra-sombria.fxFeedback';
+  const GENERAL = '_general';
+  let feedback = {};
+  try { feedback = JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '{}'); } catch { feedback = {}; }
+  try {
+    const fromServer = await (await fetch('/__fx-feedback')).json();
+    if (Object.keys(fromServer).length > 0) feedback = fromServer;
+  } catch { /* keep the local copy */ }
+  let saveTimer = 0;
+  function persist(delayMs = 0) {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(feedback)); } catch { /* no storage */ }
+    savedEl.textContent = 'guardando...';
+    savedEl.className = '';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/__fx-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(feedback) });
+        if (!res.ok) throw new Error(String(res.status));
+        savedEl.textContent = 'guardado ✓';
+      } catch {
+        savedEl.textContent = 'sin guardar en el servidor (copia en este navegador)';
+        savedEl.className = 'bad';
+      }
+    }, delayMs);
+    progress();
+  }
+  function entry(id) {
+    feedback[id] ??= { comment: '' };
+    return feedback[id];
+  }
+  function tidy(id) {
+    const e = feedback[id];
+    if (e && !e.choice && !e.comment) delete feedback[id];
+  }
+  function progress() {
+    const rated = all.filter((e) => feedback[e.move.id]?.choice).length;
+    document.getElementById('progress').textContent = `valorados ${rated}/${all.length}`;
+  }
+
+  general.value = feedback[GENERAL]?.comment ?? '';
+  general.addEventListener('input', () => {
+    entry(GENERAL).comment = general.value;
+    tidy(GENERAL);
+    persist(500);
+  });
+
+  const CHOICES = [['old', '👈 Antes'], ['new', 'Ahora 👉'], ['neither', 'Ninguno']];
+  const cards = new Map();
+  function card(e) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    const title = document.createElement('h3');
+    title.textContent = e.name + ' ';
+    const small = document.createElement('small');
+    small.textContent = `${e.move.id} · ${es['type.' + e.move.type] ?? e.move.type}`;
+    title.append(small);
+    const canvas = document.createElement('canvas');
+    canvas.width = PANEL.w * 2 * SCALE;
+    canvas.height = PANEL.h * SCALE;
+    canvas.getContext('2d').imageSmoothingEnabled = false;
+    const votes = document.createElement('div');
+    votes.className = 'votes';
+    const buttons = CHOICES.map(([choice, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.choice = choice;
+      b.addEventListener('click', () => {
+        const current = entry(e.move.id);
+        if (current.choice === choice) delete current.choice;
+        else current.choice = choice;
+        tidy(e.move.id);
+        paint();
+        persist();
+        if (filter.value !== 'all') applyFilter();
+      });
+      votes.append(b);
+      return b;
+    });
+    const comment = document.createElement('textarea');
+    comment.placeholder = 'Comentario: qué cambiarías...';
+    comment.value = feedback[e.move.id]?.comment ?? '';
+    comment.addEventListener('input', () => {
+      entry(e.move.id).comment = comment.value;
+      tidy(e.move.id);
+      persist(500);
+    });
+    function paint() {
+      const choice = feedback[e.move.id]?.choice;
+      el.classList.toggle('rated', Boolean(choice));
+      for (const b of buttons) b.classList.toggle('on', b.dataset.choice === choice);
+    }
+    paint();
+    el.append(title, canvas, votes, comment);
+    cardsEl.append(el);
+    const state = { e, el, canvas, ctx: canvas.getContext('2d'), visible: false };
+    visibility.observe(el);
+    elements.set(el, state);
+    cards.set(e.move.id, state);
+  }
+  // Only the cards on screen animate: 115 canvases at once would cost more than the effects.
+  const elements = new Map();
+  const visibility = new IntersectionObserver((seen) => {
+    for (const s of seen) {
+      const state = elements.get(s.target);
+      if (state) state.visible = s.isIntersecting;
+    }
+  }, { rootMargin: '200px' });
+  function applyFilter() {
+    const q = normal(search.value);
+    const want = filter.value;
+    for (const e of all) {
+      const choice = feedback[e.move.id]?.choice;
+      const passes = want === 'all' || (want === 'todo' && !choice) || (want === 'done' && choice) || want === choice;
+      cards.get(e.move.id).el.style.display = passes && (normal(e.name).includes(q) || e.move.id.includes(q)) ? '' : 'none';
+    }
+  }
+  search.addEventListener('input', applyFilter);
+  filter.addEventListener('change', applyFilter);
+  for (const e of shown) card(e);
+  if (only) { for (const e of all) if (!cards.has(e.move.id)) card(e); search.value = ''; for (const e of all) cards.get(e.move.id).el.style.display = only.includes(e.move.id) ? '' : 'none'; }
+  progress();
+
+  const store = new FxStore(browserFxBackend());
+  const fx = new FxSystem(store);
+  const images = new Map();
+  function sheet(name, anim) {
+    const key = SPRITE_KEYS[name];
+    const meta = SPRITES.sprites[key]?.anims?.[anim];
+    if (!meta) return null;
+    const url = `${import.meta.env.BASE_URL}sprites/${key}/${meta.file}`;
+    if (!images.has(url)) { const i = new Image(); i.src = url; images.set(url, i); }
+    return { image: images.get(url), meta };
+  }
+  function drawSprite(name, anim, row, x, y, timeMs, alpha = 1) {
+    const s = sheet(name, anim);
+    if (!s || !s.image.complete || !s.image.naturalWidth) { ctx.fillStyle = '#5a5570'; ctx.fillRect(x - 6, y - 16, 12, 20); return; }
+    const { frameWidth: w, frameHeight: h, durations, anchor } = s.meta;
+    const total = durations.reduce((a, b) => a + b, 0);
+    let tick = Math.floor(timeMs * SPRITES.ticksPerSecond / 1000) % total;
+    let frame = 0;
+    while (tick >= durations[frame]) tick -= durations[frame++];
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(s.image, frame * w, row * h, w, h, Math.round(x - anchor.x), Math.round(y - anchor.y), w, h);
+    ctx.globalAlpha = 1;
+  }
+
+  const aim = { x: 1, y: 0 };
+  function fake(move, at, t) {
+    const active = move.activeMs;
+    const action = t < active ? { moveId: move.id, phase: 'active', phaseMs: t, chargeMs: 0, chargeLevel: 0, aimDir: aim, hitWindow: move.multiHit ? Math.floor((t / active) * move.multiHit) : 0 }
+      : t < active + 400 ? { moveId: move.id, phase: 'recovery', phaseMs: t - active, chargeMs: 0, chargeLevel: 0, aimDir: aim } : null;
+    return { pos: at, action, items: [], upgrades: {}, level: 1, buff: undefined };
+  }
+  function drawNew(cue, spawn, progress) {
+    if (progress < 0 || progress >= 1) return;
+    const effect = store.get(cueKey(cue), cueRequest(cue));
+    if (effect) drawFxFrame(ctx, effect, frameAt(effect.frames.length, progress), spawn, fitScale(effect, spawn.placement, spawn.fit, spawn.fitHeight));
+  }
+
+  function panel(move, x, y, clockT, isNew, label, now) {
+    // The move's real order: its windup, then the attack.
+    const windupMs = move.windupMs;
+    const winding = clockT < windupMs;
+    const t = clockT - windupMs;
+    ctx.fillStyle = isNew ? '#23202f' : '#1b1924';
+    ctx.fillRect(x, y, PANEL.w, PANEL.h);
+    ctx.fillStyle = isNew ? '#9ad08f' : '#8d88a0';
+    ctx.font = '8px monospace';
+    ctx.fillText(label, x + 4, y + PANEL.h - 4);
+    const at = { x: x + 52, y: y + 62 };
+    const target = { x: at.x + (move.hitbox.kind === 'self' ? 200 : 44), y: at.y };
+    const shot = move.hitbox.kind === 'projectile';
+    const self = move.hitbox.kind === 'self';
+    const player = winding
+      ? { pos: at, action: { moveId: move.id, phase: 'windup', phaseMs: clockT, chargeMs: 0, chargeLevel: 0, aimDir: aim }, items: [], upgrades: {}, level: 1 }
+      : fake(move, at, t);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, PANEL.w, PANEL.h); ctx.clip();
+    if (!self) drawSprite('koffing', 'Idle', 0, target.x + 40, target.y, now);
+    if (isNew) {
+      const windup = moveWindup(move.id);
+      if (windup) drawNew(windup, { x: at.x, y: at.y - 8, placement: 'body', fit: windup.effect === 'spawn/poof' ? 16 : 24 }, clockT / windup.playMs);
+    }
+    if (winding) {
+      // Only the windup's look plays here.
+    } else if (shot) {
+      const speed = move.hitbox.speed || 0;
+      const dist = speed * (t / 1000);
+      const flying = t < (speed ? (84 / speed) * 1000 : 900);
+      const pos = { x: at.x + (speed ? dist : 40), y: at.y };
+      if (flying) {
+        const p = { owner: 'player', radius: move.hitbox.radius, type: move.type, moveId: move.id, vel: { x: speed, y: 0 } };
+        const cue = projectileCue(move.type, move.id);
+        const drawn = isNew && !HAND_DRAWN_SHOTS.has(move.id) && (isGroundEruption(move.id) ? true : fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y - 6, placement: 'aim', angle: 0, fitHeight: p.radius * SHOT_HEIGHT.player * (cue.shotScale ?? 1) }, now));
+        if (!drawn) drawProjectileVfx(ctx, p, pos, now);
+      }
+      if (isNew && isGroundEruption(move.id)) {
+        // One eruption every 14 pixels of its path, as in play.
+        for (let d = 0; d <= Math.min(dist, 84); d += 14) drawNew(ERUPTION_CUE, { x: at.x + d, y: at.y + 2, placement: 'ground', fitHeight: 34 }, (t - (d / speed) * 1000) / ERUPTION_CUE.playMs);
+      }
+      if (!flying && isNew) {
+        const hitAt = speed ? (84 / speed) * 1000 : 900;
+        const cue = impactCue(move.type, move.juice === 'heavy');
+        const hitT = t - hitAt;
+        drawNew(cue, { x: target.x + 40, y: target.y - 8, placement: 'body', fit: move.juice === 'heavy' ? 34 : 22 }, hitT / cue.playMs);
+        if (move.drain) {
+          const motes = cueOfDrain(move.type);
+          drawNew(motes, { x: at.x, y: at.y - 8, placement: 'aim', angle: 0, fit: 84 }, hitT / motes.playMs);
+        }
+      }
+    } else {
+      const spawn = moveSpawn(move, player.action ? player : { ...player, action: { aimDir: aim, chargeLevel: 0 } });
+      const ready = spawn && store.get(cueKey(spawn.cue), cueRequest(spawn.cue));
+      drawPlayerVfx(ctx, playerVfx(player), at, now, isNew && ready ? 0.45 : 1);
+      if (isNew && spawn) {
+        const { cue } = spawn;
+        drawNew(cue, spawn, t / cue.playMs);
+        if (!self) {
+          const hit = impactCue(move.type, move.juice === 'heavy');
+          const hitT = t - move.activeMs * 0.5;
+          const fit = move.juice === 'heavy' ? 34 : 22;
+          drawNew(hit, { x: target.x + 40, y: target.y - 8, placement: 'body', fit }, hitT / hit.playMs);
+          if (move.drain) {
+            const motes = cueOfDrain(move.type);
+            drawNew(motes, { x: at.x, y: at.y - 8, placement: 'aim', angle: 0, fit: 84 }, hitT / motes.playMs);
+          }
+        }
+      }
+    }
+    const hidden = isNew ? vanishAlpha(player.action) : 1;
+    drawSprite('mimikyu', !winding && t < 300 && !shot ? 'Attack' : 'Idle', 2, at.x, at.y, now, hidden);
+    ctx.restore();
+  }
+
+  const started = performance.now();
+  function frame(now) {
+    store.tick(now);
+    const slow = Number(speed.value);
+    const clock = (now - started) / slow;
+    const t = AT !== null ? Number(AT) * 600 : clock % PERIOD_MS;
+    for (const state of cards.values()) {
+      if (!state.visible || state.el.style.display === 'none') continue;
+      ctx = state.ctx;
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+      panel(state.e.move, 0, 0, t, false, 'antes', clock);
+      panel(state.e.move, PANEL.w, 0, t, true, 'ahora', clock);
+    }
+    document.getElementById('stats').textContent = `memoria ${(store.decodedBytes / 1048576).toFixed(1)} MB`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

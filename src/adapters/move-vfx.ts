@@ -8,7 +8,7 @@ import type { Vec2 } from '../core/vec';
 import { TYPE_COLORS, type TypeColors } from '../ui/tokens';
 
 /**
- * Visual effects of attacks, coloured by move type (`TYPE_COLORS`): what the
+ * Hand-drawn visual effects of attacks (the baked pixelfx looks in adapters/fx play on top, and these stay as their fallback), coloured by move type (`TYPE_COLORS`): what the
  * player's moves look like on the ground (fading swing arcs, 360 rings, dash
  * trails, multi-hit swipe marks), projectile looks per type and move, and
  * the type tint of enemy telegraphs. `playerVfx` is pure (what to draw);
@@ -155,8 +155,10 @@ export function telegraphFill(type: PokemonType, winding: boolean): string {
 const DEG = Math.PI / 180;
 
 /** Draws the player's move effects on the ground layer, around `pos`. */
-export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly PlayerVfx[], pos: Vec2, timeMs: number): void {
-  for (const v of vfx) {
+export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly PlayerVfx[], pos: Vec2, timeMs: number, dim = 1): void {
+  for (const shown of vfx) {
+    // Under a baked effect the mark only tells the true reach; a running aura stays as it is.
+    const v = shown.kind === 'aura' ? shown : { ...shown, alpha: shown.alpha * dim };
     const c = TYPE_COLORS[v.type];
     if (v.kind === 'arc') {
       const angle = Math.atan2(v.dir.y, v.dir.x);
@@ -357,7 +359,7 @@ export function drawEnemyShotVfx(ctx: CanvasRenderingContext2D, look: EnemyShotL
   ctx.restore();
 }
 
-/** Fields a projectile needs to be drawn (remote ones carry no type: they fall back to Ghost). */
+/** Fields a projectile needs to be drawn (a remote one from an older peer carries no type: it falls back to Ghost). */
 export type DrawnProjectile = Pick<ProjectileState, 'owner' | 'radius'> & Partial<Pick<ProjectileState, 'type' | 'moveId' | 'vel' | 'zone' | 'armMs'>>;
 
 function orb(ctx: CanvasRenderingContext2D, at: Vec2, radius: number, type: PokemonType, pulse: number): void {

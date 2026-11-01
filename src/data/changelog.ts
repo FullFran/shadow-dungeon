@@ -41,6 +41,54 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.10.0',
+    date: '2026-11-01',
+    sections: {
+      new: [
+        {
+          es: '¡Ataques y mundo mucho más bonitos! Todos los movimientos, los impactos, los ataques enemigos y los jefes tienen efectos nuevos, y también los cristales, la hoguera y los altares. Las escaleras siguen siendo las de siempre, por supuesto.',
+          en: 'Much prettier attacks and world! Every move, hit, enemy attack and boss has new effects, and so do crystals, the bonfire and altars. The stairs stay the classic ones, of course.',
+        },
+        {
+          es: 'Movimientos con personalidad: Golpe Umbrío, Golpe Fantasma y Excavar te hacen desaparecer mientras cargas, Danza Espada hace girar espadas a tu alrededor, Fuego Fatuo te rodea de llamitas, Rayo Solar reúne luz antes de disparar y Tierra Viva brota del suelo hacia el enemigo.',
+          en: 'Moves with personality: Shadow Force, Phantom Force and Dig make you vanish while they wind up, Swords Dance whirls swords around you, Will-O-Wisp surrounds you with little flames, Solar Beam gathers light before firing and Earth Power bursts from the ground towards the enemy.',
+        },
+        {
+          es: 'Los movimientos que drenan devuelven partículas de vida a quien los usa.',
+          en: 'Draining moves send motes of life back to their user.',
+        },
+      ],
+      improved: [
+        {
+          es: 'Los efectos se preparan en segundo plano sin descargar imágenes: el juego sigue siendo ligero. Si un efecto aún no está listo, verás su dibujo clásico un instante.',
+          en: 'Effects are prepared in the background with no images to download, so the game stays light. If an effect is not ready yet, you will see its classic look for a moment.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Golpes Furia, Ataque Óseo y otros movimientos de varios golpes ya no frenan la partida al encadenarlos: solo el último golpe detiene la acción.',
+          en: 'Fury Swipes, Bone Rush and other multi-hit moves no longer slow the game down when chained: only the last hit stops the action.',
+        },
+      ],
+      multiplayer: [
+        {
+          es: 'Partidas más fluidas: en cooperativo los golpes ya no paran el juego un instante, lo que hacía que los demás te vieran a saltos y que los enemigos fueran a tirones al pegar mucho seguido.',
+          en: 'Smoother games: in co-op, hits no longer pause the game for a moment, which made others see you jump around and enemies stutter when hitting a lot in a row.',
+        },
+        {
+          es: 'Ves los movimientos de tus compañeros con su efecto propio, también sus disparos.',
+          en: 'You see your teammates\' moves with their own effects, their shots included.',
+        },
+      ],
+      balance: [
+        {
+          es: 'Onda Ígnea ahora golpea a tu alrededor, como las demás ondas, en vez de en un cono delante de ti.',
+          en: 'Heat Wave now hits all around you, like the other waves, instead of in a cone in front of you.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.9.8',
     date: '2026-10-30',
     sections: {

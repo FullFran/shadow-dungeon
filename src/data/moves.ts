@@ -582,7 +582,7 @@ const BASE_MOVES: Record<BaseMoveId, MoveDef> = {
     activeMs: 140,
     recoveryMs: 400,
     staminaCost: 40,
-    hitbox: { kind: 'arc', range: 66, arcDegrees: 130 },
+    hitbox: { kind: 'arc', range: 66, arcDegrees: 360 },
     hitstunMs: 400,
     knockback: 70,
     juice: 'heavy',

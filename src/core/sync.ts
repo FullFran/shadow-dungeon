@@ -106,6 +106,8 @@ export interface ProjectileSnapshot {
   vel: Vec2;
   radius: number;
   remainingMs: number;
+  /** Player shots only: the move it came from, so every peer draws its own look (adapters/fx). */
+  moveId?: MoveId;
   /** Enemy shots only: positional (rolling through it does not help). */
   pierceRoll?: boolean;
   /** Enemy shots only: the damage multiplier when it is not 1 (a weakened enemy's shot, core/brain.ts `spawnShot`). */
@@ -140,6 +142,7 @@ function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
     remainingMs: p.remainingMs,
     ...(p.pierceRoll ? { pierceRoll: true } : {}),
     ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
+    ...(p.owner === 'player' && p.moveId ? { moveId: p.moveId } : {}),
   };
 }
 
@@ -189,7 +192,7 @@ export function applyRemotePlayers(state: WorldState, snapshots: readonly Player
   for (const snapshot of snapshots) {
     if (snapshot.id === state.localId) continue;
     const previous = remotes.find((r) => r.id === snapshot.id);
-    const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius, type: p.type }));
+    const projectiles = (snapshot.projectiles ?? []).map((p) => ({ id: p.id, pos: p.pos, vel: p.vel, radius: p.radius, type: p.type, ...(p.moveId ? { moveId: p.moveId } : {}) }));
     const next: RemotePlayer = { id: snapshot.id, player: remoteFrom(snapshot, previous?.player), projectiles, ...(snapshot.revive ? { revive: snapshot.revive } : {}) };
     remotes = previous ? remotes.map((r) => (r.id === snapshot.id ? next : r)) : [...remotes, next];
   }

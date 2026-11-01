@@ -87,8 +87,13 @@ describe('area moves: shapes', () => {
     }
   });
 
-  it('a cone (Golpe Umbrío, Alarido, Onda Ígnea) hits a spread in front, never behind', () => {
-    for (const [species, move] of [['mimikyu', 'shadow-force'], ['zorua', 'snarl'], ['litwick', 'heat-wave']] as const) {
+  it('a ring (Onda Ígnea) hits all around, in front and behind', () => {
+    const { hit, state } = useArea(arena('litwick', 'heat-wave', [vec(450, 280), vec(450, 320), vec(340, 300)]));
+    for (const enemy of state.enemies) expect(hit.has(enemy.id), enemy.id).toBe(true);
+  });
+
+  it('a cone (Golpe Umbrío, Alarido) hits a spread in front, never behind', () => {
+    for (const [species, move] of [['mimikyu', 'shadow-force'], ['zorua', 'snarl']] as const) {
       const { hit, state } = useArea(arena(species, move, [vec(450, 280), vec(450, 320), vec(340, 300)]));
       const [a, b, behind] = state.enemies.map((e) => e.id);
       expect(hit.has(a!) && hit.has(b!), move).toBe(true);
@@ -119,6 +124,6 @@ describe('area moves: cost', () => {
     expect(hit?.type === 'enemyHit' && isHeavyHit(hit)).toBe(true);
     expect(soundFor({ type: 'moveStarted', moveId: 'dark-pulse', slotIndex: 3 })).toBe('area');
     const action = { slotIndex: 3, moveId: 'heat-wave' as const, phase: 'active' as const, phaseMs: 40, chargeMs: 0, chargeLevel: 0, aimDir: vec(1, 0), mouseAim: false, hitIds: [] };
-    expect(playerVfx({ items: [], level: 1, action })).toMatchObject([{ kind: 'arc', type: 'fire' }]);
+    expect(playerVfx({ items: [], level: 1, action })).toMatchObject([{ kind: 'ring', type: 'fire' }]);
   });
 });

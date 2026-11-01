@@ -70,6 +70,9 @@ import { createMemory, revealAround, type MinimapMemory } from '../adapters/mini
 import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type LogTone, type MessageLog } from '../adapters/message-log';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
+import { FxDirector } from '../adapters/fx/director';
+import { sharedFxStore } from '../adapters/fx/store';
+import { FxSystem } from '../adapters/fx/system';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
@@ -306,6 +309,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   // Phones: fullscreen and landscape for the run, where the browser allows it (src/ui/fullscreen.ts).
   if (isTouchUi()) void enterImmersive();
   const renderer = createRenderer(canvas, sheets);
+  const fx = new FxSystem(sharedFxStore());
+  const fxDirector = new FxDirector(fx);
   const net = options.net;
   /** F3 in a shared run: the net stats overlay. */
   const overlay = net ? createNetOverlay(canvas.parentElement ?? document.body, net.session, net.role, net.localId) : null;
@@ -335,6 +340,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   if (import.meta.env.DEV && trial && new URLSearchParams(window.location.search).get('trialSkip') === '1') started.world = { ...crossFogWall(started.world), enemies: crossFogWall(started.world).enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
+  fxDirector.prepare(world.player.loadout);
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
   // Development server only: the live world for headless checks (the roll direction playtest read the player's position from it).
   if (import.meta.env.DEV) (globalThis as { __mzWorld?: () => WorldState }).__mzWorld = () => world;
@@ -861,6 +867,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     prev = world;
     accumulator = 0;
     juice = initialJuice();
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
     lastHurtAt = Number.NEGATIVE_INFINITY;
     defeatedAt.clear();
     lastInput = null;
@@ -982,6 +990,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     prev = world;
     accumulator = 0;
     juice = initialJuice();
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
     lastHurtAt = Number.NEGATIVE_INFINITY;
     defeatedAt.clear();
     lastInput = null;
@@ -1193,6 +1203,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
+    fxDirector.reset();
+    fxDirector.prepare(next.world.player.loadout);
     // The first card of an unpicked offer goes down with the player (core/run.ts `goDown`): the bonfire of this floor keeps it too.
     const unpicked = run.offer?.[0];
     if (unpicked) {
@@ -1306,6 +1318,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const won = events.find((e) => e.type === 'cardCaptured');
       if (won && won.type === 'cardCaptured') capture = { shownAtMs: realMs, coins: CAPTURE.coins, heal: won.heal };
       juice = applyEvents(juice, events, world.player.pos);
+      fxDirector.handleEvents(events, world.player);
       audio?.handleEvents(events);
       if (isTouchUi() && options.touch?.haptics()) {
         const pulse = hapticPulse(events);
@@ -1374,12 +1387,16 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     lastFrame = time.lastFrameMs;
     realMs += frameMs;
     resize();
-    const frozen = juice.hitstopMs > 0;
+    // A shared run never stops: hitstop would silence this peer past the others' render delay and slow the host's world for everyone.
+    const frozen = !net && juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
     log = pruneLog(log, realMs);
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
+    fx.store.tick(realMs);
+    fx.update(frameMs);
+    fxDirector.observe(world, realMs);
     if (perf) {
       perf.record('frame', frameMs);
       perf.record('sim', performance.now() - simAt);
@@ -1426,6 +1443,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
     const drawAt = perf ? performance.now() : 0;
     renderer.draw({
+      fx,
       prev,
       current: world,
       alpha,
