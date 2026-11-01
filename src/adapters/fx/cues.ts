@@ -26,6 +26,8 @@ export interface FxCue {
   shotScale?: number;
   /** A boost's art with a shape of its own: world pixels from the user to its edge, rather than the default burst. */
   selfFit?: number;
+  /** A dash's art that runs along its whole distance. */
+  wholeDash?: boolean;
 }
 
 const cue = (effect: string, tint: FxTint | null, frames: number, playMs: number, span?: number): FxCue => ({ effect, tint, frames, playMs, ...(span ? { span } : {}) });
@@ -114,7 +116,7 @@ const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   'aqua-jet': cue('water/water-jet', null, 6, SWING_MS),
   'flare-blitz': cue('fire/flamethrower', null, 6, HEAVY_SWING_MS),
   'flame-charge': cue('fire/flamethrower', null, 6, SWING_MS),
-  'phantom-force': cue('melee/heavy-cleave', 'ghost', 8, HEAVY_SWING_MS),
+  'phantom-force': { ...cue('custom/phantom-line', null, 9, HEAVY_SWING_MS), wholeDash: true },
   'shadow-sneak': cue('melee/thrust', 'ghost', 6, SWING_MS),
   dig: cue('spawn/poof', 'ground', 6, HEAVY_SWING_MS),
   // Boosts.
@@ -165,7 +167,7 @@ const SHOT_LOOKS: Partial<Record<string, FxCue>> = {
   'scorching-sands': cue('spawn/poof', 'ground', 6, 500, 0.5),
 };
 
-/** The look of a shot in flight: its move's own if it has one; a remote shot carries no move id, only its type. */
+/** The look of a shot in flight: its move's own if it has one; a shot from an older peer has only its type. */
 export function projectileCue(type: PokemonType, moveId?: string): FxCue {
   const own = moveId ? SHOT_LOOKS[moveId] : undefined;
   if (own) return own;

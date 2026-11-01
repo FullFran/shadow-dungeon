@@ -545,6 +545,8 @@ export interface RemotePlayer {
 export interface RemoteProjectile {
   /** The move's type, for its colour (an older peer sends none). */
   type?: PokemonType;
+  /** The move it came from, for its look (an older peer sends none: a ball of its type). */
+  moveId?: MoveId;
   id: string;
   pos: Vec2;
   vel: Vec2;

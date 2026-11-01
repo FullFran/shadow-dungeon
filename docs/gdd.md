@@ -1381,7 +1381,7 @@ Los ataques y parte del mundo usan efectos de [pixelfx](https://github.com/patch
 
 Cada movimiento tiene su efecto (`src/adapters/fx/cues.ts`), igual que cada tipo (disparo e impacto) y cada comportamiento de enemigo. Lo que ven todos los jugadores sale del estado compartido (`src/adapters/fx/director.ts`), así que funciona en solitario y en cooperativo. Los avisos de ataque enemigo no cambian: nunca se tapa una señal de esquiva.
 
-Algunos movimientos tienen efecto propio: Golpe Umbrío, Golpe Fantasma y Excavar hacen desaparecer al usuario mientras cargan (solo visual: ni da invulnerabilidad ni cambia el golpe), Rayo Solar reúne luz amarilla antes de disparar, Tierra Viva brota del suelo a lo largo de su recorrido y los movimientos que drenan devuelven partículas al usuario. Las escaleras conservan su aspecto clásico a propósito.
+Algunos movimientos tienen efecto propio: Golpe Umbrío, Golpe Fantasma y Excavar hacen desaparecer al usuario mientras cargan (solo visual: no dan invulnerabilidad mientras no se les ve; la Mejora de los dos primeros la da mientras golpean), Golpe Fantasma corta en línea todo su recorrido, Rayo Solar reúne luz amarilla antes de disparar, Tierra Viva brota del suelo a lo largo de su recorrido y los movimientos que drenan devuelven partículas al usuario. Las escaleras conservan su aspecto clásico a propósito.
 
 ## 13. Idioma
 

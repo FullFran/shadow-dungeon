@@ -1737,7 +1737,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push((p.owner === 'enemy' ? enemyShot(p, pos, timeMs) : null) ?? projectile(p, pos, timeMs));
     }
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
-    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, vel: p.vel, ...(p.type ? { type: p.type } : {}) }, p.pos, timeMs));
+    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, vel: p.vel, ...(p.type ? { type: p.type } : {}), ...(p.moveId ? { moveId: p.moveId } : {}) }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
     // Figuraciones: flat black shapes with a faint rim, over the floor and under the HUD.
     for (const f of frame.figurations ?? []) {

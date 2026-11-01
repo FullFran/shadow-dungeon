@@ -53,7 +53,7 @@ interface EnemySeen {
 type ViewedEnemy = Pick<EnemyState, 'id' | 'species' | 'types' | 'pos' | 'radius' | 'alive' | 'hitstunMs' | 'ai' | 'boss'>;
 export type DirectorView = {
   player: PlayerState;
-  remotes: readonly Pick<RemotePlayer, 'id' | 'player'>[];
+  remotes: readonly (Pick<RemotePlayer, 'id' | 'player'> & Partial<Pick<RemotePlayer, 'projectiles'>>)[];
   enemies: readonly ViewedEnemy[];
   projectiles?: readonly { id: string; pos: { x: number; y: number }; moveId?: string | undefined }[];
   simaEvent?: { kind: string; pos: { x: number; y: number }; done?: boolean } | undefined;
@@ -81,7 +81,7 @@ export function moveSpawn(move: MoveDef, player: Pick<PlayerState, 'pos' | 'acti
   // Under the telegraphs and everything standing: a player's own art never hides a dodge cue.
   if (hitbox.kind === 'self') return { cue, ...at, placement: 'body', layer: 'ground', fit: cue.selfFit ?? fit };
   if (hitbox.kind === 'arc' && hitbox.arcDegrees >= 360) return { cue, ...at, placement: 'body', layer: 'ground', fit };
-  return { cue, ...at, placement: 'aim', layer: 'ground', angle: Math.atan2(aim.y, aim.x), fit: aimedFit };
+  return { cue, ...at, placement: 'aim', layer: 'ground', angle: Math.atan2(aim.y, aim.x), fit: cue.wholeDash && hitbox.kind === 'dash' ? hitbox.distance : aimedFit };
 }
 
 export class FxDirector {
@@ -136,7 +136,9 @@ export class FxDirector {
     this.observePlayer('local', view.player);
     for (const remote of view.remotes) this.observePlayer(remote.id, remote.player);
     for (const enemy of view.enemies) this.observeEnemy(enemy);
-    this.observeEruptions(view.projectiles ?? []);
+    // A peer's shots have their own ids: two peers' `j1` are different shots.
+    const peers = view.remotes.flatMap((r) => (r.projectiles ?? []).map((p) => ({ id: `${r.id}:${p.id}`, pos: p.pos, moveId: p.moveId })));
+    this.observeEruptions([...(view.projectiles ?? []), ...peers]);
     const event = view.simaEvent;
     const done = Boolean(event?.done);
     if (event && done && !this.eventDone && this.looked) this.fx.spawn({ cue: eventDoneCue(event.kind), x: event.pos.x, y: event.pos.y - BODY_LIFT, placement: 'body', layer: 'top', fit: 30 });
@@ -144,7 +146,6 @@ export class FxDirector {
     this.looked = true;
   }
 
-  /** Local shots only: a peer's shot carries no move id, so it flies as a ball of its type. */
   private observeEruptions(shots: NonNullable<DirectorView['projectiles']>): void {
     if (this.eruptions.size === 0 && !shots.some((s) => isGroundEruption(s.moveId))) return;
     const live = new Set<string>();

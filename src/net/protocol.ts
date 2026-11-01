@@ -243,16 +243,17 @@ function decodeEnemy(w: unknown): EnemySnapshot | null {
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
-  // Optional positional flag, then the damage multiplier of a weakened enemy's shot (an older peer ignores both).
-  if (p.pierceRoll || p.mult !== undefined) out.push(p.pierceRoll ? 1 : 0);
-  if (p.mult !== undefined) out.push(r3(p.mult));
+  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move. An older peer ignores them.
+  if (p.pierceRoll || p.mult !== undefined || p.moveId) out.push(p.pierceRoll ? 1 : 0);
+  if (p.mult !== undefined || p.moveId) out.push(p.mult === undefined ? 0 : r3(p.mult));
+  if (p.moveId) out.push(p.moveId);
   return out;
 }
 
 /** A projectile from the wire, or null when its id, type or a number is off. */
 function decodeProjectile(w: unknown): ProjectileSnapshot | null {
   if (!Array.isArray(w)) return null;
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -264,6 +265,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     number,
     number,
     number | undefined,
+    unknown,
     unknown,
   ];
   if (typeof id !== 'string' || !isType(type) || !allFinite([power, x, y, vx, vy, radius, remainingMs])) return null;
@@ -278,6 +280,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     remainingMs,
     ...(pierce === 1 ? { pierceRoll: true } : {}),
     ...(finite(mult) && mult > 0 && mult <= MAX_SHOT_MULT ? { mult } : {}),
+    ...(isMove(moveId) ? { moveId } : {}),
   };
 }
 

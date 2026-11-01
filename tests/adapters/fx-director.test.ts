@@ -202,8 +202,12 @@ describe("the owner's verdicts on each look", () => {
     expect(moveCue(fireMove('heat-wave'))?.effect).toBe('fire/fire-ring');
   });
 
-  it('Phantom Force looks like Shadow Force, not like a repeated dash', () => {
-    expect(moveCue(fireMove('phantom-force'))?.effect).toBe(moveCue(fireMove('shadow-force'))?.effect);
+  it('Shadow Force is a brutal blow; Phantom Force cuts along its whole dash', () => {
+    expect(moveCue(fireMove('shadow-force'))?.effect).toBe('melee/heavy-cleave');
+    expect(moveCue(fireMove('phantom-force'))?.effect).toBe('custom/phantom-line');
+    const hitbox = fireMove('phantom-force').hitbox;
+    const spawn = moveSpawn(fireMove('phantom-force'), player(swing('phantom-force')) as never);
+    expect(spawn?.fit).toBe(hitbox.kind === 'dash' ? hitbox.distance : -1);
   });
 
   it.each(['shadow-force', 'phantom-force', 'dig'])('%s makes the user vanish while it winds up and come back for the blow', (id) => {
@@ -260,6 +264,15 @@ describe("the owner's verdicts on each look", () => {
     expect(isGroundEruption('ember')).toBe(false);
   });
 
+  it("a peer's Earth Power erupts too, and two peers' shots with the same id do not mix", () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    const remotes = (x: number) => ['p2', 'p3'].map((id) => ({ id, player: player(), projectiles: [{ id: 'j1', moveId: 'earth-power' as const, pos: { x, y: 50 }, vel: { x: 200, y: 0 }, radius: 11 }] }));
+    director.observe(view({ remotes: remotes(0) }));
+    director.observe(view({ remotes: remotes(20) }));
+    expect(spawned.filter((s) => s.cue.effect === 'nature/earth-spike')).toHaveLength(4);
+  });
+
   it('Bonemerang keeps its bone: no baked look is even prepared', () => {
     const { fx } = recording();
     const asked: string[] = [];
@@ -269,7 +282,7 @@ describe("the owner's verdicts on each look", () => {
   });
 
   it('the new looks bake and draw', async () => {
-    for (const effect of ['custom/sword-orbit', 'custom/wisp-orbit', 'custom/drain-motes']) {
+    for (const effect of ['custom/sword-orbit', 'custom/wisp-orbit', 'custom/drain-motes', 'custom/phantom-line']) {
       expect(EFFECT_IDS).toContain(effect);
       expect(bakeEffect(await loadEffect(effect), { effect, frames: 6 }).frames.filter((f) => f.w > 0).length, effect).toBeGreaterThan(3);
     }
