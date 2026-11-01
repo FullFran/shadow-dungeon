@@ -128,15 +128,11 @@ const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const publicProfile = profilePublisher({ api: publicApi, nickname: () => settings.nickname, species: () => settings.species });
 // Accounts (src/app/account-screen.ts): the game's store is the device store, observed so a signed-in player's save writes reach the cloud.
 /** The tickets inbox while it is open, and whose it is. */
-let openTickets: { email: string | null; leave(): void } | null = null;
+let openTickets: { who: string | null; leave(): void } | null = null;
 /** The friends window while it is open, and whose it is. */
-let openFriends: { email: string | null; leave(): void } | null = null;
+let openFriends: { who: string | null; leave(): void } | null = null;
 /** Tells the server this account is here (app/friends-screen.ts); set right after the account, whose start may report a change at once. */
 let friendsBeat: Heartbeat | null = null;
-const signedInEmail = (): string | null => {
-  const state = account.state();
-  return state.kind === 'signed-in' ? state.email : null;
-};
 const { account, store } = setupAccount({
   store: browserStore(),
   onSynced: (session) => publicProfile.synced(session),
@@ -147,8 +143,8 @@ const { account, store } = setupAccount({
   // Sync moved (status, a choice, another tab): a signed-in account screen shows it at once; the title redraws for a replaced profile.
   onChange: () => {
     // The inbox is for the account that opened it: logging out, here or in another tab, closes it.
-    if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
-    if (openFriends && openFriends.email !== signedInEmail()) openFriends.leave();
+    if (openTickets && openTickets.who !== account.userId()) openTickets.leave();
+    if (openFriends && openFriends.who !== account.userId()) openFriends.leave();
     friendsBeat?.sync();
     const app = document.getElementById('app');
     if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
@@ -218,7 +214,7 @@ let room: { session: NetSession; code: string; asHost: boolean; seed: number; fr
 friendsBeat = friendsHeartbeat({
   session: () => {
     const token = account.token();
-    const who = signedInEmail();
+    const who = account.userId();
     return token && who ? { who, token } : null;
   },
   room: () => room?.code ?? null,
@@ -914,7 +910,7 @@ function ticketsScreen(root: HTMLElement, back: () => void): void {
     back();
   };
   const open = ticketsWindow({ api: adminApi, token: () => account.token(), onBack: leave });
-  openTickets = { email: signedInEmail(), leave };
+  openTickets = { who: account.userId(), leave };
   show(root, [open.element]);
 }
 
@@ -943,7 +939,7 @@ function friendsScreen(root: HTMLElement, back: () => void): void {
       void openLobby(root, code, false, undefined, 'title');
     },
   });
-  openFriends = { email: signedInEmail(), leave };
+  openFriends = { who: account.userId(), leave };
   show(root, [open.element]);
 }
 
@@ -973,7 +969,7 @@ const townFriends =
           onJoin: (code) => leaveTown(() => void openLobby(root, code, false, undefined, room?.from ?? 'town')),
         }),
       );
-      openFriends = { email: signedInEmail(), leave: onClose };
+      openFriends = { who: account.userId(), leave: onClose };
     };
     showFriends();
     return () => {

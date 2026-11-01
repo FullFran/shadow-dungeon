@@ -87,7 +87,7 @@ describe('the tickets screen wiring', () => {
     expect(read('src/app/main.ts')).toMatch(/ticketAdmin\.known\(\) \? \[\{ label: t\('title\.tickets'\)/);
   });
   it('closes the inbox when the account that opened it is gone', () => {
-    expect(read('src/app/main.ts')).toContain('if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();');
+    expect(read('src/app/main.ts')).toContain('if (openTickets && openTickets.who !== account.userId()) openTickets.leave();');
   });
   it('clears what it loaded when the server refuses the session', () => {
     const screen = read('src/app/tickets-screen.ts');

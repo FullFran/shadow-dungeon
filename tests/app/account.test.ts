@@ -23,6 +23,7 @@ function fakeBackend() {
   const calls: string[] = [];
   let down: ApiError['kind'] | null = null;
   let oauthOffered = true;
+  let oauthCloud: SaveData | null = null;
   let n = 0;
   const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => ({ ok: false, error: { kind } as ApiError });
   const userOf = (token: string) => tokens.get(token);
@@ -63,6 +64,7 @@ function fakeBackend() {
       if (code !== 'good' || codeVerifier !== 'cv') return fail('rejected');
       const id = `u${++n}`;
       users.set(id, { id, email: '', password: '' });
+      if (oauthCloud) saves.set(`s${id}`, { id: `s${id}`, rev: 1, data: oauthCloud, user: id });
       return { ok: true, value: issue(id) };
     },
     async refresh(token) {
@@ -133,6 +135,9 @@ function fakeBackend() {
     /** Every session ends, as changing a password does. */
     revokeTokens: () => tokens.clear(),
     dropSaves: () => saves.clear(),
+    setOAuthCloud: (cloud: SaveData) => {
+      oauthCloud = cloud;
+    },
     setOAuthProvider: (offered: boolean) => {
       oauthOffered = offered;
     },
@@ -861,6 +866,36 @@ describe('Google sign-in', () => {
     const d = device(backend);
     await d.account.beginOAuth('google', REDIRECT);
     expect(await d.account.finishOAuth({ code: 'bad', state: 'st', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+  });
+
+  it('a return to an account with cloud progress tells the player to choose: the account window is not open', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    backend.setOAuthCloud(cloudOf(withRecords(300, 6)));
+    await d.account.beginOAuth('google', REDIRECT);
+    await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT);
+    expect(d.account.pendingChoice()?.kind).toBe('offer');
+    expect(d.names()).toContain('choose');
+  });
+
+  it('a password login with the window open still gets no notice for the choice it shows', async () => {
+    const backend = fakeBackend();
+    backend.addUser('ana@example.com', 'password1', cloudOf(withRecords(300, 6)));
+    const d = device(backend);
+    await d.account.logIn('ana@example.com', 'password1');
+    expect(d.account.pendingChoice()?.kind).toBe('offer');
+    expect(d.names()).not.toContain('choose');
+  });
+
+  it('the account id identifies a session with no email, and a guest has none', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    expect(d.account.userId()).toBeNull();
+    await d.account.beginOAuth('google', REDIRECT);
+    await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT);
+    expect(d.account.userId()).toBeTruthy();
+    d.account.logOut();
+    expect(d.account.userId()).toBeNull();
   });
 
   it('the return reads only a sign-in query: a room link is not one', () => {

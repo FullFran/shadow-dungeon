@@ -18,6 +18,7 @@ Objective: let a player sign in with Google from the account window. Branch: `fe
 - [x] i18n es/en: the account strings test covers the new errors and lines.
 - [x] GDD (`docs/gdd.md`, Cuentas) and `server/README.md`.
 - [x] Save/sync: sign-in goes through the same `adopt` path as a password login.
+- [x] Friends presence, tickets and friends windows use the account id, not the email (`signedInEmail` removed from `src/app/main.ts`).
 - [ ] Live sign-in against Google, on desktop and on a phone. Pending T2.
 - [ ] Pending, not dropped: linking Google to an existing password account.
 - [ ] Pending, not dropped: Twitch and Discord buttons (server already supports both).
@@ -27,3 +28,4 @@ Objective: let a player sign in with Google from the account window. Branch: `fe
 - L1 (2026-11-01): "ahora tienes la cli de cf (cloudflare) ya puedes poner el r2 de los backups y ademas habilitar el login con google no?!"
 - L2 (2026-11-01): "pero avisame, que todo entre en el plan gratuito"
 - L3: `auth-methods` checked on a throwaway local server with fake credentials: the provider entry has `authURL`, `state`, `codeVerifier`.
+- L4: Independent verifier found two blockers: no choice notice after the return, and presence off for an empty email. Both fixed in the correction commit. Advisory recorded: PocketBase matches the provider's email before `dropProviderEmail`, documented in `server/README.md`.

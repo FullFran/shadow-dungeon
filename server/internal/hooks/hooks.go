@@ -178,12 +178,12 @@ func answerConflict(e *core.RecordRequestEvent, err error) error {
 }
 
 // dropProviderEmail keeps no provider email address: an OAuth2 account is
-// identified by the provider's user id alone (stored in _externalAuths).
-// Without an email PocketBase never links a provider to an existing account
-// by matching addresses, so an unverified password account cannot be taken
-// over through a provider that reports the same email. Linking happens only
-// when the request carries the signed-in user's token: PocketBase then links
-// the provider to that account instead of creating a new one.
+// created without one, so it is identified by the provider's user id alone
+// (stored in _externalAuths). This does not stop email linking: PocketBase
+// looks the account up by the provider's email before this hook runs, so a
+// request made with scopes that return an email links to a matching account.
+// The game client asks Google for `openid` only, which returns no email.
+// PocketBase also links when the request carries the signed-in user's token.
 // It also ignores client-sent createData, as users have no custom fields.
 func dropProviderEmail(e *core.RecordAuthWithOAuth2RequestEvent) error {
 	if e.OAuth2User != nil {

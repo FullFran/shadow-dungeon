@@ -441,7 +441,10 @@ phones and in an installed PWA. So the Google client must list the game's own
 address as an authorized redirect URI: **`https://www.fullfran.com/shadow-dungeon/`**
 (for local tests also `http://localhost:5173/`), not `/api/oauth2-redirect`. It
 asks only for `openid`. An account made this way is a new account with no email:
-it does not link to a password account (linking is pending, below).
+from this client it does not link to a password account (linking is pending,
+below). That comes from the narrowed scope, not from the server: PocketBase
+matches the provider's email before the `dropProviderEmail` hook runs, so a
+request that keeps the default scopes does link to an account with that email.
 
 The minimal scopes still need a live check against each provider (not done
 here). Read the Twitch developer agreement before registering the app

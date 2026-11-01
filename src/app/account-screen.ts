@@ -3,7 +3,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { getLanguage, t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
-import { createAccount, MIN_PASSWORD, oauthReturn, UNDO_MS, type Account, type AccountError, type Choice, type ChoiceAnswer, type Notice, type SyncInfo } from './account';
+import { createAccount, MIN_PASSWORD, oauthReturn, UNDO_MS, type Account, type AccountError, type Choice, type ChoiceAnswer, type Notice, type OAuthReturn, type SyncInfo } from './account';
 import { backupProfile, parseImport, type Backup } from './backups';
 import { observeKeys, realTimers } from './cloud-sync';
 import { PROFILE_KEYS, profileSummary, type ProfileSummary } from './profile';
@@ -52,18 +52,18 @@ export function setupAccount(options: {
   window.addEventListener('online', () => account.online());
   window.addEventListener('storage', (event) => account.external(event.key));
   window.addEventListener('pagehide', () => leader.isLeader() && account.flush());
-  void account.start().then(() => finishOAuthReturn(account, options.notify));
+  // The provider's code leaves the address bar before anything waits on the network.
+  const back = oauthReturn(location.search);
+  if (back) history.replaceState(null, '', pageUrl() + location.hash);
+  void account.start().then(() => back && finishOAuthReturn(account, back, options.notify));
   return { account, store };
 }
 
 /** The page itself, with nothing after the path: the address the provider comes back to. */
 const pageUrl = (): string => `${location.origin}${location.pathname}`;
 
-/** The page opened as the provider's return: the code leaves the address bar first, then the sign-in finishes. */
-async function finishOAuthReturn(account: Account, notify: (text: string) => void): Promise<void> {
-  const back = oauthReturn(location.search);
-  if (!back) return;
-  history.replaceState(null, '', pageUrl() + location.hash);
+/** The page opened as the provider's return: finishes the sign-in. */
+async function finishOAuthReturn(account: Account, back: OAuthReturn, notify: (text: string) => void): Promise<void> {
   const result = await account.finishOAuth(back, pageUrl());
   if (!result.ok) notify(t(`account.error.${result.error}`));
 }
@@ -346,6 +346,8 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
           void run(async () => {
             const begun = await account.beginOAuth('google', pageUrl());
             if (!begun.ok) return begun;
+            // Back from the provider's page may restore this one frozen on "Conectando…".
+            window.addEventListener('pageshow', (event) => event.persisted && location.reload(), { once: true });
             location.assign(begun.url);
             // The page is leaving: keep "Conectando…" on screen instead of rebuilding it.
             return new Promise<{ ok: boolean }>(() => {});

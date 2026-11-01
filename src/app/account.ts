@@ -87,6 +87,8 @@ export function oauthReturn(search: string): OAuthReturn | null {
 
 export interface Account {
   state(): AccountState;
+  /** The account's id, or null as a guest: the identity to compare, since an account made with a provider has no email. */
+  userId(): string | null;
   /** The session's token, or null as a guest. */
   token(): string | null;
   /** Restores a stored session; the leader tab also refreshes it and syncs. Never throws. */
@@ -430,6 +432,7 @@ export function createAccount(deps: AccountDeps): Account {
   }
 
   return {
+    userId: () => session?.userId ?? null,
     state: () => (session ? { kind: 'signed-in', email: session.email } : { kind: 'guest' }),
     token: () => session?.token ?? null,
     async start() {
@@ -490,7 +493,10 @@ export function createAccount(deps: AccountDeps): Account {
       if (!started || started.state !== back.state || back.error || !back.code) return { ok: false, error: 'oauth-failed' };
       const login = await deps.api.oauthFinish(started.provider, back.code, started.codeVerifier, redirectUrl);
       if (!login.ok) return { ok: false, error: login.error.kind === 'offline' || login.error.kind === 'rate-limited' ? errorOf(login.error) : 'oauth-failed' };
-      return adopt(login.value);
+      const outcome = await adopt(login.value);
+      // The password flow shows a choice in the account window; this return lands on the title screen.
+      if (outcome.ok && pending) deps.onNotice('choose');
+      return outcome;
     },
     async requestPasswordReset(email = '') {
       const clean = session?.email ?? email.trim();
