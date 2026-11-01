@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- Dev tool, not part of the build: `npm run dev`, then /tools/fx-gallery.html.
-     Every move on Mimikyu: the old hand-drawn look next to the new one. ?only=fury-swipes,slash ?slow=3 ?at=0.3 (freeze) -->
+     Every move on Mimikyu: the old hand-drawn look next to the new one, with a verdict and a comment for each,
+     saved to reports/fx/feedback.json (tools/fx-feedback-plugin.ts). ?only=fury-swipes,slash ?slow=4 ?at=0.3 (freeze) -->
 <html lang="es">
 <head>
 <meta charset="utf-8" />
@@ -10,15 +11,30 @@
   header { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: #14121c; flex-wrap: wrap; }
   input { background: #22202e; color: inherit; border: 1px solid #4a4660; padding: 4px 8px; font: inherit; }
   canvas { display: block; image-rendering: pixelated; max-width: 100%; }
+  #cards { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 12px 40px; }
+  .card { background: #1b1924; border: 1px solid #2c2940; border-radius: 6px; padding: 6px; }
+  .card.rated { border-color: #57805a; }
+  .card h3 { margin: 2px 2px 6px; font: bold 13px monospace; }
+  .card h3 small { font-weight: normal; color: #8d88a0; }
+  .votes { display: flex; gap: 6px; margin: 6px 0; }
+  .votes button { flex: 1; background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 6px; font: inherit; cursor: pointer; }
+  .votes button.on { background: #57805a; border-color: #9ad08f; color: #fff; font-weight: bold; }
+  textarea { box-sizing: border-box; width: 100%; height: 44px; background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 4px 6px; font: inherit; resize: vertical; }
+  #general { width: 320px; height: 28px; }
+  #saved.bad { color: #ff8a8a; }
 </style>
 </head>
 <body>
 <header>
   <label>Buscar <input id="search" placeholder="golpes furia" /></label>
   <label>Velocidad <select id="speed"><option value="1">normal</option><option value="2">x0,5</option><option value="4">x0,25</option></select></label>
+  <label>Ver <select id="filter"><option value="all">todos</option><option value="todo">sin valorar</option><option value="done">valorados</option><option value="old">prefiero antes</option><option value="new">prefiero ahora</option><option value="neither">ninguno me convence</option></select></label>
+  <label>Comentario general <textarea id="general" placeholder="Algo sobre todos..."></textarea></label>
+  <span id="progress"></span>
+  <span id="saved"></span>
   <span id="stats"></span>
 </header>
-<canvas id="c"></canvas>
+<div id="cards"></div>
 <script type="module">
   import es from '../src/i18n/es.json';
   import { MOVES } from '../src/data/moves.ts';
@@ -32,29 +48,144 @@
   const params = new URLSearchParams(location.search);
   const AT = params.get('at');
   const PANEL = { w: 190, h: 120 };
-  const SCALE = Number(params.get('scale') ?? 2);
-  const COLS = Number(params.get('cols') ?? 2);
-  const PERIOD_MS = 1500;
+  const SCALE = Number(params.get('scale') ?? 1.5);
+    const PERIOD_MS = 1500;
   const all = Object.values(MOVES).map((m) => ({ move: m, name: es[`move.${m.id}`] ?? m.id }));
   const only = params.get('only')?.split(',');
-  let shown = only ? all.filter((e) => only.includes(e.move.id)) : all;
-  const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
+  const shown = only ? all.filter((e) => only.includes(e.move.id)) : all;
+  const cardsEl = document.getElementById('cards');
   const search = document.getElementById('search');
   const speed = document.getElementById('speed');
+  const filter = document.getElementById('filter');
+  const general = document.getElementById('general');
+  const savedEl = document.getElementById('saved');
   if (params.get('slow')) speed.value = params.get('slow');
-  const normal = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  function layout() {
-    canvas.width = COLS * PANEL.w * 2 * SCALE;
-    canvas.height = Math.max(1, Math.ceil(shown.length / COLS)) * (PANEL.h + 14) * SCALE;
-    ctx.imageSmoothingEnabled = false;
+  const normal = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let ctx = null;
+
+  // The verdicts: the server's file first, this browser's copy if the server is out of reach.
+  const LOCAL_KEY = 'mazmorra-sombria.fxFeedback';
+  const GENERAL = '_general';
+  let feedback = {};
+  try { feedback = JSON.parse(localStorage.getItem(LOCAL_KEY) ?? '{}'); } catch { feedback = {}; }
+  try {
+    const fromServer = await (await fetch('/__fx-feedback')).json();
+    if (Object.keys(fromServer).length > 0) feedback = fromServer;
+  } catch { /* keep the local copy */ }
+  let saveTimer = 0;
+  function persist(delayMs = 0) {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(feedback)); } catch { /* no storage */ }
+    savedEl.textContent = 'guardando...';
+    savedEl.className = '';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/__fx-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(feedback) });
+        if (!res.ok) throw new Error(String(res.status));
+        savedEl.textContent = 'guardado ✓';
+      } catch {
+        savedEl.textContent = 'sin guardar en el servidor (copia en este navegador)';
+        savedEl.className = 'bad';
+      }
+    }, delayMs);
+    progress();
   }
-  search.addEventListener('input', () => {
-    const q = normal(search.value);
-    shown = all.filter((e) => normal(e.name).includes(q) || e.move.id.includes(q));
-    layout();
+  function entry(id) {
+    feedback[id] ??= { comment: '' };
+    return feedback[id];
+  }
+  function tidy(id) {
+    const e = feedback[id];
+    if (e && !e.choice && !e.comment) delete feedback[id];
+  }
+  function progress() {
+    const rated = all.filter((e) => feedback[e.move.id]?.choice).length;
+    document.getElementById('progress').textContent = `valorados ${rated}/${all.length}`;
+  }
+
+  general.value = feedback[GENERAL]?.comment ?? '';
+  general.addEventListener('input', () => {
+    entry(GENERAL).comment = general.value;
+    tidy(GENERAL);
+    persist(500);
   });
-  layout();
+
+  const CHOICES = [['old', '👈 Antes'], ['new', 'Ahora 👉'], ['neither', 'Ninguno']];
+  const cards = new Map();
+  function card(e) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    const title = document.createElement('h3');
+    title.textContent = e.name + ' ';
+    const small = document.createElement('small');
+    small.textContent = `${e.move.id} · ${es['type.' + e.move.type] ?? e.move.type}`;
+    title.append(small);
+    const canvas = document.createElement('canvas');
+    canvas.width = PANEL.w * 2 * SCALE;
+    canvas.height = PANEL.h * SCALE;
+    canvas.getContext('2d').imageSmoothingEnabled = false;
+    const votes = document.createElement('div');
+    votes.className = 'votes';
+    const buttons = CHOICES.map(([choice, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.choice = choice;
+      b.addEventListener('click', () => {
+        const current = entry(e.move.id);
+        if (current.choice === choice) delete current.choice;
+        else current.choice = choice;
+        tidy(e.move.id);
+        paint();
+        persist();
+        if (filter.value !== 'all') applyFilter();
+      });
+      votes.append(b);
+      return b;
+    });
+    const comment = document.createElement('textarea');
+    comment.placeholder = 'Comentario: qué cambiarías...';
+    comment.value = feedback[e.move.id]?.comment ?? '';
+    comment.addEventListener('input', () => {
+      entry(e.move.id).comment = comment.value;
+      tidy(e.move.id);
+      persist(500);
+    });
+    function paint() {
+      const choice = feedback[e.move.id]?.choice;
+      el.classList.toggle('rated', Boolean(choice));
+      for (const b of buttons) b.classList.toggle('on', b.dataset.choice === choice);
+    }
+    paint();
+    el.append(title, canvas, votes, comment);
+    cardsEl.append(el);
+    const state = { e, el, canvas, ctx: canvas.getContext('2d'), visible: false };
+    visibility.observe(el);
+    elements.set(el, state);
+    cards.set(e.move.id, state);
+  }
+  // Only the cards on screen animate: 115 canvases at once would cost more than the effects.
+  const elements = new Map();
+  const visibility = new IntersectionObserver((seen) => {
+    for (const s of seen) {
+      const state = elements.get(s.target);
+      if (state) state.visible = s.isIntersecting;
+    }
+  }, { rootMargin: '200px' });
+  function applyFilter() {
+    const q = normal(search.value);
+    const want = filter.value;
+    for (const e of all) {
+      const choice = feedback[e.move.id]?.choice;
+      const passes = want === 'all' || (want === 'todo' && !choice) || (want === 'done' && choice) || want === choice;
+      cards.get(e.move.id).el.style.display = passes && (normal(e.name).includes(q) || e.move.id.includes(q)) ? '' : 'none';
+    }
+  }
+  search.addEventListener('input', applyFilter);
+  filter.addEventListener('change', applyFilter);
+  for (const e of shown) card(e);
+  if (only) { for (const e of all) if (!cards.has(e.move.id)) card(e); search.value = ''; for (const e of all) cards.get(e.move.id).el.style.display = only.includes(e.move.id) ? '' : 'none'; }
+  progress();
 
   const store = new FxStore(browserFxBackend());
   const fx = new FxSystem(store);
@@ -142,23 +273,17 @@
   const started = performance.now();
   function frame(now) {
     store.tick(now);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#14121c';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     const slow = Number(speed.value);
     const clock = (now - started) / slow;
     const t = AT !== null ? Number(AT) * 600 : clock % PERIOD_MS;
-    shown.forEach((e, i) => {
-      const x = (i % COLS) * PANEL.w * 2;
-      const y = Math.floor(i / COLS) * (PANEL.h + 14);
-      ctx.fillStyle = '#e8e4f4';
-      ctx.font = '9px monospace';
-      ctx.fillText(`${e.name}  (${e.move.id})`, x + 4, y + 10);
-      panel(e.move, x, y + 14, t, false, 'antes', clock);
-      panel(e.move, x + PANEL.w, y + 14, t, true, 'ahora', clock);
-    });
-    document.getElementById('stats').textContent = `${shown.length} movimientos · memoria ${(store.decodedBytes / 1048576).toFixed(1)} MB`;
+    for (const state of cards.values()) {
+      if (!state.visible || state.el.style.display === 'none') continue;
+      ctx = state.ctx;
+      ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+      panel(state.e.move, 0, 0, t, false, 'antes', clock);
+      panel(state.e.move, PANEL.w, 0, t, true, 'ahora', clock);
+    }
+    document.getElementById('stats').textContent = `memoria ${(store.decodedBytes / 1048576).toFixed(1)} MB`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

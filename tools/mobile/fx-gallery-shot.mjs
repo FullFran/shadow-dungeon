@@ -16,7 +16,7 @@ const { page, stop } = await startFirefox(9348);
 try {
   await page.viewport(1820, 2100, 1);
   for (const at of moments) {
-    await page.nav(`${vite.url}tools/fx-gallery.html?scale=1&cols=4&at=${at}${only ? `&only=${only}` : ''}`);
+    await page.nav(`${vite.url}tools/fx-gallery.html?scale=1&at=${at}${only ? `&only=${only}` : ''}`);
     let last = '';
     for (let i = 0; i < 90; i++) {
       await wait(1000);
