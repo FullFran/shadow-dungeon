@@ -44,8 +44,8 @@ import { drawMessageLog, visibleMessages, type MessageLog } from './message-log'
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } from './sprite-anim';
-import { cueKey, cueRequest, moveCue, projectileCue, stillShotCue, WORLD_CUES } from './fx/cues';
-import { SHOT_HEIGHT } from './fx/director';
+import { cueKey, cueRequest, ERUPTION_CUE, HAND_DRAWN_SHOTS, moveCue, projectileCue, stillShotCue, WORLD_CUES } from './fx/cues';
+import { isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
 import type { FxSystem } from './fx/system';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
@@ -1458,7 +1458,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /** A shot's baked look, once ready. Zones and Bonemerang's bone keep their own drawing. */
   function bakedShot(p: DrawnProjectile, pos: Vec2, timeMs: number): boolean {
-    if (!fx || p.zone || p.moveId === 'bonemerang') return false;
+    if (!fx || p.zone || (p.moveId && HAND_DRAWN_SHOTS.has(p.moveId))) return false;
+    // Earth Power shows as the eruptions along its path (fx/director.ts), once they can play.
+    if (isGroundEruption(p.moveId)) return Boolean(fx.store.get(cueKey(ERUPTION_CUE), cueRequest(ERUPTION_CUE)));
     const type = p.type ?? 'ghost';
     const still = !p.vel || (p.vel.x === 0 && p.vel.y === 0);
     if (still) {
@@ -1710,7 +1712,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
         // Under Illusion (Zorua) the player shimmers, half see-through.
         const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
-        drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled);
+        drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled * vanishAlpha(current.player.action));
       },
     });
     for (const remote of current.remotes) {
@@ -1723,7 +1725,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           shadow(pos, TUNING.player.radius);
           chargeRing(remote.player, pos);
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
-          drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, remote.player.hp > 0 ? 1 : 0.7);
+          drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, (remote.player.hp > 0 ? 1 : 0.7) * vanishAlpha(remote.player.action));
           nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
           // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
           if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);

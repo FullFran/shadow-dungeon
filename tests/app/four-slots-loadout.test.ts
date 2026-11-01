@@ -24,7 +24,8 @@ describe('four-slot loadout', () => {
   it('move cards tell the cooldown, the shape and that a boost has no target', () => {
     setLanguage('es');
     expect(moveInfoLines('flamethrower')[0]).toBe('Estamina 35 · onda en línea (atraviesa) · Enfriamiento 8 s');
-    expect(moveInfoLines('heat-wave')[0]).toContain('cono amplio');
+    expect(moveInfoLines('heat-wave')[0]).toContain('anillo 360°');
+    expect(moveInfoLines('shadow-force')[0]).toContain('cono');
     expect(moveInfoLines('bulk-up')).toEqual(['Sin coste · sobre ti · Enfriamiento 16 s', 'Mejora propia: no daña, prepara tus golpes']);
   });
 });

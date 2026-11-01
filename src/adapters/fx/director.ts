@@ -2,9 +2,9 @@ import { ENEMY_BEHAVIOUR } from '../../data/enemies';
 import { MOVES, type MoveDef, type MoveId } from '../../data/moves';
 import type { PokemonType } from '../../data/types';
 import { playerStats } from '../../core/items';
-import type { EnemyState, GameEvent, PlayerState, RemotePlayer, WorldState } from '../../core/state';
+import type { ActionState, EnemyState, GameEvent, PlayerState, RemotePlayer, WorldState } from '../../core/state';
 import { enemyAttackType } from '../move-vfx';
-import { arrivalCue, deathCue, enemyStrikeCue, eventCue, eventDoneCue, impactCue, moveCue, projectileCue, rollDustCue, stanceCue, type FxCue } from './cues';
+import { arrivalCue, cueOfDrain, ERUPTION_CUE, ERUPTION_MOVES, HAND_DRAWN_SHOTS, moveWindup, VANISHING_MOVES, deathCue, enemyStrikeCue, eventCue, eventDoneCue, impactCue, moveCue, projectileCue, rollDustCue, stanceCue, type FxCue } from './cues';
 import type { FxSpawn, FxSystem } from './system';
 
 /**
@@ -23,8 +23,22 @@ export const SHOT_HEIGHT = { player: 3.5, enemy: 4.5 } as const;
 interface PlayerSeen {
   moveId: MoveId | null;
   active: boolean;
+  winding: boolean;
   rolling: boolean;
 }
+
+/** How long a vanishing user takes to fade out. */
+const VANISH_MS = 120;
+/** A new eruption every this many pixels of an Earth Power's path. */
+const ERUPTION_STEP = 14;
+
+/** How visible a player is: a vanishing move hides them while it winds up, and they come back for the blow. */
+export function vanishAlpha(action: Pick<ActionState, 'moveId' | 'phase' | 'phaseMs'> | null | undefined): number {
+  if (!action || !VANISHING_MOVES.has(action.moveId) || (action.phase !== 'windup' && action.phase !== 'charging')) return 1;
+  return Math.max(0, 1 - action.phaseMs / VANISH_MS);
+}
+
+export const isGroundEruption = (moveId: string | undefined): boolean => moveId !== undefined && ERUPTION_MOVES.has(moveId);
 
 /** Shorter than a real second hit on the same enemy by one peer, longer than a snapshot's round trip. */
 const SPARK_GAP_MS = 300;
@@ -41,6 +55,7 @@ export type DirectorView = {
   player: PlayerState;
   remotes: readonly Pick<RemotePlayer, 'id' | 'player'>[];
   enemies: readonly ViewedEnemy[];
+  projectiles?: readonly { id: string; pos: { x: number; y: number }; moveId?: string | undefined }[];
   simaEvent?: { kind: string; pos: { x: number; y: number }; done?: boolean } | undefined;
 };
 
@@ -64,7 +79,7 @@ export function moveSpawn(move: MoveDef, player: Pick<PlayerState, 'pos' | 'acti
   const aimedFit = fit * 1.6;
   const hitbox = move.hitbox;
   // Under the telegraphs and everything standing: a player's own art never hides a dodge cue.
-  if (hitbox.kind === 'self') return { cue, ...at, placement: 'body', layer: 'ground', fit };
+  if (hitbox.kind === 'self') return { cue, ...at, placement: 'body', layer: 'ground', fit: cue.selfFit ?? fit };
   if (hitbox.kind === 'arc' && hitbox.arcDegrees >= 360) return { cue, ...at, placement: 'body', layer: 'ground', fit };
   return { cue, ...at, placement: 'aim', layer: 'ground', angle: Math.atan2(aim.y, aim.x), fit: aimedFit };
 }
@@ -80,6 +95,8 @@ export class FxDirector {
   private readonly lastSpark = new Map<string, number>();
   /** Enemies whose fall already played: a late snapshot can stand a dead one up again for a moment. */
   private readonly fallen = new Set<string>();
+  /** Where each Earth Power last erupted. */
+  private readonly eruptions = new Map<string, { x: number; y: number }>();
 
   constructor(readonly fx: FxSystem) {}
 
@@ -92,6 +109,7 @@ export class FxDirector {
     this.eventDone = false;
     this.lastSpark.clear();
     this.fallen.clear();
+    this.eruptions.clear();
   }
 
   /** The art of the player's own moves, ready before the first press. */
@@ -102,7 +120,11 @@ export class FxDirector {
       const move = MOVES[id];
       const own = moveCue(move);
       if (own) cues.push(own);
-      if (move.hitbox.kind === 'projectile') cues.push(projectileCue(move.type, id));
+      const windup = moveWindup(id);
+      if (windup) cues.push(windup);
+      if (isGroundEruption(id)) cues.push(ERUPTION_CUE);
+      else if (move.hitbox.kind === 'projectile' && !HAND_DRAWN_SHOTS.has(id)) cues.push(projectileCue(move.type, id));
+      if (move.drain) cues.push(cueOfDrain(move.type));
       cues.push(impactCue(move.type, false), impactCue(move.type, true));
     }
     this.fx.prepare(cues);
@@ -114,11 +136,27 @@ export class FxDirector {
     this.observePlayer('local', view.player);
     for (const remote of view.remotes) this.observePlayer(remote.id, remote.player);
     for (const enemy of view.enemies) this.observeEnemy(enemy);
+    this.observeEruptions(view.projectiles ?? []);
     const event = view.simaEvent;
     const done = Boolean(event?.done);
     if (event && done && !this.eventDone && this.looked) this.fx.spawn({ cue: eventDoneCue(event.kind), x: event.pos.x, y: event.pos.y - BODY_LIFT, placement: 'body', layer: 'top', fit: 30 });
     this.eventDone = done;
     this.looked = true;
+  }
+
+  /** Local shots only: a peer's shot carries no move id, so it flies as a ball of its type. */
+  private observeEruptions(shots: NonNullable<DirectorView['projectiles']>): void {
+    if (this.eruptions.size === 0 && !shots.some((s) => isGroundEruption(s.moveId))) return;
+    const live = new Set<string>();
+    for (const shot of shots) {
+      if (!isGroundEruption(shot.moveId)) continue;
+      live.add(shot.id);
+      const last = this.eruptions.get(shot.id);
+      if (last && Math.hypot(shot.pos.x - last.x, shot.pos.y - last.y) < ERUPTION_STEP) continue;
+      this.fx.spawn({ cue: ERUPTION_CUE, x: shot.pos.x, y: shot.pos.y + 6, placement: 'ground', layer: 'ground', fitHeight: 34 });
+      this.eruptions.set(shot.id, { x: shot.pos.x, y: shot.pos.y });
+    }
+    for (const id of this.eruptions.keys()) if (!live.has(id)) this.eruptions.delete(id);
   }
 
   private observePlayer(key: string, player: PlayerState): void {
@@ -127,12 +165,17 @@ export class FxDirector {
     const active = action?.phase === 'active';
     const moveId = action?.moveId ?? null;
     const rolling = Boolean(player.roll);
+    const winding = action?.phase === 'windup' || action?.phase === 'charging';
+    if (winding && moveId && !(seen?.winding && seen.moveId === moveId)) {
+      const windup = moveWindup(moveId);
+      if (windup) this.fx.spawn({ cue: windup, x: player.pos.x, y: player.pos.y - BODY_LIFT, placement: 'body', layer: 'top', fit: VANISHING_MOVES.has(moveId) ? 16 : 24 });
+    }
     if (active && moveId && !(seen?.active && seen.moveId === moveId)) {
       const spawn = moveSpawn(MOVES[moveId], player);
       if (spawn) this.fx.spawn(spawn);
     }
     if (rolling && !seen?.rolling) this.fx.spawn({ cue: rollDustCue(), x: player.pos.x, y: player.pos.y, placement: 'body', layer: 'ground', fit: 13 });
-    this.players.set(key, { moveId, active, rolling });
+    this.players.set(key, { moveId, active, winding, rolling });
   }
 
   private observeEnemy(enemy: ViewedEnemy): void {
@@ -182,6 +225,11 @@ export class FxDirector {
         const move = event.moveId ? MOVES[event.moveId] : null;
         const strong = event.effectiveness > 1 || Boolean(event.finisher) || move?.juice === 'heavy';
         this.impact(move?.type ?? 'normal', strong, event.pos.x, event.pos.y - BODY_LIFT);
+        if (move?.drain) {
+          const dx = event.pos.x - player.pos.x;
+          const dy = event.pos.y - (player.pos.y - BODY_LIFT);
+          this.fx.spawn({ cue: cueOfDrain(move.type), x: player.pos.x, y: player.pos.y - BODY_LIFT, placement: 'aim', layer: 'top', angle: Math.atan2(dy, dx), fit: Math.hypot(dx, dy) });
+        }
         continue;
       }
       const cue = eventCue(event);

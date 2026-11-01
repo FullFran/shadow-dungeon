@@ -1,4 +1,4 @@
-import type { MoveDef } from '../../data/moves';
+import { MOVES, type MoveDef, type MoveId } from '../../data/moves';
 import type { PokemonType } from '../../data/types';
 import { TYPE_COLORS } from '../../ui/tokens';
 import type { BakeRequest } from './bake';
@@ -10,9 +10,12 @@ import type { BakeRequest } from './bake';
  * dummy (blink-in, curse, soul-rise, status/haste...) and cartoon-pow's English text.
  */
 
+/** A type's ramp, or a colour some move has of its own. */
+export type FxTint = PokemonType | 'sun';
+
 export interface FxCue {
   effect: string;
-  tint: PokemonType | null;
+  tint: FxTint | null;
   /** Frames baked: fewer frames, less memory. */
   frames: number;
   /** How long one play lasts; pixelfx plays slower than this game's moves. */
@@ -21,12 +24,15 @@ export interface FxCue {
   span?: number;
   /** A shot whose art is mostly halo: how much bigger to draw it so its body still reads. */
   shotScale?: number;
+  /** A boost's art with a shape of its own: world pixels from the user to its edge, rather than the default burst. */
+  selfFit?: number;
 }
 
-const cue = (effect: string, tint: PokemonType | null, frames: number, playMs: number, span?: number): FxCue => ({ effect, tint, frames, playMs, ...(span ? { span } : {}) });
+const cue = (effect: string, tint: FxTint | null, frames: number, playMs: number, span?: number): FxCue => ({ effect, tint, frames, playMs, ...(span ? { span } : {}) });
 
 /** Dark to bright ramp of a type, what recolours an effect. */
-export function typeRamp(type: PokemonType): string[] {
+export function typeRamp(type: FxTint): string[] {
+  if (type === 'sun') return ['#3a2200', '#a86a00', '#ffb400', '#ffe45c', '#fffbe0'];
   if (type === 'dark') return ['#140a1f', '#3a1d52', '#7a43a8', '#e0324a', '#ffd0da'];
   const { edge, core, glow } = TYPE_COLORS[type];
   return ['#0c0a14', edge, core, glow, '#ffffff'];
@@ -77,7 +83,7 @@ const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   'draining-kiss': cue('shadow/life-steal', 'fairy', 8, HEAVY_SWING_MS),
   'drain-punch': cue('shadow/life-steal', 'fighting', 8, HEAVY_SWING_MS),
   // Cones and lines.
-  'heat-wave': cue('fire/flamethrower', null, 8, HEAVY_SWING_MS),
+  'heat-wave': cue('fire/fire-ring', null, 9, RING_MS),
   'burning-jealousy': cue('fire/flamethrower', null, 8, HEAVY_SWING_MS),
   snarl: cue('ice/frost-breath', 'dark', 8, HEAVY_SWING_MS),
   electroweb: cue('ice/frost-breath', 'electric', 8, HEAVY_SWING_MS),
@@ -108,17 +114,17 @@ const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   'aqua-jet': cue('water/water-jet', null, 6, SWING_MS),
   'flare-blitz': cue('fire/flamethrower', null, 6, HEAVY_SWING_MS),
   'flame-charge': cue('fire/flamethrower', null, 6, SWING_MS),
-  'phantom-force': cue('melee/thrust', 'ghost', 6, HEAVY_SWING_MS),
+  'phantom-force': cue('melee/heavy-cleave', 'ghost', 8, HEAVY_SWING_MS),
   'shadow-sneak': cue('melee/thrust', 'ghost', 6, SWING_MS),
   dig: cue('spawn/poof', 'ground', 6, HEAVY_SWING_MS),
   // Boosts.
-  'swords-dance': cue('melee/spin-slash', 'normal', 8, SELF_MS),
+  'swords-dance': { ...cue('custom/sword-orbit', null, 12, 900), selfFit: 40 },
   'bulk-up': cue('status/rage', 'fighting', 6, SELF_MS),
   reflect: cue('holy/divine-shield', 'psychic', 8, SELF_MS),
   'iron-defense': cue('holy/divine-shield', 'steel', 8, SELF_MS),
   'acid-armor': cue('holy/divine-shield', 'poison', 8, SELF_MS),
   minimize: cue('holy/divine-shield', 'normal', 8, SELF_MS),
-  'will-o-wisp': cue('fire/spirit-flame', null, 8, SELF_MS),
+  'will-o-wisp': { ...cue('custom/wisp-orbit', null, 14, 1100), selfFit: 34 },
   curse: cue('shadow/shadow-flames', null, 8, SELF_MS),
 };
 
@@ -154,6 +160,7 @@ const SHOT_LOOKS: Partial<Record<string, FxCue>> = {
   swift: { ...cue('pickups/power-star', 'electric', 6, 400), shotScale: 1.5 },
   smog: cue('spawn/poof', 'poison', 6, 700, 0.5),
   'clear-smog': cue('spawn/poof', 'poison', 6, 700, 0.5),
+  'solar-beam': { ...cue('projectiles/plasma-shot', 'sun', 5, 400), shotScale: 1.3 },
   'mud-slap': cue('spawn/poof', 'ground', 6, 500, 0.5),
   'scorching-sands': cue('spawn/poof', 'ground', 6, 500, 0.5),
 };
@@ -281,3 +288,25 @@ export const WORLD_CUES = {
   poison: cue('pickups/xp-orb', 'poison', 8, 1000),
   exit: cue('arcane/rune-circle', 'fairy', 12, 2400),
 } as const satisfies Record<string, FxCue>;
+
+/** Moves that vanish while winding up and come back for the blow (Shadow Force, Phantom Force, Dig). Only how it looks: the hitbox and timing do not change. */
+export const VANISHING_MOVES: ReadonlySet<string> = new Set(['shadow-force', 'phantom-force', 'dig']);
+
+/** What plays while a move winds up: Solar Beam gathering sunlight, a puff where a vanishing user was. */
+export function moveWindup(moveId: string): FxCue | null {
+  if (moveId === 'solar-beam') return cue('arcane/spell-charge', 'sun', 10, MOVES[moveId as MoveId].windupMs);
+  if (VANISHING_MOVES.has(moveId)) return cue('spawn/poof', moveId === 'dig' ? 'ground' : 'ghost', 6, 420, 0.5);
+  return null;
+}
+
+/** Shots that keep their own hand-drawn look. */
+export const HAND_DRAWN_SHOTS: ReadonlySet<string> = new Set(['bonemerang']);
+
+/** Earth Power is not a ball: it bursts out of the ground along its path. */
+export const ERUPTION_MOVES: ReadonlySet<string> = new Set(['earth-power']);
+export const ERUPTION_CUE: FxCue = cue('nature/earth-spike', null, 7, 460, 0.6);
+
+/** A draining hit's motes flowing back to the user, in the move's colours. */
+export function cueOfDrain(type: PokemonType): FxCue {
+  return cue('custom/drain-motes', type, 8, 620);
+}

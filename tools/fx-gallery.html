@@ -41,15 +41,15 @@
   import { SPRITE_KEYS, SPRITES } from '../src/data/sprites.ts';
   import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
   import { drawFxFrame, fitScale, frameAt, FxSystem } from '../src/adapters/fx/system.ts';
-  import { cueKey, cueRequest, impactCue, projectileCue } from '../src/adapters/fx/cues.ts';
-  import { moveSpawn, SHOT_HEIGHT } from '../src/adapters/fx/director.ts';
+  import { cueKey, cueOfDrain, cueRequest, ERUPTION_CUE, HAND_DRAWN_SHOTS, impactCue, moveWindup, projectileCue } from '../src/adapters/fx/cues.ts';
+  import { isGroundEruption, moveSpawn, SHOT_HEIGHT, vanishAlpha } from '../src/adapters/fx/director.ts';
   import { drawPlayerVfx, drawProjectileVfx, playerVfx } from '../src/adapters/move-vfx.ts';
 
   const params = new URLSearchParams(location.search);
   const AT = params.get('at');
   const PANEL = { w: 190, h: 120 };
   const SCALE = Number(params.get('scale') ?? 1.5);
-    const PERIOD_MS = 1500;
+    const PERIOD_MS = 2300;
   const all = Object.values(MOVES).map((m) => ({ move: m, name: es[`move.${m.id}`] ?? m.id }));
   const only = params.get('only')?.split(',');
   const shown = only ? all.filter((e) => only.includes(e.move.id)) : all;
@@ -198,7 +198,7 @@
     if (!images.has(url)) { const i = new Image(); i.src = url; images.set(url, i); }
     return { image: images.get(url), meta };
   }
-  function drawSprite(name, anim, row, x, y, timeMs) {
+  function drawSprite(name, anim, row, x, y, timeMs, alpha = 1) {
     const s = sheet(name, anim);
     if (!s || !s.image.complete || !s.image.naturalWidth) { ctx.fillStyle = '#5a5570'; ctx.fillRect(x - 6, y - 16, 12, 20); return; }
     const { frameWidth: w, frameHeight: h, durations, anchor } = s.meta;
@@ -206,7 +206,9 @@
     let tick = Math.floor(timeMs * SPRITES.ticksPerSecond / 1000) % total;
     let frame = 0;
     while (tick >= durations[frame]) tick -= durations[frame++];
+    ctx.globalAlpha = alpha;
     ctx.drawImage(s.image, frame * w, row * h, w, h, Math.round(x - anchor.x), Math.round(y - anchor.y), w, h);
+    ctx.globalAlpha = 1;
   }
 
   const aim = { x: 1, y: 0 };
@@ -222,7 +224,11 @@
     if (effect) drawFxFrame(ctx, effect, frameAt(effect.frames.length, progress), spawn, fitScale(effect, spawn.placement, spawn.fit, spawn.fitHeight));
   }
 
-  function panel(move, x, y, t, isNew, label, now) {
+  function panel(move, x, y, clockT, isNew, label, now) {
+    // The move's real order: its windup, then the attack.
+    const windupMs = move.windupMs;
+    const winding = clockT < windupMs;
+    const t = clockT - windupMs;
     ctx.fillStyle = isNew ? '#23202f' : '#1b1924';
     ctx.fillRect(x, y, PANEL.w, PANEL.h);
     ctx.fillStyle = isNew ? '#9ad08f' : '#8d88a0';
@@ -232,11 +238,19 @@
     const target = { x: at.x + (move.hitbox.kind === 'self' ? 200 : 44), y: at.y };
     const shot = move.hitbox.kind === 'projectile';
     const self = move.hitbox.kind === 'self';
-    const player = fake(move, at, t);
+    const player = winding
+      ? { pos: at, action: { moveId: move.id, phase: 'windup', phaseMs: clockT, chargeMs: 0, chargeLevel: 0, aimDir: aim }, items: [], upgrades: {}, level: 1 }
+      : fake(move, at, t);
     ctx.save();
     ctx.beginPath(); ctx.rect(x, y, PANEL.w, PANEL.h); ctx.clip();
     if (!self) drawSprite('koffing', 'Idle', 0, target.x + 40, target.y, now);
-    if (shot) {
+    if (isNew) {
+      const windup = moveWindup(move.id);
+      if (windup) drawNew(windup, { x: at.x, y: at.y - 8, placement: 'body', fit: windup.effect === 'spawn/poof' ? 16 : 24 }, clockT / windup.playMs);
+    }
+    if (winding) {
+      // Only the windup's look plays here.
+    } else if (shot) {
       const speed = move.hitbox.speed || 0;
       const dist = speed * (t / 1000);
       const flying = t < (speed ? (84 / speed) * 1000 : 900);
@@ -244,12 +258,22 @@
       if (flying) {
         const p = { owner: 'player', radius: move.hitbox.radius, type: move.type, moveId: move.id, vel: { x: speed, y: 0 } };
         const cue = projectileCue(move.type, move.id);
-        const drawn = isNew && fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y - 6, placement: 'aim', angle: 0, fitHeight: p.radius * SHOT_HEIGHT.player * (cue.shotScale ?? 1) }, now);
+        const drawn = isNew && !HAND_DRAWN_SHOTS.has(move.id) && (isGroundEruption(move.id) ? true : fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y - 6, placement: 'aim', angle: 0, fitHeight: p.radius * SHOT_HEIGHT.player * (cue.shotScale ?? 1) }, now));
         if (!drawn) drawProjectileVfx(ctx, p, pos, now);
-      } else if (isNew) {
+      }
+      if (isNew && isGroundEruption(move.id)) {
+        // One eruption every 14 pixels of its path, as in play.
+        for (let d = 0; d <= Math.min(dist, 84); d += 14) drawNew(ERUPTION_CUE, { x: at.x + d, y: at.y + 2, placement: 'ground', fitHeight: 34 }, (t - (d / speed) * 1000) / ERUPTION_CUE.playMs);
+      }
+      if (!flying && isNew) {
         const hitAt = speed ? (84 / speed) * 1000 : 900;
         const cue = impactCue(move.type, move.juice === 'heavy');
-        drawNew(cue, { x: target.x + 40, y: target.y - 8, placement: 'body' }, (t - hitAt) / cue.playMs);
+        const hitT = t - hitAt;
+        drawNew(cue, { x: target.x + 40, y: target.y - 8, placement: 'body', fit: move.juice === 'heavy' ? 34 : 22 }, hitT / cue.playMs);
+        if (move.drain) {
+          const motes = cueOfDrain(move.type);
+          drawNew(motes, { x: at.x, y: at.y - 8, placement: 'aim', angle: 0, fit: 84 }, hitT / motes.playMs);
+        }
       }
     } else {
       const spawn = moveSpawn(move, player.action ? player : { ...player, action: { aimDir: aim, chargeLevel: 0 } });
@@ -263,10 +287,15 @@
           const hitT = t - move.activeMs * 0.5;
           const fit = move.juice === 'heavy' ? 34 : 22;
           drawNew(hit, { x: target.x + 40, y: target.y - 8, placement: 'body', fit }, hitT / hit.playMs);
+          if (move.drain) {
+            const motes = cueOfDrain(move.type);
+            drawNew(motes, { x: at.x, y: at.y - 8, placement: 'aim', angle: 0, fit: 84 }, hitT / motes.playMs);
+          }
         }
       }
     }
-    drawSprite('mimikyu', t < 300 && !shot ? 'Attack' : 'Idle', 2, at.x, at.y, now);
+    const hidden = isNew ? vanishAlpha(player.action) : 1;
+    drawSprite('mimikyu', !winding && t < 300 && !shot ? 'Attack' : 'Idle', 2, at.x, at.y, now, hidden);
     ctx.restore();
   }
 

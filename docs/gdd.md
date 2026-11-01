@@ -662,7 +662,7 @@ Potenciación y área de los iniciales (la primera de cada área es la que viene
 |---|---|---|---|
 | Mimikyu | Danza Espada: tus 3 próximos golpes hacen ×1,5 (9 s; enfriamiento 15 s) | Brillo Mágico (Hada, anillo; 80; 35 estamina; 8 s) | Golpe Umbrío (Fantasma, cono de 120°; 120 pero arranca en 520 ms; 40; 10 s) |
 | Zorua | Maquinación: andas ×1,3 y +35 % de críticos (5 s; 14 s) | Pulso Umbrío (Siniestro, anillo; 80; 35; 8 s) | Alarido (Siniestro, cono muy abierto; 55; 30; 6 s) |
-| Litwick | Fuego Fatuo: enciende Absorbe Fuego al instante; el siguiente fuerte sale potenciado (16 s) | Lanzallamas (Fuego, onda en línea que atraviesa a todos y no vuelve; 90; 35; 8 s) | Onda Ígnea (Fuego, cono de 130°; 95; 40; 9 s) |
+| Litwick | Fuego Fatuo: enciende Absorbe Fuego al instante; el siguiente fuerte sale potenciado (16 s) | Lanzallamas (Fuego, onda en línea que atraviesa a todos y no vuelve; 90; 35; 8 s) | Onda Ígnea (Fuego, anillo 360°; 95; 40; 9 s) |
 | Cubone | Corpulencia: recibes ×0,6 de daño (6 s; 16 s; se aplica antes del tope de un golpe, que sigue siendo lo último) | Terremoto (Tierra, anillo grande; 100; arranca en 460 ms; 40; 10 s) | Terratemblor (Tierra, anillo pequeño y rápido; 60; 30; 6 s) |
 
 Los de área no se cargan, tardan en salir y siempre dan la pausa y la sacudida fuertes al golpear. Pulso Noche se queda en la ranura fuerte de Zorua (pasarlo a área cambiaría su equipo por defecto; Pulso Umbrío cubre el anillo). Bomba Fango queda para más adelante (pide un proyectil que estalle al chocar).
@@ -842,7 +842,7 @@ Build recomendado: Desarme · Bomba Lodo · Maquinación · Pulso Umbrío.
 | Armadura Ácida | Potenciación | Avanzado | Veneno | — | sobre ti, daño recibido ×0.5, 5 s, enfr. 16 s | 350 P (250 / 500) | +1,5 s de duración | cura un 8 % de los PS |
 | Reducción | Potenciación | Avanzado | Normal | — | sobre ti, velocidad ×1.25, +10 % crítico, 4 s, enfr. 12 s | 350 P (250 / 500) | +10 % de velocidad | superarmadura: −30 % de daño recibido durante 2 s |
 | Lanzallamas | Área | Básico | Fuego | 90 | onda en línea (atraviesa), enfr. 8 s, est. 35 | inicial (150 / 350) | 30 % de quemar | deja un rastro que daña durante 2 s que quema |
-| Onda Ígnea | Área | Básico | Fuego | 95 | cono amplio, enfr. 9 s, est. 40 | inicial (150 / 350) | golpe un 15 % más grande | 50 % de quemar |
+| Onda Ígnea | Área | Básico | Fuego | 95 | anillo 360°, enfr. 9 s, est. 40 | inicial (150 / 350) | golpe un 15 % más grande | 50 % de quemar |
 | Giro Fuego | Área | Maestro | Fuego | 30 | proyectil lento, zona que repite cada 600 ms, quema, enfr. 8.7 s, est. 40 | 950 P, tras Bosque Brumoso (400 / 750) | golpe un 20 % más grande | el objetivo hace −20 % de daño durante 3 s |
 | Pulso Umbrío | Área | Básico | Siniestro | 80 | anillo 360°, enfr. 8 s, est. 35 | 450 P (150 / 350) | aturde un 50 % más | deja una marca que estalla a los 0,8 s (25 % del golpe) |
 | Envidia Ardiente | Área | Avanzado | Fuego | 70 | cono amplio, quema, enfr. 7 s, est. 30 | 300 P (250 / 500) | golpe un 15 % más grande | el objetivo hace −25 % de daño durante 3 s |
@@ -1380,6 +1380,8 @@ Cada misión pide una dificultad mínima: solo cuentan las partidas en esa dific
 Los ataques y parte del mundo usan efectos de [pixelfx](https://github.com/patch-gg/pixelfx) (MIT), copiados en `src/vendor/pixelfx`. Solo se descarga código, sin imágenes: la primera vez que hace falta un efecto, un worker lo pinta una vez por efecto y color, y después se copia con `drawImage`. Mientras no está listo se ve el dibujo a mano de siempre, y la memoria tiene un tope de 32 MB.
 
 Cada movimiento tiene su efecto (`src/adapters/fx/cues.ts`), igual que cada tipo (disparo e impacto) y cada comportamiento de enemigo. Lo que ven todos los jugadores sale del estado compartido (`src/adapters/fx/director.ts`), así que funciona en solitario y en cooperativo. Los avisos de ataque enemigo no cambian: nunca se tapa una señal de esquiva.
+
+Algunos movimientos tienen efecto propio: Golpe Umbrío, Golpe Fantasma y Excavar hacen desaparecer al usuario mientras cargan (solo visual: ni da invulnerabilidad ni cambia el golpe), Rayo Solar reúne luz amarilla antes de disparar, Tierra Viva brota del suelo a lo largo de su recorrido y los movimientos que drenan devuelven partículas al usuario. Las escaleras conservan su aspecto clásico a propósito.
 
 ## 13. Idioma
 

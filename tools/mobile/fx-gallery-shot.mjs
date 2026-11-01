@@ -1,6 +1,6 @@
 // Screenshots of the effect gallery (tools/fx-gallery.html) frozen at given moments, once every look has baked.
 //
-//   node tools/mobile/fx-gallery-shot.mjs [--out=dir] [--at=0.15,0.4] [--only=fury-swipes,slash]
+//   node tools/mobile/fx-gallery-shot.mjs [--out=dir] [--at=0.15,0.4] [--only=fury-swipes,slash] [--scale=2]
 import { mkdirSync } from 'node:fs';
 import { startFirefox, startVite, wait } from './bidi.mjs';
 
@@ -16,7 +16,7 @@ const { page, stop } = await startFirefox(9348);
 try {
   await page.viewport(1820, 2100, 1);
   for (const at of moments) {
-    await page.nav(`${vite.url}tools/fx-gallery.html?scale=1&at=${at}${only ? `&only=${only}` : ''}`);
+    await page.nav(`${vite.url}tools/fx-gallery.html?scale=${flag('scale', '1')}&at=${at}${only ? `&only=${only}` : ''}`);
     let last = '';
     for (let i = 0; i < 90; i++) {
       await wait(1000);

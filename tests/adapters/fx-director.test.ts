@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENEMY_BEHAVIOUR } from '../../src/data/enemies';
 import { MOVES, type MoveDef } from '../../src/data/moves';
-import { arrivalCue, projectileCue, enemyStrikeCue, deathCue, eventCue, eventDoneCue, stanceCue, rollDustCue, WORLD_CUES, cueRequest } from '../../src/adapters/fx/cues';
-import { FxDirector, moveSpawn, type DirectorView } from '../../src/adapters/fx/director';
+import { arrivalCue, moveCue, moveWindup, projectileCue, enemyStrikeCue, deathCue, eventCue, eventDoneCue, stanceCue, rollDustCue, WORLD_CUES, cueRequest } from '../../src/adapters/fx/cues';
+import { FxDirector, isGroundEruption, moveSpawn, vanishAlpha, type DirectorView } from '../../src/adapters/fx/director';
 import { EFFECT_IDS, loadEffect } from '../../src/adapters/fx/effects';
 import { bakeEffect } from '../../src/adapters/fx/bake';
 import { FxStore, type FxBackend } from '../../src/adapters/fx/store';
@@ -185,6 +185,96 @@ describe('enemies, from state a guest also has', () => {
 
   it.each(Object.entries(ENEMY_BEHAVIOUR))('%s has a strike', (_species, def) => {
     expect(EFFECT_IDS).toContain(enemyStrikeCue(def?.kind, 'normal').effect);
+  });
+});
+
+describe("the owner's verdicts on each look", () => {
+  const fireMove = (id: string) => MOVES[id as keyof typeof MOVES];
+
+  it('Swords Dance is little swords going round, Will-O-Wisp little wisps around the user', () => {
+    expect(moveCue(fireMove('swords-dance'))?.effect).toBe('custom/sword-orbit');
+    expect(moveCue(fireMove('will-o-wisp'))?.effect).toBe('custom/wisp-orbit');
+  });
+
+  it('Heat Wave is a wave all around, like the other waves', () => {
+    const hitbox = fireMove('heat-wave').hitbox;
+    expect(hitbox.kind === 'arc' && hitbox.arcDegrees).toBe(360);
+    expect(moveCue(fireMove('heat-wave'))?.effect).toBe('fire/fire-ring');
+  });
+
+  it('Phantom Force looks like Shadow Force, not like a repeated dash', () => {
+    expect(moveCue(fireMove('phantom-force'))?.effect).toBe(moveCue(fireMove('shadow-force'))?.effect);
+  });
+
+  it.each(['shadow-force', 'phantom-force', 'dig'])('%s makes the user vanish while it winds up and come back for the blow', (id) => {
+    expect(vanishAlpha(swing(id, 'windup') as never)).toBe(1);
+    expect(vanishAlpha({ ...swing(id, 'windup'), phaseMs: 500 } as never)).toBe(0);
+    expect(vanishAlpha(swing(id, 'active') as never)).toBe(1);
+    expect(vanishAlpha(null)).toBe(1);
+  });
+
+  it('other moves never hide the user', () => {
+    expect(vanishAlpha({ ...swing('slash', 'windup'), phaseMs: 500 } as never)).toBe(1);
+  });
+
+  it('vanishing leaves a puff, once', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    director.observe(view({ player: player(swing('shadow-force', 'windup')) }));
+    director.observe(view({ player: player(swing('shadow-force', 'windup')) }));
+    expect(spawned.map((s) => s.cue.effect)).toEqual(['spawn/poof']);
+  });
+
+  it('Solar Beam charges in sun yellow during its windup, then flies yellow', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    director.observe(view({ player: player(swing('solar-beam', 'windup')) }));
+    expect(spawned.map((s) => [s.cue.effect, s.cue.tint])).toEqual([['arcane/spell-charge', 'sun']]);
+    expect(spawned[0]?.cue.playMs).toBe(fireMove('solar-beam').windupMs);
+    expect(projectileCue('grass', 'solar-beam').tint).toBe('sun');
+  });
+
+  it.each((Object.values(MOVES) as MoveDef[]).filter((m) => m.drain).map((m) => [m.id, m] as const))('%s sends motes back to the user when it lands', (_id, move) => {
+    const { fx, spawned } = recording();
+    new FxDirector(fx).handleEvents([{ type: 'enemyHit', enemyId: 'e1', damage: 5, effectiveness: 1, pos: { x: 160, y: 100 }, moveId: move.id }], { pos: { x: 100, y: 100 } });
+    const motes = spawned.find((s) => s.cue.effect === 'custom/drain-motes');
+    expect(motes?.fit).toBeCloseTo(Math.hypot(60, 8));
+    expect(motes?.cue.tint).toBe(move.type);
+  });
+
+  it('a hit by a move that does not drain sends none', () => {
+    const { fx, spawned } = recording();
+    new FxDirector(fx).handleEvents([{ type: 'enemyHit', enemyId: 'e1', damage: 5, effectiveness: 1, pos: { x: 160, y: 100 }, moveId: 'slash' }], { pos: { x: 100, y: 100 } });
+    expect(spawned.some((s) => s.cue.effect === 'custom/drain-motes')).toBe(false);
+  });
+
+  it('Earth Power erupts from the ground along its path, spaced out', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    const shot = (x: number) => ({ id: 's1', moveId: 'earth-power', owner: 'player', pos: { x, y: 50 } });
+    for (let x = 0; x <= 56; x += 4) director.observe(view({ projectiles: [shot(x)] as never }));
+    const eruptions = spawned.filter((s) => s.cue.effect === 'nature/earth-spike');
+    expect(eruptions.length).toBe(4);
+    expect(eruptions.every((s) => s.layer === 'ground' && s.placement === 'ground')).toBe(true);
+    expect(isGroundEruption('earth-power')).toBe(true);
+    expect(isGroundEruption('ember')).toBe(false);
+  });
+
+  it('Bonemerang keeps its bone: no baked look is even prepared', () => {
+    const { fx } = recording();
+    const asked: string[] = [];
+    fx.prepare = (cues) => { asked.push(...cues.map((c) => c.effect)); };
+    new FxDirector(fx).prepare(['bonemerang']);
+    expect(asked).not.toContain(projectileCue('ground', 'bonemerang').effect);
+  });
+
+  it('the new looks bake and draw', async () => {
+    for (const effect of ['custom/sword-orbit', 'custom/wisp-orbit', 'custom/drain-motes']) {
+      expect(EFFECT_IDS).toContain(effect);
+      expect(bakeEffect(await loadEffect(effect), { effect, frames: 6 }).frames.filter((f) => f.w > 0).length, effect).toBeGreaterThan(3);
+    }
+    const sun = bakeEffect(await loadEffect('arcane/spell-charge'), cueRequest(moveWindup('solar-beam')!));
+    expect(sun.frames.some((f) => f.w > 0)).toBe(true);
   });
 });
 
