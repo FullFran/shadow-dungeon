@@ -44,3 +44,17 @@ describe('solo floor restarts per tier', () => {
     expect(restartLabel(0, tr)).toBe('pause.restartNone');
   });
 });
+
+describe('the difficulty row skips shut tiers', () => {
+  const allowed = (d: string): boolean => d === 'easy' || d === 'normal';
+  it('never lands on a shut tier, either way or wrapping', async () => {
+    const { difficultyRow } = await import('../../src/app/loadout');
+    const picks: string[] = [];
+    const row = (value: 'easy' | 'normal') => difficultyRow(value, (next) => picks.push(next), allowed);
+    row('normal').onAdjust?.(1);
+    row('normal').onConfirm?.();
+    row('easy').onAdjust?.(1);
+    row('normal').onAdjust?.(-1);
+    expect(picks).toEqual(['normal', 'easy', 'normal', 'easy']);
+  });
+});

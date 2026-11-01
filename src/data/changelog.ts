@@ -41,6 +41,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.10.2',
+    date: '2026-11-01',
+    sections: {
+      improved: [
+        {
+          es: 'Las Sendas abren sus dificultades en orden: empiezas en Normal, Difícil se abre al cerrar el capítulo I y Pesadilla al cerrar el II. Fácil sigue abierta para practicar, sin historia ni materiales. Si tienes elegida una dificultad aún cerrada, la Senda se juega en la más alta abierta. En las salas online sigue mandando la dificultad del anfitrión.',
+          en: 'Sendas now open their difficulties in order: you start on Normal, Hard opens when you close chapter I and Nightmare when you close chapter II. Easy stays open for practice, with no story or materials. If you have a difficulty picked that is still shut, the Senda plays at the highest one open. In online rooms the host\'s difficulty still applies.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.10.1',
     date: '2026-11-01',
     sections: {
