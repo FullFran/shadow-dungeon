@@ -41,6 +41,8 @@ export interface GallerySeen {
   sima: ReadonlySet<string>;
   guardian(species: SpeciesId, phase: CinematicPhase): boolean;
   story: StoryProgress | undefined;
+  /** A Senda's scene played on this device, whether or not its chapter was closed. */
+  storyScene?(line: ChallengeLine, chapter: ChapterNumber, phase: StoryPhase): boolean;
 }
 
 const PHASES: readonly StoryPhase[] = ['before', 'after'];
@@ -94,9 +96,9 @@ export function galleryGroups(quests: Partial<Record<ChallengeLine, StoryQuest>>
 }
 
 /**
- * Whether a scene can be played again: seen on this device (the prologue, the
- * pleas, the Sima's scenes, the guardians), or for a Senda's chapter, closed
- * in the save (both its opening and its closing were played on the way).
+ * Whether a scene can be played again: seen on this device (any of them), or
+ * for a Senda's chapter, closed in the save (both its opening and its closing
+ * were played on the way, perhaps on another device).
  */
 export function galleryUnlocked(scene: GalleryScene, seen: GallerySeen): boolean {
   switch (scene.kind) {
@@ -109,7 +111,7 @@ export function galleryUnlocked(scene: GalleryScene, seen: GallerySeen): boolean
     case 'guardian':
       return seen.guardian(scene.species, scene.phase);
     case 'story':
-      return chaptersCleared(seen.story, scene.line) >= scene.chapter;
+      return chaptersCleared(seen.story, scene.line) >= scene.chapter || Boolean(seen.storyScene?.(scene.line, scene.chapter, scene.phase));
   }
 }
 

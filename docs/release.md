@@ -17,7 +17,7 @@ The version lives in one place, `package.json` `version` (semver). The patch not
    npm run prove
    ```
 4. **Commit and merge to `main`** (`chore(release): 0.10.0`).
-5. **Deploy**: `gh workflow run deploy.yml -R FullFran/shadow-dungeon --ref main`. Wait for it to finish and check the game shows the new version on the title screen (`v0.10.0 · <commit>`).
+5. **Deploy**: pushing `main` starts `deploy.yml` by itself (`gh run list -R FullFran/shadow-dungeon --workflow deploy.yml`). Run `gh workflow run deploy.yml -R FullFran/shadow-dungeon --ref main` only if no run appears, or it queues a duplicate. Wait for it to finish and check the game shows the new version on the title screen (`v0.10.0 · <commit>`).
 6. **GitHub Release** from the same notes (Spanish first, then English):
    ```sh
    node tools/release-notes.mjs 0.10.0 | gh release create v0.10.0 -R FullFran/shadow-dungeon --target main --title v0.10.0 --notes-file -

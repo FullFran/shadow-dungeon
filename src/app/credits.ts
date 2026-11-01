@@ -7,8 +7,9 @@ import { h, mdWindow } from '../ui/window';
 /**
  * The Credits screen: the fan-project notice, the sprite artists read from
  * CREDITS.md (so the screen never drifts from the generated file), the font,
- * the licensed music (from its manifest), the synthesised audio and the
- * build the player runs (src/app/build-info.ts).
+ * the licensed music (from its manifest), the synthesised audio, the effects,
+ * tiles, data and code the game builds on, and the build the player runs
+ * (src/app/build-info.ts).
  */
 export interface CreditedArtist {
   name: string;
@@ -59,6 +60,10 @@ export function creditsWindow(footer: HTMLElement): HTMLElement {
       h('p', { textContent: t('credits.music') }),
       h('ul', { className: 'credit-list' }, Object.values(MUSIC_TRACKS).filter((track) => !track.variantOf).map((track) => h('li', {}, [h('a', { href: track.sourceUrl, target: '_blank', rel: 'noopener noreferrer', textContent: track.attribution })]))),
       h('p', { textContent: t('credits.audio') }),
+      h('p', { textContent: t('credits.effects') }),
+      h('p', { textContent: t('credits.tiles') }),
+      h('p', { textContent: t('credits.data') }),
+      h('p', { textContent: t('credits.code') }),
       h('p', { className: 'dim', textContent: `${t('credits.version')}: ${buildLabel()}` }),
     ]),
     footer,

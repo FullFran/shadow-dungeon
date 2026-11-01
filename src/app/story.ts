@@ -80,3 +80,30 @@ export function bondLine(save: Pick<SaveData, 'story'>, line: ChallengeLine): { 
   if (level < 1 || !storyOf(line)) return null;
   return { level, key: storyKeys.bond(line, Math.min(3, level) as ChapterNumber) };
 }
+
+/**
+ * Which Senda cinematics this device has played, for the gallery: an opening
+ * plays on every attempt, long before its chapter closes (or never, if it is
+ * not won). Device flags under their own key, like the guardians' and the
+ * Sima's: not progress, so they never travel with the save.
+ */
+const SCENES_KEY = 'mazmorra-sombria.storyScenes';
+const sceneId = (story: StoryRun, phase: StoryPhase): string => `${story.line}.${story.chapter}.${phase}`;
+
+function scenesSeen(store: KeyValueStore): Set<string> {
+  try {
+    const raw = JSON.parse(store.get(SCENES_KEY) ?? '[]') as unknown;
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export const hasSeenStoryScene = (store: KeyValueStore, story: StoryRun, phase: StoryPhase): boolean => scenesSeen(store).has(sceneId(story, phase));
+
+export function recordStoryScene(store: KeyValueStore, story: StoryRun, phase: StoryPhase): void {
+  const seen = scenesSeen(store);
+  if (seen.has(sceneId(story, phase))) return;
+  seen.add(sceneId(story, phase));
+  store.set(SCENES_KEY, JSON.stringify([...seen]));
+}

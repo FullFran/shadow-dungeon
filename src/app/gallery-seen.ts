@@ -7,6 +7,7 @@ import type { GallerySeen } from './lore-gallery';
 import { hasSeenPrologue } from './prologue-seen';
 import { loadSave } from './save';
 import { simaScenesSeen } from './sima-cinematic';
+import { hasSeenStoryScene } from './story';
 
 /**
  * What the gallery (app/lore-gallery.ts) may play for this player, read and
@@ -17,7 +18,8 @@ import { simaScenesSeen } from './sima-cinematic';
  *   so any profile past it has seen it, a restored one on a new device too).
  * - A guardian: also once its dungeon is cleared in the run records (both
  *   its cinematics played on the way; the records travel with the profile).
- * - A Senda chapter: closed in the save's `story` (cloud profile included).
+ * - A Senda's scene: played on this device (an opening plays on every attempt,
+ *   won or not), or its chapter closed in the save's `story` (cloud profile included).
  */
 export function readGallerySeen(store: KeyValueStore, starterChosen: boolean): GallerySeen {
   const cleared = clearedDungeons(readRecords(store));
@@ -27,5 +29,6 @@ export function readGallerySeen(store: KeyValueStore, starterChosen: boolean): G
     sima: simaScenesSeen(store),
     guardian: (species, phase) => fallen.has(species) || hasSeen(store, species, phase),
     story: loadSave(store).story,
+    storyScene: (line, chapter, phase) => hasSeenStoryScene(store, { line, chapter }, phase),
   };
 }

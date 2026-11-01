@@ -87,7 +87,7 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
-import { recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
 import type { StoryRun } from '../core/story';
 import { shopWindow } from './shop';
@@ -763,6 +763,7 @@ function storyCinematic(root: HTMLElement, story: StoryRun, phase: StoryPhase, o
   // In full on every attempt (owner, 2026-10-28), skippable from the first frame.
   const panels = storyPanels(story, phase, t);
   if (panels.length === 0) return onDone();
+  recordStoryScene(store, story, phase);
   void sheetsReady();
   const screen = prologueScreen({
     sheets: () => sheets,
