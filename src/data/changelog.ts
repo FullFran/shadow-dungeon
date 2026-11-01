@@ -41,6 +41,28 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.10.1',
+    date: '2026-11-01',
+    sections: {
+      improved: [
+        {
+          es: 'La ventana de desafíos avisa de cuándo salen las escenas de una Senda: jugando en solitario y nunca en Fácil.',
+          en: 'The challenges window now tells you when a Senda shows its scenes: when you play solo, and never on Easy.',
+        },
+        {
+          es: 'Los créditos ya incluyen los efectos visuales, las casillas del pueblo, los datos de movimientos y las librerías que usa el juego.',
+          en: 'The credits now include the visual effects, the town tiles, the move data and the libraries the game uses.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Galería: una escena de una Senda ya se puede volver a ver en cuanto la has visto, aunque aún no hayas ganado el capítulo. Las que viste antes de esta versión aparecerán cuando las vuelvas a ver o cierres su capítulo.',
+          en: "Gallery: a Senda's scene can be watched again as soon as you have seen it, even before winning the chapter. Those you saw before this version appear once you see them again or close their chapter.",
+        },
+      ],
+    },
+  },
+  {
     version: '0.10.0',
     date: '2026-11-01',
     sections: {
