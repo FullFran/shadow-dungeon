@@ -26,4 +26,6 @@ export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. GitHub Pages).
   base: './',
   define: buildDefines(process.env, gitHead),
+  // The effect bake worker loads each effect on demand (src/adapters/fx/bake.worker.ts).
+  worker: { format: 'es' },
 });

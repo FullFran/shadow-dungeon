@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- Dev tool, not part of the build: `npm run dev`, then /tools/fx-gallery.html. Every move's look at game scale. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Effect gallery</title>
+<style>
+  body { margin: 0; background: #14121c; color: #d8d4e4; font: 12px monospace; }
+  canvas { display: block; image-rendering: pixelated; }
+  #stats { padding: 8px; }
+</style>
+</head>
+<body>
+<div id="stats">baking...</div>
+<canvas id="c"></canvas>
+<script type="module">
+  import { MOVES } from '../src/data/moves.ts';
+  import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
+  import { FxSystem } from '../src/adapters/fx/system.ts';
+  import { moveCue, projectileCue, impactCue, cueKey, cueRequest } from '../src/adapters/fx/cues.ts';
+
+  const moves = Object.values(MOVES);
+  const CELL = { w: 150, h: 110 };
+  const COLS = Number(new URLSearchParams(location.search).get('cols') ?? 8);
+  const SCALE = Number(new URLSearchParams(location.search).get('scale') ?? 2);
+  // ?at=0.3 freezes every effect at that share of its play, for a contact sheet.
+  const AT = new URLSearchParams(location.search).get('at');
+  const canvas = document.getElementById('c');
+  canvas.width = COLS * CELL.w * SCALE;
+  canvas.height = Math.ceil(moves.length / COLS) * CELL.h * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const store = new FxStore(browserFxBackend());
+  const fx = new FxSystem(store);
+
+  const reach = (m) => (m.hitbox.kind === 'arc' ? m.hitbox.range : m.hitbox.kind === 'dash' ? m.hitbox.distance * 0.6 : 26);
+  const placement = (m) => (m.hitbox.kind === 'self' ? 'body' : m.hitbox.kind === 'arc' && m.hitbox.arcDegrees >= 360 ? 'body' : 'aim');
+  const started = performance.now();
+
+  function frame(now) {
+    store.tick(now);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#22202e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    moves.forEach((m, i) => {
+      const x = (i % COLS) * CELL.w;
+      const y = Math.floor(i / COLS) * CELL.h;
+      const at = { x: x + 60, y: y + 58 };
+      ctx.fillStyle = '#8d88a0';
+      ctx.fillText(m.id, x + 3, y + 10);
+      // The user, and the hitbox's true reach.
+      ctx.fillStyle = '#5a5570';
+      ctx.fillRect(at.x - 6, at.y - 12, 12, 20);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, reach(m), 0, Math.PI * 2);
+      ctx.stroke();
+      const cue = moveCue(m) ?? projectileCue(m.type);
+      const shot = m.hitbox.kind === 'projectile';
+      fx.drawLoop(ctx, { ...cue, playMs: shot ? cue.playMs : cue.playMs * 2 }, shot
+        ? { x: at.x + 30, y: at.y, placement: 'aim', angle: 0, fitHeight: m.hitbox.radius * 3.5 }
+        : { x: at.x, y: at.y - 8, placement: placement(m), angle: 0, fit: reach(m) }, AT === null ? now - started : Number(AT) * cue.playMs * (shot ? 1 : 2));
+    });
+    document.getElementById('stats').textContent = `moves ${moves.length}, decoded ${(store.decodedBytes / 1048576).toFixed(1)} MB`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
