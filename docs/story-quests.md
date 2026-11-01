@@ -25,7 +25,7 @@ Tres capítulos, uno por nivel de material, para que la historia culmine con la 
 | II | Difícil | al cerrar el I |
 | III | Pesadilla | al cerrar el II |
 
-En Fácil el reto se juega sin capítulo (no paga materiales). Si se entra en Difícil sin haber cerrado el I, se juega igual pero sin historia; la ventana de desafíos dice cuántos capítulos van cerrados. Un capítulo cerrado se puede volver a jugar.
+En Fácil el reto se juega sin capítulo (no paga materiales). Jugando en solitario, Difícil no se puede elegir hasta cerrar el I, ni Pesadilla hasta cerrar el II: si traes otra dificultad guardada, la partida se juega en la más alta abierta, sin cambiar la que tienes para las demás mazmorras. En una sala manda la dificultad del anfitrión y no hay bloqueo, ni escenas, ni pausa. La ventana de desafíos dice cuántos capítulos van cerrados y qué se abre después. Un capítulo cerrado se puede volver a jugar.
 
 ### El camino: siete plantas y tres jefes
 

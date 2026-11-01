@@ -1,4 +1,4 @@
-import type { Difficulty } from '../data/difficulty';
+import { stepDifficulty, type Difficulty } from '../data/difficulty';
 import { CHALLENGES, type ChallengeLine, type DungeonDef } from '../data/dungeons';
 import { storyOf, type ChapterNumber } from '../data/story-quests';
 import type { TileRect } from './dungeon';
@@ -27,6 +27,20 @@ export const chaptersCleared = (progress: StoryProgress | undefined, line: Chall
 
 /** Whether a chapter can be played: the first always, the next ones after the one before. */
 export const chapterOpen = (progress: StoryProgress | undefined, line: ChallengeLine, chapter: ChapterNumber): boolean => chapter <= chaptersCleared(progress, line) + 1;
+
+/** Whether a solo run of `dungeon` may be played on `difficulty`: a Senda opens Hard and Nightmare chapter by chapter; Easy (no story, no materials) and any other dungeon are always open. */
+export function sendaTierOpen(dungeon: DungeonDef, difficulty: Difficulty, progress: StoryProgress | undefined): boolean {
+  const line = dungeon.challenge?.line;
+  const chapter = chapterOfDifficulty(difficulty);
+  return !line || chapter === null || !storyOf(line) || chapterOpen(progress, line, chapter);
+}
+
+/** The tier a solo run plays: the one picked, or the highest open below it. */
+export function sendaTier(dungeon: DungeonDef, difficulty: Difficulty, progress: StoryProgress | undefined): Difficulty {
+  let tier = difficulty;
+  while (!sendaTierOpen(dungeon, tier, progress)) tier = stepDifficulty(tier, -1);
+  return tier;
+}
 
 /** A run's place in a Senda. */
 export interface StoryRun {

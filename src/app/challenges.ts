@@ -4,7 +4,7 @@ import { CHALLENGES, type DungeonDef, type DungeonId } from '../data/dungeons';
 import type { SpeciesId } from '../data/species';
 import type { SheetStore } from '../adapters/assets';
 import { t } from '../i18n';
-import { chaptersCleared, type StoryProgress } from '../core/story';
+import { chaptersCleared, sendaTierOpen, type StoryProgress } from '../core/story';
 import { storyKeys, storyOf } from '../data/story-quests';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { description, describedMenu } from '../ui/describe';
@@ -48,6 +48,13 @@ export function storyHint(line: NonNullable<DungeonDef['challenge']>['line'], st
   return t('story.progress').replace('{senda}', t(storyKeys.title(line))).replace('{n}', String(chaptersCleared(story, line)));
 }
 
+/** Which tier this Senda opens next and how: nothing once they are all open. */
+export function nextTierHint(dungeon: DungeonDef, story: StoryProgress | undefined): string | null {
+  const shut = (['hard', 'nightmare'] as const).find((d) => !sendaTierOpen(dungeon, d, story));
+  if (!shut) return null;
+  return t('story.tierLocked').replace('{tier}', t(`difficulty.${shut}`)).replace('{chapter}', shut === 'hard' ? 'I' : 'II');
+}
+
 /** The row's state line: the line is missing, the species must change, or ready. */
 export function rowHint(row: ChallengeRow): string {
   if (!row.open) return t('challenges.locked');
@@ -80,7 +87,7 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
     frame.replaceChildren(...(options.sheets ? [portrait(options.sheets, row.form, 1.5)] : []));
     intro.textContent = t(row.dungeon.lore.loreKeys[0] ?? '');
     state.textContent = rowHint(row);
-    senda.textContent = storyHint(row.dungeon.challenge!.line, options.collection.story) ?? '';
+    senda.textContent = [storyHint(row.dungeon.challenge!.line, options.collection.story), nextTierHint(row.dungeon, options.collection.story)].filter(Boolean).join(' ');
   };
   // Greyed rows stay reachable (the cursor shows why they are shut); confirming one does nothing.
   const items: ListItem[] = [

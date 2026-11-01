@@ -89,7 +89,7 @@ import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
 import { recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
-import type { StoryRun } from '../core/story';
+import { sendaTier, sendaTierOpen, type StoryRun } from '../core/story';
 import { shopWindow } from './shop';
 import { buildHint, tutorWindow } from './tutor';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
@@ -846,7 +846,12 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       },
       onChange: (next) => update({ loadout: next }),
       // Solo: the tier for the run (remembered); a room's is the host's, picked in the town.
-      difficulty: { value: settings.difficulty, onChange: (next) => update({ difficulty: next }) },
+      difficulty: {
+        // A Senda shows the tier its run will really play at, without touching the one remembered for other dungeons.
+        value: dungeon ? sendaTier(dungeonById(dungeon), settings.difficulty, save.story) : settings.difficulty,
+        onChange: (next) => update({ difficulty: next }),
+        allowed: (d) => !dungeon || sendaTierOpen(dungeonById(dungeon), d, save.story),
+      },
       onStart: () => (dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'moves', dungeon)) : chooseDungeon(root, () => loadout(root, 'moves'))),
       // Runs start in the town now: the loadout's way back is the town.
       onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : townScreen(root)),
@@ -1870,7 +1875,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: settings.difficulty };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story) };
   // `?boss=<seed>`: that herald on a Sima herald floor.
   const boss = devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };

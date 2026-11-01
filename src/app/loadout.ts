@@ -8,7 +8,7 @@ import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
-import { stepDifficulty, type Difficulty } from '../data/difficulty';
+import { DIFFICULTIES, stepDifficulty, type Difficulty } from '../data/difficulty';
 import { description } from '../ui/describe';
 import { h, mdWindow } from '../ui/window';
 import { moveInfoLines } from './move-info';
@@ -37,7 +37,7 @@ export interface LoadoutOptions {
   onStart(): void;
   onBack(): void;
   /** The tier row above Start (solo): the current pick and where a change goes (settings, persisted). */
-  difficulty?: { value: Difficulty; onChange(next: Difficulty): void };
+  difficulty?: { value: Difficulty; onChange(next: Difficulty): void; /** Tiers this run may pick (a Senda opens them chapter by chapter); absent = all. */ allowed?(d: Difficulty): boolean };
   /** The Start row's label (a run's «Comenzar» when absent; the shrine's «Comenzar el juramento»). */
   startLabel?: string;
   /** A line under the title naming what the loadout is for (the shrine: its boss or gauntlet and tier). */
@@ -88,13 +88,25 @@ export function genderRow(species: SpeciesId, gender: LineGender, redraw: () => 
 }
 
 /** The tier row of a menu: ◀ ▶ step through the tiers, a confirm cycles; `hint` shows what the tier does. */
-export function difficultyRow(value: Difficulty, onChange: (next: Difficulty) => void): ListItem {
+/** The next tier `delta` away that `allowed` lets through, or `value` itself if there is none. */
+function nextTier(value: Difficulty, delta: -1 | 1, wrap: boolean, allowed: (d: Difficulty) => boolean): Difficulty {
+  let at = value;
+  for (let i = 0; i < DIFFICULTIES.length; i++) {
+    const next = stepDifficulty(at, delta, wrap);
+    if (next === at) return value;
+    if (allowed(next)) return next;
+    at = next;
+  }
+  return value;
+}
+
+export function difficultyRow(value: Difficulty, onChange: (next: Difficulty) => void, allowed: (d: Difficulty) => boolean = () => true): ListItem {
   return {
     label: t('difficulty.label'),
     value: t(`difficulty.${value}`),
     className: `difficulty-row tier-${value}`,
-    onAdjust: (delta) => onChange(stepDifficulty(value, delta)),
-    onConfirm: () => onChange(stepDifficulty(value, 1, true)),
+    onAdjust: (delta) => onChange(nextTier(value, delta, false, allowed)),
+    onConfirm: () => onChange(nextTier(value, 1, true, allowed)),
   };
 }
 
@@ -275,7 +287,7 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
           pick.onChange(next);
           hint.textContent = t(`difficulty.${next}.hint`);
           list.setItems(items());
-        }),
+        }, pick.allowed),
       );
     }
     out.push({ label: options.startLabel ?? t('menu.start'), className: 'start-row', onConfirm: options.onStart });
