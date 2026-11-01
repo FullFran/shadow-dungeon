@@ -84,9 +84,11 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
           break;
         }
         const heavy = isHeavyHit(event);
+        // A multi-hit move stops the action on its last part only: five stops in a row read as lag (tools/hit-stutter.ts).
+        const midCombo = !event.finisher && (event.moveId ? (MOVES[event.moveId].multiHit ?? 1) : 1) > 1;
         next = {
           ...next,
-          hitstopMs: Math.max(next.hitstopMs, heavy ? JUICE.heavyHitstopMs : JUICE.hitstopMs),
+          hitstopMs: midCombo ? next.hitstopMs : Math.max(next.hitstopMs, heavy ? JUICE.heavyHitstopMs : JUICE.hitstopMs),
           numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: effectivenessStyle(event.effectiveness), big: heavy, ageMs: 0 }],
         };
         if (heavy) next = shake(next, JUICE.shakePx);

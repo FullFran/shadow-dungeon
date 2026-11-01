@@ -1387,7 +1387,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     lastFrame = time.lastFrameMs;
     realMs += frameMs;
     resize();
-    const frozen = juice.hitstopMs > 0;
+    // A shared run never stops: hitstop would silence this peer past the others' render delay and slow the host's world for everyone.
+    const frozen = !net && juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
     log = pruneLog(log, realMs);
     const perf = devPerfProbe();
