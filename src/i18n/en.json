@@ -2371,7 +2371,7 @@
   "story.fragment.close": "Keep",
   "story.fragment.found": "You pick up a memory fragment: {name}.",
   "story.bond": "Bond {n}/3. {species}: \"{text}\"",
-  "story.progress": "{senda}: {n}/3 chapters closed (I on Normal, II on Hard, III on Nightmare).",
+  "story.progress": "{senda}: {n}/3 chapters closed (I on Normal, II on Hard, III on Nightmare). Its scenes play when you play solo, never on Easy.",
   "species.mimikyu-wound": "Unmasked Mimikyu",
   "challenge.mimikyu.floor.5": "Yellow thread tangled between the flagstones, like a trail back home.",
   "challenge.mimikyu.floor.6": "Two round eyes high on a ledge. No sun reaches down here, and still they see you.",

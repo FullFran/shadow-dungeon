@@ -49,3 +49,13 @@ describe("a Senda's cinematic can be watched again once it was watched, chapter 
     expect(main.match(/recordStoryScene\(/g)).toHaveLength(1);
   });
 });
+
+describe('the challenges window says when a Senda shows no scene', () => {
+  it.each(['es', 'en'])('%s names Easy and playing alone', (language) => {
+    const text = (JSON.parse(readFileSync(`src/i18n/${language}.json`, 'utf8')) as Record<string, string>)['story.progress'] ?? '';
+    expect(text).toMatch(language === 'es' ? /Fácil/ : /Easy/);
+    expect(text).toMatch(language === 'es' ? /en solitario/ : /solo/);
+    expect(text).toContain('{senda}');
+    expect(text).toContain('{n}');
+  });
+});

@@ -2371,7 +2371,7 @@
   "story.fragment.close": "Guardar",
   "story.fragment.found": "Recoges un fragmento de memoria: {name}.",
   "story.bond": "Vínculo {n}/3. {species}: «{text}»",
-  "story.progress": "{senda}: {n}/3 capítulos cerrados (I en Normal, II en Difícil, III en Pesadilla).",
+  "story.progress": "{senda}: {n}/3 capítulos cerrados (I en Normal, II en Difícil, III en Pesadilla). Sus escenas salen jugando en solitario, nunca en Fácil.",
   "species.mimikyu-wound": "Mimikyu Sin Disfraz",
   "challenge.mimikyu.floor.5": "Hilo amarillo enredado entre las losas, como un rastro para volver.",
   "challenge.mimikyu.floor.6": "Dos ojos redondos en lo alto de una cornisa. Aquí abajo no da el sol, y aun así te ven.",
