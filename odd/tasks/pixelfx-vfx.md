@@ -28,7 +28,7 @@ Delivery: `ask-on-risk`, work-unit commits, push and PR are the owner's call. Te
 - [x] Every enemy behaviour kind and boss (`ENEMY_BEHAVIOUR`) shows a strike effect (test iterates)
 - [x] All dungeons: the director reads world state, nothing is per dungeon
 - [~] Solo and host seen in the browser; guest covered by unit tests from snapshots, no real two-peer run yet
-- [x] Time crystal, cave crystals, altar, memory, stairs, exit, bonfire, chest and crystal payout
+- [x] Time crystal, cave crystals, altar, memory, exit, bonfire, chest and crystal payout. Stairs keep their Mystery Dungeon look on the owner's call (L8)
 - [ ] PENDING: swamp crystal spire, crypt treasure pile, berry, nest, merchant still hand-drawn
 - [x] Status: burn and poison on enemies, poison on the player, roll dust, level up, boss stance, enemy death, summons
 - [ ] PENDING: mark and weakened keep their hand-drawn marks; player death has no effect; herald blink has no event hook
@@ -47,3 +47,4 @@ Delivery: `ask-on-risk`, work-unit commits, push and PR are the owner's call. Te
 - L5: Rejected after looking: effects that paint pixelfx's human dummy (blink-in, curse, soul-rise, status/haste, cursed, slowed) and cartoon-pow's English "POW!" text.
 - L6: Independent verifier found 3 blockers: `enterFloor` never reset the director (every enemy puffed on each descent), a guest's hit or kill undone by a late snapshot played twice, and remote shots lost `vel`. Also: move art covered telegraphs, and water-orb shrank under `fitHeight`. All fixed in one correction batch: moves now draw under the telegraphs, water uses plasma-shot.
 - L7: Recheck on 8aa1790: all fixed. Known leftovers, not blockers: above about 300 ms RTT a guest's hit can spark twice; a predicted kill the host refuses plays its puff early and none at the real death. Enemy shots raised to 4.5x radius because the plasma body measured 6.5 px against a 12 px hitbox at 2.6x; not yet judged by the owner in play.
+- L8 (2026-11-01): "las escaleras porfavor que sigan siendo las escaleras de antes del mundo misterioso jajaja que eso esque es iconico xD". Stairs effect removed, pinned by a test.

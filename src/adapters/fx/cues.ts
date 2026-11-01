@@ -252,6 +252,5 @@ export const WORLD_CUES = {
   caveCrystalViolet: cue('pickups/crystal-shard', 'ghost', 10, 2400),
   burn: cue('status/burning', null, 8, 900),
   poison: cue('pickups/xp-orb', 'poison', 8, 1000),
-  stairs: cue('arcane/rune-circle', 'ghost', 12, 2400),
   exit: cue('arcane/rune-circle', 'fairy', 12, 2400),
 } as const satisfies Record<string, FxCue>;

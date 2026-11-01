@@ -456,7 +456,6 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /** Stairs down: a dark pit with steps fading into it and a soft pulse so it is easy to spot. */
   function stairsTile(rect: Rect, timeMs: number): void {
-    fx?.drawLoop(ctx, WORLD_CUES.stairs, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, placement: 'body', fit: rect.width }, timeMs, 0.7);
     const pulse = 0.5 + 0.5 * Math.sin(timeMs / 260);
     ctx.fillStyle = COLORS.stairsGlow;
     ctx.globalAlpha = 0.4 + 0.6 * pulse;

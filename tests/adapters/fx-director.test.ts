@@ -204,6 +204,12 @@ describe('wiring read from the source', () => {
     expect(renderer.indexOf("fx?.draw(ctx, 'ground')")).toBeLessThan(renderer.indexOf('telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs)'));
   });
 
+  it('the stairs stay the Mystery Dungeon stairs: no effect on them', () => {
+    const start = renderer.indexOf('function stairsTile(');
+    expect(renderer.slice(start, renderer.indexOf('\n  }\n', start))).not.toContain('fx');
+    expect(WORLD_CUES).not.toHaveProperty('stairs');
+  });
+
   it("a peer's shots keep their velocity, so they fly with their baked look", () => {
     expect(renderer).toMatch(/for \(const p of remote\.projectiles\) drawables\.push\(projectile\(\{[^}]*vel: p\.vel/);
   });
