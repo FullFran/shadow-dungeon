@@ -17,8 +17,8 @@ import type { FxSpawn, FxSystem } from './system';
 
 /** The height of a body above its feet, where a swing leaves from. */
 const BODY_LIFT = 8;
-/** Shots look a bit bigger than their hitbox: the glow, not the danger. */
-export const SHOT_HEIGHT = { player: 3.5, enemy: 2.6 } as const;
+/** Height of a shot's art against its radius. An enemy shot's solid body must not look smaller than what hits you (its art is mostly glow). */
+export const SHOT_HEIGHT = { player: 3.5, enemy: 4.5 } as const;
 
 interface PlayerSeen {
   moveId: MoveId | null;
