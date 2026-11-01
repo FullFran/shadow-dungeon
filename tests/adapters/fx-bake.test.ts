@@ -55,6 +55,13 @@ describe('every move has its look', () => {
     }
   });
 
+  it('moves with a story of their own do not look like a generic ball or slash', () => {
+    expect(moveCue(MOVES['fury-swipes'])?.effect).toBe('melee/claw-swipe');
+    expect(projectileCue('normal', 'swift').effect).toBe('pickups/power-star');
+    expect(projectileCue('water', 'bubble-beam').effect).toBe('water/water-orb');
+    expect(projectileCue('water').effect).toBe('projectiles/plasma-shot');
+  });
+
   it.each(ALL_TYPES)('%s has shots and hits', (type) => {
     expect(EFFECT_IDS).toContain(projectileCue(type).effect);
     expect(EFFECT_IDS).toContain(impactCue(type, false).effect);

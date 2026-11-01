@@ -102,7 +102,7 @@ export class FxDirector {
       const move = MOVES[id];
       const own = moveCue(move);
       if (own) cues.push(own);
-      if (move.hitbox.kind === 'projectile') cues.push(projectileCue(move.type));
+      if (move.hitbox.kind === 'projectile') cues.push(projectileCue(move.type, id));
       cues.push(impactCue(move.type, false), impactCue(move.type, true));
     }
     this.fx.prepare(cues);

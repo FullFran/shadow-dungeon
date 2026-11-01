@@ -1465,8 +1465,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const cue = stillShotCue(type);
       return cue ? fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y, placement: 'ground', fit: p.radius }, timeMs) : false;
     }
-    const height = p.radius * (p.owner === 'enemy' ? SHOT_HEIGHT.enemy : SHOT_HEIGHT.player);
-    return fx.drawLoop(ctx, projectileCue(type), { x: pos.x, y: pos.y - 6, placement: 'aim', angle: Math.atan2(p.vel?.y ?? 0, p.vel?.x ?? 1), fitHeight: height }, timeMs);
+    const cue = projectileCue(type, p.moveId);
+    const height = p.radius * (p.owner === 'enemy' ? SHOT_HEIGHT.enemy : SHOT_HEIGHT.player) * (cue.shotScale ?? 1);
+    return fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y - 6, placement: 'aim', angle: Math.atan2(p.vel?.y ?? 0, p.vel?.x ?? 1), fitHeight: height }, timeMs);
   }
 
   /** Projectiles are drawn in their move type's colours (move-vfx.ts). */

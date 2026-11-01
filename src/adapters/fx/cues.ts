@@ -19,6 +19,8 @@ export interface FxCue {
   playMs: number;
   /** Share of the effect's duration kept, for the ones that end in a long tail of smoke. */
   span?: number;
+  /** A shot whose art is mostly halo: how much bigger to draw it so its body still reads. */
+  shotScale?: number;
 }
 
 const cue = (effect: string, tint: PokemonType | null, frames: number, playMs: number, span?: number): FxCue => ({ effect, tint, frames, playMs, ...(span ? { span } : {}) });
@@ -46,6 +48,8 @@ const SELF_MS = 700;
 /** Moves with a look of their own; the rest take the default of their hitbox and type. */
 const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   // Claws and fangs.
+  'fury-swipes': cue('melee/claw-swipe', 'normal', 7, SWING_MS),
+  'hone-claws': cue('melee/claw-swipe', 'dark', 7, SELF_MS),
   'shadow-claw': cue('melee/claw-swipe', 'ghost', 7, SWING_MS),
   'metal-claw': cue('melee/claw-swipe', 'steel', 7, SWING_MS),
   'dragon-claw': cue('melee/claw-swipe', 'dragon', 7, SWING_MS),
@@ -66,7 +70,8 @@ const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   'bone-club': cue('melee/hammer-smash', 'ground', 8, HEAVY_SWING_MS, 0.5),
   'wood-hammer': cue('melee/hammer-smash', 'grass', 8, HEAVY_SWING_MS, 0.5),
   'knock-off': cue('melee/thrust', 'dark', 6, SWING_MS),
-  'low-kick': cue('melee/thrust', 'fighting', 6, SWING_MS),
+  'low-kick': cue('impacts/blunt-hit', 'fighting', 6, SWING_MS, 0.45),
+  'double-kick': cue('impacts/blunt-hit', 'fighting', 6, SWING_MS, 0.45),
   // Draining.
   'leech-life': cue('shadow/life-steal', 'bug', 8, HEAVY_SWING_MS),
   'draining-kiss': cue('shadow/life-steal', 'fairy', 8, HEAVY_SWING_MS),
@@ -92,7 +97,14 @@ const MOVE_LOOKS: Partial<Record<string, FxCue>> = {
   'temper-flare': cue('fire/fire-ring', null, 9, RING_MS),
   'future-sight': cue('arcane/mana-burst', 'psychic', 9, RING_MS),
   surf: cue('water/wave-crash', null, 9, RING_MS),
-  // Dashes.
+  // Dashes: tackles land a blow, electric ones crackle, bones keep hitting.
+  headbutt: cue('impacts/blunt-hit', 'normal', 6, SWING_MS, 0.45),
+  'take-down': cue('impacts/blunt-hit', 'normal', 6, HEAVY_SWING_MS, 0.45),
+  'double-edge': cue('impacts/crit-hit', 'normal', 7, HEAVY_SWING_MS),
+  'iron-head': cue('impacts/blunt-hit', 'steel', 6, SWING_MS, 0.45),
+  spark: cue('lightning/zap-hit', null, 6, SWING_MS),
+  'wild-charge': cue('lightning/zap-hit', null, 6, HEAVY_SWING_MS),
+  'bone-rush': cue('melee/dagger-flurry', 'ground', 7, HEAVY_SWING_MS),
   'aqua-jet': cue('water/water-jet', null, 6, SWING_MS),
   'flare-blitz': cue('fire/flamethrower', null, 6, HEAVY_SWING_MS),
   'flame-charge': cue('fire/flamethrower', null, 6, SWING_MS),
@@ -131,16 +143,31 @@ export function moveCue(move: MoveDef): FxCue | null {
   }
 }
 
-/** The look of a shot in flight, by type: a remote shot carries no move id, only its type. */
-export function projectileCue(type: PokemonType): FxCue {
+/** Shots whose move is not just "a ball of its type". */
+const SHOT_LOOKS: Partial<Record<string, FxCue>> = {
+  'shadow-ball': { ...cue('arcane/arcane-orb', 'ghost', 8, 800), shotScale: 1.9 },
+  'energy-ball': { ...cue('arcane/arcane-orb', 'grass', 8, 800), shotScale: 1.9 },
+  'giga-drain': { ...cue('arcane/arcane-orb', 'grass', 8, 800), shotScale: 1.9 },
+  'dragon-pulse': { ...cue('arcane/arcane-orb', 'dragon', 8, 800), shotScale: 1.9 },
+  thunderbolt: { ...cue('lightning/ball-lightning', null, 8, 600), shotScale: 2.2 },
+  'bubble-beam': { ...cue('water/water-orb', null, 8, 700), shotScale: 1.8 },
+  swift: { ...cue('pickups/power-star', 'electric', 6, 400), shotScale: 1.5 },
+  smog: cue('spawn/poof', 'poison', 6, 700, 0.5),
+  'clear-smog': cue('spawn/poof', 'poison', 6, 700, 0.5),
+  'mud-slap': cue('spawn/poof', 'ground', 6, 500, 0.5),
+  'scorching-sands': cue('spawn/poof', 'ground', 6, 500, 0.5),
+};
+
+/** The look of a shot in flight: its move's own if it has one; a remote shot carries no move id, only its type. */
+export function projectileCue(type: PokemonType, moveId?: string): FxCue {
+  const own = moveId ? SHOT_LOOKS[moveId] : undefined;
+  if (own) return own;
   switch (type) {
     case 'fire':
       return cue('fire/fireball', null, 6, 400);
     case 'ice':
       return cue('ice/ice-lance', null, 5, 400);
-    case 'steel':
     case 'psychic':
-    case 'grass':
       return cue('projectiles/energy-disc', type, 5, 300);
     default:
       return cue('projectiles/plasma-shot', type, 5, 400);
@@ -164,7 +191,7 @@ export function impactCue(type: PokemonType, strong: boolean): FxCue {
 
 /** Every look the game can ask for a move and its hits: what a test walks over. */
 export function allMoveCues(moves: readonly MoveDef[]): FxCue[] {
-  return moves.flatMap((m) => [moveCue(m), projectileCue(m.type), impactCue(m.type, false), impactCue(m.type, true)].filter((c): c is FxCue => c !== null));
+  return moves.flatMap((m) => [moveCue(m), projectileCue(m.type), projectileCue(m.type, m.id), impactCue(m.type, false), impactCue(m.type, true)].filter((c): c is FxCue => c !== null));
 }
 
 /** An enemy's attack going off, by its behaviour; every kind has one, and an unknown species the default. */
