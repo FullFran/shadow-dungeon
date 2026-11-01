@@ -33,6 +33,37 @@ describe('base URL', () => {
 });
 
 describe('http account API', () => {
+  it('starts an OAuth2 sign-in from the provider the server offers, asking Google for the id only', async () => {
+    const { seen, fetchFn } = fakeFetch([
+      {
+        status: 200,
+        body: { oauth2: { enabled: true, providers: [{ name: 'google', state: 'st', codeVerifier: 'cv', authURL: 'https://accounts.google.com/o/oauth2/auth?client_id=c&scope=email+profile&state=st&redirect_uri=' }] } },
+      },
+    ]);
+    const result = await httpAccountApi(BASE, fetchFn).oauthStart('google', 'https://game.test/play/');
+    expect(seen[0]).toMatchObject({ url: `${BASE}/api/collections/users/auth-methods`, method: 'GET' });
+    expect(seen[0]!.headers.Authorization).toBeUndefined();
+    expect(result.ok).toBe(true);
+    if (!result.ok || !result.value) throw new Error('expected a start');
+    expect(result.value).toMatchObject({ state: 'st', codeVerifier: 'cv' });
+    const url = new URL(result.value.url);
+    expect(url.searchParams.get('redirect_uri')).toBe('https://game.test/play/');
+    expect(url.searchParams.get('scope')).toBe('openid');
+    expect(url.searchParams.get('client_id')).toBe('c');
+  });
+
+  it('answers null when the server does not offer the provider', async () => {
+    const { fetchFn } = fakeFetch([{ status: 200, body: { oauth2: { enabled: false, providers: [] } } }]);
+    expect(await httpAccountApi(BASE, fetchFn).oauthStart('google', 'https://game.test/')).toEqual({ ok: true, value: null });
+  });
+
+  it('finishes an OAuth2 sign-in with the code, the verifier and the same redirect, accepting an account with no email', async () => {
+    const { seen, fetchFn } = fakeFetch([{ status: 200, body: { token: 'tok', record: { id: 'u1', email: '' } } }]);
+    const result = await httpAccountApi(BASE, fetchFn).oauthFinish('google', 'code1', 'cv', 'https://game.test/play/');
+    expect(seen[0]).toMatchObject({ url: `${BASE}/api/collections/users/auth-with-oauth2`, method: 'POST', body: { provider: 'google', code: 'code1', codeVerifier: 'cv', redirectURL: 'https://game.test/play/' } });
+    expect(result).toEqual({ ok: true, value: { token: 'tok', userId: 'u1', email: '' } });
+  });
+
   it('signs up with the password twice and no token', async () => {
     const { seen, fetchFn } = fakeFetch([{ status: 200, body: { id: 'u1' } }]);
     const result = await httpAccountApi(BASE, fetchFn).signUp('a@b.es', 'secret123');

@@ -3,7 +3,7 @@ import type { KeyValueStore } from '../adapters/storage';
 import { getLanguage, t } from '../i18n';
 import { cursorList, type ListItem } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
-import { createAccount, MIN_PASSWORD, UNDO_MS, type Account, type AccountError, type Choice, type ChoiceAnswer, type Notice, type SyncInfo } from './account';
+import { createAccount, MIN_PASSWORD, oauthReturn, UNDO_MS, type Account, type AccountError, type Choice, type ChoiceAnswer, type Notice, type SyncInfo } from './account';
 import { backupProfile, parseImport, type Backup } from './backups';
 import { observeKeys, realTimers } from './cloud-sync';
 import { PROFILE_KEYS, profileSummary, type ProfileSummary } from './profile';
@@ -52,8 +52,20 @@ export function setupAccount(options: {
   window.addEventListener('online', () => account.online());
   window.addEventListener('storage', (event) => account.external(event.key));
   window.addEventListener('pagehide', () => leader.isLeader() && account.flush());
-  void account.start();
+  void account.start().then(() => finishOAuthReturn(account, options.notify));
   return { account, store };
+}
+
+/** The page itself, with nothing after the path: the address the provider comes back to. */
+const pageUrl = (): string => `${location.origin}${location.pathname}`;
+
+/** The page opened as the provider's return: the code leaves the address bar first, then the sign-in finishes. */
+async function finishOAuthReturn(account: Account, notify: (text: string) => void): Promise<void> {
+  const back = oauthReturn(location.search);
+  if (!back) return;
+  history.replaceState(null, '', pageUrl() + location.hash);
+  const result = await account.finishOAuth(back, pageUrl());
+  if (!result.ok) notify(t(`account.error.${result.error}`));
 }
 
 /** A notice with "Deshacer" for UNDO_MS (the replaced profile is in the backups either way). */
@@ -290,7 +302,7 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
     if (choice.kind === 'held') items.push({ label: t('menu.back'), onConfirm: options.onBack });
   } else if (state.kind === 'signed-in') {
     const line = statusText(info, Date.now());
-    body = [h('p', {}, [t('account.signedInAs'), ' ', h('span', { className: 'account-email', textContent: state.email })]), h('p', { className: 'dim sync-status', textContent: line || t('account.synced') })];
+    body = [state.email ? h('p', {}, [t('account.signedInAs'), ' ', h('span', { className: 'account-email', textContent: state.email })]) : h('p', { textContent: t('account.signedInGoogle') }), h('p', { className: 'dim sync-status', textContent: line || t('account.synced') })];
     items = [
       ...(info.status === 'choice' ? [{ label: t('sync.check'), onConfirm: () => void account.check().then(() => go('main')) }] : []),
       { label: t('sync.backups'), onConfirm: () => go('backups') },
@@ -328,6 +340,17 @@ export function accountWindow(options: AccountScreenOptions, view: AccountView =
       { label: password, className: 'account-row', onConfirm: () => password.focus() },
       { label: t('account.logIn'), onConfirm: logIn },
       { label: t('account.register'), onConfirm: register },
+      {
+        label: t('account.google'),
+        onConfirm: () =>
+          void run(async () => {
+            const begun = await account.beginOAuth('google', pageUrl());
+            if (!begun.ok) return begun;
+            location.assign(begun.url);
+            // The page is leaving: keep "Conectando…" on screen instead of rebuilding it.
+            return new Promise<{ ok: boolean }>(() => {});
+          }),
+      },
       { label: t('account.forgot'), onConfirm: () => askReset('account.resetSent', email.value) },
       { label: t('sync.backups'), onConfirm: () => go('backups') },
       { label: t('sync.wipe'), className: 'danger', onConfirm: () => go('wipe') },

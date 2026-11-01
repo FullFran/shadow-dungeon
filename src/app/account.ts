@@ -1,4 +1,4 @@
-import type { AccountApi, ApiError, RemoteSave } from '../adapters/account-api';
+import type { AccountApi, ApiError, AuthSession, RemoteSave } from '../adapters/account-api';
 import type { KeyValueStore } from '../adapters/storage';
 import { addBackup, clearBackups, exportText, findBackup, backupProfile, readBackups, type Backup, type BackupReason } from './backups';
 import { encodeCloud } from './cloud-payload';
@@ -28,6 +28,9 @@ import { EMPTY_PROFILE, PROFILE_KEYS, profileHash, profileSummary, readProfile, 
  * failures only cost persistence: the session then lasts for the page.
  */
 export const ACCOUNT_KEY = 'mazmorra-sombria.account';
+/** The sign-in on its way through a provider (state and verifier): one use, and only for OAUTH_TTL_MS. */
+export const OAUTH_KEY = 'mazmorra-sombria.oauth';
+const OAUTH_TTL_MS = 10 * 60_000;
 export const MIN_PASSWORD = 8;
 /** How long "Deshacer" stays offered after a replacement. */
 export const UNDO_MS = 30_000;
@@ -42,7 +45,7 @@ export type AccountState = { kind: 'guest' } | { kind: 'signed-in'; email: strin
 /** Player-facing events. */
 export const NOTICES = ['cloud-loaded', 'expired', 'choose', 'resolved', 'restored', 'imported', 'external'] as const;
 export type Notice = (typeof NOTICES)[number];
-export const ACCOUNT_ERRORS = ['offline', 'unauthorized', 'rejected', 'rate-limited', 'server', 'too-short', 'invalid-email'] as const satisfies readonly (Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email')[];
+export const ACCOUNT_ERRORS = ['offline', 'unauthorized', 'rejected', 'rate-limited', 'server', 'too-short', 'invalid-email', 'oauth-failed', 'oauth-unavailable'] as const satisfies readonly (Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email' | 'oauth-failed' | 'oauth-unavailable')[];
 export type AccountError = (typeof ACCOUNT_ERRORS)[number];
 export type AuthOutcome = { ok: true } | { ok: false; error: AccountError };
 
@@ -66,6 +69,22 @@ export interface SyncInfo {
   syncedAt: number | null;
 }
 
+/** What a provider sends back in the page's query. */
+export interface OAuthReturn {
+  code: string | null;
+  state: string;
+  error: string | null;
+}
+
+/** The sign-in return in a page query, or null when the query is anything else (a room link, nothing). */
+export function oauthReturn(search: string): OAuthReturn | null {
+  const query = new URLSearchParams(search);
+  const state = query.get('state');
+  const code = query.get('code');
+  const error = query.get('error');
+  return state && (code || error) ? { code, state, error } : null;
+}
+
 export interface Account {
   state(): AccountState;
   /** The session's token, or null as a guest. */
@@ -78,6 +97,10 @@ export interface Account {
   online(): void;
   register(email: string, password: string): Promise<AuthOutcome>;
   logIn(email: string, password: string): Promise<AuthOutcome>;
+  /** Prepares a sign-in with `provider`; the caller sends the page to `url`, and the provider comes back to `redirectUrl`. */
+  beginOAuth(provider: string, redirectUrl: string): Promise<{ ok: true; url: string } | { ok: false; error: AccountError }>;
+  /** The page came back from the provider: checks the return against the sign-in this device started, then signs in. */
+  finishOAuth(back: OAuthReturn, redirectUrl: string): Promise<AuthOutcome>;
   /** Mails a link to choose a new password: to the signed-in account's email, else to `email`. The session stays until the password changes. */
   requestPasswordReset(email?: string): Promise<AuthOutcome>;
   /** The open choice, if any. */
@@ -159,6 +182,17 @@ export function createAccount(deps: AccountDeps): Account {
       deps.store.set(ACCOUNT_KEY, session ? JSON.stringify(session) : '');
     } catch {
       // The session lasts for this page only.
+    }
+  };
+  /** The sign-in this device started, once: it is gone after this whatever the outcome. */
+  const takeOAuth = (): { provider: string; state: string; codeVerifier: string } | null => {
+    try {
+      const raw: unknown = JSON.parse(deps.store.get(OAUTH_KEY) ?? 'null');
+      deps.store.set(OAUTH_KEY, '');
+      if (!isRecord(raw) || typeof raw.provider !== 'string' || typeof raw.state !== 'string' || typeof raw.codeVerifier !== 'string' || typeof raw.at !== 'number') return null;
+      return deps.now() - raw.at <= OAUTH_TTL_MS ? { provider: raw.provider, state: raw.state, codeVerifier: raw.codeVerifier } : null;
+    } catch {
+      return null;
     }
   };
   const local = (): Profile => readProfile(deps.store);
@@ -304,10 +338,15 @@ export function createAccount(deps: AccountDeps): Account {
   async function signedIn(email: string, password: string): Promise<AuthOutcome> {
     const login = await deps.api.logIn(email, password);
     if (!login.ok) return { ok: false, error: errorOf(login.error) };
-    const remote = await deps.api.getSave(login.value.token, login.value.userId);
+    return adopt(login.value);
+  }
+
+  /** Takes over the device with a new session and reconciles its profile with the cloud. */
+  async function adopt(login: AuthSession): Promise<AuthOutcome> {
+    const remote = await deps.api.getSave(login.token, login.userId);
     if (!remote.ok) return { ok: false, error: errorOf(remote.error) };
     signOut();
-    session = { ...login.value };
+    session = { ...login };
     resumed = true;
     persist();
     reconcile(remote.value, 'login');
@@ -432,6 +471,26 @@ export function createAccount(deps: AccountDeps): Account {
     },
     logIn(email, password) {
       return signedIn(email.trim(), password);
+    },
+    async beginOAuth(provider, redirectUrl) {
+      const started = await deps.api.oauthStart(provider, redirectUrl);
+      if (!started.ok) return { ok: false, error: errorOf(started.error) };
+      if (!started.value) return { ok: false, error: 'oauth-unavailable' };
+      const { url, state, codeVerifier } = started.value;
+      try {
+        deps.store.set(OAUTH_KEY, JSON.stringify({ provider, state, codeVerifier, at: deps.now() }));
+      } catch {
+        // Without the state the return could not be checked: do not leave.
+        return { ok: false, error: 'oauth-failed' };
+      }
+      return { ok: true, url };
+    },
+    async finishOAuth(back, redirectUrl) {
+      const started = takeOAuth();
+      if (!started || started.state !== back.state || back.error || !back.code) return { ok: false, error: 'oauth-failed' };
+      const login = await deps.api.oauthFinish(started.provider, back.code, started.codeVerifier, redirectUrl);
+      if (!login.ok) return { ok: false, error: login.error.kind === 'offline' || login.error.kind === 'rate-limited' ? errorOf(login.error) : 'oauth-failed' };
+      return adopt(login.value);
     },
     async requestPasswordReset(email = '') {
       const clean = session?.email ?? email.trim();

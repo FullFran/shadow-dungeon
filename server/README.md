@@ -435,6 +435,14 @@ with the JS SDK's `scopes` option, and the server drops the email either way.
 | Discord | discord.com/developers/applications → OAuth2 | `identify email` | `['identify']` | id, username, avatar; email only with `email` |
 | Google | console.cloud.google.com → APIs & Services → Credentials (OAuth client, "Web application") | `userinfo.profile userinfo.email` | `['openid']` | `sub` id; name, avatar and email only with their scopes |
 
+**Google in the game client** (`src/adapters/account-api.ts`) does not use the
+popup: the page goes to Google and comes back to itself, which also works on
+phones and in an installed PWA. So the Google client must list the game's own
+address as an authorized redirect URI: **`https://www.fullfran.com/shadow-dungeon/`**
+(for local tests also `http://localhost:5173/`), not `/api/oauth2-redirect`. It
+asks only for `openid`. An account made this way is a new account with no email:
+it does not link to a password account (linking is pending, below).
+
 The minimal scopes still need a live check against each provider (not done
 here). Read the Twitch developer agreement before registering the app
 (plan section 4.5).

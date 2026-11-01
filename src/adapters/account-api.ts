@@ -47,6 +47,13 @@ export interface PublicProfile {
   avatarSpecies: string;
 }
 
+/** Where to send the player to sign in with a provider, and what the return must match. */
+export interface OAuthStart {
+  url: string;
+  state: string;
+  codeVerifier: string;
+}
+
 export type ProfileFields = Pick<PublicProfile, 'nickname' | 'avatarSpecies'>;
 
 export type ApiError =
@@ -68,6 +75,10 @@ export type ApiResult<T> = { ok: true; value: T } | { ok: false; error: ApiError
 export interface AccountApi {
   signUp(email: string, password: string): Promise<ApiResult<void>>;
   logIn(email: string, password: string): Promise<ApiResult<AuthSession>>;
+  /** Prepares a sign-in with `provider` that comes back to `redirectUrl`; null when the server does not offer it. */
+  oauthStart(provider: string, redirectUrl: string): Promise<ApiResult<OAuthStart | null>>;
+  /** Trades the provider's code for a session. An account made this way has no email (server/README.md). */
+  oauthFinish(provider: string, code: string, codeVerifier: string, redirectUrl: string): Promise<ApiResult<AuthSession>>;
   /** Mails a link to choose a new password; the server answers the same whether or not the account exists. */
   requestPasswordReset(email: string): Promise<ApiResult<void>>;
   refresh(token: string): Promise<ApiResult<AuthSession>>;
@@ -109,6 +120,27 @@ function authSession(raw: unknown): AuthSession | null {
 }
 
 const wholeAt = (value: unknown, min: number): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= min;
+
+/**
+ * The provider's entry in `auth-methods` as a ready URL, `start: null` when
+ * it is not offered. The scope is narrowed to the id: the server keeps no
+ * provider email anyway, so the consent screen should not ask for one.
+ */
+function oauthStartOf(body: unknown, provider: string, redirectUrl: string): { start: OAuthStart | null } | null {
+  if (!isObject(body) || !isObject(body.oauth2) || !Array.isArray(body.oauth2.providers)) return null;
+  const entry: unknown = body.oauth2.providers.find((p: unknown) => isObject(p) && p.name === provider);
+  if (entry === undefined) return { start: null };
+  if (!isObject(entry) || typeof entry.authURL !== 'string' || typeof entry.state !== 'string' || typeof entry.codeVerifier !== 'string') return null;
+  let url: URL;
+  try {
+    url = new URL(entry.authURL);
+  } catch {
+    return null;
+  }
+  url.searchParams.set('scope', 'openid');
+  url.searchParams.set('redirect_uri', redirectUrl);
+  return { start: { url: url.toString(), state: entry.state, codeVerifier: entry.codeVerifier } };
+}
 
 /** A ranking row with exactly the public fields, or null when any is malformed. */
 function rankingEntry(raw: unknown): RankingEntry | null {
@@ -190,6 +222,11 @@ export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) =>
       // PocketBase answers wrong credentials with 400.
       return !result.ok && result.error.kind === 'rejected' ? fail('unauthorized') : result;
     },
+    async oauthStart(provider, redirectUrl) {
+      const result = await call('GET', '/api/collections/users/auth-methods', {}, (body) => oauthStartOf(body, provider, redirectUrl));
+      return result.ok ? { ok: true, value: result.value.start } : result;
+    },
+    oauthFinish: (provider, code, codeVerifier, redirectUrl) => call('POST', '/api/collections/users/auth-with-oauth2', { body: { provider, code, codeVerifier, redirectURL: redirectUrl } }, authSession),
     requestPasswordReset: (email) => done(call('POST', '/api/collections/users/request-password-reset', { body: { email } }, () => true as const)),
     refresh: (token) => call('POST', '/api/collections/users/auth-refresh', { token }, authSession),
     async getSave(token, userId) {

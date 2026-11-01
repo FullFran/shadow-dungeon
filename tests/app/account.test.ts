@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountApi, ApiError, ApiResult, AuthSession, RemoteSave } from '../../src/adapters/account-api';
 import { memoryStore, type KeyValueStore } from '../../src/adapters/storage';
-import { ACCOUNT_ERRORS, ACCOUNT_KEY, createAccount, NOTICES, type Notice } from '../../src/app/account';
+import { ACCOUNT_ERRORS, ACCOUNT_KEY, createAccount, NOTICES, oauthReturn, type Notice } from '../../src/app/account';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { backupProfile } from '../../src/app/backups';
 import { decodeCloud, encodeCloud } from '../../src/app/cloud-payload';
@@ -22,6 +22,7 @@ function fakeBackend() {
   const tokens = new Map<string, string>();
   const calls: string[] = [];
   let down: ApiError['kind'] | null = null;
+  let oauthOffered = true;
   let n = 0;
   const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => ({ ok: false, error: { kind } as ApiError });
   const userOf = (token: string) => tokens.get(token);
@@ -49,6 +50,20 @@ function fakeBackend() {
       if (down) return fail(down as never);
       const user = [...users.values()].find((u) => u.email === email && u.password === password);
       return user ? { ok: true, value: issue(user.id) } : fail('unauthorized');
+    },
+    async oauthStart(_provider, redirectUrl) {
+      calls.push('oauthStart');
+      if (down) return fail(down as never);
+      if (!oauthOffered) return { ok: true, value: null };
+      return { ok: true, value: { url: `https://idp.test/?redirect_uri=${redirectUrl}`, state: 'st', codeVerifier: 'cv' } };
+    },
+    async oauthFinish(_provider, code, codeVerifier) {
+      calls.push('oauthFinish');
+      if (down) return fail(down as never);
+      if (code !== 'good' || codeVerifier !== 'cv') return fail('rejected');
+      const id = `u${++n}`;
+      users.set(id, { id, email: '', password: '' });
+      return { ok: true, value: issue(id) };
     },
     async refresh(token) {
       calls.push('refresh');
@@ -118,6 +133,9 @@ function fakeBackend() {
     /** Every session ends, as changing a password does. */
     revokeTokens: () => tokens.clear(),
     dropSaves: () => saves.clear(),
+    setOAuthProvider: (offered: boolean) => {
+      oauthOffered = offered;
+    },
     setDown: (kind: ApiError['kind'] | null) => {
       down = kind;
     },
@@ -785,9 +803,77 @@ describe('storage that fails', () => {
   });
 });
 
+describe('Google sign-in', () => {
+  const REDIRECT = 'https://game.test/play/';
+
+  it('sends the player to the provider and signs in when they come back with the right state', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    const begun = await d.account.beginOAuth('google', REDIRECT);
+    expect(begun).toEqual({ ok: true, url: `https://idp.test/?redirect_uri=${REDIRECT}` });
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+    expect(await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT)).toEqual({ ok: true });
+    expect(d.account.state()).toEqual({ kind: 'signed-in', email: '' });
+    expect(d.account.token()).toBeTruthy();
+  });
+
+  it('refuses a return whose state does not match, without calling the server', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    await d.account.beginOAuth('google', REDIRECT);
+    expect(await d.account.finishOAuth({ code: 'good', state: 'forged', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+    expect(backend.calls).not.toContain('oauthFinish');
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+  });
+
+  it('refuses a return nobody started, and a replay of one already used', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    expect(await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+    await d.account.beginOAuth('google', REDIRECT);
+    await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT);
+    d.account.logOut();
+    expect(await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+    expect(backend.calls.filter((c) => c === 'oauthFinish')).toHaveLength(1);
+  });
+
+  it('a player who declines at the provider stays a guest, and the pending sign-in is gone', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    await d.account.beginOAuth('google', REDIRECT);
+    expect(await d.account.finishOAuth({ code: null, state: 'st', error: 'access_denied' }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+    expect(backend.calls).not.toContain('oauthFinish');
+    expect(await d.account.finishOAuth({ code: 'good', state: 'st', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+  });
+
+  it('an unavailable provider and a missing network each say so', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    backend.setOAuthProvider(false);
+    expect(await d.account.beginOAuth('google', REDIRECT)).toEqual({ ok: false, error: 'oauth-unavailable' });
+    backend.setOAuthProvider(true);
+    backend.setDown('offline');
+    expect(await d.account.beginOAuth('google', REDIRECT)).toEqual({ ok: false, error: 'offline' });
+  });
+
+  it('a server refusal is not reported as a wrong password', async () => {
+    const backend = fakeBackend();
+    const d = device(backend);
+    await d.account.beginOAuth('google', REDIRECT);
+    expect(await d.account.finishOAuth({ code: 'bad', state: 'st', error: null }, REDIRECT)).toEqual({ ok: false, error: 'oauth-failed' });
+  });
+
+  it('the return reads only a sign-in query: a room link is not one', () => {
+    expect(oauthReturn('?code=c&state=s&scope=openid')).toEqual({ code: 'c', state: 's', error: null });
+    expect(oauthReturn('?error=access_denied&state=s')).toEqual({ code: null, state: 's', error: 'access_denied' });
+    expect(oauthReturn('?room=ABCD')).toBeNull();
+    expect(oauthReturn('')).toBeNull();
+  });
+});
+
 describe('account strings', () => {
   it('every notice and error has a line in each language, without em dashes', () => {
-    const keys = [...NOTICES.map((n) => `account.notice.${n}`), ...ACCOUNT_ERRORS.map((e) => `account.error.${e}`), 'account.forgot', 'account.changePassword', 'account.resetSent', 'account.resetSentOwn', 'account.privacy', 'title.account'];
+    const keys = [...NOTICES.map((n) => `account.notice.${n}`), ...ACCOUNT_ERRORS.map((e) => `account.error.${e}`), 'account.forgot', 'account.changePassword', 'account.resetSent', 'account.resetSentOwn', 'account.privacy', 'account.google', 'account.signedInGoogle', 'title.account'];
     for (const language of LANGUAGES) {
       const lines = catalog(language);
       expect(keys.filter((key) => !lines[key])).toEqual([]);
