@@ -168,3 +168,92 @@ export function impactCue(type: PokemonType, strong: boolean): FxCue {
 export function allMoveCues(moves: readonly MoveDef[]): FxCue[] {
   return moves.flatMap((m) => [moveCue(m), projectileCue(m.type), impactCue(m.type, false), impactCue(m.type, true)].filter((c): c is FxCue => c !== null));
 }
+
+/** An enemy's attack going off, by its behaviour; every kind has one, and an unknown species the default. */
+export function enemyStrikeCue(kind: string | undefined, type: PokemonType): FxCue {
+  switch (kind) {
+    case 'lunger':
+    case 'counter':
+      return cue('melee/thrust', type, 6, SWING_MS);
+    case 'slammer':
+      return cue('melee/hammer-smash', type, 8, HEAVY_SWING_MS, 0.5);
+    case 'caster':
+    case 'mortar':
+      return cue('impacts/hit-spark', type, 5, 240);
+    case 'spore':
+    case 'bomber':
+      return cue('nature/spore-burst', null, 8, RING_MS, 0.6);
+    case 'beam':
+    case 'cone':
+      return cue('ice/frost-breath', type, 8, HEAVY_SWING_MS);
+    case 'pulse':
+      return cue('explosions/plasma-explosion', type, 9, RING_MS);
+    default:
+      return cue('melee/heavy-cleave', type, 8, HEAVY_SWING_MS);
+  }
+}
+
+/** An enemy falling: a puff in its colours; a boss goes out with a blast. */
+export function deathCue(type: PokemonType, boss: boolean): FxCue {
+  return boss ? cue('explosions/plasma-explosion', type, 10, 900) : cue('spawn/poof', type, 7, 520);
+}
+
+/** Something pulled out of nowhere mid-fight (a summon, a wave). */
+export function arrivalCue(): FxCue {
+  return cue('spawn/poof', 'ghost', 6, 400);
+}
+
+/** A floor event paying out (the chest opened, the crystal taken). */
+export function eventDoneCue(kind: string): FxCue {
+  return kind === 'crystal' ? cue('ice/ice-shatter', null, 8, 600, 0.6) : cue('pickups/collect-burst', 'electric', 7, 600);
+}
+
+export function rollDustCue(): FxCue {
+  return cue('spawn/poof', 'normal', 5, 300);
+}
+
+/** A boss changing stance. */
+export function stanceCue(type: PokemonType): FxCue {
+  return cue('arcane/mana-burst', type, 9, RING_MS);
+}
+
+/** Things that happen to the local player, drawn on them. */
+export function eventCue(event: { type: string }): FxCue | null {
+  switch (event.type) {
+    case 'levelUp':
+      return cue('holy/sunburst', null, 8, 800);
+    case 'berryEaten':
+      return cue('pickups/collect-burst', 'grass', 7, 500);
+    case 'perfectDodge':
+      return cue('pickups/collect-burst', 'normal', 7, 400);
+    case 'playerHurt':
+      return cue('impacts/hit-spark', 'dark', 5, 240);
+    case 'cardCaptured':
+      return cue('pickups/collect-burst', 'fairy', 7, 600);
+    case 'disguiseBroken':
+      return cue('spawn/poof', 'ghost', 7, 500);
+    default:
+      return null;
+  }
+}
+
+/** Fire Spin and other still fires stand in place: a tornado rather than a shot in flight. */
+export function stillShotCue(type: PokemonType): FxCue | null {
+  return type === 'fire' ? cue('fire/fire-tornado', null, 10, 700) : null;
+}
+
+/** Looping looks of things in the world. */
+export const WORLD_CUES = {
+  timeCrystal: cue('ice/ice-crystal', null, 12, 1500),
+  bonfire: cue('fire/campfire', null, 12, 1200),
+  memory: cue('pickups/xp-orb', 'psychic', 10, 900),
+  sparkleGem: cue('pickups/gem-spin', 'water', 12, 1200),
+  chest: cue('pickups/chest-open', null, 12, 1300),
+  altar: cue('shadow/shadow-flames', null, 10, 1200),
+  caveCrystalCold: cue('pickups/crystal-shard', 'ice', 10, 2400),
+  caveCrystalViolet: cue('pickups/crystal-shard', 'ghost', 10, 2400),
+  burn: cue('status/burning', null, 8, 900),
+  poison: cue('pickups/xp-orb', 'poison', 8, 1000),
+  stairs: cue('arcane/rune-circle', 'ghost', 12, 2400),
+  exit: cue('arcane/rune-circle', 'fairy', 12, 2400),
+} as const satisfies Record<string, FxCue>;

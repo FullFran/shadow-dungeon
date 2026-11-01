@@ -32,7 +32,7 @@ import { drawGateLine, drawGateNotice, drawWaitLine, GATE_NOTICE_MS, gateNotice,
 import { drawCaptureNotice, drawCardDeclaration, drawDungeonIntro, drawNowPlaying, drawSpellBanner, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
-import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor } from './cave-decor';
+import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor, type CrystalDraw } from './cave-decor';
 import { floodLevel } from '../core/flood';
 import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
 import { cardGuard, fightOf, inTurn } from '../core/cards';
@@ -44,6 +44,9 @@ import { drawMessageLog, visibleMessages, type MessageLog } from './message-log'
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } from './sprite-anim';
+import { cueKey, cueRequest, moveCue, projectileCue, stillShotCue, WORLD_CUES } from './fx/cues';
+import { SHOT_HEIGHT } from './fx/director';
+import type { FxSystem } from './fx/system';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
@@ -60,6 +63,8 @@ import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilte
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
+  /** Baked effects, once their art is ready; everything keeps its hand-drawn look without them. */
+  fx?: FxSystem;
   prev: WorldState;
   current: WorldState;
   /** Fraction of a fixed step elapsed since `current` (interpolation). */
@@ -233,6 +238,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   let currentTier: Difficulty = 'easy';
   /** Real time of the frame being drawn (looping telegraph animations). */
   let currentTimeMs = 0;
+  let fx: FxSystem | undefined;
   /** The floor's gate as last drawn, and the "gate opened" notice it raised (hud.ts `gateNotice`). */
   let lastGate: WorldState['gate'];
   let openedNotice: GateNotice | null = null;
@@ -450,6 +456,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /** Stairs down: a dark pit with steps fading into it and a soft pulse so it is easy to spot. */
   function stairsTile(rect: Rect, timeMs: number): void {
+    fx?.drawLoop(ctx, WORLD_CUES.stairs, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, placement: 'body', fit: rect.width }, timeMs, 0.7);
     const pulse = 0.5 + 0.5 * Math.sin(timeMs / 260);
     ctx.fillStyle = COLORS.stairsGlow;
     ctx.globalAlpha = 0.4 + 0.6 * pulse;
@@ -701,7 +708,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.strokeRect(-1, -1, width + 2, height + 2);
     if (decor === 'crypt') cryptArena(width, height, timeMs);
     if (decor === 'forest') drawForestArena(ctx, width, height, timeMs);
-    if (decor === 'caves') cavesArena(ctx, width, height, timeMs);
+    if (decor === 'caves') cavesArena(ctx, width, height, timeMs, caveCrystal);
     if (decor === 'swamp') drawSwampArena(ctx, width, height);
   }
 
@@ -728,7 +735,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       }
     }
     const visible = (x: number, y: number) => x >= x0 - 1 && x <= x1 + 1 && y >= y0 - 1 && y <= y1 + 1;
-    for (const c of decor.crystals) if (visible(c.x, c.y)) crystal(ctx, c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
+    for (const c of decor.crystals) if (visible(c.x, c.y)) caveCrystal(ctx, c.x * TILE, c.y * TILE, timeMs, decorHash(c.x, c.y, 5));
     for (const d of decor.drips) if (visible(d.x, d.y)) drip(ctx, d.x * TILE, d.y * TILE, timeMs, decorHash(d.x, d.y, 6));
   }
 
@@ -773,6 +780,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /** A memory fragment: a small pale keepsake on the floor that breathes a soft light, with motes rising off it. */
   function memoryProp(at: Vec2, timeMs: number): void {
+    fx?.drawLoop(ctx, WORLD_CUES.memory, { x: at.x, y: at.y + 6, placement: 'ground', fitHeight: 26 }, timeMs);
     const breath = 0.5 + 0.5 * Math.sin(timeMs / 420);
     const glow = ctx.createRadialGradient(at.x, at.y - 4, 1, at.x, at.y - 4, 30);
     glow.addColorStop(0, `rgba(255, 236, 170, ${0.35 + 0.25 * breath})`);
@@ -796,6 +804,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const flicker = Math.sin(timeMs / 90) * 1.5 + Math.sin(timeMs / 47);
     const glow = ctx.createRadialGradient(at.x, at.y - 6, 2, at.x, at.y - 6, 46);
     glow.addColorStop(0, 'rgba(255, 170, 70, 0.35)');
+    const baked = fx?.store.get(cueKey(WORLD_CUES.bonfire), cueRequest(WORLD_CUES.bonfire));
+    if (baked) {
+      glow.addColorStop(1, 'rgba(255, 170, 70, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(at.x - 46, at.y - 52, 92, 92);
+      fx?.drawLoop(ctx, WORLD_CUES.bonfire, { x: at.x, y: at.y + 6, placement: 'ground', fitHeight: 40 }, timeMs);
+      return;
+    }
     glow.addColorStop(1, 'rgba(255, 120, 40, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(at.x - 46, at.y - 52, 92, 92);
@@ -814,6 +830,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   }
 
   function exitGate(exit: Rect, open: boolean, timeMs: number): void {
+    if (open) fx?.drawLoop(ctx, WORLD_CUES.exit, { x: exit.x + exit.width / 2, y: exit.y + exit.height / 2, placement: 'body', fit: exit.width }, timeMs, 0.7);
     if (open) {
       const pulse = 0.6 + 0.4 * Math.sin(timeMs / 180);
       ctx.fillStyle = COLORS.exitOpen;
@@ -842,7 +859,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (decor === 'crypt' && !rect.cover) return treasure(rect, timeMs);
     // The forest's arenas: old trees (the roost's thick ones stop arrows).
     if (decor === 'forest') return { y: rect.y + rect.height, draw: () => drawForestTree(ctx, rect, lift, rect.cover === true) };
-    if (decor === 'caves') return { y: rect.y + rect.height, draw: () => caveCover(ctx, rect, lift, timeMs) };
+    if (decor === 'caves') return { y: rect.y + rect.height, draw: () => caveCover(ctx, rect, lift, timeMs, caveCrystal) };
     return {
       y: rect.y + rect.height,
       draw: () => {
@@ -1427,6 +1444,32 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(view.x - 40, view.y - 40, view.width + 80, view.height + 80);
   }
 
+  /** How strongly the hand-drawn mark of a move shows: faint once its baked effect plays on top. */
+  function vfxDim(player: Pick<PlayerState, 'action'>): number {
+    const moveId = player.action?.moveId;
+    const cue = moveId ? moveCue(MOVES[moveId]) : null;
+    return fx && cue && fx.store.get(cueKey(cue), cueRequest(cue)) ? 0.45 : 1;
+  }
+
+  /** A cave wall crystal, baked once ready; its hue follows the hand-drawn one's (`look`). */
+  const caveCrystal: CrystalDraw = (g, x, y, timeMs, look) => {
+    const at = { x: x + 8 + Math.round(look * 16), y: y + TILE - 2, placement: 'ground' as const, fitHeight: 22 };
+    if (!fx?.drawLoop(g, look < 0.35 ? WORLD_CUES.caveCrystalViolet : WORLD_CUES.caveCrystalCold, at, timeMs + look * 2400)) crystal(g, x, y, timeMs, look);
+  };
+
+  /** A shot's baked look, once ready. Zones and Bonemerang's bone keep their own drawing. */
+  function bakedShot(p: DrawnProjectile, pos: Vec2, timeMs: number): boolean {
+    if (!fx || p.zone || p.moveId === 'bonemerang') return false;
+    const type = p.type ?? 'ghost';
+    const still = !p.vel || (p.vel.x === 0 && p.vel.y === 0);
+    if (still) {
+      const cue = stillShotCue(type);
+      return cue ? fx.drawLoop(ctx, cue, { x: pos.x, y: pos.y, placement: 'ground', fit: p.radius }, timeMs) : false;
+    }
+    const height = p.radius * (p.owner === 'enemy' ? SHOT_HEIGHT.enemy : SHOT_HEIGHT.player);
+    return fx.drawLoop(ctx, projectileCue(type), { x: pos.x, y: pos.y - 6, placement: 'aim', angle: Math.atan2(p.vel?.y ?? 0, p.vel?.x ?? 1), fitHeight: height }, timeMs);
+  }
+
   /** Projectiles are drawn in their move type's colours (move-vfx.ts). */
   function projectile(p: DrawnProjectile, pos: Vec2, timeMs: number): Drawable {
     return {
@@ -1434,7 +1477,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       y: p.zone ? pos.y - p.radius : pos.y,
       draw: () => {
         if (!p.zone) shadow({ x: pos.x, y: pos.y + 10 }, p.radius * 0.8);
-        drawProjectileVfx(ctx, p, pos, timeMs);
+        if (!bakedShot(p, pos, timeMs)) drawProjectileVfx(ctx, p, pos, timeMs);
       },
     };
   }
@@ -1564,6 +1607,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     currentWorld = current;
     currentTier = worldDifficulty(current);
     currentTimeMs = timeMs;
+    fx = frame.fx;
     // A seal or key gate that just opened (host or guest): its notice, and its doorways flashing on the minimap.
     openedNotice = gateNotice(lastGate, current.gate, timeMs) ?? (current.gate?.done ? openedNotice : null);
     lastGate = current.gate;
@@ -1595,7 +1639,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const pool of current.pools ?? []) drawPool(ctx, pool, timeMs);
     for (const b of current.berries) berry(b.pos, timeMs);
     // The Sima's floor event: its object (chest, altar, crystal, merchant), sealed doors, an ambush's tell.
-    if (current.simaEvent) drawSimaEvent(ctx, current.simaEvent, timeMs, current.arena.tiles?.cols ?? 0);
+    if (current.simaEvent) drawSimaEvent(ctx, current.simaEvent, timeMs, current.arena.tiles?.cols ?? 0, fx);
 
     const positions = interpolatedPositions(frame.prev, current, frame.alpha);
     const posOf = (id: string, fallback: Vec2) => positions.get(id) ?? fallback;
@@ -1604,9 +1648,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     // The Eclipse Echo's halo and the marks of its cards (corona, noose, lanes), under the pierce marks drawn next.
     for (const enemy of current.enemies) if (enemy.species === 'eclipse-echo') drawEclipseZones(ctx, current, enemy, posOf(enemy.id, enemy.pos), timeMs);
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs);
-    drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs);
+    drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs, vfxDim(current.player));
     // Everyone's swings: the action comes with each peer's state (hits and their numbers stay with whoever dealt them).
-    for (const remote of current.remotes) drawPlayerVfx(ctx, playerVfx(remote.player), posOf(`remote:${remote.id}`, remote.player.pos), timeMs);
+    for (const remote of current.remotes) drawPlayerVfx(ctx, playerVfx(remote.player), posOf(`remote:${remote.id}`, remote.player.pos), timeMs, vfxDim(remote.player));
+
+    fx?.draw(ctx, 'ground');
 
     const drawables: Drawable[] = [];
     for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect, frame.decor ?? null, timeMs));
@@ -1706,10 +1752,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
     if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
     // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
+    for (const e of current.enemies) {
+      if (!e.alive || !e.dot) continue;
+      const at = posOf(e.id, e.pos);
+      fx?.drawLoop(ctx, e.dot.kind === 'burn' ? WORLD_CUES.burn : WORLD_CUES.poison, { x: at.x, y: at.y + 2, placement: 'ground', fitHeight: e.radius * 2.6 }, timeMs);
+    }
+    if (current.player.poison) fx?.drawLoop(ctx, WORLD_CUES.poison, { x: playerPos.x, y: playerPos.y + 2, placement: 'ground', fitHeight: 26 }, timeMs);
     for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     if (current.fogWall) fogWallVeil(current.fogWall.line, current.arena.width, timeMs);
     if (frame.touchAim && !target) aimLine(playerPos, frame.touchAim);
+    fx?.draw(ctx, 'top');
     numbers(juice.numbers);
     if (current.fog) fogVeil(playerPos, view, fogRadiusTiles(current.fog) * TILE);
     if (current.gas && current.arena.tiles) drawGas(ctx, current.arena.tiles, current.gas, view, timeMs);

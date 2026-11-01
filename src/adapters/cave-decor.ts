@@ -52,6 +52,8 @@ export function waterTile(ctx: CanvasRenderingContext2D, x: number, y: number, t
 }
 
 /** A crystal growing on a lit wall face, pulsing, with a cold glow on the floor below. */
+export type CrystalDraw = (ctx: CanvasRenderingContext2D, x: number, y: number, timeMs: number, look: number) => void;
+
 export function crystal(ctx: CanvasRenderingContext2D, x: number, y: number, timeMs: number, look: number): void {
   const pulse = 0.7 + 0.3 * Math.sin(timeMs / 700 + look * 30);
   const violet = look < 0.35;
@@ -97,7 +99,7 @@ export function drip(ctx: CanvasRenderingContext2D, x: number, y: number, timeMs
 }
 
 /** A fixed caves arena: the whole floor is ankle-deep water with drifting caustics. */
-export function cavesArena(ctx: CanvasRenderingContext2D, width: number, height: number, timeMs: number): void {
+export function cavesArena(ctx: CanvasRenderingContext2D, width: number, height: number, timeMs: number, drawCrystal: CrystalDraw = crystal): void {
   ctx.fillStyle = 'rgba(30, 90, 130, 0.28)';
   ctx.fillRect(0, 0, width, height);
   for (let i = 0; i < 26; i++) {
@@ -107,11 +109,11 @@ export function cavesArena(ctx: CanvasRenderingContext2D, width: number, height:
     ctx.fillStyle = `rgba(170, 230, 255, ${a})`;
     ctx.fillRect(Math.round(x), Math.round(y), 14 + Math.round(decorHash(i, 3, 5) * 16), 1);
   }
-  for (let x = 40; x < width - 20; x += 120) crystal(ctx, x - 16, -TILE, timeMs, decorHash(x, 0, 11));
+  for (let x = 40; x < width - 20; x += 120) drawCrystal(ctx, x - 16, -TILE, timeMs, decorHash(x, 0, 11));
 }
 
 /** A cover block of a caves arena: a long one is the sunken ship's broken hull, the others crystal-capped rocks. */
-export function caveCover(ctx: CanvasRenderingContext2D, rect: Rect, lift: number, timeMs: number): void {
+export function caveCover(ctx: CanvasRenderingContext2D, rect: Rect, lift: number, timeMs: number, drawCrystal: CrystalDraw = crystal): void {
   const { x, y, width: w, height: h } = rect;
   if (w > h * 1.8) {
     // Hull: dark wet planks with ribs, barnacles and a torn edge.
@@ -133,7 +135,7 @@ export function caveCover(ctx: CanvasRenderingContext2D, rect: Rect, lift: numbe
   ctx.fillRect(x + 2, y - lift, w - 4, h);
   ctx.fillStyle = '#3b5664';
   ctx.fillRect(x + 6, y - lift + 2, w - 14, 4);
-  crystal(ctx, x + w / 2 - 20, y - lift - TILE + 10, timeMs, decorHash(x, y, 13));
+  drawCrystal(ctx, x + w / 2 - 20, y - lift - TILE + 10, timeMs, decorHash(x, y, 13));
 }
 
 /** Inundación: the rising water over the whole view, deeper blue and livelier waves as `level` (0..1) climbs. */

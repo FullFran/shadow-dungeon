@@ -1,3 +1,5 @@
+import { WORLD_CUES } from './fx/cues';
+import type { FxSystem } from './fx/system';
 import { eventRulesOf } from '../core/floor-spawns';
 import { simaWaves, type SimaEventState, type SimaPactState } from '../core/sima-events';
 import type { Difficulty } from '../data/difficulty';
@@ -88,7 +90,7 @@ function altar(ctx: CanvasRenderingContext2D, pos: Vec2, lit: boolean, timeMs: n
   ctx.fill();
 }
 
-function crystal(ctx: CanvasRenderingContext2D, pos: Vec2, left: number, gone: boolean, timeMs: number): void {
+function crystal(ctx: CanvasRenderingContext2D, pos: Vec2, left: number, gone: boolean, timeMs: number, fx?: FxSystem): void {
   if (gone) {
     ctx.fillStyle = 'rgba(127, 227, 255, 0.25)';
     ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y + 4), 12, 3);
@@ -98,17 +100,20 @@ function crystal(ctx: CanvasRenderingContext2D, pos: Vec2, left: number, gone: b
   // It flickers as it fades.
   const alpha = left < 0.25 ? 0.5 + 0.5 * Math.abs(Math.sin(timeMs / 90)) : 1;
   glow(ctx, pos, 34, 'rgba(127, 227, 255, 0.7)', 0.5 * alpha);
+  if (!fx?.drawLoop(ctx, WORLD_CUES.timeCrystal, { x: pos.x, y: pos.y + 8, placement: 'ground', fitHeight: 34 }, timeMs, alpha)) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#7fe3ff';
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y - 18 + bob);
+    ctx.lineTo(pos.x + 8, pos.y - 6 + bob);
+    ctx.lineTo(pos.x, pos.y + 6 + bob);
+    ctx.lineTo(pos.x - 8, pos.y - 6 + bob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#e8fbff';
+    ctx.fillRect(Math.round(pos.x - 2), Math.round(pos.y - 12 + bob), 3, 6);
+  }
   ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#7fe3ff';
-  ctx.beginPath();
-  ctx.moveTo(pos.x, pos.y - 18 + bob);
-  ctx.lineTo(pos.x + 8, pos.y - 6 + bob);
-  ctx.lineTo(pos.x, pos.y + 6 + bob);
-  ctx.lineTo(pos.x - 8, pos.y - 6 + bob);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#e8fbff';
-  ctx.fillRect(Math.round(pos.x - 2), Math.round(pos.y - 12 + bob), 3, 6);
   // The time it has left, as an arc around it.
   ctx.strokeStyle = 'rgba(232, 251, 255, 0.85)';
   ctx.lineWidth = 2;
@@ -180,16 +185,17 @@ export function drawNest(ctx: CanvasRenderingContext2D, pos: Vec2, hpShare: numb
 }
 
 /** The event's objects and marks, in world units (under the actors). */
-export function drawSimaEvent(ctx: CanvasRenderingContext2D, event: SimaEventState, timeMs: number, cols: number): void {
+export function drawSimaEvent(ctx: CanvasRenderingContext2D, event: SimaEventState, timeMs: number, cols: number, fx?: FxSystem): void {
   switch (event.kind) {
     case 'vault':
       chest(ctx, event.pos, event.done, timeMs);
       break;
     case 'shrine':
       altar(ctx, event.pos, !event.done, timeMs);
+      if (!event.done) fx?.drawLoop(ctx, WORLD_CUES.altar, { x: event.pos.x, y: event.pos.y - 8, placement: 'ground', fitHeight: 34 }, timeMs);
       break;
     case 'crystal':
-      crystal(ctx, event.pos, Math.max(0, (event.remainingMs ?? 0) / SIMA_EVENTS.crystal.fadeMs), event.done, timeMs);
+      crystal(ctx, event.pos, Math.max(0, (event.remainingMs ?? 0) / SIMA_EVENTS.crystal.fadeMs), event.done, timeMs, fx);
       break;
     case 'merchant':
       merchant(ctx, event.pos, timeMs);

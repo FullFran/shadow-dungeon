@@ -70,6 +70,9 @@ import { createMemory, revealAround, type MinimapMemory } from '../adapters/mini
 import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type LogTone, type MessageLog } from '../adapters/message-log';
 import { attachInput, toPlayerInput } from '../adapters/input';
 import { applyEvents, initialJuice, rumbleLevel, tickJuice } from '../adapters/juice';
+import { FxDirector } from '../adapters/fx/director';
+import { sharedFxStore } from '../adapters/fx/store';
+import { FxSystem } from '../adapters/fx/system';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
@@ -306,6 +309,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   // Phones: fullscreen and landscape for the run, where the browser allows it (src/ui/fullscreen.ts).
   if (isTouchUi()) void enterImmersive();
   const renderer = createRenderer(canvas, sheets);
+  const fx = new FxSystem(sharedFxStore());
+  const fxDirector = new FxDirector(fx);
   const net = options.net;
   /** F3 in a shared run: the net stats overlay. */
   const overlay = net ? createNetOverlay(canvas.parentElement ?? document.body, net.session, net.role, net.localId) : null;
@@ -861,6 +866,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     prev = world;
     accumulator = 0;
     juice = initialJuice();
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
     lastHurtAt = Number.NEGATIVE_INFINITY;
     defeatedAt.clear();
     lastInput = null;
@@ -982,6 +989,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     prev = world;
     accumulator = 0;
     juice = initialJuice();
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
     lastHurtAt = Number.NEGATIVE_INFINITY;
     defeatedAt.clear();
     lastInput = null;
@@ -1306,6 +1315,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const won = events.find((e) => e.type === 'cardCaptured');
       if (won && won.type === 'cardCaptured') capture = { shownAtMs: realMs, coins: CAPTURE.coins, heal: won.heal };
       juice = applyEvents(juice, events, world.player.pos);
+      fxDirector.handleEvents(events, world.player);
       audio?.handleEvents(events);
       if (isTouchUi() && options.touch?.haptics()) {
         const pulse = hapticPulse(events);
@@ -1380,6 +1390,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
+    fx.store.tick(realMs);
+    fx.update(frameMs);
+    fxDirector.observe(world);
     if (perf) {
       perf.record('frame', frameMs);
       perf.record('sim', performance.now() - simAt);
@@ -1426,6 +1439,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
     const drawAt = perf ? performance.now() : 0;
     renderer.draw({
+      fx,
       prev,
       current: world,
       alpha,

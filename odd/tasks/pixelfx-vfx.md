@@ -15,28 +15,33 @@ Delivery: `ask-on-risk`, work-unit commits, push and PR are the owner's call. Te
 
 ## Tasks
 
-- T1 (S5) inline, no writer reason: vendored library, worker bake, store with memory cap, live effect system. Status: in progress.
-- T2 (S1) inline: all player moves, impacts, solo and co-op.
-- T3 (S1) inline: enemy and boss attacks, guests derive from snapshots.
-- T4 (S4) inline: crystals, pickups, chests, deaths, status, bonfire, stairs and other world objects.
-- T5 (S1-S5) inline: credits, GDD, perf measure, deploy gate.
+- T1 (S5) inline, no writer reason: vendored library, worker bake, store with memory cap, live effect system. Status: done, commits 92b6154, 98122bc.
+- T2 (S1) inline: all player moves, impacts, solo and co-op. Status: done, in the integration commit.
+- T3 (S1) inline: enemy and boss attacks, guests derive from snapshots. Status: done, in the integration commit; not run in a real two-peer session.
+- T4 (S4) inline: crystals, pickups, chests, deaths, status, bonfire, stairs and other world objects. Status: done except the pending items below.
+- T5 (S1-S5) inline: credits, GDD, perf measure, deploy gate. Status: done.
 
 ## Parity checklist
 
-- [ ] Every entry of `MOVES` (base, tutor, line) resolves to an effect (test iterates)
-- [ ] Every `PokemonType` has an impact and a projectile look (test iterates)
-- [ ] Every enemy behaviour kind and boss (`ENEMY_BEHAVIOUR`) shows a strike effect
-- [ ] All dungeons: main, challenges, Sima/endless, shrine
-- [ ] Solo, host, guest (remote players' moves and hits, enemy attacks on guests)
-- [ ] Time crystal, cave and swamp crystals, treasure, chest, berry, memory, stairs, exit, bonfire, altar, nest
-- [ ] Status: burn, poison, mark, weakened; roll dust; level up; boss phase; enemy and player death
-- [ ] Town embers and DOM screens (evolve, gacha): reviewed
-- [ ] i18n: no player-facing text expected, confirm
-- [ ] Save/migrate/sanitize, net protocol: no change expected, confirm
-- [ ] GDD, CREDITS, sim/prove unaffected
+- [x] Every entry of `MOVES` (base, tutor, line) resolves to an effect (tests/adapters/fx-bake.test.ts, fx-director.test.ts iterate)
+- [x] Every `PokemonType` has an impact and a projectile look (test iterates)
+- [x] Every enemy behaviour kind and boss (`ENEMY_BEHAVIOUR`) shows a strike effect (test iterates)
+- [x] All dungeons: the director reads world state, nothing is per dungeon
+- [~] Solo and host seen in the browser; guest covered by unit tests from snapshots, no real two-peer run yet
+- [x] Time crystal, cave crystals, altar, memory, stairs, exit, bonfire, chest and crystal payout
+- [ ] PENDING: swamp crystal spire, crypt treasure pile, berry, nest, merchant still hand-drawn
+- [x] Status: burn and poison on enemies, poison on the player, roll dust, level up, boss stance, enemy death, summons
+- [ ] PENDING: mark and weakened keep their hand-drawn marks; player death has no effect; herald blink has no event hook
+- [ ] PENDING: enemy Bug, Ghost, Grass, Flying and Steel streak shots, spore clouds and roots keep their hand-drawn looks (they are readable fairness cues)
+- [ ] PENDING: town embers and DOM screens (evolve, gacha, shiny sparkle) unchanged
+- [x] i18n: no player-facing text added
+- [x] Save/migrate/sanitize, net protocol: untouched, `src/core` and `src/net` not in the diff
+- [x] GDD, CREDITS, prove
 
 ## Log
 
 - L1 (2026-11-01): "https://github.com/patch-gg/pixelfx?utm_source=chatgpt.com vamos a hacer que los ataques se vean mas bonitos! coge primero de la pokeapi lo que necesites y si en la pokeapi no te convence lo que necesitas tienes esto!!! esque si podemos coger los recursos de pokemon mundo misterioso DX por ejemplo seria genial pero si no pues nos los inventamos :v o si el ataque no encaja con nuestra version de el!"
 - L2 (2026-11-01): "usalo tambien para los cristales y otras cosas! con esto esque podemos dejar muy bonito el juego"; "claro hay que hacer algo que sea super ligero para el juego web! investiga como otra gente lo soluciona!"
 - L3: Measured 18 effects on desktop. 30 fps sheets 7.3 MB and 61 MB decoded; 12 fps trimmed 2.8 MB and 12.8 MB; live simulation 0.13-2.1 ms per effect per frame; code only 62 KB gzip, baking 2-173 ms per effect once. Chosen: vendored code, baked once in a worker per effect and palette, drawn with `drawImage`, hand-drawn effects as fallback. DX, PokeRogue and RawAsset assets rejected: no licence declared and a public repo is a DMCA target (`docs/legal-risk-notes.md`).
+- L4: Measured on this machine at phone viewport, crowd-12 scene: render p95 2.36 ms on main, 2.14 ms with effects; both within noise. Not measured on a real phone, and boss-card is not a valid comparison: it reports 0 bullets on main too. Main bundle grows 16 KB (5.5 KB gzip); worker 49 KB, each effect a lazy chunk. Every look at once decodes to 24.1 MB, under the 32 MB cap.
+- L5: Rejected after looking: effects that paint pixelfx's human dummy (blink-in, curse, soul-rise, status/haste, cursed, slowed) and cartoon-pow's English "POW!" text.

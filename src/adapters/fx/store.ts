@@ -122,3 +122,11 @@ export function browserFxBackend(): FxBackend | null {
     return null;
   }
 }
+
+let shared: FxStore | null = null;
+
+/** One worker and one memory cap per page, however many runs start. */
+export function sharedFxStore(): FxStore {
+  shared ??= new FxStore(browserFxBackend());
+  return shared;
+}

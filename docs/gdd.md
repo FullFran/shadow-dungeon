@@ -1375,6 +1375,12 @@ Cada misión pide una dificultad mínima: solo cuentan las partidas en esa dific
 - Lo que no copiar de la arquitectura de PokéSurvivor: un único espacio global con dependencia del orden de los scripts, la lógica de red repartida por el código de las entidades, objetos que lo hacen todo y no tener tests.
 - Motor y stack: *sin decidir.*
 
+### Efectos visuales
+
+Los ataques y parte del mundo usan efectos de [pixelfx](https://github.com/patch-gg/pixelfx) (MIT), copiados en `src/vendor/pixelfx`. Solo se descarga código, sin imágenes: la primera vez que hace falta un efecto, un worker lo pinta una vez por efecto y color, y después se copia con `drawImage`. Mientras no está listo se ve el dibujo a mano de siempre, y la memoria tiene un tope de 32 MB.
+
+Cada movimiento tiene su efecto (`src/adapters/fx/cues.ts`), igual que cada tipo (disparo e impacto) y cada comportamiento de enemigo. Lo que ven todos los jugadores sale del estado compartido (`src/adapters/fx/director.ts`), así que funciona en solitario y en cooperativo. Los avisos de ataque enemigo no cambian: nunca se tapa una señal de esquiva.
+
 ## 13. Idioma
 
 - Idioma principal: español (peninsular). Todo el texto del juego se escribe primero en español.

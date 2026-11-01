@@ -17,9 +17,10 @@
   import { MOVES } from '../src/data/moves.ts';
   import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
   import { FxSystem } from '../src/adapters/fx/system.ts';
-  import { moveCue, projectileCue, impactCue, cueKey, cueRequest } from '../src/adapters/fx/cues.ts';
+  import { moveCue, projectileCue, WORLD_CUES } from '../src/adapters/fx/cues.ts';
 
-  const moves = Object.values(MOVES);
+  const world = Object.entries(WORLD_CUES).map(([id, cue]) => ({ id, world: cue, hitbox: { kind: 'self' } }));
+  const moves = [...world, ...Object.values(MOVES)];
   const CELL = { w: 150, h: 110 };
   const COLS = Number(new URLSearchParams(location.search).get('cols') ?? 8);
   const SCALE = Number(new URLSearchParams(location.search).get('scale') ?? 2);
@@ -56,7 +57,7 @@
       ctx.beginPath();
       ctx.arc(at.x, at.y, reach(m), 0, Math.PI * 2);
       ctx.stroke();
-      const cue = moveCue(m) ?? projectileCue(m.type);
+      const cue = m.world ?? moveCue(m) ?? projectileCue(m.type);
       const shot = m.hitbox.kind === 'projectile';
       fx.drawLoop(ctx, { ...cue, playMs: shot ? cue.playMs : cue.playMs * 2 }, shot
         ? { x: at.x + 30, y: at.y, placement: 'aim', angle: 0, fitHeight: m.hitbox.radius * 3.5 }
