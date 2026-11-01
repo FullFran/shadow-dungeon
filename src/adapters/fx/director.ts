@@ -26,6 +26,9 @@ interface PlayerSeen {
   rolling: boolean;
 }
 
+/** Shorter than a real second hit on the same enemy by one peer, longer than a snapshot's round trip. */
+const SPARK_GAP_MS = 300;
+
 interface EnemySeen {
   mode: string;
   alive: boolean;
@@ -60,9 +63,10 @@ export function moveSpawn(move: MoveDef, player: Pick<PlayerState, 'pos' | 'acti
   // The art's far edge is a few loose sparks; its body should meet the hitbox's edge.
   const aimedFit = fit * 1.6;
   const hitbox = move.hitbox;
-  if (hitbox.kind === 'self') return { cue, ...at, placement: 'body', layer: 'top', fit };
-  if (hitbox.kind === 'arc' && hitbox.arcDegrees >= 360) return { cue, ...at, placement: 'body', layer: 'top', fit };
-  return { cue, ...at, placement: 'aim', layer: 'top', angle: Math.atan2(aim.y, aim.x), fit: aimedFit };
+  // Under the telegraphs and everything standing: a player's own art never hides a dodge cue.
+  if (hitbox.kind === 'self') return { cue, ...at, placement: 'body', layer: 'ground', fit };
+  if (hitbox.kind === 'arc' && hitbox.arcDegrees >= 360) return { cue, ...at, placement: 'body', layer: 'ground', fit };
+  return { cue, ...at, placement: 'aim', layer: 'ground', angle: Math.atan2(aim.y, aim.x), fit: aimedFit };
 }
 
 export class FxDirector {
@@ -71,6 +75,11 @@ export class FxDirector {
   /** The floor's first look is what was already there: only later arrivals puff in. */
   private looked = false;
   private eventDone = false;
+  private nowMs = 0;
+  /** When each enemy last sparked, so a hit undone and confirmed again by snapshots sparks once. */
+  private readonly lastSpark = new Map<string, number>();
+  /** Enemies whose fall already played: a late snapshot can stand a dead one up again for a moment. */
+  private readonly fallen = new Set<string>();
 
   constructor(readonly fx: FxSystem) {}
 
@@ -81,6 +90,8 @@ export class FxDirector {
     this.fx.clear();
     this.looked = false;
     this.eventDone = false;
+    this.lastSpark.clear();
+    this.fallen.clear();
   }
 
   /** The art of the player's own moves, ready before the first press. */
@@ -98,11 +109,11 @@ export class FxDirector {
   }
 
   /** Reads this frame's state and plays what changed. */
-  observe(view: DirectorView): void {
+  observe(view: DirectorView, nowMs = this.nowMs): void {
+    this.nowMs = nowMs;
     this.observePlayer('local', view.player);
     for (const remote of view.remotes) this.observePlayer(remote.id, remote.player);
     for (const enemy of view.enemies) this.observeEnemy(enemy);
-    this.localHits.clear();
     const event = view.simaEvent;
     const done = Boolean(event?.done);
     if (event && done && !this.eventDone && this.looked) this.fx.spawn({ cue: eventDoneCue(event.kind), x: event.pos.x, y: event.pos.y - BODY_LIFT, placement: 'body', layer: 'top', fit: 30 });
@@ -133,18 +144,20 @@ export class FxDirector {
     if (!seen && this.looked && enemy.alive) this.fx.spawn({ cue: arrivalCue(), ...at, placement: 'body', layer: 'top', fit: enemy.radius * 2 });
     if (seen) {
       if (seen.alive && !enemy.alive) {
-        this.fx.spawn({ cue: deathCue(enemy.types[0] ?? 'normal', Boolean(enemy.boss)), ...at, placement: 'body', layer: 'top', fit: enemy.boss ? enemy.radius * 4 : enemy.radius * 2.4 });
+        if (!this.fallen.has(enemy.id)) this.fx.spawn({ cue: deathCue(enemy.types[0] ?? 'normal', Boolean(enemy.boss)), ...at, placement: 'body', layer: 'top', fit: enemy.boss ? enemy.radius * 4 : enemy.radius * 2.4 });
+        this.fallen.add(enemy.id);
       } else if (enemy.alive) {
         if (mode === 'attack' && seen.mode !== 'attack') this.strike(enemy, type);
         if (stance !== seen.stance && stance !== undefined) this.fx.spawn({ cue: stanceCue(type), ...at, placement: 'body', layer: 'top', fit: enemy.radius * 3 });
         // A hit dealt by anyone: a guest learns of its peers' hits only from the snapshot.
-        if (enemy.hitstunMs > seen.hitstunMs && !this.localHits.has(enemy.id)) this.impact(type, false, at.x, at.y);
+        if (enemy.hitstunMs > seen.hitstunMs && this.nowMs - (this.lastSpark.get(enemy.id) ?? Number.NEGATIVE_INFINITY) >= SPARK_GAP_MS) {
+          this.lastSpark.set(enemy.id, this.nowMs);
+          this.impact(type, false, at.x, at.y);
+        }
       }
     }
     this.enemies.set(enemy.id, { mode, alive: enemy.alive, hitstunMs: enemy.hitstunMs, stance });
   }
-
-  private readonly localHits = new Set<string>();
 
   private strike(enemy: ViewedEnemy, type: PokemonType): void {
     const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
@@ -164,7 +177,7 @@ export class FxDirector {
   handleEvents(events: readonly GameEvent[], player: Pick<PlayerState, 'pos'>): void {
     for (const event of events) {
       if (event.type === 'enemyHit') {
-        this.localHits.add(event.enemyId);
+        this.lastSpark.set(event.enemyId, this.nowMs);
         if (event.dot || event.minor) continue;
         const move = event.moveId ? MOVES[event.moveId] : null;
         const strong = event.effectiveness > 1 || Boolean(event.finisher) || move?.juice === 'heavy';

@@ -131,15 +131,13 @@ export function moveCue(move: MoveDef): FxCue | null {
   }
 }
 
-/** The look of a shot in flight, by type: remote shots carry only their type. */
+/** The look of a shot in flight, by type: a remote shot carries no move id, only its type. */
 export function projectileCue(type: PokemonType): FxCue {
   switch (type) {
     case 'fire':
       return cue('fire/fireball', null, 6, 400);
     case 'ice':
       return cue('ice/ice-lance', null, 5, 400);
-    case 'water':
-      return cue('water/water-orb', null, 8, 600);
     case 'steel':
     case 'psychic':
     case 'grass':

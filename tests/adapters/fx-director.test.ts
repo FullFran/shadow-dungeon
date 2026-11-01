@@ -1,13 +1,16 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENEMY_BEHAVIOUR } from '../../src/data/enemies';
 import { MOVES, type MoveDef } from '../../src/data/moves';
-import { arrivalCue, enemyStrikeCue, deathCue, eventCue, eventDoneCue, stanceCue, rollDustCue, WORLD_CUES, cueRequest } from '../../src/adapters/fx/cues';
+import { arrivalCue, projectileCue, enemyStrikeCue, deathCue, eventCue, eventDoneCue, stanceCue, rollDustCue, WORLD_CUES, cueRequest } from '../../src/adapters/fx/cues';
 import { FxDirector, moveSpawn, type DirectorView } from '../../src/adapters/fx/director';
 import { EFFECT_IDS, loadEffect } from '../../src/adapters/fx/effects';
 import { bakeEffect } from '../../src/adapters/fx/bake';
 import { FxStore, type FxBackend } from '../../src/adapters/fx/store';
 import { FxSystem, MAX_LIVE, type FxSpawn } from '../../src/adapters/fx/system';
 import type { BakeMessage } from '../../src/adapters/fx/bake.worker';
+import type { PokemonType } from '../../src/data/types';
+import { TYPE_COLORS } from '../../src/ui/tokens';
 
 /** A system recording what would play, with every art ready. */
 function recording(): { fx: FxSystem; spawned: FxSpawn[] } {
@@ -19,6 +22,8 @@ function recording(): { fx: FxSystem; spawned: FxSpawn[] } {
   };
   return { fx, spawned };
 }
+
+const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
 
 const player = (action: unknown = null, roll: unknown = null) =>
   ({ pos: { x: 100, y: 100 }, action, roll, items: [], upgrades: [], level: 1 }) as unknown as DirectorView['player'];
@@ -54,6 +59,16 @@ describe('moves', () => {
     director.observe(view({ remotes: [{ id: 'p2', player: player(swing('earthquake')) }] }));
     expect(spawned.map((s) => s.cue.effect)).toEqual(['nature/quake']);
     expect(spawned[0]?.placement).toBe('body');
+  });
+
+  it('a move plays under the telegraphs, an impact over the sprites', () => {
+    for (const move of Object.values(MOVES) as MoveDef[]) {
+      const spawn = moveSpawn(move, player(swing(move.id)) as never);
+      if (spawn) expect(spawn.layer, move.id).toBe('ground');
+    }
+    const { fx, spawned } = recording();
+    new FxDirector(fx).handleEvents([{ type: 'enemyHit', enemyId: 'e1', damage: 5, effectiveness: 1, pos: { x: 1, y: 1 }, moveId: 'slash' }], { pos: { x: 0, y: 0 } });
+    expect(spawned[0]?.layer).toBe('top');
   });
 
   it('a roll kicks up dust once', () => {
@@ -101,12 +116,43 @@ describe('enemies, from state a guest also has', () => {
   it('a peer hit shows from the snapshot; the local hit is not drawn twice', () => {
     const { fx, spawned } = recording();
     const director = new FxDirector(fx);
-    director.observe(view({ enemies: [enemy()] }));
-    director.observe(view({ enemies: [enemy({ hitstunMs: 200 })] }));
+    director.observe(view({ enemies: [enemy()] }), 0);
+    director.observe(view({ enemies: [enemy({ hitstunMs: 200 })] }), 1000);
     expect(spawned).toHaveLength(1);
+    director.observe(view({ enemies: [enemy()] }), 2000);
     director.handleEvents([{ type: 'enemyHit', enemyId: 'e1', damage: 5, effectiveness: 1, pos: { x: 1, y: 1 }, moveId: 'slash' }], { pos: { x: 0, y: 0 } });
-    director.observe(view({ enemies: [enemy({ hitstunMs: 400 })] }));
+    director.observe(view({ enemies: [enemy({ hitstunMs: 400 })] }), 2016);
     expect(spawned).toHaveLength(2);
+  });
+
+  it('a guest whose predicted hit is undone by a late snapshot and confirmed again sees one spark', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    director.observe(view({ enemies: [enemy()] }), 1000);
+    director.handleEvents([{ type: 'enemyHit', enemyId: 'e1', damage: 5, effectiveness: 1, pos: { x: 1, y: 1 }, moveId: 'slash' }], { pos: { x: 0, y: 0 } });
+    director.observe(view({ enemies: [enemy({ hitstunMs: 200 })] }), 1016);
+    director.observe(view({ enemies: [enemy()] }), 1066);
+    director.observe(view({ enemies: [enemy({ hitstunMs: 180 })] }), 1116);
+    expect(spawned).toHaveLength(1);
+  });
+
+  it('a guest whose predicted kill is undone by a late snapshot and confirmed again sees one death', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    director.observe(view({ enemies: [enemy()] }), 1000);
+    director.observe(view({ enemies: [enemy({ alive: false })] }), 1016);
+    director.observe(view({ enemies: [enemy()] }), 1066);
+    director.observe(view({ enemies: [enemy({ alive: false })] }), 1116);
+    expect(spawned.map((s) => s.cue.effect)).toEqual(['spawn/poof']);
+  });
+
+  it('after a reset, a new floor stays quiet on its first look', () => {
+    const { fx, spawned } = recording();
+    const director = new FxDirector(fx);
+    director.observe(view({ enemies: [enemy()] }), 0);
+    director.reset();
+    director.observe(view({ enemies: [enemy({ id: 'e9' }), enemy({ id: 'e10' })] }), 16);
+    expect(spawned).toHaveLength(0);
   });
 
   it('a summon mid-floor puffs in, what was there at the start does not', () => {
@@ -142,7 +188,36 @@ describe('enemies, from state a guest also has', () => {
   });
 });
 
+describe('wiring read from the source', () => {
+  const game = readFileSync('src/app/game.ts', 'utf8');
+  const renderer = readFileSync('src/adapters/renderer.ts', 'utf8');
+
+  it('every floor change resets the director', () => {
+    const enterFloor = game.slice(game.indexOf('function enterFloor('), game.indexOf('function enterFloor(') + 3000);
+    expect(enterFloor).toContain('fxDirector.reset()');
+    expect(enterFloor).toContain('fxDirector.prepare(');
+    expect(game).toMatch(/let world: WorldState[^\n]*\n[\s\S]{0,800}fxDirector\.prepare\(world\.player\.loadout\)/);
+  });
+
+  it('effects on the ground go under the telegraphs', () => {
+    expect(renderer.indexOf("fx?.draw(ctx, 'ground')")).toBeGreaterThan(0);
+    expect(renderer.indexOf("fx?.draw(ctx, 'ground')")).toBeLessThan(renderer.indexOf('telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs)'));
+  });
+
+  it("a peer's shots keep their velocity, so they fly with their baked look", () => {
+    expect(renderer).toMatch(/for \(const p of remote\.projectiles\) drawables\.push\(projectile\(\{[^}]*vel: p\.vel/);
+  });
+});
+
 describe('art', () => {
+  it('every moving shot keeps its head on the anchor: none uses art that is tall around it', async () => {
+    for (const type of ALL_TYPES) {
+      const c = projectileCue(type);
+      const baked = bakeEffect(await loadEffect(c.effect), cueRequest(c));
+      expect(baked.bounds.bottom - baked.bounds.top, `${type} ${c.effect}`).toBeLessThan(80);
+    }
+  }, 60_000);
+
   it('every enemy, world and event look exists, bakes and takes its tint', async () => {
     const kinds = new Set(Object.values(ENEMY_BEHAVIOUR).map((d) => d?.kind));
     const cues = [...[...kinds].map((k) => enemyStrikeCue(k, 'water')), deathCue('normal', false), deathCue('normal', true), stanceCue('fire'), rollDustCue(), arrivalCue(), eventDoneCue('crystal'), eventDoneCue('vault'), ...Object.values(WORLD_CUES),

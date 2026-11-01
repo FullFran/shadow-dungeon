@@ -340,6 +340,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   if (import.meta.env.DEV && trial && new URLSearchParams(window.location.search).get('trialSkip') === '1') started.world = { ...crossFogWall(started.world), enemies: crossFogWall(started.world).enemies.map((e) => ({ ...e, alive: false, hp: 0 })) };
   let run: RunState = options.startClockMs !== undefined && started.run.clockMs !== undefined ? setClock(started.run, options.startClockMs) : started.run;
   let world: WorldState = !net && options.testSpawns?.length ? loadTestFloor(started.world, options.testSpawns) : started.world;
+  fxDirector.prepare(world.player.loadout);
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
   // Development server only: the live world for headless checks (the roll direction playtest read the player's position from it).
   if (import.meta.env.DEV) (globalThis as { __mzWorld?: () => WorldState }).__mzWorld = () => world;
@@ -1202,6 +1203,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
+    fxDirector.reset();
+    fxDirector.prepare(next.world.player.loadout);
     // The first card of an unpicked offer goes down with the player (core/run.ts `goDown`): the bonfire of this floor keeps it too.
     const unpicked = run.offer?.[0];
     if (unpicked) {
@@ -1392,7 +1395,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
     fx.store.tick(realMs);
     fx.update(frameMs);
-    fxDirector.observe(world);
+    fxDirector.observe(world, realMs);
     if (perf) {
       perf.record('frame', frameMs);
       perf.record('sim', performance.now() - simAt);

@@ -1646,13 +1646,12 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
     // Ground layer: telegraphs and shadows under everything.
     // The Eclipse Echo's halo and the marks of its cards (corona, noose, lanes), under the pierce marks drawn next.
+    fx?.draw(ctx, 'ground');
     for (const enemy of current.enemies) if (enemy.species === 'eclipse-echo') drawEclipseZones(ctx, current, enemy, posOf(enemy.id, enemy.pos), timeMs);
     for (const enemy of current.enemies) if (enemy.alive) telegraphs(enemy, posOf(enemy.id, enemy.pos), timeMs);
     drawPlayerVfx(ctx, playerVfx(current.player), posOf('player', current.player.pos), timeMs, vfxDim(current.player));
     // Everyone's swings: the action comes with each peer's state (hits and their numbers stay with whoever dealt them).
     for (const remote of current.remotes) drawPlayerVfx(ctx, playerVfx(remote.player), posOf(`remote:${remote.id}`, remote.player.pos), timeMs, vfxDim(remote.player));
-
-    fx?.draw(ctx, 'ground');
 
     const drawables: Drawable[] = [];
     for (const rect of current.arena.obstacles ?? []) drawables.push(pillar(rect, frame.decor ?? null, timeMs));
@@ -1736,7 +1735,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push((p.owner === 'enemy' ? enemyShot(p, pos, timeMs) : null) ?? projectile(p, pos, timeMs));
     }
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
-    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, ...(p.type ? { type: p.type } : {}) }, p.pos, timeMs));
+    for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, vel: p.vel, ...(p.type ? { type: p.type } : {}) }, p.pos, timeMs));
     drawables.sort((a, b) => a.y - b.y).forEach((d) => d.draw());
     // Figuraciones: flat black shapes with a faint rim, over the floor and under the HUD.
     for (const f of frame.figurations ?? []) {
