@@ -310,7 +310,8 @@
       /* Every menu screen does the same (odd/tasks/menu-redesign.md T2: it sat over the title hints and the loadout at 844x390):
          the notice is the last row of the column, the screen stays centred above it. Runs keep the small fixed .in-game one. */
       #app:not(:has(canvas.game)) { padding-bottom: 12px; }
-      #app:not(:has(canvas.game)) > :first-child { margin-top: auto; }
+      /* The first piece of the screen, not the eclipse backdrop canvas (it comes first on menu screens and must not take the margin). */
+      #app:not(:has(canvas.game)) > canvas.backdrop + *, #app:not(:has(canvas.game)) > :first-child:not(canvas.backdrop) { margin-top: auto; }
       #app > .notice:not(.in-game) { position: static; width: 100%; box-sizing: border-box; margin-top: auto; }
       /* Short windows (1024×640 and the like): tighter lines and the two actions on one row, so the Sima's end screen fits. */
       @media (max-height: 760px) {
@@ -503,6 +504,8 @@
         html.touch .notice { font-size: 11px; }
         /* Seven (eight with "Instalar juego") title entries: two columns, DOM order kept so keys and indices are unchanged. */
         html.touch .title-menu .md-list { display: grid; grid-template-columns: auto auto; gap: 4px 12px; }
+        /* The dominant Play takes the whole first row; the two quiet entries share the second (odd/tasks/menu-redesign.md S11). */
+        html.touch .title-menu .title-row-play { grid-column: 1 / -1; }
         html.touch .title-menu .md-item { min-height: 44px; }
         /* Dungeon select: the list and its description side by side under no heading (the window title says it), clear of "Atrás". */
         html.touch #app:has(.dungeons) { padding-left: max(96px, env(safe-area-inset-left)); padding-right: max(96px, env(safe-area-inset-right)); }
