@@ -268,7 +268,7 @@ async function collectDiagnostics(): Promise<Diagnostics> {
   const coop = session
     ? {
         session: session.diagnostics(),
-        roomStatus: r ? roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), waitedMs: Date.now() - r.openedAt }) : 'local',
+        roomStatus: r ? roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: Date.now() - r.openedAt }) : 'local',
         turnServers: r?.turnServers ?? 0,
         links: await session.links().catch(() => ({})),
         linkEvents: session.linkEvents(),
@@ -1726,7 +1726,7 @@ function townLobby(root: HTMLElement): void {
       session.setDifficulty(next);
       update({ difficulty: next });
     },
-    status: () => roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), waitedMs: Date.now() - r.openedAt }),
+    status: () => roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: Date.now() - r.openedAt }),
     variants: (id) => (dungeonById(id).id === id && dungeonById(id).endless ? ENDLESS_MODES.map((m) => ({ label: t(`endless.mode.${m}`), value: m })) : null),
   };
   const depart = (id: string, variant?: string) => {
@@ -1922,8 +1922,13 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
     openMenu: (actions, held) =>
       openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),
-    // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
-    onQuit: () => (trial?.from === 'room' ? backToRoom(root) : trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : townScreen(root)),
+    // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`): a room's run to the room's town, still in it (ticket SD-RIKZIZ).
+    onQuit: () =>
+      trial?.from === 'room' || townOf({ inRoom: online && room !== null && current === room.session }) === 'room'
+        ? backToRoom(root)
+        : trial
+          ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id)
+          : townScreen(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     ...(story ? { story } : {}),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),

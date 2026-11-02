@@ -1,6 +1,7 @@
 import type { Collection } from '../core/collection';
 import type { Difficulty } from '../data/difficulty';
 import type { DungeonDef } from '../data/dungeons';
+import type { NetSession } from '../net/session';
 
 /**
  * Where the player goes once a run is over: the town is the hub
@@ -28,6 +29,18 @@ export const returnPlace = (reason: LeaveReason): ReturnPlace => (reason === 'lo
 export type TownReturn = 'room' | 'hub';
 
 export const townOf = (run: { inRoom: boolean }): TownReturn => (run.inRoom ? 'room' : 'hub');
+
+/**
+ * Quitting a shared run from the Esc menu: an online room's session outlives
+ * its runs (`keepSession`), so the room keeps this player. Its host keeps the
+ * session as it is (it then brings the room back to the town, `reopenLobby`);
+ * a guest only leaves the run (`leaveRun`). Any other session ends with the run.
+ */
+export function quitSession(net: { session: Pick<NetSession, 'leave' | 'leaveRun'>; role: 'host' | 'guest'; keepSession?: boolean } | undefined): void {
+  if (!net) return;
+  if (!net.keepSession) return net.session.leave();
+  if (net.role === 'guest') net.session.leaveRun();
+}
 
 /**
  * A shared run the host cut short: it left mid-run (`hostLeft`), or brought

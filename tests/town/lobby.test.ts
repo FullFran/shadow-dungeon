@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ADMIT_TIMEOUT_MS, beaconAction, canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue, roomStatus } from '../../src/town/lobby';
 import { REFUGIO } from '../../src/data/world';
+import { t } from '../../src/i18n';
 
 describe('town lobby rules', () => {
   it('sends presence about ten times a second', () => {
@@ -61,5 +62,13 @@ describe('town lobby rules', () => {
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: 0 })).toBe('connecting');
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS - 1 })).toBe('connecting');
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS })).toBe('unreachable');
+  });
+
+  // Ticket SD-RIKZIZ: the host answered "wait for the next floor"; the room must not say it does not respond.
+  it('says a guest the host told to wait is held, however long the run takes', () => {
+    expect(roomStatus({ isHost: false, admitted: false, held: true, waitedMs: 0 })).toBe('held');
+    expect(roomStatus({ isHost: false, admitted: false, held: true, waitedMs: ADMIT_TIMEOUT_MS * 10 })).toBe('held');
+    expect(roomStatus({ isHost: false, admitted: true, held: true, waitedMs: ADMIT_TIMEOUT_MS * 10 })).toBe('in');
+    expect(t('lobby.held')).not.toBe('lobby.held');
   });
 });
