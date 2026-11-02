@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings, type Settings } from '../../src/app/settings';
-import { settingRows, stepVolume } from '../../src/app/settings-panel';
+import { settingRows, settingTabs, stepVolume } from '../../src/app/settings-panel';
 import { setLanguage } from '../../src/i18n';
 
 /** Rows over a settings value that `update` changes in place, like the app does. */
@@ -80,5 +80,29 @@ describe('settings rows', () => {
     expect(stepVolume(0.98, 1)).toBe(1);
     expect(stepVolume(0.02, -1)).toBe(0);
     expect(stepVolume(0.7, -1)).toBe(0.65);
+  });
+});
+
+// odd/tasks/menu-redesign.md S6: settings in tabs with one sentence per option.
+describe('settings in tabs, each option explained', () => {
+  it('every option says what it does in one sentence, in both languages, without em dashes', () => {
+    for (const language of ['es', 'en'] as const) {
+      setLanguage(language);
+      for (const row of harness().rows()) {
+        expect(row.about, `${language} ${row.id}`).toMatch(/\S/);
+        expect(row.about, `${language} ${row.id}`).not.toContain('\u2014');
+        expect(row.about, `${language} ${row.id}`).not.toMatch(/^setting\./);
+      }
+    }
+    setLanguage('es');
+  });
+
+  it('groups the rows by their sections: General first, then the sections in order, every row once', () => {
+    setLanguage('es');
+    const rows = harness().rows();
+    const tabs = settingTabs(rows);
+    expect(tabs.map((tab) => tab.title)).toEqual(['General', 'Fijar objetivo', 'Sonido', 'Accesibilidad', 'Táctil']);
+    expect(tabs[0]!.rows.map((r) => r.id)).toEqual(['language']);
+    expect(tabs.flatMap((tab) => tab.rows.map((r) => r.id))).toEqual(rows.map((r) => r.id));
   });
 });

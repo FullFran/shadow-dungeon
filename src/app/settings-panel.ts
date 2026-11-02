@@ -35,6 +35,24 @@ export interface SettingRow {
   confirm(): void;
   /** Section the row starts (a header above it). */
   section?: string;
+  /** One sentence on what the option does (odd/tasks/menu-redesign.md S6): `setting.<id>.about`. */
+  about: string;
+}
+
+/** A tab of the Settings screen: a section's rows (the first rows, before any section, are "General"). */
+export interface SettingTab {
+  title: string;
+  rows: SettingRow[];
+}
+
+/** The rows grouped by the section each one starts, in order; every row in exactly one tab. */
+export function settingTabs(rows: readonly SettingRow[]): SettingTab[] {
+  const tabs: SettingTab[] = [];
+  for (const row of rows) {
+    if (row.section || tabs.length === 0) tabs.push({ title: row.section ?? t('menu.general'), rows: [] });
+    tabs.at(-1)!.rows.push(row);
+  }
+  return tabs;
 }
 
 type VolumeKey = 'masterVolume' | 'musicVolume' | 'sfxVolume';
@@ -63,7 +81,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     access.setLanguage(language);
   };
   const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded') => () => access.update({ [key]: !access.get()[key] });
-  const volume = (key: VolumeKey, section?: string): SettingRow => ({
+  const volume = (key: VolumeKey, section?: string): Omit<SettingRow, 'about'> => ({
     id: key,
     label: t(`menu.${key}`),
     value: `${Math.round(s[key] * 100)} %`,
@@ -79,7 +97,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
   const touchOpacity = (delta: -1 | 1) => access.update({ touchOpacity: cycle(TOUCH_OPACITIES, access.get().touchOpacity as (typeof TOUCH_OPACITIES)[number], delta) });
   const sizeKey = s.touchSize < 1 ? 'small' : s.touchSize > 1 ? 'large' : 'normal';
   const figurations = (delta: -1 | 1) => access.update({ figurations: cycle(FIGURATION_MODES, access.get().figurations, delta) });
-  return [
+  const rows: Omit<SettingRow, 'about'>[] = [
     { id: 'language', label: t('language.label'), value: t(`language.${s.language}`), disabled: false, adjust: pickLanguage, confirm: () => pickLanguage(1) },
     { id: 'lockType', section: t('menu.lockOn'), label: t('menu.lockType'), value: t(`lockType.${s.lockType}`), disabled: false, adjust: lockType, confirm: () => lockType(1) },
     {
@@ -103,6 +121,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     { id: 'touchOpacity', label: t('touch.opacity'), value: `${Math.round(s.touchOpacity * 100)} %`, disabled: false, adjust: touchOpacity, confirm: () => touchOpacity(1) },
     { id: 'touchLeftHanded', label: t('touch.leftHanded'), value: onOff(s.touchLeftHanded), disabled: false, adjust: toggle('touchLeftHanded'), confirm: toggle('touchLeftHanded') },
   ];
+  return rows.map((row) => ({ ...row, about: t(`setting.${row.id}.about`) }));
 }
 
 /** Ten-segment volume meter. */
@@ -121,10 +140,12 @@ function meter(level: number): HTMLElement {
  * Cursor list rows for the settings; `refresh` re-renders after a change
  * (the language row re-renders the whole screen through `setLanguage`).
  */
-export function settingItems(access: SettingsAccess, refresh: () => void): ListItem[] {
+export function settingItems(access: SettingsAccess, refresh: () => void, only?: ReadonlySet<SettingRow['id']>): ListItem[] {
   const items: ListItem[] = [];
   for (const row of settingRows(access)) {
-    if (row.section) items.push({ header: true, label: row.section });
+    // One tab of the Settings screen (`only`): its rows, without the section headers (the tab names the section).
+    if (only && !only.has(row.id)) continue;
+    if (row.section && !only) items.push({ header: true, label: row.section });
     const value = row.level === undefined ? row.value : h('span', { className: 'md-volume' }, [meter(row.level), h('span', { textContent: row.value })]);
     items.push({
       label: row.label,

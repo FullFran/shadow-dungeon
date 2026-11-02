@@ -27,6 +27,7 @@ import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
 import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
+import { description } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
 import { APP_VERSION, buildLabel } from './build-info';
@@ -49,7 +50,7 @@ import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, tow
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
-import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
+import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
@@ -867,26 +868,69 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
   ]);
 }
 
-function settingsScreen(root: HTMLElement): void {
+function settingsScreen(root: HTMLElement, tab = 0): void {
   const back = () => optionsScreen(root, 'settings');
   const access: SettingsAccess = {
     get: () => settings,
     update,
     setLanguage: (language) => {
       applyLanguage(language);
-      settingsScreen(root);
+      settingsScreen(root, tab);
     },
   };
-  const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
-  const retake = () => quiz(root, () => settingsScreen(root), () => settingsScreen(root));
+  // Settings in tabs, one sentence under the list for the row the cursor is on (odd/tasks/menu-redesign.md S6).
+  const tabs = settingTabs(settingRows(access));
+  const current = Math.min(tab, tabs.length - 1);
+  const about = h('p', { className: 'settings-about' });
+  const retake = () => quiz(root, () => settingsScreen(root, current), () => settingsScreen(root, current));
   const nickname = nicknameRow();
-  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root)) };
-  const refresh = () => list.setItems([...settingItems(access, refresh), nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
+  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root, current)) };
+  const ids = new Set(tabs[current]!.rows.map((r) => r.id));
+  const abouts = tabs[current]!.rows.map((r) => r.about);
+  // The General tab also holds the profile rows (nickname, account, the personality test again).
+  const extra = current === 0 ? [nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }] : [];
+  const extraAbout = current === 0 ? [t('setting.nickname.about'), t('setting.account.about'), t('setting.retake.about')] : [];
+  const describe = (i: number) => {
+    about.textContent = [...abouts, ...extraAbout][i] ?? '';
+  };
+  const list = cursorList({ items: [], onBack: back, label: t('title.settings'), onCursor: describe });
+  // The shared description box (ui/describe.ts): it reserves the longest sentence's room, so the window never jumps.
+  const desc = description(list, { describe, children: [about] });
+  const refresh = () => {
+    list.setItems([...settingItems(access, refresh, ids), ...extra, { label: t('menu.back'), onConfirm: back }]);
+    desc.update();
+  };
   refresh();
+  const go = (next: number) => settingsScreen(root, (next + tabs.length) % tabs.length);
+  const bar = h(
+    'div',
+    { className: 'settings-tabs', role: 'tablist' },
+    tabs.map((tabDef, i) => {
+      const button = h('button', { type: 'button', className: i === current ? 'selected' : '', textContent: tabDef.title });
+      button.addEventListener('click', () => go(i));
+      return button;
+    }),
+  );
+  // Q / E (and the page keys) switch tabs; a gamepad's shoulders send them too where mapped.
+  const onKey = (e: KeyboardEvent) => {
+    // The screen was replaced: this listener goes with it.
+    if (!bar.isConnected) {
+      window.removeEventListener('keydown', onKey);
+      return;
+    }
+    if (e.code === 'KeyQ' || e.code === 'PageUp') {
+      e.preventDefault();
+      go(current - 1);
+    } else if (e.code === 'KeyE' || e.code === 'PageDown') {
+      e.preventDefault();
+      go(current + 1);
+    }
+  };
+  window.addEventListener('keydown', onKey);
   show(root, [
     h('h1', { className: 'screen-title', textContent: t('title.settings') }),
     h('div', { className: 'screen-row' }, [
-      mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]),
+      mdWindow({ title: t('title.settings'), className: 'settings' }, [bar, list.element, desc.element, h('p', { className: 'hint dim settings-tabs-hint', textContent: t('settings.tabsHint') })]),
       mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
     ]),
   ]);
