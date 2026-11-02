@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CRYPT } from '../../src/data/dungeons';
+import { CRYPT, TUTORIAL } from '../../src/data/dungeons';
 import { setLanguage, t } from '../../src/i18n';
 import { TUTORIAL_HINTS, hintKey, hintsFor, markTutorialSeen, tutorialApplies, tutorialSeen, type TutorialDevice } from '../../src/app/tutorial';
 
 // odd/tasks/menu-redesign.md T7, S10: neutral signs in the Crypt the first time each thing happens; controls, not strategy.
 describe('where the tutorial runs', () => {
-  it('only in the Crypt, never in a shrine trial, a Senda or a dev run', () => {
-    const base = { dungeon: CRYPT.id, trial: false, story: false, dev: false };
+  it('in the tutorial dungeon and the Crypt (for players who never walked it), never in a shrine trial, a Senda or a dev run', () => {
+    const base = { dungeon: TUTORIAL.id, trial: false, story: false, dev: false };
     expect(tutorialApplies(base)).toBe(true);
+    expect(tutorialApplies({ ...base, dungeon: CRYPT.id })).toBe(true);
+    expect(tutorialApplies({ ...base, dungeon: 'misty-forest' })).toBe(false);
     expect(tutorialApplies({ ...base, dungeon: 'sima-del-eclipse' })).toBe(false);
     expect(tutorialApplies({ ...base, trial: true })).toBe(false);
     expect(tutorialApplies({ ...base, story: true })).toBe(false);

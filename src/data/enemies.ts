@@ -2,6 +2,7 @@ import { HERALD_BASE, type HeraldBaseDef } from './herald';
 import type { Difficulty } from './difficulty';
 import { cardInfo, type CardFightDef } from './cards';
 import type { SpeciesId } from './species';
+import type { MoveId } from './moves';
 import type { PokemonType } from './types';
 import { EVOLVED_BEHAVIOUR } from './evolved-enemies';
 import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
@@ -1541,7 +1542,7 @@ export const DHELMISE: DanmakuDef = {
 };
 
 
-export type EnemyDef = HeraldBaseDef | DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef;
+export type EnemyDef = HeraldBaseDef | DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef | ShadowDef;
 /** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
 export type SwampDef = RollerDef | DasherDef | SniperDef | QueenDef | UltraDef;
 /**
@@ -1612,6 +1613,64 @@ export interface EclipseEchoDef {
   /** A ring closing from `fromRadius` to `toRadius` around the arena's centre in `closeMs`, `width` thick, with a gap of `gapDegrees`. */
   noose: { telegraphMs: number; closeMs: number; fromRadius: number; toRadius: number; width: number; gapDegrees: number; attack: EnemyAttackDef };
 }
+
+/** How the shadow plays a mirrored move: by its hitbox, a swing (cones and rings too), a dash or a shot. */
+export type ShadowShape = 'arc' | 'dash' | 'projectile';
+
+/**
+ * Tu Sombra, the tutorial dungeon's boss (odd/tasks/tutorial-dungeon.md S4):
+ * an original creature, the player's own shadow. It has no moves of its own;
+ * its kit is the player's equipped attacking moves (core/shadow.ts
+ * `shadowKit`), played in slot order by their hitbox shape with a long,
+ * readable wind-up (the aim locks `lockMs` before it fires) and a long
+ * recovery to punish, at a fraction of each move's power. The tutorial's
+ * exam: it asks for what the signs taught (roll through a wind-up, hit back
+ * in the opening), nothing more.
+ */
+export interface ShadowDef {
+  kind: 'shadow';
+  poise: PoiseDef;
+  bar: true;
+  aggroRange: number;
+  walkSpeed: number;
+  /** Wind-up of each shape. */
+  telegraphMs: Readonly<Record<ShadowShape, number>>;
+  /** The last part of a wind-up where the aim no longer follows the player. */
+  lockMs: number;
+  /** How long a swing's hitbox stays out. */
+  strikeMs: number;
+  /** How long a dash takes to cover the move's distance. */
+  dashMs: number;
+  /** Its shots fly at this share of the move's own speed (and live longer, so they reach as far). */
+  shotSpeedScale: number;
+  recoverMs: number;
+  cooldownMs: number;
+  /** A mirrored move hits with its power times `powerScale`, kept within `minPower`..`maxPower`. */
+  powerScale: number;
+  minPower: number;
+  maxPower: number;
+  /** The kit when the player carries nothing to mirror (only boosts). */
+  fallback: MoveId;
+}
+
+export const SHADOW_SELF: ShadowDef = {
+  kind: 'shadow',
+  poise: { hitstunScale: 0.5, knockbackScale: 0.3 },
+  bar: true,
+  aggroRange: 900,
+  walkSpeed: 70,
+  telegraphMs: { arc: 700, dash: 750, projectile: 800 },
+  lockMs: 220,
+  strikeMs: 180,
+  dashMs: 280,
+  shotSpeedScale: 0.55,
+  recoverMs: 1000,
+  cooldownMs: 700,
+  powerScale: 0.4,
+  minPower: 16,
+  maxPower: 32,
+  fallback: 'shadow-claw',
+};
 
 export const ECLIPSE_ECHO: EclipseEchoDef = {
   kind: 'eclipse',
@@ -1691,6 +1750,7 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   nihilego: NIHILEGO,
   'eclipse-hunter': ECLIPSE_HUNTER,
   'eclipse-echo': ECLIPSE_ECHO,
+  'shadow-self': SHADOW_SELF,
   // The Sendas' shadows and wounds (data/story/kit.ts): Decidueye's card engine with no knockback, their Easy fight here (data/guardian-tricks.ts patches the rest).
   ...Object.fromEntries(STORY_BOSSES.map((b) => [b.id, { ...DECIDUEYE, poise: { hitstunScale: 0, knockbackScale: 0 }, spellCards: STORY_FIGHTS[b.id][0] }])),
   'sima-herald': HERALD_BASE,

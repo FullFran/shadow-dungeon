@@ -76,6 +76,8 @@ export type SpeciesId =
   // The Sima del Eclipse's own (data/sima.ts): a monster nest and the hunter floor's pursuer.
   | 'eclipse-nest'
   | 'eclipse-hunter'
+  // The tutorial dungeon's boss (the way to the town): the player's own shadow, an original creature drawn in code.
+  | 'shadow-self'
   // Its own boss, a corrupted shadow of Mimikyu (the busted form's full sheet set, tinted in the eclipse's colours).
   | 'eclipse-echo'
   // The Sendas' shadows and last bosses (docs/story-quests.md, data/story/<line>.ts): a wound is a line's own Pokémon, its wound made flesh (huge, in the eclipse's corruption).
@@ -291,6 +293,8 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   houndoom: { id: 'houndoom', types: ['dark', 'fire'], maxHp: 110, radius: 12, sprite: 'houndoom', movepool: [], defaultLoadout: [] },
   // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
+  // The player's shadow is drawn in code (adapters/shadow-view.ts; the sprite is never shown) and typeless: every move hurts it, nothing is immune.
+  'shadow-self': { id: 'shadow-self', types: [], maxHp: 240, radius: 14, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
   // The starters' Sendas' shadows and wounds (data/story/<line>.ts): a sheet in the eclipse's corruption, no moves.
   ...(Object.fromEntries(STORY_BOSSES.map((b): [StoryBossId, SpeciesDef] => [b.id, { id: b.id, types: b.types, maxHp: b.maxHp, radius: b.radius, sprite: b.sprite, movepool: [], defaultLoadout: [] }])) as Record<StoryBossId, SpeciesDef>),

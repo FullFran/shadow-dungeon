@@ -1,7 +1,8 @@
-import { CRYPT } from '../data/dungeons';
+import { CRYPT, TUTORIAL } from '../data/dungeons';
 
 /**
- * The Crypt's contextual tutorial (odd/tasks/menu-redesign.md T7, S2, S10):
+ * The contextual tutorial (odd/tasks/menu-redesign.md T7, S2, S10; moved to
+ * the tutorial dungeon by odd/tasks/tutorial-dungeon.md S3):
  * neutral stone signs that appear the first time each thing happens on this
  * device, teaching controls, not strategy (the game stays hard). Floors are
  * procedural, so signs answer moments, not places. Pure: the run feeds it its
@@ -16,9 +17,15 @@ export type TutorialDevice = 'keys' | 'touch' | 'pad';
 /** The i18n key of a sign for a device: `tutorial.<hint>.<device>`. */
 export const hintKey = (hint: TutorialHint, device: TutorialDevice): string => `tutorial.${hint}.${device}`;
 
-/** Only the Crypt, the first dungeon; never a shrine trial, a Senda's story run or a dev run (spawns, start floor). */
+/**
+ * The tutorial dungeon, where a new player learns; and the Crypt too, for a
+ * player who never walked it (an earlier version's, whose town was already
+ * open): each sign shows once per device, so whoever saw them on the way to
+ * the town never meets them again in the Crypt. Never a shrine trial, a
+ * Senda's story run or a dev run (spawns, start floor).
+ */
 export function tutorialApplies(run: { dungeon: string; trial: boolean; story: boolean; dev: boolean }): boolean {
-  return run.dungeon === CRYPT.id && !run.trial && !run.story && !run.dev;
+  return (run.dungeon === TUTORIAL.id || run.dungeon === CRYPT.id) && !run.trial && !run.story && !run.dev;
 }
 
 /** What happened this step, as far as the signs care. */

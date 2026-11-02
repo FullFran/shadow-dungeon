@@ -45,7 +45,8 @@ describe('a Senda opens its difficulties one chapter at a time', () => {
 describe('wiring', () => {
   const main = readFileSync('src/app/main.ts', 'utf8');
   it('a solo run plays at the open tier; a room keeps its host tier', () => {
-    expect(main).toMatch(/difficulty: sendaTier\(dungeonById\(dungeon\), settings\.difficulty, loadSave\(store\)\.story\)/);
+    // The tutorial dungeon's fixed tier wraps it (data/dungeons.ts `tierFor`).
+    expect(main).toMatch(/difficulty: tierFor\(dungeonById\(dungeon\), sendaTier\(dungeonById\(dungeon\), settings\.difficulty, loadSave\(store\)\.story\)\)/);
     expect(main).toMatch(/difficulty: join\.difficulty \?\? DEFAULT_DIFFICULTY/);
   });
   it('the loadout offers only open tiers for a Senda', () => {

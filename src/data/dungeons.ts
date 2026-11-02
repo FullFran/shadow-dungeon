@@ -26,6 +26,8 @@ import { AXEW_ROADS } from './story/axew';
  * The run (core/run.ts) reads everything from here.
  */
 export type DungeonId =
+  // The tutorial dungeon, the first run's way down to the town (`TUTORIAL`).
+  | 'sunken-way'
   | 'crypt-of-the-sword-king'
   | 'misty-forest'
   | 'eclipse-chasm'
@@ -101,6 +103,10 @@ export interface DungeonDef {
   challenge?: { line: ChallengeLine; materials: number };
   /** A Senda line's challenge (chapter I's road): the roads a Hard and a Nightmare run walk instead (`roadFor`). */
   roads?: { hard: DungeonId; nightmare: DungeonId };
+  /** Plays on this tier whatever the one picked (the tutorial dungeon: `tierFor`). */
+  fixedDifficulty?: Difficulty;
+  /** Share of max HP healed on entering each floor after the first, instead of the run's (data/dungeon.ts `RUN.floorHeal`). */
+  floorHeal?: number;
 }
 
 /** Chance by floor (index 0 is floor 1, deeper floors use the last entry) and size of the spirit light's berry cache. */
@@ -419,6 +425,68 @@ export const SWAMP: DungeonDef = {
   },
 };
 
+/**
+ * The tutorial dungeon (Camino Hundido, the Sunken Way; owner 2026-11-02,
+ * odd/tasks/tutorial-dungeon.md): the first run's way down to the town, like
+ * the opening path of Hollow Knight. Two short generated floors with only the
+ * gentlest regulars (Poochyena and Gastly, one or two per room, many rooms
+ * empty), no urgent floors, gates or events, a full heal on every floor and
+ * the Easy tier whatever the setting; then the player's own shadow (Tu
+ * Sombra, data/enemies.ts `SHADOW_SELF`) in a small arena. Clearing it opens
+ * the town (app/adventure-route.ts `townOpen`); the Crypt stays the first real
+ * dungeon. Solo only: kept out of `DUNGEONS` and `CHALLENGES`, so no select,
+ * room or waystone ever offers it.
+ */
+export const TUTORIAL: DungeonDef = {
+  id: 'sunken-way',
+  // Its own lore, kept out of `DUNGEON_LORE` (the town's notice board lists those dungeons' records); the closing line shows on the victory screen.
+  lore: {
+    id: 'sunken-way',
+    nameKey: 'dungeon.tutorial.name',
+    subtitleKey: 'dungeon.tutorial.subtitle',
+    loreKeys: ['dungeon.tutorial.lore.1', 'dungeon.tutorial.lore.2'],
+    floorKeys: [1, 2, 3].map((floor) => `dungeon.tutorial.floor.${floor}`),
+    victoryKey: 'dungeon.tutorial.victory',
+  },
+  plan: [{ kind: 'generated' }, { kind: 'generated' }, { kind: 'room', room: 'mirror' }],
+  spawns: {
+    base: 1,
+    perDepth: 0,
+    jitter: 1,
+    maxPerRoom: 2,
+    budget: { base: 2, perDepth: 0, jitter: 0, maxEnemies: 2, rest: [0.35, 0.3], repeatWeight: 0.4 },
+    pool: [
+      { species: 'poochyena', weights: [3, 3] },
+      { species: 'gastly', weights: [1, 2] },
+    ],
+  },
+  urgent: [],
+  music: CRYPT.music,
+  // The Crypt's stone with a warmer ember light: the way up out of the dark.
+  palette: {
+    tileFloorA: '#2b2630',
+    tileFloorB: '#302a35',
+    tileWallTop: '#141118',
+    tileWallBlock: '#1d1822',
+    tileWallFace: '#3d3245',
+    tileWallLip: '#6a4f4a',
+    mapRim: '#5a4652',
+    floorA: '#1d1920',
+    floorB: '#221d25',
+    wall: '#0a080c',
+    wallEdge: '#4a3a46',
+    pillarTop: '#544652',
+    pillarSide: '#2e2532',
+  },
+  unlockedBy: null,
+  decor: 'crypt',
+  fixedDifficulty: 'easy',
+  floorHeal: 1,
+};
+
+/** The tier a run of `dungeon` plays: its fixed one (the tutorial dungeon), else the one picked. */
+export const tierFor = (dungeon: DungeonDef, picked: Difficulty): Difficulty => dungeon.fixedDifficulty ?? picked;
+
 /** Urgent chances of the endless dungeon by floor, from its formula (deeper floors than the table use its last entry). */
 const endlessUrgent = (endless: EndlessDef, floors = 40): UrgentChance[] =>
   endless.urgent.map((u) => ({
@@ -590,7 +658,7 @@ export const CHALLENGES: readonly DungeonDef[] = [
 /** The Sendas' second and third chapter roads (kept apart from `CHALLENGES`: one challenge per line). */
 export const SENDA_ROADS: readonly DungeonDef[] = [ABRA_SENDA, PIPLUP_SENDA, SHINX_SENDA, AXEW_SENDA, MIMIKYU_SENDA, ZORUA_SENDA, LITWICK_SENDA, CUBONE_SENDA].flatMap(([, two, three]) => [two, three]);
 
-const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES, ...SENDA_ROADS];
+const ALL: readonly DungeonDef[] = [...DUNGEONS, ...CHALLENGES, ...SENDA_ROADS, TUTORIAL];
 
 /** The road a run of `dungeon` on `difficulty` walks: a Senda's chapter II road on Hard, its III on Nightmare; the dungeon itself otherwise. */
 export function roadFor(dungeon: DungeonDef, difficulty: Difficulty | undefined): DungeonDef {
