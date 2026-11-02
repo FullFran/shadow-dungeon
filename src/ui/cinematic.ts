@@ -62,6 +62,22 @@ export function revealedChars(panel: CinematicPanel, localMs: number, lengths: r
   });
 }
 
+/** When every line of the panel is typed out (local ms), at the pace of `revealedChars`. */
+export function revealEndMs(panel: CinematicPanel, lengths: readonly number[]): number {
+  const typing = lengths.reduce((sum, length) => sum + (length * 1000) / panel.charsPerSecond, 0);
+  return panel.textStartMs + typing + panel.lineGapMs * Math.max(0, lengths.length - 1);
+}
+
+/**
+ * Where manual play waits for a press (odd/tasks/menu-redesign.md S13: press
+ * to advance, or Auto): once the text is out, and never later than the fade
+ * to black starts; null for a panel without words (it plays through).
+ */
+export function holdAtMs(panel: CinematicPanel, lengths: readonly number[]): number | null {
+  if (panel.lines.length === 0) return null;
+  return Math.min(revealEndMs(panel, lengths), panel.durationMs - panel.fadeOutMs);
+}
+
 /** Camera shot at `localMs`: an ease in and out from the first shot to the last over the whole panel. */
 export function cameraAt(panel: CinematicPanel, localMs: number): Shot {
   const k = smoothstep(localMs / panel.durationMs);

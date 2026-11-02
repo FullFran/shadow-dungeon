@@ -61,6 +61,15 @@
       .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
       .town-map-mark.in-column svg { width: 28px; height: 28px; padding: 5px; }
       .town-map-caption { margin: 0; min-height: 2.6em; }
+      /* Cinematics: press to advance or Auto (src/app/prologue.ts; odd/tasks/menu-redesign.md S13). */
+      .prologue-auto { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 6; font: inherit; font-size: 16px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+        color: var(--md-text-dim); background: rgba(5, 6, 13, 0.6); border: 2px solid var(--md-border-shade); }
+      .prologue-auto.is-on { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
+      .prologue-text { position: relative; }
+      .prologue-next { position: absolute; right: 0; bottom: -4px; font-size: 14px; color: var(--md-cursor); opacity: 0; }
+      .prologue-next.is-visible { opacity: 1; animation: prologue-next 0.9s ease-in-out infinite; }
+      @keyframes prologue-next { 50% { transform: translateY(3px); opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { .prologue-next.is-visible { animation: none; } }
       /* Title: a dominant Play, the other rows quiet (odd/tasks/menu-redesign.md S11). */
       .title-menu { min-width: min(420px, 86vw); }
       .title-row-play { padding-top: 6px; padding-bottom: 8px; }
