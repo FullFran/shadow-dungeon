@@ -28,7 +28,8 @@ import { startWander, stepWander, type WanderState } from './ambience';
 import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
-import { menuWindow } from '../ui/menu-window';
+import { townMapView, type TownMapEntry } from './town-map-view';
+import { looseServices, townMapMarkers } from './town-map';
 import { pleaActor, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
 import { PLEA_STAGE, pleaKeys } from '../data/sima-plea';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
@@ -790,14 +791,19 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       onClose();
       action();
     };
-    const end = lobby
-      ? lobby.menu(onClose).map((row) => ({ label: row.label, about: t('townMenu.room.about'), onConfirm: row.onConfirm }))
-      : [{ label: t('townMenu.title'), about: t('townMenu.title.about'), onConfirm: pick(() => leaveTown(options.onQuit)) }];
-    const open = menuWindow({
-      title: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
-      rows: [...townMenuServices(services(), lobby !== null).map((s) => ({ label: t(serviceLabelKey(s)), about: t(serviceAboutKey(s)), onConfirm: pick(() => serviceAction(s)) })), ...end],
-      back: { label: t('townMenu.resume'), about: t('townMenu.resume.about'), onConfirm: onClose },
-      className: 'town-menu',
+    const end: TownMapEntry[] = lobby
+      ? lobby.menu(onClose).map((row, i) => ({ id: `room-${i}`, label: row.label, about: t('townMenu.room.about'), glyph: 'room' as const, onConfirm: row.onConfirm }))
+      : [{ id: 'title', label: t('townMenu.title'), about: t('townMenu.title.about'), glyph: 'title' as const, onConfirm: pick(() => leaveTown(options.onQuit)) }];
+    // The Esc menu as a map of this town (odd/tasks/menu-redesign.md S8): its NPCs and places, the rest in a column beside it.
+    const available = new Set(townMenuServices(services(), lobby !== null));
+    const entry = (service: TownService, id: string = service): TownMapEntry => ({ id, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) });
+    const markers = townMapMarkers(map, available);
+    const open = townMapView({
+      heading: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
+      map,
+      placed: markers.map((m) => ({ ...m, entry: entry(m.service, m.id) })),
+      column: [...looseServices(markers, available).map((s) => entry(s)), ...end, { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose }],
+      onClose,
     });
     const overlay = h('div', { className: 'town-shop' }, [open.element]);
     parent.append(overlay);
