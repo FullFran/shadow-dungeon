@@ -1,3 +1,4 @@
+import { tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
 import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
@@ -445,7 +446,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const hint = signQueue.shift()!;
     options.tutorial.mark(hint);
     const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
-    const element = h('div', { className: 'tutorial-sign' }, [h('p', { textContent: t(hintKey(hint, device)) })]);
+    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)));
     overlayParent.append(element);
     sign = { hint, element, shownAtMs: realMs };
   }
