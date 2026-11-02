@@ -45,7 +45,7 @@ import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
-import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen } from './adventure-route';
+import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
@@ -67,7 +67,7 @@ import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, CRYPT, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -579,11 +579,19 @@ function adoptReturningPlayer(): void {
 /** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
 function playScreen(root: HTMLElement): void {
   adoptReturningPlayer();
-  const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
+  const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen, townOpen: townIsOpen() });
   if (next === 'prologue') prologue(root, () => playScreen(root));
   else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
+  // Like a souls, the first dungeon comes before the hub (odd/tasks/menu-redesign.md S7): straight into the Crypt.
+  else if (next === 'crypt') enterDungeon(root, CRYPT.id, () => titleScreen(root, 0));
   else townScreen(root);
 }
+
+/** Whether the town is open on this device (adventure-route.ts `townOpen`: the Crypt cleared, or town progress already in the save). */
+const townIsOpen = (): boolean => townOpen(cleared(), loadSave(store));
+
+/** Where a solo run goes back to: the town once it is open, the title before (the next "Play" enters the Crypt again). */
+const hub = (root: HTMLElement): void => (townIsOpen() ? townScreen(root) : titleScreen(root, 0));
 
 /** The title's "Play online": the same first-time steps as Play, so a new player chooses a starter before reaching a room. */
 function onlineEntry(root: HTMLElement): void {
@@ -1800,11 +1808,11 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
   const inRoom = online && room !== null && current === room.session;
   const party = inRoom ? room!.session.roster().map(nameOf) : null;
-  const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => townScreen(root);
+  const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => hub(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
   const items: ListItem[] = endActions({ online }).map((action) =>
-    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : 'screen.town'), onConfirm: back },
+    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : townIsOpen() ? 'screen.town' : 'screen.menu'), onConfirm: back },
   );
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
@@ -1923,7 +1931,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     openMenu: (actions, held) =>
       openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`).
-    onQuit: () => (trial?.from === 'room' ? backToRoom(root) : trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : townScreen(root)),
+    onQuit: () => (trial?.from === 'room' ? backToRoom(root) : trial ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id) : hub(root)),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     ...(story ? { story } : {}),
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { nextPlayScreen } from '../../src/app/adventure-route';
+import { nextPlayScreen, townOpen } from '../../src/app/adventure-route';
+import { CRYPT } from '../../src/data/dungeons';
 import { OPTIONS_ENTRIES, optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL } from '../../src/app/title-menu';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
@@ -40,8 +41,30 @@ describe('title menu', () => {
 
 describe('Play goes to the town', () => {
   it('runs the prologue and the quiz the first time, then the town', () => {
-    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false })).toBe('prologue');
-    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false })).toBe('quiz');
-    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true })).toBe('town');
+    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false, townOpen: true })).toBe('prologue');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false, townOpen: true })).toBe('quiz');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true, townOpen: true })).toBe('town');
+  });
+
+  // odd/tasks/menu-redesign.md S7: "si, saltamos y lo llevamos directo a la cripta".
+  it('goes straight into the Crypt while the town is still closed', () => {
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true, townOpen: false })).toBe('crypt');
+    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false, townOpen: false })).toBe('prologue');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false, townOpen: false })).toBe('quiz');
+  });
+});
+
+describe('the town opens after the Crypt', () => {
+  const none = { owned: [], upgrades: {}, learned: {}, story: {} };
+  it('stays closed for a new player until the Crypt guardian falls', () => {
+    expect(townOpen(new Set(), none)).toBe(false);
+    expect(townOpen(new Set([CRYPT.id]), none)).toBe(true);
+  });
+
+  it('stays open for a player who already used the town (anything bought, learned or owned there)', () => {
+    expect(townOpen(new Set(), { ...none, owned: ['zorua'] })).toBe(true);
+    expect(townOpen(new Set(), { ...none, upgrades: { vitality: 1 } })).toBe(true);
+    expect(townOpen(new Set(), { ...none, learned: { mimikyu: ['shadow-sneak'] } })).toBe(true);
+    expect(townOpen(new Set(), { ...none, story: { mimikyu: 1 } })).toBe(true);
   });
 });
