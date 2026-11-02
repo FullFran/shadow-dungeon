@@ -10,8 +10,12 @@ import type { NetSession } from '../net/session';
  */
 export type EndAction = 'retry' | 'town';
 
-/** The end screen's actions: a solo (or local tab) run may retry; an online run goes back to its town. */
-export const endActions = (run: { online: boolean }): EndAction[] => (run.online ? ['town'] : ['retry', 'town']);
+/**
+ * The end screen's actions: a solo (or local tab) run may retry; an online
+ * run goes back to its town; a won tutorial dungeon only goes on to the town
+ * (the way down ends there and is never offered again: odd/tasks/tutorial-dungeon.md).
+ */
+export const endActions = (run: { online: boolean; tutorialWon?: boolean }): EndAction[] => (run.online || run.tutorialWon ? ['town'] : ['retry', 'town']);
 
 /** Why a screen is being left: the end screen, quitting from the Esc menu, the host leaving, or leaving a lobby before any run. */
 export type LeaveReason = 'end' | 'quit' | 'hostLeft' | 'lobby';

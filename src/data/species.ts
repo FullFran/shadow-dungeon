@@ -294,7 +294,7 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   // A nest is drawn in code (the sprite is never shown); the hunter wears Houndour's sheets in the eclipse's shadow.
   'eclipse-nest': { id: 'eclipse-nest', types: ['dark'], maxHp: 150, radius: 15, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   // The player's shadow is drawn in code (adapters/shadow-view.ts; the sprite is never shown) and typeless: every move hurts it, nothing is immune.
-  'shadow-self': { id: 'shadow-self', types: [], maxHp: 400, radius: 14, sprite: 'gastly', movepool: [], defaultLoadout: [] },
+  'shadow-self': { id: 'shadow-self', types: [], maxHp: 240, radius: 14, sprite: 'gastly', movepool: [], defaultLoadout: [] },
   'eclipse-echo': { id: 'eclipse-echo', types: ['ghost', 'dark'], maxHp: 800, radius: 14, sprite: 'mimikyuBusted', movepool: [], defaultLoadout: [] },
   // The starters' Sendas' shadows and wounds (data/story/<line>.ts): a sheet in the eclipse's corruption, no moves.
   ...(Object.fromEntries(STORY_BOSSES.map((b): [StoryBossId, SpeciesDef] => [b.id, { id: b.id, types: b.types, maxHp: b.maxHp, radius: b.radius, sprite: b.sprite, movepool: [], defaultLoadout: [] }])) as Record<StoryBossId, SpeciesDef>),

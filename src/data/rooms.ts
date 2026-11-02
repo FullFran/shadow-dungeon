@@ -285,17 +285,14 @@ export const ROOMS: Record<RoomId, RoomDef> = {
   },
   /**
    * The end of the way to the town (the tutorial dungeon, docs/gdd.md §3):
-   * a small open floor with two low stones to step round, where the player
-   * meets its own shadow. Small enough that the view keeps it on screen.
+   * a small open floor with nothing to hide behind, where the player meets
+   * its own shadow. Small enough that the view keeps it on screen.
    */
   mirror: {
     id: 'mirror',
     width: 640,
     height: 440,
-    obstacles: [
-      { x: 150, y: 190, width: 36, height: 36 },
-      { x: 454, y: 190, width: 36, height: 36 },
-    ],
+    obstacles: [],
     playerStart: { x: 320, y: 370 },
     spawns: [{ species: 'shadow-self', x: 320, y: 140 }],
     exit: null,

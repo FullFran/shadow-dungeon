@@ -1856,7 +1856,7 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => hub(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
-  const items: ListItem[] = endActions({ online }).map((action) =>
+  const items: ListItem[] = endActions({ online, tutorialWon: summary.dungeon === TUTORIAL.id && result === 'victory' }).map((action) =>
     action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : townIsOpen() ? 'screen.town' : 'screen.menu'), onConfirm: back },
   );
   const held = heldItems(summary.items as ItemId[]);

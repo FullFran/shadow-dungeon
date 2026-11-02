@@ -18,6 +18,12 @@ describe('after a run', () => {
     expect(endActions({ online: false })).toEqual(['retry', 'town']);
   });
 
+  // odd/tasks/tutorial-dungeon.md S5, S6: the won way down ends at the town; it is never offered again.
+  it('a won tutorial run only goes on to the town, a lost one may retry', () => {
+    expect(endActions({ online: false, tutorialWon: true })).toEqual(['town']);
+    expect(endActions({ online: false, tutorialWon: false })).toEqual(['retry', 'town']);
+  });
+
   it('an online run (host or guest) only goes back to the town', () => {
     expect(endActions({ online: true })).toEqual(['town']);
   });

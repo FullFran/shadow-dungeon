@@ -1666,9 +1666,9 @@ export const SHADOW_SELF: ShadowDef = {
   shotSpeedScale: 0.55,
   recoverMs: 1000,
   cooldownMs: 700,
-  powerScale: 0.45,
-  minPower: 20,
-  maxPower: 40,
+  powerScale: 0.4,
+  minPower: 16,
+  maxPower: 32,
   fallback: 'shadow-claw',
 };
 
