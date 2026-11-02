@@ -1,3 +1,4 @@
+import { pausesOnLeave } from './pause-on-leave';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
 import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
@@ -1087,6 +1088,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     announceFloor(false);
   }
 
+  // Leaving the page (another tab, another window, the browser's help) pauses a solo run (app/pause-on-leave.ts).
+  const onLeavePage = () => {
+    if (pausesOnLeave({ shared: Boolean(net), ended, menuOpen: closeMenu !== null })) showMenu();
+  };
+  const onHidden = () => {
+    if (document.hidden) onLeavePage();
+  };
+  window.addEventListener('blur', onLeavePage);
+  document.addEventListener('visibilitychange', onHidden);
   function showMenu(): void {
     if (closeMenu || ended || !options.openMenu) return;
     // Release everything held: menu clicks must not attack, and keys held now must not stick.
@@ -1127,6 +1137,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       e.preventDefault();
       if (closeMenu) hideMenu();
       else showMenu();
+    } else if (e.code === 'F1') {
+      // F1 opens the browser's help in another tab (ticket SD-LJJ7QL): never here.
+      e.preventDefault();
     } else if (e.code === 'F3' && overlay) {
       // F3 would open the browser's find bar.
       e.preventDefault();
@@ -1629,6 +1642,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay?.dispose();
       spectateButton.remove();
       sign?.element.remove();
+      window.removeEventListener('blur', onLeavePage);
+      document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('keydown', onSignKey, true);
       storyBox?.remove();
       window.removeEventListener('keydown', onKeyDown);

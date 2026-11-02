@@ -68,6 +68,10 @@ export const CHANGELOG: readonly Release[] = [
       ],
       fixed: [
         {
+          es: 'F1 ya no abre la ayuda del navegador en mitad de una partida, y si cambias de pestaña o de ventana jugando a solas la partida se pausa sola.',
+          en: 'F1 no longer opens the browser\'s help mid-run, and switching tab or window while playing alone pauses the run.',
+        },
+        {
           es: 'El prólogo y las demás cinemáticas vuelven a avanzar solas: ya no se quedan esperando a que pulses sin avisar.',
           en: 'The prologue and the other cinematics move on by themselves again: they no longer sit waiting for a press without telling you.',
         },
