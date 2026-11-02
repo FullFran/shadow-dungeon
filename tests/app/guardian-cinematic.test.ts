@@ -78,3 +78,58 @@ describe('guardian cinematic data', () => {
     });
   }
 });
+
+/**
+ * Tu Sombra, the tutorial dungeon's boss (odd/tasks/tutorial-dungeon.md S8):
+ * the same cinematic engine as the guardians, but drawn with the original
+ * procedural shadow (adapters/shadow-view.ts), never a Pokémon sheet; it
+ * speaks in first person before the fight, and after it dissolves and the
+ * way opens towards the town.
+ */
+describe('Tu Sombra cinematic', () => {
+  const c = GUARDIAN_CINEMATICS['shadow-self']!;
+
+  it('exists, with a pre-fight cinematic ending on its name card and a post-fight one ending on the way to the town', () => {
+    expect(c).toBeDefined();
+    expect(c.pre.length).toBeGreaterThanOrEqual(2);
+    expect(c.pre.length).toBeLessThanOrEqual(4);
+    expect(totalMs(c.pre)).toBeGreaterThanOrEqual(10_000);
+    expect(totalMs(c.pre)).toBeLessThanOrEqual(20_000);
+    expect(c.pre.at(-1)!.lines).toEqual(['species.shadow-self', 'guardian.shadow-self.title']);
+    expect(c.post.length).toBeGreaterThanOrEqual(1);
+    expect(totalMs(c.post)).toBeLessThanOrEqual(20_000);
+    expect(c.post.at(-1)!.scene).toBe('shade-way');
+    for (const short of [c.preShort, c.postShort]) {
+      expect(totalMs(short)).toBeGreaterThanOrEqual(2000);
+      expect(totalMs(short)).toBeLessThanOrEqual(3000);
+    }
+    const english = catalog('en');
+    for (const panel of [...c.pre, ...c.post]) {
+      const typed = panel.textStartMs + panel.lines.reduce((ms, key) => ms + ((english[key] ?? '').length * 1000) / panel.charsPerSecond + panel.lineGapMs, 0);
+      expect(typed, panel.id).toBeLessThanOrEqual(panel.durationMs - panel.fadeOutMs + 600);
+    }
+  });
+
+  it('is drawn only with the shadow scenes (the procedural ink mass), never a sprite silhouette', () => {
+    for (const panel of [...c.pre, ...c.post, ...c.preShort, ...c.postShort]) expect(panel.scene, panel.id).toMatch(/^shade-/);
+  });
+
+  it('plays in full once per device, then only its name card', () => {
+    const store = memoryStore();
+    expect(cinematicMode({ seen: hasSeen(store, 'shadow-self', 'pre'), shared: false })).toBe('full');
+    markSeen(store, 'shadow-self', 'pre');
+    expect(cinematicMode({ seen: hasSeen(store, 'shadow-self', 'pre'), shared: false })).toBe('short');
+    expect(cinematicPanels('shadow-self', 'pre', 'short')).toBe(c.preShort);
+  });
+
+  for (const language of LANGUAGES) {
+    it(`has every line in "${language}", in first person, without em dashes`, () => {
+      const strings = catalog(language);
+      const keys = [...c.pre, ...c.post, ...c.preShort, ...c.postShort].flatMap((p) => p.lines);
+      expect(keys.filter((k) => !strings[k])).toEqual([]);
+      for (const k of keys) expect(strings[k], k).not.toContain('—');
+      const spoken = ['guardian.shadow-self.pre.1', 'guardian.shadow-self.pre.2', 'guardian.shadow-self.post.1'].map((k) => strings[k] ?? '').join(' ');
+      expect(spoken).toMatch(language === 'es' ? /\b(soy|seré|te)\b/i : /\bI\b/);
+    });
+  }
+});
