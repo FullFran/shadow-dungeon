@@ -60,7 +60,7 @@ const GLYPHS: Record<Glyph, string> = {
   room: 'M2 7l6-5 6 5v7H2zM6 14v-4h4v4',
 };
 
-function glyphSvg(glyph: Glyph): SVGSVGElement {
+export function glyphSvg(glyph: Glyph): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');

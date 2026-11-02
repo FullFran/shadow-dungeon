@@ -30,6 +30,8 @@ import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
 import { townMapView, type TownMapEntry } from './town-map-view';
 import { looseServices, townMapMarkers } from './town-map';
+import { wheelServices } from './quick-wheel';
+import { quickWheelView } from './quick-wheel-view';
 import { pleaActor, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
 import { PLEA_STAGE, pleaKeys } from '../data/sima-plea';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
@@ -685,6 +687,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     } else if (INTERACT_KEYS.has(e.code)) {
       e.preventDefault();
       if (!e.repeat) interact();
+    } else if (e.code === 'Tab') {
+      // The quick wheel (odd/tasks/menu-redesign.md S8): held open while Tab is down.
+      e.preventDefault();
+      if (!e.repeat) openWheel();
     } else if (e.code === 'Escape') {
       // Taken here: the menu opened now must not read this same Esc as its own "back".
       e.preventDefault();
@@ -812,6 +818,28 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       overlay.remove();
     };
   };
+
+  /** The quick wheel on Tab: the most used services of this town (quick-wheel.ts), opened on release. */
+  const openQuickWheel: TownWindowOpener = (parent, onClose) => {
+    const pick = (action: () => void) => () => {
+      onClose();
+      action();
+    };
+    const entries: TownMapEntry[] = wheelServices(new Set(townMenuServices(services(), lobby !== null))).map((service) => ({ id: service, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) }));
+    const open = quickWheelView({ entries, onClose });
+    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    parent.append(overlay);
+    return () => {
+      open.dispose();
+      overlay.remove();
+    };
+  };
+
+  function openWheel(): void {
+    if (exitWindow || closeShop || fade || plea || stopped) return;
+    dialog = null;
+    openShopWindow(openQuickWheel);
+  }
 
   /** Opens the Esc menu when nothing else is on screen. */
   function openMenu(): void {
