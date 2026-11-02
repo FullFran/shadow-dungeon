@@ -64,8 +64,12 @@ export const CHANGELOG: readonly Release[] = [
       ],
       fixed: [
         {
-          es: 'Las ventanas cortas de los menús (Jugar en línea, el Santuario y otras) vuelven a salir centradas, y en el móvil «Jugar» ocupa toda la fila del título.',
-          en: 'Short menu windows (Play online, the shrine and others) are centred again, and on phones «Play» takes the title\'s whole row.',
+          es: 'El prólogo y las demás cinemáticas vuelven a avanzar solas: ya no se quedan esperando a que pulses sin avisar.',
+          en: 'The prologue and the other cinematics move on by themselves again: they no longer sit waiting for a press without telling you.',
+        },
+        {
+          es: 'Las ventanas cortas de los menús (Jugar en línea, el Santuario, el test de personalidad y otras) vuelven a salir centradas, y en el móvil «Jugar» ocupa toda la fila del título.',
+          en: 'Short menu windows (Play online, the shrine, the personality test and others) are centred again, and on phones «Play» takes the title\'s whole row.',
         },
       ],
       improved: [
@@ -78,8 +82,8 @@ export const CHANGELOG: readonly Release[] = [
           en: 'Easier to read: descriptions, long texts and the fields you type in use a typeface made to read well.',
         },
         {
-          es: 'Cinemáticas: el texto avanza al pulsar, o en automático con el botón Auto. Jugando a solas, las palabras de las Sendas paran la partida hasta que pulsas.',
-          en: 'Cinematics: the text moves on when you press, or by itself with the Auto button. Playing alone, the Sendas\' spoken lines pause the run until you press.',
+          es: 'Cinemáticas: el texto avanza solo, como siempre; si quitas el botón Auto, cada panel espera a que pulses. Jugando a solas, las palabras de las Sendas paran la partida hasta que pulsas.',
+          en: 'Cinematics: the text moves on by itself, as always; turn the Auto button off and each panel waits for your press. Playing alone, the Sendas\' spoken lines pause the run until you press.',
         },
         {
           es: 'En el móvil, el aviso legal ya no tapa los menús, y las pistas hablan de tocar en vez de teclas.',

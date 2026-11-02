@@ -310,8 +310,8 @@
       /* Every menu screen does the same (odd/tasks/menu-redesign.md T2: it sat over the title hints and the loadout at 844x390):
          the notice is the last row of the column, the screen stays centred above it. Runs keep the small fixed .in-game one. */
       #app:not(:has(canvas.game)) { padding-bottom: 12px; }
-      /* The first piece of the screen, not the eclipse backdrop canvas (it comes first on menu screens and must not take the margin). */
-      #app:not(:has(canvas.game)) > canvas.backdrop + *, #app:not(:has(canvas.game)) > :first-child:not(canvas.backdrop) { margin-top: auto; }
+      /* The first piece of the screen, not a full-screen layer behind it (the eclipse backdrop, the quiz's black): those come first and must not take the margin. */
+      #app:not(:has(canvas.game)) > :is(canvas.backdrop, .quiz-black) + *, #app:not(:has(canvas.game)) > :first-child:not(canvas.backdrop, .quiz-black) { margin-top: auto; }
       #app > .notice:not(.in-game) { position: static; width: 100%; box-sizing: border-box; margin-top: auto; }
       /* Short windows (1024×640 and the like): tighter lines and the two actions on one row, so the Sima's end screen fits. */
       @media (max-height: 760px) {

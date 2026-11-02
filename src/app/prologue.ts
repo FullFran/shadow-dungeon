@@ -52,13 +52,17 @@ const isSkipKey = (key: string): boolean => key === 'Escape' || key === 'Enter';
 /** Enter, Space or a tap moves the text on (odd/tasks/menu-redesign.md S13); holding Esc or Enter still skips the whole scene. */
 const isAdvanceKey = (key: string): boolean => key === 'Enter' || key === ' ';
 
-/** Auto plays the text by itself, as before; off (the default) waits for a press after each panel's words. Remembered on this device. */
+/**
+ * Auto (the default, owner 2026-11-02: "que por defecto sea auto") plays the
+ * text by itself, as before; turned off, each panel waits for a press after
+ * its words. Only an explicit "off" on this device turns it off.
+ */
 const AUTO_KEY = 'mazmorra-sombria.cinematicAuto';
 function readAuto(): boolean {
   try {
-    return localStorage.getItem(AUTO_KEY) === '1';
+    return localStorage.getItem(AUTO_KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 }
 function writeAuto(on: boolean): void {
