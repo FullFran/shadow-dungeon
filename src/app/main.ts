@@ -495,7 +495,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
   show(root, [
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
-    h('p', { className: 'hint', textContent: t(isTouchUi() ? 'title.hint.touch' : 'title.hint') }),
+    h('p', { className: 'hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('title.hint') }), h('span', { className: 'on-touch', textContent: t('title.hint.touch') })]),
     h('p', { className: 'build-label', textContent: buildLabel() }),
   ]);
   pwa.banner(root);

@@ -1,4 +1,3 @@
-import { isTouchUi } from '../adapters/touch-mode';
 import type { SheetStore } from '../adapters/assets';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
@@ -62,7 +61,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const hold = h('span', { className: 'prologue-hold' });
   const skip = h('button', { className: 'prologue-skip', type: 'button', textContent: t('prologue.skip') });
   skip.append(hold);
-  const hint = h('p', { className: 'prologue-hint', textContent: t(isTouchUi() ? 'prologue.skipHint.touch' : 'prologue.skipHint') });
+  const hint = h('p', { className: 'prologue-hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('prologue.skipHint') }), h('span', { className: 'on-touch', textContent: t('prologue.skipHint.touch') })]);
   const element = h('section', { className: 'prologue' }, [stage, skip, hint]);
   element.setAttribute('aria-label', options.label ?? t('title.prologue'));
   const panels = options.panels ?? PROLOGUE;
