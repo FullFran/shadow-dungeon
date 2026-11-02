@@ -23,6 +23,8 @@ export interface Pwa {
   install(parent: HTMLElement): void;
   /** Appends the invitation banner to `parent` when it is due (once per page, unless "never"). */
   banner(parent: HTMLElement): void;
+  /** The "Instalar" button in the top right corner of `parent`, while the game can be installed (owner, 2026-11-02). */
+  corner(parent: HTMLElement): void;
 }
 
 function standalone(): boolean {
@@ -46,6 +48,7 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     installed = true;
     deferred = null;
     document.querySelector('.pwa-banner')?.remove();
+    document.querySelector('.pwa-corner')?.remove();
     options.onOfferChange();
   });
 
@@ -61,14 +64,15 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     document.body.append(toast);
   });
 
-  function iosInstructions(parent: HTMLElement): void {
+  /** How to install where the browser offers no prompt: iOS Safari's share sheet, or a desktop browser's own menu. */
+  function iosInstructions(parent: HTMLElement, key = 'pwa.ios'): void {
     const overlay = h('div', { className: 'overlay pwa-ios' });
     const close = () => {
       list.dispose();
       overlay.remove();
     };
     const list = cursorList({ items: [{ label: t('pwa.ok'), onConfirm: close }], onBack: close });
-    overlay.append(mdWindow({ title: t('pwa.install'), className: 'narrow' }, [h('p', { textContent: t('pwa.ios') }), list.element]));
+    overlay.append(mdWindow({ title: t('pwa.install'), className: 'narrow' }, [h('p', { textContent: t(key) }), list.element]));
     parent.append(overlay);
   }
 
@@ -82,6 +86,7 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
         .catch(() => undefined)
         .finally(() => options.onOfferChange());
     } else if (offer() === 'ios') iosInstructions(parent);
+    else if (offer() === 'manual') iosInstructions(parent, 'pwa.desktop');
   }
 
   function banner(parent: HTMLElement): void {
@@ -120,5 +125,21 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     parent.append(node);
   }
 
-  return { offer, install, banner };
+  function corner(parent: HTMLElement): void {
+    parent.querySelector('.pwa-corner')?.remove();
+    if (offer() === 'none') return;
+    const ns = 'http://www.w3.org/2000/svg';
+    const icon = document.createElementNS(ns, 'svg');
+    icon.setAttribute('viewBox', '0 0 16 16');
+    icon.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    // An arrow down into a tray: install.
+    path.setAttribute('d', 'M8 2v8M4.5 6.5L8 10l3.5-3.5M2.5 11v2.5h11V11');
+    icon.append(path);
+    const button = h('button', { className: 'pwa-corner', type: 'button', title: t('pwa.install') }, [icon, h('span', { textContent: t('pwa.install') })]);
+    button.addEventListener('click', () => install(parent));
+    parent.append(button);
+  }
+
+  return { offer, install, banner, corner };
 }

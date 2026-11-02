@@ -9,12 +9,16 @@ import type { KeyValueStore } from '../adapters/storage';
  * The banner shows at most once per page load and never again after
  * "No volver a mostrar"; the title menu entry stays while there is an offer.
  */
-export type InstallOffer = 'prompt' | 'ios' | 'none';
+/**
+ * `manual`: a browser with no install prompt (yet), on a PC or elsewhere (owner, 2026-11-02:
+ * "y que en navegador tambien si es en pc"): the corner button still shows and explains how.
+ */
+export type InstallOffer = 'prompt' | 'ios' | 'manual' | 'none';
 
 export function installOffer(state: { standalone: boolean; hasPrompt: boolean; iosSafari: boolean }): InstallOffer {
   if (state.standalone) return 'none';
   if (state.hasPrompt) return 'prompt';
-  return state.iosSafari ? 'ios' : 'none';
+  return state.iosSafari ? 'ios' : 'manual';
 }
 
 /** iOS / iPadOS Safari (iPadOS reports a Mac but has touch points); other iOS browsers are excluded. */
@@ -26,7 +30,7 @@ export function isIosSafari(userAgent: string, maxTouchPoints: number): boolean 
 const BANNER_KEY = 'mazmorra-sombria.installBanner';
 
 export function bannerVisible(store: KeyValueStore, offer: InstallOffer, shownThisPage: boolean): boolean {
-  return offer !== 'none' && !shownThisPage && store.get(BANNER_KEY) !== 'never';
+  return (offer === 'prompt' || offer === 'ios') && !shownThisPage && store.get(BANNER_KEY) !== 'never';
 }
 
 export function neverShowBanner(store: KeyValueStore): void {

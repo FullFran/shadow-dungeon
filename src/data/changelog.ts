@@ -46,6 +46,14 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
+          es: 'En el título sale «Instalar juego» arriba a la derecha: en el móvil y en el ordenador te dice cómo tenerlo como una aplicación.',
+          en: '«Install game» shows in the title\'s top right corner: on phones and computers it tells you how to keep it as an app.',
+        },
+        {
+          es: 'Si tu navegador permite instalar el juego, en el título sale «Instalar juego» arriba a la derecha.',
+          en: 'If your browser can install the game, «Install game» shows in the title\'s top right corner.',
+        },
+        {
           es: 'Camino Hundido: tu primera partida es ahora una bajada corta hasta el pueblo que te enseña a jugar, y al final te espera Tu Sombra, que pelea con tus mismos movimientos. Al vencerla se abre el pueblo; la Cripta pasa a ser la primera mazmorra de verdad.',
           en: 'The Sunken Way: your first run is now a short descent to the town that teaches you how to play, and at its end Your Shadow waits, fighting with your own moves. Beat it and the town opens; the Crypt becomes the first real dungeon.',
         },
@@ -67,6 +75,10 @@ export const CHANGELOG: readonly Release[] = [
         },
       ],
       fixed: [
+        {
+          es: 'F1 ya no abre la ayuda del navegador en mitad de una partida, y si cambias de pestaña o de ventana jugando a solas la partida se pausa sola.',
+          en: 'F1 no longer opens the browser\'s help mid-run, and switching tab or window while playing alone pauses the run.',
+        },
         {
           es: 'El prólogo y las demás cinemáticas vuelven a avanzar solas: ya no se quedan esperando a que pulses sin avisar.',
           en: 'The prologue and the other cinematics move on by themselves again: they no longer sit waiting for a press without telling you.',
