@@ -54,8 +54,12 @@ export const CHANGELOG: readonly Release[] = [
           en: 'Stone signs teach each control the first time you need it, with keyboard, touch or gamepad keys. Playing alone, the run waits until you press.',
         },
         {
-          es: 'El menú del pueblo (Esc) es ahora un plano del pueblo: muévete entre los vecinos y lugares para abrir lo que ofrecen. Manteniendo Tab sale una rueda rápida con lo más usado.',
-          en: 'The town menu (Esc) is now a map of the town: move between its people and places to open what they offer. Holding Tab brings up a quick wheel with what you use most.',
+          es: 'El menú del pueblo (Esc) es ahora un plano de la zona en la que estás, con un punto que marca dónde estás: muévete entre los vecinos y lugares para abrir lo que ofrecen. Manteniendo Tab sale una rueda rápida con lo más usado.',
+          en: 'The town menu (Esc) is now a map of the zone you are in, with a mark where you stand: move between its people and places to open what they offer. Holding Tab brings up a quick wheel with what you use most.',
+        },
+        {
+          es: 'En el pueblo puedes correr: mantén Shift, o empuja el joystick hasta el borde.',
+          en: 'You can run in the town: hold Shift, or push the joystick to its edge.',
         },
         {
           es: 'Las súplicas del borde de la Sima, rehechas: los vecinos te esperan reunidos, cada uno te da un nombre y al final contestas a Phantump.',

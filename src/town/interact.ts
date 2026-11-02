@@ -25,10 +25,13 @@ export interface Walker {
 
 export const townArena = (grid: TileGrid): Arena => ({ width: grid.cols * TILE, height: grid.rows * TILE, tiles: grid });
 
-export function stepWalker(walker: Walker, move: Vec2, dtMs: number, arena: Arena): Walker {
+/** Running in the town (owner, 2026-11-02: "que en el pueblo haya opcion de correr"): this many times the walking speed. */
+export const RUN_FACTOR = 1.8;
+
+export function stepWalker(walker: Walker, move: Vec2, dtMs: number, arena: Arena, factor = 1): Walker {
   const dir = normalize(move);
   if (length(dir) === 0) return walker;
-  const pos = confineCircle(arena, add(walker.pos, scale(dir, (TUNING.player.moveSpeed * dtMs) / 1000)), TUNING.player.radius);
+  const pos = confineCircle(arena, add(walker.pos, scale(dir, (TUNING.player.moveSpeed * factor * dtMs) / 1000)), TUNING.player.radius);
   return { pos, facing: dir };
 }
 

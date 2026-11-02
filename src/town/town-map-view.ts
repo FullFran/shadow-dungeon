@@ -30,6 +30,8 @@ export interface TownMapViewOptions {
   placed: readonly (TownMapMarker & { entry: TownMapEntry })[];
   /** The column beside the plan: loose services, then the exit rows. */
   column: readonly TownMapEntry[];
+  /** Where the player stands, in tiles: a "you are here" mark on the plan. */
+  player?: { x: number; y: number };
   onClose: () => void;
 }
 
@@ -130,8 +132,20 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     const entry = entries[i]!.entry;
     caption.replaceChildren(h('strong', { textContent: entry.label }), document.createTextNode(` · ${entry.about}`));
   }
-  const plan = h('div', { className: 'town-map-board' }, [drawPlan(map), ...buttons.slice(0, placed.length)]);
+  // "You are here": a plain pulsing mark, never a character sprite.
+  const here = options.player ? [h('span', { className: 'town-map-here', title: '' })] : [];
+  if (options.player && here[0]) {
+    here[0].style.left = `${(options.player.x / cols) * 100}%`;
+    here[0].style.top = `${(options.player.y / rows) * 100}%`;
+  }
+  const plan = h('div', { className: 'town-map-board' }, [drawPlan(map), ...here, ...buttons.slice(0, placed.length)]);
+  // The plan keeps the map's aspect and grows to the room left (every zone, wide or tall: owner "el minimapa debe estar bien en todas las partes del pueblo").
+  plan.style.aspectRatio = `${cols} / ${rows}`;
+  plan.style.width = `min(100%, calc((94vh - 160px) * ${(cols / rows).toFixed(4)}))`;
   const side = h('div', { className: 'town-map-column' }, buttons.slice(placed.length));
+  // A long column (zones with few places put most services here) splits in two, filled down the first column first.
+  const perColumn = column.length > 9 ? Math.ceil(column.length / 2) : column.length;
+  side.style.gridTemplateRows = `repeat(${perColumn}, auto)`;
   const element = h('div', { className: 'md-window town-map' }, [h('h2', { className: 'md-window-title', textContent: options.heading }), h('div', { className: 'town-map-body' }, [plan, side]), caption]);
   select(0);
 

@@ -21,7 +21,7 @@ import { h, mdWindow } from '../ui/window';
 import { npcView } from './residents';
 import type { StoryProgress } from '../core/story';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
-import { nearestInteractable, stepWalker, townArena, type Interactable, type Walker } from './interact';
+import { nearestInteractable, RUN_FACTOR, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
@@ -700,6 +700,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const onKeyDown = (e: KeyboardEvent) => {
     // A window's cursor list already handled this key (its Esc must not also leave the town).
     if (exitWindow || closeShop || e.defaultPrevented) return;
+    // Shift is the run key while held (released in onKeyUp like the move keys).
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') held.add(e.code);
     if (MOVE_KEYS[e.code]) {
       e.preventDefault();
       if (!dialog) held.add(e.code);
@@ -828,6 +830,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       map,
       placed: markers.map((m) => ({ ...m, entry: entry(m.service, m.id) })),
       column: [...looseServices(markers, available).map((s) => entry(s)), ...end, { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose }],
+      player: { x: walker.pos.x / TILE, y: walker.pos.y / TILE },
       onClose,
     });
     const overlay = h('div', { className: 'town-shop' }, [open.element]);
@@ -933,7 +936,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     // The player turns to whoever comes up to it.
     if (plea && plea.phase !== 'done') walker = { ...walker, facing: { x: plea.pos.x - walker.pos.x, y: plea.pos.y - walker.pos.y } };
     const moving = move.x !== 0 || move.y !== 0;
-    walker = stepWalker(walker, move, dt, arena);
+    // Shift held, or the joystick pushed to its edge, runs (odd/tasks/menu-redesign.md: "opcion de correr").
+    const keysMove = [...held].some((code) => MOVE_KEYS[code]);
+    const running = held.has('ShiftLeft') || held.has('ShiftRight') || (!keysMove && Math.hypot(move.x, move.y) > 0.95);
+    walker = stepWalker(walker, move, dt, arena, running ? RUN_FACTOR : 1);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
     for (const w of map.wanderers) {
       const state = wanderers.get(w.id);
