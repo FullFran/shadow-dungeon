@@ -1,6 +1,6 @@
 import type { Records } from '../town/records';
 import type { SaveData } from './save';
-import { CRYPT } from '../data/dungeons';
+import { CRYPT, TUTORIAL } from '../data/dungeons';
 
 /** The screens a new adventure goes through before the run. */
 export type AdventureScreen = 'prologue' | 'quiz' | 'loadout';
@@ -25,31 +25,33 @@ export function nextAdventureScreen(progress: AdventureProgress): AdventureScree
 
 /**
  * The screens "Play" on the title goes through: the first-time prologue and
- * quiz, then the town (the hub is where every run starts), or the Crypt while
- * the town is still closed (odd/tasks/menu-redesign.md S7: like a souls, the
- * first dungeon comes before the hub).
+ * quiz, then the town (the hub is where every run starts), or the tutorial
+ * dungeon while the town is still closed (odd/tasks/tutorial-dungeon.md S1:
+ * like Hollow Knight's opening path, the way down to the town is the
+ * tutorial; the Crypt stays the first real dungeon, reached from the town).
  */
-export type PlayScreen = 'prologue' | 'quiz' | 'town' | 'crypt';
+export type PlayScreen = 'prologue' | 'quiz' | 'town' | 'tutorial';
 
-/** Where the title's "Play" goes next: the same first-time steps as a new adventure, then the town, or the Crypt until `townOpen`. */
+/** Where the title's "Play" goes next: the same first-time steps as a new adventure, then the town, or the tutorial dungeon until `townOpen`. */
 export function nextPlayScreen(progress: AdventureProgress & { townOpen: boolean }): PlayScreen {
   const next = nextAdventureScreen(progress);
   if (next !== 'loadout') return next;
-  return progress.townOpen ? 'town' : 'crypt';
+  return progress.townOpen ? 'town' : 'tutorial';
 }
 
 /** The parts of the save only the town can grow (a purchase, a learned move, a gacha species, a Senda chapter). */
 export type TownTraces = Pick<SaveData, 'owned' | 'upgrades' | 'learned' | 'story'>;
 
 /**
- * Whether the town is open: once the Crypt's guardian has fallen, or for a
- * player who already used the town before it opened this way (anything in
- * the save that only the town gives), so nobody who played earlier versions
- * is locked out of it.
+ * Whether the town is open: once the shadow at the end of the tutorial
+ * dungeon has fallen, or the Crypt's guardian (the first dungeon before the
+ * tutorial one existed), or for a player who already used the town (anything
+ * in the save that only the town gives), so nobody who played earlier
+ * versions is locked out of it.
  */
 export function townOpen(cleared: ReadonlySet<string>, save: TownTraces): boolean {
   const some = (o: object | undefined): boolean => o !== undefined && Object.values(o).some((v) => (typeof v === 'number' ? v > 0 : Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null));
-  return cleared.has(CRYPT.id) || (save.owned?.length ?? 0) > 0 || some(save.upgrades) || some(save.learned) || some(save.story);
+  return cleared.has(TUTORIAL.id) || cleared.has(CRYPT.id) || (save.owned?.length ?? 0) > 0 || some(save.upgrades) || some(save.learned) || some(save.story);
 }
 
 /** The screens the title's "Play online" goes through: the same first-time steps, so nobody reaches a room without a starter. */

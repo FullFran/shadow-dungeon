@@ -27,7 +27,7 @@ export interface RoomDef {
   pools?: readonly { x: number; y: number; radius: number }[];
 }
 
-export type RoomId = 'sandbox' | 'boss' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss'
+export type RoomId = 'sandbox' | 'boss' | 'mirror' | 'hollow' | 'roost' | 'vault' | 'grotto' | 'wreck' | 'den' | 'rift' | 'eclipse' | 'abyss'
   // A Senda's mid-boss in a guardian's arena needs a way on (docs/story-quests.md): the rift and the roost with an exit.
   | 'rift-way'
   | 'roost-way'
@@ -281,6 +281,24 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     playerStart: { x: 320, y: 330 },
     spawns: [{ species: 'decidueye', x: 320, y: 120 }],
     exit: { x: 280, y: 0, width: 80, height: 50 },
+    next: null,
+  },
+  /**
+   * The end of the way to the town (the tutorial dungeon, docs/gdd.md §3):
+   * a small open floor with two low stones to step round, where the player
+   * meets its own shadow. Small enough that the view keeps it on screen.
+   */
+  mirror: {
+    id: 'mirror',
+    width: 640,
+    height: 440,
+    obstacles: [
+      { x: 150, y: 190, width: 36, height: 36 },
+      { x: 454, y: 190, width: 36, height: 36 },
+    ],
+    playerStart: { x: 320, y: 370 },
+    spawns: [{ species: 'shadow-self', x: 320, y: 140 }],
+    exit: null,
     next: null,
   },
   ...STORY_ROOMS,

@@ -330,9 +330,10 @@ export function chooseItem(run: RunState, world: WorldState, index: number): { r
   return { run: { ...run, offer: null }, world: { ...world, player: addItem(world.player, item) } };
 }
 
-function heal(world: WorldState): WorldState {
+function heal(world: WorldState, base: number = RUN.floorHeal): WorldState {
   const { hp, maxHp } = world.player;
-  const share = RUN.floorHeal + playerStats(world.player).floorHeal;
+  // A dungeon may heal more on its floors (the tutorial dungeon heals fully: data/dungeons.ts `floorHeal`).
+  const share = base + playerStats(world.player).floorHeal;
   return { ...world, player: { ...world.player, hp: Math.min(maxHp, hp + share * maxHp) } };
 }
 
@@ -346,7 +347,7 @@ function goDown(leaving: RunState, leavingWorld: WorldState, floor: number): { r
   const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
   const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, ...clock };
-  return { run: next, world: enterFloor(descendPact(heal(world)), next), bonusMs };
+  return { run: next, world: enterFloor(descendPact(heal(world, dungeonOf(run).floorHeal)), next), bonusMs };
 }
 
 /** The run clock after `dtMs` more of play (the endless dungeon only; other runs have none). */

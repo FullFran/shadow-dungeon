@@ -69,7 +69,7 @@ import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, CRYPT, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -584,15 +584,15 @@ function playScreen(root: HTMLElement): void {
   const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen, townOpen: townIsOpen() });
   if (next === 'prologue') prologue(root, () => playScreen(root));
   else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
-  // Like a souls, the first dungeon comes before the hub (odd/tasks/menu-redesign.md S7): straight into the Crypt.
-  else if (next === 'crypt') enterDungeon(root, CRYPT.id, () => titleScreen(root, 0));
+  // Like Hollow Knight's opening path, the way down to the town is the tutorial (odd/tasks/tutorial-dungeon.md S1): straight into it.
+  else if (next === 'tutorial') enterDungeon(root, TUTORIAL.id, () => titleScreen(root, 0));
   else townScreen(root);
 }
 
-/** Whether the town is open on this device (adventure-route.ts `townOpen`: the Crypt cleared, or town progress already in the save). */
+/** Whether the town is open on this device (adventure-route.ts `townOpen`: the tutorial dungeon or the Crypt cleared, or town progress already in the save). */
 const townIsOpen = (): boolean => townOpen(cleared(), loadSave(store));
 
-/** Where a solo run goes back to: the town once it is open, the title before (the next "Play" enters the Crypt again). */
+/** Where a solo run goes back to: the town once it is open, the title before (the next "Play" enters the tutorial dungeon again). */
 const hub = (root: HTMLElement): void => (townIsOpen() ? townScreen(root) : titleScreen(root, 0));
 
 /** The title's "Play online": the same first-time steps as Play, so a new player chooses a starter before reaching a room. */
@@ -1928,7 +1928,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story) };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: tierFor(dungeonById(dungeon), sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story)) };
   // `?boss=<seed>`: that herald on a Sima herald floor.
   const boss = devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
