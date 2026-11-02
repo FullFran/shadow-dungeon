@@ -109,6 +109,14 @@
       @keyframes tutorial-sign-in { 0% { opacity: 0; transform: translate(-50%, 10px); filter: brightness(1.6); } 100% { opacity: 1; transform: translate(-50%, 0); filter: brightness(1); } }
       @keyframes tutorial-sign-blink { 50% { opacity: 0.55; } }
       @media (prefers-reduced-motion: reduce) { .tutorial-sign.is-waiting, .tutorial-sign-footer { animation: none; } }
+      /* Solo, a Senda's spoken line waits in a dialog box with the run paused (src/app/game.ts tell; odd/tasks/menu-redesign.md S13). */
+      .story-box { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); width: min(720px, 90vw); box-sizing: border-box; padding: 14px 20px 10px; z-index: 6; cursor: pointer; border-radius: 10px;
+        background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom)); border: 3px solid var(--md-border); box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 2px var(--md-border-shade), 0 8px 0 rgba(0, 0, 0, 0.4); animation: story-box-in 0.25s ease-out both; }
+      .story-box-text { margin: 0; font-family: var(--md-text-font); font-size: 19px; line-height: 1.45; color: var(--md-text); }
+      .story-box-next { margin: 6px 0 0; text-align: right; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); animation: tutorial-sign-blink 1.4s ease-in-out infinite; }
+      .story-box-next kbd { display: inline-block; margin: 0 2px; padding: 0 6px; border-radius: 4px; font-family: var(--md-font); font-size: 12px; color: var(--md-text); background: rgba(5, 6, 13, 0.45); border: 1px solid var(--md-border-shade); }
+      @keyframes story-box-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+      @media (prefers-reduced-motion: reduce) { .story-box, .story-box-next { animation: none; } }
       /* Settings in tabs (src/app/main.ts settingsScreen; odd/tasks/menu-redesign.md S6): the tab bar over the list, the cursor's sentence under it. */
       .settings-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
       .settings-tabs button { font: inherit; font-size: 18px; color: var(--md-text-dim); background: rgba(5, 6, 13, 0.35); border: 2px solid var(--md-border-shade); border-radius: 8px; padding: 2px 10px; cursor: pointer; }

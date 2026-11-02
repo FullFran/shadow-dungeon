@@ -1,4 +1,4 @@
-import { tutorialSign } from '../ui/tutorial-sign';
+import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
 import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
@@ -443,11 +443,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     sign = null;
   }
   const onSignKey = (e: KeyboardEvent) => {
-    if (!sign || !signWaits || !['Enter', 'Space', 'NumpadEnter', 'Escape'].includes(e.code)) return;
-    // The press closes the sign only: the run must not read it as a roll or a pick.
+    if ((!sign && !storyBox) || !signWaits || !['Enter', 'Space', 'NumpadEnter', 'Escape'].includes(e.code)) return;
+    // The press closes the story line or the sign only: the run must not read it as a roll or a pick.
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (!e.repeat) dismissSign();
+    if (e.repeat) return;
+    if (storyBox) nextStoryLine();
+    else dismissSign();
   };
   if (signWaits) window.addEventListener('keydown', onSignKey, true);
   function tickSign(): void {
@@ -561,6 +563,34 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /**
+   * The Senda's spoken lines (odd/tasks/menu-redesign.md S13, owner: "que en el
+   * modo un jugador paren el juego hasta que le des"): alone, each line waits in
+   * a dialog box with the run paused until a press; in a shared run (never
+   * paused) they go to the log as before. Either way the log keeps them.
+   */
+  const storyLines: string[] = [];
+  let storyBox: HTMLElement | null = null;
+  const tell = (text: string, tone: LogTone) => {
+    say(text, tone);
+    if (net) return;
+    storyLines.push(text);
+    if (!storyBox) nextStoryLine();
+  };
+  function nextStoryLine(): void {
+    storyBox?.remove();
+    storyBox = null;
+    const text = storyLines.shift();
+    if (text === undefined) return;
+    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    storyBox = h('div', { className: 'story-box', role: 'status' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
+    storyBox.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      nextStoryLine();
+    });
+    overlayParent.append(storyBox);
+  }
   /** The Senda chapter of this run, its memory fragment on this floor (where it lies, which), the fragments read, the low-HP line said, the bosses whose last lines were said. */
   const story = options.story ? { run: options.story, chapter: chapterOf(storyOf(options.story.line)!, options.story.chapter) } : null;
   let memory: { pos: Vec2; index: number } | null = null;
@@ -571,7 +601,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The Pokémon's own words in the log: «Mimikyu: …». */
   const voice = (trigger: StoryTrigger) => {
     if (!story) return;
-    say(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
+    tell(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
   };
   /** A Senda's floor: the voice, the fragment it hides, its boss's epithet and first words. */
   const storyFloor = () => {
@@ -595,7 +625,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const foe = world.enemies.find((e) => e.boss);
     if (!boss || !foe) return;
     intro = { name: t(`species.${foe.species}`), subtitle: t(storyKeys.bossTitle(line, chapter, boss.floor)), shownAtMs: realMs };
-    for (let i = 0; i < boss.pre; i++) say(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
+    for (let i = 0; i < boss.pre; i++) tell(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
   };
   /** After a step: a boss of the chapter fell (its last words), the low-HP line, a fragment picked up. */
   const watchStory = (events: readonly GameEvent[]) => {
@@ -604,7 +634,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const boss = story.chapter.bosses.find((b) => b.floor === run.floor);
     if (boss && !bossesMourned.has(boss.floor) && events.some((e) => e.type === 'enemyDefeated' && prev.enemies.some((x) => x.id === e.enemyId && x.boss))) {
       bossesMourned.add(boss.floor);
-      for (let i = 0; i < boss.post; i++) say(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
+      for (let i = 0; i < boss.post; i++) tell(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
     }
     if (!lowHpSaid && world.player.hp > 0 && world.player.hp < world.player.maxHp * STORY_LOW_HP) {
       lowHpSaid = true;
@@ -1442,7 +1472,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
     const paused =
-      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && sign !== null);
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && (sign !== null || storyBox !== null));
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -1600,6 +1630,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       spectateButton.remove();
       sign?.element.remove();
       window.removeEventListener('keydown', onSignKey, true);
+      storyBox?.remove();
       window.removeEventListener('keydown', onKeyDown);
     },
   };
