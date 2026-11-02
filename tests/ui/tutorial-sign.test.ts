@@ -27,6 +27,12 @@ describe('tutorial sign text', () => {
           expect(signParts(text).map((p) => p.text).join(''), `${language} ${hint} ${device}`).not.toMatch(/[[\]]/);
         }
       }
+      // Solo, a sign waits for a press and says how to go on, per device (odd/tasks/menu-redesign.md S13).
+      for (const device of ['keys', 'touch', 'pad'] as TutorialDevice[]) {
+        const line = texts[`tutorial.continue.${device}`];
+        expect(line, `${language} continue ${device}`).toBeTruthy();
+        expect(signParts(line!).map((p) => p.text).join('')).not.toMatch(/[[\]]/);
+      }
     }
   });
 });

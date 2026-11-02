@@ -25,8 +25,8 @@ export function signParts(text: string): SignPart[] {
   return parts;
 }
 
-/** The sign element: emblem, engraved title, the text with its keycaps. */
-export function tutorialSign(title: string, text: string): HTMLElement {
+/** The sign element: emblem, engraved title, the text with its keycaps, and (solo: it waits) the line that says how to go on. */
+export function tutorialSign(title: string, text: string, footer?: string): HTMLElement {
   const body = h(
     'p',
     { className: 'tutorial-sign-text' },
@@ -35,5 +35,6 @@ export function tutorialSign(title: string, text: string): HTMLElement {
   return h('div', { className: 'tutorial-sign', role: 'status' }, [
     h('div', { className: 'tutorial-sign-head' }, [h('span', { className: 'tutorial-sign-emblem' }), h('span', { className: 'tutorial-sign-title', textContent: title })]),
     body,
+    ...(footer ? [h('p', { className: 'tutorial-sign-footer' }, signParts(footer).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))] : []),
   ]);
 }

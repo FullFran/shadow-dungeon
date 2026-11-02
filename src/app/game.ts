@@ -436,8 +436,22 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const pending = new Set<string>([...signQueue, ...(sign ? [sign.hint] : [])]);
     signQueue.push(...hintsFor(moment, new Set(TUTORIAL_HINTS.filter((hint) => tutorial.seen(hint) || pending.has(hint)))));
   }
+  /** Solo, a sign waits for a press with the run paused (odd/tasks/menu-redesign.md S13); a shared run never stops, so there it fades by itself. */
+  const signWaits = !net;
+  function dismissSign(): void {
+    sign?.element.remove();
+    sign = null;
+  }
+  const onSignKey = (e: KeyboardEvent) => {
+    if (!sign || !signWaits || !['Enter', 'Space', 'NumpadEnter', 'Escape'].includes(e.code)) return;
+    // The press closes the sign only: the run must not read it as a roll or a pick.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (!e.repeat) dismissSign();
+  };
+  if (signWaits) window.addEventListener('keydown', onSignKey, true);
   function tickSign(): void {
-    if (sign && realMs - sign.shownAtMs >= SIGN_MS) {
+    if (sign && !signWaits && realMs - sign.shownAtMs >= SIGN_MS) {
       sign.element.remove();
       sign = null;
     }
@@ -446,7 +460,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const hint = signQueue.shift()!;
     options.tutorial.mark(hint);
     const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
-    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)));
+    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)), signWaits ? t(`tutorial.continue.${device}`) : undefined);
+    if (signWaits) {
+      element.classList.add('is-waiting');
+      element.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissSign();
+      });
+    }
     overlayParent.append(element);
     sign = { hint, element, shownAtMs: realMs };
   }
@@ -1420,7 +1442,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
     const paused =
-      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net));
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && sign !== null);
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -1577,6 +1599,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay?.dispose();
       spectateButton.remove();
       sign?.element.remove();
+      window.removeEventListener('keydown', onSignKey, true);
       window.removeEventListener('keydown', onKeyDown);
     },
   };
