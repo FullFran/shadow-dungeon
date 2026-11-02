@@ -106,7 +106,7 @@ import { isLinkProbe } from '../net/diagnostics';
 import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
 import { setupPwa } from '../ui/pwa';
-import { endActions, endHeading, materialsEarned, returnPlace, victoryLine, townOf, type ReturnPlace } from './after-run';
+import { endActions, endHeading, hostGoneRoute, materialsEarned, returnPlace, roomGone, victoryLine, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
@@ -377,11 +377,23 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   const transport: Transport<string> = lag ? new LagTransport(base, { ...lag, scheduler, random: Math.random }) : base;
   const delay = Number.parseFloat(params.get('delay') ?? '');
   const session = createSession({ transport, scheduler, build: buildLabel(), ...(isLinkProbe(base) ? { probe: base } : {}), ...(Number.isFinite(delay) ? { renderDelayMs: Math.max(0, delay) } : {}) });
-  // The host left: a run still going ends here, paid as a defeat (its end screen says why); elsewhere a notice and the way back to the menu.
-  session.onHostLeft(() => {
+  // The host left, or its link stayed down past the grace window: a run still going ends here, paid as a defeat
+  // (its end screen says why: left, or the connection was lost); elsewhere a message saying so and the way back to the menu.
+  session.onHostLeft((why) => {
     if (current !== session) return;
-    if (running) return running.cutShort('hostLeft');
-    messageScreen(root, t('net.hostLeft'), returnPlace('lobby'));
+    const route = hostGoneRoute(why, running !== null);
+    if ('cut' in route) return running?.cutShort(route.cut);
+    messageScreen(root, t(route.message), returnPlace('lobby'));
+  });
+  // The link to the host dropped: a line stays on screen while the session waits for it (the guest's run stands still meanwhile).
+  let reconnectLine: HTMLElement | null = null;
+  session.onReconnecting((on) => {
+    reconnectLine?.remove();
+    reconnectLine = null;
+    if (!on || current !== session) return;
+    reconnectLine = h('p', { className: 'net-toast', textContent: t('net.reconnecting') });
+    reconnectLine.setAttribute('role', 'status');
+    root.append(reconnectLine);
   });
   return session;
 }
@@ -1824,8 +1836,8 @@ function townLobby(root: HTMLElement): void {
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
 function backToRoom(root: HTMLElement): void {
-  // The room is gone (the host left): back to the hub, alone.
-  if (!room || current !== room.session) return townScreen(root);
+  // The room is gone (the host left or its link was lost): back to the hub, alone (the title while the town is closed).
+  if (!room || current !== room.session) return hub(root);
   if (room.asHost) {
     room.seed = runSeed();
     room.session.reopenLobby(room.seed);
@@ -2017,8 +2029,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
         }
       : {}),
     onEnd: (result, summary) => {
-      // The host left mid-run: the room is gone, this peer goes back to the hub alone (after being paid below).
-      if (summary.cutShort === 'hostLeft') leaveNet();
+      // The host left mid-run (or its link was lost): the room is gone, this peer goes back to the hub alone (after being paid below).
+      if (roomGone(summary.cutShort)) leaveNet();
       // A shrine trial keeps its own records and never counts as a run (no dungeon records, no run coins).
       if (trial && summary.trial) return trialEnd(root, trial, result, summary);
       // Solo and hosted runs count for the notice board; a guest's run is the host's.

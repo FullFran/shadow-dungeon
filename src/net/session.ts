@@ -64,7 +64,8 @@ function withSkin(entry: RosterEntry, shiny: boolean | undefined, female: boolea
 
 export interface SessionOptions {
   transport: Transport<string>;
-  scheduler: Pick<Scheduler, 'now'>;
+  /** Time, and timers for the grace window of a dropped link (without `setTimeout`, a dropped link is gone at once). */
+  scheduler: Pick<Scheduler, 'now'> & Partial<Pick<Scheduler, 'setTimeout'>>;
   /** How far in the past remote entities are drawn (ms). */
   renderDelayMs?: number;
   sendEveryTicks?: number;
@@ -86,6 +87,9 @@ export interface StartInfo {
   /** A shrine trial for the whole room instead of a dungeon run (absent: a run). */
   trial?: RoomTrial;
 }
+
+/** How the room ended for a guest: the host left (its `leave` arrived), or its link stayed down past the grace window. */
+export type HostGone = 'left' | 'lost';
 
 /** Why a guest was not let in. */
 export type RefusedReason = 'full' | 'version';
@@ -140,8 +144,12 @@ export interface NetSession {
   onFull(handler: (reason: RefusedReason, theirs?: string) => void): void;
   /** Host: a player on another version of the game knocked and was turned away (its nickname, sanitised; may be empty; `theirs`: its build label, when it sent one). */
   onVersionRefused(handler: (name: string, theirs?: string) => void): void;
-  /** Guest (in the lobby or mid-run): the host left; fires once. */
-  onHostLeft(handler: () => void): void;
+  /** Guest (in the lobby or mid-run): the host left (`left`) or its link stayed down past `PEER_GRACE_MS` (`lost`); fires once. */
+  onHostLeft(handler: (why: HostGone) => void): void;
+  /** Guest: the link to the host dropped and the session waits for it to come back (at most `PEER_GRACE_MS`). */
+  reconnecting(): boolean;
+  /** Guest: fires with true when the link to the host drops, and with false when it comes back or the room ends. */
+  onReconnecting(handler: (on: boolean) => void): void;
   /** Not started yet: the other tabs knocking at the same time (for the local host election). */
   rivals(): readonly string[];
   /** Sends a round-trip probe to every peer (also done every 60 steps). */
@@ -202,6 +210,14 @@ export const STALE_MS = 3000;
 const SNAP_DISTANCE = 64;
 /** Connection transitions kept for the technical report. */
 const MAX_TRANSITIONS = 40;
+/**
+ * How long a peer whose link dropped (Trystero's peer leave: ICE failed, or
+ * disconnected for 5 s) keeps its place before it counts as gone. Trystero
+ * announces again on a drop and finds the same peer id when the network
+ * comes back, so a blip no longer ends the room. An explicit `leave` is
+ * never delayed.
+ */
+export const PEER_GRACE_MS = 15_000;
 
 const pick = <T>(a: T, b: T, t: number): T => (t < 1 ? a : b);
 
@@ -288,7 +304,13 @@ export function createSession(options: SessionOptions): NetSession {
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
   const fullHandlers: Array<(reason: RefusedReason, theirs?: string) => void> = [];
   const versionHandlers: Array<(name: string, theirs?: string) => void> = [];
-  const hostLeftHandlers: Array<() => void> = [];
+  const hostLeftHandlers: Array<(why: HostGone) => void> = [];
+  const reconnectHandlers: Array<(on: boolean) => void> = [];
+  /** Peers whose link dropped, still in the roster during their grace window (the token tells a stale timer apart). */
+  const away = new Map<string, number>();
+  let awayToken = 0;
+  /** Guest: the host's link is down and its grace window is running. */
+  let hostAway = false;
   const lobbyHandlers: Array<() => void> = [];
   /** Town walkers by transport peer id. */
   const walkers = new Map<string, InterpBuffer<TownPresence>>();
@@ -344,13 +366,20 @@ export function createSession(options: SessionOptions): NetSession {
     for (const handler of rosterHandlers) handler(roster);
   };
 
-  const hostLeft = () => {
+  const setHostAway = (on: boolean) => {
+    if (on === hostAway) return;
+    hostAway = on;
+    for (const handler of reconnectHandlers) handler(on);
+  };
+
+  const hostLeft = (why: HostGone) => {
     // A guest held after quitting a room run (toldToWait) is still in the room: it must learn the host is gone too.
     if (role === 'host' || hostGone || !(started || admitted || toldToWait)) return;
     hostGone = true;
     toldToWait = false;
-    note('hostLeft');
-    for (const handler of hostLeftHandlers) handler();
+    setHostAway(false);
+    note(why === 'lost' ? 'hostLost' : 'hostLeft');
+    for (const handler of hostLeftHandlers) handler(why);
   };
 
   /** Guest still waiting to be let in: knock (again). */
@@ -402,8 +431,38 @@ export function createSession(options: SessionOptions): NetSession {
     send(startMessage(), true);
   }
 
-  function dropPeer(peer: string): void {
+  /** The transport lost `peer`: a roster member keeps its place for `PEER_GRACE_MS` (it may come back); anyone else is gone now. */
+  function peerLeft(peer: string): void {
     note('peerLeave');
+    const entry = roster.find((r) => r.peer === peer);
+    if (!entry || left || hostGone || !scheduler.setTimeout) return dropPeer(peer, 'lost');
+    const token = ++awayToken;
+    away.set(peer, token);
+    if (entry.id === 'p1' && role !== 'host') setHostAway(true);
+    scheduler.setTimeout(() => {
+      if (away.get(peer) !== token) return;
+      away.delete(peer);
+      note('peerGone');
+      dropPeer(peer, 'lost');
+    }, PEER_GRACE_MS);
+  }
+
+  /** A peer in its grace window is heard from again: it keeps its place, and the host brings it up to date. */
+  function peerBack(peer: string): void {
+    if (!away.delete(peer)) return;
+    note('peerBack');
+    if (roster.find((r) => r.peer === peer)?.id === 'p1') setHostAway(false);
+    if (role !== 'host') return;
+    // What it may have missed while away: the room back in the town, a run begun, a floor moved to.
+    if (lobby) send(lobbyMessage(), true);
+    else {
+      send(startMessage(), true);
+      send({ t: 'floor', floor: hostFloor }, true);
+    }
+  }
+
+  function dropPeer(peer: string, why: HostGone): void {
+    away.delete(peer);
     lastHeard.delete(peer);
     const entry = roster.find((r) => r.peer === peer);
     held.delete(peer);
@@ -411,7 +470,7 @@ export function createSession(options: SessionOptions): NetSession {
     pending.delete(peer);
     walkers.delete(peer);
     if (!entry) return;
-    if (entry.id === 'p1') hostLeft();
+    if (entry.id === 'p1') hostLeft(why);
     setRoster(roster.filter((r) => r !== entry));
     players.delete(entry.id);
     statuses.delete(entry.id);
@@ -426,6 +485,8 @@ export function createSession(options: SessionOptions): NetSession {
   transport.onMessage((from, wire) => {
     tracker.received(wire.length, scheduler.now());
     lastHeard.set(from, scheduler.now());
+    // Any word from a peer in its grace window means its link is back (the transport may not say so first).
+    if (away.has(from)) peerBack(from);
     const message = decodeMessage(wire);
     if (!message) return;
     switch (message.t) {
@@ -483,8 +544,10 @@ export function createSession(options: SessionOptions): NetSession {
       case 'wait':
         if (message.peer === transport.selfId && !started) {
           note('wait');
+          // Told once per wait: a repeat (a knock again after a resync) says nothing new.
+          const already = toldToWait;
           toldToWait = true;
-          for (const handler of waitHandlers) handler();
+          if (!already) for (const handler of waitHandlers) handler();
         }
         return;
       case 'retry':
@@ -560,8 +623,10 @@ export function createSession(options: SessionOptions): NetSession {
         return;
       }
       case 'leave': {
-        if (message.id === 'p1') hostLeft();
         const dropped = roster.find((r) => r.id === message.id);
+        // Said on purpose: no grace window for it.
+        if (dropped) away.delete(dropped.peer);
+        if (message.id === 'p1') hostLeft('left');
         if (dropped) walkers.delete(dropped.peer);
         players.delete(message.id);
         statuses.delete(message.id);
@@ -591,9 +656,10 @@ export function createSession(options: SessionOptions): NetSession {
     clock = null;
   }
 
-  transport.onPeerLeave(dropPeer);
-  transport.onPeerJoin(() => {
+  transport.onPeerLeave(peerLeft);
+  transport.onPeerJoin((peer) => {
     note('peerJoin');
+    peerBack(peer);
     knock();
   });
 
@@ -693,6 +759,8 @@ export function createSession(options: SessionOptions): NetSession {
     onFull: (handler) => void fullHandlers.push(handler),
     onVersionRefused: (handler) => void versionHandlers.push(handler),
     onHostLeft: (handler) => void hostLeftHandlers.push(handler),
+    reconnecting: () => hostAway,
+    onReconnecting: (handler) => void reconnectHandlers.push(handler),
     rivals: () => (started || role === 'host' ? [] : [...pending.keys()]),
     ping() {
       send({ t: 'ping', at: scheduler.now() }, true);
@@ -831,7 +899,10 @@ export function createSession(options: SessionOptions): NetSession {
     leave() {
       if (left) return;
       left = true;
-      if (localId) send({ t: 'leave', id: localId }, true);
+      away.clear();
+      // Said out loud (in a run, or listed in the room's town before one), so nobody waits out a grace window for it.
+      const id = localId ?? roster.find((r) => r.peer === transport.selfId)?.id;
+      if (id) send({ t: 'leave', id }, true);
       transport.close();
     },
   };

@@ -59,6 +59,14 @@ export function createFakeScheduler(start = 0): FakeScheduler {
 /** In-memory transports sharing one hub: instant, lossless delivery (tests, loopback). */
 export interface MemoryHub<M> {
   connect(id: string): Transport<M>;
+  /**
+   * The link of `id` drops without anyone leaving (a network blip: WebRTC's
+   * ICE gives up and Trystero reports a peer leave on both ends). Messages to
+   * and from it are lost until `restore`.
+   */
+  drop(id: string): void;
+  /** The dropped link of `id` comes back (Trystero finds the same peer id again): both ends see a peer join. */
+  restore(id: string): void;
 }
 
 export function createMemoryHub<M>(): MemoryHub<M> {
@@ -69,25 +77,49 @@ export function createMemoryHub<M>(): MemoryHub<M> {
     leave: Array<(peer: string) => void>;
   }
   const nodes = new Map<string, Node>();
+  const offline = new Set<string>();
+  /** The other nodes `id` can reach now (none while its link is down). */
+  const linked = (id: string): Node[] => (offline.has(id) ? [] : [...nodes.values()].filter((n) => n.id !== id && !offline.has(n.id)));
   return {
     connect(id) {
       const node: Node = { id, message: [], join: [], leave: [] };
-      for (const other of nodes.values()) other.join.forEach((h) => h(id));
+      for (const other of linked(id)) other.join.forEach((h) => h(id));
       nodes.set(id, node);
       return {
         selfId: id,
-        peers: () => [...nodes.keys()].filter((k) => k !== id),
+        peers: () => linked(id).map((n) => n.id),
         send(message) {
-          for (const other of [...nodes.values()]) if (other.id !== id) other.message.forEach((h) => h(id, message));
+          for (const other of linked(id)) other.message.forEach((h) => h(id, message));
         },
         onMessage: (h) => void node.message.push(h),
         onPeerJoin: (h) => void node.join.push(h),
         onPeerLeave: (h) => void node.leave.push(h),
         close() {
+          const others = linked(id);
           nodes.delete(id);
-          for (const other of nodes.values()) other.leave.forEach((h) => h(id));
+          offline.delete(id);
+          for (const other of others) other.leave.forEach((h) => h(id));
         },
       };
+    },
+    drop(id) {
+      const node = nodes.get(id);
+      if (!node || offline.has(id)) return;
+      const others = linked(id);
+      offline.add(id);
+      for (const other of others) {
+        other.leave.forEach((h) => h(id));
+        node.leave.forEach((h) => h(other.id));
+      }
+    },
+    restore(id) {
+      const node = nodes.get(id);
+      if (!node || !offline.has(id)) return;
+      offline.delete(id);
+      for (const other of linked(id)) {
+        other.join.forEach((h) => h(id));
+        node.join.forEach((h) => h(other.id));
+      }
     },
   };
 }
