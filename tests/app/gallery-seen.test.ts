@@ -39,6 +39,14 @@ describe('the gallery\'s unlocks', () => {
     expect(galleryUnlocked({ kind: 'plea' }, readGallerySeen(store, true))).toBe(true);
   });
 
+  it('a cleared Sunken Way unlocks Tu Sombra\'s cinematics (odd/tasks/tutorial-dungeon.md S8)', () => {
+    const store = storeOf({ 'mazmorra-sombria.records': JSON.stringify({ runs: 1, victories: 1, bestLevel: 3, lastSpecies: 'cubone', dungeons: { 'sunken-way': { bestFloor: 3, cleared: true } } }) });
+    const seen = readGallerySeen(store, true);
+    expect(galleryUnlocked({ kind: 'guardian', species: 'shadow-self', phase: 'pre' }, seen)).toBe(true);
+    expect(galleryUnlocked({ kind: 'guardian', species: 'shadow-self', phase: 'post' }, seen)).toBe(true);
+    expect(galleryUnlocked({ kind: 'guardian', species: 'shadow-self', phase: 'pre' }, readGallerySeen(memoryStore(), true))).toBe(false);
+  });
+
   it('reading the unlocks writes nothing', () => {
     const store = storeOf(OLD_PROFILE);
     const before = store.dump();
