@@ -41,6 +41,48 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.11.0',
+    date: '2026-11-02',
+    sections: {
+      new: [
+        {
+          es: 'Camino Hundido: tu primera partida es ahora una bajada corta hasta el pueblo que te enseña a jugar, y al final te espera Tu Sombra, que pelea con tus mismos movimientos. Al vencerla se abre el pueblo; la Cripta pasa a ser la primera mazmorra de verdad.',
+          en: 'The Sunken Way: your first run is now a short descent to the town that teaches you how to play, and at its end Your Shadow waits, fighting with your own moves. Beat it and the town opens; the Crypt becomes the first real dungeon.',
+        },
+        {
+          es: 'Carteles de piedra que te enseñan cada control la primera vez que lo necesitas, con las teclas del teclado, del táctil o del mando. Jugando a solas, la partida se para hasta que pulsas.',
+          en: 'Stone signs teach each control the first time you need it, with keyboard, touch or gamepad keys. Playing alone, the run waits until you press.',
+        },
+        {
+          es: 'El menú del pueblo (Esc) es ahora un plano del pueblo: muévete entre los vecinos y lugares para abrir lo que ofrecen. Manteniendo Tab sale una rueda rápida con lo más usado.',
+          en: 'The town menu (Esc) is now a map of the town: move between its people and places to open what they offer. Holding Tab brings up a quick wheel with what you use most.',
+        },
+        {
+          es: 'Las súplicas del borde de la Sima, rehechas: los vecinos te esperan reunidos, cada uno te da un nombre y al final contestas a Phantump.',
+          en: 'The pleas on the Sima\'s rim, remade: the villagers wait gathered, each gives you one name, and at the end you answer Phantump.',
+        },
+      ],
+      improved: [
+        {
+          es: 'Título y Opciones nuevos: «Jugar» destaca y dice adónde te lleva, y las opciones van agrupadas con su icono. Los Ajustes van por pestañas y cada opción explica qué hace.',
+          en: 'New title and Options: «Play» stands out and says where it leads, and the options are grouped with their icons. Settings come in tabs and each option says what it does.',
+        },
+        {
+          es: 'Textos más legibles: las descripciones, los textos largos y las casillas donde escribes usan una letra pensada para leerse bien.',
+          en: 'Easier to read: descriptions, long texts and the fields you type in use a typeface made to read well.',
+        },
+        {
+          es: 'Cinemáticas: el texto avanza al pulsar, o en automático con el botón Auto. Jugando a solas, las palabras de las Sendas paran la partida hasta que pulsas.',
+          en: 'Cinematics: the text moves on when you press, or by itself with the Auto button. Playing alone, the Sendas\' spoken lines pause the run until you press.',
+        },
+        {
+          es: 'En el móvil, el aviso legal ya no tapa los menús, y las pistas hablan de tocar en vez de teclas.',
+          en: 'On phones the legal notice no longer covers the menus, and the hints talk about tapping instead of keys.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.10.3',
     date: '2026-11-02',
     sections: {
