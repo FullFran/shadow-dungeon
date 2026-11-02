@@ -134,6 +134,53 @@ describe('a dropped link gets a grace window before anyone is gone', () => {
     expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
   });
 
+  // Verifier B1: a reload is a new peer id; the old one's held slot must not turn the reloaded page away as "full".
+  it('a guest reloading its page in a full 4-player room gets back in (the away slot gives way)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(9, 1, 'mimikyu', { lobby: true });
+    for (const id of ['a', 'b', 'c']) peer(hub, id, scheduler).session.join('mimikyu', LOADOUT);
+    expect(host.roster).toHaveLength(4);
+    hub.drop('c');
+    const back = peer(hub, 'c2', scheduler);
+    const refused: string[] = [];
+    back.session.onFull((why) => refused.push(why));
+    back.session.join('mimikyu', LOADOUT);
+    expect(refused).toEqual([]);
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a', 'b', 'c2']);
+    // A full room with nobody away still turns a fifth player away.
+    const fifth = peer(hub, 'e', scheduler);
+    const turned: string[] = [];
+    fifth.session.onFull((why) => turned.push(why));
+    fifth.session.join('mimikyu', LOADOUT);
+    expect(turned).toEqual(['full']);
+  });
+
+  // Verifier B2: away while the host ended the run and began the next one: the guest follows the new run.
+  it('a guest away while the host ends the run and begins the next one follows the new run', () => {
+    const { scheduler, hub, host, guest } = room();
+    const seeds: number[] = [];
+    let relobbies = 0;
+    guest.session.onStart((s) => seeds.push(s.seed));
+    guest.session.onLobby(() => relobbies++);
+    hub.drop('a');
+    host.session.reopenLobby(42);
+    host.session.begin();
+    scheduler.advance(5000);
+    hub.restore('a');
+    expect(seeds).toEqual([42]);
+    expect(guest.started?.seed).toBe(42);
+    // Its old run ends first (paid once, as when the room goes back to the town), then the new one starts.
+    expect(relobbies).toBe(1);
+    // The same run's start heard again changes nothing.
+    hub.drop('a');
+    scheduler.advance(1000);
+    hub.restore('a');
+    expect(seeds).toEqual([42]);
+    expect(relobbies).toBe(1);
+  });
+
   it('a guest leaving the room town on purpose is gone at once, without a grace window', () => {
     const { host, guest } = room(false);
     guest.session.leave();

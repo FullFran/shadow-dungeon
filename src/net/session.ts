@@ -289,6 +289,13 @@ export function createSession(options: SessionOptions): NetSession {
   /** The room's tier: the host's pick, or the latest a guest heard. */
   let tier: Difficulty = DEFAULT_DIFFICULTY;
   let started = false;
+  /**
+   * Which run of the room this is: the host counts its `begin`s and sends the
+   * count with every `start` (`r`); a guest keeps the one it is playing, so a
+   * `start` for another run (heard after a dropped link missed the room going
+   * back to the town) ends the old one first. Absent from an older host.
+   */
+  let round = 0;
   let ticks = 0;
   let left = false;
   let lobby = false;
@@ -414,6 +421,13 @@ export function createSession(options: SessionOptions): NetSession {
       if (known.species !== species || (known.shiny === true) !== shiny || (known.female === true) !== female) setRoster(roster.map((r) => (r === known ? withSkin({ ...r, species }, shiny, female) : r)));
       return true;
     }
+    // Full, but a slot is only held for a dropped link: the knock takes it (a reload knocks with a new peer id, and
+    // must not be turned away by its own old one). The longest away goes first.
+    const ghost = roster.length >= MAX_PLAYERS ? [...away.keys()].find((p) => p !== peer && roster.some((r) => r.peer === p && r.id !== 'p1')) : undefined;
+    if (ghost) {
+      note('peerGone');
+      dropPeer(ghost, 'lost');
+    }
     const taken = new Set(roster.map((r) => r.id));
     let id: string | null = null;
     for (let n = 1; n <= MAX_PLAYERS && !id; n++) if (!taken.has(`p${n}`)) id = `p${n}`;
@@ -479,7 +493,7 @@ export function createSession(options: SessionOptions): NetSession {
 
   /** The tier goes on the wire only when it is not the default (absent reads as easy, as for an older host). */
   const tierField = (): { difficulty?: Difficulty } => (tier === DEFAULT_DIFFICULTY ? {} : { difficulty: tier });
-  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), ...tierField(), players: roster, ...(running ? { trial: running } : {}), ...VERSION });
+  const startMessage = (): NetMessage => ({ t: 'start', seed, floor: hostFloor, ...(dungeon ? { dungeon } : {}), ...tierField(), players: roster, ...(running ? { trial: running } : {}), r: round, ...VERSION });
   const lobbyMessage = (): NetMessage => ({ t: 'lobby', players: roster, ...tierField(), ...(picked ? { trial: picked } : {}), ...VERSION });
 
   transport.onMessage((from, wire) => {
@@ -569,7 +583,17 @@ export function createSession(options: SessionOptions): NetSession {
           setAdmitted(false);
           return knock();
         }
-        if (started) return;
+        if (started) {
+          // The same run said again (a resync, someone let in): nothing new.
+          if (typeof message.r !== 'number' || message.r === round) return;
+          // Another run: the host went back to the town and began again while this link was down. The old run ends
+          // here as if the room had gone back to the town (paid once), then the new one starts.
+          started = false;
+          note('lobby');
+          resetRun();
+          for (const handler of lobbyHandlers) handler();
+        }
+        if (typeof message.r === 'number') round = message.r;
         started = true;
         note('start');
         role = 'guest';
@@ -701,6 +725,7 @@ export function createSession(options: SessionOptions): NetSession {
       if (chosen !== undefined) dungeon = chosen;
       if (runSeed !== undefined) seed = runSeed;
       running = trial ?? null;
+      round++;
       send(startMessage(), true);
       openJoin();
     },

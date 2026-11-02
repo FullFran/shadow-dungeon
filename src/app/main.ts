@@ -398,6 +398,15 @@ function sessionOver(root: HTMLElement, base: Transport<string>): NetSession {
   return session;
 }
 
+// Closing or reloading the page leaves the room out loud (best effort), so the others free its slot at once
+// instead of holding it for a dropped link's grace window (net/session.ts PEER_GRACE_MS). A page kept in the
+// back/forward cache (`persisted`) may come back, so it keeps its session.
+window.addEventListener('pagehide', (event) => {
+  if (event.persisted) return;
+  current?.leave();
+  if (room && room.session !== current) room.session.leave();
+});
+
 function leaveNet(): void {
   current?.leave();
   if (room && room.session !== current) room.session.leave();

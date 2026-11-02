@@ -75,7 +75,7 @@ export type NetMessage =
    * Host: the run seed, the current floor, the dungeon id (absent = the first dungeon), the difficulty tier
    * (absent or unknown = easy: an older host) and who is who (sent again whenever someone joins).
    */
-  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[]; trial?: RoomTrial; v?: number; c?: string; b?: string }
+  | { t: 'start'; seed: number; floor: number; dungeon?: string; difficulty?: string; players: readonly RosterEntry[]; trial?: RoomTrial; r?: number; v?: number; c?: string; b?: string }
   /** Host, before the run starts: who is in the room so far, the tier and the shrine trial it picked, for the guests to see (sent again on every change). */
   | { t: 'lobby'; players: readonly RosterEntry[]; difficulty?: string; trial?: RoomTrial; v?: number; c?: string; b?: string }
   /**
