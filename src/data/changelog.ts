@@ -41,6 +41,22 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.10.3',
+    date: '2026-11-02',
+    sections: {
+      multiplayer: [
+        {
+          es: 'Salir de la partida desde el menú en una sala online ya no te echa de la sala: vuelves al pueblo de la sala y entras con el grupo en la siguiente planta. Si sale el anfitrión, toda la sala vuelve al pueblo.',
+          en: 'Quitting a run from the menu in an online room no longer throws you out of the room: you go back to the room\'s town and join the group again on the next floor. If the host quits, the whole room goes back to the town.',
+        },
+        {
+          es: 'Si entras en una sala con la partida empezada, la ventana de la sala dice que esperas a la siguiente planta, en vez de «El anfitrión no responde».',
+          en: 'Joining a room while its run is underway now says you are waiting for the next floor, instead of "The host is not responding".',
+        },
+      ],
+    },
+  },
+  {
     version: '0.10.2',
     date: '2026-11-01',
     sections: {

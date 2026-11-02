@@ -359,7 +359,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return h('li', {}, [h('span', { className: 'roster-id', textContent: p.name }), tags.length > 0 ? h('span', { className: 'dim', textContent: ` ${tags.join(' · ')}` }) : null]);
       }),
       // Not let in yet: nobody else is drawn until the host answers, so say why the town looks empty.
-      ...(status === 'in' ? [] : [h('li', { className: `room-status ${status}`, textContent: t(status === 'connecting' ? 'lobby.connecting' : 'lobby.unreachable') })]),
+      ...(status === 'in' ? [] : [h('li', { className: `room-status ${status}`, textContent: t(`lobby.${status}`) })]),
     );
   }
   let targets = targetsOf(map);

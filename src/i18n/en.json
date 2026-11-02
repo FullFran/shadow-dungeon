@@ -309,6 +309,7 @@
   "lobby.leave": "Leave",
   "lobby.connecting": "Connecting to the room…",
   "lobby.unreachable": "The host is not answering. Did someone create the room with this code, on an up-to-date game? On mobile data the direct connection sometimes fails: try Wi-Fi.",
+  "lobby.held": "A run is under way: you will join when the next floor starts, or when the group comes back to the town.",
   "lobby.waitingHost": "Waiting for the host to start…",
   "lobby.full": "The room is full (4 players at most).",
   "lobby.error": "Could not connect to the room.",
