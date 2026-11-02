@@ -635,6 +635,7 @@
   "pwa.later": "Not now",
   "pwa.never": "Don't show again",
   "pwa.ios": "To install it on iPhone or iPad: Share → Add to Home Screen.",
+  "pwa.desktop": "To install it on a computer, use Chrome or Edge: press the install icon in the address bar, or pick «Install» or «Apps» in the browser menu. Firefox does not install web games: open it in Chrome or Edge.",
   "pwa.ok": "Got it",
   "pwa.update": "New version available",
   "pwa.reload": "Update",

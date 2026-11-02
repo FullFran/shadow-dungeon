@@ -509,6 +509,7 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     h('p', { className: 'build-label', textContent: buildLabel() }),
   ]);
   pwa.banner(root);
+  pwa.corner(root);
 }
 
 /** The patch notes are checked once per page load, on the first title reached (never over the prologue, the quiz or a cinematic). */

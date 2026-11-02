@@ -20,7 +20,8 @@ describe('install offer', () => {
 
   it('offers nothing when already installed or when there is no way to install', () => {
     expect(installOffer({ standalone: true, hasPrompt: true, iosSafari: true })).toBe('none');
-    expect(installOffer({ standalone: false, hasPrompt: false, iosSafari: false })).toBe('none');
+    // Owner, 2026-11-02: "y que en navegador tambien si es en pc": a browser with no prompt (yet) still gets the corner button, with how-to steps.
+    expect(installOffer({ standalone: false, hasPrompt: false, iosSafari: false })).toBe('manual');
   });
 
   it('tells iOS Safari from other iOS browsers, Android and a Mac', () => {
@@ -39,6 +40,8 @@ describe('install banner', () => {
     expect(bannerVisible(store, 'prompt', false)).toBe(true);
     expect(bannerVisible(store, 'prompt', true)).toBe(false);
     expect(bannerVisible(store, 'none', false)).toBe(false);
+    // The once-a-page invitation is for a real prompt or iOS only: a desktop without one keeps just the corner button.
+    expect(bannerVisible(store, 'manual', false)).toBe(false);
     neverShowBanner(store);
     expect(bannerVisible(store, 'ios', false)).toBe(false);
   });

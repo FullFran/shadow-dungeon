@@ -635,6 +635,7 @@
   "pwa.later": "Ahora no",
   "pwa.never": "No volver a mostrar",
   "pwa.ios": "Para instalarlo en iPhone o iPad: Compartir → Añadir a pantalla de inicio.",
+  "pwa.desktop": "Para instalarlo en el ordenador, usa Chrome o Edge: pulsa el icono de instalar de la barra de direcciones, o en el menú del navegador elige «Instalar» o «Aplicaciones». Firefox no instala juegos web: ábrelo en Chrome o Edge.",
   "pwa.ok": "Entendido",
   "pwa.update": "Nueva versión disponible",
   "pwa.reload": "Actualizar",

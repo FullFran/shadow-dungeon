@@ -61,6 +61,16 @@
       .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
       .town-map-mark.in-column svg { width: 28px; height: 28px; padding: 5px; }
       .town-map-caption { margin: 0; min-height: 2.6em; }
+      /* "Instalar" in the title's top right corner while the game can be installed (src/ui/pwa.ts corner). */
+      .pwa-corner { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 8; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer;
+        font: inherit; font-size: 18px; color: var(--md-ink); background: var(--md-cursor); border: 2px solid var(--md-ink); border-radius: 10px; box-shadow: 0 0 0 2px var(--md-cursor), 0 0 18px rgba(255, 212, 71, 0.45), 0 4px 0 rgba(0, 0, 0, 0.45); }
+      .pwa-corner svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .pwa-corner:hover, .pwa-corner:focus-visible { filter: brightness(1.08); transform: translateY(-1px); }
+      html.touch .pwa-corner { font-size: 15px; padding: 5px 10px; }
+      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
+      body:has(.pwa-banner) .pwa-corner { display: none; }
+      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
+      body:has(.pwa-banner) .pwa-corner { display: none; }
       /* On the plan only the chosen seal names itself (the caption names it too): close seals never pile their labels up. */
       .town-map-board .town-map-mark:not(.selected) .town-map-label { display: none; }
       /* "You are here": a plain pulsing ring and dot, never a character. */
