@@ -207,6 +207,10 @@ window.addEventListener('touchend', unlockAudio);
 window.addEventListener('click', unlockAudio);
 // Phones: switching apps or locking the screen suspends the audio (music and loops); it resumes when the page is back.
 document.addEventListener('visibilitychange', () => audio.setBackground(document.hidden));
+// F1 opens the browser's help in another tab (ticket SD-LJJ7QL): the game never wants it, in menus or the town either.
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'F1') e.preventDefault();
+});
 setUiSound(() => audio.play('click'));
 let sheets: SheetStore | null = null;
 let running: RunningGame | null = null;
