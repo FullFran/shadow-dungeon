@@ -57,6 +57,10 @@ The attack and world effects are generated in the browser by [pixelfx](https://g
 Project Authors, under the [SIL Open Font License 1.1](https://openfontlicense.org)
 (license text in `public/fonts/PixelifySans-OFL.txt`).
 
+[Atkinson Hyperlegible](https://github.com/googlefonts/atkinson-hyperlegible) by the Braille Institute of America,
+Copyright 2020 Braille Institute of America, Inc., under the [SIL Open Font License 1.1](https://openfontlicense.org)
+(license text in `public/fonts/AtkinsonHyperlegible-OFL.txt`): the reading face for long text and typed fields.
+
 ## Music
 
 Licensed tracks, one per game context (files, license links and sources in

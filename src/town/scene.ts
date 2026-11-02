@@ -336,7 +336,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   Object.assign(roomCode.style, { fontSize: '1.5em', letterSpacing: '0.2em', color: PALETTE.cursor });
   /** The room's tier, for everyone (the host changes it in the entrance and waystone windows). */
   const roomTier = h('p', { className: 'town-room-tier' });
-  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t('lobby.townHint') })])]) : null;
+  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t(isTouchUi() ? 'lobby.townHint.touch' : 'lobby.townHint') })])]) : null;
   if (roomWindow) {
     Object.assign(roomWindow.style, { position: 'fixed', top: '8px', right: '8px', zIndex: '4', maxWidth: '40vw', fontSize: '0.8em', pointerEvents: 'none' });
     canvas.parentElement?.append(roomWindow);
@@ -911,7 +911,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       ctx,
       view,
       {
-        prompt: target ? { text: t(target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'), pos: target.pos } : null,
+        prompt: target ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
         banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),

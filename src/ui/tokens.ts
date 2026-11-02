@@ -87,6 +87,10 @@ export const FONT = {
   bodyPx: 22,
   headingPx: 33,
   titlePx: 66,
+  /** The reading face (Atkinson Hyperlegible, SIL OFL 1.1) for long text and typed fields: odd/tasks/menu-redesign.md T1. */
+  textStack: '"Atkinson Hyperlegible", system-ui, sans-serif',
+  /** Reading text size, px: the pixel grid does not apply to it. */
+  textPx: 19,
 } as const;
 
 /**
@@ -114,6 +118,8 @@ export function cssVariables(): Record<string, string> {
   vars['--md-body'] = `${FONT.bodyPx}px`;
   vars['--md-heading'] = `${FONT.headingPx}px`;
   vars['--md-title'] = `${FONT.titlePx}px`;
+  vars['--md-text-font'] = FONT.textStack;
+  vars['--md-text-size'] = `${FONT.textPx}px`;
   vars['--md-open-ms'] = `${MOTION.openMs}ms`;
   vars['--md-bob-ms'] = `${MOTION.bobMs}ms`;
   return vars;
