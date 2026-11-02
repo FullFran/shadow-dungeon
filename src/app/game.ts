@@ -1260,10 +1260,26 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
+  /**
+   * A won run is unmistakable (owner, 2026-11-02: "que se note mas cuando ganas
+   * que ella se penso que habia perdido"): a dark band across the screen with
+   * VICTORIA in gold and who fell, before the guardian's last words or the end
+   * screen. Original look, CSS only (index.html `.victory-band`).
+   */
+  let victoryBand: HTMLElement | null = null;
+  function showVictoryBand(): void {
+    const fallen = guardianHere();
+    victoryBand = h('div', { className: 'victory-band', role: 'status' }, [
+      h('p', { className: 'victory-band-title', textContent: t('victory.band') }),
+      ...(fallen ? [h('p', { className: 'victory-band-text', textContent: t('screen.victory.text').replace('{name}', t(`species.${fallen}`)) })] : []),
+    ]);
+    overlayParent.append(victoryBand);
+  }
   function end(result: GameResult, cut?: CutShort): void {
     if (ended) return;
     ended = true;
     hidePick();
+    if (result === 'victory' && !cut && !trial) showVictoryBand();
     audio?.setMusic(null);
     // What the merchant took comes off the pay.
     // A shrine trial pays nothing here (main.ts pays a gauntlet's first clear).
@@ -1297,9 +1313,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (cut) return finish();
     // Let the last hit land on screen before the result screen; a fallen guardian has its last words first.
     endTimer = window.setTimeout(() => {
+      victoryBand?.remove();
+      victoryBand = null;
       if (result !== 'victory' || !guardianHere()) return finish();
       guardianMoment('post', () => (net || !options.playCinematic ? window.setTimeout(finish, CARD_MS) : finish()));
-    }, 700);
+    }, victoryBand ? 2400 : 700);
   }
 
   function enterFloor(next: { run: RunState; world: WorldState }): void {
@@ -1642,6 +1660,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay?.dispose();
       spectateButton.remove();
       sign?.element.remove();
+      victoryBand?.remove();
       window.removeEventListener('blur', onLeavePage);
       document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('keydown', onSignKey, true);

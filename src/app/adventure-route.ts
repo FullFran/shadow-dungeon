@@ -50,8 +50,28 @@ export type TownTraces = Pick<SaveData, 'owned' | 'upgrades' | 'learned' | 'stor
  * versions is locked out of it.
  */
 export function townOpen(cleared: ReadonlySet<string>, save: TownTraces): boolean {
+  return cleared.has(TUTORIAL.id) || cleared.has(CRYPT.id) || hasTownTraces(save);
+}
+
+/** Anything in the save that only the town gives (a purchase, a learned move, a gacha species, a Senda chapter). */
+export function hasTownTraces(save: Partial<TownTraces>): boolean {
   const some = (o: object | undefined): boolean => o !== undefined && Object.values(o).some((v) => (typeof v === 'number' ? v > 0 : Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null));
-  return cleared.has(TUTORIAL.id) || cleared.has(CRYPT.id) || (save.owned?.length ?? 0) > 0 || some(save.upgrades) || some(save.learned) || some(save.story);
+  return (save.owned?.length ?? 0) > 0 || some(save.upgrades) || some(save.learned) || some(save.story);
+}
+
+/**
+ * Whether the town plays the welcome tour as it opens (owner 2026-11-02,
+ * odd/tasks/tutorial-dungeon.md S10; town/tour.ts): alone, the first time
+ * this device opens the town after the Sunken Way is cleared. Never in a
+ * room or under a development start window, never once seen, and never
+ * for a player who already had the town before the tutorial existed (a
+ * Crypt clear or anything only the town gives). `forced` (a development
+ * query) plays it anyway, alone.
+ */
+export function townTourDue(o: { inRoom: boolean; startWindow: boolean; seen: boolean; cleared: ReadonlySet<string>; traces: Partial<TownTraces>; forced?: boolean }): boolean {
+  if (o.inRoom) return false;
+  if (o.forced) return true;
+  return !o.startWindow && !o.seen && o.cleared.has(TUTORIAL.id) && !o.cleared.has(CRYPT.id) && !hasTownTraces(o.traces);
 }
 
 /** The screens the title's "Play online" goes through: the same first-time steps, so nobody reaches a room without a starter. */

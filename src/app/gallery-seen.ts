@@ -1,5 +1,5 @@
 import type { KeyValueStore } from '../adapters/storage';
-import { DUNGEONS, guardianOf } from '../data/dungeons';
+import { DUNGEONS, guardianOf, TUTORIAL } from '../data/dungeons';
 import type { SpeciesId } from '../data/species';
 import { clearedDungeons, readRecords } from '../town/records';
 import { hasSeen } from './guardian-cinematic';
@@ -23,7 +23,7 @@ import { hasSeenStoryScene } from './story';
  */
 export function readGallerySeen(store: KeyValueStore, starterChosen: boolean): GallerySeen {
   const cleared = clearedDungeons(readRecords(store));
-  const fallen = new Set<SpeciesId>(DUNGEONS.filter((d) => cleared.has(d.id)).flatMap((d) => guardianOf(d) ?? []));
+  const fallen = new Set<SpeciesId>([...DUNGEONS, TUTORIAL].filter((d) => cleared.has(d.id)).flatMap((d) => guardianOf(d) ?? []));
   return {
     prologue: starterChosen || hasSeenPrologue(store),
     sima: simaScenesSeen(store),
