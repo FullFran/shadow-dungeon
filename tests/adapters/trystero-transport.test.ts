@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TrysteroTransport, type RoomLike } from '../../src/adapters/trystero-transport';
+import { RELAY_REDUNDANCY, roomConfig, TrysteroTransport, type RoomLike } from '../../src/adapters/trystero-transport';
 
 /** A stand-in for a Trystero room: records what is sent, lets the test play the other peers. */
 function fakeRoom() {
@@ -70,5 +70,15 @@ describe('Trystero transport', () => {
     transport.send('late', true);
     expect(fake.left()).toBe(1);
     expect(fake.sent).toEqual([]);
+  });
+});
+
+// Owner report 2026-11-02: joining a room sometimes took long, or the room had to be made again.
+describe('room config', () => {
+  it('signals through more Nostr relays than the default five, with the TURN servers when there are some', () => {
+    const turn = [{ urls: ['turn:turn.example:3478'], username: 'u', credential: 'c' }];
+    expect(RELAY_REDUNDANCY).toBeGreaterThan(5);
+    expect(roomConfig('app', turn)).toEqual({ appId: 'app', relayConfig: { redundancy: RELAY_REDUNDANCY }, turnConfig: turn });
+    expect(roomConfig('app', [])).toEqual({ appId: 'app', relayConfig: { redundancy: RELAY_REDUNDANCY } });
   });
 });

@@ -1,7 +1,7 @@
 import type { Collection } from '../core/collection';
 import type { Difficulty } from '../data/difficulty';
 import type { DungeonDef } from '../data/dungeons';
-import type { NetSession } from '../net/session';
+import type { HostGone, NetSession } from '../net/session';
 
 /**
  * Where the player goes once a run is over: the town is the hub
@@ -47,11 +47,27 @@ export function quitSession(net: { session: Pick<NetSession, 'leave' | 'leaveRun
 }
 
 /**
- * A shared run the host cut short: it left mid-run (`hostLeft`), or brought
- * the room back to the town before this peer's run ended (`closed`). Either
- * way this peer's end runs exactly once, so nobody loses what they earned.
+ * A shared run the host cut short: it left mid-run (`hostLeft`), its link
+ * stayed down past the grace window (`hostLost`: the connection was lost),
+ * or it brought the room back to the town before this peer's run ended
+ * (`closed`). Either way this peer's end runs exactly once, so nobody loses
+ * what they earned.
  */
-export type CutShort = 'hostLeft' | 'closed';
+export type CutShort = 'hostLeft' | 'hostLost' | 'closed';
+
+/** The room is over for this guest after this cut (the host is gone); `closed` keeps the room (back to its town). */
+export const roomGone = (cut: CutShort | undefined): boolean => cut === 'hostLeft' || cut === 'hostLost';
+
+/**
+ * The host is gone for this guest (session `onHostLeft`): a run still going
+ * is cut short with the reason its end screen tells (`net.cutShort.*`);
+ * anywhere else a message says it (`net.hostLeft` or `net.hostLost`). Never
+ * silent: a lost connection is told as such.
+ */
+export function hostGoneRoute(why: HostGone, inRun: boolean): { cut: CutShort } | { message: string } {
+  if (inRun) return { cut: why === 'lost' ? 'hostLost' : 'hostLeft' };
+  return { message: why === 'lost' ? 'net.hostLost' : 'net.hostLeft' };
+}
 
 /**
  * What a run does when the host cuts it short: `end` it now (paid like a

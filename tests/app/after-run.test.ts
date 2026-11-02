@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cutShortAction, endActions, endHeading, materialsEarned, quitSession, returnPlace, townOf } from '../../src/app/after-run';
+import { cutShortAction, endActions, endHeading, hostGoneRoute, materialsEarned, quitSession, returnPlace, roomGone, townOf } from '../../src/app/after-run';
 import { startRun } from '../../src/core/run';
 import { createSession } from '../../src/net/session';
 import { createFakeScheduler, createMemoryHub } from '../../src/net/transport';
@@ -12,6 +12,29 @@ describe('after a run', () => {
     expect(endHeading('victory')).toEqual({ title: 'screen.victory.title', text: 'screen.victory.text' });
     expect(endHeading('defeat', 'hostLeft')).toEqual({ title: 'screen.cutShort.title', text: null });
     expect(endHeading('defeat', 'closed')).toEqual({ title: 'screen.cutShort.title', text: null });
+  });
+
+  // Owner report 2026-11-02: a guest thrown out of an online room must be told why, never silently.
+  it('the host gone ends a run as cut short, or shows a message, naming a lost connection as such', () => {
+    expect(hostGoneRoute('left', true)).toEqual({ cut: 'hostLeft' });
+    expect(hostGoneRoute('lost', true)).toEqual({ cut: 'hostLost' });
+    expect(hostGoneRoute('left', false)).toEqual({ message: 'net.hostLeft' });
+    expect(hostGoneRoute('lost', false)).toEqual({ message: 'net.hostLost' });
+    expect(endHeading('defeat', 'hostLost')).toEqual({ title: 'screen.cutShort.title', text: null });
+    for (const lang of ['es', 'en'] as const) {
+      setLanguage(lang);
+      for (const key of ['net.hostLost', 'net.cutShort.hostLost', 'net.reconnecting']) expect(t(key)).not.toBe(key);
+    }
+    setLanguage('es');
+  });
+
+  it('only the host leaving or its lost link ends the room; a run closed by the host goes back to the room', () => {
+    expect(roomGone('hostLeft')).toBe(true);
+    expect(roomGone('hostLost')).toBe(true);
+    expect(roomGone('closed')).toBe(false);
+    expect(roomGone(undefined)).toBe(false);
+    expect(townOf({ inRoom: true })).toBe('room');
+    expect(townOf({ inRoom: false })).toBe('hub');
   });
 
   it('a solo or local run offers a retry, then the way back to the town', () => {

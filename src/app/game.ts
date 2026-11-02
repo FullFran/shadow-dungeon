@@ -1501,8 +1501,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   function frame(now: number): void {
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
-    // A shared run never pauses: the others keep playing.
+    // A shared run never pauses: the others keep playing. Except a guest whose link to the host dropped: its run
+    // stands still while the session waits for the host to come back (net/session.ts PEER_GRACE_MS).
     const paused =
+      (net?.role === 'guest' && net.session.reconnecting()) ||
       simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && (sign !== null || storyBox !== null));
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
