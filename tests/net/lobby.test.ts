@@ -211,6 +211,25 @@ describe('lobby', () => {
     expect(a.session.held()).toBe(false);
   });
 
+  // Verifier finding B1: a guest held after quitting must still learn that the host left (no endless "held").
+  it('a guest held after quitting is told when the host leaves, and is no longer held', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(16, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    let hostLeft = 0;
+    a.session.onHostLeft(() => hostLeft++);
+    a.session.join('mimikyu', LOADOUT);
+    host.session.begin();
+    stepFloor(host.session, 1);
+    a.session.leaveRun();
+    expect(a.session.held()).toBe(true);
+    host.session.leave();
+    expect(hostLeft).toBe(1);
+    expect(a.session.held()).toBe(false);
+  });
+
   it('a guest who quits a room run is let back in when the host brings the room to the town', () => {
     const scheduler = createFakeScheduler();
     const hub = createMemoryHub<string>();

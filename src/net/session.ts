@@ -345,8 +345,10 @@ export function createSession(options: SessionOptions): NetSession {
   };
 
   const hostLeft = () => {
-    if (role === 'host' || hostGone || !(started || admitted)) return;
+    // A guest held after quitting a room run (toldToWait) is still in the room: it must learn the host is gone too.
+    if (role === 'host' || hostGone || !(started || admitted || toldToWait)) return;
     hostGone = true;
+    toldToWait = false;
     note('hostLeft');
     for (const handler of hostLeftHandlers) handler();
   };
