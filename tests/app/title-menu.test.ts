@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { nextPlayScreen } from '../../src/app/adventure-route';
+import { nextPlayScreen, townOpen } from '../../src/app/adventure-route';
+import { CRYPT, TUTORIAL } from '../../src/data/dungeons';
 import { OPTIONS_ENTRIES, optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL } from '../../src/app/title-menu';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
@@ -40,8 +41,34 @@ describe('title menu', () => {
 
 describe('Play goes to the town', () => {
   it('runs the prologue and the quiz the first time, then the town', () => {
-    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false })).toBe('prologue');
-    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false })).toBe('quiz');
-    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true })).toBe('town');
+    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false, townOpen: true })).toBe('prologue');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false, townOpen: true })).toBe('quiz');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true, townOpen: true })).toBe('town');
+  });
+
+  // odd/tasks/tutorial-dungeon.md S1: the first run walks the tutorial dungeon to the town, not the Crypt.
+  it('goes straight into the tutorial dungeon while the town is still closed', () => {
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: true, townOpen: false })).toBe('tutorial');
+    expect(nextPlayScreen({ prologueSeen: false, starterChosen: false, townOpen: false })).toBe('prologue');
+    expect(nextPlayScreen({ prologueSeen: true, starterChosen: false, townOpen: false })).toBe('quiz');
+  });
+});
+
+describe('the town opens after the tutorial dungeon', () => {
+  const none = { owned: [], upgrades: {}, learned: {}, story: {} };
+  it('stays closed for a new player until the shadow falls at the end of the way to the town', () => {
+    expect(townOpen(new Set(), none)).toBe(false);
+    expect(townOpen(new Set([TUTORIAL.id]), none)).toBe(true);
+  });
+
+  it('stays open for a player who already cleared the Crypt (the old first dungeon)', () => {
+    expect(townOpen(new Set([CRYPT.id]), none)).toBe(true);
+  });
+
+  it('stays open for a player who already used the town (anything bought, learned or owned there)', () => {
+    expect(townOpen(new Set(), { ...none, owned: ['zorua'] })).toBe(true);
+    expect(townOpen(new Set(), { ...none, upgrades: { vitality: 1 } })).toBe(true);
+    expect(townOpen(new Set(), { ...none, learned: { mimikyu: ['shadow-sneak'] } })).toBe(true);
+    expect(townOpen(new Set(), { ...none, story: { mimikyu: 1 } })).toBe(true);
   });
 });

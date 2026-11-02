@@ -1,3 +1,6 @@
+import { signParts, tutorialSign } from '../ui/tutorial-sign';
+import { h } from '../ui/window';
+import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
 import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
@@ -228,6 +231,8 @@ export interface GameOptions {
    * the run stands still meanwhile). A shared run logs its line instead.
    */
   simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
+  /** The Crypt's tutorial signs this device has seen (app/tutorial.ts); absent: no signs. */
+  tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
 }
@@ -418,6 +423,57 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The held item pick overlay, while open. */
   let closePick: (() => void) | null = null;
   const overlayParent = canvas.parentElement ?? document.body;
+  // The Crypt's contextual tutorial (app/tutorial.ts; odd/tasks/menu-redesign.md T7): one neutral sign at a time, the first time each thing happens on this device.
+  const teaching = options.tutorial !== undefined && tutorialApplies({ dungeon: run.dungeon, trial: trial !== null, story: options.story !== undefined, dev: options.startFloor !== undefined || (options.testSpawns?.length ?? 0) > 0 });
+  const signQueue: TutorialHint[] = [];
+  let sign: { hint: TutorialHint; element: HTMLElement; shownAtMs: number } | null = null;
+  /** The last input came from a gamepad (the sign then names its buttons). */
+  let padInUse = false;
+  const SIGN_MS = 7000;
+  function teach(moment: TutorialMoment): void {
+    const tutorial = options.tutorial;
+    if (!teaching || !tutorial) return;
+    const pending = new Set<string>([...signQueue, ...(sign ? [sign.hint] : [])]);
+    signQueue.push(...hintsFor(moment, new Set(TUTORIAL_HINTS.filter((hint) => tutorial.seen(hint) || pending.has(hint)))));
+  }
+  /** Solo, a sign waits for a press with the run paused (odd/tasks/menu-redesign.md S13); a shared run never stops, so there it fades by itself. */
+  const signWaits = !net;
+  function dismissSign(): void {
+    sign?.element.remove();
+    sign = null;
+  }
+  const onSignKey = (e: KeyboardEvent) => {
+    if ((!sign && !storyBox) || !signWaits || !['Enter', 'Space', 'NumpadEnter', 'Escape'].includes(e.code)) return;
+    // The press closes the story line or the sign only: the run must not read it as a roll or a pick.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    if (storyBox) nextStoryLine();
+    else dismissSign();
+  };
+  if (signWaits) window.addEventListener('keydown', onSignKey, true);
+  function tickSign(): void {
+    if (sign && !signWaits && realMs - sign.shownAtMs >= SIGN_MS) {
+      sign.element.remove();
+      sign = null;
+    }
+    // Never over the floor 1 title.
+    if (sign || signQueue.length === 0 || !options.tutorial || (intro && realMs - intro.shownAtMs < 4000)) return;
+    const hint = signQueue.shift()!;
+    options.tutorial.mark(hint);
+    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)), signWaits ? t(`tutorial.continue.${device}`) : undefined);
+    if (signWaits) {
+      element.classList.add('is-waiting');
+      element.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissSign();
+      });
+    }
+    overlayParent.append(element);
+    sign = { hint, element, shownAtMs: realMs };
+  }
   const audio = options.audio;
   /** Floor 1 entry title and the "♪ title" note of the last music change (presentation only). */
   let intro: DungeonIntro | null = null;
@@ -507,6 +563,34 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
   const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /**
+   * The Senda's spoken lines (odd/tasks/menu-redesign.md S13, owner: "que en el
+   * modo un jugador paren el juego hasta que le des"): alone, each line waits in
+   * a dialog box with the run paused until a press; in a shared run (never
+   * paused) they go to the log as before. Either way the log keeps them.
+   */
+  const storyLines: string[] = [];
+  let storyBox: HTMLElement | null = null;
+  const tell = (text: string, tone: LogTone) => {
+    say(text, tone);
+    if (net) return;
+    storyLines.push(text);
+    if (!storyBox) nextStoryLine();
+  };
+  function nextStoryLine(): void {
+    storyBox?.remove();
+    storyBox = null;
+    const text = storyLines.shift();
+    if (text === undefined) return;
+    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    storyBox = h('div', { className: 'story-box', role: 'status' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
+    storyBox.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      nextStoryLine();
+    });
+    overlayParent.append(storyBox);
+  }
   /** The Senda chapter of this run, its memory fragment on this floor (where it lies, which), the fragments read, the low-HP line said, the bosses whose last lines were said. */
   const story = options.story ? { run: options.story, chapter: chapterOf(storyOf(options.story.line)!, options.story.chapter) } : null;
   let memory: { pos: Vec2; index: number } | null = null;
@@ -517,7 +601,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The Pokémon's own words in the log: «Mimikyu: …». */
   const voice = (trigger: StoryTrigger) => {
     if (!story) return;
-    say(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
+    tell(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
   };
   /** A Senda's floor: the voice, the fragment it hides, its boss's epithet and first words. */
   const storyFloor = () => {
@@ -541,7 +625,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const foe = world.enemies.find((e) => e.boss);
     if (!boss || !foe) return;
     intro = { name: t(`species.${foe.species}`), subtitle: t(storyKeys.bossTitle(line, chapter, boss.floor)), shownAtMs: realMs };
-    for (let i = 0; i < boss.pre; i++) say(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
+    for (let i = 0; i < boss.pre; i++) tell(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
   };
   /** After a step: a boss of the chapter fell (its last words), the low-HP line, a fragment picked up. */
   const watchStory = (events: readonly GameEvent[]) => {
@@ -550,7 +634,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const boss = story.chapter.bosses.find((b) => b.floor === run.floor);
     if (boss && !bossesMourned.has(boss.floor) && events.some((e) => e.type === 'enemyDefeated' && prev.enemies.some((x) => x.id === e.enemyId && x.boss))) {
       bossesMourned.add(boss.floor);
-      for (let i = 0; i < boss.post; i++) say(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
+      for (let i = 0; i < boss.post; i++) tell(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
     }
     if (!lowHpSaid && world.player.hp > 0 && world.player.hp < world.player.maxHp * STORY_LOW_HP) {
       lowHpSaid = true;
@@ -582,6 +666,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     return bands ? simaBandAt(bands, run.floor) : null;
   };
   function announceFloor(descended: boolean): void {
+    teach({ floorStart: run.floor, events: [] });
     const lore = dungeonOf(run).lore;
     const bands = dungeonOf(run).endless?.bands;
     // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
@@ -884,6 +969,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     world = { ...world, bonfireLit: true };
     bonfire = { run, world: bonfireSnapshot(world), tally, spent: simaSpent };
     say(t('bonfire.lit'), 'good');
+    teach({ events: [], bonfire: true });
     audio?.play('item');
   }
 
@@ -1271,7 +1357,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       };
       // The controller plays only while nothing is open: a shared run keeps going under a pick, where it acts as keys.
       options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory);
-      const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext));
+      const padInput = touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext);
+      if (hadInput(padInput)) padInUse = true;
+      else if (hadInput(keys)) padInUse = false;
+      const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), padInput);
       const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
       if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;
@@ -1334,6 +1423,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           say(t('forest.wisp.found'), 'good');
         }
       }
+      teach({ events });
       if (trial && trialHurt(events)) trialHit = true;
       if (trialHurt(events)) floorHit = true;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
@@ -1382,7 +1472,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
     // A shared run never pauses: the others keep playing.
     const paused =
-      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net));
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && (sign !== null || storyBox !== null));
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -1392,6 +1482,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const frozen = !net && juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
     log = pruneLog(log, realMs);
+    tickSign();
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
@@ -1537,6 +1628,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
       spectateButton.remove();
+      sign?.element.remove();
+      window.removeEventListener('keydown', onSignKey, true);
+      storyBox?.remove();
       window.removeEventListener('keydown', onKeyDown);
     },
   };

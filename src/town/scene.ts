@@ -28,9 +28,12 @@ import { startWander, stepWander, type WanderState } from './ambience';
 import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
-import { menuWindow } from '../ui/menu-window';
-import { pleaActor, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
-import { PLEA_STAGE, pleaKeys } from '../data/sima-plea';
+import { townMapView, type TownMapEntry } from './town-map-view';
+import { looseServices, townMapMarkers } from './town-map';
+import { wheelServices } from './quick-wheel';
+import { quickWheelView } from './quick-wheel-view';
+import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
+import { PLEA_ANSWERS, PLEA_STAGE, answerKey, pleaKeys, replyKey, type PleaAnswer } from '../data/sima-plea';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
@@ -336,7 +339,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   Object.assign(roomCode.style, { fontSize: '1.5em', letterSpacing: '0.2em', color: PALETTE.cursor });
   /** The room's tier, for everyone (the host changes it in the entrance and waystone windows). */
   const roomTier = h('p', { className: 'town-room-tier' });
-  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t('lobby.townHint') })])]) : null;
+  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t(isTouchUi() ? 'lobby.townHint.touch' : 'lobby.townHint') })])]) : null;
   if (roomWindow) {
     Object.assign(roomWindow.style, { position: 'fixed', top: '8px', right: '8px', zIndex: '4', maxWidth: '40vw', fontSize: '0.8em', pointerEvents: 'none' });
     canvas.parentElement?.append(roomWindow);
@@ -441,8 +444,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const next = advanceDialog(dialog.state);
       const opens = dialog.opens;
       dialog = next ? { ...dialog, state: next } : null;
-      // A villager of the pleas finished speaking: it steps aside.
-      if (!next && plea) plea = pleaSpoken(plea);
+      // A villager of the pleas finished speaking: it steps back; Phantump's reply to the player's answer ends the scene.
+      if (!next && plea) plea = plea.phase === 'choose' ? pleaAnswered(plea) : pleaSpoken(plea);
       if (!next && opens === 'shop') openShopWindow();
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
       if (!next && opens === 'gacha') openShopWindow(options.openGacha);
@@ -558,6 +561,25 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       },
     };
   }
+
+  /**
+   * The player's answer to Phantump (odd/tasks/menu-redesign.md S6): a small
+   * window with the two answers; the reply comes in the dialog box, and
+   * closing it ends the scene. Esc in the window answers with silence.
+   */
+  const openPleaAnswer: TownWindowOpener = (parent, onClose) => {
+    const answer = (choice: PleaAnswer) => () => {
+      onClose();
+      dialog = { speaker: t('town.name.oracle'), state: openDialog([t(replyKey(choice))]) };
+    };
+    const list = cursorList({ items: PLEA_ANSWERS.map((choice) => ({ label: t(answerKey(choice)), onConfirm: answer(choice) })), onBack: answer('silent'), label: t('town.name.oracle') });
+    const overlay = h('div', { className: 'town-shop plea-answer' }, [mdWindow({ title: t('town.name.oracle'), className: 'narrow' }, [list.element])]);
+    parent.append(overlay);
+    return () => {
+      list.dispose();
+      overlay.remove();
+    };
+  };
 
   /** The pleas are over (or skipped): seen on this device, and on (to the Sima, or back where the player was). */
   function endPlea(): void {
@@ -684,6 +706,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     } else if (INTERACT_KEYS.has(e.code)) {
       e.preventDefault();
       if (!e.repeat) interact();
+    } else if (e.code === 'Tab') {
+      // The quick wheel (odd/tasks/menu-redesign.md S8): held open while Tab is down.
+      e.preventDefault();
+      if (!e.repeat) openWheel();
     } else if (e.code === 'Escape') {
       // Taken here: the menu opened now must not read this same Esc as its own "back".
       e.preventDefault();
@@ -790,14 +816,19 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       onClose();
       action();
     };
-    const end = lobby
-      ? lobby.menu(onClose).map((row) => ({ label: row.label, about: t('townMenu.room.about'), onConfirm: row.onConfirm }))
-      : [{ label: t('townMenu.title'), about: t('townMenu.title.about'), onConfirm: pick(() => leaveTown(options.onQuit)) }];
-    const open = menuWindow({
-      title: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
-      rows: [...townMenuServices(services(), lobby !== null).map((s) => ({ label: t(serviceLabelKey(s)), about: t(serviceAboutKey(s)), onConfirm: pick(() => serviceAction(s)) })), ...end],
-      back: { label: t('townMenu.resume'), about: t('townMenu.resume.about'), onConfirm: onClose },
-      className: 'town-menu',
+    const end: TownMapEntry[] = lobby
+      ? lobby.menu(onClose).map((row, i) => ({ id: `room-${i}`, label: row.label, about: t('townMenu.room.about'), glyph: 'room' as const, onConfirm: row.onConfirm }))
+      : [{ id: 'title', label: t('townMenu.title'), about: t('townMenu.title.about'), glyph: 'title' as const, onConfirm: pick(() => leaveTown(options.onQuit)) }];
+    // The Esc menu as a map of this town (odd/tasks/menu-redesign.md S8): its NPCs and places, the rest in a column beside it.
+    const available = new Set(townMenuServices(services(), lobby !== null));
+    const entry = (service: TownService, id: string = service): TownMapEntry => ({ id, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) });
+    const markers = townMapMarkers(map, available);
+    const open = townMapView({
+      heading: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
+      map,
+      placed: markers.map((m) => ({ ...m, entry: entry(m.service, m.id) })),
+      column: [...looseServices(markers, available).map((s) => entry(s)), ...end, { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose }],
+      onClose,
     });
     const overlay = h('div', { className: 'town-shop' }, [open.element]);
     parent.append(overlay);
@@ -806,6 +837,28 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       overlay.remove();
     };
   };
+
+  /** The quick wheel on Tab: the most used services of this town (quick-wheel.ts), opened on release. */
+  const openQuickWheel: TownWindowOpener = (parent, onClose) => {
+    const pick = (action: () => void) => () => {
+      onClose();
+      action();
+    };
+    const entries: TownMapEntry[] = wheelServices(new Set(townMenuServices(services(), lobby !== null))).map((service) => ({ id: service, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) }));
+    const open = quickWheelView({ entries, onClose });
+    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    parent.append(overlay);
+    return () => {
+      open.dispose();
+      overlay.remove();
+    };
+  };
+
+  function openWheel(): void {
+    if (exitWindow || closeShop || fade || plea || stopped) return;
+    dialog = null;
+    openShopWindow(openQuickWheel);
+  }
 
   /** Opens the Esc menu when nothing else is on screen. */
   function openMenu(): void {
@@ -873,6 +926,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       plea = stepPlea(plea, dt, TILE);
       const actor = pleaActor(plea);
       if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: openDialog(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
+      // Everyone has spoken: the player answers Phantump's question.
+      if (plea.phase === 'choose' && !closeShop) openShopWindow(openPleaAnswer);
       if (plea.phase === 'done') endPlea();
     }
     // The player turns to whoever comes up to it.
@@ -911,7 +966,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       ctx,
       view,
       {
-        prompt: target ? { text: t(target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'), pos: target.pos } : null,
+        prompt: target ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
         banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),

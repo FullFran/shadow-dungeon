@@ -13,6 +13,7 @@ import { aggroTarget } from './aggro';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
 import { updateEclipse } from './eclipse-echo';
+import { updateShadow } from './shadow';
 import { updateHerald } from './herald/brain';
 import { contactPlayer, enterMode, modeOver, moveEnemy, pathDirection, perpendicular, replaceEnemy, spawnShot, spreadDirections, telegraph, towardTarget } from './brain';
 import { partySizeOf } from './party';
@@ -420,6 +421,8 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     // The Eclipse Echo grows with every encounter (core/eclipse-escalation.ts).
     else if (def.kind === 'eclipse') current = updateEclipse(current, ticked, escalatedEcho(def, current.depth), target, ems, events);
     else if (def.kind === 'herald') current = updateHerald(current, ticked, def, target, ems, events);
+    // The tutorial dungeon's boss, the player's shadow (core/shadow.ts).
+    else if (def.kind === 'shadow') current = updateShadow(current, ticked, def, target, ems, events);
     else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ems, events);
     else current = updateRoster(current, ticked, def, target, ems, events);
   }

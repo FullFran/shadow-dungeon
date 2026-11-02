@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { PLEA_STAGE, pleaKeys, SIMA_PLEA } from '../../src/data/sima-plea';
+import { PLEA_ANSWERS, PLEA_STAGE, answerKey, pleaKeys, replyKey, SIMA_PLEA } from '../../src/data/sima-plea';
 import { SPRITE_KEYS } from '../../src/data/sprites';
 import { TOWN } from '../../src/data/town';
 import { WORLD } from '../../src/data/world';
 import { TILE, wallAt } from '../../src/core/tiles';
 import { buildTownGrid } from '../../src/town/map';
-import { pleaActor, pleaCrowd, pleaSpoken, startPlea, stepPlea } from '../../src/town/plea';
+import { pleaActor, pleaAnswered, pleaCrowd, pleaSpoken, startPlea, stepPlea } from '../../src/town/plea';
 import { catalog, LANGUAGES, setLanguage, t } from '../../src/i18n';
 
 /**
@@ -21,8 +21,13 @@ const run = (ms: number, state = startPlea(TILE)) => {
 };
 
 describe('the villagers\' pleas', () => {
-  it('one by one: walk up, speak, step aside; then the next; done after the last', () => {
-    let s = run(20_000);
+  // odd/tasks/menu-redesign.md S6: "ahora es un poco anticlimatico y no muy hilado lo de las suplicas".
+  it('the villagers are already gathered; one at a time steps forward, speaks and steps back; then the player answers', () => {
+    const first = startPlea(TILE);
+    // Everyone else already stands in the crowd when the scene opens.
+    expect(pleaCrowd(first, TILE)).toHaveLength(SIMA_PLEA.length - 1);
+    // A short step forward, not a walk up the whole path: any villager speaks within 3 s.
+    let s = run(3000);
     expect(s.phase).toBe('talk');
     expect(pleaActor(s)!.id).toBe(SIMA_PLEA[0]!.id);
     // It waits while it speaks.
@@ -30,12 +35,34 @@ describe('the villagers\' pleas', () => {
     for (let i = 0; i < SIMA_PLEA.length; i++) {
       expect(s.phase).toBe('talk');
       expect(pleaActor(s)!.id).toBe(SIMA_PLEA[i]!.id);
-      expect(pleaCrowd(s, TILE)).toHaveLength(i);
-      s = run(20_000, pleaSpoken(s));
+      expect(pleaCrowd(s, TILE)).toHaveLength(SIMA_PLEA.length - 1);
+      s = run(3000, pleaSpoken(s));
     }
-    expect(s.phase).toBe('done');
-    expect(pleaActor(s)).toBeNull();
+    // After the last one, the player answers before the scene ends.
+    expect(s.phase).toBe('choose');
     expect(pleaCrowd(s, TILE)).toHaveLength(SIMA_PLEA.length);
+    expect(run(5000, s)).toEqual(s);
+    const done = pleaAnswered(s);
+    expect(done.phase).toBe('done');
+    expect(pleaActor(done)).toBeNull();
+  });
+
+  it('stays short: one name per villager, no more than fourteen lines in all', () => {
+    expect(SIMA_PLEA.reduce((sum, a) => sum + a.lines, 0)).toBeLessThanOrEqual(14);
+    for (const actor of SIMA_PLEA) expect(actor.lines, actor.id).toBeLessThanOrEqual(2);
+  });
+
+  it('the answer: two choices and Phantump\'s reply to each, in both languages', () => {
+    for (const language of LANGUAGES) {
+      setLanguage(language);
+      for (const answer of PLEA_ANSWERS) {
+        for (const key of [answerKey(answer), replyKey(answer)]) {
+          expect(catalog(language)[key], `${language} ${key}`).toBeTruthy();
+          expect(t(key)).not.toContain('\u2014');
+        }
+      }
+    }
+    setLanguage('es');
   });
 
   it('every villager is one the player knows (a town NPC\'s sheet and name) and Phantump speaks last', () => {

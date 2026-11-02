@@ -1,3 +1,5 @@
+import { glyphSvg, type Glyph } from '../town/town-map-view';
+import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
@@ -27,6 +29,7 @@ import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
 import { eclipseBackdrop } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
+import { description } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
 import { APP_VERSION, buildLabel } from './build-info';
@@ -45,11 +48,11 @@ import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
-import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen } from './adventure-route';
+import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
-import { CONTROL_KEYS, settingItems, type SettingsAccess } from './settings-panel';
+import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
@@ -67,7 +70,7 @@ import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, ECLIPSE, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -491,11 +494,14 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     online: () => onlineEntry(root),
     options: () => optionsScreen(root),
   };
-  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: t(TITLE_LABEL[entry]), onConfirm: action[entry] })) });
+  // A dominant Play with a line on where it leads (odd/tasks/menu-redesign.md S11); the other two stay quiet below.
+  const playLine = t(!settings.starterChosen ? 'title.play.first' : townIsOpen() ? 'title.play.town' : 'title.play.path');
+  const label = (entry: TitleEntry) => (entry === 'play' ? h('span', { className: 'title-play' }, [h('span', { className: 'title-play-name', textContent: t(TITLE_LABEL.play) }), h('small', { textContent: playLine })]) : t(TITLE_LABEL[entry]));
+  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: label(entry), onConfirm: action[entry], className: `title-row title-row-${entry}` })) });
   show(root, [
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
-    h('p', { className: 'hint', textContent: t('title.hint') }),
+    h('p', { className: 'hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('title.hint') }), h('span', { className: 'on-touch', textContent: t('title.hint.touch') })]),
     h('p', { className: 'build-label', textContent: buildLabel() }),
   ]);
   pwa.banner(root);
@@ -538,20 +544,30 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'control
     credits: () => creditsScreen(root),
     install: () => pwa.install(root),
   };
+  // Grouped, each with its glyph (odd/tasks/menu-redesign.md S11): Partida, Perfil, Historia, Ayuda.
+  type OptionRow = { id: OptionsEntry | 'report' | 'controls' | 'friends' | 'tickets'; label: string; about: string; glyph: Glyph; onConfirm: () => void; group?: string };
+  const entry = (id: OptionsEntry, glyph: Glyph): OptionRow => ({ id, label: t(TITLE_LABEL[id]), about: t(optionsAboutKey(id)), glyph, onConfirm: action[id] });
+  const has = (id: OptionsEntry) => entries.includes(id);
+  const grouped: OptionRow[][] = [
+    [entry('settings', 'settings'), { id: 'controls', label: t('title.controls'), about: t('options.about.controls'), glyph: 'controls', onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) }],
+    [entry('account', 'account'), entry('achievements', 'achievements'), { id: 'friends', label: t('title.friends'), about: t('options.about.friends'), glyph: 'friends', onConfirm: () => friendsScreen(root, () => optionsScreen(root, 'friends')) }],
+    [entry('news', 'board'), entry('prologue', 'gallery'), entry('credits', 'title')],
+    [
+      // Players report problems from the game, anonymously (issue #9).
+      { id: 'report', label: t('title.report'), about: t('options.about.report'), glyph: 'board', onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
+      ...(has('install') ? [entry('install', 'travel')] : []),
+      // The server says who is an admin; a yes that arrives later redraws this menu below.
+      ...(ticketAdmin.known() ? [{ id: 'tickets' as const, label: t('title.tickets'), about: t('options.about.tickets'), glyph: 'board' as const, onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
+    ],
+  ];
+  const groupKeys = ['options.group.game', 'options.group.profile', 'options.group.story', 'options.group.help'];
+  const optionRows = grouped.flatMap((rows, g) => rows.map((row, i) => (i === 0 ? { ...row, group: t(groupKeys[g]!) } : row)));
   const open = menuWindow({
     title: t('title.options'),
-    rows: [
-      ...entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
-      // Players report problems from the game, anonymously (issue #9).
-      { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
-      { label: t('title.controls'), about: t('options.about.controls'), onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) },
-      { label: t('title.friends'), about: t('options.about.friends'), onConfirm: () => friendsScreen(root, () => optionsScreen(root, 'friends')) },
-      // The server says who is an admin; a yes that arrives later redraws this menu below.
-      ...(ticketAdmin.known() ? [{ label: t('title.tickets'), about: t('options.about.tickets'), onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
-    ],
+    rows: optionRows.map((row) => ({ label: row.label, about: row.about, onConfirm: row.onConfirm, icon: glyphSvg(row.glyph), ...(row.group ? { group: row.group } : {}) })),
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: at === 'report' ? entries.length : at === 'controls' ? entries.length + 1 : at === 'friends' ? entries.length + 2 : at === 'tickets' ? entries.length + 3 : Math.max(0, entries.indexOf(at)),
+    initial: Math.max(0, optionRows.findIndex((row) => row.id === at)),
   });
   show(root, [open.element]);
   if (!ticketAdmin.known()) {
@@ -579,11 +595,19 @@ function adoptReturningPlayer(): void {
 /** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
 function playScreen(root: HTMLElement): void {
   adoptReturningPlayer();
-  const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen });
+  const next = nextPlayScreen({ prologueSeen: hasSeenPrologue(store), starterChosen: settings.starterChosen, townOpen: townIsOpen() });
   if (next === 'prologue') prologue(root, () => playScreen(root));
   else if (next === 'quiz') quiz(root, () => playScreen(root), () => titleScreen(root, 0));
+  // Like Hollow Knight's opening path, the way down to the town is the tutorial (odd/tasks/tutorial-dungeon.md S1): straight into it.
+  else if (next === 'tutorial') enterDungeon(root, TUTORIAL.id, () => titleScreen(root, 0));
   else townScreen(root);
 }
+
+/** Whether the town is open on this device (adventure-route.ts `townOpen`: the tutorial dungeon or the Crypt cleared, or town progress already in the save). */
+const townIsOpen = (): boolean => townOpen(cleared(), loadSave(store));
+
+/** Where a solo run goes back to: the town once it is open, the title before (the next "Play" enters the tutorial dungeon again). */
+const hub = (root: HTMLElement): void => (townIsOpen() ? townScreen(root) : titleScreen(root, 0));
 
 /** The title's "Play online": the same first-time steps as Play, so a new player chooses a starter before reaching a room. */
 function onlineEntry(root: HTMLElement): void {
@@ -859,26 +883,69 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
   ]);
 }
 
-function settingsScreen(root: HTMLElement): void {
+function settingsScreen(root: HTMLElement, tab = 0): void {
   const back = () => optionsScreen(root, 'settings');
   const access: SettingsAccess = {
     get: () => settings,
     update,
     setLanguage: (language) => {
       applyLanguage(language);
-      settingsScreen(root);
+      settingsScreen(root, tab);
     },
   };
-  const list = cursorList({ items: [], onBack: back, label: t('title.settings') });
-  const retake = () => quiz(root, () => settingsScreen(root), () => settingsScreen(root));
+  // Settings in tabs, one sentence under the list for the row the cursor is on (odd/tasks/menu-redesign.md S6).
+  const tabs = settingTabs(settingRows(access));
+  const current = Math.min(tab, tabs.length - 1);
+  const about = h('p', { className: 'settings-about' });
+  const retake = () => quiz(root, () => settingsScreen(root, current), () => settingsScreen(root, current));
   const nickname = nicknameRow();
-  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root)) };
-  const refresh = () => list.setItems([...settingItems(access, refresh), nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }, { label: t('menu.back'), onConfirm: back }]);
+  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root, current)) };
+  const ids = new Set(tabs[current]!.rows.map((r) => r.id));
+  const abouts = tabs[current]!.rows.map((r) => r.about);
+  // The General tab also holds the profile rows (nickname, account, the personality test again).
+  const extra = current === 0 ? [nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }] : [];
+  const extraAbout = current === 0 ? [t('setting.nickname.about'), t('setting.account.about'), t('setting.retake.about')] : [];
+  const describe = (i: number) => {
+    about.textContent = [...abouts, ...extraAbout][i] ?? '';
+  };
+  const list = cursorList({ items: [], onBack: back, label: t('title.settings'), onCursor: describe });
+  // The shared description box (ui/describe.ts): it reserves the longest sentence's room, so the window never jumps.
+  const desc = description(list, { describe, children: [about] });
+  const refresh = () => {
+    list.setItems([...settingItems(access, refresh, ids), ...extra, { label: t('menu.back'), onConfirm: back }]);
+    desc.update();
+  };
   refresh();
+  const go = (next: number) => settingsScreen(root, (next + tabs.length) % tabs.length);
+  const bar = h(
+    'div',
+    { className: 'settings-tabs', role: 'tablist' },
+    tabs.map((tabDef, i) => {
+      const button = h('button', { type: 'button', className: i === current ? 'selected' : '', textContent: tabDef.title });
+      button.addEventListener('click', () => go(i));
+      return button;
+    }),
+  );
+  // Q / E (and the page keys) switch tabs; a gamepad's shoulders send them too where mapped.
+  const onKey = (e: KeyboardEvent) => {
+    // The screen was replaced: this listener goes with it.
+    if (!bar.isConnected) {
+      window.removeEventListener('keydown', onKey);
+      return;
+    }
+    if (e.code === 'KeyQ' || e.code === 'PageUp') {
+      e.preventDefault();
+      go(current - 1);
+    } else if (e.code === 'KeyE' || e.code === 'PageDown') {
+      e.preventDefault();
+      go(current + 1);
+    }
+  };
+  window.addEventListener('keydown', onKey);
   show(root, [
     h('h1', { className: 'screen-title', textContent: t('title.settings') }),
     h('div', { className: 'screen-row' }, [
-      mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]),
+      mdWindow({ title: t('title.settings'), className: 'settings' }, [bar, list.element, desc.element, h('p', { className: 'hint dim settings-tabs-hint', textContent: t('settings.tabsHint') })]),
       mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
     ]),
   ]);
@@ -1800,11 +1867,11 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
   const inRoom = online && room !== null && current === room.session;
   const party = inRoom ? room!.session.roster().map(nameOf) : null;
-  const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => townScreen(root);
+  const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => hub(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
-  const items: ListItem[] = endActions({ online }).map((action) =>
-    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : 'screen.town'), onConfirm: back },
+  const items: ListItem[] = endActions({ online, tutorialWon: summary.dungeon === TUTORIAL.id && result === 'victory' }).map((action) =>
+    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : townIsOpen() ? 'screen.town' : 'screen.menu'), onConfirm: back },
   );
   const held = heldItems(summary.items as ItemId[]);
   show(root, [
@@ -1875,7 +1942,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   }
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
-  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story) };
+  let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: tierFor(dungeonById(dungeon), sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story)) };
   // `?boss=<seed>`: that herald on a Sima herald floor.
   const boss = devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
@@ -1922,15 +1989,18 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
     openMenu: (actions, held) =>
       openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),
-    // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`): a room's run to the room's town, still in it (ticket SD-RIKZIZ).
+    // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`): a room's run to the room's town, still in it (ticket SD-RIKZIZ);
+    // a solo run to the hub (the title until the town opens: odd/tasks/menu-redesign.md S7).
     onQuit: () =>
       trial?.from === 'room' || townOf({ inRoom: online && room !== null && current === room.session }) === 'room'
         ? backToRoom(root)
         : trial
           ? shrineScreen(root, trial.from, viewOf(trial.request), trial.request.id)
-          : townScreen(root),
+          : hub(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     ...(story ? { story } : {}),
+    // The Crypt's tutorial signs this device has seen (app/tutorial.ts); the run decides whether it teaches.
+    tutorial: { seen: (hint) => tutorialSeen(store).has(hint), mark: (hint) => markTutorialSeen(store, hint) },
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     // The Sima as this player remembers it (names only; every peer reads its own: app/sima-lore.ts).

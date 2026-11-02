@@ -15,6 +15,13 @@
     <style>
       /* Pixelify Sans, SIL OFL 1.1 (public/fonts/PixelifySans-OFL.txt). Relative to the page, so it follows the Vite base. */
       @font-face { font-family: 'Pixelify Sans'; src: url('./fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+      /* Atkinson Hyperlegible, SIL OFL 1.1 (public/fonts/AtkinsonHyperlegible-OFL.txt): the reading face for long text and
+         the fields players type in (tickets SD-E7HAFY, SD-D1ZBRQ; odd/tasks/menu-redesign.md T1). Titles, menu rows and the HUD stay pixel. */
+      @font-face { font-family: 'Atkinson Hyperlegible'; src: url('./fonts/AtkinsonHyperlegible-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+      @font-face { font-family: 'Atkinson Hyperlegible'; src: url('./fonts/AtkinsonHyperlegible-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+      .md-window p, .md-window li, .md-desc, .move-desc, .pick-description, .mission-detail, .travel-detail, .account-note, .shrine-note, .memory-text,
+      input, textarea, select { font-family: var(--md-text-font); -webkit-font-smoothing: antialiased; font-variant-ligatures: normal; font-feature-settings: normal; }
+      .md-window p, .md-window li, .md-desc, .move-desc, .pick-description, .mission-detail, .travel-detail, .account-note, .shrine-note, .memory-text { font-size: var(--md-text-size); line-height: 1.4; }
       :root { color-scheme: dark; }
       /*
        * Pixelify Sans ships real weights (variable 400-700), but its bold "e" fills its own counter at any size
@@ -38,6 +45,95 @@
       .md-window-body > :first-child { margin-top: 0; }
       .md-window-body > :last-child { margin-bottom: 0; }
       .md-window p { margin: 0.4em 0; }
+      /* ---- The town's Esc menu as an inked plan (src/town/town-map-view.ts; odd/tasks/menu-redesign.md S8, S9): sepia ground,
+         ink edges, original line glyphs on round seals, the cursor's seal in gold. ---- */
+      .town-map { width: min(96vw, 1100px); max-height: 94vh; display: flex; flex-direction: column; gap: 10px; }
+      .town-map-body { display: grid; grid-template-columns: 1fr auto; gap: 14px; min-height: 0; }
+      .town-map-board { position: relative; justify-self: center; align-self: start; width: fit-content; background: #17130d; border: 2px solid var(--md-border-shade); border-radius: 8px; box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8); }
+      /* The plan keeps its aspect within the width and the height left over, so the % positions of the seals stay on their tiles. */
+      .town-map-plan { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(94vh - 150px); image-rendering: pixelated; opacity: 0.95; }
+      .town-map-mark { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--md-text); font: inherit; font-size: 16px; cursor: pointer; }
+      .town-map-mark svg { width: 34px; height: 34px; padding: 6px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6); }
+      .town-map-mark .town-map-label { padding: 0 6px; border-radius: 6px; background: rgba(5, 6, 13, 0.75); white-space: nowrap; color: var(--md-text-dim); }
+      .town-map-mark.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 212, 71, 0.25), 0 0 14px rgba(255, 212, 71, 0.45); }
+      .town-map-mark.selected .town-map-label { color: var(--md-cursor); }
+      .town-map-column { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 70vh; }
+      .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
+      .town-map-mark.in-column svg { width: 28px; height: 28px; padding: 5px; }
+      .town-map-caption { margin: 0; min-height: 2.6em; }
+      /* Cinematics: press to advance or Auto (src/app/prologue.ts; odd/tasks/menu-redesign.md S13). */
+      .prologue-auto { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 6; font: inherit; font-size: 16px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+        color: var(--md-text-dim); background: rgba(5, 6, 13, 0.6); border: 2px solid var(--md-border-shade); }
+      .prologue-auto.is-on { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
+      .prologue-text { position: relative; }
+      .prologue-next { position: absolute; right: 0; bottom: -4px; font-size: 14px; color: var(--md-cursor); opacity: 0; }
+      .prologue-next.is-visible { opacity: 1; animation: prologue-next 0.9s ease-in-out infinite; }
+      @keyframes prologue-next { 50% { transform: translateY(3px); opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { .prologue-next.is-visible { animation: none; } }
+      /* Title: a dominant Play, the other rows quiet (odd/tasks/menu-redesign.md S11). */
+      .title-menu { min-width: min(420px, 86vw); }
+      .title-row-play { padding-top: 6px; padding-bottom: 8px; }
+      .title-play { display: flex; flex-direction: column; gap: 2px; }
+      .title-play-name { font-size: 44px; line-height: 1; color: var(--md-cursor); text-shadow: 0 0 14px rgba(255, 106, 61, 0.55), 0 3px 0 var(--md-ink); letter-spacing: 0.04em; }
+      .title-play small { font-family: var(--md-text-font); font-size: 16px; color: var(--md-text-dim); }
+      .title-row-online, .title-row-options { font-size: 19px; color: var(--md-text-dim); }
+      /* Options: grouped rows with their glyph, wide enough that no label wraps. */
+      .menu-window.options .shop-list { min-width: 15em; }
+      .menu-row-icon { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+      .menu-row-icon svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+      /* The tutorial sign as a carved stone inscription (src/ui/tutorial-sign.ts; odd/tasks/menu-redesign.md T7, owner: "hazlos mas bonitos"):
+         a slate slab with a chiselled bevel and grain, an eclipse emblem and an engraved ember title, keys raised as stone keycaps. Original, CSS only. */
+      .tutorial-sign { position: absolute; top: 11%; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(580px, 88vw); padding: 12px 22px 14px; pointer-events: none; z-index: 5; border-radius: 4px;
+        background:
+          radial-gradient(ellipse at 30% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+          repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.018) 0 2px, rgba(0, 0, 0, 0.03) 2px 5px),
+          linear-gradient(180deg, #34333a 0%, #23222a 55%, #1a1920 100%);
+        border: 1px solid #0b0b0f;
+        box-shadow: 0 0 0 2px #5d5a66, 0 0 0 4px var(--md-ink), inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(0, 0, 0, 0.55), 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 26px rgba(232, 40, 58, 0.12);
+        animation: tutorial-sign 7s ease-out both; }
+      .tutorial-sign::before, .tutorial-sign::after { content: ''; position: absolute; top: 7px; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #8b8794, #2a2830); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+      .tutorial-sign::before { left: 8px; }
+      .tutorial-sign::after { right: 8px; }
+      .tutorial-sign-head { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+      .tutorial-sign-emblem { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 60% 40%, #0a0a0e 0 52%, transparent 53%), var(--md-eclipse); box-shadow: 0 0 8px rgba(255, 106, 61, 0.7); flex: none; }
+      .tutorial-sign-title { font-family: var(--md-font); font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; color: #e79a6a; text-shadow: 0 1px 0 #000, 0 -1px 0 rgba(255, 255, 255, 0.08); }
+      .tutorial-sign-text { margin: 0; text-align: center; font-family: var(--md-text-font); font-size: 18px; line-height: 1.5; color: #e9e6df; text-shadow: 0 1px 0 #000; }
+      .tutorial-sign-text kbd { display: inline-block; margin: 0 2px; padding: 0 7px; min-width: 1.2em; border-radius: 4px; font-family: var(--md-font); font-size: 15px; line-height: 1.5; color: #f1ead2; vertical-align: 1px;
+        background: linear-gradient(180deg, #57545f, #3a3842); border: 1px solid #16151a; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 0 #121116; }
+      @keyframes tutorial-sign { 0% { opacity: 0; transform: translate(-50%, 10px); filter: brightness(1.6); } 7% { opacity: 1; transform: translate(-50%, 0); filter: brightness(1); } 88% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -4px); } }
+      @media (prefers-reduced-motion: reduce) { .tutorial-sign { animation: none; } }
+      /* Solo: the sign waits for a press (the run is paused): it stays, takes the tap, and says how to go on. */
+      .tutorial-sign.is-waiting { pointer-events: auto; cursor: pointer; animation: tutorial-sign-in 0.4s ease-out both; }
+      .tutorial-sign-footer { margin: 8px 0 0; text-align: center; font-family: var(--md-text-font); font-size: 14px; color: #b9b3a8; animation: tutorial-sign-blink 1.4s ease-in-out infinite; }
+      .tutorial-sign-footer kbd { display: inline-block; margin: 0 2px; padding: 0 6px; border-radius: 4px; font-family: var(--md-font); font-size: 13px; color: #f1ead2; background: linear-gradient(180deg, #57545f, #3a3842); border: 1px solid #16151a; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 0 #121116; }
+      @keyframes tutorial-sign-in { 0% { opacity: 0; transform: translate(-50%, 10px); filter: brightness(1.6); } 100% { opacity: 1; transform: translate(-50%, 0); filter: brightness(1); } }
+      @keyframes tutorial-sign-blink { 50% { opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { .tutorial-sign.is-waiting, .tutorial-sign-footer { animation: none; } }
+      /* Solo, a Senda's spoken line waits in a dialog box with the run paused (src/app/game.ts tell; odd/tasks/menu-redesign.md S13). */
+      .story-box { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); width: min(720px, 90vw); box-sizing: border-box; padding: 14px 20px 10px; z-index: 6; cursor: pointer; border-radius: 10px;
+        background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom)); border: 3px solid var(--md-border); box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 2px var(--md-border-shade), 0 8px 0 rgba(0, 0, 0, 0.4); animation: story-box-in 0.25s ease-out both; }
+      .story-box-text { margin: 0; font-family: var(--md-text-font); font-size: 19px; line-height: 1.45; color: var(--md-text); }
+      .story-box-next { margin: 6px 0 0; text-align: right; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); animation: tutorial-sign-blink 1.4s ease-in-out infinite; }
+      .story-box-next kbd { display: inline-block; margin: 0 2px; padding: 0 6px; border-radius: 4px; font-family: var(--md-font); font-size: 12px; color: var(--md-text); background: rgba(5, 6, 13, 0.45); border: 1px solid var(--md-border-shade); }
+      @keyframes story-box-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+      @media (prefers-reduced-motion: reduce) { .story-box, .story-box-next { animation: none; } }
+      /* Settings in tabs (src/app/main.ts settingsScreen; odd/tasks/menu-redesign.md S6): the tab bar over the list, the cursor's sentence under it. */
+      .settings-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+      .settings-tabs button { font: inherit; font-size: 18px; color: var(--md-text-dim); background: rgba(5, 6, 13, 0.35); border: 2px solid var(--md-border-shade); border-radius: 8px; padding: 2px 10px; cursor: pointer; }
+      .settings-tabs button.selected { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
+      .settings-about { min-height: 2.8em; margin-top: 10px; color: var(--md-text); }
+      html.touch .settings-tabs-hint { display: none; }
+      /* The quick wheel on Tab (src/town/quick-wheel-view.ts): a dark ring of seals, the pointed one in gold, its name in the centre. */
+      .quick-wheel { display: grid; place-items: center; }
+      .quick-wheel-ring { position: relative; width: min(70vh, 80vw, 460px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(23, 19, 13, 0.96) 0 34%, rgba(23, 19, 13, 0.9) 35% 58%, rgba(5, 6, 13, 0.55) 59%); border: 2px solid #c9b98f; box-shadow: 0 0 0 3px var(--md-ink), 0 0 40px rgba(0, 0, 0, 0.8); }
+      .quick-wheel-centre { position: absolute; inset: 32%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; }
+      .quick-wheel-name { color: var(--md-cursor); font-weight: 400; }
+      .quick-wheel-about { font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
+      .quick-wheel-seal { position: absolute; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; cursor: pointer; }
+      .quick-wheel-seal svg { width: 56px; height: 56px; padding: 12px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; transition: transform 80ms ease-out; }
+      .quick-wheel-seal.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); transform: scale(1.15); box-shadow: 0 0 16px rgba(255, 212, 71, 0.5); }
+      .town-map-caption strong { color: var(--md-cursor); font-family: var(--md-font); font-weight: 400; }
+      @media (max-height: 520px) { .town-map.md-window { padding: 16px 14px 10px; gap: 6px; } .town-map-plan { max-height: calc(94vh - 90px); } .town-map-caption { min-height: 0; font-size: 15px; } .town-map-mark { font-size: 12px; } .town-map-mark svg { width: 26px; height: 26px; padding: 4px; } .town-map-column { max-height: 60vh; } .town-map-mark .town-map-label { display: none; } .town-map-mark.selected .town-map-label, .town-map-mark.in-column .town-map-label { display: inline; } }
       .md-window .dim { color: var(--md-text-dim); }
       .md-stat { display: flex; justify-content: space-between; gap: 2em; padding: 2px 0; }
       .md-stat-value { color: var(--md-cursor); }
@@ -211,8 +307,11 @@
       .result-columns { display: grid; gap: 0 2.5rem; }
       @media (min-width: 900px) { .result-columns { grid-template-columns: 1fr 1fr; } .result { min-width: 46rem; } }
       /* End screen: the fan notice flows under the window instead of floating over its buttons (the page scrolls if it must). */
-      #app:has(.result) { padding-bottom: 12px; }
-      #app:has(.result) > .notice { position: static; width: 100%; box-sizing: border-box; }
+      /* Every menu screen does the same (odd/tasks/menu-redesign.md T2: it sat over the title hints and the loadout at 844x390):
+         the notice is the last row of the column, the screen stays centred above it. Runs keep the small fixed .in-game one. */
+      #app:not(:has(canvas.game)) { padding-bottom: 12px; }
+      #app:not(:has(canvas.game)) > :first-child { margin-top: auto; }
+      #app > .notice:not(.in-game) { position: static; width: 100%; box-sizing: border-box; margin-top: auto; }
       /* Short windows (1024×640 and the like): tighter lines and the two actions on one row, so the Sima's end screen fits. */
       @media (max-height: 760px) {
         #app:has(.result) { gap: 10px; padding-top: 16px; }
@@ -381,6 +480,11 @@
       }
       html.touch #app { justify-content: safe center; }
       html.touch .hint { display: none; }
+      /* A hint with both wordings (odd/tasks/menu-redesign.md T3) stays on touch and shows its touch line: touch mode starts with the first touch, after the screen was drawn. */
+      .dual-hint .on-touch { display: none; }
+      html.touch .hint.dual-hint, html.touch .prologue-hint.dual-hint { display: block; }
+      html.touch .dual-hint .on-keys { display: none; }
+      html.touch .dual-hint .on-touch { display: inline; }
       html.touch .notice:not(.in-game) { position: static; width: 100%; padding: 0; }
       /* In a run the fan notice would sit under the thumbs: it stays on the title, credits and end screens. */
       html.touch .notice.in-game { display: none; }

@@ -2,7 +2,7 @@ import type { SheetStore } from '../adapters/assets';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
 import { t } from '../i18n';
-import { cameraAt, holdProgress, panelAlpha, panelAt, revealedChars, SKIP, skipAvailable, stageScale } from '../ui/cinematic';
+import { cameraAt, holdAtMs, holdProgress, panelAlpha, panelAt, revealedChars, revealEndMs, SKIP, skipAvailable, stageScale, startOf } from '../ui/cinematic';
 import { h } from '../ui/window';
 
 /**
@@ -49,6 +49,26 @@ const windowScale = (): number => stageScale(window.innerWidth, window.innerHeig
 
 const isSkipKey = (key: string): boolean => key === 'Escape' || key === 'Enter';
 
+/** Enter, Space or a tap moves the text on (odd/tasks/menu-redesign.md S13); holding Esc or Enter still skips the whole scene. */
+const isAdvanceKey = (key: string): boolean => key === 'Enter' || key === ' ';
+
+/** Auto plays the text by itself, as before; off (the default) waits for a press after each panel's words. Remembered on this device. */
+const AUTO_KEY = 'mazmorra-sombria.cinematicAuto';
+function readAuto(): boolean {
+  try {
+    return localStorage.getItem(AUTO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeAuto(on: boolean): void {
+  try {
+    localStorage.setItem(AUTO_KEY, on ? '1' : '0');
+  } catch {
+    // Private mode: the choice lasts for this scene only.
+  }
+}
+
 export function prologueScreen(options: PrologueOptions): HTMLElement {
   const canvas = h('canvas', { className: 'prologue-canvas' });
   canvas.width = STAGE.w;
@@ -61,8 +81,25 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const hold = h('span', { className: 'prologue-hold' });
   const skip = h('button', { className: 'prologue-skip', type: 'button', textContent: t('prologue.skip') });
   skip.append(hold);
-  const hint = h('p', { className: 'prologue-hint', textContent: t('prologue.skipHint') });
-  const element = h('section', { className: 'prologue' }, [stage, skip, hint]);
+  const hint = h('p', { className: 'prologue-hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('prologue.skipHint') }), h('span', { className: 'on-touch', textContent: t('prologue.skipHint.touch') })]);
+  // Press to advance or Auto (odd/tasks/menu-redesign.md S13): the button shows and toggles the mode; ▼ marks a panel waiting for a press.
+  let auto = readAuto();
+  const autoButton = h('button', { className: 'prologue-auto', type: 'button', textContent: t('cinematic.auto') });
+  const nextMark = h('span', { className: 'prologue-next', textContent: '▼' });
+  nextMark.setAttribute('aria-hidden', 'true');
+  text.append(nextMark);
+  const showAuto = () => {
+    autoButton.classList.toggle('is-on', auto);
+    autoButton.setAttribute('aria-pressed', String(auto));
+  };
+  showAuto();
+  autoButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    auto = !auto;
+    writeAuto(auto);
+    showAuto();
+  });
+  const element = h('section', { className: 'prologue' }, [stage, skip, autoButton, hint]);
   element.setAttribute('aria-label', options.label ?? t('title.prologue'));
   const panels = options.panels ?? PROLOGUE;
   const skipAfterMs = options.skipAfterMs ?? SKIP.availableAfterMs;
@@ -80,6 +117,19 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   let shownPanel = -1;
   let shownText = '';
   let elapsed = options.startMs ?? 0;
+  /** Panels whose wait was answered by a press (manual play): they go on to their fade. */
+  const released = new Set<number>();
+  const lengthsOf = (index: number) => panels[index]!.lines.map((key) => [...(options.text ?? t)(key)].length);
+  /** A press: finish typing the panel's words, or, once they are out, let the panel go on. */
+  const advance = () => {
+    const moment = panelAt(panels, elapsed);
+    if (!moment || started === null) return;
+    const end = revealEndMs(moment.panel, lengthsOf(moment.index));
+    if (moment.localMs < end) {
+      elapsed = startOf(panels, moment.index) + end;
+      started = performance.now() - elapsed;
+    } else released.add(moment.index);
+  };
 
   const cleanup = () => {
     window.removeEventListener('keydown', onKeyDown, true);
@@ -94,6 +144,11 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     options.onClose?.();
   };
   const onKeyDown = (e: KeyboardEvent) => {
+    if (isAdvanceKey(e.key) && !e.repeat) advance();
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!isSkipKey(e.key)) return;
     // Keep the key from the menus behind and from page scrolling.
     e.preventDefault();
@@ -116,6 +171,8 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const letGo = (e: PointerEvent) => {
     if (e.pointerType === 'touch') pressedAt = null;
   };
+  // A click or a tap on the picture (not on its buttons) moves the text on.
+  stage.addEventListener('click', () => advance());
   element.addEventListener('pointerup', letGo);
   element.addEventListener('pointercancel', letGo);
 
@@ -156,6 +213,18 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       options.music?.start(elapsed / 1000);
     }
     elapsed = now - started;
+    // Manual play: a panel with words waits once they are out, until a press.
+    const waiting = panelAt(panels, elapsed);
+    let held = false;
+    if (!auto && waiting && !released.has(waiting.index)) {
+      const hold = holdAtMs(waiting.panel, lengthsOf(waiting.index));
+      if (hold !== null && waiting.localMs >= hold) {
+        elapsed = startOf(panels, waiting.index) + hold;
+        started = now - elapsed;
+        held = true;
+      }
+    }
+    nextMark.classList.toggle('is-visible', held);
     if (holdProgress(pressedAt, now) >= 1) {
       finish();
       return;

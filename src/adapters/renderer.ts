@@ -13,6 +13,8 @@ import { TYPE_COLORS } from '../ui/tokens';
 import { drawEclipseZones, ECHO_FILTER } from './eclipse-echo-view';
 import { isWound, woundScale } from '../data/story-quests';
 import { drawNest, drawSimaEvent, drawSimaHud } from './sima-events-view';
+import { drawShadowSelf, shadowLook } from './shadow-view';
+import { shadowReach } from '../core/shadow';
 import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS, rainSafeLane, stitchSources } from '../core/archer';
@@ -1200,6 +1202,13 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         const blow = ai.attack === 'counter' ? def.counter : def.jab;
         groundLane(pos, ai.attackDir, blow.lungeDistance, enemy.radius * 2, ai.attack === 'counter' ? COLORS.strike : fill, winding ? progress : 1);
       }
+    } else if (def?.kind === 'shadow') {
+      // The player's shadow: the mirrored move's own shape (a swing's sector or ring, a dash's lane, a shot's lane), solid once the aim locks.
+      const reach = shadowReach(ai.attack);
+      const locked = lockedFor(def.lockMs) || striking;
+      if (reach.shape === 'arc') groundArc(pos, ai.attackDir, reach.reach + enemy.radius, reach.arcDegrees, locked ? COLORS.strike : fill, COLORS.telegraphEdge);
+      else if (reach.shape === 'dash') groundLane(pos, ai.attackDir, reach.reach, Math.max(enemy.radius * 2, reach.width), locked ? COLORS.strike : fill, winding ? progress : 1);
+      else if (winding) groundLane(pos, ai.attackDir, 120, Math.max(8, reach.width), locked ? COLORS.strike : fill, progress);
     } else if (def?.kind === 'caster' && winding) {
       ctx.strokeStyle = COLORS.telegraphEdge;
       ctx.lineWidth = 2;
@@ -1682,6 +1691,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (enemy.species === 'eclipse-nest') {
             const nest = current.simaEvent?.kind === 'nest' && current.simaEvent.woke ? (current.simaEvent.remainingMs ?? null) : null;
             drawNest(ctx, pos, enemy.hp / enemy.maxHp, nest, fade, timeMs);
+            return;
+          }
+          // The player's shadow (the tutorial dungeon's boss) is an original creature drawn in code, never a sheet.
+          if (enemy.species === 'shadow-self') {
+            drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs);
             return;
           }
           // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.

@@ -1,3 +1,4 @@
+import { isTouchUi } from '../adapters/touch-mode';
 import { ITEMS, type ItemId, type Rarity } from '../data/items';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
@@ -84,7 +85,7 @@ export function openItemPick(parent: HTMLElement, cards: readonly PickCard[], sh
   // Mouse down too: the canvas below must not see the press (and nothing takes focus).
   list.element.addEventListener('mousedown', (e) => e.preventDefault());
   overlay.append(
-    mdWindow({ title: t('pick.title'), className: 'pick-panel' }, [list.element, h('p', { className: 'pick-hint dim', textContent: t('pick.hint') })]),
+    mdWindow({ title: t('pick.title'), className: 'pick-panel' }, [list.element, h('p', { className: 'pick-hint dim', textContent: t(isTouchUi() ? 'pick.hint.touch' : 'pick.hint') })]),
   );
   parent.append(overlay);
   return () => {

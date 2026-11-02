@@ -7,6 +7,10 @@ export interface MenuWindowRow {
   label: string;
   about: string;
   onConfirm(): void;
+  /** A small icon before the label (odd/tasks/menu-redesign.md S11). */
+  icon?: Node;
+  /** The group the row opens: a header above it, skipped by the cursor. */
+  group?: string;
 }
 
 export interface MenuWindowOptions {
@@ -28,14 +32,27 @@ export interface MenuWindowOptions {
  * tools/mobile/menu-geometry.mjs). The title's Options and the town's Esc menu.
  */
 export function menuWindow(options: MenuWindowOptions): { element: HTMLElement; dispose(): void } {
-  const rows = [...options.rows, options.back];
+  const rows: MenuWindowRow[] = [...options.rows, options.back];
+  // Group headers sit in the list but have no action; `abouts` keeps one entry per list item, headers included.
+  const items: { header?: true; label: string | HTMLElement; onConfirm?: () => void }[] = [];
+  const abouts: string[] = [];
+  const itemOf: number[] = [];
+  rows.forEach((row, i) => {
+    if (row.group) {
+      items.push({ header: true, label: row.group });
+      abouts.push('');
+    }
+    itemOf[i] = items.length;
+    items.push({ label: row.icon ? h('span', { className: 'menu-row-icon' }, [row.icon, h('span', { textContent: row.label })]) : row.label, onConfirm: row.onConfirm });
+    abouts.push(row.about);
+  });
   const about = h('p', { className: 'menu-about' });
   const describe = (index: number) => {
-    about.textContent = rows[index]?.about ?? '';
+    about.textContent = abouts[index] ?? '';
   };
   const list = cursorList({
-    items: rows.map((row) => ({ label: row.label, onConfirm: row.onConfirm })),
-    initial: options.initial,
+    items,
+    initial: options.initial === undefined ? undefined : itemOf[options.initial],
     onBack: options.back.onConfirm,
     onCursor: describe,
     label: options.title,

@@ -348,6 +348,8 @@ export interface AiState {
   aimPoint?: Vec2;
   /** Cut of a chained lunge in progress (Pawniard: 1 on the second cut); absent = the first. */
   chain?: number;
+  /** The player's shadow (core/shadow.ts): how many moves of its mirrored kit it has played (the next is this one, in slot order); absent = 0. */
+  mirror?: number;
 }
 
 /** An Oran Berry lying on the floor (berries.ts). */

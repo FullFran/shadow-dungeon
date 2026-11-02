@@ -13,6 +13,7 @@ import { behaviourFor } from './tricks';
 import { heraldCard, heraldContact, heraldOf } from './herald/brain';
 import { heraldDef } from './herald/generate';
 import { isSwampDef, swampAttack } from './swamp-brains';
+import { shadowAttack, shadowTouches } from './shadow';
 import { floodPockets, hazePockets } from './swamp-bosses';
 import type { Arena, EnemyState, GameEvent, WorldState } from './state';
 import { distance, dot, length, normalize, sub, type Vec2 } from './vec';
@@ -210,6 +211,9 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       const zone = eclipseZoneContact(current, enemy, def, current.player.pos);
       if (!zone) continue;
       hit = contactPlayer(current, enemy, zone.attack, zone.touches, events);
+    } else if (def.kind === 'shadow') {
+      // The tutorial's shadow (solo only, kept consistent): its swing or dash; its shots are projectiles.
+      hit = contactPlayer(current, enemy, shadowAttack(enemy.ai.attack, def), shadowTouches(enemy, current.player.pos), events);
     } else if (enemy.boss?.stance === 'midnight') {
       hit = contactPlayer(current, enemy, midnightAttack(def, worldDifficulty(current)), slamTouches(enemy, current.player.pos, def.phase2.midnight.radius), events);
     } else if (enemy.boss && enemy.boss.stance !== 'shield' && enemy.boss.stance !== 'blade') {

@@ -22,14 +22,24 @@ export interface PleaActor {
 }
 
 export const SIMA_PLEA: readonly PleaActor[] = [
-  { id: 'storyteller', species: 'gastly', nameKey: 'town.name.storyteller', lines: 5 },
-  { id: 'fisher', species: 'cubone', nameKey: 'town.name.fisher', lines: 3 },
-  { id: 'keeper', species: 'litwick', nameKey: 'town.name.keeper', lines: 3 },
-  { id: 'shop', species: 'poochyena', nameKey: 'town.name.shop', lines: 3 },
-  { id: 'gacha', species: 'mimikyu', nameKey: 'town.name.gacha', lines: 2 },
-  { id: 'hermit', species: 'croagunk', nameKey: 'town.name.hermit', lines: 3 },
-  { id: 'oracle', species: 'phantump', nameKey: 'town.name.oracle', lines: 3 },
+  { id: 'storyteller', species: 'gastly', nameKey: 'town.name.storyteller', lines: 2 },
+  { id: 'fisher', species: 'cubone', nameKey: 'town.name.fisher', lines: 1 },
+  { id: 'keeper', species: 'litwick', nameKey: 'town.name.keeper', lines: 1 },
+  { id: 'shop', species: 'poochyena', nameKey: 'town.name.shop', lines: 1 },
+  { id: 'gacha', species: 'mimikyu', nameKey: 'town.name.gacha', lines: 1 },
+  { id: 'hermit', species: 'croagunk', nameKey: 'town.name.hermit', lines: 2 },
+  { id: 'oracle', species: 'phantump', nameKey: 'town.name.oracle', lines: 2 },
 ];
+
+/**
+ * The player's answer to Phantump's question (odd/tasks/menu-redesign.md S6:
+ * the scene used to end with nobody answering): a promise or a silence; both
+ * go down, Phantump replies to each. Texts: `sima.plea.answer.<id>` and `sima.plea.reply.<id>`.
+ */
+export const PLEA_ANSWERS = ['promise', 'silent'] as const;
+export type PleaAnswer = (typeof PLEA_ANSWERS)[number];
+export const answerKey = (answer: PleaAnswer): string => `sima.plea.answer.${answer}`;
+export const replyKey = (answer: PleaAnswer): string => `sima.plea.reply.${answer}`;
 
 /** The i18n keys of an actor's lines, in order. */
 export const pleaKeys = (actor: PleaActor): string[] => Array.from({ length: actor.lines }, (_, i) => `sima.plea.${actor.id}.${i + 1}`);

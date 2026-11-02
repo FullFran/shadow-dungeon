@@ -84,7 +84,7 @@ describe('the tickets screen wiring', () => {
     expect(read('src/app/tickets-screen.ts')).not.toMatch(/innerHTML|insertAdjacentHTML|outerHTML/);
   });
   it('shows the entry in Options only to a known admin', () => {
-    expect(read('src/app/main.ts')).toMatch(/ticketAdmin\.known\(\) \? \[\{ label: t\('title\.tickets'\)/);
+    expect(read('src/app/main.ts')).toMatch(/ticketAdmin\.known\(\) \? \[\{ id: 'tickets' as const, label: t\('title\.tickets'\)/);
   });
   it('closes the inbox when the account that opened it is gone', () => {
     expect(read('src/app/main.ts')).toContain('if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();');
