@@ -185,17 +185,17 @@ function shadeRise(ctx: CanvasRenderingContext2D, t: SceneTime, c: GuardianCinem
   passage(ctx, t, c);
   const k = Math.min(1, t.progress / 0.75);
   const ease = 1 - (1 - k) * (1 - k);
-  pool(ctx, W / 2, SHADE_GROUND, 26 + 12 * (1 - ease), 0.9);
-  shade(ctx, t.localMs, W / 2, 0.8 + 1.8 * ease, { alpha: Math.min(1, t.progress * 1.8) });
+  pool(ctx, W / 2, SHADE_GROUND, 20 + 10 * (1 - ease), 0.9);
+  shade(ctx, t.localMs, W / 2, 0.5 + 1.1 * ease, { alpha: Math.min(1, t.progress * 1.8) });
   embers(ctx, t.localMs, 14, 0.3);
 }
 
 /** Its eyes open and it speaks; the ember rim breathes. */
 function shadeEyes(ctx: CanvasRenderingContext2D, t: SceneTime, c: GuardianCinematic): void {
   passage(ctx, t, c);
-  glow(ctx, W / 2, SHADE_GROUND - 40, 80, c.tint.rim, 0.12);
-  pool(ctx, W / 2, SHADE_GROUND, 28, 0.9);
-  shade(ctx, t.localMs, W / 2, 2.6 + 0.2 * t.progress, { windup: 0.15 + 0.15 * Math.sin(t.localMs / 700) });
+  glow(ctx, W / 2, SHADE_GROUND - 30, 70, c.tint.rim, 0.12);
+  pool(ctx, W / 2, SHADE_GROUND, 22, 0.9);
+  shade(ctx, t.localMs, W / 2, 1.6 + 0.15 * t.progress, { windup: 0.15 + 0.15 * Math.sin(t.localMs / 700) });
   embers(ctx, t.localMs, 20, 0.4);
 }
 
@@ -203,22 +203,22 @@ function shadeEyes(ctx: CanvasRenderingContext2D, t: SceneTime, c: GuardianCinem
 function shadeName(ctx: CanvasRenderingContext2D, t: SceneTime, c: GuardianCinematic): void {
   passage(ctx, t, c);
   const k = Math.min(1, t.progress / 0.5);
-  glow(ctx, W / 2, SHADE_GROUND - 40, 100, c.tint.rim, 0.2 + 0.3 * k);
-  pool(ctx, W / 2, SHADE_GROUND, 30, 0.9);
-  shade(ctx, t.localMs, W / 2, 2.9, { windup: 0.3 + 0.6 * k });
+  glow(ctx, W / 2, SHADE_GROUND - 30, 90, c.tint.rim, 0.2 + 0.3 * k);
+  pool(ctx, W / 2, SHADE_GROUND, 24, 0.9);
+  shade(ctx, t.localMs, W / 2, 1.8, { windup: 0.3 + 0.6 * k });
   embers(ctx, t.localMs, 34, 0.4 + 0.4 * k);
 }
 
 /** Beaten, it comes apart upwards like smoke, and what is left sinks back into the pool. */
 function shadeFade(ctx: CanvasRenderingContext2D, t: SceneTime, c: GuardianCinematic): void {
   passage(ctx, t, c);
-  pool(ctx, W / 2, SHADE_GROUND, 22 + 6 * t.progress, 0.9);
-  shade(ctx, t.localMs, W / 2, 2.6, { sinceDefeatMs: Math.max(0, t.localMs - 600) * 0.32 });
+  pool(ctx, W / 2, SHADE_GROUND, 18 + 6 * t.progress, 0.9);
+  shade(ctx, t.localMs, W / 2, 1.6, { sinceDefeatMs: Math.max(0, t.localMs - 600) * 0.32 });
   for (let i = 0; i < 36; i++) {
     const phase = ((t.localMs / 1000) * (0.18 + hash01(i) * 0.2) + hash01(i + 9)) % 1;
     ctx.globalAlpha = (1 - phase) * 0.7;
     ctx.fillStyle = hash01(i + 2) > 0.7 ? c.tint.rim : '#2a2233';
-    ctx.fillRect(Math.round(W / 2 - 30 + hash01(i + 3) * 60), Math.round(SHADE_GROUND - 20 - phase * 100), 1, 2);
+    ctx.fillRect(Math.round(W / 2 - 22 + hash01(i + 3) * 44), Math.round(SHADE_GROUND - 16 - phase * 80), 1, 2);
   }
   ctx.globalAlpha = 1;
 }
