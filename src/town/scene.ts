@@ -32,8 +32,8 @@ import { townMapView, type TownMapEntry } from './town-map-view';
 import { looseServices, townMapMarkers } from './town-map';
 import { wheelServices } from './quick-wheel';
 import { quickWheelView } from './quick-wheel-view';
-import { pleaActor, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
-import { PLEA_STAGE, pleaKeys } from '../data/sima-plea';
+import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
+import { PLEA_ANSWERS, PLEA_STAGE, answerKey, pleaKeys, replyKey, type PleaAnswer } from '../data/sima-plea';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
@@ -444,8 +444,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       const next = advanceDialog(dialog.state);
       const opens = dialog.opens;
       dialog = next ? { ...dialog, state: next } : null;
-      // A villager of the pleas finished speaking: it steps aside.
-      if (!next && plea) plea = pleaSpoken(plea);
+      // A villager of the pleas finished speaking: it steps back; Phantump's reply to the player's answer ends the scene.
+      if (!next && plea) plea = plea.phase === 'choose' ? pleaAnswered(plea) : pleaSpoken(plea);
       if (!next && opens === 'shop') openShopWindow();
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
       if (!next && opens === 'gacha') openShopWindow(options.openGacha);
@@ -561,6 +561,25 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       },
     };
   }
+
+  /**
+   * The player's answer to Phantump (odd/tasks/menu-redesign.md S6): a small
+   * window with the two answers; the reply comes in the dialog box, and
+   * closing it ends the scene. Esc in the window answers with silence.
+   */
+  const openPleaAnswer: TownWindowOpener = (parent, onClose) => {
+    const answer = (choice: PleaAnswer) => () => {
+      onClose();
+      dialog = { speaker: t('town.name.oracle'), state: openDialog([t(replyKey(choice))]) };
+    };
+    const list = cursorList({ items: PLEA_ANSWERS.map((choice) => ({ label: t(answerKey(choice)), onConfirm: answer(choice) })), onBack: answer('silent'), label: t('town.name.oracle') });
+    const overlay = h('div', { className: 'town-shop plea-answer' }, [mdWindow({ title: t('town.name.oracle'), className: 'narrow' }, [list.element])]);
+    parent.append(overlay);
+    return () => {
+      list.dispose();
+      overlay.remove();
+    };
+  };
 
   /** The pleas are over (or skipped): seen on this device, and on (to the Sima, or back where the player was). */
   function endPlea(): void {
@@ -907,6 +926,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       plea = stepPlea(plea, dt, TILE);
       const actor = pleaActor(plea);
       if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: openDialog(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
+      // Everyone has spoken: the player answers Phantump's question.
+      if (plea.phase === 'choose' && !closeShop) openShopWindow(openPleaAnswer);
       if (plea.phase === 'done') endPlea();
     }
     // The player turns to whoever comes up to it.
