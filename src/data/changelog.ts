@@ -46,6 +46,14 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
+          es: 'Tu Sombra tiene su escena antes y después del combate, y al llegar al pueblo por primera vez Gastly te enseña la tienda, el tutor, el tablón y el Santuario, y te deja ante la piedra guía con la Cripta lista.',
+          en: 'Your Shadow has its scene before and after the fight, and the first time you reach the town Gastly shows you the shop, the tutor, the board and the shrine, and leaves you at the waystone with the Crypt ready.',
+        },
+        {
+          es: 'Ganar se nota: al caer el guardián cruza la pantalla un gran «VICTORIA», y la pantalla final de una victoria brilla en dorado.',
+          en: 'Winning shows: when the guardian falls a large «VICTORY» crosses the screen, and a won run\'s end screen glows gold.',
+        },
+        {
           es: 'En el título sale «Instalar juego» arriba a la derecha: en el móvil y en el ordenador te dice cómo tenerlo como una aplicación.',
           en: '«Install game» shows in the title\'s top right corner: on phones and computers it tells you how to keep it as an app.',
         },
@@ -72,6 +80,12 @@ export const CHANGELOG: readonly Release[] = [
         {
           es: 'Las súplicas del borde de la Sima, rehechas: los vecinos te esperan reunidos, cada uno te da un nombre y al final contestas a Phantump.',
           en: 'The pleas on the Sima\'s rim, remade: the villagers wait gathered, each gives you one name, and at the end you answer Phantump.',
+        },
+      ],
+      multiplayer: [
+        {
+          es: 'Un corte breve de conexión ya no te saca de la sala: la partida espera unos segundos con el aviso «Reconectando con el anfitrión…» y sigue al volver. Si la sala se pierde de verdad, se dice. Recargar la página en una sala llena ya no te deja fuera, y las salas se anuncian en más relés para encontrarse antes.',
+          en: 'A short connection drop no longer throws you out of the room: the run waits a few seconds with «Reconnecting to the host…» and goes on when it is back. If the room is really lost, it says so. Reloading the page in a full room no longer leaves you out, and rooms are announced on more relays to find each other sooner.',
         },
       ],
       fixed: [
