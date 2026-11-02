@@ -34,6 +34,8 @@ import { wheelServices } from './quick-wheel';
 import { quickWheelView } from './quick-wheel-view';
 import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
 import { PLEA_ANSWERS, PLEA_STAGE, answerKey, pleaKeys, replyKey, type PleaAnswer } from '../data/sima-plea';
+import { guideFacing, playerFacing, skipTour, startTour, stepTour, tourEndSpot, tourSpoken, tourStop, type TourState } from './tour';
+import { TOWN_TOUR, tourKeys } from '../data/town-tour';
 import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
@@ -143,6 +145,14 @@ export interface TownOptions {
    * heads for `dungeon` (then it departs).
    */
   simaPlea?: { dungeon: string; due(): boolean; ready(): boolean; seen(): void };
+  /**
+   * The welcome tour after the Sunken Way (data/town-tour.ts, town/tour.ts):
+   * when `due` as the town opens (alone), it fades in at the hub's spawn,
+   * the guide comes to meet the player and leads it from place to place,
+   * and it ends opening the dungeons window at the waystone; Esc skips it
+   * (still ending there). `seen` runs once it is over or skipped.
+   */
+  townTour?: { due(): boolean; seen(): void };
   /**
    * This player's Senda progress (the save's `story`): the residents whose
    * wounds the Sendas are recognise the player once a chapter is closed
@@ -299,7 +309,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     buttons: [
       { id: 'talk', label: t('touch.talk'), className: 'big', onPress: () => !exitWindow && interact() },
       // The town's Esc menu, in the top corner "Atrás" leaves free over the bare town.
-      { id: 'pause', label: t('townMenu.button'), className: 'top', onPress: () => openMenu() },
+      { id: 'pause', label: t('townMenu.button'), className: 'top', onPress: () => (tour ? skipTourNow() : openMenu()) },
     ],
   });
   canvas.parentElement?.append(touch.element);
@@ -315,6 +325,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   let pleaThen: (() => void) | null = null;
   /** The pleas play again from the gallery: nothing is marked, and the player goes back where it was. */
   let pleaReplay = false;
+  /** The welcome tour after the Sunken Way, while it plays. */
+  let tour: TourState | null = null;
   /** The shop window is open: the scene waits and its cursor list has the keys. */
   let closeShop: (() => void) | null = null;
   /** The destination window is open: the scene waits and its cursor list has the keys. */
@@ -446,6 +458,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       dialog = next ? { ...dialog, state: next } : null;
       // A villager of the pleas finished speaking: it steps back; Phantump's reply to the player's answer ends the scene.
       if (!next && plea) plea = plea.phase === 'choose' ? pleaAnswered(plea) : pleaSpoken(plea);
+      // The guide finished speaking at this stop: on to the next one.
+      if (!next && tour) tour = tourSpoken(tour);
       if (!next && opens === 'shop') openShopWindow();
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
       if (!next && opens === 'gacha') openShopWindow(options.openGacha);
@@ -461,7 +475,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       }
       return;
     }
-    if (plea) return;
+    if (plea || tour) return;
     const target = nearestInteractable(walker.pos, targets);
     if (!target) return;
     held.clear();
@@ -601,6 +615,33 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     beginPlea(() => enterMap(back.map, back.walker));
   }
 
+  /** The welcome tour: the town fades in at the hub's spawn under its name, then the guide comes (`frame` moves it). */
+  function beginTour(): void {
+    const hub = WORLD[HUB];
+    if (map.id !== hub.id || options.tile) enterMap(hub, startOf(hub));
+    bannerAt = performance.now() - start;
+    tour = startTour(TILE, walker.pos);
+    fade = { phase: 'in', ms: 0 };
+  }
+
+  /** Esc (or «Atrás» on touch): the whole tour is skipped; the next frame ends it at the waystone. */
+  function skipTourNow(): void {
+    if (!tour) return;
+    tour = skipTour(tour);
+    dialog = null;
+  }
+
+  /** The tour is over (or skipped): seen on this device, the player by the waystone, and its dungeons window open (the Crypt first). */
+  function endTour(): void {
+    if (!tour) return;
+    tour = null;
+    dialog = null;
+    held.clear();
+    options.townTour?.seen();
+    walker = { pos: tourEndSpot(TILE), facing: { x: 0, y: -1 } };
+    openExitWindow();
+  }
+
   const depart = (id: string, variant?: string) => {
     // The first descent into the Sima, alone: the villagers come to the rim first.
     if (!lobby && !plea && options.simaPlea && id === options.simaPlea.dungeon && options.simaPlea.due()) {
@@ -713,8 +754,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     } else if (e.code === 'Escape') {
       // Taken here: the menu opened now must not read this same Esc as its own "back".
       e.preventDefault();
-      // Esc skips the villagers' pleas whole.
+      // Esc skips the villagers' pleas, or the welcome tour, whole.
       if (plea) endPlea();
+      else if (tour) skipTourNow();
       else if (dialog) dialog = null;
       else openMenu();
     }
@@ -855,14 +897,14 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   };
 
   function openWheel(): void {
-    if (exitWindow || closeShop || fade || plea || stopped) return;
+    if (exitWindow || closeShop || fade || plea || tour || stopped) return;
     dialog = null;
     openShopWindow(openQuickWheel);
   }
 
   /** Opens the Esc menu when nothing else is on screen. */
   function openMenu(): void {
-    if (exitWindow || closeShop || fade || plea || stopped) return;
+    if (exitWindow || closeShop || fade || plea || tour || stopped) return;
     dialog = null;
     openShopWindow(openTownMenu);
   }
@@ -887,8 +929,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const crowd = plea ? pleaCrowd(plea, TILE).map((c): TownCharacter => ({ sprite: npcSprite(c.actor.species), pos: c.pos, facing: { x: walker.pos.x - c.pos.x, y: walker.pos.y - c.pos.y }, moving: false, floats: FLOATERS.has(c.actor.species) })) : [];
     const coming = plea ? pleaActor(plea) : null;
     const actor: TownCharacter[] = plea && coming ? [{ sprite: npcSprite(coming.species), pos: plea.pos, facing: { x: 0, y: plea.phase === 'aside' ? 1 : -1 }, moving: plea.phase !== 'talk', floats: FLOATERS.has(coming.species) }] : [];
-    const npcsHere = plea ? [] : npcs;
-    return [...npcsHere, ...roaming, ...others, ...crowd, ...actor, { sprite, pos: walker.pos, facing: walker.facing, moving }];
+    // The welcome tour's guide leaves its spot and walks with the player.
+    const guide: TownCharacter[] = tour ? [{ sprite: npcSprite(TOWN_TOUR.species), pos: tour.guide, facing: guideFacing(tour, TILE), moving: tour.guideMoving, floats: FLOATERS.has(TOWN_TOUR.species) }] : [];
+    const npcsHere = plea ? [] : tour ? npcs.filter((_, i) => map.npcs[i]?.id !== TOWN_TOUR.npcId) : npcs;
+    return [...npcsHere, ...roaming, ...others, ...crowd, ...actor, ...guide, { sprite, pos: walker.pos, facing: walker.facing, moving }];
   }
 
   /** Names over the room's walkers on this map, this player's own dimmer. */
@@ -920,7 +964,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         fade = { phase: 'in', ms: 0 };
       } else if (fade.phase === 'in' && fade.ms >= FADE_MS) fade = null;
     }
-    const move = dialog || exitWindow || closeShop || fade || plea ? { x: 0, y: 0 } : moveInput();
+    const move = dialog || exitWindow || closeShop || fade || plea || tour ? { x: 0, y: 0 } : moveInput();
     // The pleas: the villager walks; at the player it speaks (its portrait on the dialog box); then the next.
     if (plea && !fade && !dialog) {
       plea = stepPlea(plea, dt, TILE);
@@ -932,14 +976,22 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     // The player turns to whoever comes up to it.
     if (plea && plea.phase !== 'done') walker = { ...walker, facing: { x: plea.pos.x - walker.pos.x, y: plea.pos.y - walker.pos.y } };
-    const moving = move.x !== 0 || move.y !== 0;
+    // The welcome tour: the guide walks to the next place with the player behind it; there it speaks (its portrait on the dialog box).
+    if (tour && !fade && !dialog) {
+      tour = stepTour(tour, dt, TILE);
+      const stop = tourStop(tour);
+      if (tour.phase === 'talk' && stop) dialog = { speaker: t(TOWN_TOUR.nameKey), state: openDialog(tourKeys(stop).map((key) => t(key))), portrait: npcSprite(TOWN_TOUR.species) };
+    }
+    if (tour) walker = { pos: tour.player, facing: playerFacing(tour, TILE) };
+    if (tour?.phase === 'done') endTour();
+    const moving = move.x !== 0 || move.y !== 0 || (tour?.playerMoving ?? false);
     walker = stepWalker(walker, move, dt, arena);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
     for (const w of map.wanderers) {
       const state = wanderers.get(w.id);
       if (state) wanderers.set(w.id, stepWander(w, state, dt, arena));
     }
-    if (!fade && !exitWindow && !plea) {
+    if (!fade && !exitWindow && !plea && !tour) {
       const link = linkAt(walker.pos, map.links);
       if (link) fade = { phase: 'out', ms: 0, link };
       const entrance = dialog ? null : entranceAt(walker.pos, map.entrances);
@@ -958,7 +1010,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const drawAt = perf ? performance.now() : 0;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
-    const target = exitWindow || closeShop || fade || plea ? null : nearestInteractable(walker.pos, targets);
+    const target = exitWindow || closeShop || fade || plea || tour ? null : nearestInteractable(walker.pos, targets);
     touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
     touch.setHidden('pause', exitWindow !== null || closeShop !== null);
     if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));
@@ -1003,7 +1055,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   resize();
   // The pleas, alone, the first time this device opens the town once the Crypt is cleared (old profiles too): on the crater's rim, then back where the town opened.
   const opened = { map, walker };
-  if (options.simaPlea && pleaOnArrival({ inRoom: lobby !== null, startWindow: options.startWindow !== undefined, due: options.simaPlea.due(), ready: options.simaPlea.ready() })) beginPlea(() => enterMap(opened.map, opened.walker));
+  if (!lobby && options.townTour?.due()) beginTour();
+  else if (options.simaPlea && pleaOnArrival({ inRoom: lobby !== null, startWindow: options.startWindow !== undefined, due: options.simaPlea.due(), ready: options.simaPlea.ready() })) beginPlea(() => enterMap(opened.map, opened.walker));
   if (options.startWindow === 'travel') openShopWindow(openTravel);
   if (options.startWindow === 'menu') openMenu();
   if (options.startWindow === 'account') openShopWindow(options.openAccount);

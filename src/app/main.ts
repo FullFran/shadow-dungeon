@@ -48,13 +48,14 @@ import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
 import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
-import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen } from './adventure-route';
+import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
+import { hasSeenTour, markTourSeen } from '../town/tour';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { fetchIceServers } from '../adapters/turn';
@@ -1211,7 +1212,10 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
     audio.setMusic('title');
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, story: loadSave(store).story, globalBoard, ...at });
+  const { tour: forceTour, ...place } = at ?? {};
+  // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
+  const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -2050,8 +2054,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   });
 }
 
-/** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent). */
-type TownPlace = Pick<TownOptions, 'at' | 'tile' | 'startWindow'>;
+/** Where the town opens: a map of the overworld and a tile on it (the hub's spawn when absent); `tour` forces the welcome tour (development). */
+type TownPlace = Pick<TownOptions, 'at' | 'tile' | 'startWindow'> & { tour?: boolean };
 
 /** Development server only: `&coins=N` sets the saved balance (smoke tests of the stalls). */
 function devCoins(): void {
@@ -2064,14 +2068,14 @@ function devStoryDone(): boolean {
   return import.meta.env.DEV && new URLSearchParams(window.location.search).get('storySkip') === '1';
 }
 
-/** Development server only: the `map`, `tile` and `window` (travel or menu) query of `?screen=town` (window: travel, menu or account). */
+/** Development server only: the `map`, `tile` and `window` (travel or menu) query of `?screen=town` (window: travel, menu or account); `tour=1` plays the welcome tour. */
 function devTownPlace(): TownPlace {
   const params = new URLSearchParams(window.location.search);
   const [x, y] = (params.get('tile') ?? '').split(',').map(Number);
   const at = (params.get('map') ?? undefined) as TownOptions['at'];
   const window_ = params.get('window');
   const startWindow = window_ === 'travel' || window_ === 'menu' || window_ === 'account' || window_ === 'gallery' ? window_ : undefined;
-  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}) };
+  return { ...(at ? { at } : {}), ...(Number.isFinite(x) && Number.isFinite(y) && params.get('tile') ? { tile: { x: x!, y: y! } } : {}), ...(startWindow ? { startWindow } : {}), ...(params.get('tour') === '1' ? { tour: true } : {}) };
 }
 
 /**

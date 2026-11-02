@@ -107,7 +107,7 @@ describe('town Esc menu', () => {
     // The solo town hands the pleas over; the Esc menu never opens over them.
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
     expect(main.slice(main.indexOf('function townScreen('), main.indexOf('function tutorView('))).toContain('simaPlea: { dungeon: ECLIPSE.id');
-    expect(scene).toMatch(/function openMenu\(\): void \{\s*if \(exitWindow \|\| closeShop \|\| fade \|\| plea \|\| stopped\) return;/);
+    expect(scene).toMatch(/function openMenu\(\): void \{\s*if \(exitWindow \|\| closeShop \|\| fade \|\| plea \|\| tour \|\| stopped\) return;/);
   });
 
   it('the solo town wires every service, the room town all but online (the account opens over the town, so the room stays)', () => {
