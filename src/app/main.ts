@@ -1,3 +1,4 @@
+import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
@@ -1984,6 +1985,8 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
           : hub(root),
     playCinematic: (request, onDone) => guardianCinematic(root, request, onDone),
     ...(story ? { story } : {}),
+    // The Crypt's tutorial signs this device has seen (app/tutorial.ts); the run decides whether it teaches.
+    tutorial: { seen: (hint) => tutorialSeen(store).has(hint), mark: (hint) => markTutorialSeen(store, hint) },
     onHeraldMet: (seed, name) => void recordHerald(store, { seed, name }),
     playHeraldIntro: (def, onDone) => heraldCinematic(root, def, onDone),
     // The Sima as this player remembers it (names only; every peer reads its own: app/sima-lore.ts).

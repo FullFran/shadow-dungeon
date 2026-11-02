@@ -1,3 +1,5 @@
+import { h } from '../ui/window';
+import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
 import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
@@ -228,6 +230,8 @@ export interface GameOptions {
    * the run stands still meanwhile). A shared run logs its line instead.
    */
   simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
+  /** The Crypt's tutorial signs this device has seen (app/tutorial.ts); absent: no signs. */
+  tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
 }
@@ -418,6 +422,33 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The held item pick overlay, while open. */
   let closePick: (() => void) | null = null;
   const overlayParent = canvas.parentElement ?? document.body;
+  // The Crypt's contextual tutorial (app/tutorial.ts; odd/tasks/menu-redesign.md T7): one neutral sign at a time, the first time each thing happens on this device.
+  const teaching = options.tutorial !== undefined && tutorialApplies({ dungeon: run.dungeon, trial: trial !== null, story: options.story !== undefined, dev: options.startFloor !== undefined || (options.testSpawns?.length ?? 0) > 0 });
+  const signQueue: TutorialHint[] = [];
+  let sign: { hint: TutorialHint; element: HTMLElement; shownAtMs: number } | null = null;
+  /** The last input came from a gamepad (the sign then names its buttons). */
+  let padInUse = false;
+  const SIGN_MS = 7000;
+  function teach(moment: TutorialMoment): void {
+    const tutorial = options.tutorial;
+    if (!teaching || !tutorial) return;
+    const pending = new Set<string>([...signQueue, ...(sign ? [sign.hint] : [])]);
+    signQueue.push(...hintsFor(moment, new Set(TUTORIAL_HINTS.filter((hint) => tutorial.seen(hint) || pending.has(hint)))));
+  }
+  function tickSign(): void {
+    if (sign && realMs - sign.shownAtMs >= SIGN_MS) {
+      sign.element.remove();
+      sign = null;
+    }
+    // Never over the floor 1 title.
+    if (sign || signQueue.length === 0 || !options.tutorial || (intro && realMs - intro.shownAtMs < 4000)) return;
+    const hint = signQueue.shift()!;
+    options.tutorial.mark(hint);
+    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    const element = h('div', { className: 'tutorial-sign' }, [h('p', { textContent: t(hintKey(hint, device)) })]);
+    overlayParent.append(element);
+    sign = { hint, element, shownAtMs: realMs };
+  }
   const audio = options.audio;
   /** Floor 1 entry title and the "♪ title" note of the last music change (presentation only). */
   let intro: DungeonIntro | null = null;
@@ -582,6 +613,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     return bands ? simaBandAt(bands, run.floor) : null;
   };
   function announceFloor(descended: boolean): void {
+    teach({ floorStart: run.floor, events: [] });
     const lore = dungeonOf(run).lore;
     const bands = dungeonOf(run).endless?.bands;
     // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
@@ -884,6 +916,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     world = { ...world, bonfireLit: true };
     bonfire = { run, world: bonfireSnapshot(world), tally, spent: simaSpent };
     say(t('bonfire.lit'), 'good');
+    teach({ events: [], bonfire: true });
     audio?.play('item');
   }
 
@@ -1271,7 +1304,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       };
       // The controller plays only while nothing is open: a shared run keeps going under a pick, where it acts as keys.
       options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory);
-      const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext));
+      const padInput = touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext);
+      if (hadInput(padInput)) padInUse = true;
+      else if (hadInput(keys)) padInUse = false;
+      const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), padInput);
       const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
       if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;
@@ -1334,6 +1370,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           say(t('forest.wisp.found'), 'good');
         }
       }
+      teach({ events });
       if (trial && trialHurt(events)) trialHit = true;
       if (trialHurt(events)) floorHit = true;
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
@@ -1392,6 +1429,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const frozen = !net && juice.hitstopMs > 0;
     juice = tickJuice(juice, frameMs);
     log = pruneLog(log, realMs);
+    tickSign();
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
@@ -1537,6 +1575,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
       spectateButton.remove();
+      sign?.element.remove();
       window.removeEventListener('keydown', onKeyDown);
     },
   };
