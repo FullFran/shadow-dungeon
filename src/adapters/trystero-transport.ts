@@ -25,6 +25,28 @@ export interface RoomLike {
   leave(): Promise<void>;
 }
 
+/**
+ * How many Nostr relays a room signals through. Trystero's default is 5 of
+ * its list, picked by a shuffle seeded with the app id (the same for every
+ * player); for this app those are small hobby relays, and two players only
+ * find each other through a relay both reach. Ten (the same first five plus
+ * five more, so an older build still shares the first five) makes a slow or
+ * dead relay matter less, for a few more WebSockets per player.
+ */
+export const RELAY_REDUNDANCY = 10;
+
+/** The TURN entries Trystero takes (src/adapters/turn.ts `IceServer`). */
+interface TurnEntry {
+  urls: string[];
+  username?: string;
+  credential?: string;
+}
+
+/** The Trystero room config: the app id, the relay count, and the TURN servers when the API gave some. */
+export function roomConfig(appId: string, turn: readonly TurnEntry[]): { appId: string; relayConfig: { redundancy: number }; turnConfig?: TurnEntry[] } {
+  return { appId, relayConfig: { redundancy: RELAY_REDUNDANCY }, ...(turn.length > 0 ? { turnConfig: [...turn] } : {}) };
+}
+
 /** The part of an `RTCPeerConnection` the diagnostics read (Trystero 0.26 `room.getPeers()` hands them out). */
 interface PeerConnectionLike {
   iceConnectionState?: string;
