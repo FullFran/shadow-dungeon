@@ -253,6 +253,7 @@
   "screen.defeat.text": "{name} fainted.",
   "screen.victory.title": "Victory!",
   "screen.victory.text": "You defeated {name}.",
+  "victory.band": "VICTORY",
   "screen.retry": "Try again",
   "screen.menu": "Back to menu",
   "hud.floor": "Floor",

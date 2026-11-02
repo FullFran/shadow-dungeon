@@ -253,6 +253,7 @@
   "screen.defeat.text": "{name} se ha debilitado.",
   "screen.victory.title": "¡Victoria!",
   "screen.victory.text": "Has derrotado a {name}.",
+  "victory.band": "VICTORIA",
   "screen.retry": "Volver a intentarlo",
   "screen.menu": "Volver al menú",
   "hud.floor": "Planta",
