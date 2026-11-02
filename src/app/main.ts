@@ -1,3 +1,4 @@
+import { glyphSvg, type Glyph } from '../town/town-map-view';
 import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
 import { devHeraldFloor } from '../core/herald/floor';
@@ -493,7 +494,10 @@ function titleScreen(root: HTMLElement, initial = 0): void {
     online: () => onlineEntry(root),
     options: () => optionsScreen(root),
   };
-  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: t(TITLE_LABEL[entry]), onConfirm: action[entry] })) });
+  // A dominant Play with a line on where it leads (odd/tasks/menu-redesign.md S11); the other two stay quiet below.
+  const playLine = t(!settings.starterChosen ? 'title.play.first' : townIsOpen() ? 'title.play.town' : 'title.play.path');
+  const label = (entry: TitleEntry) => (entry === 'play' ? h('span', { className: 'title-play' }, [h('span', { className: 'title-play-name', textContent: t(TITLE_LABEL.play) }), h('small', { textContent: playLine })]) : t(TITLE_LABEL[entry]));
+  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: label(entry), onConfirm: action[entry], className: `title-row title-row-${entry}` })) });
   show(root, [
     h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
     mdWindow({ className: 'title-menu' }, [list.element]),
@@ -540,20 +544,30 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'control
     credits: () => creditsScreen(root),
     install: () => pwa.install(root),
   };
+  // Grouped, each with its glyph (odd/tasks/menu-redesign.md S11): Partida, Perfil, Historia, Ayuda.
+  type OptionRow = { id: OptionsEntry | 'report' | 'controls' | 'friends' | 'tickets'; label: string; about: string; glyph: Glyph; onConfirm: () => void; group?: string };
+  const entry = (id: OptionsEntry, glyph: Glyph): OptionRow => ({ id, label: t(TITLE_LABEL[id]), about: t(optionsAboutKey(id)), glyph, onConfirm: action[id] });
+  const has = (id: OptionsEntry) => entries.includes(id);
+  const grouped: OptionRow[][] = [
+    [entry('settings', 'settings'), { id: 'controls', label: t('title.controls'), about: t('options.about.controls'), glyph: 'controls', onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) }],
+    [entry('account', 'account'), entry('achievements', 'achievements'), { id: 'friends', label: t('title.friends'), about: t('options.about.friends'), glyph: 'friends', onConfirm: () => friendsScreen(root, () => optionsScreen(root, 'friends')) }],
+    [entry('news', 'board'), entry('prologue', 'gallery'), entry('credits', 'title')],
+    [
+      // Players report problems from the game, anonymously (issue #9).
+      { id: 'report', label: t('title.report'), about: t('options.about.report'), glyph: 'board', onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
+      ...(has('install') ? [entry('install', 'travel')] : []),
+      // The server says who is an admin; a yes that arrives later redraws this menu below.
+      ...(ticketAdmin.known() ? [{ id: 'tickets' as const, label: t('title.tickets'), about: t('options.about.tickets'), glyph: 'board' as const, onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
+    ],
+  ];
+  const groupKeys = ['options.group.game', 'options.group.profile', 'options.group.story', 'options.group.help'];
+  const optionRows = grouped.flatMap((rows, g) => rows.map((row, i) => (i === 0 ? { ...row, group: t(groupKeys[g]!) } : row)));
   const open = menuWindow({
     title: t('title.options'),
-    rows: [
-      ...entries.map((entry) => ({ label: t(TITLE_LABEL[entry]), about: t(optionsAboutKey(entry)), onConfirm: action[entry] })),
-      // Players report problems from the game, anonymously (issue #9).
-      { label: t('title.report'), about: t('options.about.report'), onConfirm: () => reportScreen(root, () => optionsScreen(root, 'report')) },
-      { label: t('title.controls'), about: t('options.about.controls'), onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) },
-      { label: t('title.friends'), about: t('options.about.friends'), onConfirm: () => friendsScreen(root, () => optionsScreen(root, 'friends')) },
-      // The server says who is an admin; a yes that arrives later redraws this menu below.
-      ...(ticketAdmin.known() ? [{ label: t('title.tickets'), about: t('options.about.tickets'), onConfirm: () => ticketsScreen(root, () => optionsScreen(root, 'tickets')) }] : []),
-    ],
+    rows: optionRows.map((row) => ({ label: row.label, about: row.about, onConfirm: row.onConfirm, icon: glyphSvg(row.glyph), ...(row.group ? { group: row.group } : {}) })),
     back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
     className: 'options',
-    initial: at === 'report' ? entries.length : at === 'controls' ? entries.length + 1 : at === 'friends' ? entries.length + 2 : at === 'tickets' ? entries.length + 3 : Math.max(0, entries.indexOf(at)),
+    initial: Math.max(0, optionRows.findIndex((row) => row.id === at)),
   });
   show(root, [open.element]);
   if (!ticketAdmin.known()) {

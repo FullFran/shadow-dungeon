@@ -61,6 +61,17 @@
       .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
       .town-map-mark.in-column svg { width: 28px; height: 28px; padding: 5px; }
       .town-map-caption { margin: 0; min-height: 2.6em; }
+      /* Title: a dominant Play, the other rows quiet (odd/tasks/menu-redesign.md S11). */
+      .title-menu { min-width: min(420px, 86vw); }
+      .title-row-play { padding-top: 6px; padding-bottom: 8px; }
+      .title-play { display: flex; flex-direction: column; gap: 2px; }
+      .title-play-name { font-size: 44px; line-height: 1; color: var(--md-cursor); text-shadow: 0 0 14px rgba(255, 106, 61, 0.55), 0 3px 0 var(--md-ink); letter-spacing: 0.04em; }
+      .title-play small { font-family: var(--md-text-font); font-size: 16px; color: var(--md-text-dim); }
+      .title-row-online, .title-row-options { font-size: 19px; color: var(--md-text-dim); }
+      /* Options: grouped rows with their glyph, wide enough that no label wraps. */
+      .menu-window.options .shop-list { min-width: 15em; }
+      .menu-row-icon { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+      .menu-row-icon svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
       /* The Crypt's tutorial sign (src/app/game.ts tickSign; odd/tasks/menu-redesign.md T7): a neutral stone plaque at the top, never in the way. */
       .tutorial-sign { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); max-width: min(560px, 86vw); padding: 10px 18px; border-radius: 6px; pointer-events: none; z-index: 5;
         background: linear-gradient(180deg, #3a3a3e, #26262a); border: 2px solid #8d8d94; box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 2px rgba(0, 0, 0, 0.35), 0 6px 0 rgba(0, 0, 0, 0.45);

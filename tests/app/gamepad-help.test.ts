@@ -42,7 +42,8 @@ describe('the controller help', () => {
   });
   it('is one step away: Options on the title and the town menu, and the connect notice says where', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
-    expect(main).toContain("{ label: t('title.controls'), about: t('options.about.controls'), onConfirm: () => controlsScreen(root, () => optionsScreen(root, 'controls')) }");
+    // The Options row (grouped, with its glyph: odd/tasks/menu-redesign.md S11) opens the controls and comes back to Options.
+    expect(main).toMatch(/\{ id: 'controls', label: t\('title\.controls'\), about: t\('options\.about\.controls'\), glyph: 'controls', onConfirm: \(\) => controlsScreen\(root, \(\) => optionsScreen\(root, 'controls'\)\) \}/);
     for (const language of LANGUAGES) expect(catalog(language)['gamepad.connected' as never]).toContain(catalog(language)['title.controls' as never]);
   });
 });
