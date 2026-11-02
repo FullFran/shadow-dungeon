@@ -18,12 +18,18 @@ export const presenceDue = (lastSentMs: number | null, nowMs: number): boolean =
 /** How long a guest waits for the host to let it in before the room window says the host cannot be reached (over the Internet admission took up to ~9.5 s in tests, 2026-10-29). */
 export const ADMIT_TIMEOUT_MS = 25_000;
 
-/** The room as this player stands in it: in the host's roster, still waiting for the host's answer, or no answer in time. */
-export type RoomStatus = 'in' | 'connecting' | 'unreachable';
+/**
+ * The room as this player stands in it: in the host's roster, still waiting
+ * for the host's answer, told to wait for the run's next join point (`held`:
+ * the host did answer, however long the run takes), or no answer in time.
+ * The status key is `lobby.<status>` in the i18n files.
+ */
+export type RoomStatus = 'in' | 'connecting' | 'held' | 'unreachable';
 
 /** A guest is in only once the host has listed it; until then its town is its own, and nobody else is drawn. */
-export function roomStatus({ isHost, admitted, waitedMs }: { isHost: boolean; admitted: boolean; waitedMs: number }): RoomStatus {
+export function roomStatus({ isHost, admitted, held = false, waitedMs }: { isHost: boolean; admitted: boolean; held?: boolean; waitedMs: number }): RoomStatus {
   if (isHost || admitted) return 'in';
+  if (held) return 'held';
   return waitedMs < ADMIT_TIMEOUT_MS ? 'connecting' : 'unreachable';
 }
 

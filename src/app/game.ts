@@ -45,7 +45,7 @@ import { tickDue, type RunClock } from '../adapters/clock-hud';
 import { loadTestFloor } from '../core/test-floor';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { CARD_MS } from './guardian-cinematic';
-import { cutShortAction, type CutShort } from './after-run';
+import { cutShortAction, quitSession, type CutShort } from './after-run';
 import { challengeOfRoad, dungeonById, musicFor, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
@@ -1013,7 +1013,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         ...(net ? {} : { restartsLeft: trial ? 0 : restartsLeft(difficulty, restartsUsed) }),
         quit: () => {
           hideMenu();
-          net?.session.leave();
+          // An online room keeps this player: a guest only leaves the run, the host brings the room back (`onQuit`).
+          quitSession(net);
           options.onQuit?.();
         },
       },

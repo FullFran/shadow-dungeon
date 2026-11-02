@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { cutShortAction, endActions, endHeading, materialsEarned, returnPlace, townOf } from '../../src/app/after-run';
+import { cutShortAction, endActions, endHeading, materialsEarned, quitSession, returnPlace, townOf } from '../../src/app/after-run';
+import { startRun } from '../../src/core/run';
+import { createSession } from '../../src/net/session';
+import { createFakeScheduler, createMemoryHub } from '../../src/net/transport';
 import { dungeonById } from '../../src/data/dungeons';
 import { setLanguage, t } from '../../src/i18n';
 
@@ -60,5 +63,54 @@ describe('materials on the end screen', () => {
     expect(materialsEarned(challenge, 'easy', before, before, t)).toBeNull();
     expect(materialsEarned(challenge, 'hard', before, before, t)).toBeNull();
     expect(materialsEarned(dungeonById('crypt'), 'normal', before, after, t)).toBeNull();
+  });
+
+  // Ticket SD-RIKZIZ: "Salir al menú" in a room's run threw the player out of the room.
+  describe('quitting a shared run from the Esc menu', () => {
+    const LOADOUT = ['shadow-claw', 'play-rough'] as const;
+    function room() {
+      const scheduler = createFakeScheduler();
+      const hub = createMemoryHub<string>();
+      const host = createSession({ transport: hub.connect('h'), scheduler });
+      const guest = createSession({ transport: hub.connect('a'), scheduler });
+      let hostLeft = 0;
+      guest.onHostLeft(() => hostLeft++);
+      host.host(5, 1, 'mimikyu', { lobby: true });
+      guest.join('mimikyu', LOADOUT);
+      host.begin();
+      host.afterStep(startRun(42, { localId: 'p1', role: 'host' }).world, 1);
+      return { host, guest, hostLeft: () => hostLeft };
+    }
+
+    it('a guest of an online room leaves the run but stays in the room (held for the next join point)', () => {
+      const r = room();
+      quitSession({ session: r.guest, role: 'guest', keepSession: true });
+      expect(r.host.roster().map((e) => e.peer)).toEqual(['h']);
+      expect(r.guest.held()).toBe(true);
+      // Still connected: the next floor lets it back in.
+      r.host.sendFloor(2);
+      expect(r.host.roster().map((e) => e.peer)).toEqual(['h', 'a']);
+    });
+
+    it('the host of an online room keeps the session (the room goes back to the town together)', () => {
+      const r = room();
+      quitSession({ session: r.host, role: 'host', keepSession: true });
+      expect(r.hostLeft()).toBe(0);
+      expect(r.host.roster().map((e) => e.peer)).toEqual(['h', 'a']);
+    });
+
+    it('a session that does not outlive its run (local tabs) is left as before', () => {
+      const r = room();
+      quitSession({ session: r.host, role: 'host' });
+      expect(r.hostLeft()).toBe(1);
+      const s = room();
+      quitSession({ session: s.guest, role: 'guest', keepSession: false });
+      expect(s.host.roster().map((e) => e.peer)).toEqual(['h']);
+      expect(s.guest.held()).toBe(false);
+    });
+
+    it('a solo run has no session to leave', () => {
+      expect(() => quitSession(undefined)).not.toThrow();
+    });
   });
 });

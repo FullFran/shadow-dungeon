@@ -3,6 +3,10 @@ import { LagTransport } from '../../src/net/lag';
 import { createSession, type NetSession, type StartInfo } from '../../src/net/session';
 import { createFakeScheduler, createMemoryHub, type FakeScheduler, type MemoryHub } from '../../src/net/transport';
 import type { RosterEntry } from '../../src/net/protocol';
+import { startRun } from '../../src/core/run';
+
+/** The host steps a floor once: the join point that opened with it is over. */
+const stepFloor = (session: NetSession, floor: number) => session.afterStep(startRun(42, { localId: 'p1', role: 'host' }).world, floor);
 
 /** Room-code lobby on top of the session: the host waits for players, then starts them all with its seed. */
 interface Peer {
@@ -175,5 +179,89 @@ describe('lobby', () => {
     expect(a.started?.seed).toBe(3);
     expect(b.started?.seed).toBe(3);
     expect(new Set(hostSession.roster().map((r) => r.id)).size).toBe(3);
+  });
+
+  // Ticket SD-RIKZIZ: quitting a room's run from the Esc menu must keep the guest in the room.
+  it('a guest who quits a room run stays in the room and comes back in at the next join point', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(11, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    let waits = 0;
+    let hostLeft = 0;
+    a.session.onWait(() => waits++);
+    a.session.onHostLeft(() => hostLeft++);
+    a.session.join('mimikyu', LOADOUT);
+    host.session.begin();
+    expect(a.started?.localId).toBe('p2');
+    stepFloor(host.session, 1);
+    a.started = null;
+    a.session.leaveRun();
+    // Out of the run (the host no longer counts it), still connected, and told to wait.
+    expect(host.roster.map((r) => r.peer)).toEqual(['h']);
+    expect(waits).toBe(1);
+    expect(a.session.held()).toBe(true);
+    expect(a.full).toBe(false);
+    expect(hostLeft).toBe(0);
+    // The next floor is a join point: the guest is let in and starts with the group.
+    host.session.sendFloor(2);
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
+    expect(a.started).toEqual({ seed: 11, floor: 2, localId: 'p2' });
+    expect(a.session.held()).toBe(false);
+  });
+
+  it('a guest who quits a room run is let back in when the host brings the room to the town', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(12, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    a.session.join('mimikyu', LOADOUT);
+    host.session.begin();
+    stepFloor(host.session, 1);
+    a.session.leaveRun();
+    host.session.reopenLobby(13);
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
+    expect(a.roster.some((r) => r.peer === 'a')).toBe(true);
+    expect(a.session.held()).toBe(false);
+    // The next run starts it with the group.
+    host.session.begin();
+    expect(a.started).toEqual({ seed: 13, floor: 1, localId: 'p2' });
+  });
+
+  it('leaveRun is a guest-only step: the host and a solo session ignore it', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(15, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    let hostLeft = 0;
+    a.session.onHostLeft(() => hostLeft++);
+    a.session.join('mimikyu', LOADOUT);
+    host.session.begin();
+    host.session.leaveRun();
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
+    expect(hostLeft).toBe(0);
+  });
+
+  it('a guest that left the room and rejoins mid-run is told to wait (held), then let in at the next floor', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(14, 1, 'mimikyu', { lobby: true });
+    const first = peer(hub, 'a', scheduler);
+    first.session.join('mimikyu', LOADOUT);
+    host.session.begin();
+    stepFloor(host.session, 1);
+    first.session.leave();
+    expect(host.roster.map((r) => r.peer)).toEqual(['h']);
+    // Same page, same peer id (Trystero's selfId lives as long as the page): a new session with the room code.
+    const again = peer(hub, 'a', scheduler);
+    again.session.join('mimikyu', LOADOUT);
+    expect(again.session.held()).toBe(true);
+    host.session.sendFloor(2);
+    expect(again.started).toEqual({ seed: 14, floor: 2, localId: 'p2' });
+    expect(again.session.held()).toBe(false);
   });
 });

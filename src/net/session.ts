@@ -168,6 +168,15 @@ export interface NetSession {
   takeRetry(): { floor: number; go: boolean } | null;
   /** Guest: it knocked during a floor; the host lets it in at the next floor start or bonfire respawn. */
   onWait(handler: () => void): void;
+  /** Guest: the host told it to wait for the next join point and has not let it in yet (it did answer: the room is reachable). */
+  held(): boolean;
+  /**
+   * Guest of a room's run (Esc menu, quit): out of the run but still in the
+   * room. The host and the others drop it from the run (as on `leave`), the
+   * link stays up, and it knocks again: let in at the next join point, or
+   * when the host brings the room back to the town. Host or solo: nothing.
+   */
+  leaveRun(): void;
   /** Host, endless dungeon: sends its run clock (reliable). */
   sendClock(ms: number, floor: number): void;
   /** Guest: the host's latest clock since the last call, if any. */
@@ -272,6 +281,8 @@ export function createSession(options: SessionOptions): NetSession {
   let picked: RoomTrial | null = null;
   let running: RoomTrial | null = null;
   let admitted = false;
+  /** Guest: the host answered `wait` (a run is under way) and has not listed this player since. */
+  let toldToWait = false;
   let full = false;
   const startHandlers: Array<(start: StartInfo) => void> = [];
   const rosterHandlers: Array<(roster: readonly RosterEntry[]) => void> = [];
@@ -328,6 +339,8 @@ export function createSession(options: SessionOptions): NetSession {
 
   const setRoster = (next: RosterEntry[]) => {
     roster = next;
+    // Listed by the host: no longer waiting for a join point.
+    if (roster.some((r) => r.peer === transport.selfId)) toldToWait = false;
     for (const handler of rosterHandlers) handler(roster);
   };
 
@@ -468,6 +481,7 @@ export function createSession(options: SessionOptions): NetSession {
       case 'wait':
         if (message.peer === transport.selfId && !started) {
           note('wait');
+          toldToWait = true;
           for (const handler of waitHandlers) handler();
         }
         return;
@@ -797,6 +811,21 @@ export function createSession(options: SessionOptions): NetSession {
     },
     links: () => options.probe?.links() ?? Promise.resolve({}),
     linkEvents: () => options.probe?.linkEvents() ?? [],
+    held: () => toldToWait,
+    leaveRun() {
+      if (role !== 'guest' || !started || left) return;
+      note('leaveRun');
+      // Out of the host's run (and everyone's roster), as a player who left would be...
+      if (localId) send({ t: 'leave', id: localId }, true);
+      started = false;
+      localId = null;
+      running = null;
+      resetRun();
+      setRoster(roster.filter((r) => r.peer !== transport.selfId));
+      setAdmitted(false);
+      // ...but still in the room: knock again, let in at the next join point (or when the room is back in the town).
+      knock();
+    },
     leave() {
       if (left) return;
       left = true;
