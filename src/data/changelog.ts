@@ -62,6 +62,12 @@ export const CHANGELOG: readonly Release[] = [
           en: 'The pleas on the Sima\'s rim, remade: the villagers wait gathered, each gives you one name, and at the end you answer Phantump.',
         },
       ],
+      fixed: [
+        {
+          es: 'Las ventanas cortas de los menús (Jugar en línea, el Santuario y otras) vuelven a salir centradas, y en el móvil «Jugar» ocupa toda la fila del título.',
+          en: 'Short menu windows (Play online, the shrine and others) are centred again, and on phones «Play» takes the title\'s whole row.',
+        },
+      ],
       improved: [
         {
           es: 'Título y Opciones nuevos: «Jugar» destaca y dice adónde te lleva, y las opciones van agrupadas con su icono. Los Ajustes van por pestañas y cada opción explica qué hace.',
