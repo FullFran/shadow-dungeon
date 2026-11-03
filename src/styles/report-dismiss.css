@@ -6,6 +6,9 @@
  * hints and inputs are Atkinson Hyperlegible (--md-text-font).
  */
 
+/* Resting edge of a control: gold-deep lifted to 3.86:1 on the slab top and 4.51:1 on ink (WCAG 1.4.11 asks 3:1; --md-border-shade is 2.27:1). */
+:root { --rp-edge: #8f7237; }
+
 /* ---------- Dropdown ---------- */
 .dd {
   all: unset;
@@ -16,7 +19,7 @@
   width: 100%;
   min-height: 44px;
   padding: 6px 12px;
-  border: 2px solid var(--md-border-shade);
+  border: 2px solid var(--rp-edge);
   border-radius: 6px;
   background: var(--md-ink);
   color: var(--md-text);
@@ -32,7 +35,8 @@
 .dd-text { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dd-label.is-placeholder { color: var(--md-text-dim); }
-.dd-caret { flex: none; color: var(--md-cursor); font-size: 16px; transition: transform 120ms ease-out; }
+.dd-caret { flex: none; display: inline-flex; width: 16px; height: 16px; transition: transform 120ms ease-out; }
+.dd-caret svg { width: 16px; height: 16px; image-rendering: pixelated; }
 .dd.is-open .dd-caret { transform: rotate(180deg); }
 .dd-icon { flex: none; display: inline-flex; width: 32px; height: 32px; }
 .dd-icon svg { width: 32px; height: 32px; image-rendering: pixelated; }
@@ -75,7 +79,9 @@
 
 /* ---------- Report form ---------- */
 .report-window { width: min(640px, calc(100vw - 32px)); }
-.report-window .md-window-body { max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; padding: 2px 4px 2px 2px; }
+.report-window .md-window-body { display: flex; flex-direction: column; max-height: calc(100dvh - 150px); }
+.rp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; padding: 2px 6px 6px 2px; }
+.rp-footer { flex: none; padding-top: 4px; border-top: 1px solid var(--md-border-shade); margin-top: 6px; }
 .report-window .report-intro { margin: 0 0 12px; color: var(--md-text-dim); }
 .rp-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 12px; }
 .rp-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -87,7 +93,7 @@
   box-sizing: border-box;
   width: 100%;
   padding: 8px 12px;
-  border: 2px solid var(--md-border-shade);
+  border: 2px solid var(--rp-edge);
   border-radius: 6px;
   background: var(--md-ink);
   color: var(--md-text);
@@ -107,10 +113,10 @@
 .rp-count { align-self: flex-end; margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
 .rp-count[hidden] { display: none; }
 
-.rp-switch { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; margin-top: 16px; padding: 8px 12px; border: 2px solid var(--md-border-shade); border-radius: 6px; background: var(--relic-slab); cursor: pointer; transition: border-color 120ms ease-out; }
+.rp-switch { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; margin-top: 16px; padding: 8px 12px; border: 2px solid var(--rp-edge); border-radius: 6px; background: var(--relic-slab); cursor: pointer; transition: border-color 120ms ease-out; }
 .rp-switch:hover { border-color: var(--md-border); }
 .rp-switch:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.4); }
-.rp-track { position: relative; flex: none; width: 48px; height: 26px; border: 2px solid var(--md-border-shade); border-radius: 4px; background: var(--md-ink); transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+.rp-track { position: relative; flex: none; width: 48px; height: 26px; border: 2px solid var(--rp-edge); border-radius: 4px; background: var(--md-ink); transition: background-color 120ms ease-out, border-color 120ms ease-out; }
 .rp-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 2px; background: var(--md-text-dim); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); transition: transform 120ms ease-out, background-color 120ms ease-out; }
 .rp-switch[aria-checked='true'] .rp-track { background: var(--relic-ember-deep); border-color: var(--relic-ember); }
 .rp-switch[aria-checked='true'] .rp-knob { transform: translateX(22px); background: var(--md-text); }
@@ -118,10 +124,10 @@
 .rp-switch-text small { font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); line-height: 1.35; overflow-wrap: anywhere; }
 .rp-state { margin-left: auto; flex: none; font-family: var(--md-text-font); font-size: 15px; color: var(--md-cursor); }
 .report-window .report-tech { margin: 8px 0 0; font-size: 14px; color: var(--md-text-dim); overflow-wrap: anywhere; }
-.report-window .report-status { min-height: 1.4em; margin: 10px 0 0; font-family: var(--md-text-font); font-size: 16px; color: var(--md-danger); }
+.report-window .report-status { min-height: 1.4em; margin: 6px 0 0; font-family: var(--md-text-font); font-size: 16px; color: var(--md-danger); }
 .report-window .report-status.is-busy { color: var(--md-cursor); }
 
-.rp-actions { display: flex; gap: 12px; margin-top: 14px; }
+.rp-actions { display: flex; gap: 12px; margin-top: 8px; }
 .rp-btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 8px 22px; border-radius: 6px; font-size: var(--md-body); line-height: 1; cursor: pointer; transition: transform 120ms ease-out, box-shadow 120ms ease-out, border-color 120ms ease-out; }
 .rp-btn svg { width: 24px; height: 24px; flex: none; image-rendering: pixelated; }
 .rp-btn:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
@@ -129,7 +135,7 @@
 .rp-primary:hover { transform: translateY(-1px); }
 .rp-primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--relic-ember-deep); }
 .rp-primary[aria-disabled='true'] { opacity: 0.7; cursor: progress; }
-.rp-secondary { flex: none; color: var(--md-text); background: transparent; border: 2px solid var(--md-border-shade); }
+.rp-secondary { flex: none; color: var(--md-text); background: transparent; border: 2px solid var(--rp-edge); }
 .rp-secondary:hover { border-color: var(--md-border); color: var(--md-cursor); }
 .report-window .report-ref { font-size: 2em; letter-spacing: 0.15em; color: var(--md-cursor); text-align: center; margin: 12px 0; user-select: all; }
 
@@ -140,6 +146,9 @@
 }
 @media (max-height: 520px) {
   .report-window .md-window-body { max-height: calc(100dvh - 96px); }
+  .report-window .report-intro, .report-window .rp-about, .report-window .report-tech { display: none; }
+  .rp-btn { min-height: 44px; padding: 4px 18px; }
+  .rp-switch { min-height: 48px; margin-top: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dd, .dd-caret, .dd-popup, .rp-input, .rp-track, .rp-knob, .rp-btn, .rp-switch { transition: none; animation: none; }

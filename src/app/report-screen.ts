@@ -295,7 +295,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
           },
         };
         views.set(spec.id, view);
-        return h('div', { className: 'rp-field' + (spec.kind === 'text' ? ' is-wide' : '') }, [label, control, 'extra' in built ? built.extra : null, error]);
+        return h('div', { className: 'rp-field' + (spec.kind === 'text' && !spec.half ? ' is-wide' : '') }, [label, control, 'extra' in built ? built.extra : null, error]);
       }),
     );
   }
@@ -358,7 +358,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
       const view = views.get(checked.field);
       view?.invalid(true, t(checked.reason === 'required' ? 'report.error.required' : 'report.error.too-long'));
       view?.control.focus();
-      view?.control.scrollIntoView?.({ block: 'nearest' });
+      view?.control.closest('.rp-field')?.scrollIntoView?.({ block: 'nearest' });
       return;
     }
     busy = true;
@@ -381,14 +381,10 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   function form(): void {
     paintAbout();
     renderFields();
+    // The fields scroll; the status line and the buttons stay in view.
     body.replaceChildren(
-      h('p', { className: 'report-intro', textContent: t('report.intro') }),
-      h('div', { className: 'rp-field' }, [typeLabel, typePicker.element, about]),
-      fields,
-      techRow,
-      tech,
-      status,
-      h('div', { className: 'rp-actions' }, [sendButton, backButton]),
+      h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-intro', textContent: t('report.intro') }), h('div', { className: 'rp-field' }, [typeLabel, typePicker.element, about]), fields, techRow, tech]),
+      h('div', { className: 'rp-footer' }, [status, h('div', { className: 'rp-actions' }, [sendButton, backButton])]),
     );
   }
 
@@ -399,7 +395,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     title.textContent = t('report.sent.title');
     const done = h('button', { type: 'button', className: 'rp-btn rp-primary', textContent: t('report.back') });
     done.addEventListener('click', () => options.onBack());
-    body.replaceChildren(h('p', { className: 'report-ref', textContent: ref }), h('p', { textContent: t('report.sent.body') }), h('div', { className: 'rp-actions' }, [done]));
+    body.replaceChildren(h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-ref', textContent: ref }), h('p', { textContent: t('report.sent.body') })]), h('div', { className: 'rp-footer' }, [h('div', { className: 'rp-actions' }, [done])]));
     done.focus();
   }
 

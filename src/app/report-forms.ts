@@ -30,6 +30,8 @@ export interface FieldSpec {
   rows?: number;
   /** The description's main text goes last, unlabelled. */
   main?: boolean;
+  /** Text: half the form's width, beside the next half field. */
+  half?: boolean;
   /** Select: the option ids and the family their labels come from. */
   options?: readonly string[];
   set?: string;
@@ -60,8 +62,8 @@ export const REPORT_FORMS: Record<ReportType, ReportForm> = {
       select('where', 'where', WHERE),
       select('often', 'often', OFTEN),
       text('steps', 'steps', 1000, { rows: 2 }),
-      text('expected', 'expected', 900, { rows: 2 }),
-      text('seen', 'observed', 900, { rows: 2 }),
+      text('expected', 'expected', 900, { rows: 2, half: true }),
+      text('seen', 'observed', 900, { rows: 2, half: true }),
     ],
   },
   online: {

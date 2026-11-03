@@ -1,5 +1,7 @@
 import '../styles/report-dismiss.css';
 import { dropdownKey, type DropdownOption } from './dropdown-model';
+import { FORM_ICONS } from './icons/report-icons';
+import { pixelSvgOf } from './pixel-icons';
 import { h } from './window';
 
 /**
@@ -59,7 +61,7 @@ export function dropdown(config: DropdownConfig): Dropdown {
   let typedAt = 0;
 
   const text = h('span', { className: 'dd-text' });
-  const caret = h('span', { className: 'dd-caret', textContent: '▾' });
+  const caret = h('span', { className: 'dd-caret' }, [pixelSvgOf(FORM_ICONS.caret!, 'px-icon')]);
   caret.setAttribute('aria-hidden', 'true');
   const trigger = h('button', { type: 'button', className: ['dd', config.className ?? ''].filter(Boolean).join(' ') }, [text, caret]);
   trigger.setAttribute('role', 'combobox');
@@ -102,7 +104,7 @@ export function dropdown(config: DropdownConfig): Dropdown {
     const below = window.innerHeight - box.bottom - gap - 8;
     const above = box.top - gap - 8;
     const openUp = below < 200 && above > below;
-    const room = Math.max(120, Math.min(340, openUp ? above : below));
+    const room = Math.max(120, Math.min(460, openUp ? above : below));
     popup.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - Math.max(box.width, 220) - 8))}px`;
     popup.style.minWidth = `${box.width}px`;
     popup.style.maxHeight = `${room}px`;

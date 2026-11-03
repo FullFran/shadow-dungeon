@@ -181,9 +181,12 @@ const warn = (): PixelIcon => {
 
 const send = (): PixelIcon => {
   const g = new Grid();
-  g.line(2, 8, 13, 3, 'G').line(2, 8, 13, 13, 'G');
-  for (let x = 3; x <= 13; x++) g.line(x, 8 - Math.round((x - 2) * 0.45), x, 8 + Math.round((x - 2) * 0.45), x < 8 ? 'w' : 'G');
-  g.line(2, 8, 13, 8, 'e');
+  // A paper arrow pointing right: a wedge whose fold runs down the middle.
+  for (let x = 2; x <= 13; x++) {
+    const half = Math.round((13 - x) * 0.42);
+    g.rect(x, 8 - half, 1, half * 2 + 1, x < 7 ? 'w' : 'G');
+  }
+  g.line(2, 8, 11, 8, 'e');
   g.outline();
   return g.icon({ G: '#ffbf5e', w: '#ece3d3', e: '#ff8a3d' });
 };
