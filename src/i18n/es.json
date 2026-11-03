@@ -3754,5 +3754,13 @@
   "tutor.rankOf": "Rango {n}/{max}",
   "tutor.rankMax": "Rango máx.",
   "tutor.act.rankShort": "Mejorar · {cost}",
-  "tutor.act.learnShort": "Aprender · {cost}"
+  "tutor.act.learnShort": "Aprender · {cost}",
+  "loadout.equipIn": "Equipar en {slot}",
+  "loadout.slot.empty": "Sin equipar",
+  "loadout.objective": "Objetivo: {goal}",
+  "loadout.setup": "Ajustes de la partida",
+  "loadout.slots": "Huecos de movimiento",
+  "loadout.keys": "Flechas: moverte · Enter: elegir · Q E: hueco · Esc: volver",
+  "loadout.noMoves": "Este Pokémon no tiene movimientos para este hueco.",
+  "confirm.cancel": "Cancelar"
 }

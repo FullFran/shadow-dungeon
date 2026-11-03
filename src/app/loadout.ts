@@ -1,5 +1,4 @@
-import { MOVES, type MoveId } from '../data/moves';
-import { PLAYER_SLOT_LAYOUT } from '../data/slots';
+import type { MoveId } from '../data/moves';
 import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
 import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
 import { hasFemaleArt } from '../core/gender';
@@ -7,24 +6,19 @@ import type { PokemonType } from '../data/types';
 import { sheetKey, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
-import { cursorList, type ListItem } from '../ui/cursor-list';
+import type { ListItem } from '../ui/cursor-list';
 import { DIFFICULTIES, stepDifficulty, type Difficulty } from '../data/difficulty';
-import { description } from '../ui/describe';
-import { h, mdWindow } from '../ui/window';
-import { moveInfoLines } from './move-info';
-import { slotOptions } from './settings';
-import { rankedName, rankStars, slotFilterRow, tierName, type SlotFilter } from './tutor';
-import { moveTier } from '../data/tutor';
+import { h } from '../ui/window';
+import { loadoutMovesView } from './loadout-moves-view';
 import { speciesPicker } from './species-picker';
 
 /**
  * The loadout picker before a run, in two steps. `species`: a cursor list of
  * the playable species; the info window shows the one under the cursor (its
  * idle animation from the sprite sheets, its types and its passive), and
- * confirming picks it. `moves`: one move card per option of each slot of the
- * picked species (type, power, stamina cost, hit shape, short description and
- * matchup against the Crypt, app/move-info.ts); the cursor picks a move
- * for its slot and Start begins the run. Back goes from moves to species.
+ * confirming picks it. `moves`: the four equip slots as tiles, a grid of the
+ * moves each slot can take and a sheet with a live preview (app/loadout-moves-view.ts);
+ * picking a move equips it in the open slot and Start begins the run. Back goes from moves to species.
  */
 export interface LoadoutOptions {
   stage: 'species' | 'moves';
@@ -144,41 +138,6 @@ export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale 
   return canvas;
 }
 
-/** Portrait, types and passive of a species (the info window's content). */
-function speciesInfo(sheets: Promise<SheetStore>, id: SpeciesId, shiny = false, female = false): HTMLElement[] {
-  const species = SPECIES[id];
-  const passive = species.passive;
-  const out: HTMLElement[] = [
-    h('div', { className: `portrait-frame${shiny ? ' is-shiny' : ''}` }, [portrait(sheets, id, SCALE, shiny, female)]),
-    h('div', { className: 'type-row' }, species.types.map(typeBadge)),
-    h('p', { className: 'ability', textContent: t('loadout.ability') }),
-  ];
-  if (passive) out.push(h('p', {}, [h('strong', { textContent: t(`passive.${passive}`) }), ` · ${t(`passive.${passive}.description`)}`]));
-  out.push(h('p', { className: 'goal', textContent: t('menu.goal') }));
-  return out;
-}
-
-function moveCard(id: MoveId, equipped: boolean, rank = 0): HTMLElement {
-  const move = MOVES[id];
-  const [stats, matchup] = moveInfoLines(id);
-  return h('div', { className: 'move-card' }, [
-    h('div', { className: 'move-head' }, [
-      h('strong', { textContent: rankedName(id, rank) }),
-      // The tutor's rank stars and the power tier (the original kit has no badge).
-      rank > 0 ? h('span', { className: 'rank-stars', textContent: rankStars(rank) }) : null,
-      moveTier(id) === 'basic' ? null : h('span', { className: `tier-badge tier-${moveTier(id)}`, textContent: tierName(moveTier(id)) }),
-      typeBadge(move.type),
-      equipped ? h('span', { className: 'equipped', textContent: t('loadout.equipped') }) : null,
-    ]),
-    // A boost deals no damage: no power line, just its stats.
-    h('div', { className: 'move-desc' }, move.power > 0 ? [h('span', { className: 'move-power', textContent: `${t('loadout.power')} ${move.power}` }), ` · ${stats}`] : [stats]),
-    h('div', { className: 'move-desc' }, [t(`move.${id}.description`)]),
-    h('div', { className: 'move-desc move-matchup' }, [matchup]),
-  ]);
-}
-
-const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context ? [h('p', { className: 'dim shrine-loadout-for', textContent: options.context })] : []);
-
 /** The species step: the picker grid and its sheet (src/app/species-picker.ts). */
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
   return speciesPicker({
@@ -195,85 +154,50 @@ function speciesStep(options: LoadoutOptions): HTMLElement[] {
 }
 
 function movesStep(options: LoadoutOptions): HTMLElement[] {
-  let loadout = [...options.loadout];
-  let tier = options.difficulty?.value;
-  const hint = h('p', { className: 'dim difficulty-hint', textContent: tier ? t(`difficulty.${tier}.hint`) : '' });
   const species = SPECIES[options.species];
-  let filter: SlotFilter = 'all';
-
-  const items = (): ListItem[] => {
-    const out: ListItem[] = [];
-    // With the tutor's moves: a ◀ ▶ filter to one slot kind (the lists grow long).
-    if (options.known)
-      out.push(
-        slotFilterRow(filter, (next) => {
-          filter = next;
-          list.setItems(items());
-        }),
-      );
-    PLAYER_SLOT_LAYOUT.forEach((kind, slot) => {
-      if (filter !== 'all' && filter !== kind) return;
-      // A slot the species has no move for (boost or area) is left out and stays empty.
-      const choices = slotOptions(kind, species.id, options.known);
-      if (choices.length === 0) return;
-      out.push({ header: true, label: t(`slot.${kind}`) });
-      for (const id of choices) {
-        const equipped = loadout[slot] === id;
-        out.push({
-          label: moveCard(id, equipped, options.ranks?.[id] ?? 0),
-          className: equipped ? 'move-row is-equipped' : 'move-row',
-          onConfirm: () => {
-            loadout = loadout.map((m, i) => (i === slot ? id : m));
-            options.onChange(loadout);
-            list.setItems(items());
-          },
-        });
-      }
-    });
-    // The line's shiny skin, once unlocked: on or off (a confirm or ◀ ▶ flips it).
-    const skin = options.skin;
-    if (skin?.unlocked(species.id)) {
-      const flip = () => {
-        skin.wear(species.id, !skin.worn(species.id));
-        showInfo();
-        list.setItems(items());
-      };
-      out.push({ label: t('loadout.shiny'), value: t(skin.worn(species.id) ? 'menu.on' : 'menu.off'), className: 'shiny-row', onAdjust: flip, onConfirm: flip });
-    }
-    // The line's gender, where there is female art.
-    const gender = options.gender && genderRow(species.id, options.gender, () => {
-      showInfo();
-      list.setItems(items());
-    });
-    if (gender) out.push(gender);
-    if (tier && options.difficulty) {
-      const pick = options.difficulty;
-      out.push(
-        difficultyRow(tier, (next) => {
-          tier = next;
-          pick.onChange(next);
-          hint.textContent = t(`difficulty.${next}.hint`);
-          list.setItems(items());
-        }, pick.allowed),
-      );
-    }
-    out.push({ label: options.startLabel ?? t('menu.start'), className: 'start-row', onConfirm: options.onStart });
-    out.push({ label: t('menu.back'), onConfirm: options.onBack });
-    return out;
-  };
-  // Start on the Start row: Enter right away plays with the saved loadout.
-  const first = items();
-  const list = cursorList({ items: first, initial: first.length - 2, onBack: options.onBack, label: t('loadout.moves') });
-
-  const info = mdWindow({ title: t(`species.${species.id}`), className: 'species' }, speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false, options.gender?.female(species.id) ?? false));
-  /** Redraws the info window (the skin changed). */
-  function showInfo(): void {
-    const title = info.querySelector('.md-window-title');
-    for (const child of [...info.children]) if (child !== title) child.remove();
-    info.append(...speciesInfo(options.sheets, species.id, options.skin?.worn(species.id) ?? false, options.gender?.female(species.id) ?? false));
-  }
-  const title = t('loadout.title').replace('{name}', t(`species.${species.id}`));
-  return [h('h1', { className: 'screen-title', textContent: title }), ...contextLine(options), h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.moves'), className: 'moves' }, [list.element, ...(tier ? [hint] : []), ...(options.buildHint ? [h('p', { className: 'dim loadout-build', textContent: options.buildHint })] : [])])])];
+  const { skin, gender, difficulty } = options;
+  const worn = () => skin?.worn(species.id) ?? false;
+  const female = () => gender?.female(species.id) ?? false;
+  return [
+    loadoutMovesView({
+      species: species.id,
+      loadout: options.loadout,
+      sheets: options.sheets,
+      title: t('loadout.title').replace('{name}', t(`species.${species.id}`)),
+      portrait: (scale) => portrait(options.sheets, species.id, scale, worn(), female()),
+      typeBadge,
+      onChange: options.onChange,
+      onStart: options.onStart,
+      onBack: options.onBack,
+      ...(options.known ? { known: options.known } : {}),
+      ...(options.ranks ? { ranks: options.ranks } : {}),
+      ...(options.context ? { context: options.context } : {}),
+      ...(options.buildHint ? { buildHint: options.buildHint } : {}),
+      ...(options.startLabel ? { startLabel: options.startLabel } : {}),
+      ...(difficulty ? { difficulty } : {}),
+      ...(skin
+        ? {
+            skin: {
+              unlocked: skin.unlocked(species.id),
+              get worn() {
+                return worn();
+              },
+              wear: (on: boolean) => skin.wear(species.id, on),
+            },
+          }
+        : {}),
+      ...(gender
+        ? {
+            gender: {
+              get female() {
+                return female();
+              },
+              set: (value: boolean) => gender.set(species.id, value),
+            },
+          }
+        : {}),
+    }),
+  ];
 }
 
 export function loadoutScreen(options: LoadoutOptions): HTMLElement[] {
