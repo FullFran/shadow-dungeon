@@ -3762,5 +3762,11 @@
   "loadout.slots": "Move slots",
   "loadout.keys": "Arrows: move · Enter: pick · Q E: slot · Esc: back",
   "loadout.noMoves": "This Pokémon has no moves for this slot.",
-  "confirm.cancel": "Cancel"
+  "confirm.cancel": "Cancel",
+  "settings.hint": "Arrows: move and adjust · Q / E: change section · Esc: back",
+  "settings.sections": "Settings sections",
+  "setting.clickToLock.disabled": "Only with the \"Press\" or \"Hold\" lock type.",
+  "settings.nickname.hint": "Up to 16 characters; odd symbols and extra spaces are removed.",
+  "settings.nickname.saved": "It will be saved as \"{name}\".",
+  "settings.volume.mutedNote": "Muted: nothing is heard until you turn it off."
 }

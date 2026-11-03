@@ -5,6 +5,7 @@ import { TOUCH_SCALES } from '../ui/touch-layout';
 import { FIGURATION_MODES, TOUCH_OPACITIES } from './settings';
 import { LANGUAGES, t, type Language } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
+import { sliderSnap, type SliderRange } from '../ui/slider-model';
 import { h } from '../ui/window';
 import type { Settings } from './settings';
 
@@ -23,6 +24,8 @@ export interface SettingsAccess {
   update: UpdateSettings;
   /** Applies a new language to the page (title, `lang`); the caller re-renders. */
   setLanguage(language: Language): void;
+  /** A short sound to hear the effects level when a slider is released. */
+  preview?(): void;
 }
 
 export interface SettingRow {
@@ -172,5 +175,70 @@ export function settingItems(access: SettingsAccess, refresh: () => void, only?:
   return items;
 }
 
-/** The in-game key list, shown on the Settings screen. */
-export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'boost', 'area', 'lock', 'clickLock', 'minimap', 'pick', 'mute', 'menu', 'netStats', 'gamepad'] as const;
+/** The control each setting is drawn with (src/app/settings-view.ts). */
+export type SettingControlKind = 'slider' | 'switch' | 'segmented' | 'dropdown';
+
+/** Sliders: volumes in 5 % steps; the touch buttons' opacity keeps its three stops. */
+export const SETTING_SLIDERS = {
+  masterVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  musicVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  sfxVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  touchOpacity: { min: Math.min(...TOUCH_OPACITIES), max: 1, step: 0.25 },
+} as const satisfies Partial<Record<SettingRow['id'], SliderRange>>;
+
+const SWITCHES: ReadonlySet<SettingRow['id']> = new Set(['clickToLock', 'muted', 'autoAim', 'haptics', 'touchLeftHanded']);
+
+const sizeLabel = (scale: number) => t(`touch.size.${scale < 1 ? 'small' : scale > 1 ? 'large' : 'normal'}`);
+
+/** The options of a choice setting, in display order. */
+export function settingChoices(id: SettingRow['id']): { value: string; label: string }[] {
+  switch (id) {
+    case 'language':
+      return LANGUAGES.map((value) => ({ value, label: t(`language.${value}`) }));
+    case 'lockType':
+      return LOCK_TYPES.map((value) => ({ value, label: t(`lockType.${value}`) }));
+    case 'figurations':
+      return FIGURATION_MODES.map((value) => ({ value, label: t(`menu.figurations.${value}`) }));
+    case 'touchMode':
+      return TOUCH_MODES.map((value) => ({ value, label: t(`touch.mode.${value}`) }));
+    case 'touchSize':
+      return TOUCH_SCALES.map((value) => ({ value: String(value), label: sizeLabel(value) }));
+    default:
+      return [];
+  }
+}
+
+/** Segmented controls hold up to three options; more become the custom dropdown (Hick: a short row stays visible at once). */
+export function settingControlKind(id: SettingRow['id']): SettingControlKind {
+  if (id in SETTING_SLIDERS) return 'slider';
+  if (SWITCHES.has(id)) return 'switch';
+  return settingChoices(id).length <= 3 ? 'segmented' : 'dropdown';
+}
+
+/** The option value a choice setting holds now. */
+export function settingChoice(id: SettingRow['id'], s: Settings): string {
+  return String((s as unknown as Record<string, unknown>)[id]);
+}
+
+/** Writes one control's value through the same update path the cursor list uses; a language also reaches the page. */
+export function applySetting(access: SettingsAccess, id: SettingRow['id'], value: string | number | boolean): void {
+  if (id in SETTING_SLIDERS) {
+    access.update({ [id]: sliderSnap(Number(value), SETTING_SLIDERS[id as keyof typeof SETTING_SLIDERS]) });
+  } else if (id === 'language') {
+    access.update({ language: value as Language });
+    access.setLanguage(value as Language);
+  } else if (id === 'touchSize') {
+    access.update({ touchSize: Number(value) });
+  } else {
+    access.update({ [id]: value });
+  }
+}
+
+/** A section of the Settings window: its rail entry (title and colour icon) and its rows. */
+export interface SettingSection extends SettingTab {
+  icon: PixelIconId;
+}
+
+export function settingSections(rows: readonly SettingRow[]): SettingSection[] {
+  return settingTabs(rows).map((tab, i) => ({ ...tab, icon: SETTING_TAB_ICONS[i] ?? 'settings' }));
+}

@@ -3762,5 +3762,11 @@
   "loadout.slots": "Huecos de movimiento",
   "loadout.keys": "Flechas: moverte · Enter: elegir · Q E: hueco · Esc: volver",
   "loadout.noMoves": "Este Pokémon no tiene movimientos para este hueco.",
-  "confirm.cancel": "Cancelar"
+  "confirm.cancel": "Cancelar",
+  "settings.hint": "Flechas: moverse y ajustar · Q / E: cambiar de sección · Esc: volver",
+  "settings.sections": "Secciones de ajustes",
+  "setting.clickToLock.disabled": "Solo con el fijado «Pulsar» o «Mantener».",
+  "settings.nickname.hint": "Hasta 16 caracteres; se quitan los símbolos raros y los espacios de más.",
+  "settings.nickname.saved": "Se guardará como «{name}».",
+  "settings.volume.mutedNote": "Silenciado: no se oye nada hasta que lo quites."
 }

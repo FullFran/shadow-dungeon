@@ -1,0 +1,128 @@
+/*
+ * The Settings window (src/app/settings-view.ts) and the slider (src/ui/slider.ts); .agents/DESIGN.md §2, §4.
+ * Fixed geometry: the window never changes size between sections. Tokens only (--md-*, --relic-*);
+ * control edges use --rp-edge (3.86:1 on the slab, set in report-dismiss.css). Labels are Pixelify Sans
+ * on its 22 px grid and never bold; help, values and inputs are Atkinson Hyperlegible (--md-text-font).
+ */
+.st-window { display: flex; flex-direction: column; width: min(62rem, 100%); height: min(42rem, calc(100dvh - 48px)); }
+.st-window > .md-window-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; overflow: hidden !important; }
+.st-body { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 16px; min-height: 0; flex: 1; }
+
+/* On the full-screen page the title sits above; short screens drop it and take the whole height. */
+.screen-row > .st-window { width: min(62rem, calc(100vw - 24px)); }
+#app:has(.st-window) .screen-title { display: none; }
+#app .screen-row > .st-window { max-height: none; }
+#app > .screen-row:has(.st-window) { max-height: none; overflow: visible; padding: 0; }
+
+/* ---------- Rail of sections ---------- */
+.st-rail { display: flex; flex-direction: column; gap: 6px; padding: 8px; box-sizing: border-box; min-height: 0; overflow: hidden;
+  background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6); }
+.st-tab { all: unset; box-sizing: border-box; flex: none; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; cursor: pointer; font-size: 22px; line-height: 1; color: var(--md-text-dim);
+  border: 2px solid transparent; border-radius: 6px; white-space: nowrap; transition: border-color 120ms ease-out, background-color 120ms ease-out; }
+.st-tab svg.px-icon { flex: none; width: 28px; height: 28px; opacity: 0.8; }
+.st-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.st-tab:hover { color: var(--md-text); background: rgba(255, 255, 255, 0.04); }
+.st-tab.is-current { color: var(--md-cursor); border-color: var(--md-cursor); background: radial-gradient(120% 100% at 0% 50%, rgba(255, 138, 61, 0.18), transparent 80%); }
+.st-tab.is-current svg.px-icon { opacity: 1; }
+.st-tab:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); outline: none; color: var(--md-text); }
+
+/* ---------- Panel ---------- */
+.st-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; padding: 12px 16px 14px; box-sizing: border-box; overflow: hidden;
+  background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6); }
+.st-heading { flex: none; display: flex; align-items: center; gap: 10px; margin: 0; padding-bottom: 8px; font-size: 22px; font-weight: 400; line-height: 1; color: var(--md-text); border-bottom: 1px solid var(--relic-gold-deep); }
+.st-heading svg.px-icon { width: 28px; height: 28px; }
+.st-rows { display: flex; flex-direction: column; gap: 2px; min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; padding-right: 2px; }
+.st-row { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) 17rem; align-items: center; gap: 16px; min-height: 56px; padding: 4px 4px 4px 2px; border-bottom: 1px solid rgba(92, 69, 38, 0.55); }
+.st-row:last-child { border-bottom: 0; }
+.st-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-label { font-size: 22px; line-height: 1.1; color: var(--md-text); }
+.st-help { font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); overflow-wrap: anywhere; }
+.st-ctl { display: flex; align-items: center; justify-content: flex-end; min-width: 0; }
+.st-row.is-disabled .st-label { color: var(--md-disabled); }
+.st-row.is-disabled .st-help { color: var(--md-text-dim); }
+.st-row.is-disabled .st-ctl { opacity: 0.55; }
+.st-row.is-disabled .st-switch { cursor: not-allowed; }
+
+/* ---------- Slider (src/ui/slider.ts) ---------- */
+.sl { display: flex; align-items: center; gap: 12px; width: 100%; }
+.sl-hit { position: relative; flex: 1 1 auto; min-width: 0; height: 44px; display: flex; align-items: center; cursor: pointer; touch-action: none; border-radius: 6px; outline: none; user-select: none; }
+.sl-track { position: relative; display: block; width: 100%; height: 12px; box-sizing: border-box; background: var(--md-ink); border: 2px solid var(--rp-edge); border-radius: 3px; }
+.sl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--sl-share, 0) * 100%); background: linear-gradient(90deg, var(--relic-ember-deep), var(--relic-ember) 70%, var(--md-cursor)); }
+.sl-thumb { position: absolute; top: 50%; left: calc(var(--sl-share, 0) * 100%); width: 22px; height: 26px; box-sizing: border-box; transform: translate(-50%, -50%); background: var(--md-text); border: 2px solid var(--md-ink); border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--rp-edge), 0 3px 0 rgba(0, 0, 0, 0.5); transition: box-shadow 120ms ease-out, background-color 120ms ease-out; }
+.sl-hit:hover .sl-thumb { background: var(--md-cursor); }
+.sl-hit:focus-visible .sl-thumb, .sl-hit.is-dragging .sl-thumb { background: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-cursor), 0 0 0 5px rgba(255, 191, 94, 0.4), 0 3px 0 rgba(0, 0, 0, 0.5); }
+.sl-value { flex: none; min-width: 3.6em; text-align: right; font-family: var(--md-text-font); font-size: 17px; font-variant-numeric: tabular-nums; color: var(--md-cursor); }
+.sl.is-disabled .sl-hit { cursor: not-allowed; }
+
+/* ---------- Switch ---------- */
+.st-switch { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 4px; cursor: pointer; border-radius: 6px; }
+.st-track { position: relative; flex: none; width: 52px; height: 28px; box-sizing: border-box; border: 2px solid var(--rp-edge); border-radius: 4px; background: var(--md-ink); transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+.st-knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 2px; background: var(--md-text-dim); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); transition: transform 120ms ease-out, background-color 120ms ease-out; }
+.st-switch[aria-checked='true'] .st-track { background: var(--relic-ember-deep); border-color: var(--relic-ember); }
+.st-switch[aria-checked='true'] .st-knob { transform: translateX(24px); background: var(--md-text); }
+.st-state { min-width: 2.2em; font-family: var(--md-text-font); font-size: 16px; color: var(--md-text-dim); }
+.st-switch[aria-checked='true'] .st-state { color: var(--md-cursor); }
+.st-switch:hover .st-track { border-color: var(--md-border); }
+.st-switch:focus-visible .st-track { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); }
+
+/* ---------- Segmented control ---------- */
+.st-seg { display: flex; width: 100%; border: 2px solid var(--rp-edge); border-radius: 6px; background: var(--md-ink); overflow: hidden; }
+.st-opt { all: unset; box-sizing: border-box; flex: 1 1 auto; min-width: 0; display: grid; place-items: center; min-height: 40px; padding: 0 8px; cursor: pointer; font-family: var(--md-text-font); font-size: 16px; line-height: 1.1; text-align: center; color: var(--md-text-dim); transition: background-color 120ms ease-out, color 120ms ease-out; }
+.st-opt + .st-opt { border-left: 2px solid var(--rp-edge); }
+.st-opt:hover { color: var(--md-text); background: rgba(255, 255, 255, 0.05); }
+.st-opt[aria-checked='true'] { color: var(--md-ink); font-weight: 700; background: linear-gradient(180deg, var(--md-cursor), var(--relic-ember)); }
+.st-opt:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: -3px; }
+.st-opt[aria-checked='true']:focus-visible { outline-color: var(--md-ink); }
+.st-seg:has(.st-opt:focus-visible) { border-color: var(--md-cursor); }
+
+/* ---------- Dropdown and text field ---------- */
+.st-ctl .dd { width: 100%; }
+.st-input { box-sizing: border-box; width: 100%; padding: 8px 12px; border: 2px solid var(--rp-edge); border-radius: 6px; background: var(--md-ink); color: var(--md-text); font-family: var(--md-text-font); font-size: 17px; line-height: 1.4; transition: border-color 120ms ease-out, box-shadow 120ms ease-out; }
+.st-input::placeholder { color: var(--md-text-dim); opacity: 1; }
+.st-input:hover { border-color: var(--md-border); }
+.st-input:focus { outline: none; border-color: var(--md-cursor); box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.4); }
+
+/* ---------- Footer ---------- */
+.st-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.st-actions { display: flex; gap: 8px; min-width: 0; }
+.st-btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 0 18px; cursor: pointer; font-size: 20px; line-height: 1; white-space: nowrap; color: var(--md-text);
+  background: var(--relic-slab); border: 2px solid var(--rp-edge); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); transition: border-color 120ms ease-out, color 120ms ease-out; }
+.st-btn svg.px-icon { flex: none; width: 24px; height: 24px; }
+.st-back { border-color: var(--relic-gold-deep); }
+.st-btn:hover { color: var(--md-cursor); border-color: var(--md-border); }
+.st-btn:focus-visible { color: var(--md-cursor); border-color: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 5px rgba(255, 191, 94, 0.45); }
+.st-keys, .st-about { margin: 0; font-family: var(--md-text-font); font-size: 13px; line-height: 1.3; color: var(--md-text-dim); text-align: right; }
+.st-about { display: none; }
+html.touch .st-keys { display: none; }
+
+/* ---------- Short screens (phones in landscape, small windows) ---------- */
+@media (max-height: 560px), (max-width: 900px) {
+  .st-window, .screen-row > .st-window { height: calc(100dvh - 16px); }
+  .st-window > .md-window-body { gap: 6px; }
+  .st-body { grid-template-columns: 11.5rem minmax(0, 1fr); gap: 10px; }
+  .st-rail { gap: 2px; padding: 4px; }
+  .st-tab { min-height: 44px; font-size: 18px; gap: 8px; padding: 0 8px; }
+  .st-tab svg.px-icon { width: 24px; height: 24px; }
+  .st-panel { padding: 6px 10px; gap: 4px; }
+  .st-heading { display: none; }
+  /* Two columns of rows, each with its control under the label: every control keeps a 44 px target. */
+  .st-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: min-content; align-content: start; gap: 0 18px; }
+  .st-row { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 2px; min-height: 62px; padding: 2px 2px 2px; border-bottom: 1px solid rgba(92, 69, 38, 0.55); }
+  .st-row:last-child { border-bottom: 1px solid rgba(92, 69, 38, 0.55); }
+  .st-ctl { justify-content: flex-start; }
+  .st-switch { min-height: 40px; }
+  .sl-hit { height: 40px; }
+  .st-help { display: none; }
+  .st-label { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st-opt { min-height: 40px; font-size: 14px; }
+  .screen-row > .st-window { height: calc(100dvh - 64px); }
+  .st-btn { min-height: 44px; padding: 0 12px; font-size: 16px; }
+  .st-btn svg.px-icon { width: 20px; height: 20px; }
+  .st-keys { display: none; }
+  .st-about { display: block; }
+  .st-foot { gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-tab, .sl-thumb, .st-track, .st-knob, .st-opt, .st-input, .st-btn { transition: none; }
+}
