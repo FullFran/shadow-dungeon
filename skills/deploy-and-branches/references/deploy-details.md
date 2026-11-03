@@ -19,7 +19,7 @@
 - Source: branch `preprod` of FullFran/shadow-dungeon. It is not protected: a collaborator pushes there freely.
 - deploy-agent on the VPS checks every 2 min, builds `server/` (api) and the client (web, `VITE_API_URL=https://sd-pre.fullfran.com`), and runs `up -d` for compose project `sd-pre`. There is no health gate and no rollback: a container that builds but fails at startup stays broken.
 - Own empty volume `sd-pre_pb-data`, own network: sd-pre cannot reach prod.
-- No OAuth, SMTP or TURN yet. The owner has not yet decided on separate credentials for pre.
+- TURN and SMTP use prod's Cloudflare TURN key and Resend account (owner's choice, infra eaee1bb); `SD_APP_URL` is sd-pre, so mail links point to pre. Its own `PB_ENCRYPTION_KEY`, no backups. OAuth is empty in prod and pre: provider apps need creating first, with redirects `https://sd-api.fullfran.com/api/oauth2-redirect` and `https://sd-pre.fullfran.com/api/oauth2-redirect`.
 - Owned by the infra repo (github.com/FullFran/infra: `apps/sd-pre/compose.yml`, `odd/tasks/sd-preprod.md`, `odd/tasks/apps-to-git.md`, `agent/README.md`). Ask the infra session for changes; do not edit them from this repo.
 
 ## Planned

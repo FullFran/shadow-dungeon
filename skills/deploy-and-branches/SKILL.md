@@ -18,7 +18,7 @@ Load before merging or pushing `main` or `preprod`, cutting a release, deploying
 - Run the deploy gate green before merging into `main`: `npm run typecheck`, `npx vitest run --testTimeout=30000`, `npm run build`, `npm run prove`.
 - Prod `sd-api` never deploys itself. A change touching both the client and `server/`: deploy `sd-api` by hand FIRST, then merge to `main` (the client on Pages would call an old API otherwise).
 - `sd-api` by hand: always `docker compose -p sd-api`; rsync without `--delete`; before a data migration stop it and tar `sd-api_pb_data` into `/home/fran/backups/`.
-- Never touch `/etc/deploy-agent`, `/var/lib/deploy-agent`, the `sd-pre-*` containers, `secrets/*.sops.env`, `~/grant-sudo.sh`, `dokploy-traefik`, or Access/DNS outside the infra repo's tofu. Never copy prod credentials into sd-pre.
+- Never touch `/etc/deploy-agent`, `/var/lib/deploy-agent`, the `sd-pre-*` containers, `secrets/*.sops.env`, `~/grant-sudo.sh`, `dokploy-traefik`, or Access/DNS outside the infra repo's tofu. sd-pre credentials are the infra session's job.
 - Server code must run read-only except `/pb_data` and `/tmp`, within 512 MiB (sd-pre limits).
 
 ## Decision Gates
@@ -28,7 +28,8 @@ Load before merging or pushing `main` or `preprod`, cutting a release, deploying
 | Client only | `preprod` → check sd-pre → merge to `main` (Pages deploys) |
 | `server/` only | `preprod` → check sd-pre → merge to `main` → deploy `sd-api` by hand |
 | Client + `server/` | `preprod` → check sd-pre → deploy `sd-api` by hand → merge to `main` |
-| OAuth, email, TURN co-op | sd-pre cannot test them yet: say so, test in prod after deploy |
+| TURN co-op, sign-up mail | test on sd-pre (same TURN and Resend as prod; mail links point to pre) |
+| OAuth login | not configured in prod nor pre: no provider apps exist yet |
 | Release | follow `docs/release.md` (version, `src/data/changelog.ts`, gate, GitHub Release) |
 
 ## Execution Steps
