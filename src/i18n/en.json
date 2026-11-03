@@ -3750,5 +3750,12 @@
   "loadout.stat.speed": "Speed",
   "loadout.noPassive": "No passive ability: it relies on its moves alone.",
   "loadout.choose": "Choose",
+  "loadout.equipIn": "Equip in {slot}",
+  "loadout.slot.empty": "Empty",
+  "loadout.objective": "Goal: {goal}",
+  "loadout.setup": "Run setup",
+  "loadout.slots": "Move slots",
+  "loadout.keys": "Arrows: move · Enter: pick · Q E: slot · Esc: back",
+  "loadout.noMoves": "This Pokémon has no moves for this slot.",
   "confirm.cancel": "Cancel"
 }
