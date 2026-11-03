@@ -3687,5 +3687,6 @@
   "loadout.stat.hp": "Life",
   "loadout.stat.speed": "Speed",
   "loadout.noPassive": "No passive ability: it relies on its moves alone.",
-  "loadout.choose": "Choose"
+  "loadout.choose": "Choose",
+  "confirm.cancel": "Cancel"
 }

@@ -1,0 +1,14 @@
+/* The shared confirmation (src/ui/confirm-dialog.ts): a veil over everything, one relic window, Cancel and the ember Confirm. */
+.rc-veil { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; box-sizing: border-box;
+  background: radial-gradient(ellipse at 50% 45%, rgba(5, 4, 7, 0.6), rgba(5, 4, 7, 0.92) 75%); animation: rc-in 140ms ease-out both; }
+@keyframes rc-in { from { opacity: 0; } }
+.rc-window { width: min(30rem, 100%); }
+.rc-body { margin: 0 0 12px; font-family: var(--md-text-font); font-size: 17px; line-height: 1.45; color: var(--md-text); }
+.rc-cost { display: flex; justify-content: center; margin: 4px 0 14px; }
+.rc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rc-cancel, .rc-confirm { all: unset; box-sizing: border-box; height: 48px; display: grid; place-items: center; cursor: pointer; font-size: 22px; border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.rc-cancel { color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); }
+.rc-confirm { color: #ffe2b0; background: linear-gradient(180deg, #6e1d18, #2a0909); border: 2px solid #e2b866; text-shadow: 0 0 10px rgba(255, 138, 61, 0.6); }
+.rc-cancel:focus-visible, .rc-cancel:hover { border-color: var(--md-border); color: var(--md-cursor); outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45); }
+.rc-confirm:focus-visible, .rc-confirm:hover { border-color: #ffe2a0; outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45), 0 0 22px rgba(255, 106, 61, 0.5); }
+@media (prefers-reduced-motion: reduce) { .rc-veil { animation: none; } }

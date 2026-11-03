@@ -3687,5 +3687,6 @@
   "loadout.stat.hp": "Vida",
   "loadout.stat.speed": "Velocidad",
   "loadout.noPassive": "Sin habilidad pasiva: depende solo de sus movimientos.",
-  "loadout.choose": "Elegir"
+  "loadout.choose": "Elegir",
+  "confirm.cancel": "Cancelar"
 }
