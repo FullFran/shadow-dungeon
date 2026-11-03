@@ -50,16 +50,36 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
+          es: 'Título renovado: tu compañero en el altar, los servicios como iconos a los lados, «Jugar» y «Jugar en línea» abajo y un eclipse con siluetas de Pokémon de fondo.',
+          en: 'A new title screen: your partner on the altar, the services as icons on both sides, «Play» and «Play online» below and an eclipse with Pokémon silhouettes behind.',
+          icon: 'eclipse',
+          image: 'news/title-hub.webp',
+        },
+        {
+          es: 'Logros más visuales: cada categoría tiene su icono y su barra de progreso, y cada logro es una casilla con su icono, su dificultad, su premio y la fecha en que lo conseguiste.',
+          en: 'More visual achievements: each category has its icon and progress bar, and each achievement is a tile with its icon, difficulty, reward and the date you won it.',
+          icon: 'trophy',
+          image: 'news/achievements.webp',
+        },
+        {
+          es: 'Novedades más fáciles de leer: una tarjeta por versión con la última desplegada, secciones con su icono y un titular en negrita en cada nota.',
+          en: 'Easier-to-read news: one card per version with the latest unfolded, sections with their icon and a bold headline on each note.',
+          icon: 'star',
+        },
+        {
           es: 'Tu Sombra tiene su escena antes y después del combate, y al llegar al pueblo por primera vez Gastly te enseña la tienda, el tutor, el tablón y el Santuario, y te deja ante la piedra guía con la Cripta lista.',
           en: 'Your Shadow has its scene before and after the fight, and the first time you reach the town Gastly shows you the shop, the tutor, the board and the shrine, and leaves you at the waystone with the Crypt ready.',
+          icon: 'ghost',
         },
         {
           es: 'Ganar se nota: al caer el guardián cruza la pantalla un gran «VICTORIA», y la pantalla final de una victoria brilla en dorado.',
           en: 'Winning shows: when the guardian falls a large «VICTORY» crosses the screen, and a won run\'s end screen glows gold.',
+          icon: 'trophy',
         },
         {
           es: 'En el título sale «Instalar juego» arriba a la derecha: en el móvil y en el ordenador te dice cómo tenerlo como una aplicación.',
           en: '«Install game» shows in the title\'s top right corner: on phones and computers it tells you how to keep it as an app.',
+          icon: 'download',
         },
         {
           es: 'Si tu navegador permite instalar el juego, en el título sale «Instalar juego» arriba a la derecha.',
