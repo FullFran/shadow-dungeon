@@ -3495,5 +3495,22 @@
   "hub.hint": "Flechas: moverte · Enter: abrir · Esc: cerrar",
   "hub.hint.touch": "Toca un icono para abrirlo",
   "hub.wanderer": "Caminante",
-  "hub.online.sub": "Hasta 4 Caminantes"
+  "hub.online.sub": "Hasta 4 Caminantes",
+  "ach.overall": "Progreso total",
+  "ach.locked": "Pendiente",
+  "ach.done": "Conseguido el {date}",
+  "ach.back": "Volver",
+  "ach.chip.floor": "Planta {floor}",
+  "ach.hint": "Flechas: moverte · Enter: elegir · Esc: cerrar",
+  "ach.hint.touch": "Toca un logro para ver cómo se consigue",
+  "ach.count": "{done} de {total}",
+  "ach.tiles": "Logros de la categoría",
+  "news.expand": "Desplegar",
+  "news.collapse": "Plegar",
+  "news.items.one": "{n} novedad",
+  "news.items": "{n} novedades",
+  "news.latest": "Última",
+  "news.image.zoom": "Ampliar la captura",
+  "news.image.shrink": "Reducir la captura",
+  "news.hint": "Flechas: moverte · Enter: desplegar · Esc: cerrar"
 }
