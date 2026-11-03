@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
 import { UPGRADE_IDS, UPGRADES } from '../../src/data/upgrades';
 import { loadSave, writeSave, EMPTY_SAVE, SAVE_VERSION } from '../../src/app/save';
-import { bonusText, buyState, purchase, shopRows, upgradeEffect } from '../../src/app/shop';
+import { bonusText, buyState, confirmedPurchase, purchase, shopRows, upgradeEffect } from '../../src/app/shop';
 import { setLanguage } from '../../src/i18n';
 
 describe('shop rows', () => {
@@ -52,5 +52,25 @@ describe('upgrade sheet helpers', () => {
     expect(buyState({ ...save, coins: 60 }, 'vitality')).toEqual({ kind: 'ready', cost: 60, missing: 0 });
     expect(buyState(save, 'vitality')).toEqual({ kind: 'short', cost: 60, missing: 10 });
     expect(buyState(save, 'stamina')).toEqual({ kind: 'max', cost: null, missing: 0 });
+  });
+});
+
+describe('confirmed purchase', () => {
+  it('spends nothing when cancelled, once when confirmed, and never asks when it cannot be bought', async () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, coins: 70 });
+    expect(await confirmedPurchase(store, 'vitality', async () => false)).toBeNull();
+    expect(loadSave(store)).toMatchObject({ coins: 70, upgrades: {} });
+    let asked = 0;
+    const bought = await confirmedPurchase(store, 'vitality', async () => {
+      asked++;
+      expect(loadSave(store).coins).toBe(70);
+      return true;
+    });
+    expect(asked).toBe(1);
+    expect(bought).toMatchObject({ coins: 10, upgrades: { vitality: 1 } });
+    expect(await confirmedPurchase(store, 'vitality', async () => (asked++, true))).toBeNull();
+    expect(asked).toBe(1);
+    expect(loadSave(store).coins).toBe(10);
   });
 });

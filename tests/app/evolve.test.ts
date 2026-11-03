@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { chainView, evolutionChain, evolveAt, evolveBlock, evolveRows, materialsText, rowLabel, stageDots } from '../../src/app/evolve';
+import { chainView, confirmedEvolve, evolutionChain, evolveAt, evolveBlock, evolveRows, materialsText, rowLabel, stageDots } from '../../src/app/evolve';
 import { EMPTY_SAVE, loadSave, writeSave } from '../../src/app/save';
 import { setLanguage } from '../../src/i18n';
 
@@ -95,5 +95,48 @@ describe('evolution sheet helpers', () => {
     expect(evolveBlock(rowOf({ ...base, coins: 100, materials: { abra: { normal: 3, hard: 2 } } }, 'abra'), 100)).toEqual({ kind: 'coins', short: 300 });
     expect(evolveBlock(rowOf({ ...EMPTY_SAVE, owned: ['empoleon'] }, 'empoleon'), 0)).toEqual({ kind: 'final' });
     expect(evolveBlock(rowOf({ ...EMPTY_SAVE, awakened: { mimikyu: 2 } }, 'mimikyu'), 0)).toEqual({ kind: 'final' });
+  });
+});
+
+describe('confirmed evolution', () => {
+  const ready = () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, coins: 400, owned: ['abra'], materials: { abra: { normal: 3, hard: 2 } } });
+    return store;
+  };
+
+  it('spends nothing when the confirmation is cancelled', async () => {
+    const store = ready();
+    expect(await confirmedEvolve(store, 'abra', async () => false)).toBeNull();
+    expect(loadSave(store)).toMatchObject({ coins: 400, owned: ['abra'], materials: { abra: { normal: 3, hard: 2 } } });
+  });
+
+  it('spends once, and only after the confirmation answers yes', async () => {
+    const store = ready();
+    let asked = 0;
+    const saved = await confirmedEvolve(store, 'abra', async () => {
+      asked++;
+      expect(loadSave(store).coins).toBe(400);
+      return true;
+    });
+    expect(asked).toBe(1);
+    expect(saved!.owned).toEqual(['kadabra']);
+    expect(loadSave(store).coins).toBe(0);
+  });
+
+  it('never asks for a step it cannot take', async () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, coins: 10, owned: ['abra'] });
+    let asked = 0;
+    expect(await confirmedEvolve(store, 'abra', async () => (asked++, true))).toBeNull();
+    expect(asked).toBe(0);
+  });
+
+  it('awakens Mimikyu behind the same confirmation', async () => {
+    const store = memoryStore();
+    writeSave(store, { ...EMPTY_SAVE, coins: 1300, materials: { mimikyu: { normal: 3, hard: 2 } } });
+    expect(await confirmedEvolve(store, 'mimikyu', async () => false)).toBeNull();
+    expect(loadSave(store).awakened).toBeUndefined();
+    expect((await confirmedEvolve(store, 'mimikyu', async () => true))!.awakened).toEqual({ mimikyu: 1 });
   });
 });

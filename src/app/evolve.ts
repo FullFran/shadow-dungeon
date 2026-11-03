@@ -16,6 +16,7 @@ import { bondLine } from './story';
 import { storyKeys } from '../data/story-quests';
 import type { ChallengeLine } from '../data/dungeons';
 import { portrait } from './loadout';
+import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
 import '../styles/evolve-shop.css';
 
@@ -68,6 +69,17 @@ export function evolveAt(store: KeyValueStore, species: SpeciesId): SaveData | n
   if (!evolved) return null;
   writeSave(store, { ...save, ...evolved, owned: [...(evolved.owned ?? [])] });
   return loadSave(store);
+}
+
+/**
+ * Evolves (or awakens) `species` only after `ask` answers yes (owner, 2026-11-03: "de un click te lo gastas").
+ * Nothing is asked for a step that cannot be taken; the save is re-read after the answer. Null when cancelled or refused.
+ */
+export async function confirmedEvolve(store: KeyValueStore, species: SpeciesId, ask: () => Promise<boolean>): Promise<SaveData | null> {
+  const row = evolveRows(loadSave(store)).find((r) => r.species === species);
+  if (!row?.to || !row.ready) return null;
+  if (!(await ask())) return null;
+  return evolveAt(store, species);
 }
 
 /** "Normal 1/3 · Difícil 0/2". */
@@ -218,26 +230,54 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
     return card;
   };
 
+  /** A confirmation is open: a second press never stacks another. */
+  let asking = false;
+
+  /** The costs of a step as chips: Pokémonedas, then each essence tier. */
+  const costChips = (row: EvolveRow): HTMLElement =>
+    h('div', { className: 'rc-chips' }, [
+      h('span', { className: 'es-chip es-chip-cost' }, [pixelIconSvg('coin', 'px-icon'), h('span', { textContent: coin(row.coins) })]),
+      ...row.materials.map((m) => h('span', { className: 'es-chip es-chip-cost' }, [pixelSvgOf(EVOLVE_SHOP_ICONS[`essence-${m.tier}`]!, 'px-icon'), h('span', { textContent: `${m.need} ${t(`difficulty.${m.tier}`)}` })])),
+    ]);
+
+  /** Asks first; the coins and essences leave only after Confirm. */
   function act(species: SpeciesId): void {
+    if (asking) return;
     const row = evolveRows(save).find((r) => r.species === species);
     const to = row?.to;
-    const evolved = row && to ? evolveAt(options.store, species) : null;
-    if (!row || !to || !evolved) {
+    if (!row || !to || !row.ready) {
       options.play?.('denied');
       return;
     }
-    options.play?.('coin');
-    save = evolved;
-    done = {
-      species: to,
-      text: row.awaken
-        ? t('evolve.awaken.done').replace('{species}', t(`species.${species}`)).replace('{n}', String(row.awaken.awakened + 1)).replace('{steps}', String(row.awaken.steps))
-        : t('evolve.done').replace('{from}', t(`species.${species}`)).replace('{to}', t(`species.${to}`)),
-    };
-    options.onEvolved?.(species, to);
-    focused = to;
-    render();
-    cards.find((c) => c.dataset.species === to)?.focus({ preventScroll: true });
+    const from = t(`species.${species}`);
+    const step = row.awaken ? { n: String(row.awaken.awakened + 1), steps: String(row.awaken.steps) } : null;
+    asking = true;
+    void confirmedEvolve(options.store, species, () =>
+      confirmDialog({
+        title: t(row.awaken ? 'evolve.confirm.awaken.title' : 'evolve.confirm.title'),
+        body: row.awaken ? t('evolve.confirm.awaken.body').replace('{species}', from).replace('{n}', step!.n).replace('{steps}', step!.steps) : t('evolve.confirm.body').replace('{from}', from).replace('{to}', t(`species.${to}`)),
+        confirmLabel: t(row.awaken ? 'evolve.btn.awaken' : 'evolve.btn.evolve'),
+        cost: costChips(row),
+      }),
+    )
+      .then((evolved) => {
+        if (!evolved) return;
+        options.play?.('coin');
+        save = evolved;
+        done = {
+          species: to,
+          text: row.awaken
+            ? t('evolve.awaken.done').replace('{species}', from).replace('{n}', step!.n).replace('{steps}', step!.steps)
+            : t('evolve.done').replace('{from}', from).replace('{to}', t(`species.${to}`)),
+        };
+        options.onEvolved?.(species, to);
+        focused = to;
+        render();
+        cards.find((c) => c.dataset.species === to)?.focus({ preventScroll: true });
+      })
+      .finally(() => {
+        asking = false;
+      });
   }
 
   /** Redraws the sheet for `species`. */
