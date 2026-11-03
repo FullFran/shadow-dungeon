@@ -26,6 +26,11 @@ Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=3
 - T11 delegated (worktree `wt-credits-controls`): Credits with icons and roles (adds Álvaro as "Diseñador y Desarrollador Frontend"); gamepad controls as a pad diagram with button glyphs.
 - T12 delegated (worktree `wt-report-dismiss`): report form per type with custom dropdowns and icons; every menu, dialog and overlay closes on a click outside.
 - Dev: `?unlock=all` (dev server only, src/app/dev-unlock.ts) opens everything for local review; the owner asked to unlock all options locally (L4).
+- T13 inline: Pokémon picker as a card grid with a type-lit sheet, life/speed bars and passive (src/app/species-picker.ts); fixes the goal text shown as Axew's "ability". Done c6ab25d.
+- T14 inline: `?unlock=veteran` dev profile (dev-unlock.ts): believable advanced save, story flags, version seen. Done 754299a.
+- T15 delegated (worktree): Maestro (tutor) in the picker pattern.
+- T16 delegated (worktree): Evolución and Mejoras in the picker pattern.
+- T17 delegated (worktree): Gacha as a full visual page at /gacha (route, reveal animation, odds visible, pity).
 - T7 pending (next pass): per-screen UI/UX pass on shop, tutor, gacha, loadout, settings, board, shrine, gallery, end screens with pixel icons.
 
 ## Parity checklist
@@ -44,3 +49,4 @@ Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=3
 - L2 (2026-11-03): S4, answer to the scope question.
 - L3 (2026-11-03): "no quiero que haya scroll... esto no se que es [the altar slab]... añade también iconos custom iguales en cada menú... jugar y jugar en línea uno al lado de otro... letra más legible... el fondo... dibuja el pueblo con el eclipse... en base al lore"; "aplica skills de sprites para la movilidad libre de los pokemon".
 - L4 (2026-11-03): "desbloqueame todas las opciones, mejora más la calidad de detalle de las casas, las posiciones pokemon, el horizonte, más arboles oscuros, casas más grandes y muy detalladas... basarte en cobbleverse-platform, y haz skills... optimizado para que sea muy ligero"; logros, créditos ("incluyeme a mi como Diseñador y Desarrollador Frontend"), reportes con desplegables y un form por tipo, "Todos los menús deberían poder cerrarse pinchando fuera", controles del mando con iconos o un mando, novedades legibles con iconos/capturas.
+- L5 (2026-11-03): "Mejora muchísimo más el selector de pokemon"; "lo mismo que hemos hecho con los menus botones y selector de pokemon, para Maestro, Evolución y Mejoras. Gacha lo haremos todo completamente visual en una página aparte /gacha".
