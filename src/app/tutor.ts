@@ -124,9 +124,14 @@ export function rankEffectText(e: RankEffect): string {
 
 /** What rank `rank` (1 or 2) of `move` adds: the damage and, on a boost, the cooldown, then its effect. */
 export function rankText(move: MoveId, rank: number): string {
+  return `+${rank}: ${rankGain(move, rank)}`;
+}
+
+/** What rank `rank` adds, without its "+n:" prefix. */
+export function rankGain(move: MoveId, rank: number): string {
   const numbers = MOVES[move].slot === 'boost' ? fill('tutor.rank.boost', { pct: pct(RANK_EFFECT.cooldown) }) : fill('tutor.rank.damage', { pct: pct(RANK_EFFECT.damage) });
   const effect = RANK_EFFECTS[move][rank - 1];
-  return `+${rank}: ${numbers}, ${effect ? rankEffectText(effect) : ''}`;
+  return `${numbers}, ${effect ? rankEffectText(effect) : ''}`;
 }
 
 /** Both ranks of a move, for its row on sale. */
@@ -266,4 +271,30 @@ export function nextRankText(card: MoveCard): string | null {
 export function paidText(move: MoveId): string {
   const costs = costsOf(MOVES[move]);
   return moveTier(move) !== 'basic' && costs.length > 0 ? fill('tutor.costs', { list: costs.map((c) => t(`tutor.cost.${c}`)).join(', ') }) : '';
+}
+
+/** What the confirmation shows before a move is learned or ranked up. */
+export interface ConfirmCopy {
+  title: string;
+  /** One sentence: what will happen. */
+  body: string;
+  confirmLabel: string;
+  /** The price, shown as a chip; null when the card has no action. */
+  cost: number | null;
+}
+
+/** The text of the confirmation for `card`'s action (learn it, or take it to its next rank). */
+export function confirmCopy(card: MoveCard): ConfirmCopy {
+  const move = t(`move.${card.move}`);
+  if (card.action === 'rank') {
+    const n = card.rank + 1;
+    return { title: t('tutor.confirm.rank.title'), body: fill('tutor.confirm.rank.body', { move, n: String(n), gain: rankGain(card.move, n) }), confirmLabel: t('tutor.confirm.rank.ok'), cost: card.cost };
+  }
+  return { title: t('tutor.confirm.learn.title'), body: fill('tutor.confirm.learn.body', { move }), confirmLabel: t('tutor.confirm.learn.ok'), cost: card.cost };
+}
+
+/** Asks first and spends only on a yes: `spend` never runs when the player cancels. */
+export async function spendAfterConfirm(ask: () => Promise<boolean>, spend: () => boolean): Promise<boolean> {
+  if (!(await ask())) return false;
+  return spend();
 }
