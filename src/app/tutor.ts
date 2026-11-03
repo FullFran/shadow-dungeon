@@ -1,19 +1,15 @@
-import { rosterOf } from '../core/collection';
 import { costsOf } from '../core/move-power';
 import { buyMove, knownMoves, moveRank, rankCost, rankUp, tutorLock, tutorPrice, type TutorWallet } from '../core/tutor';
 import { dungeonById } from '../data/dungeons';
 import { RANK_EFFECTS, type RankEffect } from '../data/rank-effects';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
+import type { PokemonType } from '../data/types';
 import { isStarter, type SpeciesId } from '../data/species';
 import { MAX_RANK, moveTier, RANK_EFFECT, RECOMMENDED_BUILD, tutorOffer, type MoveTier } from '../data/tutor';
 import type { KeyValueStore } from '../adapters/storage';
-import { isTouchUi } from '../adapters/touch-mode';
 import { getLanguage, t } from '../i18n';
-import { cursorList, type ListItem } from '../ui/cursor-list';
-import { description, describedMenu } from '../ui/describe';
-import { h, mdWindow, statLine } from '../ui/window';
-import { coinText } from './coin-lines';
+import type { ListItem } from '../ui/cursor-list';
 import { moveInfoLines } from './move-info';
 import { loadSave, writeSave, type SaveData } from './save';
 
@@ -207,102 +203,67 @@ export function tutorPurchase(store: KeyValueStore, species: SpeciesId, row: Pic
   return loadSave(store);
 }
 
-export interface TutorOptions {
-  store: KeyValueStore;
-  /** The player's starter: the tutor opens on it. */
-  species: SpeciesId;
-  /** Dungeons cleared on this device: some Maestro moves wait for one. */
-  cleared?: Iterable<string>;
-  play?(sound: 'coin' | 'denied'): void;
-  onBack(): void;
+/** Why a card's action is refused right now (the lock wins over the price), or null when it can be done. */
+export type CardBlock = { kind: 'locked'; dungeon: string } | { kind: 'coins'; missing: number };
+
+/** One card of the tutor grid: a move `species` knows or can be taught, with what the sheet and the chip need. */
+export interface MoveCard {
+  move: MoveId;
+  type: PokemonType;
+  slot: SlotKind;
+  tier: MoveTier;
+  power: number;
+  /** Known now (its original kit, bought or awakened). */
+  known: boolean;
+  /** Owned ranks (0..MAX_RANK). */
+  rank: number;
+  /** locked: a Maestro move waiting for a dungeon; buy: for sale; rank: known and can rank up; maxed: known at the top rank. */
+  state: 'locked' | 'buy' | 'rank' | 'maxed';
+  /** What Enter does: learn the move, rank it up, or nothing. */
+  action: 'learn' | 'rank' | null;
+  /** Price of the action; null when there is none. */
+  cost: number | null;
+  affordable: boolean;
+  /** The dungeon to clear first (its name), when locked. */
+  lockedBy: string | null;
 }
 
-export function tutorWindow(options: TutorOptions): { element: HTMLElement; dispose(): void } {
-  let save = loadSave(options.store);
-  let species = options.species;
-  let filter: SlotFilter = 'all';
-  let rows = tutorRows({ ...save, cleared: [...(options.cleared ?? [])] }, species, filter);
-  const balance = h('div', { className: 'shop-balance' });
-  const build = h('p', { className: 'tutor-build' });
-  const effect = h('p', { className: 'shop-effect dim' });
-  /** The line under the list: what the row under the cursor does, or how to buy. */
-  const describe = (row: TutorRow | null | undefined) => {
-    effect.textContent = row ? row.effect : t(isTouchUi() ? 'shop.hint.touch' : 'tutor.hint');
-  };
-
-  const items = (): ListItem[] => {
-    const out: ListItem[] = [
-      {
-        label: t('tutor.species'),
-        value: t(`species.${species}`),
-        className: 'filter-row',
-        onAdjust: (delta) => switchSpecies(delta),
-        onConfirm: () => switchSpecies(1),
-      },
-      slotFilterRow(filter, (next) => {
-        filter = next;
-        refresh();
-      }),
-    ];
-    let header: TutorRow['kind'] | null = null;
-    for (const row of rows) {
-      if (row.kind !== header) {
-        header = row.kind;
-        out.push({ header: true, label: t(row.kind === 'move' ? 'tutor.moves' : 'tutor.ranks') });
+/** The cards of `species` under `filter`: what it knows (its kit first), then what the tutor sells. */
+export function tutorCards(wallet: TutorWallet, species: SpeciesId, filter: SlotFilter = 'all'): MoveCard[] {
+  const known = knownMoves(wallet, species);
+  const moves = [...known, ...tutorOffer(species).filter((m) => !known.includes(m))];
+  return moves
+    .filter((move) => filter === 'all' || MOVES[move].slot === filter)
+    .map((move): MoveCard => {
+      const def = MOVES[move];
+      const isKnown = known.includes(move);
+      const rank = isKnown ? moveRank(wallet, species, move) : 0;
+      const base = { move, type: def.type, slot: def.slot, tier: moveTier(move), power: def.power, known: isKnown, rank };
+      if (isKnown) {
+        const cost = rankCost(wallet, species, move);
+        return { ...base, state: cost === null ? 'maxed' : 'rank', action: cost === null ? null : 'rank', cost, affordable: cost !== null && wallet.coins >= cost, lockedBy: null };
       }
-      out.push({
-        // The tier badge (Avanzado, Maestro) beside the name; the original kit has none.
-        label: row.tier === 'basic' ? row.label : h('span', {}, [row.label, ' ', h('span', { className: `tier-badge tier-${row.tier}`, textContent: tierName(row.tier) })]),
-        value: row.locked ? t('tutor.lockedShort') : row.cost === null ? t(row.kind === 'move' ? 'tutor.learned' : 'shop.max') : coinText(row.cost, (key) => t(key)),
-        className: row.affordable ? 'shop-row' : 'shop-row is-disabled',
-        tapToSelect: true,
-        onConfirm: () => {
-          const bought = tutorPurchase(options.store, species, row, options.cleared);
-          if (!bought) {
-            options.play?.('denied');
-            return;
-          }
-          options.play?.('coin');
-          save = bought;
-          refresh();
-        },
-      });
-    }
-    out.push({ label: t('menu.back'), onConfirm: options.onBack });
-    return out;
-  };
+      const price = tutorPrice(species, move);
+      const lock = tutorLock(wallet, species, move);
+      if (lock) return { ...base, state: 'locked', action: null, cost: price, affordable: false, lockedBy: t(dungeonById(lock).lore.nameKey) };
+      return { ...base, state: 'buy', action: 'learn', cost: price, affordable: price !== null && wallet.coins >= price, lockedBy: null };
+    });
+}
 
-  // Header rows take a list slot too: map a list index to its row through the items.
-  let rowAt: (TutorRow | null)[] = [];
-  const list = cursorList({
-    items: [],
-    onBack: options.onBack,
-    onCursor: (index) => describe(rowAt[index]),
-    label: t('tutor.title'),
-    className: 'shop-list',
-  });
-  const desc = description(list, { describe: (index) => describe(rowAt[index]), children: [effect] });
+/** Why the card's action cannot be done with `coins`, or null when it can (or it has no action to refuse: a maxed move). */
+export function cardBlock(card: MoveCard, coins: number): CardBlock | null {
+  if (card.lockedBy) return { kind: 'locked', dungeon: card.lockedBy };
+  if (card.cost !== null && card.action !== null && coins < card.cost) return { kind: 'coins', missing: card.cost - coins };
+  return null;
+}
 
-  function switchSpecies(delta: -1 | 1): void {
-    const roster = rosterOf(save);
-    const i = roster.indexOf(species);
-    species = roster[(i + delta + roster.length) % roster.length]!;
-    refresh();
-  }
+/** What the next rank of a known move adds ("+1: +10 % de daño, ..."), or null when it is maxed or not known. */
+export function nextRankText(card: MoveCard): string | null {
+  return card.known && card.rank < MAX_RANK ? rankText(card.move, card.rank + 1) : null;
+}
 
-  function refresh(): void {
-    rows = tutorRows({ ...save, cleared: [...(options.cleared ?? [])] }, species, filter);
-    balance.replaceChildren(statLine(t('screen.coins.balance'), coinText(save.coins, (key) => t(key))));
-    build.textContent = buildHint(species);
-    const next = items();
-    rowAt = [];
-    let r = 0;
-    for (const item of next) rowAt.push(item.onConfirm && item.className?.startsWith('shop-row') ? (rows[r++] ?? null) : null);
-    list.setItems(next);
-    desc.update();
-  }
-
-  refresh();
-  const element = mdWindow({ title: t('tutor.title'), className: 'shop tutor' }, [h('p', { textContent: t('tutor.text') }), balance, build, describedMenu(list.element, desc.element)]);
-  return { element, dispose: () => list.dispose() };
+/** The cost note of a paid move ("A cambio: retroceso."), empty for the original kit and the moves that cost nothing extra. */
+export function paidText(move: MoveId): string {
+  const costs = costsOf(MOVES[move]);
+  return moveTier(move) !== 'basic' && costs.length > 0 ? fill('tutor.costs', { list: costs.map((c) => t(`tutor.cost.${c}`)).join(', ') }) : '';
 }

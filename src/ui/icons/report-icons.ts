@@ -8,9 +8,9 @@ import type { PixelIcon } from '../pixel-icons';
  * `pixelSvgOf`. One per report type, plus the small marks of the form.
  */
 const SIZE = 16;
-const INK = '#140c11';
+export const INK = '#140c11';
 
-class Grid {
+export class Grid {
   private readonly cells: string[][] = Array.from({ length: SIZE }, () => Array<string>(SIZE).fill('.'));
 
   set(x: number, y: number, ch: string): this {
