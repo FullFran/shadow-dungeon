@@ -28,7 +28,8 @@ export function sceneOf(doc: ParentNode = document): Scene {
   if (doc.querySelector('canvas.town')) return { kind: 'town' };
   if (doc.querySelector('canvas.game')) return { kind: 'run' };
   if (doc.querySelector('.hub')) return { kind: 'hub' };
-  if (doc.querySelector('.result, .prologue, .quiz-black')) return { kind: 'other' };
+  // Full pages with their own Back (the /gacha page) are not menus to close by pressing outside.
+  if (doc.querySelector('.result, .prologue, .quiz-black, .gp')) return { kind: 'other' };
   return { kind: 'menu' };
 }
 
