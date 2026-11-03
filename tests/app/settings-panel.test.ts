@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultSettings, type Settings } from '../../src/app/settings';
-import { settingRows, settingTabs, stepVolume } from '../../src/app/settings-panel';
+import { SETTING_SLIDERS, SETTING_TAB_ICONS, applySetting, settingChoice, settingChoices, settingControlKind, settingRows, settingSections, settingTabs, stepVolume, type SettingsAccess } from '../../src/app/settings-panel';
 import { setLanguage } from '../../src/i18n';
 
 /** Rows over a settings value that `update` changes in place, like the app does. */
@@ -14,7 +14,7 @@ function harness(initial: Partial<Settings> = {}) {
       setLanguage: (language) => languages.push(language),
     });
   const row = (id: string) => rows().find((r) => r.id === id)!;
-  return { rows, row, settings: () => settings, languages };
+  return { rows, row, settings: () => settings, languages, update: (changes: Partial<Settings>) => (settings = { ...settings, ...changes }) };
 }
 
 describe('settings rows', () => {
@@ -104,5 +104,80 @@ describe('settings in tabs, each option explained', () => {
     expect(tabs.map((tab) => tab.title)).toEqual(['General', 'Fijar objetivo', 'Sonido', 'Accesibilidad', 'Táctil']);
     expect(tabs[0]!.rows.map((r) => r.id)).toEqual(['language']);
     expect(tabs.flatMap((tab) => tab.rows.map((r) => r.id))).toEqual(rows.map((r) => r.id));
+  });
+});
+
+describe('settings controls', () => {
+  const ids = () => harness().rows().map((r) => r.id);
+
+  it('picks the control of each setting: sliders, switches, segmented up to three options, a dropdown above', () => {
+    const kinds = Object.fromEntries(ids().map((id) => [id, settingControlKind(id)]));
+    expect(kinds).toEqual({
+      language: 'segmented',
+      lockType: 'dropdown',
+      clickToLock: 'switch',
+      masterVolume: 'slider',
+      musicVolume: 'slider',
+      sfxVolume: 'slider',
+      muted: 'switch',
+      figurations: 'segmented',
+      touchMode: 'segmented',
+      autoAim: 'switch',
+      haptics: 'switch',
+      touchSize: 'segmented',
+      touchOpacity: 'slider',
+      touchLeftHanded: 'switch',
+    });
+  });
+
+  it('gives every choice setting its options, never more than three for a segmented control', () => {
+    setLanguage('es');
+    for (const id of ids()) {
+      const kind = settingControlKind(id);
+      if (kind !== 'segmented' && kind !== 'dropdown') continue;
+      const options = settingChoices(id);
+      expect(options.length, id).toBeGreaterThan(1);
+      if (kind === 'segmented') expect(options.length, id).toBeLessThanOrEqual(3);
+      else expect(options.length, id).toBeGreaterThan(3);
+      for (const o of options) expect(o.label, `${id} ${o.value}`).toMatch(/\S/);
+    }
+    expect(settingChoices('lockType').map((o) => o.value)).toEqual(['toggle', 'hold', 'clickOnly', 'off']);
+  });
+
+  it('gives every slider a range that covers the values its setting can take', () => {
+    for (const id of ['masterVolume', 'musicVolume', 'sfxVolume'] as const) expect(SETTING_SLIDERS[id]).toMatchObject({ min: 0, max: 1, step: 0.05 });
+    expect(SETTING_SLIDERS.touchOpacity).toMatchObject({ min: 0.5, max: 1, step: 0.25 });
+    expect(Object.keys(SETTING_SLIDERS).sort()).toEqual(ids().filter((id) => settingControlKind(id) === 'slider').sort());
+  });
+
+  it('groups the rows into the five sections, each row in exactly one, with an icon each', () => {
+    setLanguage('es');
+    const h = harness();
+    const sections = settingSections(h.rows());
+    expect(sections.map((s) => s.icon)).toEqual(SETTING_TAB_ICONS);
+    expect(sections.map((s) => s.title)).toEqual(['General', 'Fijar objetivo', 'Sonido', 'Accesibilidad', 'Táctil']);
+    expect(sections.flatMap((s) => s.rows.map((r) => r.id)).sort()).toEqual(ids().sort());
+    for (const row of h.rows()) expect(sections.filter((s) => s.rows.some((r) => r.id === row.id)), row.id).toHaveLength(1);
+  });
+
+  it('writes each control change through the update path (and the language to the page)', () => {
+    const h = harness({ language: 'es' });
+    const access: SettingsAccess = { get: h.settings, update: (c) => h.update(c), setLanguage: (l) => h.languages.push(l) };
+    applySetting(access, 'musicVolume', 0.35);
+    applySetting(access, 'muted', true);
+    applySetting(access, 'lockType', 'hold');
+    applySetting(access, 'touchSize', '1.2');
+    applySetting(access, 'touchOpacity', 0.75);
+    applySetting(access, 'figurations', 'off');
+    applySetting(access, 'touchMode', 'on');
+    expect(h.settings()).toMatchObject({ musicVolume: 0.35, muted: true, lockType: 'hold', touchSize: 1.2, touchOpacity: 0.75, figurations: 'off', touchMode: 'on' });
+    applySetting(access, 'language', 'en');
+    expect(h.settings().language).toBe('en');
+    expect(h.languages).toEqual(['en']);
+  });
+
+  it('reads the current choice of a setting as its option value', () => {
+    expect(settingChoice('touchSize', { ...defaultSettings('es'), touchSize: 1.2 })).toBe('1.2');
+    expect(settingChoice('lockType', { ...defaultSettings('es'), lockType: 'off' })).toBe('off');
   });
 });
