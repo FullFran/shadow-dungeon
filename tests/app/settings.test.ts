@@ -54,7 +54,7 @@ describe('settings', () => {
   const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: 'normal', figurations: 'on' };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
-    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, ...SOUND });
+    expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, ...SOUND });
   });
 
   it('round-trips through the store', () => {
@@ -66,6 +66,7 @@ describe('settings', () => {
       species: 'mimikyu' as const,
       starterChosen: true,
       loadout: pad('mimikyu', ['shadow-sneak', 'shadow-ball']),
+      loadouts: { litwick: pad('litwick', ['astonish', 'inferno']) },
       masterVolume: 0.3,
       musicVolume: 0,
       sfxVolume: 1,
@@ -119,6 +120,27 @@ describe('settings', () => {
     expect(withSpecies(tuned, 'mimikyu')).toEqual(tuned);
   });
 
+  it('remembers each species its own moves: switching away and back restores them (SD-4K89KD)', () => {
+    const tuned = { ...defaultSettings('es'), loadout: pad('mimikyu', ['shadow-claw', 'play-rough']) };
+    const away = withSpecies(tuned, 'litwick');
+    expect(away.loadout).toEqual(pad('litwick', ['ember', 'hex']));
+    const back = withSpecies({ ...away, loadout: pad('litwick', ['astonish', 'inferno']) }, 'mimikyu');
+    expect(back.loadout).toEqual(pad('mimikyu', ['shadow-claw', 'play-rough']));
+    expect(withSpecies(back, 'litwick').loadout).toEqual(pad('litwick', ['astonish', 'inferno']));
+  });
+
+  it('keeps the remembered moves of every species across a reload, dropping those that no longer fit', () => {
+    const store = memoryStore();
+    const tuned = withSpecies({ ...defaultSettings('es'), loadout: pad('mimikyu', ['shadow-claw', 'play-rough']) }, 'litwick');
+    saveSettings(store, tuned);
+    const loaded = loadSettings(store, defaultSettings('es'));
+    expect(withSpecies(loaded, 'mimikyu').loadout).toEqual(pad('mimikyu', ['shadow-claw', 'play-rough']));
+    store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'litwick', loadouts: { mimikyu: ['ember', 'hex'], aegislash: ['shadow-sneak'], cubone: 'x' } }));
+    const sanitized = loadSettings(store, defaultSettings('es'));
+    expect(sanitized.loadouts).toEqual({});
+    expect(withSpecies(sanitized, 'mimikyu').loadout).toEqual(SPECIES.mimikyu.defaultLoadout);
+  });
+
   it('gives a stored species its default loadout when the stored moves are not its own, and drops unknown species', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ species: 'cubone', loadout: ['shadow-claw', 'play-rough'] }));
@@ -145,7 +167,7 @@ describe('settings', () => {
     for (const [lockMode, lockType] of [['hold', 'hold'], ['toggle', 'toggle'], ['weird', 'toggle']]) {
       store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', lockMode, loadout: ['shadow-sneak', 'play-rough'] }));
       const loaded = loadSettings(store, defaultSettings('es'));
-      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-sneak', 'play-rough']), ...SOUND });
+      expect(loaded).toEqual({ language: 'en', lockType, clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-sneak', 'play-rough']), loadouts: {}, ...SOUND });
       expect(loaded).not.toHaveProperty('lockMode');
     }
   });
@@ -178,7 +200,7 @@ describe('settings', () => {
   it('loads settings saved before sound existed with the sound defaults', () => {
     const store = memoryStore();
     store.set('mazmorra-sombria.settings', JSON.stringify({ language: 'en', clickToLock: false, loadout: ['shadow-claw', 'shadow-ball'] }));
-    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-claw', 'shadow-ball']), ...SOUND });
+    expect(loadSettings(store, defaultSettings('es'))).toEqual({ language: 'en', lockType: 'toggle', clickToLock: false, species: 'mimikyu', starterChosen: false, loadout: pad('mimikyu', ['shadow-claw', 'shadow-ball']), loadouts: {}, ...SOUND });
   });
 });
 
