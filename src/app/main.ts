@@ -100,7 +100,8 @@ import { recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyR
 import { drawStoryScene } from '../adapters/story-scenes';
 import { sendaTier, sendaTierOpen, type StoryRun } from '../core/story';
 import { shopWindow } from './shop';
-import { buildHint, tutorWindow } from './tutor';
+import { buildHint } from './tutor';
+import { tutorWindow } from './tutor-screen';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { awakenedOf, currentForm, rosterOf } from '../core/collection';
 import { isFemale } from '../core/gender';
@@ -1369,9 +1370,12 @@ function skins(after?: () => void): { skin: ShinySkins; gender: LineGender } {
   };
 }
 
+/** A species' idle animation for the move tutor's chips (its worn skin and gender). */
+const tutorPortrait = (id: SpeciesId, scale: number): HTMLElement => portrait(sheetsReady(), id, scale, skinOn(id), femaleOn(id));
+
 /** Smeargle's move tutor over the town, like the shop. */
 function townTutor(parent: HTMLElement, onClose: () => void): () => void {
-  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: onClose });
+  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, play: (sound) => audio.play(sound), onBack: onClose });
   const overlay = h('div', { className: 'town-shop' }, [tutor.element]);
   parent.append(overlay);
   return () => {
@@ -2252,7 +2256,7 @@ function devScreen(root: HTMLElement): boolean {
     challenges: () => devScreenChallenges(root),
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
-      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
+      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
       show(root, [tutor.element]);
     },
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
