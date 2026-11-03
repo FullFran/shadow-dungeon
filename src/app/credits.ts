@@ -48,13 +48,15 @@ export interface TeamMember {
   name: string;
   roleKey: string;
   icon: string;
-  link?: string;
+  /** GitHub user, shown under the name. */
+  github: string;
+  link: string;
 }
 
 /** The creator is Fran (the repository owner, github.com/FullFran); Álvaro Fernández designed and built the frontend. */
 export const TEAM: readonly TeamMember[] = [
-  { id: 'fran', name: 'Fran', roleKey: 'credits.role.creator', icon: 'creator', link: 'https://github.com/FullFran' },
-  { id: 'alvaro', name: 'Álvaro Fernández', roleKey: 'credits.role.frontend', icon: 'designer' },
+  { id: 'fran', name: 'Fran', roleKey: 'credits.role.creator', icon: 'creator', github: 'FullFran', link: 'https://github.com/FullFran' },
+  { id: 'alvaro', name: 'Álvaro Fernández', roleKey: 'credits.role.frontend', icon: 'designer', github: 'alvaroofernaandez', link: 'https://github.com/alvaroofernaandez' },
 ];
 
 export interface CreditsSection {
@@ -94,7 +96,7 @@ function section(def: CreditsSection, children: Node[]): HTMLElement {
 function teamCard(member: TeamMember): HTMLElement {
   return h('li', { className: `cc-card cc-member cc-member-${member.id}` }, [
     icon(member.icon, 'cc-icon cc-icon-role'),
-    h('div', { className: 'cc-member-text' }, [member.link ? link(member.link, member.name, 'cc-name cc-nav') : h('span', { className: 'cc-name', textContent: member.name }), h('span', { className: 'cc-role', textContent: t(member.roleKey) })]),
+    h('div', { className: 'cc-member-text' }, [h('span', { className: 'cc-name', textContent: member.name }), h('span', { className: 'cc-role', textContent: t(member.roleKey) }), link(member.link, `@${member.github}`, 'cc-github cc-nav')]),
   ]);
 }
 

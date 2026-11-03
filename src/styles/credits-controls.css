@@ -125,3 +125,6 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
 }
 /* Both tabs keep one height on a tall screen, so the window does not jump when the tab changes. */
 @media (min-height: 760px) { .pc-legend { min-height: 260px; align-content: start; } }
+
+.cc-github { font-family: var(--md-text-font); font-weight: 700; font-size: 14px; color: var(--md-text-dim); text-decoration: none; }
+.cc-github:hover, .cc-github:focus-visible { color: var(--md-cursor); text-decoration: underline; }

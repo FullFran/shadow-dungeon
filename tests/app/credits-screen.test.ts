@@ -10,6 +10,11 @@ describe('credits team', () => {
     expect(TEAM.map((m) => m.name)).toEqual(['Fran', 'Álvaro Fernández']);
     expect(catalog('es')[TEAM[1]!.roleKey]).toBe('Diseñador y Desarrollador Frontend');
     expect(catalog('en')[TEAM[1]!.roleKey]).toBe('Designer and Frontend Developer');
+    // Owner, 2026-11-03: GitHub users from the repository, Fran as creator and developer.
+    expect(TEAM.map((m) => m.github)).toEqual(['FullFran', 'alvaroofernaandez']);
+    for (const m of TEAM) expect(m.link).toBe(`https://github.com/${m.github}`);
+    expect(catalog('es')[TEAM[0]!.roleKey]).toBe('Creador y Desarrollador');
+    expect(catalog('en')[TEAM[0]!.roleKey]).toBe('Creator and Developer');
   });
 
   it('every section and role is named in both languages, without em dashes', () => {
