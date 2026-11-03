@@ -65,6 +65,7 @@ import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
+import { installDismiss } from '../ui/dismiss';
 import { adminAccess, ticketsWindow } from './tickets-screen';
 import { friendsHeartbeat, friendsWindow, type Heartbeat } from './friends-screen';
 import { httpFriendsApi } from '../adapters/friends-api';
@@ -2292,6 +2293,8 @@ if (root) {
   root.addEventListener('click', (e) => {
     if (e.target instanceof Element && e.target.closest('button')) audio.play('click');
   });
+  // A press that starts and ends on the backdrop closes the open menu like Esc (ui/dismiss.ts).
+  installDismiss();
   // Development server only: `?unlock=all` opens everything in this browser's local save.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'all') unlockEverything(store);
   if (!devScreen(root)) titleScreen(root);

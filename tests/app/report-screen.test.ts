@@ -14,6 +14,8 @@ const UA = {
   ipadDesktop: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
 };
 
+const withAnswers = (answers: Record<string, string>) => ({ ...emptyDraft(), answers });
+
 describe('report device summary', () => {
   it('names only the browser family, the OS family and touch, never versions or models', () => {
     expect(deviceSummary({ userAgent: UA.firefoxLinux, maxTouchPoints: 0 })).toBe('Firefox / Linux / no touch');
@@ -29,17 +31,17 @@ describe('report device summary', () => {
 
 describe('report building', () => {
   it('trims the fields and adds the version and device only when technical info is attached', () => {
-    const draft = { ...emptyDraft(), category: 'online' as const, description: '  Lost the room  ', steps: ' 1. join ' };
+    const draft = { ...withAnswers({ 'online.what': '  Lost the room  ', 'online.role': 'guest', 'online.expected': ' It should join ' }), type: 'online' as const };
     expect(buildReport(draft, { version: '1.4.0', device: 'Chrome / Android / touch' })).toEqual({
       ok: true,
-      report: { category: 'online', description: 'Lost the room', steps: '1. join', expected: '', observed: '', version: '1.4.0', device: 'Chrome / Android / touch' },
+      report: { category: 'online', description: 'Tu papel: Invitado\nLost the room', steps: '', expected: 'It should join', observed: '', version: '1.4.0', device: 'Chrome / Android / touch' },
     });
     const bare = buildReport({ ...draft, attachTech: false }, { version: '1.4.0', device: 'x' });
     expect(bare.ok && bare.report.version === '' && bare.report.device === '').toBe(true);
   });
 
   it('attaches the diagnostics snapshot only when technical info is on (issue #6)', () => {
-    const draft = { ...emptyDraft(), description: 'Lost the room' };
+    const draft = withAnswers({ 'bug.what': 'Lost the room' });
     const diagnostics = { build: 'v0.9.1 · abc1234', screen: 'room town', errors: [] };
     const on = buildReport(draft, { version: 'v', device: 'd', diagnostics });
     expect(on.ok && on.report).toMatchObject({ version: 'v', device: 'd', diagnostics });
@@ -53,7 +55,7 @@ describe('report building', () => {
       taken++;
       return Promise.resolve({ build: 'v0.9.1 · abc1234', errors: [] });
     };
-    const draft = { ...emptyDraft(), description: 'Lost the room' };
+    const draft = withAnswers({ 'bug.what': 'Lost the room' });
     const off = await collectReport({ ...draft, attachTech: false }, { version: 'v', device: 'd', diagnostics });
     expect(taken).toBe(0);
     expect(off.ok && 'diagnostics' in off.report).toBe(false);
@@ -70,15 +72,16 @@ describe('report building', () => {
   });
 
   it('a snapshot that fails to build does not stop the report', async () => {
-    const built = await collectReport({ ...emptyDraft(), description: 'x' }, { version: 'v', device: 'd', diagnostics: () => Promise.reject(new Error('stats')) });
+    const built = await collectReport(withAnswers({ 'bug.what': 'x' }), { version: 'v', device: 'd', diagnostics: () => Promise.reject(new Error('stats')) });
     expect(built.ok && built.report.description === 'x' && !('diagnostics' in built.report)).toBe(true);
   });
 
-  it('requires a description and keeps every field within the server limits', () => {
-    expect(buildReport({ ...emptyDraft(), description: '   ' }, { version: 'v', device: 'd' })).toEqual({ ok: false, field: 'description' });
-    expect(buildReport({ ...emptyDraft(), description: 'x'.repeat(REPORT_LIMITS.description + 1) }, { version: 'v', device: 'd' })).toEqual({ ok: false, field: 'description' });
-    expect(buildReport({ ...emptyDraft(), description: 'x', observed: 'o'.repeat(REPORT_LIMITS.observed + 1) }, { version: 'v', device: 'd' })).toEqual({ ok: false, field: 'observed' });
-    const long = buildReport({ ...emptyDraft(), description: 'x' }, { version: 'v'.repeat(80), device: 'd'.repeat(300) });
+  it('requires the main answer and keeps every field within the server limits', () => {
+    const tech = { version: 'v', device: 'd' };
+    expect(buildReport(withAnswers({ 'bug.what': '   ' }), tech)).toEqual({ ok: false, field: 'what', reason: 'required' });
+    expect(buildReport(withAnswers({ 'bug.what': 'x'.repeat(REPORT_LIMITS.description + 1) }), tech)).toEqual({ ok: false, field: 'what', reason: 'too-long' });
+    expect(buildReport(withAnswers({ 'bug.what': 'x', 'bug.seen': 'o'.repeat(REPORT_LIMITS.observed + 1) }), tech)).toEqual({ ok: false, field: 'seen', reason: 'too-long' });
+    const long = buildReport(withAnswers({ 'bug.what': 'x' }), { version: 'v'.repeat(80), device: 'd'.repeat(300) });
     expect(long.ok && long.report.version.length <= REPORT_LIMITS.version && long.report.device.length <= REPORT_LIMITS.device).toBe(true);
   });
 
@@ -91,7 +94,7 @@ describe('report draft', () => {
   it('keeps the draft in storage and restores it, and clears it after sending', () => {
     const store = memoryStore();
     expect(loadDraft(store)).toEqual(emptyDraft());
-    const draft = { ...emptyDraft(), category: 'performance' as const, description: 'Slow on floor 9', attachTech: false };
+    const draft = { ...withAnswers({ 'performance.what': 'Slow on floor 9', 'performance.often': 'always' }), type: 'performance' as const, attachTech: false };
     saveDraft(store, draft);
     expect(store.get(REPORT_DRAFT_KEY)).toBeTruthy();
     expect(loadDraft(store)).toEqual(draft);
@@ -103,8 +106,20 @@ describe('report draft', () => {
     const store = memoryStore();
     store.set(REPORT_DRAFT_KEY, '{oops');
     expect(loadDraft(store)).toEqual(emptyDraft());
-    store.set(REPORT_DRAFT_KEY, JSON.stringify({ category: 'cheats', description: 42, attachTech: 'yes', extra: 1 }));
+    store.set(REPORT_DRAFT_KEY, JSON.stringify({ type: 'cheats', answers: { 'bug.what': 42, 'bug.where': 'the moon', 'cheats.x': 'y', 'bug.nope': 'z' }, attachTech: 'yes', extra: 1 }));
     expect(loadDraft(store)).toEqual(emptyDraft());
+  });
+
+  it('keeps the description of a draft saved before the per-type forms', () => {
+    const store = memoryStore();
+    store.set(REPORT_DRAFT_KEY, JSON.stringify({ category: 'suggestion', description: 'More shrines', steps: '', expected: '', observed: '', attachTech: false }));
+    expect(loadDraft(store)).toEqual({ type: 'suggestion', answers: { 'suggestion.idea': 'More shrines' }, attachTech: false });
+  });
+
+  it('cuts a saved text to its field limit', () => {
+    const store = memoryStore();
+    store.set(REPORT_DRAFT_KEY, JSON.stringify({ type: 'bug', answers: { 'bug.what': 'x'.repeat(5000) }, attachTech: true }));
+    expect(loadDraft(store).answers['bug.what']!.length).toBe(1200);
   });
 
   it('uses the agreed storage key', () => {
@@ -119,11 +134,6 @@ describe('report screen text', () => {
       const keys = [
         'report.title',
         'report.intro',
-        'report.category',
-        'report.description',
-        'report.steps',
-        'report.expected',
-        'report.observed',
         'report.attachTech',
         'report.attachTech.about',
         'report.attachTech.session',
@@ -133,8 +143,7 @@ describe('report screen text', () => {
         'report.sent.body',
         'report.on',
         'report.off',
-        ...REPORT_CATEGORIES.map((c) => `report.category.${c}`),
-        ...(['rate-limited', 'unavailable', 'invalid', 'description', 'too-long'] as const).map((e) => reportErrorKey(e)),
+        ...(['rate-limited', 'unavailable', 'invalid', 'required', 'too-long'] as const).map((e) => reportErrorKey(e)),
       ];
       for (const key of keys) {
         expect(tr[key], key).toBeTruthy();
