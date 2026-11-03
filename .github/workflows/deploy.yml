@@ -44,6 +44,10 @@ jobs:
             echo "Boss proofs skipped: nothing they prove changed."
           fi
       - run: npm run build
+      # GitHub Pages has no rewrites: it answers an unknown path such as /<repo>/gacha with 404.html. A copy of the app's
+      # page there makes the /gacha route (src/app/gacha-route.ts) load the game (the assets are relative, one segment deep).
+      - name: Serve the /gacha route (SPA fallback)
+        run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

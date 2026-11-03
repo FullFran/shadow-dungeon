@@ -88,6 +88,8 @@ import { parseSpawnList } from '../core/test-floor';
 import { unlockEverything, veteranProfile } from './dev-unlock';
 import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
+import { gachaPage } from './gacha-page';
+import { gachaUrl, isGachaPath, leaveUrl } from './gacha-route';
 import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast, holdToasts, releaseToasts } from './achievements';
 import { recordPast, recordRun, recordSave } from './progress';
@@ -548,7 +550,7 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
     pokemon: () => pokemonScreen(root, back('pokemon')),
     tutor: () => overlay('tutor', townTutor),
     evolve: () => overlay('evolve', townEvolve),
-    gacha: () => overlay('gacha', townGacha),
+    gacha: () => openGachaPage(root, 'hub'),
     shop: () => overlay('shop', townShop),
     board: () => overlay('board', townBoard),
     challenges: () => overlay('challenges', townChallenges),
@@ -1322,7 +1324,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
   const { tour: forceTour, ...place } = at ?? {};
   // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
   const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1428,6 +1430,54 @@ function townSettings(parent: HTMLElement, onClose: () => void): () => void {
 
 /** Mimikyu's gacha stall over the town. */
 const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: settleOnClose(onClose) }));
+
+/**
+ * The gacha as its own page, /gacha (odd/tasks/gacha-page.md; owner, 2026-11-03). The hub's button and Mimikyu's stall
+ * (alone; a room keeps the window above) push the route with the origin in the history state, so the browser's back
+ * button, Esc and "Volver" all return there. A direct visit has no origin: back goes to the title. The route needs a
+ * server that answers /gacha with the app (Vite dev does; GitHub Pages via dist/404.html, see deploy.yml).
+ */
+type GachaOrigin = 'hub' | 'town';
+let gachaOpen: { dispose(): void } | null = null;
+let gachaFrom: GachaOrigin | null = null;
+const gachaOrigin = (): GachaOrigin | null => (window.history.state as { gacha?: GachaOrigin } | null)?.gacha ?? null;
+/** In front of Mimikyu's stall, where the town returns the player to. */
+const STALL_FRONT = { at: 'refugio', tile: { x: 8, y: 8 } } as const;
+
+function showGachaPage(root: HTMLElement): void {
+  leaveNet();
+  applyLanguage(settings.language);
+  gachaOpen?.dispose();
+  gachaFrom = gachaOrigin();
+  const page = gachaPage({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), touch: isTouchUi(), onBack: () => leaveGachaPage(root) });
+  gachaOpen = page;
+  show(root, [page.element], false);
+  audio.setMusic('title');
+}
+
+function openGachaPage(root: HTMLElement, from: GachaOrigin): void {
+  window.history.pushState({ gacha: from }, '', gachaUrl(window.location.pathname));
+  showGachaPage(root);
+}
+
+/** Back and Esc: one step back when the page was pushed (the same step as the browser's back button); a direct visit goes to the title. */
+function leaveGachaPage(root: HTMLElement): void {
+  if (gachaOrigin()) {
+    window.history.back();
+    return;
+  }
+  window.history.replaceState(null, '', leaveUrl(window.location.pathname));
+  exitGachaPage(root, null);
+}
+
+/** Leaves the page for where it was opened from, settling the achievements the pulls earned (app/progress.ts). */
+function exitGachaPage(root: HTMLElement, from: GachaOrigin | null): void {
+  gachaOpen?.dispose();
+  gachaOpen = null;
+  achievementToast(recordSave(store, Date.now()).unlocked);
+  if (from === 'town') townScreen(root, STALL_FRONT);
+  else titleScreen(root, 'gacha');
+}
 
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
 function townEvolve(parent: HTMLElement, onClose: () => void, depart: (id: string) => void): () => void {
@@ -2317,5 +2367,15 @@ if (root) {
     url.searchParams.delete('unlock');
     window.history.replaceState(null, '', url);
   }
-  if (!devScreen(root)) titleScreen(root);
+  // /gacha: the stall's own page. The town must be open (the hub's button is locked until then); the browser's back and forward buttons move between it and the app.
+  const onGachaPath = (): boolean => isGachaPath(window.location.pathname);
+  window.addEventListener('popstate', () => {
+    if (onGachaPath() && townIsOpen()) showGachaPage(root);
+    else if (gachaOpen) exitGachaPage(root, gachaFrom);
+  });
+  if (onGachaPath() && townIsOpen()) showGachaPage(root);
+  else {
+    if (onGachaPath()) window.history.replaceState(null, '', leaveUrl(window.location.pathname));
+    if (!devScreen(root)) titleScreen(root);
+  }
 }

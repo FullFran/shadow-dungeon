@@ -8,26 +8,26 @@ import type { PixelIcon } from '../pixel-icons';
  */
 const INK = '#140c11';
 
-const CAPSULE_PALETTE = { k: INK, r: '#c22a37', R: '#ff6b5e', d: '#7a1220', w: '#ece3d3', s: '#9a8f80', G: '#e2b866' } as const;
+const CAPSULE_PALETTE = { k: INK, r: '#c22a37', R: '#ff6b5e', d: '#7a1220', G: '#e2b866', u: '#6a4a78', v: '#3d2a4a', w: '#24152e' } as const;
 
-/** A round capsule: crimson lid over a bone body, an ink seam and a gold latch. */
+/** An upright capsule: a crimson lid over a dusk-violet body, a gold band between and an ink outline. */
 const CAPSULE_ROWS = [
   '................',
   '.....kkkkkk.....',
-  '...kkrrrrrrkk...',
-  '..krRRrrrrrrdk..',
-  '..krRrrrrrrrdk..',
-  '.krrrrrrrrrrrdk.',
-  '.krrrrrrrrrrddk.',
-  '.kkkkkkkkkkkkkk.',
-  '.kwwwwGGGGwwwwk.',
-  '.kwwwwwwwwwwwsk.',
-  '.kwwwwwwwwwwssk.',
-  '.kwwwwwwwwwsssk.',
-  '..kwwwwwwwsssk..',
-  '..kswwwwwssssk..',
-  '...kksssssskk...',
-  '.....kkkkkk.....',
+  '....krrrrrrk....',
+  '...krRRrrrrdk...',
+  '...krRrrrrrdk...',
+  '...krrrrrrrdk...',
+  '...krrrrrrddk...',
+  '...kGGGGGGGGk...',
+  '...kGGGGGGGGk...',
+  '...kuuvvvvwwk...',
+  '...kuvvvvvwwk...',
+  '...kvvvvvvwwk...',
+  '....kvvvvwwk....',
+  '....kvvvvvwk....',
+  '.....kwwwwk.....',
+  '................',
 ] as const;
 
 const BLANK = '.'.repeat(16);
@@ -35,6 +35,16 @@ const BLANK = '.'.repeat(16);
 const TOP_ROWS = CAPSULE_ROWS.map((row, i) => (i < 8 ? row : BLANK));
 /** The body: rows under the seam. */
 const BOTTOM_ROWS = CAPSULE_ROWS.map((row, i) => (i >= 8 ? row : BLANK));
+
+/** One small capsule, 5x7. */
+const PILL = ['.kkk.', 'krRrk', 'krrrk', 'kGGGk', 'kuvvk', 'kvvwk', '.kkk.'] as const;
+
+/** Three of them in a triangle on a 16x16 map. */
+const PILLS: readonly string[] = (() => {
+  const grid = Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '.'));
+  for (const [x, y] of [[1, 1], [10, 1], [5, 8]] as const) PILL.forEach((row, dy) => [...row].forEach((ch, dx) => (ch !== '.' ? (grid[y + dy]![x + dx] = ch) : undefined)));
+  return grid.map((row) => row.join(''));
+})();
 
 export const GACHA_ICON_IDS = ['capsule', 'capsuleTop', 'capsuleBottom', 'pull', 'pullTen', 'back', 'skip', 'sparkle', 'owned', 'unknown'] as const;
 
@@ -64,27 +74,10 @@ export const GACHA_ICONS: Record<string, PixelIcon> = {
       '................',
     ],
   },
-  /** Three capsules together: ten pulls. */
+  /** Three small capsules together: ten pulls. */
   pullTen: {
-    palette: { k: INK, r: '#c22a37', R: '#ff6b5e', d: '#7a1220', w: '#ece3d3', s: '#9a8f80' },
-    rows: [
-      '................',
-      '.kkkk......kkkk.',
-      'krRrrk....krRrrk',
-      'krrrdk....krrrdk',
-      'kkkkkk....kkkkkk',
-      'kwwwsk....kwwwsk',
-      '.kkkk......kkkk.',
-      '................',
-      '......kkkk......',
-      '.....krRrrk.....',
-      '.....krrrdk.....',
-      '.....kkkkkk.....',
-      '.....kwwwsk.....',
-      '......kkkk......',
-      '................',
-      '................',
-    ],
+    palette: { k: INK, r: '#c22a37', R: '#ff6b5e', G: '#e2b866', u: '#6a4a78', v: '#3d2a4a', w: '#24152e' },
+    rows: PILLS,
   },
   /** A left arrow: back to where you came from. */
   back: {
