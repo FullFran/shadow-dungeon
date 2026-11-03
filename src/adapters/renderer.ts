@@ -65,6 +65,8 @@ import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilte
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
+  /** The world alone, without the screen-space HUD and notices (the move tutor's preview). */
+  bare?: boolean;
   /** Baked effects, once their art is ready; everything keeps its hand-drawn look without them. */
   fx?: FxSystem;
   prev: WorldState;
@@ -1792,6 +1794,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.slowMo;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // A bare frame (the move tutor's preview) is the world only: no HUD, minimap, log or notices.
+    if (frame.bare) return;
     // The HUD has its own scale: on desktop a big window shows more HUD space, not bigger panels.
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
