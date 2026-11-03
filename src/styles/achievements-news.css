@@ -195,3 +195,15 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 @media (prefers-reduced-motion: reduce) {
   .news-chevron { transition: none; }
 }
+
+/* Fixed geometry (owner, 2026-11-03: "que no haya diferencia de tamaños... independientemente de la cantidad de contenido"):
+   the window, the rail rows, the tiles and the detail box keep one size whatever the category, the text or the hover. */
+.ach-window { height: min(46rem, calc(100dvh - 64px)); }
+.ach-rail .md-item { height: 52px; min-height: 52px; flex: none; }
+.ach-cat-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; white-space: normal; }
+.ach-grid { grid-auto-rows: 136px; }
+.ach-tile { height: 136px; min-height: 0; }
+.ach-tile-name { height: 2.4em; }
+.ach-detail { height: 84px; min-height: 0; overflow: hidden; }
+.ach-detail-text > * { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+@media (max-height: 520px) { .ach-window { height: calc(100dvh - 24px); } .ach-detail { height: 64px; } }
