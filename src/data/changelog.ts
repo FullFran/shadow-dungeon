@@ -50,8 +50,8 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
-          es: 'Título renovado: tu compañero en el altar, los servicios como iconos a los lados, «Jugar» y «Jugar en línea» abajo y un eclipse con siluetas de Pokémon de fondo.',
-          en: 'A new title screen: your partner on the altar, the services as icons on both sides, «Play» and «Play online» below and an eclipse with Pokémon silhouettes behind.',
+          es: 'Título renovado: tu compañero en un círculo rúnico, los servicios como iconos a los lados, «Jugar» y «Jugar en línea» abajo, y de fondo el Refugio del Ocaso en ruinas bajo el eclipse, con Mimikyu y Gastly.',
+          en: 'Title redesigned: your partner in a rune circle, the services as icons on both sides, «Play» and «Play online» at the bottom, and behind them Dusk Haven in ruins under the eclipse, with Mimikyu and Gastly.',
           icon: 'eclipse',
           image: 'news/title-hub.webp',
         },
