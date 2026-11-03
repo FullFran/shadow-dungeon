@@ -117,3 +117,8 @@
   .sh-stage-icon { margin-bottom: 8px; } .sh-stage-icon svg.sh-icon-big { width: 48px; height: 48px; }
   .sh-effect { height: 38px; padding-top: 2px; } .sh-effect-label { font-size: 11px; } .sh-effect-line { font-size: 20px; } .sh-effect-max { font-size: 16px; }
 }
+
+/* The cost chips of the shared confirmation (evolve.ts, shop.ts). */
+.rc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.rc-chips .es-chip { flex: 0 0 auto; padding: 0 10px; height: 32px; font-size: 15px; }
+.rc-chips .es-chip svg.px-icon { width: 22px; height: 22px; }
