@@ -1377,7 +1377,7 @@ const tutorPortrait = (id: SpeciesId, scale: number): HTMLElement => portrait(sh
 
 /** Smeargle's move tutor over the town, like the shop. */
 function townTutor(parent: HTMLElement, onClose: () => void): () => void {
-  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, play: (sound) => audio.play(sound), onBack: onClose });
+  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: onClose });
   const overlay = h('div', { className: 'town-shop' }, [tutor.element]);
   parent.append(overlay);
   return () => {
@@ -2306,7 +2306,7 @@ function devScreen(root: HTMLElement): boolean {
     challenges: () => devScreenChallenges(root),
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
-      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
+      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
       show(root, [tutor.element]);
     },
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.

@@ -1,32 +1,35 @@
 import { rosterOf } from '../core/collection';
 import { MOVES, type MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
-import { MAX_RANK, RECOMMENDED_BUILD } from '../data/tutor';
-import { isStarter } from '../data/species';
+import { MAX_RANK } from '../data/tutor';
 import type { PokemonType } from '../data/types';
+import type { SheetStore } from '../adapters/assets';
 import type { KeyValueStore } from '../adapters/storage';
 import { isTouchUi } from '../adapters/touch-mode';
 import { t } from '../i18n';
+import { confirmDialog } from '../ui/confirm-dialog';
 import { TUTOR_ICONS } from '../ui/icons/tutor-icons';
 import { pixelIconSvg, pixelSvgOf } from '../ui/pixel-icons';
 import { TYPE_COLORS } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { coinText } from './coin-lines';
-import { moveInfoLines, moveShape } from './move-info';
 import { loadSave } from './save';
-import { buildHint, cardBlock, nextRankText, paidText, rankText, SLOT_FILTERS, tierName, tutorCards, tutorPurchase, type MoveCard, type SlotFilter } from './tutor';
+import { createMovePreview, type MovePreview } from './move-preview-view';
+import { buildHint, cardBlock, confirmCopy, nextRankText, paidText, SLOT_FILTERS, spendAfterConfirm, tierName, tutorCards, tutorPurchase, type MoveCard, type SlotFilter } from './tutor';
 import { hubStep } from './title-hub';
 import '../styles/tutor.css';
 
 /**
  * Smeargle's move tutor as a screen, the Pokémon picker's pattern
  * (src/app/species-picker.ts; owner, 2026-11-03: "lo mismo ... para Maestro"):
- * the Pokémon as portrait chips and the balance on top, the slot filter as icon
- * tabs, a grid of move cards beside a large sheet for the card in focus, with
- * one primary action (Learn / Rank up, or why not). Arrows move across the
- * grid, Enter or a click acts (on touch: the first tap shows, the second acts),
- * Q E switch Pokémon, Esc goes back. Fixed geometry: nothing resizes with the
- * content (long grids scroll inside).
+ * the Pokémon as portrait chips and the balance on top, the slot filter as tabs,
+ * a grid of quiet move cards beside one sheet for the card in focus: a live preview
+ * of the move cast by the chosen Pokémon (move-preview.ts), its name, three big
+ * numbers, what it does, what the next rank adds and one primary action. Learning
+ * or ranking up asks first (the shared confirmation) and spends only on a yes.
+ * Arrows move across the grid, Enter or a click acts (on touch: the first tap
+ * shows, the second acts), Q E switch Pokémon, Esc goes back. Fixed geometry:
+ * nothing resizes with the content (long grids scroll inside).
  */
 
 export interface TutorOptions {
@@ -37,6 +40,8 @@ export interface TutorOptions {
   cleared?: Iterable<string>;
   /** A species' idle animation (no art when absent). */
   portrait?(id: SpeciesId, scale: number): HTMLElement;
+  /** The sprite sheets: the live move preview needs them (no preview when absent). */
+  sheets?: Promise<SheetStore>;
   play?(sound: 'coin' | 'denied'): void;
   onBack(): void;
 }
@@ -47,7 +52,7 @@ const icon = (id: string): SVGSVGElement => pixelSvgOf(TUTOR_ICONS[id]!, 'px-ico
 const fillText = (key: string, values: Record<string, string | number>): string => Object.entries(values).reduce((text, [k, v]) => text.replaceAll(`{${k}}`, String(v)), t(key));
 const secs = (ms: number): string => String(Math.round(ms / 100) / 10);
 
-/** The two rank pips: filled for each owned rank. */
+/** The rank pips of a known move: filled for each owned rank. */
 const pips = (rank: number): HTMLElement => {
   const out = h('span', { className: 'tu-pips' }, Array.from({ length: MAX_RANK }, (_, i) => h('i', { className: i < rank ? 'is-on' : '' })));
   out.setAttribute('role', 'img');
@@ -63,6 +68,10 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   let filter: SlotFilter = 'all';
   let cards: MoveCard[] = [];
   let focused: MoveId | null = null;
+  /** The confirmation is open: nothing else acts meanwhile. */
+  let asking = false;
+  /** What the preview shows now, so a refresh of the same move does not restart it. */
+  let previewKey = '';
   const cleared = (): string[] => [...(options.cleared ?? [])];
   const wallet = () => ({ ...save, cleared: cleared() });
   const roster = (): SpeciesId[] => {
@@ -70,7 +79,9 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     return all.includes(species) ? all : [species, ...all];
   };
 
-  // Top: Pokémon chips and balance.
+  // Top: back, Pokémon chips and balance.
+  const back = h('button', { className: 'tu-back', type: 'button', textContent: t('menu.back') });
+  back.addEventListener('click', () => options.onBack());
   const prev = h('button', { className: 'tu-step', type: 'button', textContent: '◀' });
   const next = h('button', { className: 'tu-step', type: 'button', textContent: '▶' });
   prev.setAttribute('aria-label', t('tutor.prev'));
@@ -107,22 +118,20 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     tabRow.append(tab);
   }
 
-  // Sheet.
+  // Sheet: preview, name and badges, three numbers, description, one note, the action.
+  const preview: MovePreview | null = options.sheets ? createMovePreview({ sheets: options.sheets }) : null;
   const sName = h('h2', { className: 'tu-name' });
   const sBadges = h('div', { className: 'tu-badges' });
   const sStats = h('div', { className: 'tu-stats' });
   const sDesc = h('p', { className: 'tu-desc' });
-  const sRanks = h('ul', { className: 'tu-ranks' });
-  const sExtra = h('div', { className: 'tu-extra' });
-  const sReason = h('p', { className: 'tu-reason' });
+  const sNote = h('p', { className: 'tu-note' });
   const actLabel = h('span');
   const actIcon = h('span', { className: 'tu-act-icon' });
   const act = h('button', { className: 'tu-act', type: 'button' }, [actIcon, actLabel]);
-  act.addEventListener('click', () => perform(current()));
-  const sheet = h('section', { className: 'tu-sheet' }, [h('div', { className: 'tu-sheet-head' }, [sName, sBadges]), sStats, sDesc, h('div', { className: 'tu-rank-box' }, [h('p', { className: 'tu-sub', textContent: t('tutor.ranks') }), sRanks]), sExtra, sReason, act]);
+  act.addEventListener('click', () => void perform(current()));
+  const sheet = h('section', { className: 'tu-sheet' }, [...(preview ? [preview.element] : []), h('div', { className: 'tu-sheet-head' }, [sName, sBadges]), sStats, sDesc, sNote, act]);
 
-  const stat = (id: string, label: string, value: string): HTMLElement =>
-    h('div', { className: 'tu-stat' }, [icon(id), h('span', { className: 'tu-stat-label', textContent: label }), h('span', { className: 'tu-stat-value', textContent: value })]);
+  const stat = (label: string, value: string): HTMLElement => h('div', { className: 'tu-stat' }, [h('span', { className: 'tu-stat-value', textContent: value }), h('span', { className: 'tu-stat-label', textContent: label })]);
 
   const current = (): MoveCard | null => cards.find((c) => c.move === focused) ?? null;
 
@@ -130,36 +139,33 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     sheet.classList.toggle('is-empty', card === null);
     if (!card) {
       sName.textContent = t('tutor.empty');
-      for (const part of [sBadges, sStats, sDesc, sRanks, sExtra, sReason]) part.replaceChildren();
+      for (const part of [sBadges, sStats, sDesc, sNote]) part.replaceChildren();
       act.hidden = true;
       return;
     }
     act.hidden = false;
     focused = card.move;
     const def = MOVES[card.move];
-    const { shape, hits } = moveShape(def);
     sheet.style.setProperty('--tu-edge', TYPE_COLORS[card.type].core);
+    const key = `${species}:${card.move}:${card.rank}`;
+    if (preview && key !== previewKey) {
+      previewKey = key;
+      preview.show(species, card.move, card.rank);
+    }
     sName.textContent = t(`move.${card.move}`);
     sBadges.replaceChildren(typeBadge(card.type), tierBadge(card), h('span', { className: 'tu-slot' }, [icon(card.slot), h('span', { textContent: t(`slot.${card.slot}`) })]), ...(card.known ? [pips(card.rank)] : []));
     sStats.replaceChildren(
-      stat('power', t('loadout.power'), def.power > 0 ? String(def.power) : t('tutor.noPower')),
-      stat('stamina', t('tutor.stat.stamina'), def.staminaCost > 0 ? String(def.staminaCost) : t('loadout.noCost')),
-      stat('cooldown', t('tutor.stat.cooldown'), def.cooldownMs ? `${secs(def.cooldownMs)} s` : '-'),
-      h('div', { className: 'tu-stat' }, [h('span', { className: 'tu-stat-label tu-shape-label', textContent: t('tutor.stat.shape') }), h('span', { className: 'tu-stat-value', textContent: `${t(`loadout.shape.${shape}`)}${hits ? ` ×${hits}` : ''}` })]),
+      stat(t('loadout.power'), def.power > 0 ? String(def.power) : '-'),
+      stat(t('tutor.stat.stamina'), def.staminaCost > 0 ? String(def.staminaCost) : '-'),
+      stat(t('tutor.stat.cooldown'), def.cooldownMs ? `${secs(def.cooldownMs)} s` : '-'),
     );
     sDesc.textContent = t(`move.${card.move}.description`);
-    sRanks.replaceChildren(
-      ...Array.from({ length: MAX_RANK }, (_, i) => {
-        const n = i + 1;
-        const state = `${n <= card.rank ? 'is-owned' : card.known && n === card.rank + 1 ? 'is-next' : ''}${n === Math.min(card.rank + 1, MAX_RANK) ? ' is-first-open' : ''}`.trim();
-        return h('li', { className: state, textContent: rankText(card.move, n) });
-      }),
-    );
-    const inBuild = isStarter(species) && RECOMMENDED_BUILD[species].includes(card.move);
-    const line = (text: string, className = ''): HTMLElement => h('p', { className, textContent: text, title: text });
-    sExtra.replaceChildren(...[paidText(card.move), moveInfoLines(card.move)[1]].filter(Boolean).map((text) => line(text)), ...(inBuild ? [line(t('tutor.inBuild'), 'tu-build is-in')] : []));
     const block = cardBlock(card, save.coins);
-    sReason.title = sReason.textContent = block ? (block.kind === 'locked' ? fillText('tutor.locked', { dungeon: block.dungeon }) : fillText('tutor.reason.coins', { n: block.missing })) : '';
+    const rank = nextRankText(card);
+    const note = block ? (block.kind === 'locked' ? fillText('tutor.locked', { dungeon: block.dungeon }) : fillText('tutor.reason.coins', { n: block.missing })) : rank ? fillText('tutor.rank.next', { text: rank }) : card.known ? '' : paidText(card.move);
+    sNote.textContent = note;
+    sNote.title = note;
+    sNote.classList.toggle('is-reason', block !== null);
     const label =
       card.action === 'learn' ? `${t('tutor.act.learn')} · ${coinText(card.cost ?? 0, t)}` : card.action === 'rank' ? `${fillText('tutor.act.rank', { n: card.rank + 1 })} · ${coinText(card.cost ?? 0, t)}` : t(card.state === 'maxed' ? 'tutor.act.maxed' : 'tutor.lockedShort');
     actLabel.textContent = label;
@@ -170,32 +176,24 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     for (const el of grid.querySelectorAll<HTMLElement>('.tu-card')) el.classList.toggle('is-focused', el.dataset.move === card.move);
   };
 
-  // Grid.
+  // Grid: a quiet card per move (name, type edge, slot icon, one state).
   const grid = h('div', { className: 'tu-grid' });
   grid.setAttribute('aria-label', t('tutor.title'));
-  const stateChip = (card: MoveCard): HTMLElement => {
+  const stateLine = (card: MoveCard): HTMLElement => {
     switch (card.state) {
       case 'locked':
-        return h('span', { className: 'tu-chip-state is-locked' }, [pixelIconSvg('lock', 'px-icon'), h('span', { textContent: t('tutor.lockedShort') })]);
+        return h('span', { className: 'tu-state is-locked' }, [pixelIconSvg('lock', 'px-icon'), h('span', { textContent: t('tutor.lockedShort') })]);
       case 'buy':
-        return h('span', { className: `tu-chip-state is-buy${card.affordable ? ' is-ok' : ''}`, textContent: coinText(card.cost ?? 0, t) });
-      case 'maxed':
-        return h('span', { className: 'tu-chip-state is-maxed', textContent: t('shop.max') });
+        return h('span', { className: `tu-state is-buy${card.affordable ? ' is-ok' : ''}`, textContent: coinText(card.cost ?? 0, t) });
       default:
-        return h('span', { className: `tu-chip-state is-learned${card.affordable ? ' can-rank' : ''}`, textContent: t('tutor.learned') });
+        return h('span', { className: 'tu-state is-known', textContent: t('tutor.learned') });
     }
   };
   const cardButton = (card: MoveCard): HTMLButtonElement => {
-    const def = MOVES[card.move];
-    const button = h('button', { className: `tu-card is-${card.state}`, type: 'button' }, [
-      h('span', { className: 'tu-card-top' }, [typeBadge(card.type), tierBadge(card)]),
-      h('span', { className: 'tu-card-name', textContent: t(`move.${card.move}`) }),
-      h('span', { className: 'tu-card-meta' }, [icon(card.slot), h('span', { className: 'tu-card-power', textContent: def.power > 0 ? String(def.power) : '-' }), pips(card.rank)]),
-      stateChip(card),
-    ]);
+    const button = h('button', { className: `tu-card is-${card.state}`, type: 'button' }, [h('span', { className: 'tu-card-row' }, [icon(card.slot), h('span', { className: 'tu-card-name', textContent: t(`move.${card.move}`) })]), stateLine(card)]);
     button.style.setProperty('--tu-edge', TYPE_COLORS[card.type].core);
     button.dataset.move = card.move;
-    button.setAttribute('aria-label', `${t(`move.${card.move}`)}, ${tierName(card.tier)}, ${button.querySelector('.tu-chip-state')?.textContent ?? ''}`);
+    button.setAttribute('aria-label', `${t(`move.${card.move}`)}, ${tierName(card.tier)}, ${button.querySelector('.tu-state')?.textContent ?? ''}`);
     let armed = false;
     button.addEventListener('pointerdown', () => {
       armed = focused === card.move;
@@ -208,24 +206,39 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
         showSheet(card);
         return;
       }
-      perform(card);
+      void perform(card);
     });
     return button;
   };
 
-  function perform(card: MoveCard | null): void {
+  /** Learn or rank up `card`: asks first, and spends only after the player confirms. */
+  async function perform(card: MoveCard | null): Promise<void> {
+    if (asking) return;
     if (!card?.action || cardBlock(card, save.coins)) {
       options.play?.('denied');
       return;
     }
-    const bought = tutorPurchase(options.store, species, { kind: card.action === 'learn' ? 'move' : 'rank', move: card.move }, options.cleared);
-    if (!bought) {
-      options.play?.('denied');
-      return;
+    const copy = confirmCopy(card);
+    const chip = h('span', { className: 'tu-cost' }, [pixelIconSvg('coin', 'px-icon'), h('span', { textContent: coinText(copy.cost ?? 0, t) })]);
+    asking = true;
+    try {
+      const spent = await spendAfterConfirm(
+        () => confirmDialog({ title: copy.title, body: copy.body, confirmLabel: copy.confirmLabel, cost: chip }),
+        () => {
+          const bought = tutorPurchase(options.store, species, { kind: card.action === 'learn' ? 'move' : 'rank', move: card.move }, options.cleared);
+          if (!bought) {
+            options.play?.('denied');
+            return false;
+          }
+          options.play?.('coin');
+          save = bought;
+          return true;
+        },
+      );
+      if (spent) refresh();
+    } finally {
+      asking = false;
     }
-    options.play?.('coin');
-    save = bought;
-    refresh();
   }
 
   function refresh(): void {
@@ -263,14 +276,12 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     switchTo(all[(all.indexOf(species) + delta + all.length) % all.length]!);
   }
 
-  const buildLine = h('p', { className: 'tu-hint' });
-  const back = h('button', { className: 'tu-back', type: 'button', textContent: t('menu.back') });
-  back.addEventListener('click', () => options.onBack());
+  const buildLine = h('p', { className: 'tu-hint tu-build' });
   const element = mdWindow({ title: t('tutor.title'), className: 'tu-window' }, [
-    h('div', { className: 'tu-top' }, [prev, strip, next, balance]),
+    h('div', { className: 'tu-top' }, [back, prev, strip, next, balance]),
     tabRow,
-    h('div', { className: 'tu-body' }, [sheet, grid]),
-    h('div', { className: 'tu-foot' }, [back, buildLine,h('p', { className: 'tu-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'tutor.hint.keys') })]),
+    h('div', { className: 'tu-body' }, [grid, sheet]),
+    h('div', { className: 'tu-foot' }, [buildLine, h('p', { className: 'tu-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'tutor.hint.keys') })]),
   ]);
 
   const onKey = (e: KeyboardEvent): void => {
@@ -278,6 +289,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
       window.removeEventListener('keydown', onKey);
       return;
     }
+    if (asking) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       options.onBack();
@@ -291,7 +303,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     const dir = KEYS[e.code];
     if (!dir) return;
     e.preventDefault();
-    const controls = [prev, ...chips.values(), next, ...tabs.values(), ...grid.querySelectorAll<HTMLButtonElement>('.tu-card'), act, back].filter((el) => !el.hidden);
+    const controls = [back, prev, ...chips.values(), next, ...tabs.values(), ...grid.querySelectorAll<HTMLButtonElement>('.tu-card'), act].filter((el) => !el.hidden);
     const at = controls.indexOf(document.activeElement as HTMLButtonElement);
     if (at < 0) {
       (grid.querySelector<HTMLElement>(`[data-move="${focused}"]`) ?? controls[0])?.focus();
@@ -309,6 +321,9 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   queueMicrotask(() => grid.querySelector<HTMLElement>(`[data-move="${focused}"]`)?.focus({ preventScroll: true }));
   return {
     element,
-    dispose: () => window.removeEventListener('keydown', onKey),
+    dispose: () => {
+      window.removeEventListener('keydown', onKey);
+      preview?.dispose();
+    },
   };
 }
