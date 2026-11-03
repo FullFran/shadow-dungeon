@@ -20,19 +20,21 @@ Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=3
 - T4 inline: hub view and wiring in `src/app/main.ts` (service windows open as overlays over the title; same openers as the town).
 - T5 inline: eclipse backdrop with Pokémon silhouettes, graves, dead trees, fog and a larger corona (`src/ui/eclipse.ts`).
 - T6 inline: i18n es/en, GDD title section, README title paragraph, touch layout (844x390), gamepad focus.
+- T8 done: S5 (owner, 2026-11-03: no scroll, the stone slab did not read, icons in every menu, Play and online side by side, more legible text, town backdrop in perspective from the lore, free-moving Pokémon).
 - T7 pending (next pass): per-screen UI/UX pass on shop, tutor, gacha, loadout, settings, board, shrine, gallery, end screens with pixel icons.
 
 ## Parity checklist
 
-- [ ] Every town service has a pixel icon (test iterates `TOWN_SERVICES`)
-- [ ] Hub entries named in es and en (test iterates `LANGUAGES`)
-- [ ] Locked state before the town opens, unlocked after (test)
-- [ ] Desktop 1440x900 and touch 844x390 screenshots
-- [ ] Keyboard (arrows + Enter), mouse, touch; gamepad maps to the same keys
-- [ ] Every window (title overlays, town windows, pause, end screens) uses the relic chrome
-- [ ] GDD and README updated; typecheck, vitest, build, prove green
+- [x] Every town service, upgrade and settings tab has a pixel icon (tests/ui/pixel-icons.test.ts iterates them)
+- [x] Hub entries named in es and en (tests/app/title-hub.test.ts iterates `LANGUAGES`)
+- [x] Locked state before the town opens, unlocked after (test)
+- [x] No scroll and nothing clipped at 1440x900, 1366x768, 1280x720, 1024x768, 844x390, 667x375 (Playwright audit)
+- [ ] Keyboard spatial focus coded (arrows/WASD); gamepad sends arrow keys: NOT tried on a real pad
+- [x] Every `.md-window` and `.town-shop` overlay uses the relic chrome (shared CSS); pause and end screens not re-captured
+- [x] GDD and README updated; typecheck, build, prove green; vitest green except `difficulty-tiers` golden digest, which also fails on `main` (pre-existing)
 
 ## Log
 
 - L1 (2026-11-03): S1–S3 above, with screenshots of the current title, PokéSurvivor and PokéIsaac.
 - L2 (2026-11-03): S4, answer to the scope question.
+- L3 (2026-11-03): "no quiero que haya scroll... esto no se que es [the altar slab]... añade también iconos custom iguales en cada menú... jugar y jugar en línea uno al lado de otro... letra más legible... el fondo... dibuja el pueblo con el eclipse... en base al lore"; "aplica skills de sprites para la movilidad libre de los pokemon".

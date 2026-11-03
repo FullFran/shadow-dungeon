@@ -21,7 +21,7 @@ export const PALETTE = {
   borderShade: '#5c4526',
   text: '#efe6d6',
   textDim: '#b3a690',
-  disabled: '#6b6064',
+  disabled: '#8f8489',
   /** Cursor ▶ and highlighted values. */
   cursor: '#ffbf5e',
   /** Eclipse red: titles, warnings, the title backdrop. */

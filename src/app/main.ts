@@ -53,9 +53,10 @@ import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, tow
 import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from './title-menu';
 import { hubButtons, type HubId } from './title-hub';
 import { titleHub } from './title-hub-view';
+import { pixelIconSvg } from '../ui/pixel-icons';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
-import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
+import { CONTROL_KEYS, SETTING_TAB_ICONS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
 import { openTown, type TownOptions } from '../town/scene';
 import { pleaReady } from '../town/plea';
 import { hasSeenTour, markTourSeen } from '../town/tour';
@@ -1020,7 +1021,7 @@ function settingsScreen(root: HTMLElement, tab = 0): void {
     'div',
     { className: 'settings-tabs', role: 'tablist' },
     tabs.map((tabDef, i) => {
-      const button = h('button', { type: 'button', className: i === current ? 'selected' : '', textContent: tabDef.title });
+      const button = h('button', { type: 'button', className: i === current ? 'selected' : '' }, [pixelIconSvg(SETTING_TAB_ICONS[i] ?? 'settings'), h('span', { textContent: tabDef.title })]);
       button.addEventListener('click', () => go(i));
       return button;
     }),

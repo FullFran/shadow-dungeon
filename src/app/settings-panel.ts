@@ -1,3 +1,4 @@
+import { pixelIconSvg, type PixelIconId } from '../ui/pixel-icons';
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { TOUCH_MODES } from '../adapters/touch-mode';
 import { TOUCH_SCALES } from '../ui/touch-layout';
@@ -38,6 +39,9 @@ export interface SettingRow {
   /** One sentence on what the option does (odd/tasks/menu-redesign.md S6): `setting.<id>.about`. */
   about: string;
 }
+
+/** Icon of each Settings tab, in tab order: General, Lock on, Sound, Accessibility, Touch (src/ui/pixel-icons.ts). */
+export const SETTING_TAB_ICONS: readonly PixelIconId[] = ['settings', 'lockon', 'sound', 'access', 'touch'];
 
 /** A tab of the Settings screen: a section's rows (the first rows, before any section, are "General"). */
 export interface SettingTab {
@@ -142,10 +146,13 @@ function meter(level: number): HTMLElement {
  */
 export function settingItems(access: SettingsAccess, refresh: () => void, only?: ReadonlySet<SettingRow['id']>): ListItem[] {
   const items: ListItem[] = [];
+  let section = 0;
   for (const row of settingRows(access)) {
     // One tab of the Settings screen (`only`): its rows, without the section headers (the tab names the section).
     if (only && !only.has(row.id)) continue;
-    if (row.section && !only) items.push({ header: true, label: row.section });
+    if (row.section) section += 1;
+    // Section headers carry the tab's icon (odd/tasks/title-hub.md: an icon in every menu).
+    if (row.section && !only) items.push({ header: true, label: h('span', { className: 'menu-row-icon' }, [pixelIconSvg(SETTING_TAB_ICONS[section] ?? 'settings'), h('span', { textContent: row.section })]) });
     const value = row.level === undefined ? row.value : h('span', { className: 'md-volume' }, [meter(row.level), h('span', { textContent: row.value })]);
     items.push({
       label: row.label,

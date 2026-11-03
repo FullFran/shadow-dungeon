@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { TOWN_SERVICES } from '../../src/town/town-menu';
+import { UPGRADE_IDS } from '../../src/data/upgrades';
+import { SETTING_TAB_ICONS } from '../../src/app/settings-panel';
 import { HUB_ICON_IDS, PIXEL_ICONS, pixelIconRects } from '../../src/ui/pixel-icons';
 
 describe('pixel icons', () => {
   it('has a colour icon for every town service and every hub action', () => {
     for (const id of [...TOWN_SERVICES, ...HUB_ICON_IDS]) expect(PIXEL_ICONS[id], id).toBeDefined();
+  });
+
+  it('every upgrade and every settings tab has its icon', () => {
+    for (const id of UPGRADE_IDS) expect(PIXEL_ICONS[id as keyof typeof PIXEL_ICONS], id).toBeDefined();
+    expect(SETTING_TAB_ICONS).toHaveLength(5);
+    for (const id of SETTING_TAB_ICONS) expect(PIXEL_ICONS[id], id).toBeDefined();
   });
 
   for (const [id, icon] of Object.entries(PIXEL_ICONS)) {

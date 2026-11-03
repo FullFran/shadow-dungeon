@@ -4,6 +4,7 @@ import { h } from '../ui/window';
 import { buildTownGrid } from './map';
 import { stepMarker, type TownMapMarker } from './town-map';
 import type { TownService } from './town-menu';
+import { PIXEL_ICONS, pixelIconSvg, type PixelIconId } from '../ui/pixel-icons';
 
 /**
  * The town's Esc menu drawn as an inked plan (odd/tasks/menu-redesign.md S8,
@@ -62,7 +63,13 @@ const GLYPHS: Record<Glyph, string> = {
   room: 'M2 7l6-5 6 5v7H2zM6 14v-4h4v4',
 };
 
+/**
+ * A service's icon: the colour pixel icon of src/ui/pixel-icons.ts since the title hub
+ * (odd/tasks/title-hub.md, owner: "iconos custom iguales en cada menú"); `GLYPHS` stays as
+ * the line fallback only for a glyph with no pixel icon.
+ */
 export function glyphSvg(glyph: Glyph): SVGSVGElement {
+  if (glyph in PIXEL_ICONS) return pixelIconSvg(glyph as PixelIconId, 'px-icon glyph');
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');

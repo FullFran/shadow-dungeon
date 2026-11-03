@@ -3494,5 +3494,6 @@
   "hub.rail.world": "The world",
   "hub.hint": "Arrows: move · Enter: open · Esc: close",
   "hub.hint.touch": "Tap an icon to open it",
-  "hub.wanderer": "Wanderer"
+  "hub.wanderer": "Wanderer",
+  "hub.online.sub": "Up to 4 Wanderers"
 }

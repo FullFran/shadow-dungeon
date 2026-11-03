@@ -7,6 +7,7 @@ import { cursorList, type ListItem } from '../ui/cursor-list';
 import { description, describedMenu } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { coinText } from './coin-lines';
+import { pixelIconSvg } from '../ui/pixel-icons';
 import { loadSave, writeSave, type SaveData } from './save';
 
 /**
@@ -18,6 +19,14 @@ import { loadSave, writeSave, type SaveData } from './save';
  * read. On touch a row takes two taps: the first shows its effect, the
  * second buys. Opened from the town stall and from the title menu.
  */
+/** A level as filled and empty gems, named for assistive tech. */
+function levelPips(level: number, max: number, label: string): HTMLElement {
+  const pips = h('span', { className: 'level-pips' }, Array.from({ length: max }, (_, i) => h('span', { className: i < level ? 'is-on' : '' })));
+  pips.setAttribute('role', 'img');
+  pips.setAttribute('aria-label', label);
+  return pips;
+}
+
 export interface ShopRow {
   id: UpgradeId;
   name: string;
@@ -78,7 +87,12 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
   const items = (): ListItem[] => [
     ...rows.map(
       (row): ListItem => ({
-        label: `${row.name} ${t('shop.level').replace('{level}', String(row.level)).replace('{max}', String(row.max))}`,
+        // An icon, the name and the level as pips (odd/tasks/title-hub.md: "muy visual"); the text level stays for screen readers.
+        label: h('span', { className: 'menu-row-icon' }, [
+          pixelIconSvg(row.id),
+          h('span', { textContent: row.name }),
+          levelPips(row.level, row.max, t('shop.level').replace('{level}', String(row.level)).replace('{max}', String(row.max))),
+        ]),
         value: row.cost === null ? t('shop.max') : coinText(row.cost, (key) => t(key)),
         className: row.affordable ? 'shop-row' : 'shop-row is-disabled',
         // Touch: tap once to read the effect, again to buy (no purchase by a stray tap).

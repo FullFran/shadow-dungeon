@@ -27,7 +27,7 @@ Colour (role):
 | borderShade | #5c4526 | inner bevel line |
 | text | #efe6d6 | bone, body text |
 | textDim | #b3a690 | secondary text |
-| disabled | #6b6064 | locked / unavailable |
+| disabled | #8f8489 | locked / unavailable (5.26:1 on the slab) |
 | cursor | #ffbf5e | focus, selected values (ember gold) |
 | eclipse / eclipseGlow | #e8283a / #ff6a3d | titles, danger, the sun |
 | relic.ember | #ff8a3d | Play glow, focus halo |

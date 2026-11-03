@@ -85,7 +85,7 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
 
   const onlineButton = online
     ? (() => {
-        const el = h('button', { className: 'hub-online', type: 'button' }, [pixelIconSvg('online'), h('span', { textContent: t(online.labelKey) })]);
+        const el = h('button', { className: 'hub-online', type: 'button' }, [pixelIconSvg('online'), h('span', { className: 'hub-online-text' }, [h('span', { textContent: t(online.labelKey) }), h('small', { textContent: t('hub.online.sub') })])]);
         el.dataset.hub = online.id;
         el.addEventListener('click', () => pick(online));
         byId.set(online.id, el);

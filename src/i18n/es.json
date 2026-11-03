@@ -3494,5 +3494,6 @@
   "hub.rail.world": "El mundo",
   "hub.hint": "Flechas: moverte · Enter: abrir · Esc: cerrar",
   "hub.hint.touch": "Toca un icono para abrirlo",
-  "hub.wanderer": "Caminante"
+  "hub.wanderer": "Caminante",
+  "hub.online.sub": "Hasta 4 Caminantes"
 }
