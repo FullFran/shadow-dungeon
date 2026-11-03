@@ -635,6 +635,19 @@
       #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
 
       /* ---- Title hub (src/app/title-hub-view.ts; .agents/DESIGN.md §3-4; odd/tasks/title-hub.md) ---- */
+      /* Every menu screen fits the viewport too (owner, 2026-11-03: "que no haya scroll"): the page never scrolls, the notice sits in the flow,
+         and long windows scroll inside themselves. Runs (canvas.game) keep their own layout. */
+      html:not(:has(canvas.game)), body:not(:has(canvas.game)) { height: 100%; overflow: hidden; }
+      #app:not(:has(canvas.game)) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; padding-top: max(28px, env(safe-area-inset-top)); padding-bottom: 0; gap: 12px; }
+      #app:not(:has(canvas.game)) > .notice { position: static; margin-top: auto; flex: none; padding: 2px 16px max(4px, env(safe-area-inset-bottom)); font-family: var(--md-text-font); font-size: 12px; line-height: 1.3; opacity: 0.65; }
+      #app > .md-window { max-height: calc(100dvh - 96px); flex: 0 1 auto; min-height: 0; }
+      /* A window taller than the room scrolls its body, never the page (the title tab above the frame stays visible). */
+      #app .md-window:not(.ach-window):not(.town-map) { display: flex; flex-direction: column; }
+      #app .md-window:not(.ach-window):not(.town-map) > .md-window-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
+      #app .screen-row > .md-window { max-height: calc(100dvh - 140px); }
+      /* Last resort on very short screens: the room itself may scroll rather than hide content. */
+      @media (max-height: 460px) { #app:not(:has(canvas.game)):not(:has(.hub)) { overflow-y: auto; } }
+      #app > .screen-row { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 6px 6px; scrollbar-color: var(--md-border-shade) transparent; }
       /* The hub fits the viewport exactly, the fan notice included: never a scrollbar (owner, 2026-11-03). */
       html:has(.hub), body:has(.hub) { height: 100%; overflow: hidden; }
       #app:has(.hub) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; height: 100vh; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; }
