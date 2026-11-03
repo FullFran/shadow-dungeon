@@ -860,15 +860,15 @@ export function pixelIconRects(icon: PixelIcon): PixelRect[] {
   return rects;
 }
 
-/** The icon as an inline SVG (decorative: the control next to it carries the name). */
-export function pixelIconSvg(id: PixelIconId, className = 'px-icon'): SVGSVGElement {
+/** Any pixel icon map as an inline SVG (decorative: the control next to it carries the name). Area modules keep their own maps and draw them with this. */
+export function pixelSvgOf(icon: PixelIcon, className = 'px-icon'): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('viewBox', `0 0 ${icon.rows[0]?.length ?? 16} ${icon.rows.length}`);
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('shape-rendering', 'crispEdges');
   svg.setAttribute('class', className);
-  for (const r of pixelIconRects(PIXEL_ICONS[id])) {
+  for (const r of pixelIconRects(icon)) {
     const rect = document.createElementNS(ns, 'rect');
     rect.setAttribute('x', String(r.x));
     rect.setAttribute('y', String(r.y));
@@ -878,4 +878,9 @@ export function pixelIconSvg(id: PixelIconId, className = 'px-icon'): SVGSVGElem
     svg.append(rect);
   }
   return svg;
+}
+
+/** A registered icon by id. */
+export function pixelIconSvg(id: PixelIconId, className = 'px-icon'): SVGSVGElement {
+  return pixelSvgOf(PIXEL_ICONS[id], className);
 }

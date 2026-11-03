@@ -21,6 +21,11 @@ Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=3
 - T5 inline: eclipse backdrop with Pokémon silhouettes, graves, dead trees, fog and a larger corona (`src/ui/eclipse.ts`).
 - T6 inline: i18n es/en, GDD title section, README title paragraph, touch layout (844x390), gamepad focus.
 - T8 done: S5 (owner, 2026-11-03: no scroll, the stone slab did not read, icons in every menu, Play and online side by side, more legible text, town backdrop in perspective from the lore, free-moving Pokémon).
+- T9 inline: backdrop at cobbleverse craft (cell grid + palette keys, timber cottages with tiled gables and mullioned windows, shaded dark trees, lamps that return their light), static layers prerendered once per resize, only lights/fx/residents per frame; residents stand on surfaces. Skill `.claude/skills/pixel-craft` records the rules.
+- T10 delegated (worktree `wt-achievements-news`): Achievements and News screens redesigned: icons per category, progress, cards; news readable at a glance with an icon per item.
+- T11 delegated (worktree `wt-credits-controls`): Credits with icons and roles (adds Álvaro as "Diseñador y Desarrollador Frontend"); gamepad controls as a pad diagram with button glyphs.
+- T12 delegated (worktree `wt-report-dismiss`): report form per type with custom dropdowns and icons; every menu, dialog and overlay closes on a click outside.
+- Dev: `?unlock=all` (dev server only, src/app/dev-unlock.ts) opens everything for local review; the owner asked to unlock all options locally (L4).
 - T7 pending (next pass): per-screen UI/UX pass on shop, tutor, gacha, loadout, settings, board, shrine, gallery, end screens with pixel icons.
 
 ## Parity checklist
@@ -38,3 +43,4 @@ Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=3
 - L1 (2026-11-03): S1–S3 above, with screenshots of the current title, PokéSurvivor and PokéIsaac.
 - L2 (2026-11-03): S4, answer to the scope question.
 - L3 (2026-11-03): "no quiero que haya scroll... esto no se que es [the altar slab]... añade también iconos custom iguales en cada menú... jugar y jugar en línea uno al lado de otro... letra más legible... el fondo... dibuja el pueblo con el eclipse... en base al lore"; "aplica skills de sprites para la movilidad libre de los pokemon".
+- L4 (2026-11-03): "desbloqueame todas las opciones, mejora más la calidad de detalle de las casas, las posiciones pokemon, el horizonte, más arboles oscuros, casas más grandes y muy detalladas... basarte en cobbleverse-platform, y haz skills... optimizado para que sea muy ligero"; logros, créditos ("incluyeme a mi como Diseñador y Desarrollador Frontend"), reportes con desplegables y un form por tipo, "Todos los menús deberían poder cerrarse pinchando fuera", controles del mando con iconos o un mando, novedades legibles con iconos/capturas.
