@@ -176,6 +176,18 @@ describe('settings controls', () => {
     expect(h.languages).toEqual(['en']);
   });
 
+  it('has its own texts in both languages, without em dashes', async () => {
+    const { catalog } = await import('../../src/i18n');
+    for (const language of ['es', 'en'] as const) {
+      const tr = catalog(language);
+      for (const key of ['settings.hint', 'settings.sections', 'setting.clickToLock.disabled', 'settings.nickname.hint', 'settings.nickname.saved', 'settings.volume.mutedNote', 'settings.nickname', 'menu.general', 'menu.lockOn', 'menu.sound', 'menu.accessibility', 'touch.section']) {
+        expect(tr[key], `${language} ${key}`).toMatch(/\S/);
+        expect(tr[key], `${language} ${key}`).not.toContain('—');
+      }
+      expect(tr['settings.nickname.saved'], language).toContain('{name}');
+    }
+  });
+
   it('reads the current choice of a setting as its option value', () => {
     expect(settingChoice('touchSize', { ...defaultSettings('es'), touchSize: 1.2 })).toBe('1.2');
     expect(settingChoice('lockType', { ...defaultSettings('es'), lockType: 'off' })).toBe('off');

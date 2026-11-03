@@ -3754,5 +3754,11 @@
   "tutor.rankOf": "Rank {n}/{max}",
   "tutor.rankMax": "Max rank",
   "tutor.act.rankShort": "Rank up · {cost}",
-  "tutor.act.learnShort": "Learn · {cost}"
+  "tutor.act.learnShort": "Learn · {cost}",
+  "settings.hint": "Arrows: move and adjust · Q / E: change section · Esc: back",
+  "settings.sections": "Settings sections",
+  "setting.clickToLock.disabled": "Only with the \"Press\" or \"Hold\" lock type.",
+  "settings.nickname.hint": "Up to 16 characters; odd symbols and extra spaces are removed.",
+  "settings.nickname.saved": "It will be saved as \"{name}\".",
+  "settings.volume.mutedNote": "Muted: nothing is heard until you turn it off."
 }

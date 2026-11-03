@@ -3754,5 +3754,11 @@
   "tutor.rankOf": "Rango {n}/{max}",
   "tutor.rankMax": "Rango máx.",
   "tutor.act.rankShort": "Mejorar · {cost}",
-  "tutor.act.learnShort": "Aprender · {cost}"
+  "tutor.act.learnShort": "Aprender · {cost}",
+  "settings.hint": "Flechas: moverse y ajustar · Q / E: cambiar de sección · Esc: volver",
+  "settings.sections": "Secciones de ajustes",
+  "setting.clickToLock.disabled": "Solo con el fijado «Pulsar» o «Mantener».",
+  "settings.nickname.hint": "Hasta 16 caracteres; se quitan los símbolos raros y los espacios de más.",
+  "settings.nickname.saved": "Se guardará como «{name}».",
+  "settings.volume.mutedNote": "Silenciado: no se oye nada hasta que lo quites."
 }

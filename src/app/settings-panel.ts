@@ -175,9 +175,6 @@ export function settingItems(access: SettingsAccess, refresh: () => void, only?:
   return items;
 }
 
-/** The in-game key list, shown on the Settings screen. */
-export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'boost', 'area', 'lock', 'clickLock', 'minimap', 'pick', 'mute', 'menu', 'netStats', 'gamepad'] as const;
-
 /** The control each setting is drawn with (src/app/settings-view.ts). */
 export type SettingControlKind = 'slider' | 'switch' | 'segmented' | 'dropdown';
 
