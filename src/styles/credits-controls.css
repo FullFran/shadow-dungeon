@@ -69,3 +69,59 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
   .credits-screen.md-window { padding: 16px 16px 8px; }
   .cc-section { margin-bottom: 10px; }
 }
+
+/* ---------- Gamepad controls ---------- */
+.controls-window { width: min(860px, calc(100vw - 16px)); }
+/* The body scrolls inside the screen, clear of the frame, when the pad and the legend do not fit (a phone held sideways). */
+.controls-window .md-window-body { max-height: calc(100dvh - 90px); overflow-y: auto; overscroll-behavior: contain; padding-right: 8px;
+  scrollbar-width: thin; scrollbar-color: var(--relic-gold-deep) var(--relic-slab); }
+.controls-window .md-window-body::-webkit-scrollbar { width: 12px; }
+.controls-window .md-window-body::-webkit-scrollbar-track { background: var(--relic-slab); border-left: 2px solid var(--md-border-shade); }
+.controls-window .md-window-body::-webkit-scrollbar-thumb { background: var(--relic-gold-deep); border: 2px solid var(--md-ink); border-radius: 2px; }
+
+.pc-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 8px; }
+.pc-tabs, .pc-styles { display: flex; gap: 6px; }
+.pc-tab, .pc-style { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 14px; box-sizing: border-box; cursor: pointer;
+  font-family: var(--md-text-font); font-size: 16px; font-weight: 700; color: var(--md-text-dim); background: var(--relic-slab); border: 2px solid var(--md-border-shade); border-radius: 4px; }
+.pc-tab:hover, .pc-style:hover { color: var(--md-text); border-color: var(--md-border); }
+.pc-tab[aria-selected='true'] { color: var(--md-cursor); border-color: var(--md-border); background: linear-gradient(180deg, rgba(255, 138, 61, 0.16), rgba(255, 138, 61, 0.04)); box-shadow: inset 0 -3px 0 var(--relic-ember); }
+.pc-style[aria-pressed='true'] { color: var(--md-ink); background: var(--relic-gold); border-color: var(--relic-gold); }
+.pc-style:first-child { border-radius: 4px 0 0 4px; }
+.pc-style:last-child { border-radius: 0 4px 4px 0; }
+.pc-styles { gap: 0; }
+.pc-tab:focus-visible, .pc-style:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; box-shadow: 0 0 12px rgba(255, 138, 61, 0.45); position: relative; z-index: 1; }
+.pc-icon { width: 24px; height: 24px; flex: none; image-rendering: pixelated; shape-rendering: crispEdges; }
+
+.pc-pad { display: flex; justify-content: center; padding: 6px 0; background: radial-gradient(60% 80% at 50% 50%, rgba(255, 138, 61, 0.08), transparent 70%); }
+.pad-svg { display: block; width: 100%; height: auto; max-height: calc(100dvh - 160px); }
+.pad-body { stroke: var(--md-border); stroke-width: 3; stroke-linejoin: round; }
+.pad-shine { stroke: rgba(239, 230, 214, 0.14); stroke-width: 3; stroke-linecap: round; }
+.pad-part { fill: #1a1318; stroke: var(--md-border-shade); stroke-width: 2; }
+.pad-part.on { stroke: var(--md-cursor); }
+.pad-well { fill: #0c090d; stroke: var(--md-border-shade); stroke-width: 2; }
+.pad-cap { fill: #2c2128; stroke: var(--md-border); stroke-width: 2; }
+.pad-cap-dot { fill: var(--md-border-shade); }
+.pad-part.on .pad-well { stroke: var(--md-cursor); }
+.pad-part.on .pad-cap { stroke: var(--md-cursor); }
+.pad-leader { fill: none; stroke: var(--md-border); stroke-width: 1.5; stroke-linejoin: round; }
+.pad-dot { fill: var(--relic-ember); stroke: var(--md-ink); stroke-width: 1.5; }
+.pad-label { font-family: var(--md-text-font); font-size: 17px; fill: var(--md-text); }
+.pg .pg-letter { font-family: var(--md-text-font); font-weight: 700; font-size: 16px; }
+.pg .pg-text { font-family: var(--md-text-font); font-weight: 700; font-size: 13px; }
+.pg.off { opacity: 0.5; }
+
+.pc-legend-title { margin: 6px 0 4px; font-family: var(--md-font); font-size: var(--md-body); font-weight: 400; color: var(--md-cursor); }
+.pc-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 4px 18px; }
+.pc-legend li { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 2px 8px; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; }
+.pc-keys { display: inline-flex; gap: 4px; flex: none; min-width: 84px; }
+.pad-glyph { display: block; flex: none; }
+.pc-action { font-family: var(--md-text-font); font-size: 16px; line-height: 1.3; color: var(--md-text); }
+.pc-note { margin: 8px 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+
+@media (max-height: 520px) {
+  .controls-window.md-window { padding: 16px 16px 8px; }
+  .pc-bar { margin-bottom: 4px; }
+  .pc-pad { padding: 0; }
+}
+/* Both tabs keep one height on a tall screen, so the window does not jump when the tab changes. */
+@media (min-height: 760px) { .pc-legend { min-height: 260px; align-content: start; } }
