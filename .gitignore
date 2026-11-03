@@ -3,6 +3,7 @@ dist/
 .vite/
 coverage/
 *.log
-.claude/
+.claude/*
+!.claude/skills/
 reports/balance/*.json
 reports/fx/
