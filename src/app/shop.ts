@@ -7,6 +7,7 @@ import { h, mdWindow } from '../ui/window';
 import { coinText } from './coin-lines';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { loadSave, writeSave, type SaveData } from './save';
+import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
 import '../styles/evolve-shop.css';
 
@@ -73,6 +74,16 @@ export function purchase(store: KeyValueStore, id: UpgradeId): SaveData | null {
   return next;
 }
 
+/**
+ * Buys the next level of `id` only after `ask` answers yes (owner, 2026-11-03: one click spent it).
+ * Nothing is asked for a level that cannot be bought; the purchase re-reads the save after the answer.
+ */
+export async function confirmedPurchase(store: KeyValueStore, id: UpgradeId, ask: () => Promise<boolean>): Promise<SaveData | null> {
+  if (buyState(loadSave(store), id).kind !== 'ready') return null;
+  if (!(await ask())) return null;
+  return purchase(store, id);
+}
+
 export interface ShopOptions {
   store: KeyValueStore;
   /** Purchase sound and refusal sound. */
@@ -116,15 +127,36 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
     return card;
   });
 
+  /** A confirmation is open: a second press never stacks another. */
+  let asking = false;
+
+  /** Asks first (title, what changes, the cost); the coins leave only after Confirm. */
   function act(id: UpgradeId): void {
-    const bought = purchase(options.store, id);
-    if (!bought) {
+    if (asking) return;
+    const state = buyState(save, id);
+    if (state.kind !== 'ready') {
       options.play?.('denied');
       return;
     }
-    options.play?.('coin');
-    save = bought;
-    show(id);
+    const fx = upgradeEffect(id, upgradeLevel(save.upgrades, id));
+    asking = true;
+    void confirmedPurchase(options.store, id, () =>
+      confirmDialog({
+        title: t('shop.confirm.title'),
+        body: t('shop.confirm.body').replace('{name}', t(`upgrade.${id}`)).replace('{stat}', fx.label).replace('{now}', fx.now).replace('{next}', fx.next ?? ''),
+        confirmLabel: t('shop.buy'),
+        cost: h('div', { className: 'rc-chips' }, [h('span', { className: 'es-chip es-chip-cost' }, [pixelIconSvg('coin', 'px-icon'), h('span', { textContent: coin(state.cost!) })])]),
+      }),
+    )
+      .then((bought) => {
+        if (!bought) return;
+        options.play?.('coin');
+        save = bought;
+        show(id);
+      })
+      .finally(() => {
+        asking = false;
+      });
   }
 
   /** Redraws every card (the level, cost and affordability change after a purchase) and the sheet for `id`. */
