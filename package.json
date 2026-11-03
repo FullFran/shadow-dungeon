@@ -13,7 +13,8 @@
     "test:proofs": "PROOFS=1 vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.core.json --noEmit",
     "balance": "vite-node tools/balance.ts",
-    "prove": "vite-node tools/prove.ts"
+    "prove": "vite-node tools/prove.ts",
+    "deploy:preprod": "bash scripts/deploy-preprod.sh"
   },
   "license": "UNLICENSED",
   "type": "module",

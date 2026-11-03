@@ -10,6 +10,13 @@ New content must be woven into everything that already exists. A feature is not 
 - Every feature document (`odd/tasks/*.md`) carries a "Parity checklist" section listing each existing area the change must reach, ticked with evidence before the feature closes.
 - Never drop a planned item (for example, shiny skins from `docs/gacha-roster-plan.md`) without the owner's explicit approval; if scope is cut for simplicity, list the cut items as pending, not as out of scope.
 
+## Preproduction
+
+- Environment: https://sd-pre.fullfran.com, behind Cloudflare Access (owner and Álvaro's emails only; a plain curl gets the Access login redirect, not the API). Its own empty database, separate from production (`sd-api.fullfran.com`): test accounts are fine there. No Google/Discord/Twitch login and no email there.
+- Deploy branch: `preprod` on FullFran/shadow-dungeon. The server polls it every 2 minutes and builds the game (`npm run build` with `VITE_API_URL=https://sd-pre.fullfran.com`) and `server/`; `/api/` and `/_/` go to the backend, the rest to the game. A failed build keeps the previous version.
+- Flow: work branch → `npm run deploy:preprod -- --yes` (deploy gate, then fast-forwards `preprod` to the branch) → test on sd-pre → merge to `main` when it is good.
+- Pushing to `preprod` publishes to a shared environment: ask the user before running the deploy, every time. No SSH or server logs; test the API locally (`server/`, `go run . serve`) or with an Access service token.
+
 ## Conventions
 
 - Code, identifiers, comments, commits in English; player-facing text in `src/i18n/es.json` (Spanish, peninsular) and `en.json`; GDD in Spanish.
