@@ -25,6 +25,8 @@ export interface Settings {
   starterChosen: boolean;
   /** Moves of `species`, aligned with the slot layout. */
   loadout: readonly (MoveId | null)[];
+  /** The moves last equipped on each other species, restored when it is picked again (`withSpecies`). */
+  loadouts: Partial<Record<SpeciesId, readonly (MoveId | null)[]>>;
   /** Volumes in 0..1; the music and sfx buses sit under the master gain. */
   masterVolume: number;
   musicVolume: number;
@@ -63,7 +65,7 @@ export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 't
 const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on' };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on' };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -76,9 +78,22 @@ export function slotOptions(kind: SlotKind, species: SpeciesId = 'mimikyu', know
   return SPECIES[species].movepool.filter((id) => MOVES[id].slot === kind && (!known || known.includes(id)));
 }
 
-/** The settings with `species` picked: another species comes with its default loadout, the same one keeps the current moves. */
+/** `moves` padded to the slot layout when they are a valid loadout of `species`, else null. */
+function fittingLoadout(species: SpeciesId, moves: unknown): readonly (MoveId | null)[] | null {
+  if (!Array.isArray(moves) || !moves.every((m) => m === null || typeof m === 'string')) return null;
+  const padded = padLoadout(SPECIES[species], moves as (MoveId | null)[]);
+  return validateLoadout(SPECIES[species], PLAYER_SLOT_LAYOUT, padded).length === 0 ? padded : null;
+}
+
+/**
+ * The settings with `species` picked: the current moves are remembered for the
+ * species left, and another species comes with the moves it last had (its
+ * default loadout when it has none that still fit). The same one keeps the current moves.
+ */
 export function withSpecies(settings: Settings, species: SpeciesId): Settings {
-  return species === settings.species ? settings : { ...settings, species, loadout: SPECIES[species].defaultLoadout };
+  if (species === settings.species) return settings;
+  const loadouts = { ...settings.loadouts, [settings.species]: settings.loadout };
+  return { ...settings, species, loadout: fittingLoadout(species, loadouts[species]) ?? SPECIES[species].defaultLoadout, loadouts };
 }
 
 /** The settings after the personality quiz: its starter becomes the species (see `withSpecies`) and counts as chosen. */
@@ -128,6 +143,7 @@ export function withReturningPlayer(settings: Settings, lastSpecies: string | nu
  * are dropped; fields added later (sound) take the fallback. The old `lockMode`
  * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).
  * The loadout must fit the stored species; otherwise that species' default.
+ * Each remembered loadout (`loadouts`) is kept only while it fits its species.
  * The species must be in `roster` (the starters and the owned gacha species,
  * core/collection.ts `rosterOf`); otherwise its line's form in the roster
  * (it evolved), else the fallback's.
@@ -149,12 +165,15 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
   const sameLine = isPlayable(stored.species) ? roster.find((id) => lineRoot(id) === lineRoot(stored.species as SpeciesId)) : undefined;
   const species = isPlayable(stored.species) && roster.includes(stored.species) ? stored.species : (sameLine ?? fallback.species);
   // A save from before four-slots holds two moves: the new slots take the species defaults.
-  const storedLoadout =
-    Array.isArray(stored.loadout) && stored.loadout.every((m) => m === null || typeof m === 'string')
-      ? padLoadout(SPECIES[species], stored.loadout as (MoveId | null)[])
-      : null;
-  const loadoutOk = storedLoadout !== null && validateLoadout(SPECIES[species], PLAYER_SLOT_LAYOUT, storedLoadout).length === 0;
-  const loadout = loadoutOk ? storedLoadout : padLoadout(SPECIES[species], species === fallback.species ? fallback.loadout : SPECIES[species].defaultLoadout);
+  const loadout = fittingLoadout(species, stored.loadout) ?? padLoadout(SPECIES[species], species === fallback.species ? fallback.loadout : SPECIES[species].defaultLoadout);
+  // Each remembered loadout is kept only for a playable species and only while it still fits it.
+  const loadouts: Settings['loadouts'] = {};
+  if (typeof stored.loadouts === 'object' && stored.loadouts !== null && !Array.isArray(stored.loadouts)) {
+    for (const [id, moves] of Object.entries(stored.loadouts)) {
+      const fit = isPlayable(id) ? fittingLoadout(id, moves) : null;
+      if (fit) loadouts[id as SpeciesId] = fit;
+    }
+  }
   return {
     language,
     lockType,
@@ -162,6 +181,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
     species,
     starterChosen: typeof stored.starterChosen === 'boolean' ? stored.starterChosen : fallback.starterChosen,
     loadout,
+    loadouts,
     masterVolume: volume(stored.masterVolume, fallback.masterVolume),
     musicVolume: volume(stored.musicVolume, fallback.musicVolume),
     sfxVolume: volume(stored.sfxVolume, fallback.sfxVolume),

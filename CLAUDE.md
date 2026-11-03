@@ -23,3 +23,7 @@ New content must be woven into everything that already exists. A feature is not 
 - Conventional Commits, explicit paths in `git add`, no AI attribution.
 - Deploy gate: `npm run typecheck`, `npx vitest run --testTimeout=30000`, `npm run build`, `npm run prove` all green.
 - Backend lives in `server/` (Go, PocketBase as a framework).
+
+## Deploys and branches
+
+Before merging or pushing `main` or `preprod`, cutting a release or deploying `server/`, read `skills/deploy-and-branches/SKILL.md`.

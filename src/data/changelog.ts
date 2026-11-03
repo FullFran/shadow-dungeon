@@ -45,6 +45,18 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.11.1',
+    date: '2026-11-03',
+    sections: {
+      fixed: [
+        {
+          es: 'Cada Pokémon recuerda sus movimientos: si eliges otros ataques, cambias de Pokémon y vuelves, siguen los que tenías equipados.',
+          en: 'Each Pokémon remembers its moves: if you pick other attacks, switch Pokémon and come back, the ones you had equipped are still there.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.11.0',
     date: '2026-11-02',
     sections: {
