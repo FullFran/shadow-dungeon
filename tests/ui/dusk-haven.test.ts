@@ -16,11 +16,17 @@ describe('Dusk Haven layout', () => {
     expect(TOWN_RESIDENTS.find((r) => r.id === 'gastly')?.prop).toBe('board');
   });
 
-  it('lines the road with houses in perspective: nearer rows lower and larger, on both sides', () => {
+  // Owner, 2026-11-03: houses cut into each other and looked symmetric: fewer, irregular, never overlapping.
+  it('keeps a few irregular houses, spaced in depth so none cuts into another, never mirrored', () => {
+    expect(HAVEN_HOUSES.length).toBeGreaterThanOrEqual(3);
+    expect(HAVEN_HOUSES.length).toBeLessThanOrEqual(5);
     for (const side of [-1, 1] as const) {
       const row = HAVEN_HOUSES.filter((h) => h.side === side).sort((a, b) => a.depth - b.depth);
-      expect(row.length, `side ${side}`).toBeGreaterThanOrEqual(3);
-      for (let i = 1; i < row.length; i++) expect(row[i]!.depth).toBeGreaterThan(row[i - 1]!.depth);
+      expect(row.length, `side ${side}`).toBeGreaterThanOrEqual(1);
+      for (let i = 1; i < row.length; i++) expect(row[i]!.depth - row[i - 1]!.depth, `side ${side}`).toBeGreaterThanOrEqual(0.3);
     }
+    const left = HAVEN_HOUSES.filter((h) => h.side < 0).map((h) => h.depth.toFixed(2)).join();
+    const right = HAVEN_HOUSES.filter((h) => h.side > 0).map((h) => h.depth.toFixed(2)).join();
+    expect(left).not.toBe(right);
   });
 });

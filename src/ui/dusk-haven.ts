@@ -25,16 +25,31 @@ export const HAVEN_PROPS: Record<string, { x: number; y: number }> = {
   board: { x: 0.5 + roadHalfFrac(0.3) + 0.05, y: groundFrac(0.3) },
 };
 
-/** The houses along the road, far to near on each side. */
-export const HAVEN_HOUSES: readonly { side: -1 | 1; depth: number; roof: 'rr' | 'rb'; stone: boolean; ruin: number }[] = [
-  { side: -1, depth: 0.05, roof: 'rb', stone: false, ruin: 0.3 },
-  { side: 1, depth: 0.07, roof: 'rr', stone: true, ruin: 0.2 },
-  { side: -1, depth: 0.17, roof: 'rr', stone: true, ruin: 0.4 },
-  { side: 1, depth: 0.2, roof: 'rb', stone: false, ruin: 0.5 },
-  { side: -1, depth: 0.42, roof: 'rb', stone: false, ruin: 0.6 },
-  { side: 1, depth: 0.46, roof: 'rr', stone: false, ruin: 0.35 },
-  { side: -1, depth: 0.82, roof: 'rr', stone: true, ruin: 0.7 },
-  { side: 1, depth: 0.86, roof: 'rb', stone: true, ruin: 0.55 },
+/** One house of the street: its depth, side, materials and the quirks that keep the row irregular. */
+export interface HavenHouse {
+  side: -1 | 1;
+  depth: number;
+  roof: 'rr' | 'rb';
+  stone: boolean;
+  ruin: number;
+  /** Extra distance from the road, fraction of the width. */
+  gap: number;
+  /** Gable height over facade width. */
+  pitch: number;
+  /** Wall height factor. */
+  tall: number;
+  /** How far the long wall recedes towards the vanishing point (0..1). */
+  reach: number;
+  /** Fallen in: no roof, jagged walls. */
+  collapsed?: boolean;
+}
+
+/** A few houses, spaced in depth so none cuts into another, never mirrored (owner, 2026-11-03). */
+export const HAVEN_HOUSES: readonly HavenHouse[] = [
+  { side: -1, depth: 0.12, roof: 'rb', stone: false, ruin: 0.4, gap: 0.03, pitch: 0.68, tall: 1.25, reach: 0.22 },
+  { side: 1, depth: 0.24, roof: 'rr', stone: false, ruin: 0.5, gap: 0.012, pitch: 0.5, tall: 1, reach: 0.2 },
+  { side: -1, depth: 0.64, roof: 'rr', stone: true, ruin: 0.7, gap: 0, pitch: 0.4, tall: 0.85, reach: 0.16 },
+  { side: 1, depth: 0.8, roof: 'rb', stone: true, ruin: 0.9, gap: 0.07, pitch: 0.5, tall: 0.55, reach: 0.12, collapsed: true },
 ];
 
 /** The last dusk: everything ash and soot, a red rim where the eclipse touches, rare candlelight. */
@@ -71,20 +86,20 @@ const column = (g: Grid, c: number, y0: number, y1: number, key: string) => g.vl
  * A house in one-point perspective: its gable end faces you, its long wall (on the road
  * side) and that roof slope recede towards the vanishing point (vx, vy).
  */
-function house(g: Grid, r: () => number, spec: (typeof HAVEN_HOUSES)[number], w: number, h: number, vx: number, vy: number): Built {
+function house(g: Grid, r: () => number, spec: HavenHouse, w: number, h: number, vx: number, vy: number): Built {
   const lights: Light[] = [];
   const smoke: [number, number][] = [];
   const d = spec.depth;
   const gy = Math.round(groundFrac(d) * h);
   const fw = Math.round(14 + d * 66);
-  const wh = Math.round(9 + d * 40);
-  const edge = Math.round(w * (0.5 + spec.side * (roadHalfFrac(d) + 0.012 + d * 0.035)));
+  const wh = Math.round((9 + d * 40) * spec.tall);
+  const edge = Math.round(w * (0.5 + spec.side * (roadHalfFrac(d) + 0.012 + d * 0.035 + spec.gap)));
   const fx = spec.side < 0 ? edge - fw : edge;
   const top = gy - wh;
-  const gh = Math.round(fw * 0.5);
+  const gh = Math.round(fw * spec.pitch);
   const apexX = fx + fw / 2;
   const apexY = top - gh;
-  const k = 0.32;
+  const k = spec.reach;
   const toward = (x0: number, y0: number, c: number) => y0 + (vy - y0) * ((c - x0) / (vx - x0));
   const wall = spec.stone ? 'st' : 'pl';
   const roofs = [spec.roof, `${spec.roof}L`, `${spec.roof}D`] as const;
@@ -93,7 +108,7 @@ function house(g: Grid, r: () => number, spec: (typeof HAVEN_HOUSES)[number], w:
   const ridgeEnd = Math.round(apexX + (vx - apexX) * k);
 
   // 1. The receding roof slope: from the ridge down to the eave (or the gable's edge in front).
-  for (let c = Math.round(apexX); c !== ridgeEnd; c += step) {
+  for (let c = Math.round(apexX); !spec.collapsed && c !== ridgeEnd; c += step) {
     const ridge = toward(apexX, apexY, c);
     const beyond = (c - edge) * step >= 0;
     if (beyond && (c - wallEnd) * step > 0) break;
@@ -169,6 +184,21 @@ function house(g: Grid, r: () => number, spec: (typeof HAVEN_HOUSES)[number], w:
   const dw = Math.max(3, Math.round(fw * 0.2));
   const dx = Math.round(apexX - dw / 2);
   g.rect(dx - 1, gy - Math.round(wh * 0.5), dw + 2, Math.round(wh * 0.5), 'bm').rect(dx, gy - Math.round(wh * 0.5) + 1, dw - 1, Math.round(wh * 0.5) - 2, 'wdD');
+  if (spec.collapsed) {
+    // Fallen in: bite a jagged top out of both walls, leave a beam lying across.
+    for (let c = fx; c < fx + fw; c++) {
+      const bite = Math.round(Math.abs(Math.sin(c * 0.7) * wh * 0.35) + r() * 3);
+      g.vline(c, top - 1, bite + 1, 'tr');
+      g.set(c, top + bite, 'rimD');
+    }
+    for (let c = edge; c !== wallEnd; c += step) {
+      const yt = toward(edge, top, c);
+      const bite = Math.round(Math.abs(Math.cos(c * 0.5)) * wh * 0.4 + r() * 2);
+      g.vline(c, Math.round(yt) - 1, bite + 1, 'tr');
+    }
+    g.line(fx - 3, gy - 2, fx + Math.round(fw * 0.7), top + Math.round(wh * 0.4), 2, 'bm');
+    return { lights, smoke };
+  }
   for (let j = 0; j <= gh; j++) {
     const half = Math.round((fw / 2 + 1) * (j / gh));
     const y = apexY + j;
