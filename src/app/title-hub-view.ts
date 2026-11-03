@@ -16,7 +16,7 @@ export interface TitleHubOptions {
   /** Opens a button's screen or window (never called for a locked one). */
   onPick(id: HubId): void;
   /** The partner's animated sprite, its name and its type badges. */
-  partner: { portrait: HTMLElement; name: string; badges: HTMLElement[] } | null;
+  partner: { portrait: HTMLElement; name: string; badges: HTMLElement[]; passive?: { name: string; description: string } } | null;
   /** Nickname (or "Caminante"), its small portrait and the record line. */
   profile: { name: string; portrait: HTMLElement | null; line: string };
   coins: number;
@@ -110,12 +110,19 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
           change.dataset.hub = 'partner';
           change.addEventListener('click', () => pick(pokemon));
         }
-        return h('section', { className: 'hub-altar' }, [
-          h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-glow' }), h('div', { className: 'hub-altar-sprite' }, [options.partner.portrait]), h('div', { className: 'hub-altar-stone' })]),
+        const p = options.partner;
+        if (pokemon && !pokemon.locked) change.prepend(pixelIconSvg('pokemon'));
+        // A relic nameplate under the partner (owner: "Presenta mejor el caminante que usas"): name, types, passive, change.
+        const plate = h('div', { className: 'hub-plate' }, [
           h('p', { className: 'hub-altar-kicker', textContent: t('hub.partner') }),
-          h('h2', { className: 'hub-altar-name', textContent: options.partner.name }),
-          h('div', { className: 'hub-altar-types' }, options.partner.badges),
+          h('h2', { className: 'hub-altar-name', textContent: p.name }),
+          h('div', { className: 'hub-altar-types' }, p.badges),
+          ...(p.passive ? [h('p', { className: 'hub-plate-passive', title: p.passive.description }, [h('span', { className: 'hub-plate-gem' }), h('span', { textContent: p.passive.name })])] : []),
           ...(pokemon && !pokemon.locked ? [change] : []),
+        ]);
+        return h('section', { className: 'hub-altar' }, [
+          h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-glow' }), h('div', { className: 'hub-altar-sprite' }, [p.portrait]), h('div', { className: 'hub-altar-stone' })]),
+          plate,
         ]);
       })()
     : h('section', { className: 'hub-altar is-empty' }, [h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-glow' }), h('div', { className: 'hub-altar-stone' })])]);

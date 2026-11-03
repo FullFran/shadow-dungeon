@@ -576,7 +576,14 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
   const view = titleHub({
     buttons: hubButtons(state),
     onPick: (id) => action[id](),
-    partner: settings.starterChosen ? { portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()), name: t(`species.${species}`), badges: SPECIES[species].types.map(typeBadge) } : null,
+    partner: settings.starterChosen
+      ? {
+          portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()),
+          name: t(`species.${species}`),
+          badges: SPECIES[species].types.map(typeBadge),
+          ...(SPECIES[species].passive ? { passive: { name: t(`passive.${SPECIES[species].passive}`), description: t(`passive.${SPECIES[species].passive}.description`) } } : {}),
+        }
+      : null,
     profile: {
       name: settings.nickname || t('hub.wanderer'),
       portrait: settings.starterChosen ? portrait(sheetsReady(), species, 2, skinOn(), femaleOn()) : null,
