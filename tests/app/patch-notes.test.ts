@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { LAST_SEEN_VERSION_KEY, markVersionSeen, patchNotesDue, readLastSeenVersion, releaseSections, sectionTitleKey } from '../../src/app/patch-notes';
+import { LAST_SEEN_VERSION_KEY, markVersionSeen, patchNotesDue, readLastSeenVersion, releaseSections, sectionTitleKey, splitHeadline } from '../../src/app/patch-notes';
 import { OPTIONS_ENTRIES } from '../../src/app/title-menu';
 import { CHANGELOG, CHANGELOG_SECTIONS } from '../../src/data/changelog';
 import { catalog, LANGUAGES } from '../../src/i18n';
@@ -85,5 +85,32 @@ describe('GitHub Release notes from the same changelog', () => {
       expect(markdown).toContain(catalog('es')[sectionTitleKey(section)]!);
       expect(markdown).toContain(catalog('en')[sectionTitleKey(section)]!);
     }
+  });
+});
+
+describe('splitHeadline', () => {
+  it('cuts at the first colon and keeps it in the headline', () => {
+    expect(splitHeadline('Ganar se nota: al caer el guardián cruza la pantalla.')).toEqual({ head: 'Ganar se nota:', rest: ' al caer el guardián cruza la pantalla.' });
+  });
+  it('cuts at the end of the first sentence when there is no colon', () => {
+    expect(splitHeadline('Textos más legibles. Las descripciones usan otra letra.')).toEqual({ head: 'Textos más legibles.', rest: ' Las descripciones usan otra letra.' });
+  });
+  it('keeps a single sentence whole, and ignores a colon inside a time', () => {
+    expect(splitHeadline('Se arregla el cierre del Santuario.')).toEqual({ head: 'Se arregla el cierre del Santuario.', rest: '' });
+    expect(splitHeadline('Resets at 10:30 every day. Nothing else.').head).toBe('Resets at 10:30 every day.');
+  });
+  it('never loses a character: head + rest is the text, for every note in both languages', () => {
+    for (const release of CHANGELOG)
+      for (const section of CHANGELOG_SECTIONS)
+        for (const item of release.sections[section] ?? [])
+          for (const text of [item.es, item.en]) {
+            const { head, rest } = splitHeadline(text);
+            expect(head.length, text).toBeGreaterThan(0);
+            expect(head + rest, text).toBe(text);
+            expect(head.length, text).toBeLessThanOrEqual(110);
+          }
+  });
+  it('names the new news texts in both languages', () => {
+    for (const language of LANGUAGES) for (const key of ['news.expand', 'news.collapse', 'news.items', 'news.latest']) expect(catalog(language)[key], key).toBeTruthy();
   });
 });

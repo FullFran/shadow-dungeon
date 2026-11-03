@@ -3532,5 +3532,22 @@
   "hub.hint": "Arrows: move · Enter: open · Esc: close",
   "hub.hint.touch": "Tap an icon to open it",
   "hub.wanderer": "Wanderer",
-  "hub.online.sub": "Up to 4 Wanderers"
+  "hub.online.sub": "Up to 4 Wanderers",
+  "ach.overall": "Overall progress",
+  "ach.locked": "Locked",
+  "ach.done": "Unlocked on {date}",
+  "ach.back": "Back",
+  "ach.chip.floor": "Floor {floor}",
+  "ach.hint": "Arrows: move · Enter: choose · Esc: close",
+  "ach.hint.touch": "Tap an achievement to see how to earn it",
+  "ach.count": "{done} of {total}",
+  "ach.tiles": "Achievements of the category",
+  "news.expand": "Expand",
+  "news.collapse": "Collapse",
+  "news.items.one": "{n} change",
+  "news.items": "{n} changes",
+  "news.latest": "Latest",
+  "news.image.zoom": "Enlarge the screenshot",
+  "news.image.shrink": "Shrink the screenshot",
+  "news.hint": "Arrows: move · Enter: expand · Esc: close"
 }
