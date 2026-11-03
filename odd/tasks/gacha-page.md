@@ -1,6 +1,6 @@
 # Gacha page (/gacha)
 
-Objective: the gacha becomes a full-screen visual page at `/gacha`, Mimikyu's stall as the scene. Every rule stays the window's (`src/core/gacha.ts`, `src/data/gacha.ts`). Branch: `feat/gacha-page` (from `feat/title-hub`). Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=30000`. Design contract: `.agents/DESIGN.md`.
+Objective: the gacha becomes a full-screen visual page at `/gacha`, Mimikyu's stall as the scene. Every rule stays the window's (`src/core/gacha.ts`, `src/data/gacha.ts`). Branch: `worktree-agent-a3333056f454ca045` (from `feat/title-hub` at 81f3d2f). Delivery: work-unit commits, never push. Runner: `npx vitest run --testTimeout=30000`. Design contract: `.agents/DESIGN.md`.
 
 ## Specs
 
