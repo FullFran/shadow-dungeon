@@ -8,7 +8,8 @@ import type { PokemonType } from '../data/types';
 import { isStarter, type SpeciesId } from '../data/species';
 import { MAX_RANK, moveTier, RANK_EFFECT, RECOMMENDED_BUILD, tutorOffer, type MoveTier } from '../data/tutor';
 import type { KeyValueStore } from '../adapters/storage';
-import { getLanguage, t } from '../i18n';
+import { catalog, getLanguage, t, type Language } from '../i18n';
+import { coinText } from './coin-lines';
 import type { ListItem } from '../ui/cursor-list';
 import { moveInfoLines } from './move-info';
 import { loadSave, writeSave, type SaveData } from './save';
@@ -297,4 +298,32 @@ export function confirmCopy(card: MoveCard): ConfirmCopy {
 export async function spendAfterConfirm(ask: () => Promise<boolean>, spend: () => boolean): Promise<boolean> {
   if (!(await ask())) return false;
   return spend();
+}
+
+/**
+ * How a card says where it stands (owner, 2026-11-03: "que se vea mucho más claro en qué
+ * rango está cada ataque, y cuál se puede mejorar o no"): the rank of a known move and what
+ * can still be done with it, or its price, or why it is locked.
+ */
+export interface CardStateLabel {
+  kind: MoveCard['state'];
+  /** "Rango 1/2" for a known move, empty otherwise. */
+  rank: string;
+  /** "Mejorar · 180 P", "Rango máx.", "Aprender · 200 P" or the locked note. */
+  action: string;
+}
+
+export function cardStateLabel(card: MoveCard, language?: Language): CardStateLabel {
+  const tr = (key: string) => (language ? catalog(language)[key] ?? key : t(key));
+  const rank = card.known ? tr('tutor.rankOf').replace('{n}', String(card.rank)).replace('{max}', String(MAX_RANK)) : '';
+  switch (card.state) {
+    case 'rank':
+      return { kind: 'rank', rank, action: tr('tutor.act.rankShort').replace('{cost}', coinText(card.cost ?? 0, tr)) };
+    case 'maxed':
+      return { kind: 'maxed', rank, action: tr('tutor.rankMax') };
+    case 'buy':
+      return { kind: 'buy', rank, action: tr('tutor.act.learnShort').replace('{cost}', coinText(card.cost ?? 0, tr)) };
+    default:
+      return { kind: 'locked', rank, action: tr('tutor.lockedShort') };
+  }
 }

@@ -78,3 +78,20 @@ describe('move tutor cards', () => {
     for (const k of ['tutor.act.learn', 'tutor.act.rank', 'tutor.act.maxed', 'tutor.reason.coins', 'tutor.stat.stamina', 'tutor.stat.cooldown', 'tutor.stat.shape', 'tutor.inBuild', 'tutor.empty', 'tutor.hint.keys']) expect(keys, k).toContain(k);
   });
 });
+
+// Owner, 2026-11-03: "que se vea mucho más claro en qué rango está cada ataque, y cuál se puede mejorar o no".
+describe('card state label', () => {
+  const base = { move: 'shadow-claw', type: 'ghost', slot: 'quick', tier: 'basic', power: 70, known: true, lockedBy: null } as const;
+  it('names the rank and whether it can still rank up', async () => {
+    const { cardStateLabel } = await import('../../src/app/tutor');
+    const rank = cardStateLabel({ ...base, rank: 1, state: 'rank', action: 'rank', cost: 180, affordable: true } as never, 'es');
+    expect(rank.kind).toBe('rank');
+    expect(rank.rank).toBe('Rango 1/2');
+    expect(rank.action).toContain('Mejorar');
+    expect(rank.action).toContain('180');
+    const maxed = cardStateLabel({ ...base, rank: 2, state: 'maxed', action: null, cost: null, affordable: false } as never, 'es');
+    expect(maxed.kind).toBe('maxed');
+    expect(maxed.rank).toBe('Rango 2/2');
+    expect(maxed.action).toBe('Rango máx.');
+  });
+});

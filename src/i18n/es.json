@@ -3750,5 +3750,9 @@
   "loadout.stat.speed": "Velocidad",
   "loadout.noPassive": "Sin habilidad pasiva: depende solo de sus movimientos.",
   "loadout.choose": "Elegir",
-  "confirm.cancel": "Cancelar"
+  "confirm.cancel": "Cancelar",
+  "tutor.rankOf": "Rango {n}/{max}",
+  "tutor.rankMax": "Rango máx.",
+  "tutor.act.rankShort": "Mejorar · {cost}",
+  "tutor.act.learnShort": "Aprender · {cost}"
 }

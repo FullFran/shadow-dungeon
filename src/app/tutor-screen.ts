@@ -15,7 +15,7 @@ import { h, mdWindow } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave } from './save';
 import { createMovePreview, type MovePreview } from './move-preview-view';
-import { buildHint, cardBlock, confirmCopy, nextRankText, paidText, SLOT_FILTERS, spendAfterConfirm, tierName, tutorCards, tutorPurchase, type MoveCard, type SlotFilter } from './tutor';
+import { buildHint, cardBlock, confirmCopy, nextRankText, paidText, SLOT_FILTERS, spendAfterConfirm, tierName, tutorCards, tutorPurchase, type MoveCard, type SlotFilter, cardStateLabel } from './tutor';
 import { hubStep } from './title-hub';
 import '../styles/tutor.css';
 
@@ -179,21 +179,20 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   // Grid: a quiet card per move (name, type edge, slot icon, one state).
   const grid = h('div', { className: 'tu-grid' });
   grid.setAttribute('aria-label', t('tutor.title'));
+  // Each card says its rank (pips + "Rango 1/2") and what can still be done: rank up (price), max rank, learn (price) or locked.
   const stateLine = (card: MoveCard): HTMLElement => {
-    switch (card.state) {
-      case 'locked':
-        return h('span', { className: 'tu-state is-locked' }, [pixelIconSvg('lock', 'px-icon'), h('span', { textContent: t('tutor.lockedShort') })]);
-      case 'buy':
-        return h('span', { className: `tu-state is-buy${card.affordable ? ' is-ok' : ''}`, textContent: coinText(card.cost ?? 0, t) });
-      default:
-        return h('span', { className: 'tu-state is-known', textContent: t('tutor.learned') });
-    }
+    const label = cardStateLabel(card);
+    const can = card.state === 'rank' || card.state === 'buy' ? (card.affordable ? ' is-ok' : ' is-short') : '';
+    return h('span', { className: 'tu-state-wrap' }, [
+      h('span', { className: 'tu-rankline' }, card.known ? [pips(card.rank), h('span', { className: 'tu-rank', textContent: label.rank })] : [h('span', { className: 'tu-rank is-new', textContent: tierName(card.tier) })]),
+      h('span', { className: `tu-state is-${label.kind}${can}` }, [...(label.kind === 'locked' ? [pixelIconSvg('lock', 'px-icon')] : label.kind === 'rank' ? [icon('rankup')] : []), h('span', { textContent: label.action })]),
+    ]);
   };
   const cardButton = (card: MoveCard): HTMLButtonElement => {
     const button = h('button', { className: `tu-card is-${card.state}`, type: 'button' }, [h('span', { className: 'tu-card-row' }, [icon(card.slot), h('span', { className: 'tu-card-name', textContent: t(`move.${card.move}`) })]), stateLine(card)]);
     button.style.setProperty('--tu-edge', TYPE_COLORS[card.type].core);
     button.dataset.move = card.move;
-    button.setAttribute('aria-label', `${t(`move.${card.move}`)}, ${tierName(card.tier)}, ${button.querySelector('.tu-state')?.textContent ?? ''}`);
+    button.setAttribute('aria-label', `${t(`move.${card.move}`)}, ${tierName(card.tier)}, ${cardStateLabel(card).rank} ${cardStateLabel(card).action}`);
     let armed = false;
     button.addEventListener('pointerdown', () => {
       armed = focused === card.move;

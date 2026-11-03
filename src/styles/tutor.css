@@ -127,3 +127,16 @@
   .tu-act { height: 36px; font-size: 16px; gap: 6px; } .tu-act svg.px-icon { width: 20px; height: 20px; }
   .tu-foot { display: none; }
 }
+
+/* Rank at a glance (owner, 2026-11-03): pips + "Rango n/2" on one line, the action chip below in its own colour:
+   green = you can rank up / learn now, dim = not enough coins, gold = max rank, grey = locked. */
+.tu-state-wrap { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; width: 100%; }
+.tu-rankline { display: inline-flex; align-items: center; gap: 6px; }
+.tu-rank { font-family: var(--md-text-font); font-weight: 700; font-size: 12px; color: var(--md-text-dim); }
+.tu-rank.is-new { color: var(--md-text-dim); font-weight: 700; }
+.tu-state { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 4px; font-family: var(--md-text-font); font-weight: 700; font-size: 12px; line-height: 1.7; border: 1px solid transparent; }
+.tu-state svg.px-icon { width: 14px; height: 14px; }
+.tu-state.is-rank.is-ok, .tu-state.is-buy.is-ok { color: #9ff0a6; border-color: rgba(127, 224, 138, 0.55); background: rgba(40, 90, 50, 0.35); }
+.tu-state.is-rank.is-short, .tu-state.is-buy.is-short { color: var(--md-text-dim); border-color: rgba(179, 166, 144, 0.35); background: rgba(0, 0, 0, 0.3); }
+.tu-state.is-maxed { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
+.tu-state.is-locked { color: var(--md-disabled); border-color: rgba(143, 132, 137, 0.4); background: rgba(0, 0, 0, 0.3); }

@@ -3750,5 +3750,9 @@
   "loadout.stat.speed": "Speed",
   "loadout.noPassive": "No passive ability: it relies on its moves alone.",
   "loadout.choose": "Choose",
-  "confirm.cancel": "Cancel"
+  "confirm.cancel": "Cancel",
+  "tutor.rankOf": "Rank {n}/{max}",
+  "tutor.rankMax": "Max rank",
+  "tutor.act.rankShort": "Rank up · {cost}",
+  "tutor.act.learnShort": "Learn · {cost}"
 }
