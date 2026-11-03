@@ -88,6 +88,8 @@ export interface TownOptions {
   openTutor?: TownWindowOpener;
   /** Opens Mimikyu's gacha stall, like `openShop`. */
   openGacha?: TownWindowOpener;
+  /** Alone, the stall is its own page (/gacha, app/gacha-page.ts): the town is left for it, like the shrine; a room keeps `openGacha`'s window. */
+  openGachaPage?: () => void;
   /** Opens Phantump's evolution window, like `openShop` (its "Desafíos" row departs from it). */
   openEvolve?: TownWindowOpener;
   /** Opens the notice board's missions window once its records are read, like `openShop`. */
@@ -462,7 +464,12 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       if (!next && tour) tour = tourSpoken(tour);
       if (!next && opens === 'shop') openShopWindow();
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
-      if (!next && opens === 'gacha') openShopWindow(options.openGacha);
+      if (!next && opens === 'gacha') {
+        if (options.openGachaPage) {
+          handle.stop();
+          options.openGachaPage();
+        } else openShopWindow(options.openGacha);
+      }
       if (!next && opens === 'evolve') openShopWindow(options.openEvolve);
       if (!next && opens === 'board') openShopWindow(options.openBoard);
       if (!next && opens === 'shrine' && options.openShrine) {
@@ -774,7 +781,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       evolve: !!options.openEvolve,
       shop: !!options.openShop,
       tutor: !!options.openTutor,
-      gacha: !!options.openGacha,
+      gacha: !!(options.openGacha ?? options.openGachaPage),
       board: !!options.openBoard,
       achievements: !!options.openAchievements,
       shrine: !!options.openShrine,
@@ -832,7 +839,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       case 'tutor':
         return openShopWindow(options.openTutor);
       case 'gacha':
-        return openShopWindow(options.openGacha);
+        return options.openGachaPage ? leaveTown(options.openGachaPage) : openShopWindow(options.openGacha);
       case 'board':
         return openShopWindow(options.openBoard);
       case 'achievements':
