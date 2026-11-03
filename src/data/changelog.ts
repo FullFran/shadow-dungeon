@@ -14,6 +14,10 @@
 export interface ChangelogItem {
   es: string;
   en: string;
+  /** Key of a drawn icon (src/ui/icons/achievements-news-icons.ts) for this row; the section's icon when absent. */
+  icon?: string;
+  /** A screenshot under public/news/ (e.g. "news/title-hub.webp"), shown as a small thumbnail. */
+  image?: string;
 }
 
 /** The sections of a release, in the order the screen and the release show them. */
