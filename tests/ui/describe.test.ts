@@ -134,7 +134,8 @@ describe('every menu with a cursor description uses the box', () => {
   it('each cursorList that describes its cursor row (onCursor) builds a description box', () => {
     // The achievements rail swaps a tile grid (not a description) under the cursor; its tile detail box has a fixed min-height in CSS.
     const describing = sources.filter((s) => s.file !== 'achievements.ts' && /cursorList\(\{[\s\S]*?onCursor/.test(s.code));
-    expect(describing.length).toBeGreaterThanOrEqual(9);
+    // The Pokémon picker became a card grid with its own sheet (src/app/species-picker.ts, 2026-11-03): one describing list fewer.
+    expect(describing.length).toBeGreaterThanOrEqual(8);
     for (const s of describing) expect({ file: s.file, box: /\bdescription\(list,/.test(s.code) }).toEqual({ file: s.file, box: true });
   });
 
