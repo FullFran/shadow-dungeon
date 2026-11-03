@@ -1434,7 +1434,7 @@ function townEvolve(parent: HTMLElement, onClose: () => void, depart: (id: strin
   let close = (): void => undefined;
   const evolve = () => {
     close();
-    close = townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: challenges, onBack: settleOnClose(onClose) }));
+    close = townWindow(parent, evolveWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: challenges, onBack: settleOnClose(onClose) }));
   };
   // Its "Desafíos" row opens the same challenges menu as the waystone; Back returns to Phantump.
   const challenges = () => {
@@ -2239,7 +2239,7 @@ function devScreen(root: HTMLElement): boolean {
     },
     evolve: () => {
       devCoins();
-      show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: () => devScreenChallenges(root), onBack: () => titleScreen(root) }).element]);
+      show(root, [evolveWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: () => devScreenChallenges(root), onBack: () => titleScreen(root) }).element]);
     },
     // The achievements window and the notice board's missions on their own (back goes to the title).
     achievements: () => achievementsScreen(root),
