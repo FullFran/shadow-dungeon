@@ -22,8 +22,8 @@ export interface Resident {
 // Owner, 2026-11-03: only Mimikyu (its gacha stall) and Gastly (the storyteller, by the board).
 // Owner, 2026-11-03: only Mimikyu (its gacha stall) and Gastly (the storyteller, by the board).
 export const TOWN_RESIDENTS: readonly Resident[] = [
-  { id: 'mimikyu', sprite: SPRITE_KEYS.mimikyu, prop: 'stall', area: { x0: 0.375, x1: 0.42, y0: 0.73, y1: 0.75 } },
-  { id: 'gastly', sprite: SPRITE_KEYS.gastly, prop: 'board', area: { x0: 0.57, x1: 0.63, y0: 0.7, y1: 0.73 }, float: 12 },
+  { id: 'mimikyu', sprite: SPRITE_KEYS.mimikyu, prop: 'stall', area: { x0: 0.435, x1: 0.47, y0: 0.73, y1: 0.8 } },
+  { id: 'gastly', sprite: SPRITE_KEYS.gastly, prop: 'board', area: { x0: 0.53, x1: 0.56, y0: 0.7, y1: 0.765 }, float: 12 },
 ];
 
 /** Deterministic 0..1 hash of an integer. */

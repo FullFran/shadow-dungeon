@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HAVEN_HOUSES, HAVEN_PROPS } from '../../src/ui/dusk-haven';
+import { HAVEN_HOUSES, HAVEN_PAL, HAVEN_PROPS, roadHalfFrac } from '../../src/ui/dusk-haven';
 import { TOWN_RESIDENTS } from '../../src/ui/town-walkers';
 
 /** Dusk Haven on the title (odd/tasks/title-hub.md T9; docs/gdd.md "El mundo"). */
@@ -28,5 +28,24 @@ describe('Dusk Haven layout', () => {
     const left = HAVEN_HOUSES.filter((h) => h.side < 0).map((h) => h.depth.toFixed(2)).join();
     const right = HAVEN_HOUSES.filter((h) => h.side > 0).map((h) => h.depth.toFixed(2)).join();
     expect(left).not.toBe(right);
+  });
+
+  // Owner, 2026-11-03: residents sat on the buildings; they walk the open road now.
+  it('lets the residents walk the open road, over a real stretch of it', () => {
+    for (const r of TOWN_RESIDENTS) {
+      for (const y of [r.area.y0, r.area.y1]) {
+        const d = (y - 0.56) / 0.44;
+        const half = roadHalfFrac(d);
+        expect(r.area.x0, r.id).toBeGreaterThanOrEqual(0.5 - half - 0.005);
+        expect(r.area.x1, r.id).toBeLessThanOrEqual(0.5 + half + 0.005);
+      }
+      expect(r.area.y1 - r.area.y0, r.id).toBeGreaterThanOrEqual(0.05);
+    }
+  });
+
+  it('keeps houses at irregular distances from the road and nothing violet in the palette', () => {
+    expect(new Set(HAVEN_HOUSES.map((h) => h.gap)).size).toBe(HAVEN_HOUSES.length);
+    expect(Math.max(...HAVEN_HOUSES.map((h) => h.gap)) - Math.min(...HAVEN_HOUSES.map((h) => h.gap))).toBeGreaterThanOrEqual(0.08);
+    expect(Object.keys(HAVEN_PAL).some((k) => k.startsWith('vi'))).toBe(false);
   });
 });

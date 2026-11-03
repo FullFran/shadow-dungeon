@@ -48,14 +48,22 @@ export class Grid {
     return this;
   }
 
-  /** A crisp line of `width` cells. */
+  /** A crisp line of `width` cells, thick across its direction (not in steps along it). */
   line(x0: number, y0: number, x1: number, y1: number, width: number, key: string): this {
     if (!this.fill(key)) return this;
-    const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
-    for (let k = 0; k <= steps; k++) {
-      const x = Math.round(x0 + ((x1 - x0) * k) / steps);
-      const y = Math.round(y0 + ((y1 - y0) * k) / steps);
-      this.ctx.fillRect(x - Math.floor(width / 2), y, width, 1);
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy), 1);
+    for (let o = 0; o < width; o++) {
+      const off = o - (width - 1) / 2;
+      for (let k = 0; k <= steps; k++) {
+        const x = Math.round(x0 + (dx * k) / steps + nx * off);
+        const y = Math.round(y0 + (dy * k) / steps + ny * off);
+        this.ctx.fillRect(x, y, 1, 1);
+      }
     }
     return this;
   }

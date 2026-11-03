@@ -718,12 +718,13 @@
       .hub-altar-sprite { position: relative; z-index: 1; margin-bottom: -26px; filter: drop-shadow(0 0 14px rgba(255, 138, 61, 0.35)); }
       .hub-altar-sprite canvas { display: block; image-rendering: pixelated; }
       /* The partner stands in a gilt rune circle on the town square, not on a stone (owner: the slab did not read). */
-      .hub-altar-stone { position: relative; width: 230px; height: 58px; margin-top: 0; border-radius: 50%; border: 2px solid rgba(226, 184, 102, 0.85);
-        background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(255, 138, 61, 0.12) 70%, transparent);
-        box-shadow: 0 0 18px rgba(255, 138, 61, 0.45), inset 0 0 14px rgba(255, 138, 61, 0.35); }
-      .hub-altar-stone::before { content: ''; position: absolute; inset: 9px 26px; border-radius: 50%; border: 2px dashed rgba(226, 184, 102, 0.6); animation: hub-runes 24s linear infinite; }
-      .hub-altar-stone::after { content: ''; position: absolute; left: 50%; top: 50%; width: 70px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0, 0, 0, 0.6); }
-      @keyframes hub-runes { to { transform: rotate(360deg); } }
+      /* A flat summoning sign on the ground in the eclipse's red, never rotated (a rotated ellipse stood up on its edge). */
+      .hub-altar-stone { position: relative; width: 230px; height: 46px; margin-top: 0; border-radius: 50%; border: 2px solid rgba(255, 106, 61, 0.7);
+        background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), rgba(120, 16, 24, 0.35) 72%, transparent);
+        box-shadow: 0 0 22px rgba(232, 40, 58, 0.45), inset 0 0 16px rgba(255, 106, 61, 0.3); animation: hub-sign 3.2s ease-in-out infinite; }
+      .hub-altar-stone::before { content: ''; position: absolute; inset: 7px 24px; border-radius: 50%; border: 1px dashed rgba(255, 191, 94, 0.55); }
+      .hub-altar-stone::after { content: ''; position: absolute; left: 50%; top: 50%; width: 76px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0, 0, 0, 0.7); }
+      @keyframes hub-sign { 50% { box-shadow: 0 0 34px rgba(232, 40, 58, 0.65), inset 0 0 20px rgba(255, 106, 61, 0.45); } }
       /* Sprite frames keep empty room under the feet: pull the feet down into the circle. */
       .hub-altar-sprite { margin-bottom: -64px; }
       .hub-altar-kicker { margin: 14px 0 2px; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--md-border); }
@@ -767,13 +768,24 @@
       .hub-status { position: fixed; left: 50%; bottom: 190px; z-index: 6; margin: 0; padding: 10px 18px; max-width: min(90vw, 30rem); transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
         font-family: var(--md-text-font); font-size: 16px; color: var(--md-text); text-align: center; transition: opacity 160ms, transform 160ms; }
       .hub-status.is-on { opacity: 1; transform: translate(-50%, 0); }
+      /* Medium widths (laptops, split windows): the small links keep one row as icons (their names stay as tooltips and labels for AT). */
+      @media (max-width: 1180px) {
+        .hub-links { flex-wrap: nowrap; gap: 6px; } .hub-links .hub-label { display: none; } .hub-links .hub-slab { width: 44px; height: 44px; } .hub-links .hub-slab .px-icon { width: 28px; height: 28px; }
+        .hub-play { min-width: 0; padding: 10px 24px 10px 16px; } .hub-play-name { font-size: 33px; }
+      }
+      /* Short screens (phones in landscape): the partner block shrinks so it never runs into the logo or the buttons. */
+      @media (max-height: 460px) {
+        .hub-altar-stage { width: 140px; height: 84px; } .hub-altar-glow { width: 150px; height: 110px; bottom: 8px; }
+        .hub-altar-sprite { transform: scale(0.45); transform-origin: 50% 100%; margin-bottom: -30px; } .hub-altar-stone { width: 110px; height: 24px; }
+        .hub-altar-name { font-size: 16px; margin-top: 2px; } .hub-altar-types, .hub-altar-kicker, .hub-altar-change { display: none; }
+      }
       /* Small phones in landscape (667x375): the news card keeps its icon, the links shrink to fit one row. */
       @media (max-width: 720px) {
         .hub-news-text { display: none; } .hub-news { padding: 6px; }
         .hub-links { gap: 4px; } .hub-links .hub-slab { width: 40px; height: 40px; } .hub-links .hub-slab .px-icon { width: 26px; height: 26px; }
         .hub-play-name { font-size: 26px; } .hub-online span { font-size: 14px; }
       }
-      @media (prefers-reduced-motion: reduce) { .hub-play, .hub-altar-glow, .hub-altar-stone::before { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
+      @media (prefers-reduced-motion: reduce) { .hub-play, .hub-altar-glow, .hub-altar-stone { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
       /* Shorter screens: smaller logo and altar, rails in three columns. */
       @media (max-height: 760px) {
         .hub-altar-stage { width: 240px; height: 190px; } .hub-altar-glow { width: 240px; height: 200px; }

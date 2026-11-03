@@ -85,7 +85,7 @@ import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-ci
 import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { unlockEverything } from './dev-unlock';
+import { unlockEverything, veteranProfile } from './dev-unlock';
 import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { missionBoardWindow } from './board';
@@ -2297,5 +2297,18 @@ if (root) {
   installDismiss();
   // Development server only: `?unlock=all` opens everything in this browser's local save.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'all') unlockEverything(store);
+  // Development server only: `?unlock=veteran` writes an advanced, believable profile (dev-unlock.ts) and the story flags of a long-time
+  // player (prologue, starter, town tour), counts the achievements it proves, then drops the parameter so a reload keeps playing it normally.
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'veteran') {
+    veteranProfile(store);
+    markPrologueSeen(store);
+    markTourSeen(store);
+    markVersionSeen(store, APP_VERSION);
+    update(withReturningPlayer(settings, 'zorua', rosterOf(loadSave(store))));
+    recordPast(store, Date.now());
+    const url = new URL(window.location.href);
+    url.searchParams.delete('unlock');
+    window.history.replaceState(null, '', url);
+  }
   if (!devScreen(root)) titleScreen(root);
 }

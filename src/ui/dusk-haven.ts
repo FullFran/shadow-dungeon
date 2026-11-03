@@ -16,12 +16,12 @@ import { Grid, seeded, type Light, type Palette } from './pixel-grid';
 export const HORIZON = 0.56;
 
 /** Road half-width as a fraction of the width at ground depth `d` (0 horizon .. 1 bottom). */
-const roadHalfFrac = (d: number): number => 0.008 + d * 0.16;
+export const roadHalfFrac = (d: number): number => 0.008 + d * 0.16;
 const groundFrac = (d: number): number => HORIZON + d * (1 - HORIZON);
 
 /** Where each prop stands (its ground point, fractions of the canvas): residents keep to these. */
 export const HAVEN_PROPS: Record<string, { x: number; y: number }> = {
-  stall: { x: 0.5 - roadHalfFrac(0.38) - 0.06, y: groundFrac(0.38) },
+  stall: { x: 0.5 - roadHalfFrac(0.38) - 0.04, y: groundFrac(0.38) },
   board: { x: 0.5 + roadHalfFrac(0.3) + 0.05, y: groundFrac(0.3) },
 };
 
@@ -46,10 +46,10 @@ export interface HavenHouse {
 
 /** A few houses, spaced in depth so none cuts into another, never mirrored (owner, 2026-11-03). */
 export const HAVEN_HOUSES: readonly HavenHouse[] = [
-  { side: -1, depth: 0.12, roof: 'rb', stone: false, ruin: 0.4, gap: 0.03, pitch: 0.68, tall: 1.25, reach: 0.22 },
-  { side: 1, depth: 0.24, roof: 'rr', stone: false, ruin: 0.5, gap: 0.012, pitch: 0.5, tall: 1, reach: 0.2 },
-  { side: -1, depth: 0.64, roof: 'rr', stone: true, ruin: 0.7, gap: 0, pitch: 0.4, tall: 0.85, reach: 0.16 },
-  { side: 1, depth: 0.8, roof: 'rb', stone: true, ruin: 0.9, gap: 0.07, pitch: 0.5, tall: 0.55, reach: 0.12, collapsed: true },
+  { side: -1, depth: 0.12, roof: 'rb', stone: false, ruin: 0.4, gap: 0.1, pitch: 0.68, tall: 1.25, reach: 0.22 },
+  { side: 1, depth: 0.24, roof: 'rr', stone: false, ruin: 0.5, gap: 0.006, pitch: 0.5, tall: 1, reach: 0.2 },
+  { side: -1, depth: 0.64, roof: 'rr', stone: true, ruin: 0.7, gap: 0.045, pitch: 0.4, tall: 0.85, reach: 0.16 },
+  { side: 1, depth: 0.8, roof: 'rb', stone: true, ruin: 0.9, gap: 0.14, pitch: 0.5, tall: 0.55, reach: 0.12, collapsed: true },
 ];
 
 /** The last dusk: everything ash and soot, a red rim where the eclipse touches, rare candlelight. */
@@ -67,7 +67,7 @@ export const HAVEN_PAL: Palette = {
   gr: '#1b1512', grL: '#261d16', // dead grass
   tr: '#0d0909', trL: '#1d1311', trR: '#3a120f', // dead wood, its faint rim
   ir: '#060607', // iron, crows
-  vi: '#3d1a4a', viL: '#5e2c70', viH: '#b98aff', // Mimikyu's stall
+  cl: '#3a1416', clL: '#552020', clD: '#200b0c', ca: '#cdbf9e', // Mimikyu's stall: tattered cloth, bone capsules
   pa: '#b0a594', paD: '#6e6558', // paper
   te: '#4fb8cf', // waystone rune
 };
@@ -220,18 +220,43 @@ function house(g: Grid, r: () => number, spec: HavenHouse, w: number, h: number,
   return { lights, smoke };
 }
 
-/** A dead tree: crooked trunk, bare branches, a red rim on its upper side. */
+/**
+ * A withered tree: a tapering, leaning trunk with root flares, branches that bend as they
+ * grow (several short segments, each turning a little) and thin twigs at their tips; the
+ * faint rim of the eclipse on the upper side of the thicker limbs.
+ */
 function deadTree(g: Grid, r: () => number, x: number, y: number, h: number, width = 4): void {
-  const branch = (bx: number, by: number, angle: number, length: number, wdt: number, depth: number) => {
-    const ex = bx + Math.cos(angle) * length;
-    const ey = by - Math.sin(angle) * length;
-    g.line(bx, by, ex, ey, wdt, 'tr');
-    if (wdt > 2) g.line(bx, by - 1, ex, ey - 1, 1, 'trR');
-    if (depth === 0) return;
-    const n = 2 + Math.floor(r() * 2);
-    for (let j = 0; j < n; j++) branch(ex, ey, angle + (r() - 0.5) * 1.7, length * (0.55 + r() * 0.25), Math.max(1, wdt - 1), depth - 1);
+  const limb = (bx: number, by: number, angle: number, length: number, w0: number, depth: number) => {
+    const segments = 4;
+    let px = bx;
+    let py = by;
+    let a = angle;
+    for (let i = 0; i < segments; i++) {
+      a += (r() - 0.5) * 0.45;
+      const len = length / segments;
+      const nx = px + Math.cos(a) * len;
+      const ny = py - Math.sin(a) * len;
+      const wdt = Math.max(1, Math.round(w0 * (1 - (i + 0.5) / (segments + 1))));
+      g.line(px, py, nx, ny, wdt, 'tr');
+      if (wdt >= 3) g.line(px - 1, py - 1, nx - 1, ny - 1, 1, 'trR');
+      // Side branches leave along the limb, not only at its tip.
+      if (depth > 0 && i >= 1 && r() < 0.55) limb(nx, ny, a + (r() < 0.5 ? -1 : 1) * (0.5 + r() * 0.6), length * (0.5 + r() * 0.2), Math.max(1, wdt - 1), depth - 1);
+      px = nx;
+      py = ny;
+    }
+    if (depth > 0) {
+      limb(px, py, a + 0.35 + r() * 0.3, length * 0.6, Math.max(1, Math.round(w0 / 2)), depth - 1);
+      limb(px, py, a - 0.35 - r() * 0.3, length * 0.55, Math.max(1, Math.round(w0 / 2)), depth - 1);
+    } else {
+      for (let t = 0; t < 3; t++) {
+        const ta = a + (r() - 0.5) * 1.6;
+        g.line(px, py, px + Math.cos(ta) * (2 + r() * 3), py - Math.sin(ta) * (2 + r() * 3), 1, 'tr');
+      }
+    }
   };
-  branch(x, y, Math.PI / 2 + (r() - 0.5) * 0.25, h * 0.4, width, 4);
+  // Root flares.
+  for (const dir of [-1, 1]) g.line(x, y - 1, x + dir * (width + 2 + r() * 3), y, 1, 'tr');
+  limb(x, y, Math.PI / 2 + (r() - 0.5) * 0.3, h * 0.42, width + 2, 3);
 }
 
 function grave(g: Grid, r: () => number, x: number, y: number, s: number): void {
@@ -245,18 +270,19 @@ function grave(g: Grid, r: () => number, x: number, y: number, s: number): void 
   g.hline(x - 3 * u, y, 8 * u, 'gr');
 }
 
-/** Mimikyu's stall: a torn violet awning, a counter of capsules, one lantern. */
+/** Mimikyu's stall: a tattered cloth awning, a counter of pale capsules, one lantern. */
 function stall(g: Grid, cx: number, y: number): Light {
   const w = 30;
   const x = cx - w / 2;
   g.rect(x + 1, y - 18, 2, 18, 'wdD').rect(x + w - 3, y - 20, 2, 20, 'wdD');
-  for (let k = 0; k < w + 2; k += 3) g.rect(x - 1 + k, y - 23, 3, 4 + ((k * 7) % 5), (k / 3) % 2 ? 'vi' : 'viL');
+  for (let k = 0; k < w + 2; k += 3) g.rect(x - 1 + k, y - 23, 3, 4 + ((k * 7) % 5), (k / 3) % 2 ? 'cl' : 'clD');
+  for (let k = 1; k < w; k += 6) g.set(x + k, y - 19 + ((k * 5) % 3), 'clL');
   g.hline(x - 1, y - 24, w + 2, 'rimD').hline(x - 1, y - 24, 8, 'rim');
   g.rect(x + 2, y - 8, w - 4, 8, 'wd').hline(x + 2, y - 8, w - 4, 'wdL').rect(x + 2, y - 2, w - 4, 2, 'wdD');
-  for (let i = 0; i < 5; i++) g.rect(x + 5 + i * 4, y - 11, 3, 3, i % 2 ? 'viH' : 'vi');
-  g.rect(x + w - 6, y - 16, 3, 4, 'viH').set(x + w - 5, y - 17, 'ir');
+  for (let i = 0; i < 5; i++) g.rect(x + 5 + i * 4, y - 11, 3, 3, 'ca').set(x + 5 + i * 4, y - 9, 'paD');
+  g.rect(x + w - 6, y - 16, 3, 4, 'glH').set(x + w - 5, y - 17, 'ir');
   g.line(x + 3, y - 14, x + 10, y - 14, 1, 'web');
-  return { x: x + w - 4.5, y: y - 14, r: 22, color: '#b98aff', op: 0.6, flicker: 0.35 };
+  return candle(x + w - 4.5, y - 14, 18, 0.65);
 }
 
 /** The storyteller's notice board: tattered papers, one candle. */
