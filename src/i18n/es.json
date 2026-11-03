@@ -3649,5 +3649,9 @@
   "news.latest": "Última",
   "news.image.zoom": "Ampliar la captura",
   "news.image.shrink": "Reducir la captura",
-  "news.hint": "Flechas: moverte · Enter: desplegar · Esc: cerrar"
+  "news.hint": "Flechas: moverte · Enter: desplegar · Esc: cerrar",
+  "loadout.stat.hp": "Vida",
+  "loadout.stat.speed": "Velocidad",
+  "loadout.noPassive": "Sin habilidad pasiva: depende solo de sus movimientos.",
+  "loadout.choose": "Elegir"
 }

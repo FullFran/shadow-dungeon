@@ -3649,5 +3649,9 @@
   "news.latest": "Latest",
   "news.image.zoom": "Enlarge the screenshot",
   "news.image.shrink": "Shrink the screenshot",
-  "news.hint": "Arrows: move · Enter: expand · Esc: close"
+  "news.hint": "Arrows: move · Enter: expand · Esc: close",
+  "loadout.stat.hp": "Life",
+  "loadout.stat.speed": "Speed",
+  "loadout.noPassive": "No passive ability: it relies on its moves alone.",
+  "loadout.choose": "Choose"
 }

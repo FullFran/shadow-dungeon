@@ -15,6 +15,7 @@ import { moveInfoLines } from './move-info';
 import { slotOptions } from './settings';
 import { rankedName, rankStars, slotFilterRow, tierName, type SlotFilter } from './tutor';
 import { moveTier } from '../data/tutor';
+import { speciesPicker } from './species-picker';
 
 /**
  * The loadout picker before a run, in two steps. `species`: a cursor list of
@@ -176,55 +177,21 @@ function moveCard(id: MoveId, equipped: boolean, rank = 0): HTMLElement {
   ]);
 }
 
-function speciesRow(id: SpeciesId, picked: boolean): HTMLElement {
-  return h('div', { className: 'move-card' }, [
-    h('div', { className: 'move-head' }, [
-      h('strong', { textContent: t(`species.${id}`) }),
-      ...SPECIES[id].types.map(typeBadge),
-      picked ? h('span', { className: 'equipped', textContent: t('loadout.picked') }) : null,
-    ]),
-  ]);
-}
-
 const contextLine = (options: LoadoutOptions): HTMLElement[] => (options.context ? [h('p', { className: 'dim shrine-loadout-for', textContent: options.context })] : []);
 
+/** The species step: the picker grid and its sheet (src/app/species-picker.ts). */
 function speciesStep(options: LoadoutOptions): HTMLElement[] {
-  const worn = (id: SpeciesId) => options.skin?.worn(id) ?? false;
-  const female = (id: SpeciesId) => options.gender?.female(id) ?? false;
-  const roster = options.roster ?? STARTER_SPECIES;
-  const items: ListItem[] = [
-    ...roster.map((id) => ({
-      label: speciesRow(id, id === options.species),
-      className: id === options.species ? 'move-row is-equipped' : 'move-row',
-      onConfirm: () => options.onSpecies(id),
-    })),
-    { label: t('menu.back'), onConfirm: options.onBack },
-  ];
-  const list = cursorList({
-    items,
-    initial: Math.max(0, roster.indexOf(options.species)),
+  return speciesPicker({
+    roster: options.roster ?? STARTER_SPECIES,
+    current: options.species,
+    sheets: options.sheets,
+    portrait: (sheets, id, scale) => portrait(sheets, id, scale, options.skin?.worn(id) ?? false, options.gender?.female(id) ?? false),
+    typeBadge,
+    shiny: (id) => options.skin?.worn(id) ?? false,
+    ...(options.context ? { context: options.context } : {}),
+    onPick: options.onSpecies,
     onBack: options.onBack,
-    onCursor: (index) => preview(index),
-    label: t('loadout.pick'),
   });
-  // The info window keeps the size of the largest species card (src/ui/describe.ts): the list beside it never moves.
-  let info: HTMLElement | null = null;
-  /** Shows the species under the cursor in the info window. */
-  function preview(index: number): void {
-    const id = roster[index];
-    if (!id) return;
-    const title = info?.querySelector('.md-window-title');
-    if (title) title.textContent = t(`species.${id}`);
-    desc.live.replaceChildren(...speciesInfo(options.sheets, id, worn(id), female(id)));
-  }
-  const desc = description(list, { describe: preview, children: speciesInfo(options.sheets, options.species, worn(options.species), female(options.species)) });
-  info = mdWindow({ title: t(`species.${options.species}`), className: 'species' }, [desc.element]);
-  desc.update();
-  return [
-    h('h1', { className: 'screen-title', textContent: t('loadout.pick') }),
-    ...contextLine(options),
-    h('div', { className: 'screen-row' }, [info, mdWindow({ title: t('loadout.species'), className: 'moves' }, [list.element])]),
-  ];
 }
 
 function movesStep(options: LoadoutOptions): HTMLElement[] {
