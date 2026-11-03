@@ -2,332 +2,329 @@ import { Grid, seeded, type Light, type Palette } from './pixel-grid';
 
 /**
  * Dusk Haven under the Eclipse, drawn once per canvas size (odd/tasks/title-hub.md T9;
- * docs/gdd.md "El mundo"; craft after cobbleverse-platform's pixel-village): timber
- * cottages with tiled gables and mullioned windows, the gacha stall, the forge, the
- * stone house where Abra sleeps, the notice board, the waystone, Smeargle's easel,
- * Axew's training tree, dark woods, the crater, Lookout Pass and the Black Lake on the
- * horizon. Everything here is static and prerendered; props return the lights they
- * give off and their chimney tops, and src/ui/eclipse.ts animates only those, the
- * residents and the sky each frame.
+ * docs/gdd.md "El mundo": the last dusk, the sun never rose again). A grim street in
+ * one-point perspective runs to the Eclipse Crater under the dead sun: crooked, half
+ * ruined houses on both sides (gable ends towards you, long walls receding to the
+ * vanishing point), boarded windows with the odd candle, missing roof tiles, dead ivy,
+ * crows on the ridges, graves, dead trees and a mud road whose puddles hold the red of
+ * the eclipse. Only Mimikyu's stall and the storyteller's board keep a light for company.
+ * Static and prerendered; props return the lights they give off, and src/ui/eclipse.ts
+ * animates only those, the smoke, the two residents and the sky.
  */
 
 /** The horizon, as a fraction of the height. */
 export const HORIZON = 0.56;
 
+/** Road half-width as a fraction of the width at ground depth `d` (0 horizon .. 1 bottom). */
+const roadHalfFrac = (d: number): number => 0.008 + d * 0.16;
+const groundFrac = (d: number): number => HORIZON + d * (1 - HORIZON);
+
 /** Where each prop stands (its ground point, fractions of the canvas): residents keep to these. */
 export const HAVEN_PROPS: Record<string, { x: number; y: number }> = {
-  stall: { x: 0.31, y: 0.7 },
-  forge: { x: 0.7, y: 0.7 },
-  stoneHouse: { x: 0.785, y: 0.635 },
-  board: { x: 0.41, y: 0.68 },
-  waystone: { x: 0.595, y: 0.685 },
-  easel: { x: 0.22, y: 0.8 },
-  trainingTree: { x: 0.655, y: 0.79 },
+  stall: { x: 0.5 - roadHalfFrac(0.38) - 0.06, y: groundFrac(0.38) },
+  board: { x: 0.5 + roadHalfFrac(0.3) + 0.05, y: groundFrac(0.3) },
 };
 
-/** Night under a red sun: everything dim but lamplight, with a red rim where the eclipse touches. */
+/** The houses along the road, far to near on each side. */
+export const HAVEN_HOUSES: readonly { side: -1 | 1; depth: number; roof: 'rr' | 'rb'; stone: boolean; ruin: number }[] = [
+  { side: -1, depth: 0.05, roof: 'rb', stone: false, ruin: 0.3 },
+  { side: 1, depth: 0.07, roof: 'rr', stone: true, ruin: 0.2 },
+  { side: -1, depth: 0.17, roof: 'rr', stone: true, ruin: 0.4 },
+  { side: 1, depth: 0.2, roof: 'rb', stone: false, ruin: 0.5 },
+  { side: -1, depth: 0.42, roof: 'rb', stone: false, ruin: 0.6 },
+  { side: 1, depth: 0.46, roof: 'rr', stone: false, ruin: 0.35 },
+  { side: -1, depth: 0.82, roof: 'rr', stone: true, ruin: 0.7 },
+  { side: 1, depth: 0.86, roof: 'rb', stone: true, ruin: 0.55 },
+];
+
+/** The last dusk: everything ash and soot, a red rim where the eclipse touches, rare candlelight. */
 export const HAVEN_PAL: Palette = {
-  pl: '#2b2125', plL: '#3e2c2e', plD: '#1b1418', // plaster
-  bm: '#0f0a0b', bmL: '#2a1a17', // timber beam
-  rr: '#4a1a1c', rrL: '#6e2a26', rrD: '#2a0e10', // roof red
-  rb: '#1c2133', rbL: '#2c3550', rbD: '#11141f', // roof slate
-  rm: '#1d2a22', rmL: '#2b3f31', rmD: '#111a15', // roof moss
-  gl: '#e0a050', glH: '#ffd890', glD: '#9c5e2b', dk: '#141820', cu: '#6e2a3e', // glass, curtain
-  st: '#2a282e', stL: '#3c3a42', stD: '#18171b', // stone
-  co: '#1a1719', coL: '#262227', coH: '#3a343a', // cobble
-  di: '#1e1412', diL: '#2c1d18', // dirt
-  gr: '#121811', grL: '#1c261b', // grass
-  lf: '#0b100d', lfM: '#121a15', lfL: '#1c2a21', lfH: '#2c3f31', // dark leaves
-  tr: '#130c0b', trL: '#261913', // trunk
-  ir: '#09090b', // iron
-  wd: '#3a2416', wdL: '#57361f', wdD: '#24160e', // wood
-  rim: '#ff5a3d', rimD: '#a3291f', // eclipse rim light
-  vi: '#5b2a6e', viL: '#8a4aa8', viD: '#2d1238', viH: '#c9b0ff', // violet (gacha)
-  fo: '#ff7a28', foH: '#ffd27a', // forge fire
-  te: '#5fd0e8', teD: '#2a6f8a', // waystone rune
-  pa: '#d9cfc0', paD: '#9a8f80', // paper
-  bl: '#6e2a3e', blL: '#9a3e52', // blanket
-  ca: '#efe6d6', // canvas
+  pl: '#26222a', plL: '#332d35', plD: '#17151b', // plaster
+  bm: '#0b0809', bmL: '#1f1716', // timber
+  rr: '#2e1416', rrL: '#4a1e1f', rrD: '#190a0c', // roof, old red
+  rb: '#171a24', rbL: '#252a3a', rbD: '#0c0e14', // roof, slate
+  gl: '#c8783a', glH: '#f0b060', dk: '#0c0e12', // glass
+  wd: '#2a1a12', wdL: '#3d2618', wdD: '#160d08', // boards
+  st: '#242228', stL: '#35333c', stD: '#141317', // stone
+  iv: '#3a1418', ivL: '#58201f', web: '#5e5864', // dead ivy, cobweb
+  rim: '#ff5a3d', rimD: '#8f2219', // eclipse light
+  mud: '#181010', mudL: '#241716', pud: '#46101a', pudL: '#8a1e26', // road
+  gr: '#1b1512', grL: '#261d16', // dead grass
+  tr: '#0d0909', trL: '#1d1311', trR: '#3a120f', // dead wood, its faint rim
+  ir: '#060607', // iron, crows
+  vi: '#3d1a4a', viL: '#5e2c70', viH: '#b98aff', // Mimikyu's stall
+  pa: '#b0a594', paD: '#6e6558', // paper
+  te: '#4fb8cf', // waystone rune
 };
 
-const amber = (x: number, y: number, r: number, op: number, flicker = 0.25): Light => ({ x, y, r, color: '#ffb35a', op, flicker });
-
-/** A mullioned window, lit or dark; returns its light. */
-function windowPane(g: Grid, x: number, y: number, lit: boolean, curtain: boolean): Light | null {
-  g.rect(x, y, 5, 6, 'bm');
-  g.rect(x + 1, y + 1, 3, 4, lit ? 'gl' : 'dk');
-  if (lit) g.set(x + 1, y + 1, 'glH').set(x + 3, y + 4, 'glD');
-  g.vline(x + 2, y + 1, 4, 'bm').hline(x + 1, y + 3, 3, 'bm');
-  if (curtain && lit) g.vline(x + 1, y + 1, 4, 'cu');
-  g.hline(x - 1, y + 6, 7, 'stL');
-  return lit ? amber(x + 2.5, y + 3, 9, 0.35, 0.05) : null;
-}
-
-/** A tiled gable over [x, x + w) with eaves on row `y`; the side facing the eclipse gets a red rim. Returns the ridge row. */
-function gable(g: Grid, x: number, y: number, w: number, roof: 'rr' | 'rb' | 'rm', rimSide: -1 | 1): number {
-  const [base, lit, dark] = [roof, `${roof}L`, `${roof}D`];
-  const over = 2;
-  const half = w / 2 + over;
-  const rows = Math.max(4, Math.round(half * 0.85));
-  const mid = x + w / 2;
-  for (let j = 0; j < rows; j++) {
-    const hw = Math.max(1, Math.round((half * (j + 1)) / rows));
-    const row = y - rows + j;
-    const left = Math.round(mid - hw);
-    g.rect(left, row, hw * 2, 1, j % 2 ? base : dark);
-    if (j % 2) for (let i = left + 1; i < mid; i += 3) g.set(i, row, lit);
-    // Eclipse rim on the facing slope's edge.
-    g.set(rimSide < 0 ? left : left + hw * 2 - 1, row, j < rows - 1 ? 'rim' : 'rimD');
-  }
-  g.hline(Math.round(mid - half), y, Math.round(half * 2), 'bm');
-  g.hline(Math.round(mid) - 1, y - rows, 2, 'rim');
-  return y - rows;
-}
+const candle = (x: number, y: number, r: number, op: number): Light => ({ x, y, r, color: '#ff9a4a', op, flicker: 0.5 });
 
 interface Built {
   lights: Light[];
   smoke: [number, number][];
 }
 
-/** A timber-framed cottage standing on row `y`, left edge `x`. */
-function cottage(g: Grid, r: () => number, x: number, y: number, w: number, h: number, roof: 'rr' | 'rb' | 'rm', rimSide: -1 | 1, opts: { stone?: boolean; chimney?: boolean } = {}): Built {
+/** Fills one column of a receding plane between two y values. */
+const column = (g: Grid, c: number, y0: number, y1: number, key: string) => g.vline(c, Math.round(y0), Math.round(y1) - Math.round(y0), key);
+
+/**
+ * A house in one-point perspective: its gable end faces you, its long wall (on the road
+ * side) and that roof slope recede towards the vanishing point (vx, vy).
+ */
+function house(g: Grid, r: () => number, spec: (typeof HAVEN_HOUSES)[number], w: number, h: number, vx: number, vy: number): Built {
   const lights: Light[] = [];
   const smoke: [number, number][] = [];
-  const wall = opts.stone ? 'st' : 'pl';
-  g.rect(x, y - h, w, h, wall);
-  // Shade on the side away from the eclipse light, rim on the facing corner.
-  const shadeW = Math.round(w * 0.4);
-  g.rect(rimSide < 0 ? x + w - shadeW : x, y - h, shadeW, h, opts.stone ? 'stD' : 'plD');
-  g.vline(rimSide < 0 ? x : x + w - 1, y - h, h, 'rimD');
-  if (opts.stone) {
-    for (let row = y - h + 2; row < y - 2; row += 3) for (let col = x + ((row / 3) % 2 ? 1 : 3); col < x + w - 1; col += 5) g.hline(col, row, 3, 'stL');
-  } else {
-    g.vline(x, y - h, h - 2, 'bm').vline(x + w - 1, y - h, h - 2, 'bm').hline(x, y - h, w, 'bm');
-    if (h >= 16) g.hline(x, y - Math.round(h / 2) - 1, w, 'bm');
-    for (let i = 0; i < 3; i++) g.set(x + 1 + i, y - h + 3 - i, 'bm').set(x + w - 2 - i, y - h + 3 - i, 'bm');
-  }
-  g.rect(x, y - 2, w, 2, 'st').hline(x, y - 2, w, 'stL');
-  const top = gable(g, x, y - h, w, roof, rimSide);
-  if (opts.chimney !== false) {
-    const cx = x + Math.round(w * (rimSide < 0 ? 0.68 : 0.22));
-    const cy = top + Math.round((y - h - top) * 0.3);
-    g.rect(cx, cy - 4, 3, y - h - cy + 4, 'st').vline(cx, cy - 4, y - h - cy + 4, 'stL').rect(cx - 1, cy - 5, 5, 1, 'stL');
-    smoke.push([cx + 1, cy - 6]);
-  }
-  // Door with its lamp.
-  const dx = x + Math.round(w / 2) - 2;
-  g.rect(dx - 1, y - 9, 6, 7, 'bm').rect(dx, y - 8, 4, 6, 'wd').vline(dx + 2, y - 8, 6, 'wdD').set(dx + 3, y - 5, 'glH');
-  g.rect(dx + 5, y - 11, 2, 2, 'glH').set(dx + 5, y - 12, 'ir');
-  lights.push(amber(dx + 6, y - 10, 10, 0.55, 0.35));
-  // Windows on each floor, skipping the door.
-  const floors = h >= 16 ? [y - h + 3, y - Math.round(h / 2) + 2] : [y - h + 3 + Math.max(0, Math.round((h - 12) / 2))];
-  floors.forEach((wy, floor) => {
-    for (let wx = x + 2; wx + 5 <= x + w - 2; wx += 7) {
-      if (floor === floors.length - 1 && wx + 5 >= dx - 1 && wx <= dx + 5) continue;
-      const l = windowPane(g, wx, wy, r() > 0.25, r() < 0.4);
-      if (l) lights.push(l);
+  const d = spec.depth;
+  const gy = Math.round(groundFrac(d) * h);
+  const fw = Math.round(14 + d * 66);
+  const wh = Math.round(9 + d * 40);
+  const edge = Math.round(w * (0.5 + spec.side * (roadHalfFrac(d) + 0.012 + d * 0.035)));
+  const fx = spec.side < 0 ? edge - fw : edge;
+  const top = gy - wh;
+  const gh = Math.round(fw * 0.5);
+  const apexX = fx + fw / 2;
+  const apexY = top - gh;
+  const k = 0.32;
+  const toward = (x0: number, y0: number, c: number) => y0 + (vy - y0) * ((c - x0) / (vx - x0));
+  const wall = spec.stone ? 'st' : 'pl';
+  const roofs = [spec.roof, `${spec.roof}L`, `${spec.roof}D`] as const;
+  const step = Math.sign(vx - edge) || 1;
+  const wallEnd = Math.round(edge + (vx - edge) * k);
+  const ridgeEnd = Math.round(apexX + (vx - apexX) * k);
+
+  // 1. The receding roof slope: from the ridge down to the eave (or the gable's edge in front).
+  for (let c = Math.round(apexX); c !== ridgeEnd; c += step) {
+    const ridge = toward(apexX, apexY, c);
+    const beyond = (c - edge) * step >= 0;
+    if (beyond && (c - wallEnd) * step > 0) break;
+    const eave = beyond ? toward(edge, top - 1, c) : apexY + ((top - 1 - apexY) * Math.abs(c - apexX)) / Math.abs(edge + step - apexX);
+    if (eave <= ridge + 1) continue;
+    const span = eave - ridge;
+    for (let y = Math.round(ridge); y < Math.round(eave); y++) {
+      const course = Math.floor(((y - ridge) / span) * Math.max(4, span / 2.5));
+      let key: string = course % 2 ? roofs[0] : roofs[2];
+      if (course % 2 && (c + course) % 3 === 0) key = roofs[1];
+      if (r() < spec.ruin * 0.05) key = 'bm';
+      g.set(c, y, key);
     }
-  });
+    g.set(c, Math.round(ridge), 'rim');
+    if (r() < 0.04 + spec.ruin * 0.06) g.set(c, Math.round(ridge) + 1, 'rimD');
+  }
+  // 2. The long wall on the road side, with posts, boarded windows and the odd candle.
+  const posts = 3 + Math.round(d * 4);
+  for (let c = edge; c !== wallEnd; c += step) {
+    const t = (c - edge) / (wallEnd - edge);
+    const yt = toward(edge, top, c);
+    const yb = toward(edge, gy, c);
+    column(g, c, yt, yb, spec.stone ? 'stD' : 'plD');
+    g.set(c, Math.round(yb) - 1, 'stL');
+    if (Math.round(t * posts * 10) % 10 === 0 && !spec.stone) column(g, c, yt, yb, 'bm');
+    if (!spec.stone) g.set(c, Math.round(yt + (yb - yt) * 0.45), 'bm');
+    if (r() < spec.ruin * 0.15) g.set(c, Math.round(yt + r() * (yb - yt)), 'iv');
+  }
+  const winCount = 2 + Math.round(d * 3);
+  for (let i = 0; i < winCount; i++) {
+    const t0 = (i + 0.3) / winCount;
+    const t1 = t0 + 0.45 / winCount;
+    const c0 = Math.round(edge + (wallEnd - edge) * t0);
+    const c1 = Math.round(edge + (wallEnd - edge) * t1);
+    const lit = r() < 0.18;
+    for (let c = c0; c !== c1 + step; c += step) {
+      const yt = toward(edge, top, c);
+      const yb = toward(edge, gy, c);
+      const a = yt + (yb - yt) * 0.18;
+      const b = yt + (yb - yt) * 0.42;
+      column(g, c, a, b, lit ? 'gl' : 'dk');
+      if (!lit) for (let y = Math.round(a) + 1; y < b; y += 2) g.set(c, y, 'wd');
+    }
+    if (lit) {
+      const cm = (c0 + c1) / 2;
+      lights.push(candle(cm, toward(edge, top + wh * 0.3, cm), 6 + d * 10, 0.55));
+    }
+  }
+  // 3. The gable end facing you.
+  g.rect(fx, top, fw, wh, wall);
+  g.rect(spec.side < 0 ? fx : fx + Math.round(fw * 0.65), top, Math.round(fw * 0.35), wh, spec.stone ? 'stD' : 'plD');
+  if (spec.stone) {
+    for (let y = top + 2; y < gy - 2; y += 3) for (let x = fx + ((y / 3) % 2 ? 1 : 3); x < fx + fw - 2; x += 5) g.hline(x, y, 3, 'stL');
+  } else {
+    g.vline(fx, top, wh, 'bm').vline(fx + fw - 1, top, wh, 'bm').hline(fx, top, fw, 'bm').hline(fx, top + Math.round(wh * 0.48), fw, 'bm');
+    g.line(fx + 1, top + 1, fx + Math.round(fw * 0.3), top + Math.round(wh * 0.46), 1, 'bm').line(fx + fw - 2, top + 1, fx + Math.round(fw * 0.7), top + Math.round(wh * 0.46), 1, 'bm');
+  }
+  g.rect(fx, gy - 2, fw, 2, 'st').hline(fx, gy - 2, fw, 'stL');
+  for (let i = 0; i < 2 + Math.round(spec.ruin * 3); i++) {
+    let x = fx + 2 + Math.floor(r() * (fw - 4));
+    for (let y = gy - 3; y > gy - 3 - wh * (0.3 + r() * 0.5); y--) {
+      g.set(x, y, r() < 0.7 ? 'iv' : 'ivL');
+      if (r() < 0.3) x += r() < 0.5 ? -1 : 1;
+    }
+  }
+  const ww = Math.max(3, Math.round(fw * 0.16));
+  const wy = top + Math.round(wh * 0.18);
+  for (const wx of [fx + Math.round(fw * 0.16), fx + fw - Math.round(fw * 0.16) - ww]) {
+    g.rect(wx - 1, wy - 1, ww + 2, Math.round(ww * 1.3) + 2, 'bm').rect(wx, wy, ww, Math.round(ww * 1.3), 'dk');
+    if (r() < 0.5) for (let y = wy + 1; y < wy + ww * 1.3; y += 2) g.hline(wx - 1, y, ww + 2, 'wd');
+    else g.line(wx, wy, wx + ww - 1, wy + Math.round(ww * 1.3) - 1, 1, 'web');
+  }
+  const dw = Math.max(3, Math.round(fw * 0.2));
+  const dx = Math.round(apexX - dw / 2);
+  g.rect(dx - 1, gy - Math.round(wh * 0.5), dw + 2, Math.round(wh * 0.5), 'bm').rect(dx, gy - Math.round(wh * 0.5) + 1, dw - 1, Math.round(wh * 0.5) - 2, 'wdD');
+  for (let j = 0; j <= gh; j++) {
+    const half = Math.round((fw / 2 + 1) * (j / gh));
+    const y = apexY + j;
+    g.hline(Math.round(apexX - half), y, half * 2, j % 3 === 0 ? 'wdD' : 'wd');
+    g.set(Math.round(apexX - half) - 1, y, 'rimD').set(Math.round(apexX + half), y, 'rim');
+  }
+  g.rect(Math.round(apexX) - 1, apexY + Math.round(gh * 0.5), 3, 3, 'dk');
+  const cc = Math.round(apexX + (vx - apexX) * 0.12 + step * fw * 0.15);
+  const cTop = Math.round(toward(apexX, apexY, cc) - (4 + d * 8));
+  const cH = Math.round(6 + d * 10);
+  g.rect(cc, cTop, Math.max(2, Math.round(2 + d * 3)), cH, 'st').vline(cc, cTop, cH, 'rimD');
+  if (r() < 0.45) smoke.push([cc + 1, cTop - 2]);
+  if (r() < 0.6) {
+    const bx = Math.round(apexX + (vx - apexX) * (0.05 + r() * 0.15));
+    const by = Math.round(toward(apexX, apexY, bx)) - 2;
+    g.rect(bx, by, 2, 2, 'ir').set(bx + 2, by, 'ir').set(bx - 1, by + 1, 'ir');
+  }
+  g.line(fx + 1, top + 1, fx + 4, top + 1, 1, 'web').line(fx + 1, top + 1, fx + 1, top + 4, 1, 'web').set(fx + 2, top + 2, 'web');
   return { lights, smoke };
 }
 
-/** A dark tree, shaded from the top, a red rim on its crown. */
-function darkTree(g: Grid, r: () => number, x: number, y: number, h: number, w: number): void {
-  const trunkH = Math.round(h * 0.36);
-  g.rect(x - 1, y - trunkH, 3, trunkH, 'tr').vline(x - 1, y - trunkH, trunkH, 'trL').set(x - 2, y - 1, 'tr').set(x + 2, y - 1, 'tr');
-  const cy = y - trunkH - Math.round((h - trunkH) * 0.45);
-  const rx = w / 2;
-  const ry = (h - trunkH) / 2 + 1;
-  g.ellipse(x, cy, rx, ry, 'lf');
-  g.ellipse(x - rx * 0.55, cy + ry * 0.2, rx * 0.5, ry * 0.6, 'lf');
-  g.ellipse(x + rx * 0.5, cy + ry * 0.15, rx * 0.5, ry * 0.65, 'lf');
-  g.ellipse(x, cy - ry * 0.2, rx * 0.72, ry * 0.65, 'lfM');
-  g.ellipse(x - rx * 0.2, cy - ry * 0.45, rx * 0.42, ry * 0.35, 'lfL');
-  for (let i = 0; i < Math.round(w * 0.4); i++) g.set(x - Math.round(rx * 0.5) + Math.floor(r() * rx), cy - Math.round(ry * 0.8) + Math.floor(r() * ry * 0.5), 'lfH');
-  for (let i = 0; i < Math.round(w * 0.5); i++) {
-    const a = -Math.PI * (0.15 + r() * 0.7);
-    g.set(Math.round(x + Math.cos(a) * rx * 0.95), Math.round(cy + Math.sin(a) * ry * 0.95), 'rimD');
-  }
-  for (let i = 0; i < Math.round(w * 0.7); i++) {
-    const a = r() * Math.PI * 2;
-    g.set(Math.round(x + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), 'lf');
-  }
-}
-
-/** A bare, crooked tree (Axew's training tree, the woods' edge). */
-function bareTree(g: Grid, r: () => number, x: number, y: number, h: number): void {
-  const branch = (bx: number, by: number, angle: number, length: number, width: number, depth: number) => {
+/** A dead tree: crooked trunk, bare branches, a red rim on its upper side. */
+function deadTree(g: Grid, r: () => number, x: number, y: number, h: number, width = 4): void {
+  const branch = (bx: number, by: number, angle: number, length: number, wdt: number, depth: number) => {
     const ex = bx + Math.cos(angle) * length;
     const ey = by - Math.sin(angle) * length;
-    g.line(bx, by, ex, ey, width, 'tr');
-    if (width > 1) g.line(bx - 1, by, ex - 1, ey, 1, 'trL');
+    g.line(bx, by, ex, ey, wdt, 'tr');
+    if (wdt > 2) g.line(bx, by - 1, ex, ey - 1, 1, 'trR');
     if (depth === 0) return;
     const n = 2 + Math.floor(r() * 2);
-    for (let j = 0; j < n; j++) branch(ex, ey, angle + (r() - 0.5) * 1.6, length * (0.55 + r() * 0.25), Math.max(1, width - 1), depth - 1);
+    for (let j = 0; j < n; j++) branch(ex, ey, angle + (r() - 0.5) * 1.7, length * (0.55 + r() * 0.25), Math.max(1, wdt - 1), depth - 1);
   };
-  branch(x, y, Math.PI / 2 + (r() - 0.5) * 0.2, h * 0.42, 4, 4);
+  branch(x, y, Math.PI / 2 + (r() - 0.5) * 0.25, h * 0.4, width, 4);
 }
 
-function lampPost(g: Grid, x: number, y: number, h: number): Light {
-  g.vline(x, y - h, h, 'bmL').vline(x + 1, y - h + 2, h - 2, 'ir').hline(x - 1, y - 1, 3, 'bmL');
-  g.rect(x - 1, y - h - 3, 3, 3, 'glH').hline(x - 2, y - h - 4, 5, 'ir').set(x, y - h - 5, 'ir');
-  return amber(x + 0.5, y - h - 1.5, 14, 0.6, 0.45);
+function grave(g: Grid, r: () => number, x: number, y: number, s: number): void {
+  const tall = Math.round((5 + r() * 5) * s);
+  const u = Math.max(1, Math.round(s));
+  if (r() < 0.5) {
+    g.rect(x, y - tall - 2, Math.max(1, Math.round(2 * s)), tall + 2, 'st').rect(x - 2 * u, y - tall, 6 * u, Math.max(1, Math.round(2 * s)), 'st').set(x, y - tall - 2, 'rimD');
+  } else {
+    g.rect(x - 2 * u, y - tall, 6 * u, tall, 'st').hline(x - u, y - tall - 1, 4 * u, 'stL').hline(x - u, y - tall - 1, 2 * u, 'rimD');
+  }
+  g.hline(x - 3 * u, y, 8 * u, 'gr');
 }
 
-/** Mimikyu's gacha stall: a counter, a striped violet awning, a hanging lantern, crates. */
-function stall(g: Grid, cx: number, y: number): Built {
+/** Mimikyu's stall: a torn violet awning, a counter of capsules, one lantern. */
+function stall(g: Grid, cx: number, y: number): Light {
   const w = 30;
   const x = cx - w / 2;
-  g.rect(x + 1, y - 18, 2, 18, 'wdD').rect(x + w - 3, y - 18, 2, 18, 'wdD');
-  for (let k = 0; k < w + 4; k += 4) g.rect(x - 2 + k, y - 22, 4, 5, (k / 4) % 2 ? 'vi' : 'viD');
-  for (let k = 0; k < w + 4; k += 4) g.rect(x - 1 + k, y - 17, 2, 1, (k / 4) % 2 ? 'vi' : 'viD');
-  g.hline(x - 2, y - 23, w + 4, 'viL').hline(x - 2, y - 23, 6, 'rim');
+  g.rect(x + 1, y - 18, 2, 18, 'wdD').rect(x + w - 3, y - 20, 2, 20, 'wdD');
+  for (let k = 0; k < w + 2; k += 3) g.rect(x - 1 + k, y - 23, 3, 4 + ((k * 7) % 5), (k / 3) % 2 ? 'vi' : 'viL');
+  g.hline(x - 1, y - 24, w + 2, 'rimD').hline(x - 1, y - 24, 8, 'rim');
   g.rect(x + 2, y - 8, w - 4, 8, 'wd').hline(x + 2, y - 8, w - 4, 'wdL').rect(x + 2, y - 2, w - 4, 2, 'wdD');
-  // Capsules on the counter.
-  for (let i = 0; i < 5; i++) g.rect(x + 5 + i * 4, y - 11, 3, 3, i % 2 ? 'viH' : 'vi').set(x + 5 + i * 4, y - 11, 'glH');
-  g.rect(x + w - 6, y - 15, 3, 4, 'viH').set(x + w - 5, y - 16, 'ir');
-  g.rect(x - 7, y - 6, 6, 6, 'wd').hline(x - 7, y - 6, 6, 'wdL').line(x - 7, y - 6, x - 2, y - 1, 1, 'wdD');
-  return { lights: [{ x: x + w - 4.5, y: y - 13, r: 18, color: '#b98aff', op: 0.6, flicker: 0.3 }], smoke: [] };
+  for (let i = 0; i < 5; i++) g.rect(x + 5 + i * 4, y - 11, 3, 3, i % 2 ? 'viH' : 'vi');
+  g.rect(x + w - 6, y - 16, 3, 4, 'viH').set(x + w - 5, y - 17, 'ir');
+  g.line(x + 3, y - 14, x + 10, y - 14, 1, 'web');
+  return { x: x + w - 4.5, y: y - 14, r: 22, color: '#b98aff', op: 0.6, flicker: 0.35 };
 }
 
-/** Poochyena's forge: squat stone, a glowing arch, an anvil, a tall chimney. */
-function forge(g: Grid, cx: number, y: number): Built {
-  const w = 32;
-  const h = 16;
-  const x = cx - w / 2;
-  const b = cottage(g, () => 0.9, x, y, w, h, 'rb', -1, { stone: true });
-  g.rect(cx - 6, y - 11, 12, 11, 'bm');
-  g.rect(cx - 5, y - 10, 10, 10, 'fo').rect(cx - 3, y - 8, 6, 6, 'foH');
-  g.rect(cx + 9, y - 5, 7, 2, 'ir').rect(cx + 11, y - 3, 3, 3, 'ir').set(cx + 9, y - 5, 'stL');
-  return { lights: [...b.lights, { x: cx, y: y - 6, r: 26, color: '#ff7a28', op: 0.75, flicker: 0.6 }], smoke: b.smoke };
+/** The storyteller's notice board: tattered papers, one candle. */
+function board(g: Grid, cx: number, y: number): Light {
+  g.rect(cx - 10, y - 17, 20, 12, 'wd').rect(cx - 9, y - 16, 18, 10, 'wdD');
+  g.rect(cx - 8, y - 15, 4, 6, 'pa').rect(cx - 3, y - 15, 5, 4, 'paD').rect(cx + 3, y - 14, 4, 6, 'pa').set(cx - 7, y - 12, 'rimD');
+  g.hline(cx - 11, y - 18, 22, 'rr').hline(cx - 11, y - 18, 5, 'rim');
+  g.rect(cx - 9, y - 5, 2, 5, 'wdD').rect(cx + 7, y - 5, 2, 5, 'wdD');
+  g.rect(cx + 11, y - 4, 2, 4, 'pa').set(cx + 11, y - 5, 'glH');
+  return candle(cx + 11.5, y - 5, 12, 0.7);
 }
 
-function board(g: Grid, cx: number, y: number): void {
-  g.rect(cx - 9, y - 16, 18, 11, 'wd').rect(cx - 8, y - 15, 16, 9, 'wdD');
-  g.rect(cx - 7, y - 14, 4, 5, 'pa').rect(cx - 2, y - 14, 5, 3, 'pa').rect(cx + 4, y - 13, 3, 5, 'paD').set(cx - 6, y - 12, 'rimD');
-  g.hline(cx - 10, y - 17, 20, 'rrL').hline(cx - 11, y - 18, 22, 'rr').hline(cx - 10, y - 18, 4, 'rim');
-  g.rect(cx - 8, y - 5, 2, 5, 'wdD').rect(cx + 6, y - 5, 2, 5, 'wdD');
+/** A crooked lantern post; unlit ones stay dark. */
+function lantern(g: Grid, x: number, y: number, hgt: number, lit: boolean): Light | null {
+  g.line(x, y, x + 1, y - hgt, 1, 'tr').hline(x + 1, y - hgt, 4, 'tr').vline(x + 4, y - hgt, 2, 'ir');
+  g.rect(x + 3, y - hgt + 2, 3, 3, lit ? 'glH' : 'dk').hline(x + 3, y - hgt + 1, 3, 'ir');
+  return lit ? candle(x + 4.5, y - hgt + 3.5, 14, 0.65) : null;
 }
 
-function waystone(g: Grid, cx: number, y: number): Light {
-  g.rect(cx - 4, y - 22, 8, 22, 'st').vline(cx - 4, y - 22, 22, 'stL').rect(cx - 3, y - 25, 6, 3, 'st').rect(cx - 2, y - 26, 4, 1, 'stL');
-  g.vline(cx, y - 19, 12, 'te').hline(cx - 2, y - 15, 5, 'te').set(cx - 1, y - 11, 'teD').set(cx + 1, y - 11, 'teD');
-  g.rect(cx - 6, y - 2, 12, 2, 'stD');
-  return { x: cx, y: y - 14, r: 20, color: '#5fd0e8', op: 0.5, flicker: 0.1 };
-}
-
-function easel(g: Grid, cx: number, y: number): void {
-  g.line(cx - 5, y, cx, y - 18, 1, 'wd').line(cx + 5, y, cx, y - 18, 1, 'wd').line(cx, y - 18, cx + 2, y, 1, 'wdD');
-  g.rect(cx - 6, y - 16, 12, 9, 'ca').rect(cx - 5, y - 15, 4, 3, 'rr').rect(cx - 1, y - 13, 5, 3, 'te').rect(cx + 2, y - 15, 3, 2, 'fo');
-  g.hline(cx - 7, y - 7, 14, 'wdL');
-}
-
-/** The porch blanket where Abra sleeps, by the stone house. */
-function blanket(g: Grid, cx: number, y: number): void {
-  g.ellipse(cx, y - 1, 8, 2, 'bl').ellipse(cx - 2, y - 2, 4, 1, 'blL');
-}
-
-/** The far horizon: Lookout Pass and its bridge, the crater under the eclipse, the Black Lake and its hamlet, woods. */
+/** The far horizon: Lookout Pass and its last bridge, the crater under the sun, the Black Lake, a dead wood. */
 function horizon(g: Grid, r: () => number, w: number, h: number): Light[] {
   const hy = Math.round(h * HORIZON);
   const cx = Math.round(w / 2);
   const lights: Light[] = [];
   const ctx = g.ctx;
-  // Distant range.
-  ctx.fillStyle = '#14060b';
-  let y = hy - 18;
+  ctx.fillStyle = '#12050a';
+  let y = hy - 16;
   for (let x = 0; x < w; x++) {
     y += (r() - 0.5) * 2.2;
-    y = Math.max(hy - 30, Math.min(hy - 10, y));
+    y = Math.max(hy - 28, Math.min(hy - 8, y));
     ctx.fillRect(x, Math.round(y + Math.sin(x / 23) * 4), 1, hy);
   }
-  // Lookout Pass: cliffs, the chasm, the last bridge, the watchtower.
-  ctx.fillStyle = '#1a080e';
-  const chasm = Math.round(w * 0.17);
-  for (let x = 0; x < w * 0.34; x++) {
+  ctx.fillStyle = '#18070d';
+  const chasm = Math.round(w * 0.16);
+  for (let x = 0; x < w * 0.32; x++) {
     if (Math.abs(x - chasm) < 4) continue;
-    const top = hy - 8 - Math.round(Math.sin(x / 9) * 2 + r() * 3 + (x < w * 0.1 ? 7 : 0));
+    const top = hy - 7 - Math.round(Math.sin(x / 9) * 2 + r() * 3 + (x < w * 0.09 ? 7 : 0));
     ctx.fillRect(x, top, 1, hy - top + 1);
   }
-  g.hline(chasm - 6, hy - 8, 12, 'wdD');
-  for (let k = -6; k <= 6; k += 3) g.vline(chasm + k, hy - 8, 2, 'wdD');
-  const tower = Math.round(w * 0.07);
-  g.rect(tower, hy - 30, 4, 22, 'stD').rect(tower - 1, hy - 32, 6, 2, 'stD');
-  g.rect(tower + 1, hy - 27, 2, 2, 'fo');
-  lights.push({ x: tower + 2, y: hy - 26, r: 10, color: '#ff8a3d', op: 0.5, flicker: 0.4 });
-  // The Eclipse Crater right under the sun, its pit glowing.
-  ctx.fillStyle = '#20090f';
+  g.hline(chasm - 6, hy - 7, 12, 'wdD');
+  const tower = Math.round(w * 0.06);
+  g.rect(tower, hy - 28, 4, 21, 'stD').rect(tower - 1, hy - 30, 6, 2, 'stD').set(tower + 1, hy - 25, 'rimD');
+  ctx.fillStyle = '#1c070d';
   const span = w * 0.2;
   for (let x = Math.round(cx - span); x <= cx + span; x++) {
-    const d = Math.abs(x - cx) / span;
-    const top = hy - Math.round((1 - d * d) * 18) + (d < 0.22 ? Math.round((0.22 - d) * 18) : 0);
+    const dd = Math.abs(x - cx) / span;
+    const top = hy - Math.round((1 - dd * dd) * 17) + (dd < 0.22 ? Math.round((0.22 - dd) * 18) : 0);
     ctx.fillRect(x, top, 1, hy - top + 1);
   }
-  g.hline(Math.round(cx - span * 0.2), hy - 15, Math.round(span * 0.4), 'rim');
-  lights.push({ x: cx, y: hy - 14, r: 36, color: '#e8283a', op: 0.45, flicker: 0.15 });
-  // The Black Lake, ice that mirrors nothing, and the hamlet past it.
-  const lx = Math.round(w * 0.66);
-  const lw = Math.round(w * 0.3);
-  ctx.fillStyle = '#030204';
+  g.hline(Math.round(cx - span * 0.2), hy - 14, Math.round(span * 0.4), 'rim');
+  lights.push({ x: cx, y: hy - 13, r: 40, color: '#e8283a', op: 0.55, flicker: 0.12 });
+  const lx = Math.round(w * 0.68);
+  const lw = Math.round(w * 0.28);
+  ctx.fillStyle = '#020103';
   for (let k = 0; k < 6; k++) ctx.fillRect(lx + k * 3, hy - 1 + Math.floor(k / 2), lw - k * 6, 1);
-  ctx.fillStyle = 'rgba(180, 190, 220, 0.14)';
-  ctx.fillRect(lx + 8, hy, lw - 30, 1);
-  for (let i = 0; i < 6; i++) {
-    const hx = Math.round(w * 0.71 + i * w * 0.04);
-    g.rect(hx, hy - 7, 7, 6, 'plD').rect(hx - 1, hy - 8, 9, 1, 'rrD').set(hx + 3, hy - 9, 'rrD');
-    if (r() > 0.3) {
-      g.set(hx + 2, hy - 5, 'gl');
-      lights.push(amber(hx + 2.5, hy - 4.5, 5, 0.35, 0.1));
-    }
-  }
-  // Woods along the horizon on both sides: a dark, ragged tree line.
-  for (const [x0, x1] of [[0, w * 0.3], [w * 0.7, w]] as const) {
-    for (let x = x0; x < x1; x += 3 + r() * 4) darkTree(g, r, Math.round(x), hy + 1, 9 + r() * 8, 6 + r() * 5);
+  for (let x = 0; x < w; x += 2 + r() * 5) {
+    if (Math.abs(x - cx) < span * 1.05) continue;
+    const t = 5 + r() * 9;
+    g.line(Math.round(x), hy, Math.round(x + (r() - 0.5) * 2), Math.round(hy - t), 1, 'tr');
+    if (r() < 0.5) g.line(Math.round(x), Math.round(hy - t * 0.6), Math.round(x + (r() < 0.5 ? -2 : 2)), Math.round(hy - t * 0.8), 1, 'tr');
   }
   return lights;
 }
 
-/** The ground in perspective: earth, furrows towards the crater, the cobbled road, grass on the lawns. */
+/** The ground: dead grass, the mud road to the crater with ruts and red puddles. */
 function ground(g: Grid, r: () => number, w: number, h: number): void {
   const ctx = g.ctx;
   const hy = Math.round(h * HORIZON);
   const cx = Math.round(w / 2);
   const earth = ctx.createLinearGradient(0, hy, 0, h);
-  earth.addColorStop(0, '#2a0d12');
-  earth.addColorStop(0.25, '#170809');
-  earth.addColorStop(1, '#070304');
+  earth.addColorStop(0, '#24090f');
+  earth.addColorStop(0.3, '#130709');
+  earth.addColorStop(1, '#050203');
   ctx.fillStyle = earth;
   ctx.fillRect(0, hy, w, h - hy);
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 500; i++) {
     const y = hy + Math.floor(Math.pow(r(), 0.7) * (h - hy));
     g.set(Math.floor(r() * w), y, r() < 0.5 ? 'gr' : 'grL');
   }
-  for (let i = 1; i < 14; i++) {
-    const y = hy + Math.round((h - hy) * Math.pow(i / 14, 1.9));
-    ctx.fillStyle = `rgba(232, 40, 58, ${0.045 * (1 - i / 14) + 0.012})`;
-    ctx.fillRect(0, y, w, 1);
-  }
-  // The road, cobbled, widening towards us.
   for (let y = hy; y < h; y++) {
     const d = (y - hy) / (h - hy);
-    const half = 2 + d * w * 0.15;
-    ctx.fillStyle = d < 0.12 ? '#2a1a18' : '#201718';
-    ctx.fillRect(Math.round(cx - half), y, Math.round(half * 2), 1);
-    if (d > 0.1) {
-      const step = Math.max(2, Math.round(2 + d * 6));
-      for (let x = Math.round(cx - half) + ((y % 2) * step) / 2; x < cx + half - 1; x += step) g.set(Math.round(x), y, r() < 0.3 ? 'coH' : 'coL');
-    }
-    ctx.fillStyle = 'rgba(255, 138, 61, 0.05)';
-    ctx.fillRect(Math.round(cx - half * 0.25), y, Math.round(half * 0.5), 1);
+    const half = w * roadHalfFrac(d);
+    g.hline(Math.round(cx - half), y, Math.round(half * 2), d < 0.1 ? 'mudL' : 'mud');
+    g.set(Math.round(cx - half * 0.45), y, 'mudL').set(Math.round(cx + half * 0.45), y, 'mudL');
+  }
+  for (let i = 0; i < 9; i++) {
+    const d = 0.1 + r() * 0.85;
+    const y = Math.round(hy + d * (h - hy));
+    const half = w * roadHalfFrac(d);
+    const px = Math.round(cx + (r() - 0.5) * half * 1.4);
+    const pw = Math.round(3 + d * 14);
+    g.ellipse(px, y, pw, Math.max(1, Math.round(pw * 0.22)), 'pud').hline(px - Math.round(pw * 0.4), y, Math.round(pw * 0.5), 'pudL');
   }
 }
 
 export interface HavenLayers {
-  /** Sky and stars: drawn first, then the animated eclipse over it. */
   sky: HTMLCanvasElement;
-  /** Everything from the horizon down, transparent above it. */
   land: HTMLCanvasElement;
-  /** The edges' darkening, drawn last. */
   vignette: HTMLCanvasElement;
   lights: Light[];
   smoke: [number, number][];
@@ -347,79 +344,75 @@ export function buildHaven(w: number, h: number): HavenLayers {
   const [vignette, vctx] = layer(w, h);
   const lights: Light[] = [];
   const smoke: [number, number][] = [];
-  const at = (id: string) => ({ x: Math.round(HAVEN_PROPS[id]!.x * w), y: Math.round(HAVEN_PROPS[id]!.y * h) });
   if (sctx) {
     const grad = sctx.createLinearGradient(0, 0, 0, h * HORIZON);
     grad.addColorStop(0, '#000000');
-    grad.addColorStop(0.6, '#0a030a');
-    grad.addColorStop(1, '#2c0811');
+    grad.addColorStop(0.55, '#08020a');
+    grad.addColorStop(1, '#2a0810');
     sctx.fillStyle = grad;
     sctx.fillRect(0, 0, w, Math.ceil(h * HORIZON) + 1);
     const r = seeded(11);
-    for (let i = 0; i < 160; i++) {
-      sctx.fillStyle = `rgba(220, 225, 255, ${0.15 + r() * 0.45})`;
+    for (let i = 0; i < 140; i++) {
+      sctx.fillStyle = `rgba(220, 225, 255, ${0.12 + r() * 0.38})`;
       sctx.fillRect(Math.floor(r() * w), Math.floor(r() * h * HORIZON * 0.9), 1, 1);
     }
   }
   if (lctx) {
     const g = new Grid(lctx, HAVEN_PAL);
-    const r = seeded(23);
+    const r = seeded(31);
+    const hy = Math.round(h * HORIZON);
+    const vx = Math.round(w / 2);
+    const vy = hy - 6;
     lights.push(...horizon(g, r, w, h));
     ground(g, r, w, h);
-    const hy = Math.round(h * HORIZON);
-    const cx = Math.round(w / 2);
-    // Back row of cottages framing the road, the crater between them.
-    const backY = Math.round(h * 0.615);
-    for (const [fx, cw, ch, roof, side] of [
-      [0.25, 48, 30, 'rr', 1],
-      [0.385, 34, 20, 'rm', 1],
-      [0.615, 36, 21, 'rr', -1],
-      [0.735, 46, 28, 'rb', -1],
-    ] as const) {
-      const b = cottage(g, r, Math.round(fx * w - cw / 2), backY, cw, ch, roof, side);
-      lights.push(...b.lights);
-      smoke.push(...b.smoke);
+    const at = (id: string) => ({ x: Math.round(HAVEN_PROPS[id]!.x * w), y: Math.round(HAVEN_PROPS[id]!.y * h) });
+    // Far to near, so nearer things overlap farther ones; props slot in at their depth.
+    const items: { depth: number; draw: () => void }[] = HAVEN_HOUSES.map((spec) => ({
+      depth: spec.depth,
+      draw: () => {
+        const b = house(g, r, spec, w, h, vx, vy);
+        lights.push(...b.lights);
+        smoke.push(...b.smoke);
+      },
+    }));
+    items.push({ depth: 0.38, draw: () => lights.push(stall(g, at('stall').x, at('stall').y)) });
+    items.push({ depth: 0.3, draw: () => lights.push(board(g, at('board').x, at('board').y)) });
+    items.push({
+      depth: 0.12,
+      draw: () => {
+        const x = Math.round(w * (0.5 - roadHalfFrac(0.12) - 0.015));
+        const y = Math.round(groundFrac(0.12) * h);
+        g.rect(x - 2, y - 14, 4, 14, 'st').vline(x - 2, y - 14, 14, 'stL').vline(x, y - 11, 7, 'te').set(x - 2, y - 14, 'rimD');
+        lights.push({ x, y: y - 8, r: 10, color: '#4fb8cf', op: 0.4, flicker: 0.08 });
+      },
+    });
+    for (const [d, side, lit] of [[0.25, -1, true], [0.55, 1, false], [0.7, -1, true]] as const) {
+      items.push({
+        depth: d,
+        draw: () => {
+          const x = Math.round(w * (0.5 + side * (roadHalfFrac(d) + 0.006)));
+          const l = lantern(g, x, Math.round(groundFrac(d) * h), Math.round(10 + d * 26), lit);
+          if (l) lights.push(l);
+        },
+      });
     }
-    // Dark trees between and behind the houses.
-    for (const fx of [0.18, 0.32, 0.455, 0.545, 0.675, 0.83]) darkTree(g, r, Math.round(fx * w), backY + 2, 26 + r() * 10, 16 + r() * 8);
-    const stone = at('stoneHouse');
-    const sb = cottage(g, r, stone.x - 21, stone.y, 42, 22, 'rb', -1, { stone: true });
-    lights.push(...sb.lights);
-    smoke.push(...sb.smoke);
-    const bl = at('stoneHouse');
-    blanket(g, bl.x - 30, bl.y + 9);
-    const bd = at('board');
-    board(g, bd.x, bd.y);
-    const ws = at('waystone');
-    lights.push(waystone(g, ws.x, ws.y));
-    const st = at('stall');
-    const sl = stall(g, st.x, st.y);
-    lights.push(...sl.lights);
-    const fg = at('forge');
-    const fb = forge(g, fg.x, fg.y);
-    lights.push(...fb.lights);
-    smoke.push(...fb.smoke);
-    const tt = at('trainingTree');
-    bareTree(g, r, tt.x + 6, tt.y, Math.round(h * 0.24));
-    const es = at('easel');
-    easel(g, es.x, es.y);
-    // Lamps along the road, in perspective.
-    for (let i = 0; i < 5; i++) {
-      const d = 0.15 + i * 0.19;
-      const y = hy + Math.round((h - hy) * d);
-      const half = 2 + d * w * 0.15;
-      const pole = Math.round(8 + d * 18);
-      for (const side of [-1, 1] as const) lights.push(lampPost(g, Math.round(cx + side * (half + 3 + d * 6)), y, pole));
+    for (let i = 0; i < 14; i++) {
+      const d = 0.15 + r() * 0.8;
+      const side = r() < 0.5 ? -1 : 1;
+      const xf = 0.5 + side * (roadHalfFrac(d) + 0.02 + r() * 0.08);
+      items.push({ depth: d, draw: () => grave(g, r, Math.round(xf * w), Math.round(groundFrac(d) * h), 0.6 + d * 0.9) });
     }
-    // Near woods at both edges, the darkest things on screen.
-    for (const [fx, fy] of [[0.04, 0.9], [0.12, 0.97], [0.9, 0.93], [0.97, 0.88]] as const) darkTree(g, r, Math.round(fx * w), Math.round(fy * h), 70 + r() * 20, 40 + r() * 12);
-    bareTree(g, r, Math.round(w * 0.08), Math.round(h * 0.8), Math.round(h * 0.42));
+    items.sort((a, b) => a.depth - b.depth).forEach((it) => it.draw());
+    deadTree(g, r, Math.round(w * 0.05), h, Math.round(h * 0.75), 6);
+    deadTree(g, r, Math.round(w * 0.96), h, Math.round(h * 0.7), 6);
+    deadTree(g, r, Math.round(w * 0.16), Math.round(h * 0.7), Math.round(h * 0.35), 3);
+    deadTree(g, r, Math.round(w * 0.86), Math.round(h * 0.68), Math.round(h * 0.33), 3);
   }
   if (vctx) {
     const cxv = w / 2;
-    const v = vctx.createRadialGradient(cxv, h * 0.45, Math.min(w, h) * 0.35, cxv, h * 0.45, Math.max(w, h) * 0.75);
+    const v = vctx.createRadialGradient(cxv, h * 0.42, Math.min(w, h) * 0.3, cxv, h * 0.42, Math.max(w, h) * 0.72);
     v.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    v.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+    v.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
     vctx.fillStyle = v;
     vctx.fillRect(0, 0, w, h);
   }

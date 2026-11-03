@@ -1,25 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { HAVEN_PROPS } from '../../src/ui/dusk-haven';
+import { HAVEN_HOUSES, HAVEN_PROPS } from '../../src/ui/dusk-haven';
 import { TOWN_RESIDENTS } from '../../src/ui/town-walkers';
 
-/** Every resident keeps to its place in the town (docs/gdd.md "El mundo"): in front of its prop, on the ground. */
+/** Dusk Haven on the title (odd/tasks/title-hub.md T9; docs/gdd.md "El mundo"). */
 describe('Dusk Haven layout', () => {
-  it('ties every grounded resident to a prop of the scene, standing just in front of it', () => {
+  it('ties every resident to its prop, standing just in front of it', () => {
     for (const r of TOWN_RESIDENTS) {
-      if (!r.prop) continue;
-      const prop = HAVEN_PROPS[r.prop]!;
+      const prop = HAVEN_PROPS[r.prop ?? '']!;
       expect(prop, `${r.id} -> ${r.prop}`).toBeDefined();
-      const cx = (r.area.x0 + r.area.x1) / 2;
-      expect(Math.abs(cx - prop.x), r.id).toBeLessThan(0.07);
-      // In front means on the ground row of the prop or a little nearer (lower on screen), never behind it.
+      expect(Math.abs((r.area.x0 + r.area.x1) / 2 - prop.x), r.id).toBeLessThan(0.07);
       expect(r.area.y0, r.id).toBeGreaterThanOrEqual(prop.y - 0.005);
       expect(r.area.y1, r.id).toBeLessThan(prop.y + 0.08);
     }
+    expect(TOWN_RESIDENTS.find((r) => r.id === 'mimikyu')?.prop).toBe('stall');
+    expect(TOWN_RESIDENTS.find((r) => r.id === 'gastly')?.prop).toBe('board');
   });
 
-  it('places the props of the lore: stall, forge, stone house, board, waystone, easel, training tree', () => {
-    for (const id of ['stall', 'forge', 'stoneHouse', 'board', 'waystone', 'easel', 'trainingTree']) expect(HAVEN_PROPS[id], id).toBeDefined();
-    const tied = TOWN_RESIDENTS.filter((r) => r.prop).map((r) => r.id);
-    for (const id of ['mimikyu', 'poochyena', 'abra', 'smeargle', 'axew', 'gastly']) expect(tied, id).toContain(id);
+  it('lines the road with houses in perspective: nearer rows lower and larger, on both sides', () => {
+    for (const side of [-1, 1] as const) {
+      const row = HAVEN_HOUSES.filter((h) => h.side === side).sort((a, b) => a.depth - b.depth);
+      expect(row.length, `side ${side}`).toBeGreaterThanOrEqual(3);
+      for (let i = 1; i < row.length; i++) expect(row[i]!.depth).toBeGreaterThan(row[i - 1]!.depth);
+    }
   });
 });

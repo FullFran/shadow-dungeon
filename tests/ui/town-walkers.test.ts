@@ -4,8 +4,9 @@ import { directionRow, TOWN_RESIDENTS, walkerAt } from '../../src/ui/town-walker
 
 /** The residents walking the title's Dusk Haven (odd/tasks/title-hub.md T5). */
 describe('town walkers', () => {
-  it('every resident has its idle and walk sheets', () => {
-    expect(TOWN_RESIDENTS.length).toBeGreaterThanOrEqual(6);
+  // Owner, 2026-11-03: "pon solo al mimikyu y al ghastly".
+  it('only Mimikyu and Gastly walk the town, each with its idle and walk sheets', () => {
+    expect(TOWN_RESIDENTS.map((r) => r.id).sort()).toEqual(['gastly', 'mimikyu']);
     for (const r of TOWN_RESIDENTS) {
       expect(SPRITES.sprites[r.sprite]?.anims.Idle, r.id).toBeDefined();
       expect(SPRITES.sprites[r.sprite]?.anims.Walk, r.id).toBeDefined();

@@ -1,12 +1,10 @@
 import { SPRITE_KEYS } from '../data/sprites';
 
 /**
- * The residents of Dusk Haven walking the title's backdrop (odd/tasks/title-hub.md
- * T5; docs/gdd.md "El mundo"): each one keeps to its corner of the town, as in
- * the town map: Mimikyu by the gacha stall, Poochyena by the forge, Gastly the
- * storyteller, Smeargle on the west lawn, Axew training by its tree, Abra asleep
- * by the stone house, Drifloon drifting over the roofs. Positions are a pure
- * function of time (stroll to a seeded point, rest, again), in 0..1 canvas units.
+ * The residents of Dusk Haven walking the title's backdrop (odd/tasks/title-hub.md T5;
+ * docs/gdd.md "El mundo"): Mimikyu by its gacha stall and Gastly the storyteller by the
+ * notice board, each keeping to its corner. Positions are a pure function of time
+ * (stroll to a seeded point, rest, again), in 0..1 canvas units.
  */
 export interface Resident {
   id: string;
@@ -21,14 +19,11 @@ export interface Resident {
   restDir?: number;
 }
 
+// Owner, 2026-11-03: only Mimikyu (its gacha stall) and Gastly (the storyteller, by the board).
+// Owner, 2026-11-03: only Mimikyu (its gacha stall) and Gastly (the storyteller, by the board).
 export const TOWN_RESIDENTS: readonly Resident[] = [
-  { id: 'mimikyu', sprite: SPRITE_KEYS.mimikyu, prop: 'stall', area: { x0: 0.31, x1: 0.35, y0: 0.705, y1: 0.72 } },
-  { id: 'poochyena', sprite: SPRITE_KEYS.poochyena, prop: 'forge', area: { x0: 0.655, x1: 0.69, y0: 0.705, y1: 0.72 } },
-  { id: 'gastly', sprite: SPRITE_KEYS.gastly, prop: 'board', area: { x0: 0.37, x1: 0.43, y0: 0.7, y1: 0.74 }, float: 10 },
-  { id: 'smeargle', sprite: SPRITE_KEYS.smeargle, prop: 'easel', area: { x0: 0.225, x1: 0.27, y0: 0.805, y1: 0.82 } },
-  { id: 'axew', sprite: SPRITE_KEYS.axew, prop: 'trainingTree', area: { x0: 0.62, x1: 0.66, y0: 0.795, y1: 0.81 } },
-  { id: 'abra', sprite: SPRITE_KEYS.abra, prop: 'stoneHouse', area: { x0: 0.745, x1: 0.745, y0: 0.66, y1: 0.66 }, restDir: 0 },
-  { id: 'drifloon', sprite: SPRITE_KEYS.drifloon, area: { x0: 0.22, x1: 0.36, y0: 0.6, y1: 0.6 }, float: 90 },
+  { id: 'mimikyu', sprite: SPRITE_KEYS.mimikyu, prop: 'stall', area: { x0: 0.375, x1: 0.42, y0: 0.73, y1: 0.75 } },
+  { id: 'gastly', sprite: SPRITE_KEYS.gastly, prop: 'board', area: { x0: 0.57, x1: 0.63, y0: 0.7, y1: 0.73 }, float: 12 },
 ];
 
 /** Deterministic 0..1 hash of an integer. */
