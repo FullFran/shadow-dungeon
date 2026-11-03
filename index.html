@@ -35,13 +35,22 @@
       input, button { font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0, 'dlig' 0; }
 
       /* ---- UI components (src/ui): window and cursor list; tokens come from src/ui/tokens.ts ---- */
-      .md-window { position: relative; box-sizing: border-box; padding: 22px 24px 18px; border: 3px solid var(--md-border); border-radius: 12px;
-        background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom));
-        box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade), 0 9px 0 3px rgba(0, 0, 0, 0.4);
+      /* The relic slab (.agents/DESIGN.md §4, 2026-11-03): dark stone, an old-gold hairline frame with a bevel, gilt corner studs
+         and a faint warm light from the top where the eclipse touches it. Every window and overlay of the game uses it. */
+      .md-window { position: relative; box-sizing: border-box; padding: 22px 24px 18px; border: 2px solid var(--md-border); border-radius: 6px;
+        background: radial-gradient(120% 60% at 50% 0%, rgba(255, 138, 61, 0.07), transparent 60%), linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom));
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 0 0 2px rgba(5, 4, 7, 0.85), inset 0 0 0 3px var(--md-border-shade), inset 0 0 40px rgba(0, 0, 0, 0.55), 0 10px 0 2px rgba(0, 0, 0, 0.45), 0 0 40px rgba(0, 0, 0, 0.6);
         animation: md-open var(--md-open-ms, 120ms) ease-out both; transform-origin: 50% 40%; text-align: left; }
+      .md-window::after { content: ''; position: absolute; inset: -6px; pointer-events: none;
+        background: linear-gradient(var(--md-border), var(--md-border)) top left / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) top left / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) top right / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) top right / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) bottom left / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) bottom left / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) bottom right / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) bottom right / 2px 10px;
+        background-repeat: no-repeat; opacity: 0.9; }
       .md-window.still { animation: none; }
-      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 14px; font-size: var(--md-body); color: var(--md-cursor);
-        background: var(--md-window-top); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 3px var(--md-ink); white-space: nowrap; }
+      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 16px; font-size: var(--md-body); color: var(--md-cursor); letter-spacing: 0.06em;
+        background: linear-gradient(180deg, #2a2026, var(--md-window-bottom)); border: 2px solid var(--md-border); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.15);
+        text-shadow: 0 0 10px rgba(255, 138, 61, 0.45), 0 2px 0 var(--md-ink); white-space: nowrap; }
       .md-window-body > :first-child { margin-top: 0; }
       .md-window-body > :last-child { margin-bottom: 0; }
       .md-window p { margin: 0.4em 0; }
@@ -55,7 +64,7 @@
       .town-map-mark { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--md-text); font: inherit; font-size: 16px; cursor: pointer; }
       .town-map-mark svg { width: 34px; height: 34px; padding: 6px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6); }
       .town-map-mark .town-map-label { padding: 0 6px; border-radius: 6px; background: rgba(5, 6, 13, 0.75); white-space: nowrap; color: var(--md-text-dim); }
-      .town-map-mark.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 212, 71, 0.25), 0 0 14px rgba(255, 212, 71, 0.45); }
+      .town-map-mark.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.25), 0 0 14px rgba(255, 191, 94, 0.45); }
       .town-map-mark.selected .town-map-label { color: var(--md-cursor); }
       .town-map-column { display: grid; grid-auto-flow: column; gap: 6px 14px; align-content: start; overflow-y: auto; max-height: calc(94vh - 160px); }
       .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
@@ -63,7 +72,7 @@
       .town-map-caption { margin: 0; min-height: 2.6em; }
       /* "Instalar" in the title's top right corner while the game can be installed (src/ui/pwa.ts corner). */
       .pwa-corner { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 8; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer;
-        font: inherit; font-size: 18px; color: var(--md-ink); background: var(--md-cursor); border: 2px solid var(--md-ink); border-radius: 10px; box-shadow: 0 0 0 2px var(--md-cursor), 0 0 18px rgba(255, 212, 71, 0.45), 0 4px 0 rgba(0, 0, 0, 0.45); }
+        font: inherit; font-size: 18px; color: var(--md-ink); background: var(--md-cursor); border: 2px solid var(--md-ink); border-radius: 10px; box-shadow: 0 0 0 2px var(--md-cursor), 0 0 18px rgba(255, 191, 94, 0.45), 0 4px 0 rgba(0, 0, 0, 0.45); }
       .pwa-corner svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       .pwa-corner:hover, .pwa-corner:focus-visible { filter: brightness(1.08); transform: translateY(-1px); }
       html.touch .pwa-corner { font-size: 15px; padding: 5px 10px; }
@@ -74,8 +83,8 @@
       /* On the plan only the chosen seal names itself (the caption names it too): close seals never pile their labels up. */
       .town-map-board .town-map-mark:not(.selected) .town-map-label { display: none; }
       /* "You are here": a plain pulsing ring and dot, never a character. */
-      .town-map-here { position: absolute; width: 12px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 212, 71, 0.35); pointer-events: none; animation: town-map-here 1.4s ease-out infinite; }
-      @keyframes town-map-here { 0% { box-shadow: 0 0 0 0 rgba(255, 212, 71, 0.6); } 100% { box-shadow: 0 0 0 14px rgba(255, 212, 71, 0); } }
+      .town-map-here { position: absolute; width: 12px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.35); pointer-events: none; animation: town-map-here 1.4s ease-out infinite; }
+      @keyframes town-map-here { 0% { box-shadow: 0 0 0 0 rgba(255, 191, 94, 0.6); } 100% { box-shadow: 0 0 0 14px rgba(255, 191, 94, 0); } }
       @media (prefers-reduced-motion: reduce) { .town-map-here { animation: none; } }
       /* Cinematics: press to advance or Auto (src/app/prologue.ts; odd/tasks/menu-redesign.md S13). */
       .prologue-auto { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 6; font: inherit; font-size: 16px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
@@ -147,7 +156,7 @@
       .quick-wheel-about { font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
       .quick-wheel-seal { position: absolute; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; cursor: pointer; }
       .quick-wheel-seal svg { width: 56px; height: 56px; padding: 12px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; transition: transform 80ms ease-out; }
-      .quick-wheel-seal.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); transform: scale(1.15); box-shadow: 0 0 16px rgba(255, 212, 71, 0.5); }
+      .quick-wheel-seal.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); transform: scale(1.15); box-shadow: 0 0 16px rgba(255, 191, 94, 0.5); }
       .town-map-caption strong { color: var(--md-cursor); font-family: var(--md-font); font-weight: 400; }
       @media (max-height: 520px) { .town-map.md-window { padding: 16px 14px 10px; gap: 6px; } .town-map-plan { max-height: calc(94vh - 90px); } .town-map-caption { min-height: 0; font-size: 15px; } .town-map-mark { font-size: 12px; } .town-map-mark svg { width: 26px; height: 26px; padding: 4px; } .town-map-column { max-height: 60vh; } .town-map-mark .town-map-label { display: none; } .town-map-mark.selected .town-map-label, .town-map-mark.in-column .town-map-label { display: inline; } }
       .md-window .dim { color: var(--md-text-dim); }
@@ -159,7 +168,7 @@
       .md-list.horizontal { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 18px; }
       .md-item { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 1.6em; padding: 3px 12px 3px 6px; border-radius: 6px; cursor: pointer; color: var(--md-text); }
       .md-item:focus-visible { outline: 3px solid var(--md-cursor); }
-      .md-item.is-active { background: rgba(255, 255, 255, 0.09); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12); }
+      .md-item.is-active { background: linear-gradient(90deg, rgba(255, 138, 61, 0.22), rgba(255, 138, 61, 0.04) 70%, transparent); box-shadow: inset 2px 0 0 var(--md-cursor), inset 0 0 0 1px rgba(201, 164, 90, 0.35); color: #fff6e6; }
       .md-item.is-disabled { color: var(--md-disabled); cursor: default; }
       .md-cursor { flex: none; width: 10px; height: 14px; background: var(--md-cursor); clip-path: polygon(0 0, 100% 50%, 0 100%); visibility: hidden; }
       .md-item.is-active .md-cursor { visibility: visible; animation: md-bob var(--md-bob-ms, 600ms) steps(1) infinite; }
@@ -322,14 +331,14 @@
       .victory-band::before { top: 12%; }
       .victory-band::after { bottom: 12%; }
       .victory-band-title { margin: 0; font-family: var(--md-font); font-size: clamp(40px, 9vw, 88px); line-height: 1; letter-spacing: 0.18em; color: var(--md-cursor);
-        text-shadow: 0 0 18px rgba(255, 212, 71, 0.65), 0 0 42px rgba(255, 106, 61, 0.45), 0 4px 0 var(--md-ink); animation: victory-flare 2.4s ease-out both; }
+        text-shadow: 0 0 18px rgba(255, 191, 94, 0.65), 0 0 42px rgba(255, 106, 61, 0.45), 0 4px 0 var(--md-ink); animation: victory-flare 2.4s ease-out both; }
       .victory-band-text { margin: 10px 0 0; font-family: var(--md-text-font); font-size: clamp(16px, 2.4vw, 22px); color: var(--md-text); text-shadow: 0 2px 0 var(--md-ink); }
       @keyframes victory-band { 0% { opacity: 0; } 12% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
       @keyframes victory-flare { 0% { transform: scale(1.25); filter: brightness(2.2); letter-spacing: 0.5em; } 25% { transform: scale(1); filter: brightness(1); letter-spacing: 0.18em; } }
       @media (prefers-reduced-motion: reduce) { .victory-band, .victory-band-title { animation: none; } }
       /* The end screen of a won run: a gold, glowing frame and title, never mistaken for a defeat. */
-      .result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 6px var(--md-cursor), 0 0 34px rgba(255, 212, 71, 0.45), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade); }
-      .result.victory h1 { color: var(--md-cursor); font-size: calc(var(--md-heading) * 1.4); letter-spacing: 0.08em; text-shadow: 0 0 16px rgba(255, 212, 71, 0.6), 0 3px 0 var(--md-ink); }
+      .result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 6px var(--md-cursor), 0 0 34px rgba(255, 191, 94, 0.45), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade); }
+      .result.victory h1 { color: var(--md-cursor); font-size: calc(var(--md-heading) * 1.4); letter-spacing: 0.08em; text-shadow: 0 0 16px rgba(255, 191, 94, 0.6), 0 3px 0 var(--md-ink); }
       .result.defeat h1 { color: var(--md-eclipse); }
       .result h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; }
       .result .md-stat-value { text-align: right; max-width: 16rem; }
@@ -401,7 +410,10 @@
       .shrine-note { margin: 10px 0 0; font-size: 16px; }
       .shrine-result { min-width: 24rem; }
       .shrine-new { color: var(--md-cursor); }
-      .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; }
+      /* Overlays darken the scene behind into a vignette, so the window reads as the only lit thing (DESIGN.md §4). */
+      .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; background: radial-gradient(ellipse at 50% 45%, rgba(5, 4, 7, 0.55), rgba(5, 4, 7, 0.9) 75%); animation: relic-veil 160ms ease-out both; }
+      @keyframes relic-veil { from { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .town-shop { animation: none; } }
 
       .item-pick.shared { position: fixed; left: 0; right: 0; bottom: 3rem; display: flex; justify-content: center; pointer-events: none; z-index: 8; }
       .item-pick .pick-panel { max-width: 52rem; pointer-events: auto; }
@@ -468,7 +480,7 @@
       html.touch input { -webkit-user-select: text; user-select: text; }
       html.touch #app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-top: max(20px, env(safe-area-inset-top)); }
       /* "Atrás" floats over the top of the page wherever it shows (below): its height, and the window title that pokes out above its frame, stay free on every menu. */
-      html.touch #app:not(:has(.title-logo, .prologue, canvas.game, .overlay, .result)) { padding-top: calc(max(8px, env(safe-area-inset-top)) + 72px); }
+      html.touch #app:not(:has(.title-logo, .hub, .prologue, canvas.game, .overlay, .result)) { padding-top: calc(max(8px, env(safe-area-inset-top)) + 72px); }
       html.touch #app:has(canvas.game) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; touch-action: none; padding: 0; }
       html.touch canvas.game { cursor: default; touch-action: none; }
       html.touch .md-item { min-height: 44px; }
@@ -485,7 +497,7 @@
       html.touch .touch-back { display: block; position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 20; min-width: 72px; min-height: 44px; padding: 4px 14px;
         font: inherit; font-size: 18px; color: var(--md-text); background: var(--md-window-bottom); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 2px var(--md-ink); }
       html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
-      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
+      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.hub) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
         html.touch #app:has(.result) ~ .touch-back { display: none; }
       /* The bare town: its own "Menú" button takes the corner (Esc opens the town menu); "Atrás" comes back over its windows. */
       html.touch #app:has(canvas.town):not(:has(.town-shop, .town-exit)) ~ .touch-back { display: none; }
@@ -582,14 +594,14 @@
       .touch-insets { position: absolute; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
       .touch-stick { position: absolute; width: 112px; height: 112px; margin: -59px 0 0 -59px; border-radius: 50%; border: 3px solid rgba(245, 247, 255, 0.35); background: rgba(5, 6, 13, 0.3); display: none; pointer-events: none; }
       .touch-stick.is-visible { display: block; }
-      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 212, 71, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
+      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 191, 94, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
       .touch-button { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box; width: 60px; height: 60px; padding: 0; border-radius: 50%; font: inherit; font-size: 14px; line-height: 1; color: var(--md-text);
         background: rgba(15, 26, 69, 0.38); border: 3px solid rgba(245, 247, 255, 0.7); box-shadow: 0 0 0 2px rgba(5, 6, 13, 0.8); -webkit-user-select: none; user-select: none; }
       .touch-button[hidden] { display: none; }
       .touch-button.big { width: 76px; height: 76px; font-size: 16px; }
       .touch-button.small { width: 52px; height: 52px; font-size: 12px; }
       .touch-button { opacity: var(--touch-alpha, 1); }
-      .touch-button.is-pressed { opacity: 1; background: rgba(255, 212, 71, 0.85); color: var(--md-ink); transform: scale(0.94); }
+      .touch-button.is-pressed { opacity: 1; background: rgba(255, 191, 94, 0.85); color: var(--md-ink); transform: scale(0.94); }
       /* Slot buttons (src/adapters/touch-slots.ts): move name, cooldown sweep and seconds, rank pips, charge ring. */
       .touch-button > span { pointer-events: none; }
       .touch-label { position: relative; z-index: 1; display: block; padding: 0 3px; -webkit-hyphens: auto; hyphens: auto; }
@@ -621,6 +633,130 @@
       .pwa-toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; z-index: 25; font-size: 18px; white-space: nowrap; }
       .pwa-toast-action { font: inherit; min-height: 44px; padding: 2px 14px; color: var(--md-ink); background: var(--md-cursor); border: 0; border-radius: 6px; cursor: pointer; }
       #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
+
+      /* ---- Title hub (src/app/title-hub-view.ts; .agents/DESIGN.md §3-4; odd/tasks/title-hub.md) ---- */
+      #app:has(.hub) { display: block; padding: 0; }
+      .hub { position: relative; box-sizing: border-box; min-height: 100vh; min-height: 100dvh; display: grid; gap: 10px 24px;
+        grid-template-columns: minmax(170px, 1fr) minmax(280px, 2fr) minmax(170px, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: 'top top top' 'left altar right' 'bottom bottom bottom';
+        padding: max(18px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 70px max(24px, env(safe-area-inset-left)); }
+      .px-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; flex: none; }
+      /* Shared slab look of every hub surface: dark stone, old-gold hairline, a hard drop. */
+      .hub-profile, .hub-chip, .hub-news, .hub-online, .hub-slab, .hub-status { background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.08), inset 0 -8px 14px rgba(0, 0, 0, 0.55), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-top { grid-area: top; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 16px; }
+      .hub-profile { justify-self: start; display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 6px; max-width: 100%; }
+      .hub-profile-face { width: 60px; height: 60px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 4px; background: radial-gradient(circle at 50% 70%, rgba(255, 138, 61, 0.25), #0b080b 70%); border: 1px solid var(--relic-slab-edge); }
+      .hub-profile-face canvas { width: auto !important; height: 100% !important; image-rendering: pixelated; }
+      .hub-profile-text { display: flex; flex-direction: column; min-width: 0; }
+      .hub-profile-text strong { font-size: 22px; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .hub-profile-text small { font-size: 14px; color: var(--md-text-dim); white-space: nowrap; }
+      .hub-logo { text-align: center; padding-top: 4px; }
+      .hub-logo h1 { margin: 0; font-size: clamp(36px, 4.6vw, 66px); line-height: 1; letter-spacing: 0.03em; color: #f6ead6;
+        text-shadow: 0 0 18px rgba(255, 106, 61, 0.55), 0 3px 0 #8f1622, 0 6px 0 var(--md-ink); }
+      .hub-logo .title-alt { margin: 8px 0 0; font-size: 14px; letter-spacing: 0.45em; color: var(--md-border); text-transform: uppercase; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub-logo .title-alt::before, .hub-logo .title-alt::after { content: ''; display: inline-block; vertical-align: middle; width: 36px; height: 2px; margin: 0 12px; background: linear-gradient(90deg, transparent, var(--md-border)); }
+      .hub-logo .title-alt::after { background: linear-gradient(90deg, var(--md-border), transparent); }
+      .hub-system { justify-self: end; display: flex; align-items: center; gap: 10px; }
+      .hub-chip { display: flex; align-items: center; gap: 8px; height: 46px; box-sizing: border-box; padding: 0 16px 0 8px; font-size: 22px; color: var(--md-cursor); font-variant-numeric: tabular-nums; }
+      .hub-chip .px-icon { width: 28px; height: 28px; }
+      /* Relic buttons: an icon slab and its label. */
+      .hub-btn { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .hub-slab { position: relative; display: grid; place-items: center; width: 64px; height: 64px; box-sizing: border-box; transition: transform 120ms ease-out, border-color 120ms, box-shadow 120ms; }
+      .hub-slab .px-icon { width: 40px; height: 40px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-label { font-size: 16px; line-height: 1.1; color: var(--md-text-dim); text-align: center; text-shadow: 0 2px 0 var(--md-ink); white-space: nowrap; }
+      .hub-btn:hover .hub-slab, .hub-btn:focus-visible .hub-slab { border-color: var(--md-border); transform: translateY(-2px);
+        box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.4), 0 0 24px rgba(255, 138, 61, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.55), 0 8px 0 rgba(0, 0, 0, 0.5); }
+      .hub-btn:hover .hub-label, .hub-btn:focus-visible .hub-label { color: var(--md-cursor); }
+      .hub-btn:active .hub-slab { transform: translateY(1px); }
+      .hub-btn.is-locked .hub-slab > .px-icon:first-child { filter: grayscale(0.85) brightness(0.62) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-btn.is-locked .hub-label { color: var(--md-disabled); }
+      .hub-slab .hub-lock { position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.8)); }
+      .hub-badge, .hub-news.has-badge::after { position: absolute; top: -6px; right: -6px; width: 12px; height: 12px; background: var(--md-eclipse); border: 2px solid var(--md-ink); transform: rotate(45deg); box-shadow: 0 0 10px rgba(232, 40, 58, 0.85); }
+      .hub-news.has-badge::after { content: ''; }
+      .hub-system .hub-slab { width: 46px; height: 46px; }
+      .hub-system .hub-slab .px-icon { width: 28px; height: 28px; }
+      .hub-system .hub-label { display: none; }
+      .hub-rail { display: grid; grid-template-columns: repeat(2, auto); gap: 18px 16px; align-content: center; align-self: center; }
+      .hub-rail-left { grid-area: left; justify-self: start; }
+      .hub-rail-right { grid-area: right; justify-self: end; }
+      .hub-rail-title { grid-column: 1 / -1; margin: 0 0 2px; font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--md-border); opacity: 0.85; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub-rail-right .hub-rail-title { text-align: right; }
+      /* The partner on its altar, lit by the eclipse from behind. */
+      .hub-altar { grid-area: altar; align-self: center; justify-self: center; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+      .hub-altar-stage { position: relative; width: 300px; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+      .hub-altar-glow { position: absolute; left: 50%; bottom: 30px; width: 300px; height: 260px; transform: translateX(-50%); pointer-events: none;
+        background: radial-gradient(closest-side, rgba(255, 138, 61, 0.38), rgba(232, 40, 58, 0.14) 55%, transparent); animation: hub-glow 3.2s ease-in-out infinite; }
+      @keyframes hub-glow { 50% { opacity: 0.7; transform: translateX(-50%) scale(0.94); } }
+      .hub-altar-sprite { position: relative; z-index: 1; margin-bottom: -26px; filter: drop-shadow(0 0 14px rgba(255, 138, 61, 0.35)); }
+      .hub-altar-sprite canvas { display: block; image-rendering: pixelated; }
+      .hub-altar-stone { position: relative; width: 230px; height: 70px;
+        background: linear-gradient(180deg, #5b5160 0, #3b333f 22%, #241d26 60%, #141015 100%);
+        clip-path: polygon(6% 18%, 14% 18%, 14% 8%, 30% 8%, 30% 0, 70% 0, 70% 8%, 86% 8%, 86% 18%, 94% 18%, 94% 40%, 100% 40%, 100% 100%, 0 100%, 0 40%, 6% 40%); }
+      .hub-altar-stone::before { content: ''; position: absolute; left: 30%; right: 30%; top: 0; height: 4px; background: rgba(255, 191, 94, 0.55); }
+      .hub-altar-stone::after { content: ''; position: absolute; left: 18%; top: 52%; width: 64%; height: 3px; background: linear-gradient(90deg, transparent, rgba(232, 40, 58, 0.7), transparent); }
+      .hub-altar-kicker { margin: 18px 0 2px; font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--md-border); }
+      .hub-altar-name { margin: 0; font-size: 33px; color: var(--md-text); text-shadow: 0 0 14px rgba(255, 138, 61, 0.4), 0 3px 0 var(--md-ink); letter-spacing: 0.04em; }
+      .hub-altar-types { display: flex; gap: 6px; margin-top: 6px; justify-content: center; }
+      .hub-altar-change { all: unset; margin-top: 8px; padding: 2px 14px; font-size: 16px; cursor: pointer; color: var(--md-text-dim); border: 1px solid var(--relic-gold-deep); border-radius: 4px; background: rgba(5, 4, 7, 0.6); }
+      .hub-altar-change:hover, .hub-altar-change:focus-visible { color: var(--md-cursor); border-color: var(--md-border); box-shadow: 0 0 12px rgba(255, 138, 61, 0.4); }
+      .hub-bottom { grid-area: bottom; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 16px; }
+      .hub-news { all: unset; box-sizing: border-box; position: relative; justify-self: start; display: flex; align-items: center; gap: 12px; max-width: 320px; padding: 10px 16px 10px 10px; cursor: pointer;
+        background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-news .px-icon { width: 40px; height: 40px; }
+      .hub-news-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .hub-news-text small { font-size: 13px; letter-spacing: 0.12em; color: var(--md-border); text-transform: uppercase; }
+      .hub-news-text span { font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; color: var(--md-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .hub-news:hover, .hub-news:focus-visible { border-color: var(--md-border); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.35), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+      /* JUGAR: the only lit thing on the screen (Von Restorff): lacquered blood stone, gold frame, ember text and glow. */
+      .hub-play { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 16px; min-width: 340px; padding: 12px 34px 12px 22px; cursor: pointer;
+        background: linear-gradient(180deg, #6e1d18 0%, #3d0f0f 55%, #250808 100%); border: 2px solid #e2b866; border-radius: 6px;
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 210, 150, 0.35), inset 0 -10px 18px rgba(0, 0, 0, 0.45), 0 8px 0 rgba(0, 0, 0, 0.55), 0 0 34px rgba(255, 106, 61, 0.45);
+        animation: hub-play 2.6s ease-in-out infinite; transition: transform 120ms ease-out; }
+      @keyframes hub-play { 50% { box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 210, 150, 0.35), inset 0 -10px 18px rgba(0, 0, 0, 0.45), 0 8px 0 rgba(0, 0, 0, 0.55), 0 0 54px rgba(255, 106, 61, 0.7); } }
+      .hub-play-icon { width: 44px; height: 44px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-play-text { display: flex; flex-direction: column; gap: 2px; }
+      .hub-play-name { font-size: 44px; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #ffe2b0; text-shadow: 0 0 14px rgba(255, 138, 61, 0.8), 0 3px 0 var(--md-ink); }
+      .hub-play small { font-family: var(--md-text-font); font-size: 15px; color: #e9cfa8; }
+      .hub-play:hover, .hub-play:focus-visible { transform: translateY(-2px); border-color: #ffe2a0; outline: 3px solid rgba(255, 191, 94, 0.55); outline-offset: 3px; }
+      .hub-play:active { transform: translateY(1px); }
+      .hub-online { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 6px 18px 6px 10px; font-size: 19px; color: var(--md-text); cursor: pointer;
+        background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 rgba(0, 0, 0, 0.5); }
+      .hub-online .px-icon { width: 28px; height: 28px; }
+      .hub-online:hover, .hub-online:focus-visible { color: var(--md-cursor); border-color: var(--md-border); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.35), 0 5px 0 rgba(0, 0, 0, 0.5); }
+      .hub-links { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; max-width: 360px; }
+      .hub-links .hub-slab { width: 50px; height: 50px; }
+      .hub-links .hub-slab .px-icon { width: 30px; height: 30px; }
+      .hub-links .hub-label { font-size: 13px; }
+      .hub-hint { position: absolute; left: 0; right: 0; bottom: 46px; margin: 0; text-align: center; font-size: 13px; color: var(--md-text-dim); opacity: 0.7; pointer-events: none; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub > .build-label { position: absolute; right: max(24px, env(safe-area-inset-right)); bottom: 46px; }
+      .hub-status { position: fixed; left: 50%; bottom: 190px; z-index: 6; margin: 0; padding: 10px 18px; max-width: min(90vw, 30rem); transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+        font-family: var(--md-text-font); font-size: 16px; color: var(--md-text); text-align: center; transition: opacity 160ms, transform 160ms; }
+      .hub-status.is-on { opacity: 1; transform: translate(-50%, 0); }
+      @media (prefers-reduced-motion: reduce) { .hub-play, .hub-altar-glow { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
+      /* Shorter screens: smaller logo and altar, rails in three columns. */
+      @media (max-height: 760px) {
+        .hub-altar-stage { width: 240px; height: 190px; } .hub-altar-glow { width: 240px; height: 200px; }
+        .hub-altar-sprite { transform: scale(0.8); transform-origin: 50% 100%; } .hub-altar-stone { width: 190px; height: 56px; }
+        .hub-altar-kicker { margin-top: 12px; } .hub-altar-name { font-size: 27px; }
+        .hub-rail { gap: 12px 12px; } .hub-slab { width: 56px; height: 56px; } .hub-slab .px-icon { width: 36px; height: 36px; }
+      }
+      @media (max-height: 560px), (max-width: 900px) {
+        .hub { padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 34px max(16px, env(safe-area-inset-left)); gap: 6px 12px; grid-template-columns: auto 1fr auto; }
+        .hub-logo h1 { font-size: 30px; } .hub-logo .title-alt { font-size: 11px; margin-top: 4px; } .hub-logo .title-alt::before, .hub-logo .title-alt::after { width: 18px; margin: 0 6px; }
+        .hub-profile { padding: 4px 10px 4px 4px; gap: 8px; } .hub-profile-face { width: 40px; height: 40px; } .hub-profile-text strong { font-size: 16px; } .hub-profile-text small { display: none; }
+        .hub-chip { height: 38px; font-size: 18px; padding: 0 10px 0 6px; } .hub-system .hub-slab { width: 44px; height: 44px; }
+        .hub-rail { grid-template-columns: repeat(3, auto); gap: 6px 8px; } .hub-rail-title { display: none; }
+        .hub-slab { width: 48px; height: 48px; } .hub-slab .px-icon { width: 30px; height: 30px; } .hub-label { font-size: 12px; }
+        .hub-altar-stage { width: 170px; height: 120px; } .hub-altar-glow { width: 180px; height: 150px; bottom: 16px; }
+        .hub-altar-sprite { transform: scale(0.55); margin-bottom: -18px; } .hub-altar-stone { width: 140px; height: 40px; }
+        .hub-altar-kicker { display: none; } .hub-altar-name { font-size: 20px; margin-top: 6px; } .hub-altar-change { font-size: 13px; margin-top: 4px; }
+        .hub-news { max-width: 210px; padding: 6px 10px 6px 6px; } .hub-news .px-icon { width: 28px; height: 28px; } .hub-news-text span { font-size: 12px; -webkit-line-clamp: 1; }
+        .hub-play { min-width: 230px; padding: 6px 20px 6px 12px; gap: 10px; } .hub-play-name { font-size: 30px; } .hub-play-icon { width: 30px; height: 30px; } .hub-play small { font-size: 12px; }
+        .hub-online { font-size: 15px; padding: 3px 12px 3px 6px; } .hub-online .px-icon { width: 22px; height: 22px; }
+        .hub-cta { gap: 6px; } .hub-links { gap: 6px; max-width: 290px; flex-wrap: nowrap; } .hub-links .hub-slab { width: 44px; height: 44px; } .hub-links .hub-label { display: none; }
+        .hub-hint, .hub > .build-label { display: none; } .hub-status { bottom: 110px; }
+      }
     </style>
   </head>
   <body>

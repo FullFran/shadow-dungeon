@@ -27,7 +27,7 @@ import { generateRoomCode, normalizeRoomCode, roomCodeFromSearch } from '../net/
 import { createSession, type NetSession } from '../net/session';
 import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
-import { eclipseBackdrop } from '../ui/eclipse';
+import { eclipseBackdrop, setBackdropSheets } from '../ui/eclipse';
 import { applyTokens, FONT } from '../ui/tokens';
 import { description } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
@@ -37,7 +37,8 @@ import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion }
 import { accountWindow, setupAccount, type AccountView } from './account-screen';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
-import { loadoutScreen, type LineGender, type ShinySkins } from './loadout';
+import { loadoutScreen, portrait, typeBadge, type LineGender, type ShinySkins } from './loadout';
+import { CHANGELOG, CHANGELOG_SECTIONS } from '../data/changelog';
 import { openPauseMenu } from './menu';
 import { prologueScreen, type PrologueOptions } from './prologue';
 import { readSimaMemory } from './sima-lore';
@@ -49,7 +50,9 @@ import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
 import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
-import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
+import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from './title-menu';
+import { hubButtons, type HubId } from './title-hub';
+import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
@@ -77,7 +80,7 @@ import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { drawGuardianScene } from '../adapters/guardian-scenes';
 import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
-import type { SpeciesId } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { unlockEverything } from './dev-unlock';
@@ -510,28 +513,97 @@ function waitScreen(root: HTMLElement, text: string): void {
   show(root, [mdWindow({ className: 'narrow wait' }, [h('p', { textContent: text })])]);
 }
 
-function titleScreen(root: HTMLElement, initial = 0): void {
+/**
+ * The title hub (owner, 2026-11-03; odd/tasks/title-hub.md): relic buttons
+ * round the screen, the partner on its altar and one dominant Play. Town
+ * services open as the same windows the town uses, over the scene; full
+ * screens (Pokémon, shrine, credits...) come back here with their button
+ * focused. Supersedes the three-entry title (2026-10-26).
+ */
+function titleScreen(root: HTMLElement, initial?: HubId | number): void {
   leaveNet();
   applyLanguage(settings.language);
   if (patchNotesOnBoot(root)) return;
-  // Three entries only (src/app/title-menu.ts): every service lives in the town and its Esc menu.
-  const action: Record<TitleEntry, () => void> = {
+  const save = loadSave(store);
+  const records = readRecords(store);
+  // The backdrop's Pokémon come from the same sheets as the partner.
+  setBackdropSheets(sheetsReady());
+  const back = (id: HubId) => () => titleScreen(root, id);
+  /** A town window over the hub; closing it redraws the hub (coins, language and partner may have changed). */
+  const overlay = (id: HubId, open: (parent: HTMLElement, onClose: () => void, depart: (dungeon: string) => void) => () => void) => {
+    let close = () => {};
+    close = open(root, () => {
+      close();
+      titleScreen(root, id);
+    }, (dungeon) => {
+      close();
+      newAdventure(root, dungeonById(dungeon).id);
+    });
+  };
+  const action: Record<HubId, () => void> = {
     play: () => playScreen(root),
     online: () => onlineEntry(root),
-    options: () => optionsScreen(root),
+    pokemon: () => pokemonScreen(root, back('pokemon')),
+    tutor: () => overlay('tutor', townTutor),
+    evolve: () => overlay('evolve', townEvolve),
+    gacha: () => overlay('gacha', townGacha),
+    shop: () => overlay('shop', townShop),
+    board: () => overlay('board', townBoard),
+    challenges: () => overlay('challenges', townChallenges),
+    achievements: () => overlay('achievements', townAchievements),
+    settings: () => overlay('settings', townSettings),
+    controls: () => overlay('controls', townControls),
+    account: () => overlay('account', townAccount),
+    friends: () => overlay('friends', (parent, onClose) => townFriends(root)(parent, onClose, (go) => go())),
+    gallery: () => overlay('gallery', (parent, onClose) => townGallery(root)(parent, onClose, null)),
+    shrine: () => shrineScreen(root, 'title'),
+    news: () => newsScreen(root, back('news')),
+    fullscreen: () => void toggleFullscreen(),
+    prologue: () => prologue(root, back('prologue')),
+    credits: () => creditsScreen(root),
+    report: () => reportScreen(root, back('report')),
+    install: () => pwa.install(root),
+    tickets: () => ticketsScreen(root, back('tickets')),
   };
-  // A dominant Play with a line on where it leads (odd/tasks/menu-redesign.md S11); the other two stay quiet below.
-  const playLine = t(!settings.starterChosen ? 'title.play.first' : townIsOpen() ? 'title.play.town' : 'title.play.path');
-  const label = (entry: TitleEntry) => (entry === 'play' ? h('span', { className: 'title-play' }, [h('span', { className: 'title-play-name', textContent: t(TITLE_LABEL.play) }), h('small', { textContent: playLine })]) : t(TITLE_LABEL[entry]));
-  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: label(entry), onConfirm: action[entry], className: `title-row title-row-${entry}` })) });
-  show(root, [
-    h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
-    mdWindow({ className: 'title-menu' }, [list.element]),
-    h('p', { className: 'hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('title.hint') }), h('span', { className: 'on-touch', textContent: t('title.hint.touch') })]),
-    h('p', { className: 'build-label', textContent: buildLabel() }),
-  ]);
+  const state = { townOpen: townIsOpen(), starterChosen: settings.starterChosen, newsUnseen: readLastSeenVersion(store) !== APP_VERSION, installable: pwa.offer() !== 'none', ticketAdmin: ticketAdmin.known() };
+  const playLine = t(!settings.starterChosen ? 'title.play.first' : state.townOpen ? 'title.play.town' : 'title.play.path');
+  const species = settings.species;
+  const best = Math.max(0, ...Object.values(records.dungeons).map((d) => d.bestFloor));
+  const latest = CHANGELOG[0];
+  const latestItem = latest ? CHANGELOG_SECTIONS.map((section) => latest.sections[section]?.[0]).find(Boolean) : undefined;
+  const view = titleHub({
+    buttons: hubButtons(state),
+    onPick: (id) => action[id](),
+    partner: settings.starterChosen ? { portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()), name: t(`species.${species}`), badges: SPECIES[species].types.map(typeBadge) } : null,
+    profile: {
+      name: settings.nickname || t('hub.wanderer'),
+      portrait: settings.starterChosen ? portrait(sheetsReady(), species, 2, skinOn(), femaleOn()) : null,
+      line: records.runs > 0 ? t('hub.record').replace('{floor}', String(best)).replace('{runs}', String(records.runs)) : t('hub.record.none'),
+    },
+    coins: save.coins,
+    playLine,
+    news: latest && latestItem ? { version: latest.version, line: latestItem[getLanguage() === 'en' ? 'en' : 'es'] } : null,
+    buildLabel: buildLabel(),
+    touch: isTouchUi(),
+    ...(typeof initial === 'string' ? { initial } : {}),
+  });
+  show(root, [view.element]);
   pwa.banner(root);
-  pwa.corner(root);
+  if (!state.ticketAdmin) {
+    void ticketAdmin.check().then((admin) => {
+      if (admin && view.element.isConnected && !root.querySelector('.town-shop')) titleScreen(root, typeof initial === 'string' ? initial : undefined);
+    });
+  }
+}
+
+/** The hub's fullscreen button: in and out of the browser's fullscreen, best effort. */
+async function toggleFullscreen(): Promise<void> {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+  } catch {
+    // Refused (iframe, iPhone Safari, a setting): the page stays as it is.
+  }
 }
 
 /** The patch notes are checked once per page load, on the first title reached (never over the prologue, the quiz or a cinematic). */
@@ -592,7 +664,7 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'control
   const open = menuWindow({
     title: t('title.options'),
     rows: optionRows.map((row) => ({ label: row.label, about: row.about, onConfirm: row.onConfirm, icon: glyphSvg(row.glyph), ...(row.group ? { group: row.group } : {}) })),
-    back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
+    back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, 'settings') },
     className: 'options',
     initial: Math.max(0, optionRows.findIndex((row) => row.id === at)),
   });
@@ -1642,7 +1714,7 @@ function shopScreen(root: HTMLElement): void {
 }
 
 function creditsScreen(root: HTMLElement): void {
-  show(root, [creditsWindow(single(t('menu.back'), () => optionsScreen(root, 'credits')))]);
+  show(root, [creditsWindow(single(t('menu.back'), () => titleScreen(root, 'credits')))]);
 }
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */

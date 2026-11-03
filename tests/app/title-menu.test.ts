@@ -12,12 +12,12 @@ describe('title menu', () => {
     expect([...TITLE_ENTRIES]).toEqual(['play', 'online', 'options']);
   });
 
-  it('the title screen builds its rows from those three entries only', () => {
+  // Superseded by the title hub (owner, 2026-11-03; odd/tasks/title-hub.md): the title draws every button from `hubButtons`.
+  it('the title screen builds its buttons from the hub model only', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
-    const title = main.slice(main.indexOf('function titleScreen('), main.indexOf('function optionsScreen('));
-    expect(title).toContain('TITLE_ENTRIES.map(');
-    // No hand-written rows left beside them (the old shop, shrine, town, account... entries).
-    expect(title.match(/\{ label: /g) ?? []).toHaveLength(1);
+    const title = main.slice(main.indexOf('function titleScreen('), main.indexOf('async function toggleFullscreen('));
+    expect(title).toContain('buttons: hubButtons(state)');
+    expect(title).not.toContain('cursorList(');
   });
 
   it('keeps everything else under Options, the install offer only when installable', () => {
