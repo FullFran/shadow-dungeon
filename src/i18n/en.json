@@ -3813,6 +3813,7 @@
   "hub.partner.bond": "Bond {n}",
   "hub.coins": "Poké Coins",
   "hub.record": "Best floor {floor} · {runs} expeditions",
+  "hub.record.one": "Best floor {floor} · 1 expedition",
   "hub.record.none": "You have not descended yet",
   "hub.rail.partner": "Your Pokémon",
   "hub.rail.world": "The world",

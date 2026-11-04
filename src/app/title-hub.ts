@@ -121,3 +121,8 @@ export function hubStep(points: readonly { id: string; x: number; y: number }[],
   }
   return best;
 }
+
+/** The profile plate's record: best floor and expeditions, singular for one ("1 expedición", not "1 expediciones"). */
+export function recordLine(t: (key: string) => string, floor: number, runs: number): string {
+  return t(runs === 1 ? 'hub.record.one' : 'hub.record').replace('{floor}', String(floor)).replace('{runs}', String(runs));
+}

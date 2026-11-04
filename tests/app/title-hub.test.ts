@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hubButtons, hubStep, TOWN_GATED, type HubState } from '../../src/app/title-hub';
+import { hubButtons, hubStep, recordLine, TOWN_GATED, type HubState } from '../../src/app/title-hub';
 import { PIXEL_ICONS } from '../../src/ui/pixel-icons';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
@@ -70,5 +70,16 @@ describe('hub focus step', () => {
   it('stays put when nothing lies that way', () => {
     expect(hubStep(pts, 'a', 'left')).toBe('a');
     expect(hubStep(pts, 'a', 'up')).toBe('a');
+  });
+});
+
+describe('the profile record line', () => {
+  it('the record line uses the singular for one expedition, in es and en', () => {
+    const es = (key: string) => catalog('es')[key] ?? key;
+    const en = (key: string) => catalog('en')[key] ?? key;
+    expect(recordLine(es, 3, 1)).toBe('Mejor planta 3 · 1 expedición');
+    expect(recordLine(es, 37, 129)).toBe('Mejor planta 37 · 129 expediciones');
+    expect(recordLine(en, 3, 1)).toBe('Best floor 3 · 1 expedition');
+    expect(recordLine(en, 37, 129)).toBe('Best floor 37 · 129 expeditions');
   });
 });

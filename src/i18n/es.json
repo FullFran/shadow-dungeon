@@ -3813,6 +3813,7 @@
   "hub.partner.bond": "Vínculo {n}",
   "hub.coins": "Pokémonedas",
   "hub.record": "Mejor planta {floor} · {runs} expediciones",
+  "hub.record.one": "Mejor planta {floor} · 1 expedición",
   "hub.record.none": "Aún no has descendido",
   "hub.rail.partner": "Tu Pokémon",
   "hub.rail.world": "El mundo",

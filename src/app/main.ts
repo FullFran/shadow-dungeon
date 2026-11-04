@@ -60,7 +60,7 @@ import { welcomeScreen } from './welcome-screen';
 import { afterWelcome, bootRoute, clearOnboarding, readOnboarding, writeOnboarding, type OnboardingStep } from './onboarding';
 import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from './title-menu';
-import { hubButtons, type HubId } from './title-hub';
+import { hubButtons, recordLine, type HubId } from './title-hub';
 import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
 import { bootSplash } from '../ui/boot-splash';
@@ -647,7 +647,7 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
     profile: {
       name: settings.nickname || t('hub.wanderer'),
       portrait: settings.starterChosen ? facePortrait(species, { size: 60, shiny: skinOn(), female: femaleOn(), sheets: sheetsReady() }) : null,
-      line: records.runs > 0 ? t('hub.record').replace('{floor}', String(best)).replace('{runs}', String(records.runs)) : t('hub.record.none'),
+      line: records.runs > 0 ? recordLine(t, best, records.runs) : t('hub.record.none'),
     },
     coins: save.coins,
     playLine,
