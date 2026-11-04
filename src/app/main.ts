@@ -56,6 +56,8 @@ import { galleryGroups, type GalleryScene } from './lore-gallery';
 import { galleryView } from './gallery-view';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
+import { welcomeScreen } from './welcome-screen';
+import { afterWelcome, bootRoute, clearOnboarding, readOnboarding, writeOnboarding, type OnboardingStep } from './onboarding';
 import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
 import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from './title-menu';
 import { hubButtons, type HubId } from './title-hub';
@@ -95,7 +97,7 @@ import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { unlockEverything, veteranProfile } from './dev-unlock';
-import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave, SAVE_KEY, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { gachaPage } from './gacha-page';
 import { gachaUrl, isGachaPath, leaveUrl } from './gacha-route';
@@ -143,6 +145,8 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
 applyTokens(document.documentElement);
 /** Redraws the open account drawer in place; declared before the account, whose start may report a change at once. */
 let accountRedraw: (() => void) | null = null;
+/** The account drawer opened from the welcome gate, while it is open: a cloud profile arriving closes it and routes on (onboarding.ts). */
+let onboardingDrawer: { close(): void } | null = null;
 /** One client for the public calls (Sima ranking, public profile); the account keeps its own. */
 const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 /** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
@@ -177,6 +181,9 @@ const { account, store } = setupAccount({
     // The picked species must still be in the (possibly new) roster.
     settings = loadSettings(store, settings, rosterOf(loadSave(store)));
     const app = document.getElementById('app');
+    // A walker that arrived with the cloud profile ends the onboarding: the welcome's drawer closes and routes on, any other step re-checks.
+    if (onboardingDrawer) onboardingDrawer.close();
+    else if (app?.querySelector('.ob')) onboardingGate(app);
     if (app?.querySelector('.title-logo')) titleScreen(app);
   },
 });
@@ -545,6 +552,8 @@ function waitScreen(root: HTMLElement, text: string): void {
 function titleScreen(root: HTMLElement, initial?: HubId | number): void {
   leaveNet();
   applyLanguage(settings.language);
+  // A profile with no walker never sees the hub: the welcome gate and the onboarding come first (app/onboarding.ts).
+  if (onboardingGate(root)) return;
   if (patchNotesOnBoot(root)) return;
   const save = loadSave(store);
   const records = readRecords(store);
@@ -709,6 +718,97 @@ function adoptReturningPlayer(): void {
   markPrologueSeen(store);
   update(withReturningPlayer(settings, records.lastSpecies, rosterOf(save)));
 }
+
+/**
+ * First-run onboarding (owner, 2026-11-04): welcome gate (account or guest) -> prologue -> questionnaire -> reveal -> the first run.
+ * Each step writes where it got to (app/onboarding.ts) and comes back here, so a reload continues where the player was.
+ * Returns true when it took the screen; false when the profile has a walker and the hub goes on.
+ */
+function onboardingGate(root: HTMLElement): boolean {
+  adoptReturningPlayer();
+  const stored = readOnboarding(store);
+  const route = bootRoute({
+    starterChosen: settings.starterChosen,
+    hasProgress: hasProgress(loadSave(store), readRecords(store)),
+    signedIn: account.state().kind === 'signed-in',
+    prologueSeen: hasSeenPrologue(store),
+    state: stored,
+  });
+  if (route === 'hub') {
+    if (stored.step !== 'welcome' || stored.picks.length > 0 || stored.starter) clearOnboarding(store);
+    return false;
+  }
+  setBackdropSheets(sheetsReady());
+  const go = (step: OnboardingStep, patch: Partial<ReturnType<typeof readOnboarding>> = {}): void => {
+    writeOnboarding(store, { ...readOnboarding(store), ...patch, step });
+    onboardingGate(root);
+  };
+  if (route === 'welcome') {
+    welcome(root, () => go(afterWelcome(hasSeenPrologue(store))));
+  } else if (route === 'prologue') {
+    writeOnboarding(store, { ...stored, step: 'prologue' });
+    prologue(root, () => go('quiz'));
+  } else {
+    const seed = stored.seed > 0 ? stored.seed : Math.abs(runSeed()) || 1;
+    writeOnboarding(store, { ...stored, step: route, seed });
+    const view = quizScreen({
+      seed,
+      sheets: sheetsReady(),
+      touch: isTouchUi(),
+      mode: 'onboarding',
+      resume: { picks: stored.picks, starter: stored.starter },
+      newSeed: () => Math.abs(runSeed()) || 1,
+      onProgress: (progress) => writeOnboarding(store, progress),
+      onDone: (starter) => {
+        // An evolved starter plays as its current form.
+        update(withStarter(settings, currentForm(loadSave(store), starter)));
+        markPrologueSeen(store);
+        clearOnboarding(store);
+        playScreen(root);
+      },
+    });
+    show(root, [view.element]);
+  }
+  return true;
+}
+
+/** The welcome gate: sign in (the account drawer), play as a guest, or take up the game this device already holds. */
+function welcome(root: HTMLElement, asGuest: () => void): void {
+  const openAccount = (): void => {
+    const drawer = openAccountDrawer({
+      account,
+      flow: authFlow,
+      parent: document.body,
+      onGuest: asGuest,
+      onClose: () => {
+        accountRedraw = null;
+        onboardingDrawer = null;
+        // Signed in: a cloud walker goes to the hub, else the onboarding goes on. A sync choice still open (the cloud holds a game this device has not taken) waits here.
+        if (account.state().kind === 'signed-in' && !account.pendingChoice()) onboardingGate(root);
+      },
+    });
+    accountRedraw = drawer.redraw;
+    onboardingDrawer = drawer;
+  };
+  welcomeOpenAccount = openAccount;
+  const view = welcomeScreen({
+    hasLocalSave: store.get(SAVE_KEY) !== null || account.backups().length > 0,
+    touch: isTouchUi(),
+    onAccount: openAccount,
+    onGuest: asGuest,
+    // A game kept on this device: it counts as chosen and the prologue as seen, as adoptReturningPlayer does for a profile with progress.
+    onDevice: () => {
+      markPrologueSeen(store);
+      update(withReturningPlayer(settings, readRecords(store).lastSpecies, rosterOf(loadSave(store))));
+      clearOnboarding(store);
+      titleScreen(root);
+    },
+  });
+  show(root, [view.element]);
+}
+
+/** Opens the welcome's account drawer (set while the welcome is up; the OAuth return uses it). */
+let welcomeOpenAccount: (() => void) | null = null;
 
 /** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
 function playScreen(root: HTMLElement): void {
@@ -957,14 +1057,15 @@ function styleHeraldLines(title: boolean, def: HeraldDef, lines: readonly HTMLEl
   epigraph.style.cssText = 'font-style: italic; opacity: 0.75; font-size: 0.85em';
 }
 
-/** The personality quiz over a black screen; its starter becomes the `species` setting. */
+/** The questionnaire (Settings' retake, or the first-run steps reached through Play): its walker becomes the `species` setting. Not persisted: the onboarding gate has its own. */
 function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
   const onDone = (starter: StarterId) => {
     // An evolved starter plays as its current form.
     update(withStarter(settings, currentForm(loadSave(store), starter)));
     then();
   };
-  show(root, quizScreen({ seed: runSeed(), sheets: sheetsReady(), onDone, onCancel: cancel }), false);
+  const view = quizScreen({ seed: runSeed(), sheets: sheetsReady(), touch: isTouchUi(), mode: settings.starterChosen ? 'retake' : 'onboarding', newSeed: runSeed, onDone, onCancel: cancel });
+  show(root, [view.element]);
 }
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
@@ -2318,6 +2419,12 @@ if (root) {
     url.searchParams.delete('sso');
     window.history.replaceState(null, '', url);
     toast(root, t(result.ok ? 'account.drawer.signedIn' : `account.error.${result.error}`));
+    // At the welcome gate the drawer carries on from there (it routes on when it closes, or at once with no choice to make).
+    if (result.ok && root.querySelector('.ob-welcome')) {
+      if (account.pendingChoice()) welcomeOpenAccount?.();
+      else onboardingGate(root);
+      return;
+    }
     // The cloud may hold other progress: the drawer is where that choice is made.
     if (result.ok && account.pendingChoice()) townAccount(document.body, () => undefined);
   });
