@@ -3,6 +3,7 @@ import { trackLastDevice } from '../adapters/last-device';
 import { glyphSvg } from '../app/gamepad-pad';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { t } from '../i18n';
+import type { FightKind } from './combat-hud-model';
 import { isFullscreen, toggleFullscreen } from './fullscreen';
 import { createHintFade, hintSignature, hintSizes, hintsFor, type Hint, type HintContext, type HintPlace } from './play-hints-model';
 import { PIXEL_ICONS, pixelSvgOf } from './pixel-icons';
@@ -20,6 +21,8 @@ export interface PlayHintState {
   place: HintPlace;
   minimap: boolean;
   spectating: boolean;
+  /** Calm, an enemy close or a boss fight (src/ui/combat-hud-model.ts `fightKind`): the bar dims in a fight and hides 5 s into a boss fight. */
+  fight?: FightKind;
   /** A window, a dialog or a cinematic is on screen: the bar stays out of its way. */
   suppressed: boolean;
   /** The free stretch of the bottom edge, in CSS px from the left, the right and the bottom. */
@@ -37,6 +40,9 @@ export interface PlayHintsOptions {
   enabled(): boolean;
   padStyle?(): PadStyle;
 }
+
+/** In a boss fight the bar stays this long, then hides. */
+const BOSS_HINT_MS = 5000;
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, children: (Node | string)[] = []): HTMLElementTagNameMap[K] => {
   const node = document.createElement(tag);
@@ -80,6 +86,9 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
   let language = '';
   let pressed = false;
   let sizeKey = -1;
+  let bossSince: number | null = null;
+  let quiet = false;
+  let dim = false;
 
   const setLabel = (): void => {
     const label = t(pressed ? 'hint.fullscreen.exit' : 'hint.fullscreen.enter');
@@ -167,6 +176,19 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
       if (shown !== on) {
         on = shown;
         bar.classList.toggle('is-on', on);
+      }
+      // Owner, 2026-11-04 (minimalist pass): near enemies dim the bar to ~40%; a boss fight hides it once its first 5 s are over.
+      const fight = state.fight ?? 'calm';
+      bossSince = fight === 'boss' ? (bossSince ?? nowMs) : null;
+      const wantQuiet = bossSince !== null && nowMs - bossSince > BOSS_HINT_MS;
+      const wantDim = fight !== 'calm';
+      if (wantQuiet !== quiet) {
+        quiet = wantQuiet;
+        bar.classList.toggle('is-quiet', quiet);
+      }
+      if (wantDim !== dim) {
+        dim = wantDim;
+        bar.classList.toggle('is-fighting', dim);
       }
       if (state.suppressed !== suppressed) {
         suppressed = state.suppressed;

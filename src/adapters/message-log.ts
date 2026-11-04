@@ -1,6 +1,7 @@
 import { CAPTURE } from '../data/cards';
 import type { GameEvent } from '../core/state';
 import { t } from '../i18n';
+import { HUD_BOX } from '../ui/hud-layout';
 import { drawPanel, pixelText } from '../ui/canvas';
 import { FONT, PALETTE } from '../ui/tokens';
 import { levelUpText } from './hud';
@@ -14,11 +15,11 @@ import { levelUpText } from './hud';
  */
 export const LOG = {
   /** Lines kept on screen at once. */
-  capacity: 4,
+  capacity: 2,
   /** A line's whole life, fade included. */
-  lifeMs: 5000,
+  lifeMs: 3000,
   /** The last part of its life during which it fades out. */
-  fadeMs: 800,
+  fadeMs: 600,
 } as const;
 
 export type LogTone = 'info' | 'good' | 'warn' | 'level' | 'item';
@@ -90,17 +91,20 @@ export const itemPickedText = (species: string, item: string): string => t('log.
 
 const TONE_COLORS: Record<LogTone, string> = { info: PALETTE.text, good: PALETTE.good, warn: PALETTE.eclipseGlow, level: PALETTE.xp, item: PALETTE.cursor };
 
-const LINE = 13;
-const WIDTH = 236;
+const LINE = 12;
+const WIDTH = HUD_BOX.logWidth;
 
-/** Draws the log at the bottom left of the view (view units; the caller has applied the pixel scale). */
-export function drawMessageLog(ctx: CanvasRenderingContext2D, log: MessageLog, nowMs: number, viewHeight: number): void {
+/**
+ * Draws the log at the bottom left of the HUD space (HUD units; the caller has applied the HUD scale): two lines at
+ * most, each gone after 3 s. `dim` (0 calm .. 1 in a fight, src/ui/combat-hud-model.ts) fades it to 35% while fighting.
+ */
+export function drawMessageLog(ctx: CanvasRenderingContext2D, log: MessageLog, nowMs: number, viewHeight: number, dim = 0): void {
   const lines = visibleMessages(log, nowMs);
   if (lines.length === 0) return;
-  const height = lines.length * LINE + 9;
-  const x = 6;
-  const y = viewHeight - 6 - height;
-  const frame = Math.max(...lines.map((l) => l.alpha));
+  const height = lines.length * LINE + 5;
+  const x = HUD_BOX.margin;
+  const y = viewHeight - HUD_BOX.margin - height;
+  const frame = Math.max(...lines.map((l) => l.alpha)) * (1 - 0.65 * dim);
   drawPanel(ctx, x, y, WIDTH, height, { alpha: 0.88 * frame });
   ctx.font = `${FONT.hudPx}px "${FONT.family}"`;
   ctx.save();
@@ -108,8 +112,8 @@ export function drawMessageLog(ctx: CanvasRenderingContext2D, log: MessageLog, n
   ctx.rect(x + 3, y + 2, WIDTH - 6, height - 4);
   ctx.clip();
   lines.forEach((line, i) => {
-    ctx.globalAlpha = line.alpha;
-    pixelText(ctx, line.text, x + 7, y + 13 + i * LINE, TONE_COLORS[line.tone]);
+    ctx.globalAlpha = line.alpha * (1 - 0.65 * dim);
+    pixelText(ctx, line.text, x + 6, y + 11 + i * LINE, TONE_COLORS[line.tone]);
   });
   ctx.restore();
   ctx.globalAlpha = 1;

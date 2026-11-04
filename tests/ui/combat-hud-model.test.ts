@@ -4,7 +4,7 @@ import { registeredCards } from '../../src/data/cards';
 import { BOSS_CUES, bossEpithetKey, bossEvents, bossSpecies, cueOf } from '../../src/data/boss-lore';
 import { catalog, setLanguage, t } from '../../src/i18n';
 import { bossCaption, CAPTION_MS, captionAlpha, captionAlphaReduced } from '../../src/ui/boss-caption';
-import { BOSS_STAGE, CHIP, bossBarModel, createBossStage, createChipTrail, moveSlotModel } from '../../src/ui/combat-hud-model';
+import { BOSS_STAGE, CHIP, COMBAT_FADE, PASSIVE_NOTE_MS, bossBarModel, createBossStage, createChipTrail, createCombatFade, createPassiveNote, fightKind, moveSlotModel } from '../../src/ui/combat-hud-model';
 import type { BossBar } from '../../src/core/boss';
 import type { PlayerState } from '../../src/core/state';
 
@@ -209,12 +209,13 @@ describe('boss captions: every event of every boss', () => {
   });
 });
 
-describe('caption timing: enter 180 ms, hold, exit 300 ms', () => {
-  it('fades in over 180 ms, holds at 1 and leaves over 300 ms', () => {
-    expect(CAPTION_MS.enter).toBe(180);
-    expect(CAPTION_MS.exit).toBe(300);
+describe('caption timing: enter 160 ms, hold 1.4 s, exit 240 ms', () => {
+  it('fades in over 160 ms, holds at 1 for 1.4 s and leaves over 240 ms', () => {
+    expect(CAPTION_MS.enter).toBe(160);
+    expect(CAPTION_MS.hold).toBe(1400);
+    expect(CAPTION_MS.exit).toBe(240);
     expect(captionAlpha(0)).toBe(0);
-    expect(captionAlpha(90)).toBeCloseTo(0.5, 5);
+    expect(captionAlpha(80)).toBeCloseTo(0.5, 5);
     expect(captionAlpha(CAPTION_MS.enter + 100)).toBe(1);
     expect(captionAlpha(CAPTION_MS.enter + CAPTION_MS.hold + CAPTION_MS.exit / 2)).toBeCloseTo(0.5, 5);
     expect(captionAlpha(CAPTION_MS.enter + CAPTION_MS.hold + CAPTION_MS.exit + 1)).toBe(0);
@@ -259,5 +260,42 @@ describe('move slot model per device', () => {
   it('not enough stamina is its own state', () => {
     const poor = moveSlotModel(player({ loadout: [...loadout] as never, stamina: 0 }), 3, 'keyboard', 'xbox');
     expect(poor.state).toBe('poor');
+  });
+});
+
+describe('combat-aware opacity', () => {
+  const world = (over: { enemies?: unknown[]; player?: Record<string, unknown> } = {}) =>
+    ({ player: { pos: { x: 0, y: 0 }, action: null, roll: null, ...over.player }, enemies: over.enemies ?? [] }) as never;
+  const enemy = (x: number, alive = true) => ({ id: `e${x}`, species: 'koffing', alive, spent: false, pos: { x, y: 0 }, hp: 10, maxHp: 10 });
+
+  it('is calm with nothing near, near with an enemy close or the player acting, boss when a bar shows', () => {
+    expect(fightKind(world())).toBe('calm');
+    expect(fightKind(world({ enemies: [enemy(2000)] }))).toBe('calm');
+    expect(fightKind(world({ enemies: [enemy(100)] }))).toBe('near');
+    expect(fightKind(world({ enemies: [enemy(100, false)] }))).toBe('calm');
+    expect(fightKind(world({ player: { action: { slotIndex: 0 } } }))).toBe('near');
+    expect(fightKind(world({ player: { roll: {} } }))).toBe('near');
+  });
+
+  it('rises quickly, holds after the last fight beat and falls back slowly', () => {
+    const fade = createCombatFade();
+    expect(fade.update(false, 0)).toBe(0);
+    expect(fade.update(true, 100)).toBeGreaterThan(0);
+    expect(fade.update(true, 100 + COMBAT_FADE.inMs)).toBe(1);
+    expect(fade.update(false, 100 + COMBAT_FADE.inMs + COMBAT_FADE.holdMs - 10)).toBe(1);
+    const mid = fade.update(false, 100 + COMBAT_FADE.inMs + COMBAT_FADE.holdMs + COMBAT_FADE.outMs / 2);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    expect(fade.update(false, 100 + COMBAT_FADE.inMs + COMBAT_FADE.holdMs + COMBAT_FADE.outMs * 2)).toBe(0);
+  });
+
+  it('a passive label shows for 2 s on change and never on the first frame', () => {
+    expect(PASSIVE_NOTE_MS).toBe(2000);
+    const note = createPassiveNote();
+    expect(note.update('Disfraz: intacto', 0)).toBe(false);
+    expect(note.update('Disfraz: intacto', 500)).toBe(false);
+    expect(note.update('Disfraz: roto', 1000)).toBe(true);
+    expect(note.update('Disfraz: roto', 1000 + PASSIVE_NOTE_MS - 1)).toBe(true);
+    expect(note.update('Disfraz: roto', 1000 + PASSIVE_NOTE_MS)).toBe(false);
   });
 });

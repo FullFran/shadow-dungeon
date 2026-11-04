@@ -25,3 +25,21 @@ Pattern: `.agents/DESIGN.md` §4 "Combat HUD". Spanish summary: `docs/gdd.md` "H
 - [x] Hint bar and the message log: lifted over the boss block (`liftHintBand`, layout test); hint-bar files untouched.
 - [x] Gameplay unchanged: `npm run prove` 24/24 fights cleared, 166 cards survivable; full vitest only the pre-existing `difficulty-tiers` golden digest fails.
 - [x] Pending, not cut: shiny/female portraits follow `playerSprite()` (covered); the other agents' location plaque and loadout preview are not edited here.
+
+## Pass 2: minimalist and peripheral (owner 2026-11-04)
+
+Owner: "el hud de combate lo quiero menos grande y menos invasivo ... igual de bien presentado, misma estética ... más pequeño y minimalista".
+
+- [x] P1 Tests first: `tests/ui/hud-layout.test.ts` "combat HUD footprint" (<= 12% area, centre 50% clear), caption timing and fade models in `tests/ui/combat-hud-model.test.ts`.
+- [x] P2 Layout: scale 1 to 2 from 800x450, small metrics, caption strip, `bossStackRect`, minimap tile 4 (`src/ui/hud-layout.ts`).
+- [x] P3 Models: `fightKind`, `createCombatFade`, `createPassiveNote`.
+- [x] P4 Drawing: status, chips, slots, boss bar, caption strip (`src/adapters/combat-hud.ts`), 2-line log (`message-log.ts`), hint bar dim and hide (`play-hints.ts`, CSS).
+- [x] P5 Docs: DESIGN.md §4, §5, §8.
+- [x] P6 Gates and screenshots.
+
+### Parity checklist
+- [x] Every boss: one `bossBlock` and one caption path; the roster and caption tests in `combat-hud-model.test.ts` still iterate every boss and card.
+- [x] Solo and co-op: partner frames moved under the chips; touch keeps the compact metrics (844x390 screenshot).
+- [x] Dungeons: the HUD is the renderer's, shared by all.
+- [x] Information reachable: idle shows passive state, held items, floor, coins and slot names; the pause window lists moves and items. Pending, not cut: the passive state and XP are not in the pause card (they show when idle).
+- [x] i18n: no new strings. Gameplay unchanged: `npm run prove`.

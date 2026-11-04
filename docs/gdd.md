@@ -669,6 +669,8 @@ Propietario, 2026-11-04: «rediseña y haz mucho más grande [...] la barra de j
 
 Solo presentación: ningún dato del HUD entra en la simulación (`npm run prove` y los simuladores no cambian).
 
+**Segunda pasada, minimalista (propietario, 2026-11-04: «menos grande y menos invasivo»).** Sustituye las medidas de arriba: escala de 1 a 2 en medios pasos desde un espacio de 800x450; ventana del jugador de 150x44 con retrato, PS con número, aliento fino y la pasiva como un icono (su estado, 2 s al cambiar y en calma); piso y monedas como fichas pequeñas que se apagan en combate; casillas de unos 46 px solo con icono, tecla y enfriamiento (los nombres, en calma); barra de jefe al 40 % con nombre y epíteto en una línea; el anuncio del jefe en una franja sobre la barra, 1,4 s, nunca sobre el centro de la arena; registro de 2 líneas que se apaga a los 3 s; la barra de ayudas se atenúa cerca de enemigos y se oculta a los 5 s de un jefe. El HUD ocupa como mucho el 12 % de la pantalla en combate y deja libre el centro.
+
 ### Que se sienta bien
 
 Microparón al golpear, vibración de pantalla en los golpes fuertes, números de daño grandes y un sonido distinto según la fuerza del golpe. Un combate simple que se siente genial gana a uno profundo que se siente blando.

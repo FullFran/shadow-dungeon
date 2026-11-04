@@ -1,10 +1,12 @@
 import { SLOT_KEY_CODES, keyLabel } from '../adapters/bindings';
 import type { LastDevice } from '../adapters/last-device';
 import { GAMEPAD_HELP, buttonName, type PadStyle } from '../app/gamepad-help-data';
-import type { BossBar } from '../core/boss';
+import { bossBar, type BossBar } from '../core/boss';
 import { cooldownLeft } from '../core/boosts';
 import { playerStats } from '../core/items';
-import type { EnemyState, PlayerState } from '../core/state';
+import type { EnemyState, PlayerState, WorldState } from '../core/state';
+import { TILE } from '../core/tiles';
+import { distance } from '../core/vec';
 import { bossEpithetKey } from '../data/boss-lore';
 import { cardInfo } from '../data/cards';
 import { AEGISLASH } from '../data/enemies';
@@ -257,3 +259,66 @@ export function moveSlotModel(player: PlayerState, index: number, device: LastDe
 
 /** The stamina bar's full value (a TUNING constant), for the status panel. */
 export const STAMINA_MAX = TUNING.stamina.max;
+
+// -- Combat-aware opacity (owner 2026-11-04, minimalist pass) -----------------------------------------------------
+
+/** An enemy this close (world px) counts as a fight. */
+export const NEAR_ENEMY_PX = 6 * TILE;
+
+export type FightKind = 'calm' | 'near' | 'boss';
+
+/** Is the player in a fight? A boss bar, an enemy close, or the player acting (a move or a roll). Presentation only. */
+export function fightKind(state: Pick<WorldState, 'player' | 'enemies'> & Partial<WorldState>): FightKind {
+  if (bossBar(state as WorldState) !== null) return 'boss';
+  const { player } = state;
+  if (player.action || player.roll) return 'near';
+  return state.enemies.some((e) => e.alive && !e.spent && distance(e.pos, player.pos) <= NEAR_ENEMY_PX) ? 'near' : 'calm';
+}
+
+/** The peripheral elements dim in 200 ms, stay dim 1.5 s after the last fight beat and come back over 500 ms. */
+export const COMBAT_FADE = { inMs: 200, holdMs: 1500, outMs: 500 } as const;
+
+export interface CombatFade {
+  /** 0 calm .. 1 in a fight. */
+  update(inCombat: boolean, nowMs: number): number;
+}
+
+export function createCombatFade(): CombatFade {
+  let value = 0;
+  let lastFight = Number.NEGATIVE_INFINITY;
+  let lastNow: number | null = null;
+  return {
+    update(inCombat, now) {
+      const dt = lastNow === null ? 0 : Math.max(0, now - lastNow);
+      lastNow = now;
+      if (inCombat) {
+        lastFight = now;
+        value = Math.min(1, value + dt / COMBAT_FADE.inMs);
+        if (dt === 0) value = Math.max(value, 0.001);
+      } else if (now - lastFight >= COMBAT_FADE.holdMs) {
+        value = Math.max(0, value - dt / COMBAT_FADE.outMs);
+      }
+      return value;
+    },
+  };
+}
+
+/** How long the passive's state label shows after it changes. */
+export const PASSIVE_NOTE_MS = 2000;
+
+export interface PassiveNote {
+  /** True for `PASSIVE_NOTE_MS` after `text` changed; never on the first frame. */
+  update(text: string, nowMs: number): boolean;
+}
+
+export function createPassiveNote(): PassiveNote {
+  let last: string | null = null;
+  let since = Number.NEGATIVE_INFINITY;
+  return {
+    update(text, now) {
+      if (last !== null && text !== last) since = now;
+      last = text;
+      return now - since < PASSIVE_NOTE_MS;
+    },
+  };
+}
