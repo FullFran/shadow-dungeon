@@ -3922,5 +3922,6 @@
   "menu.hints": "Ayudas de control",
   "setting.hints.about": "Una barra con las teclas o botones que puedes usar ahora. Se apaga sola unos segundos después y vuelve cuando cambia lo que puedes hacer. En táctil no aparece.",
   "hint.move": "Mover",
-  "hint.map": "Mapa"
+  "hint.map": "Mapa",
+  "plaque.boss": "Guardián"
 }

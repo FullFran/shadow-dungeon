@@ -23,7 +23,7 @@ import type { StoryProgress } from '../core/story';
 import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, RUN_FACTOR, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
-import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
+import { arrival, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
 import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
 import { travelWindow } from './travel-window';
@@ -46,6 +46,8 @@ import { beatenBosses, readShrine, shrineBoardLine } from './shrine-records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
 import { INTERACT_KEY_CODES } from '../adapters/bindings';
 import { mountPlayHints } from '../ui/play-hints';
+import { mountLocationPlaque } from '../ui/location-plaque';
+import { plaqueOf, townPlace } from '../ui/location-plaque-model';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { drawTownOverlay, drawTownWorld, type TownCharacter, type TownImages } from './render';
 
@@ -345,8 +347,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const held = new Set<string>();
   const start = performance.now();
   let last = start;
-  /** When the current map's name banner started (view time). */
-  let bannerAt = 0;
+  /** The location plaque (src/ui/location-plaque.ts): the current map announces itself on arrival, and once when the scene opens. */
+  const plaque = mountLocationPlaque(canvas.parentElement ?? document.body);
+  const announce = (): void => plaque.show(plaqueOf(townPlace(map.id), { name: t(map.nameKey) }));
+  announce();
 
   const sprite = playerSprite(options.species, options.shiny, options.female);
   const lobby = options.lobby ?? null;
@@ -400,7 +404,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     wanderers = new Map(map.wanderers.map((w) => [w.id, startWander(w)]));
     walker = at;
     camera = walker.pos;
-    bannerAt = performance.now() - start;
+    announce();
     markVisited(browserStore(), map.id);
   }
 
@@ -586,7 +590,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         wanderers = new Map();
         walker = { pos: { x: PLEA_STAGE.player.x * TILE, y: PLEA_STAGE.player.y * TILE }, facing: { x: 0, y: 1 } };
         camera = { x: walker.pos.x, y: walker.pos.y + TILE * 2 };
-        bannerAt = performance.now() - start;
+        announce();
         plea = startPlea(TILE);
         fade = { phase: 'in', ms: 0 };
       },
@@ -636,7 +640,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function beginTour(): void {
     const hub = WORLD[HUB];
     if (map.id !== hub.id || options.tile) enterMap(hub, startOf(hub));
-    bannerAt = performance.now() - start;
+    announce();
     tour = startTour(TILE, walker.pos);
     fade = { phase: 'in', ms: 0 };
   }
@@ -1044,7 +1048,6 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         // The hint bar says it with the device's own glyph; the floating text stays on touch and when the hints are off.
         prompt: target && (isTouchUi() || !options.hints?.enabled()) ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
-        banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),
         names: nameLabels(),
       },
@@ -1080,6 +1083,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       closeShop = null;
       touch.dispose();
       hints?.dispose();
+      plaque.dispose();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

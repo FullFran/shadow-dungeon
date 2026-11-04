@@ -103,6 +103,20 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside
   its own region. Settings open the shared settings window over it (Esc goes back one step); co-op shows one note: the run keeps going.
   Keys: Up/Down (W/S) move, Left/Right cross to the item chips, Enter/Space act, Esc/Start resume.
+- **Location plaque** (`src/ui/location-plaque.ts`, `src/ui/location-plaque-model.ts`, `src/adapters/floor-plaque.ts`, `src/ui/icons/place-icons.ts`,
+  `src/styles/location-plaque.css`; owner 2026-11-04): one component names every place on arrival, replacing the canvas town banner, the
+  floor card and the dungeon title. A carved relic plate at the top centre (`position: fixed`, top 12 px, 6 px on short landscape,
+  `pointer-events: none`, z 3, `role="status"`): stepped gilt end-caps with a lit diamond stud, an original colour 16×16 place icon at
+  32 px in a slab tile on the left, the place name (Pixelify 22 px, 18 px on short windows), a hairline divider ornament with a lit diamond,
+  a subtitle (Pixelify 16 px: floor, tier when not Easy, boss epithet or "Guardián": only data that exists) and one quiet note (Atkinson
+  14 px: floor lore, collapse warning, escape time; hidden on short landscape). Variants, all from tokens: `stone` (gilt frame), `town`
+  (ember-warmed slab, gold name), `boss` (blood slab and frame, eclipse-glow name; also the Shrine), `sima` (ink slab, ember ring, eclipse
+  glow). One icon per theme: refuge, crypt (also the ruins road), forest, caves, swamp (also the marsh), sima (also the abyss), lookout,
+  crater, lake, boss, and one per Senda line (dream, frost, storm, fangs, mask, mirror, flame, bone); the Shrine and the tutorial stairs
+  reuse the hub's. The newest place replaces the one on screen; a boss name card wins over the floor card of the same moment. The model
+  is pure and a test walks every town map, dungeon, challenge, Senda road, Sima stratum, shrine and boss (icon exists, es and en name,
+  variant). Measured contrast of name and subtitle on the plate (worst of its gradient): stone 14.15 / 7.32, town 7.80 / 5.32,
+  boss 5.31 / 6.32, sima 14.51 / 7.51.
 Play view (town and every dungeon, owner 2026-11-04): full-bleed. The canvas covers the viewport, no margins and no page chrome;
 the logical view follows the window aspect (`src/adapters/viewport.ts`: integer pixel scale on desktop, 320 world px on the short
 side on touch), so a wide window shows more map, never a stretched one. Beyond a small map the dungeon's darkest wall colour
@@ -116,6 +130,10 @@ Accessibility: every hub control is a real `<button>` with an accessible name; a
 - Window open 120 ms ease-out (existing). Focus halo 120 ms. Backdrop: slow corona pulse (1.4 s), embers, fog drift —
   reason: the scene is alive while the player decides. Partner idle animation from its sprite.
 - `prefers-reduced-motion`: no fog drift, no pulse on Play, embers static.
+- Location plaque entrance: the plate unfurls from its centre (`scaleX` 0 to 1 with a centre clip) in 260 ms ease-out, then the icon and the text
+  fade-rise 6 px over 160 ms, staggered 80 ms; it holds 2.2 s and leaves fading up 10 px in 300 ms ease-in. Reason: it marks the change of place
+  without blocking play (Peak-End); it takes no input and never covers the HUD. Under `prefers-reduced-motion`: a plain 200 ms fade in and 300 ms
+  fade out, no unfurl, no rise (`plaqueTiming`, `src/ui/location-plaque-model.ts`).
 
 ## 6. Accessibility Baselines
 
@@ -148,3 +166,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.
 - 2026-11-04 (owner: "Rediseña también el menú de pausa ... un mapa mucho más realista y visible"): the pause menu becomes a relic window with actions, a real floor plan (tileset colours, fog, pixel-icon markers, legend) and a run summary card that absorbs the held items (§4). Supersedes the plain cursor list plus a separate "Objetos equipados" window. Quick settings now open the full settings window.
 - 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).
+- 2026-11-04 (owner: "rediseña también con animación de entrada, decoración, icono representativo en el mapa ... todos los carteles de ubicación superiores"): the town name banner, the floor card and the dungeon title become one location plaque (§4, §5) with a place icon, a subtitle and town, boss and Sima variants. Supersedes the plain dark box with gold text and the centred floor card.
