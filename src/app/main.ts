@@ -128,7 +128,7 @@ import { buildDiagnostics, createDiagnosticsLog, diagnosticsText, type Diagnosti
 import { isLinkProbe } from '../net/diagnostics';
 import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
-import { notices } from '../ui/notice';
+import { notices, setNoticesBlocked } from '../ui/notice';
 import { setupPwa } from '../ui/pwa';
 import { newsNotice } from '../pwa/notices';
 import { endActions, endHeading, hostGoneRoute, materialsEarned, returnPlace, roomGone, victoryLine, townOf, type ReturnPlace } from './after-run';
@@ -747,9 +747,11 @@ function onboardingGate(root: HTMLElement): boolean {
   });
   if (route === 'hub') {
     if (stored.step !== 'welcome' || stored.picks.length > 0 || stored.starter) clearOnboarding(store);
+    setNoticesBlocked(false);
     return false;
   }
-  setBackdropSheets(sheetsReady());
+  // System notices (install, update, news) wait until the first-run flow reaches the hub.
+  setNoticesBlocked(true);
   const go = (step: OnboardingStep, patch: Partial<ReturnType<typeof readOnboarding>> = {}): void => {
     writeOnboarding(store, { ...readOnboarding(store), ...patch, step });
     onboardingGate(root);
