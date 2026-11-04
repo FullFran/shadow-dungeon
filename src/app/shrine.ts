@@ -122,7 +122,9 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const rules = h('div', { className: 'hl-rules' });
   const record = h('div', { className: 'hl-record' });
   const swear = h('button', { className: 'hl-cta', type: 'button' }, [pixelIconSvg('play', 'px-icon'), h('span', { textContent: t('shrine.swear') })]);
-  const sheet = h('section', { className: 'hl-sheet' }, [stage, name, state, rules, record, swear]);
+  // The rules and the record scroll inside their own region; the stage, name, chips and «Jurar» keep fixed rows (nothing sits under the button).
+  const sheetBody = h('div', { className: 'oa-sheet-body' }, [rules, record]);
+  const sheet = h('section', { className: 'hl-sheet oa-sheet' }, [stage, name, state, sheetBody, swear]);
   const grid = h('div', { className: 'hl-grid oa-grid' });
   grid.setAttribute('aria-label', t('shrine.title'));
   const back = h('button', { className: 'hl-back', type: 'button', textContent: t('menu.back') });
@@ -269,7 +271,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const win = mdWindow({ title: t('shrine.title'), className: 'oa-window hl-window' }, [h('div', { className: 'oa-top' }, [tabBar, tierBar]), h('div', { className: 'hl-body' }, [sheet, grid]), foot]);
   const stopNav = hallNav(win, {
     controls: () => [...tabEls.values(), ...tierButtons, ...cardEls, swear, back],
-    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => c.classList.contains('is-beaten') || c.classList.contains('is-sworn')) ?? cardEls[0],
+    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => !c.classList.contains('is-locked')) ?? cardEls[0],
     onBack: options.onBack,
   });
   return { element: win, dispose: stopNav };
