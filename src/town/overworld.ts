@@ -89,7 +89,3 @@ export interface Fade {
 
 /** Opacity of the black over the view during a fade. */
 export const fadeAlpha = (fade: Fade | null): number => (fade ? Math.min(1, Math.max(0, fade.phase === 'out' ? fade.ms / FADE_MS : 1 - fade.ms / FADE_MS)) : 0);
-
-/** How long the map name stays up on arrival, and its fade at the end. */
-export const BANNER_MS = 2600;
-export const bannerAlpha = (ms: number): number => (ms < 0 || ms >= BANNER_MS ? 0 : Math.min(1, (BANNER_MS - ms) / 500, (ms + 1) / 200));

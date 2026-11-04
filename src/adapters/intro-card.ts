@@ -1,5 +1,6 @@
 import { MUSIC_TRACKS, type MusicContext } from '../data/music';
 import { pixelText } from '../ui/canvas';
+import type { PlaceDef } from '../ui/location-plaque-model';
 import { canvasFont, PALETTE } from '../ui/tokens';
 
 /**
@@ -14,6 +15,8 @@ export interface DungeonIntro {
   shownAtMs: number;
   /** Floor 1's lore line, under the subtitle, if the dungeon has one. */
   lore?: string;
+  /** Set for a place's own title (floor 1, a Sima stratum); a boss's name card has none (location plaque). */
+  place?: PlaceDef;
 }
 
 export interface NowPlaying {

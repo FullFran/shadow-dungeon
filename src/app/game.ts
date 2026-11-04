@@ -104,6 +104,9 @@ import { createNetOverlay } from './net-overlay';
 import { hudScaleFor } from '../ui/hud-layout';
 import { slotCount } from '../adapters/hud';
 import { mountPlayHints } from '../ui/play-hints';
+import { mountLocationPlaque } from '../ui/location-plaque';
+import { dungeonPlace, shrinePlace, simaBandPlace } from '../ui/location-plaque-model';
+import { bossPlaque, cardPlaque, introPlaque } from '../adapters/floor-plaque';
 import { hintBand } from '../ui/play-hints-model';
 import type { PadStyle } from './gamepad-help-data';
 import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
@@ -302,6 +305,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   (canvas.parentElement ?? document.body).append(touch.element);
   /** The control hint bar (null without the option: the sim and tests). */
   const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
+  /** The location plaque (src/ui/location-plaque.ts) names each floor, stratum and boss on arrival; it replaces the canvas floor card and dungeon title. Null in the sim and tests. */
+  const plaque = options.hints ? mountLocationPlaque(canvas.parentElement ?? document.body) : null;
+  let plaqued: { card: FloorCard | null; intro: DungeonIntro | null } = { card: null, intro: null };
   let inputSuspended = false;
   /** Keyboard + mouse, touch and the controller, suspended and disposed together. */
   const input = {
@@ -691,16 +697,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
     const floorKey = bands ? bandLoreKey(bands, run.floor) : lore.floorKeys?.[run.floor - 1];
     const floorLore = floorKey ? { lore: t(floorKey) } : {};
-    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, ...floorLore };
+    const band = simaBand();
+    const place = trial ? shrinePlace() : band ? simaBandPlace(band) : dungeonPlace(dungeonOf(run));
+    card = { dungeon: t(trial ? place.nameKey : lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, place, ...floorLore };
     // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
     if (run.floor === 1) {
-      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, ...floorLore };
+      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, place, ...floorLore };
       card = null;
     }
     // The Sima's first floor of a new depth band: the band's own title card, and the track note again (Touhou style).
-    const band = simaBand();
     if (bands && band && bandStartsAt(bands, run.floor)) {
-      intro = { name: t(band.nameKey), subtitle: t(band.subtitleKey), shownAtMs: realMs, ...floorLore };
+      intro = { name: t(band.nameKey), subtitle: t(band.subtitleKey), shownAtMs: realMs, place, ...floorLore };
       card = null;
       if (playing) nowPlaying = { title: trackNote(playing), shownAtMs: realMs };
     }
@@ -1615,7 +1622,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       defeatedAt,
       moving,
       hoverId: hovered && hovered.id !== world.lock.targetId ? hovered.id : null,
-      card,
+      card: plaque ? null : card,
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
@@ -1624,7 +1631,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       palette: band ? simaPalette(band) : dungeonOf(run).palette,
       decor: band ? (band.decor ?? null) : (dungeonOf(run).decor ?? null),
       sima: band ? { floor: run.floor, abyss: band.abyss === true } : null,
-      intro,
+      intro: plaque ? null : intro,
       nowPlaying,
       spell,
       capture,
@@ -1650,6 +1657,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       perf.record('enemies', world.enemies.length);
     }
     overlay?.update(realMs);
+    if (plaque && (card !== plaqued.card || intro !== plaqued.intro)) {
+      // A new place title wins over the floor card of the same moment; a boss's name card (no place) is the blood plaque.
+      const titled = intro !== null && intro !== plaqued.intro ? intro : null;
+      const floorCard = card !== null && card !== plaqued.card ? card : null;
+      plaqued = { card, intro };
+      if (titled) plaque.show(titled.place ? introPlaque(titled, run.floor, difficulty) : bossPlaque(titled, run.floor, trial !== null));
+      else if (floorCard) plaque.show(cardPlaque(floorCard, difficulty));
+    }
     if (hints) {
       // The bar sits in the free stretch of the bottom edge (src/ui/play-hints-model.ts `hintBand`), in CSS px.
       const css = (zoom / pixelScale) * hudScale;
@@ -1709,6 +1724,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
       hints?.dispose();
+      plaque?.dispose();
       spectateButton.remove();
       sign?.element.remove();
       victoryBand?.remove();

@@ -36,9 +36,6 @@ export interface TownCharacter {
 /** The town's own light, for maps without a look. */
 export const DEFAULT_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'] };
 
-/** Top of the map's name banner on arrival, in view px (below the status corner of the page, clear of the player). */
-const BANNER_TOP = 16;
-
 export interface TownFrame {
   map: MapShape;
   /** Ground sheet, eclipse light and size (the town's when absent). */
@@ -395,8 +392,6 @@ export interface TownOverlay {
   prompt: { text: string; pos: Vec2 } | null;
   /** The dialog box; `portrait`: the speaker's sheet, shown in a framed box over it (Mystery Dungeon style). */
   dialog: { speaker: string; text: string; done: boolean; portrait?: string } | null;
-  /** The map's name on arrival, fading out. */
-  banner?: { text: string; alpha: number } | null;
   /** Black over everything while changing maps (0..1). */
   fade?: number;
   /** Player names over their heads (world px), the local one dimmer. */
@@ -460,15 +455,6 @@ export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overl
     const y = Math.round(Math.max(4, overlay.prompt.pos.y - view.y - 52));
     drawPanel(ctx, x, y, width, 16, { fill: 0.9 });
     pixelText(ctx, overlay.prompt.text, x + 6, y + 12, PALETTE.text);
-  }
-  if (overlay.banner && overlay.banner.alpha > 0) {
-    const text = overlay.banner.text;
-    const width = Math.ceil(ctx.measureText(text).width) + 28;
-    const x = Math.round((view.width - width) / 2);
-    drawPanel(ctx, x, BANNER_TOP, width, 20, { alpha: overlay.banner.alpha });
-    ctx.globalAlpha = overlay.banner.alpha;
-    pixelText(ctx, text, view.width / 2, BANNER_TOP + 14, PALETTE.cursor, 'center');
-    ctx.globalAlpha = 1;
   }
   drawDialog(ctx, view, overlay, timeMs, sheets);
   if (overlay.fade && overlay.fade > 0) {

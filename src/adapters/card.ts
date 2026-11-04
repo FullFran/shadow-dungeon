@@ -1,6 +1,7 @@
 import type { FloorKind } from '../data/dungeon';
 import { t } from '../i18n';
 import { drawPanel, pixelText } from '../ui/canvas';
+import type { PlaceDef } from '../ui/location-plaque-model';
 import { canvasFont, PALETTE } from '../ui/tokens';
 import { floorLabel } from './hud';
 
@@ -21,6 +22,8 @@ export interface FloorCard {
   shownAtMs: number;
   /** The floor's lore line (already translated), if its dungeon has one. */
   lore?: string;
+  /** Where it is, for the location plaque (picture and look). */
+  place?: PlaceDef;
 }
 
 export const CARD = {
