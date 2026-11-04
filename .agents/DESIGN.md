@@ -75,6 +75,14 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   (Von Restorff). Keys: Up/Down walk headers and open rows, Left/Right fold/unfold (Left on a row climbs to its header),
   Enter/Space on a header toggles. Expand 140 ms (`grid-template-rows` 0fr to 1fr), none under `prefers-reduced-motion`.
   Category tabs are dropped when the groups are the filter (two controls for one job is clutter).
+- **Hint bar** (`.ph`, `src/ui/play-hints.ts`, `src/ui/play-hints-model.ts`, `src/styles/play-hints.css`): relic chips (slab fill,
+  slab-edge frame, 4 px radius, hard drop) along the bottom edge, in the free stretch between the message log and the move slots
+  so it never covers the player or HUD. Each chip is the glyph of the last device used (square pixel keycaps for the keyboard,
+  the pad glyphs of the controller help for xbox/playstation) plus a 16 px label; at most six. Only what is available now (the
+  interact chip appears with something in range, gilt frame and ember glow, and stays while it is). Touch hides it. Shows 5 s
+  after the context changes, then fades 400 ms (none under `prefers-reduced-motion`); labels step back (move and attack first,
+  then all) when the stretch is narrow. Fullscreen toggle button (pixel icon) at its end, always faint; F11 and Alt+Enter too.
+  Setting: Settings, Accessibility, "Ayudas de control". Bindings come from `src/adapters/bindings.ts`.
 - **Sprite fit rule** (`src/ui/sprite-fit.ts`, `src/styles/sprite-fit.css`): a Pokémon is never cropped. Its box has a
   fixed size and the class `sprite-box`; the canvas fills the box (`object-fit: contain`, bottom-centred) and, inside a
   `sprite-box`, is cropped to the pixels the idle animation really covers (`portrait()` in `src/app/loadout.ts`), so the
@@ -95,6 +103,11 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside
   its own region. Settings open the shared settings window over it (Esc goes back one step); co-op shows one note: the run keeps going.
   Keys: Up/Down (W/S) move, Left/Right cross to the item chips, Enter/Space act, Esc/Start resume.
+Play view (town and every dungeon, owner 2026-11-04): full-bleed. The canvas covers the viewport, no margins and no page chrome;
+the logical view follows the window aspect (`src/adapters/viewport.ts`: integer pixel scale on desktop, 320 world px on the short
+side on touch), so a wide window shows more map, never a stretched one. Beyond a small map the dungeon's darkest wall colour
+fills. The view is top-down: no sky, horizon or sun is drawn (the eclipse survives only as a tint). HUD panels and the touch
+layer anchor to the real viewport edges. The legal notice is not drawn over play.
 
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
 
@@ -134,3 +147,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   four slot groups, calm rows, scroll inside. Supersedes the 3-column move card grid and the slot tabs of 2026-11-03.
 - 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.
 - 2026-11-04 (owner: "Rediseña también el menú de pausa ... un mapa mucho más realista y visible"): the pause menu becomes a relic window with actions, a real floor plan (tileset colours, fog, pixel-icon markers, legend) and a run summary card that absorbs the held items (§4). Supersedes the plain cursor list plus a separate "Objetos equipados" window. Quick settings now open the full settings window.
+- 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).

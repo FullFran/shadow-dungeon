@@ -1,6 +1,9 @@
 import type { PlayerInput, Rect } from '../core/state';
 import type { Vec2 } from '../core/vec';
+import { LOCK_KEYS, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES } from './bindings';
 import { screenToWorld } from './view';
+
+export { SLOT_KEY_CODES };
 
 /**
  * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
@@ -37,20 +40,13 @@ export interface RawInput {
 const axis = (keys: ReadonlySet<string>, negative: readonly string[], positive: readonly string[]) =>
   (positive.some((code) => keys.has(code)) ? 1 : 0) - (negative.some((code) => keys.has(code)) ? 1 : 0);
 
-/** Direction keys by axis side, as in the town (src/town/scene.ts). */
-const LEFT = ['KeyA', 'ArrowLeft'];
-const RIGHT = ['KeyD', 'ArrowRight'];
-const UP = ['KeyW', 'ArrowUp'];
-const DOWN = ['KeyS', 'ArrowDown'];
-const MOVE_KEYS = new Set([...LEFT, ...RIGHT, ...UP, ...DOWN]);
+/** Direction keys by axis side, as in the town (src/adapters/bindings.ts). */
+const LEFT = MOVE_KEY_CODES.left;
+const RIGHT = MOVE_KEY_CODES.right;
+const UP = MOVE_KEY_CODES.up;
+const DOWN = MOVE_KEY_CODES.down;
+const MOVE_KEYS = new Set<string>([...LEFT, ...RIGHT, ...UP, ...DOWN]);
 
-/**
- * Keys of each slot (fast, heavy, boost, area), by `KeyboardEvent.code`. R/F
- * sit next to Q/E under the left hand; 1/2 are the alternative. None clashes
- * with Shift, Space, E, Q, M (map), Tab, Esc or F3; 1–3 also pick an item,
- * but the item pick suspends the game input.
- */
-export const SLOT_KEY_CODES: readonly (readonly string[])[] = [['KeyQ'], ['KeyE'], ['KeyR', 'Digit1'], ['KeyF', 'Digit2']];
 /** Mouse button of each slot (left fast, right heavy); boost and area have none (middle is the lock). */
 const SLOT_BUTTONS: readonly (number | undefined)[] = [0, 2];
 
@@ -63,7 +59,7 @@ export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number): Pl
     roll: raw.rollPressed,
     slots: SLOT_KEY_CODES.map((codes, i) => (SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])) || codes.some((code) => keys.has(code))),
     slotMouse: SLOT_KEY_CODES.map((_, i) => SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])),
-    lock: keys.has('ShiftLeft') || keys.has('ShiftRight') || buttons.has(1),
+    lock: LOCK_KEYS.some((code) => keys.has(code)) || buttons.has(1),
     click: buttons.has(0),
     wheel: raw.wheel,
     view,
@@ -77,7 +73,7 @@ export function wheelPixels(deltaY: number, deltaMode: number, pageHeight = 600)
   return deltaY;
 }
 
-const GAME_KEYS = new Set([...MOVE_KEYS, ...SLOT_KEY_CODES.flat(), 'Space', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set([...MOVE_KEYS, ...SLOT_KEY_CODES.flat(), ROLL_KEY, ...LOCK_KEYS]);
 
 export interface InputDevice {
   /** Raw state for the next simulation step; edges (roll, wheel) are consumed. */
@@ -111,7 +107,7 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
   const onKeyDown = (e: KeyboardEvent) => {
     if (suspended || !GAME_KEYS.has(e.code)) return;
     e.preventDefault();
-    if (e.code === 'Space' && !e.repeat) rollPressed = true;
+    if (e.code === ROLL_KEY && !e.repeat) rollPressed = true;
     // Walking with the keys again: the cursor resting where it was is no longer the aim.
     if (MOVE_KEYS.has(e.code) && !e.repeat) pointerLive = false;
     keys.add(e.code);

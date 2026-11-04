@@ -3910,5 +3910,17 @@
   "pause.legend.water": "Water",
   "pause.legend.pool": "Toxic pool",
   "pause.legend.rubble": "Rubble",
-  "pause.itemsEmpty": "You carry no items yet."
+  "pause.itemsEmpty": "You carry no items yet.",
+  "hint.attack": "Moves",
+  "hint.wheel": "Shortcuts",
+  "hint.talk": "Talk",
+  "hint.read": "Read",
+  "hint.travel": "Travel",
+  "hint.bar": "Available controls",
+  "hint.fullscreen.enter": "Fullscreen",
+  "hint.fullscreen.exit": "Leave fullscreen",
+  "menu.hints": "Control hints",
+  "setting.hints.about": "A bar with the keys or buttons you can use right now. It fades after a few seconds and returns when what you can do changes. It does not show on touch.",
+  "hint.move": "Move",
+  "hint.map": "Map"
 }

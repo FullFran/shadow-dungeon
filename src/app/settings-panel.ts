@@ -29,7 +29,7 @@ export interface SettingsAccess {
 }
 
 export interface SettingRow {
-  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'figurations' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
+  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'figurations' | 'hints' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
   label: string;
   value: string;
   /** Volumes: the level 0..1 for the meter. */
@@ -87,7 +87,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     access.update({ language });
     access.setLanguage(language);
   };
-  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded') => () => access.update({ [key]: !access.get()[key] });
+  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded' | 'showHints') => () => access.update({ [key]: !access.get()[key] });
   const volume = (key: VolumeKey, section?: string): Omit<SettingRow, 'about'> => ({
     id: key,
     label: t(`menu.${key}`),
@@ -121,6 +121,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     { id: 'muted', label: t('menu.mute'), value: onOff(s.muted), disabled: false, adjust: toggle('muted'), confirm: toggle('muted') },
     // Accessibility: the Sima's figuraciones (shapes that are not there, under low lucidity).
     { id: 'figurations', section: t('menu.accessibility'), label: t('menu.figurations'), value: t(`menu.figurations.${s.figurations}`), disabled: false, adjust: figurations, confirm: () => figurations(1) },
+    { id: 'hints', label: t('menu.hints'), value: onOff(s.showHints), disabled: false, adjust: toggle('showHints'), confirm: toggle('showHints') },
     { id: 'touchMode', section: t('touch.section'), label: t('touch.mode'), value: t(`touch.mode.${s.touchMode}`), disabled: false, adjust: touchMode, confirm: () => touchMode(1) },
     { id: 'autoAim', label: t('touch.autoAim'), value: onOff(s.autoAim), disabled: false, adjust: toggle('autoAim'), confirm: toggle('autoAim') },
     { id: 'haptics', label: t('touch.haptics'), value: onOff(s.haptics), disabled: false, adjust: toggle('haptics'), confirm: toggle('haptics') },
@@ -186,7 +187,7 @@ export const SETTING_SLIDERS = {
   touchOpacity: { min: Math.min(...TOUCH_OPACITIES), max: 1, step: 0.25 },
 } as const satisfies Partial<Record<SettingRow['id'], SliderRange>>;
 
-const SWITCHES: ReadonlySet<SettingRow['id']> = new Set(['clickToLock', 'muted', 'autoAim', 'haptics', 'touchLeftHanded']);
+const SWITCHES: ReadonlySet<SettingRow['id']> = new Set(['clickToLock', 'muted', 'autoAim', 'haptics', 'touchLeftHanded', 'hints']);
 
 const sizeLabel = (scale: number) => t(`touch.size.${scale < 1 ? 'small' : scale > 1 ? 'large' : 'normal'}`);
 

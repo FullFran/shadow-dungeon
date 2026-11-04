@@ -1,6 +1,7 @@
 import { glyphSvg, type Glyph } from '../town/town-map-view';
 import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
+import { toggleFullscreen } from '../ui/fullscreen';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
@@ -78,7 +79,7 @@ import { friendsWindow } from './friends-window';
 import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
-import { controlsWindow } from './gamepad-help';
+import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -191,6 +192,8 @@ const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
+/** The in-game control hint bar (src/ui/play-hints.ts), for the town and the runs: the Settings switch and the pad layout last chosen. */
+const playHints = { enabled: () => settings.showHints, padStyle: savedPadStyle };
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
 const globalRanking = globalRankingSource({ api: publicApi, signedIn: () => account.state().kind === 'signed-in', now: () => Date.now() });
 const globalBoard = (difficulty: Difficulty): string[] =>
@@ -618,16 +621,6 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
     void ticketAdmin.check().then((admin) => {
       if (admin && view.element.isConnected && !root.querySelector('.town-shop')) titleScreen(root, typeof initial === 'string' ? initial : undefined);
     });
-  }
-}
-
-/** The hub's fullscreen button: in and out of the browser's fullscreen, best effort. */
-async function toggleFullscreen(): Promise<void> {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-  } catch {
-    // Refused (iframe, iPhone Safari, a setting): the page stays as it is.
   }
 }
 
@@ -1271,7 +1264,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
   const { tour: forceTour, ...place } = at ?? {};
   // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
   const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
+  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -2022,6 +2015,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
     ...(trial ? { trial: trial.request.stops } : {}),
     audio,
+    hints: playHints,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     gamepad: gamepads,

@@ -1,19 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { fitCanvas } from '../../src/adapters/fit';
+import { playViewport } from '../../src/adapters/viewport';
 import { itemsChip } from '../../src/adapters/hud';
 import { setLanguage } from '../../src/i18n';
 import { type HudBox, hudRects, hudScaleFor, hudSpace } from '../../src/ui/hud-layout';
 
-const VIEW = { width: 512, height: 320 };
 const MINIMAP = { cols: 40, rows: 28 };
 
 /** HUD space and rects for a window, as the game computes them. */
 function layoutFor(viewportW: number, viewportH: number, touch: boolean, dpr = 1) {
-  const fit = fitCanvas(viewportW, viewportH, VIEW.width, VIEW.height, dpr, touch);
+  const fit = playViewport(viewportW, viewportH, dpr, touch);
   const scale = hudScaleFor(viewportW, viewportH, fit.pixelScale, touch);
-  const space = hudSpace(VIEW.width * fit.pixelScale, VIEW.height * fit.pixelScale, scale);
+  const space = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, scale);
   // CSS pixels per backing-store pixel (1 on desktop).
-  const css = fit.cssWidth / (VIEW.width * fit.pixelScale);
+  const css = fit.cssWidth / (fit.viewWidth * fit.pixelScale);
   return { fit, scale, space, css, rects: hudRects(space, { chip: true, slots: 2, minimap: MINIMAP }) };
 }
 
@@ -29,10 +28,11 @@ describe('HUD scale', () => {
     expect(hudScaleFor(600, 400, 1, false)).toBe(1);
   });
 
-  it('touch keeps the canvas scale, so the HUD space stays the 512x320 view', () => {
+  it('touch keeps the canvas scale, so the HUD space is the whole view (320 high on a phone held sideways)', () => {
     const { fit, scale, space } = layoutFor(844, 390, true, 3);
     expect(scale).toBe(fit.pixelScale);
-    expect(space).toEqual({ scale, width: VIEW.width, height: VIEW.height });
+    expect(space).toEqual({ scale, width: fit.viewWidth, height: fit.viewHeight });
+    expect(space.height).toBe(320);
   });
 });
 
@@ -85,10 +85,10 @@ describe('HUD layout', () => {
     expect(some.height - none.height).toBeLessThanOrEqual(12);
   });
 
-  it('touch keeps the same rects as the view-space HUD it had', () => {
-    const { rects } = layoutFor(844, 390, true, 3);
+  it('touch anchors the panels to the real edges of the view', () => {
+    const { rects, space } = layoutFor(844, 390, true, 3);
     expect(rects.status).toMatchObject({ x: 6, y: 6, width: 196 });
-    expect(rects.slots.at(-1)).toEqual({ x: VIEW.width - 6 - 104, y: VIEW.height - 6 - 30, width: 104, height: 30 });
+    expect(rects.slots.at(-1)).toEqual({ x: space.width - 6 - 104, y: space.height - 6 - 30, width: 104, height: 30 });
   });
 });
 
