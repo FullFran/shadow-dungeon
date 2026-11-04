@@ -64,6 +64,26 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   choice as an equal block (at most three facts per side, no pressure). In a short landscape window (max-height 520 px)
   the two halves sit side by side. Slide 160 ms ease-out (the panel comes from the edge it lives on); none under
   `prefers-reduced-motion`. Pending shows at once, errors stay inline. Shared controls: `src/styles/relic-controls.css`.
+- **Welcome gate** (`src/app/welcome-screen.ts`, `src/app/onboarding.ts`, `src/styles/onboarding.css`; owner 2026-11-04): the first screen of a profile with no walker,
+  full screen over the eclipse backdrop and never the hub (no empty altar anywhere). Logo, one sober line of lore and two equal relic cards
+  (Hick: two primary choices): "Iniciar sesión / Crear cuenta" (opens the Side drawer; routes on when it closes signed in) and "Jugar como
+  invitado". Each card: 56 px pixel icon, title, the drawer's own three facts (account pros, guest cons: its strings, never new claims), a quiet
+  action line. No static ember (the focus halo is the only glow; neither choice is pushed). A quiet link "Ya tengo partida en este
+  dispositivo" only when the device holds a save. Arrows/Enter/1-2, pad and touch; at most 72 ch of lore, `max-height: 520px` compacts it.
+- **Questionnaire** (`src/app/quiz-screen.ts`, `src/app/quiz-view.ts`, `src/ui/icons/onboarding-icons.ts`): one question per screen on a carved slab
+  (`.ob-slab`: window gradient, gold frame, inner bevel, hard drop). Progress is a rail of oath runes (16x16 pixel icons, lit = answered,
+  ember halo = the one being asked, dim = to come) plus "n / total", one rune per real question (Goal-Gradient, honest). Answers are relic
+  cards >= 68 px (100 px in short landscape, three across): number keycap, 44 px original pixel icon (24 icons, objects never faces), text in
+  Atkinson. Keys 1-3, arrows/WASD, Enter; Esc/Backspace is one step back and marks the answer you had given (Error prevention); the voice
+  ("...¿Me oyes?") opens it. Slide 180 ms ease-out (`translateX` 28 px + fade, direction follows forward/back); instant under
+  `prefers-reduced-motion`. Scoring is `core/quiz.ts`, untouched.
+- **Walker reveal** (same files; the onboarding's Peak): the silhouette (`filter: brightness(0)`) lights up after 450 ms over 900 ms on an altar of
+  two stone slabs with an ember rune, a warm glow behind and 14 ember points rising (4 s, offset, drift fixed so a redraw never jumps; still
+  points under reduced motion). The sprite lives in `.ob-altar-sprite` (a `sprite-box`, 220x200, 300x280 from 900 px of height, 132x116 in
+  short landscape) so it is never cropped. Name (Pixelify), type badges, "Eres de naturaleza X..." and the nature's description as the lore
+  line. One ember call to action "Comenzar" (>= 60 px), and quiet links: "Repetir cuestionario", "Elegir otro Pokémon" (four starter cards,
+  `.ob-pick-art` sprite boxes), "Volver". Progress (step, seed, answers, hand-picked walker) is kept in the device key
+  `mazmorra-sombria.onboarding`, so a reload continues where the player was.
 - **Friends window** (`src/app/friends-window.ts`): the picker pattern applied to a social list: a sheet (your code, add by
   code) beside a column of cards (avatar tile with a diamond state pip, name, state line, actions). Signed out it is one
   compact card that opens the drawer.
@@ -198,3 +218,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).
 - 2026-11-04 (owner: "rediseña también con animación de entrada, decoración, icono representativo en el mapa ... todos los carteles de ubicación superiores"): the town name banner, the floor card and the dungeon title become one location plaque (§4, §5) with a place icon, a subtitle and town, boss and Sima variants. Supersedes the plain dark box with gold text and the centred floor card.
 - 2026-11-04 (owner: "Haz los pokemon también más grandes", "cuando haya que interactuar, que salga como tooltip cerca de lo que vas a hacer", "rediseña también los diálogos", "más grande las ayudas visuales"): creatures are drawn at 1.5x (Creature scale, §4); interaction becomes a world tooltip over its target and leaves the hint bar (§4); the canvas dialogue box becomes a DOM relic slab with portrait, name plate, typewriter, page counter and continue glyph (§4); the hint bar grows (chip >= 40 px, keycap >= 28 px, label >= 16 px). Supersedes the interact chip of the 2026-11-04 hint bar and the Mystery Dungeon canvas dialogue box.
+- 2026-11-04 (owner: "no debería salir el círculo rojo ni el hueco para tu pokémon, debe primero pedirte elegir si como invitado o iniciar sesión y guiarte primero al onboarding/cuestionario para elegir tu caminante, que también debe rediseñarse al completo"): a profile with no walker never meets the hub or its empty altar; it enters through a Welcome gate (account or guest, §4), then the prologue, a redesigned Questionnaire (one question per slab, oath-rune progress rail, relic answer cards with original pixel icons, 180 ms slide) and a Walker reveal (silhouette lit on an altar with embers, one ember call to action), then the first run (§4, §5). Scoring, question and answer texts and the story order are unchanged. Supersedes the black-screen quiz of MD-style cursor lists and its Accept/Choose window.
