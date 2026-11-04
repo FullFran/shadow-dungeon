@@ -208,3 +208,25 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 .ach-detail { height: 84px; min-height: 0; overflow: hidden; }
 .ach-detail-text > * { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 @media (max-height: 520px) { .ach-window { height: calc(100dvh - 24px); } .ach-detail { height: 64px; } .ach-grid { grid-auto-rows: 100px; } .ach-tile { height: 100px; } .ach-tile-name { height: 2.4em; -webkit-line-clamp: 2; } }
+
+/* Owner 2026-11-04: nothing may be hidden. Category names wrap instead of ending in an ellipsis, the detail lives
+   inside the panel above the grid (compact, its own row), and the grid fades at the bottom edge to say it scrolls
+   while rows snap so a tile is never left cut in half under another element. */
+.ach-rail .md-label, .ach-cat-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.ach-cat-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.ach-panel > .ach-detail { height: auto; min-height: 64px; padding: 6px 12px; }
+.ach-window .ach-panel .ach-detail-name { font-size: 18px; }
+.ach-window .ach-panel .ach-detail-desc { font-size: 15px; }
+.ach-grid { scroll-snap-type: y proximity; scroll-padding-top: 4px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 28px; }
+.ach-tile { scroll-snap-align: start; }
+@media (max-height: 520px) {
+  .ach-panel > .ach-detail { min-height: 0; height: 52px; padding: 4px 10px; }
+  .ach-window .ach-panel .ach-detail-desc { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ach-window .ach-panel .ach-detail-meta { display: none; }
+}
+.ach-rail { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); padding-bottom: 24px; scroll-snap-type: y proximity; }
+.ach-rail .md-item { scroll-snap-align: start; }
+@media (max-height: 520px) {
+  .ach-cat-name { display: none; }
+  .ach-rail { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }
+}

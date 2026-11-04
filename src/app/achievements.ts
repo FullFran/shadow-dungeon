@@ -470,8 +470,8 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
 
   const element = mdWindow({ title: tr('achievement.title'), className: 'achievements ach-window' }, [
     head,
-    h('div', { className: 'ach-body' }, [list.element, h('div', { className: 'ach-panel' }, [panelTitle, grid])]),
-    detail,
+    // The detail sits above the grid inside the panel, so it never covers a row of tiles.
+    h('div', { className: 'ach-body' }, [list.element, h('div', { className: 'ach-panel' }, [panelTitle, detail, grid])]),
     h('div', { className: 'ach-foot' }, [back, hint]),
   ]);
 
