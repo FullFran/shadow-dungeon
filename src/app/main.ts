@@ -28,6 +28,7 @@ import { createSession, type NetSession } from '../net/session';
 import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
 import { eclipseBackdrop, setBackdropSheets } from '../ui/eclipse';
+import { sceneLayers } from '../ui/scene';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
@@ -484,16 +485,21 @@ function notice(): HTMLElement {
  * Replaces the page; menu screens sit over the eclipse backdrop, the run does not.
  * Menu screens (title, settings, credits, online, lobby) keep the title music;
  * the result screen plays its stinger instead, and the run sets its own music.
+ * `freeze`: an end-of-run dialog keeps the run's last frame (dimmed by its veil) and never the backdrop (ui/scene.ts).
  */
-function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title'): void {
+function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title', freeze = false): void {
+  const frame = freeze && running ? root.querySelector<HTMLCanvasElement>('canvas.game') : null;
+  const layers = sceneLayers(backdrop ? 'title' : 'game', frame !== null);
   if (running) {
     // Stopping the game leaves its session, unless it is the room's (back to the town together).
     running.stop();
     running = null;
     if (current !== room?.session) current = null;
   }
-  if (backdrop) audio.setMusic(music);
-  root.replaceChildren(...(backdrop ? [eclipseBackdrop()] : []), ...children, notice());
+  if (backdrop || freeze) audio.setMusic(music);
+  frame?.classList.add('is-frozen');
+  root.replaceChildren(...(layers.frozenGame && frame ? [frame] : []), ...(layers.backdrop ? [eclipseBackdrop()] : []), ...children, notice());
+  if (layers.frozenGame) root.querySelector('.notice')?.classList.add('in-game');
 }
 
 /** A one-row menu (Back to menu, Back...). */
