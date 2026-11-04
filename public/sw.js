@@ -17,7 +17,18 @@ var CACHE_PREFIX = 'mazmorra-';
 var SHELL_CACHE = CACHE_PREFIX + 'shell-' + VERSION;
 var RUNTIME_CACHE = CACHE_PREFIX + 'runtime-' + VERSION;
 var SHELL_STATIC = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'fonts/PixelifySans.ttf'];
-var CACHE_FIRST_DIRS = ['assets/', 'sprites/', 'tiles/', 'music/', 'fonts/', 'icons/'];
+var CACHE_FIRST_DIRS = ['assets/', 'sprites/', 'portraits/', 'tiles/', 'music/', 'fonts/', 'icons/'];
+/* Art (sprites, portraits, tiles, music) is big and rarely changes: it lives in its own cache named after a hash of the art
+   files, stamped at build (tools/art-version-plugin.ts), so a deploy that touches only code does not download it again. */
+var ART_VERSION = '__ART_VERSION__'.indexOf('__') === 0 ? 'dev' : '__ART_VERSION__';
+var ART_CACHE = CACHE_PREFIX + 'art-' + ART_VERSION;
+var ART_DIRS = ['sprites/', 'portraits/', 'tiles/', 'music/'];
+
+/** The cache a same-origin game file belongs in: the art cache for art, else this version's runtime cache. */
+function cacheNameFor(path) {
+  for (var i = 0; i < ART_DIRS.length; i++) if (path.indexOf(ART_DIRS[i]) === 0) return ART_CACHE;
+  return RUNTIME_CACHE;
+}
 
 /** Relative URLs to precache: the static shell plus every ./assets/ file the built page references. */
 function shellUrls(html) {
@@ -44,7 +55,7 @@ function strategyFor(request, scope) {
 /** Our caches that belong to another version. */
 function staleCaches(names) {
   return names.filter(function (name) {
-    return name.indexOf(CACHE_PREFIX) === 0 && name !== SHELL_CACHE && name !== RUNTIME_CACHE;
+    return name.indexOf(CACHE_PREFIX) === 0 && name !== SHELL_CACHE && name !== RUNTIME_CACHE && name !== ART_CACHE;
   });
 }
 
@@ -87,7 +98,8 @@ function cacheFirst(request) {
     return fetch(request).then(function (response) {
       if (response.ok && response.type === 'basic') {
         var copy = response.clone();
-        caches.open(RUNTIME_CACHE).then(function (cache) {
+        var path = new URL(request.url).pathname.slice(new URL(self.registration.scope).pathname.length);
+        caches.open(cacheNameFor(path)).then(function (cache) {
           return cache.put(request, copy);
         });
       }

@@ -20,7 +20,7 @@ import { groundAt, isFloorGround, pathPatchCell, type MapShape } from './map';
  * world, and embers.
  * The caller applies the integer pixel scale; this module keeps no state.
  */
-export type TownImages = ReadonlyMap<string, HTMLImageElement>;
+export type TownImages = ReadonlyMap<string, HTMLImageElement | HTMLCanvasElement>;
 
 const SRC = 16;
 const EMBERS = 36;

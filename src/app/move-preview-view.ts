@@ -1,11 +1,13 @@
-import type { SheetStore } from '../adapters/assets';
+import { preload, type SheetStore } from '../adapters/assets';
+import { sheetsOfSprite } from '../adapters/sprite-sets';
 import { FxDirector } from '../adapters/fx/director';
 import { sharedFxStore } from '../adapters/fx/store';
 import { FxSystem } from '../adapters/fx/system';
 import { applyEvents, initialJuice, tickJuice, type JuiceState } from '../adapters/juice';
 import { createRenderer, type Renderer } from '../adapters/renderer';
 import type { MoveId } from '../data/moves';
-import type { SpeciesId } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
+import { SPRITE_KEYS } from '../data/sprites';
 import { t } from '../i18n';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { h } from '../ui/window';
@@ -182,6 +184,8 @@ export function createMovePreview(options: { sheets?: Promise<SheetStore> }): Mo
   const api: MovePreview = {
     element,
     show(species, move, rank) {
+      // The caster's sheets (the move's own animation among them) are fetched now, so the first cast is not drawn blank.
+      void preload(sheetsOfSprite(SPRITE_KEYS[SPECIES[species].sprite]));
       sim = createPreviewSim(species, move, rank);
       extent = sim ? previewExtent(species, move, rank) : null;
       reframe();

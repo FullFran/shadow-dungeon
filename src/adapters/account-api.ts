@@ -1,5 +1,7 @@
 import type { SaveData } from '../app/save';
 import { isDifficulty, type Difficulty } from '../data/difficulty';
+import { request } from './http';
+import type { ErrorKind } from './net-error';
 
 /**
  * Account API port (docs/gdd.md, Cuentas): the few calls the client makes to
@@ -131,6 +133,22 @@ function simaRanking(body: unknown): SimaRanking | null {
   return { tier: body.tier, entries: body.entries.flatMap((e) => rankingEntry(e) ?? []) };
 }
 
+/** Which shared kind an account failure is (the error model, adapters/net-error.ts). A refusal of the request (400, 404) is not a failure to show. */
+export function accountErrorKind(error: ApiError): ErrorKind {
+  switch (error.kind) {
+    case 'offline':
+      return 'offline';
+    case 'unauthorized':
+      return 'auth';
+    case 'rate-limited':
+      return 'rate-limited';
+    case 'server':
+      return 'server';
+    default:
+      return 'unexpected';
+  }
+}
+
 const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => ({ ok: false, error: { kind } as ApiError });
 
 /**
@@ -139,18 +157,15 @@ const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => (
  */
 export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) => globalThis.fetch(input, init)): AccountApi {
   async function call<T>(method: string, path: string, options: { token?: string; body?: unknown; bearer?: boolean }, read: (body: unknown) => T | null): Promise<ApiResult<T>> {
-    let response: Response;
-    try {
-      const headers: Record<string, string> = {};
-      if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-      if (options.token) headers.Authorization = options.bearer ? `Bearer ${options.token}` : options.token;
-      const init: RequestInit = { method, headers };
-      if (options.body !== undefined) init.body = JSON.stringify(options.body);
-      if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') init.signal = AbortSignal.timeout(TIMEOUT_MS);
-      response = await fetchFn(`${base}${path}`, init);
-    } catch {
-      return fail('offline');
-    }
+    const headers: Record<string, string> = {};
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (options.token) headers.Authorization = options.bearer ? `Bearer ${options.token}` : options.token;
+    const init: RequestInit = { method, headers };
+    if (options.body !== undefined) init.body = JSON.stringify(options.body);
+    const sent = await request(fetchFn, `${base}${path}`, init, { timeoutMs: TIMEOUT_MS, scope: 'account' });
+    // No answer at all (offline, DNS, CORS, timeout): one outcome; a GET was already retried with backoff.
+    if (!sent.ok && !sent.response) return fail('offline');
+    const response = sent.ok ? sent.response : sent.response!;
     let body: unknown = null;
     try {
       body = response.status === 204 ? null : await response.json();

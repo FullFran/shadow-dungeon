@@ -2,7 +2,7 @@ import type { PlayerState } from '../core/state';
 import { SPRITES } from '../data/sprites';
 import { spriteFit } from '../ui/sprite-fit';
 import type { HudBox } from '../ui/hud-layout';
-import { sheetKey, type SheetStore } from './assets';
+import { sheetKey, type SheetImage, type SheetStore } from './assets';
 import { frameAtTime } from './sprite-anim';
 import { playerSprite } from './sprite-anim';
 
@@ -21,7 +21,7 @@ interface Crop {
 }
 
 /** The union of the opaque pixels of every idle frame, in frame pixels (cached per sheet). */
-function opaqueCrop(image: HTMLImageElement, frames: number, fw: number, fh: number): Crop {
+function opaqueCrop(image: SheetImage, frames: number, fw: number, fh: number): Crop {
   const scratch = document.createElement('canvas');
   scratch.width = fw * frames;
   scratch.height = fh;

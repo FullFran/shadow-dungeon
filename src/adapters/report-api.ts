@@ -6,6 +6,9 @@
  * the player can quote to the owner.
  */
 
+import { request } from './http';
+import type { ErrorKind } from './net-error';
+
 export const REPORT_CATEGORIES = ['bug', 'online', 'performance', 'interface', 'progress', 'suggestion', 'other'] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 
@@ -44,28 +47,38 @@ async function readJson(res: Response): Promise<unknown> {
 }
 
 export async function sendReport(baseUrl: string, report: ReportPayload, fetchFn: FetchFn = (input, init) => globalThis.fetch(input, init), timeoutMs = REPORT_TIMEOUT_MS): Promise<ReportResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetchFn(`${baseUrl}/api/sd/reports`, {
+  const sent = await request(
+    fetchFn,
+    `${baseUrl}/api/sd/reports`,
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // `website` is the server's honeypot: people never fill it.
       body: JSON.stringify({ ...report, website: '' }),
-      signal: controller.signal,
       cache: 'no-store',
       credentials: 'omit',
-    });
-    const body = (await readJson(res)) as { ref?: unknown; field?: unknown } | null;
-    if (res.status === 201 || res.status === 200) {
-      return typeof body?.ref === 'string' && REF.test(body.ref) ? { kind: 'ok', ref: body.ref } : { kind: 'unavailable' };
-    }
-    if (res.status === 429) return { kind: 'rate-limited' };
-    if (res.status === 400 || res.status === 413) return typeof body?.field === 'string' ? { kind: 'invalid', field: body.field } : { kind: 'invalid' };
-    return { kind: 'unavailable' };
-  } catch {
-    return { kind: 'unavailable' };
-  } finally {
-    clearTimeout(timer);
+    },
+    { timeoutMs, scope: 'report' },
+  );
+  if (!sent.response) return { kind: 'unavailable' };
+  const res = sent.response;
+  const body = (await readJson(res)) as { ref?: unknown; field?: unknown } | null;
+  if (res.status === 201 || res.status === 200) {
+    return typeof body?.ref === 'string' && REF.test(body.ref) ? { kind: 'ok', ref: body.ref } : { kind: 'unavailable' };
+  }
+  if (res.status === 429) return { kind: 'rate-limited' };
+  if (res.status === 400 || res.status === 413) return typeof body?.field === 'string' ? { kind: 'invalid', field: body.field } : { kind: 'invalid' };
+  return { kind: 'unavailable' };
+}
+
+/** Which shared kind a failed report is (never called with 'ok'). */
+export function reportErrorKind(result: ReportResult): ErrorKind {
+  switch (result.kind) {
+    case 'rate-limited':
+      return 'rate-limited';
+    case 'unavailable':
+      return 'server';
+    default:
+      return 'unexpected';
   }
 }

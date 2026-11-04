@@ -8,7 +8,7 @@ import type { Difficulty } from '../data/difficulty';
 import { TILE, tileOf } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import type { SheetStore } from '../adapters/assets';
+import { image as assetImage, type SheetImage, type SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
 import { cameraView, followCamera } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
@@ -201,22 +201,13 @@ const FLOATERS = new Set<string>(['gastly', 'litwick', 'lampent', 'chandelure', 
 
 type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'beacon' } | { kind: 'lore'; point: LorePoint });
 
-function loadImage(url: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
-    image.src = url;
-  });
-}
-
 /** The town tiles from public/tiles/town (missing files draw as flat colours or not at all). */
 export async function loadTownImages(): Promise<TownImages> {
   const base = `${import.meta.env.BASE_URL}tiles/town/`;
   const files = [...new Set([TOWN_GROUND.file, ...Object.values(GROUND_SHEETS), ...Object.values(TOWN_PROPS).map((p) => p.file)])];
-  const loaded = await Promise.all(files.map(async (file) => [file, await loadImage(base + file)] as const));
-  const out = new Map<string, HTMLImageElement>();
-  for (const [file, image] of loaded) if (image) out.set(file, image);
+  const loaded = await Promise.all(files.map(async (file) => [file, await assetImage(base + file)] as const));
+  const out = new Map<string, SheetImage>();
+  for (const [file, image] of loaded) out.set(file, image);
   return out;
 }
 

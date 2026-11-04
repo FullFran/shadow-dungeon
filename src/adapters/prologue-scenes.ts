@@ -105,7 +105,7 @@ export interface Figure {
   shade?: number;
 }
 
-function figureLayer(image: HTMLImageElement, sx: number, sy: number, fw: number, fh: number, color: string, shade = 1): HTMLCanvasElement {
+function figureLayer(image: CanvasImageSource, sx: number, sy: number, fw: number, fh: number, color: string, shade = 1): HTMLCanvasElement {
   scratch ??= document.createElement('canvas');
   if (scratch.width !== fw || scratch.height !== fh) {
     scratch.width = fw;
