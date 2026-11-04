@@ -89,7 +89,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   };
 
   /** A native text field in the relic skin; its value is kept across redraws. */
-  function field(kind: FieldKind, label: string, submit: () => void): HTMLInputElement {
+  function field(kind: FieldKind, label: string): HTMLInputElement {
     const input = h('input', { type: kind === 'password' ? 'password' : kind === 'email' ? 'email' : 'text', className: 'rk-input', placeholder: label });
     input.value = values[kind];
     input.spellcheck = false;
@@ -110,15 +110,6 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     input.addEventListener('input', () => {
       values[kind] = input.value;
       if (input.getAttribute('aria-invalid')) input.removeAttribute('aria-invalid');
-    });
-    input.dataset.submit = '1';
-    input.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const inputs = [...panel.querySelectorAll<HTMLInputElement>('form input')];
-      const next = inputs[inputs.indexOf(input) + 1];
-      if (next) next.focus();
-      else submit();
     });
     return input;
   }
@@ -221,7 +212,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
 
   function form(): HTMLElement {
     const spec = modeView(mode);
-    const inputs = spec.fields.map((kind) => field(kind, kind === 'email' ? t('account.email') : kind === 'code' ? t('account.drawer.code') : mode === 'reset' ? t('account.drawer.newPassword') : t('account.password'), submit));
+    const inputs = spec.fields.map((kind) => field(kind, kind === 'email' ? t('account.email') : kind === 'code' ? t('account.drawer.code') : mode === 'reset' ? t('account.drawer.newPassword') : t('account.password')));
     const cta = button(busy ? t('account.busy') : t(spec.cta), 'rk-wide rk-ember', submit);
     cta.dataset.cta = '1';
     cta.disabled = busy;
@@ -408,6 +399,15 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     if (e.key === 'Escape') {
       e.preventDefault();
       close();
+      return;
+    }
+    // Enter in a field goes to the next one, or sends the form from the last.
+    if (e.key === 'Enter' && target instanceof HTMLInputElement && target.dataset.field) {
+      e.preventDefault();
+      const inputs = [...panel.querySelectorAll<HTMLInputElement>('form input')];
+      const next = inputs[inputs.indexOf(target) + 1];
+      if (next) next.focus();
+      else submit();
       return;
     }
     // A pad sends synthetic keys, which never click on their own.
