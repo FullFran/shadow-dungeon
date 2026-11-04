@@ -387,7 +387,18 @@ Clerk is the identity provider (email + password, Google, Discord); PocketBase s
 
 **Which account.** The token is verified against the instance JWKS with the official Go SDK (`github.com/clerk/clerk-sdk-go/v2`), then the user is read from the Clerk Backend API. Then: a `users` record whose `clerk_id` is that Clerk user id wins; else the record with the same email (case-insensitive) is linked (`clerk_id` set, marked verified); else an account is created (email, random password, verified). Clerk-created accounts get no password the player knows; password reset by email still works.
 
+**Origin check.** The token's `azp` claim must be one of `SD_ALLOWED_ORIGINS` (case and a trailing slash ignored); a token without `azp` is left to the signature, as Clerk advises.
+
 **Schema.** Migration `1793664000_users_clerk_id.go` adds `users.clerk_id`: hidden (never in a response) and unique only when non-empty. Tests use a fake `Verifier`; nothing touches the network.
+
+**Moving password accounts to Clerk.** With Clerk on, the game's email + password form asks Clerk only, so an account that exists only here answers "wrong credentials". Before turning Clerk on, copy them over:
+
+```sh
+CLERK_SECRET_KEY=sk_... ./sdapi clerk-import            # dry run: what it would create
+CLERK_SECRET_KEY=sk_... ./sdapi clerk-import --apply    # create them in that Clerk instance
+```
+
+It sends every verified account without a `clerk_id` that Clerk does not already have, with its bcrypt hash (`password_hasher: bcrypt`), so the player keeps the same password. Unverified accounts are skipped, so nobody claims an address they never proved. It writes nothing here: the first sign-in links each account by email. Safe to run again.
 
 ## Run locally
 
