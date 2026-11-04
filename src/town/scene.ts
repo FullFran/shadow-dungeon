@@ -44,7 +44,10 @@ import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
 import { beatenBosses, readShrine, shrineBoardLine } from './shrine-records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
-import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
+import { INTERACT_KEY_CODES } from '../adapters/bindings';
+import { mountPlayHints } from '../ui/play-hints';
+import type { PadStyle } from '../app/gamepad-help-data';
+import { drawTownOverlay, drawTownWorld, type TownCharacter, type TownImages } from './render';
 
 /**
  * The town and the overworld around it (src/data/world.ts): the player's
@@ -57,8 +60,6 @@ import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type Town
  * else opens the town menu (every service as a window, travel, back to the
  * title; src/town/town-menu.ts).
  */
-export const TOWN_VIEW = { width: 512, height: 320 } as const;
-
 /**
  * Opens a window over the town inside `parent` and returns a function that
  * closes it; `onClose` runs when the player leaves it, `depart` takes the
@@ -68,6 +69,8 @@ export type TownWindowOpener = (parent: HTMLElement, onClose: () => void, depart
 
 export interface TownOptions {
   sheets: Promise<SheetStore>;
+  /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
+  hints?: { enabled(): boolean; padStyle?(): PadStyle };
   /** Player species (a SPRITE_KEYS name); unknown names fall back to Mimikyu. */
   species: string;
   /** The player wears its line's shiny skin (odd/tasks/shiny-echo.md). */
@@ -181,7 +184,7 @@ const MOVE_KEYS: Record<string, Vec2> = {
   ArrowRight: { x: 1, y: 0 },
 };
 
-const INTERACT_KEYS = new Set(['KeyE', 'Enter', 'NumpadEnter', 'Space']);
+const INTERACT_KEYS = new Set(INTERACT_KEY_CODES);
 
 const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
@@ -218,14 +221,13 @@ export function playerSprite(species: string, shiny = false, female = false): st
 }
 
 /**
- * The camera centres the player in the part of the view below the sky band,
- * and may scroll up under the band so the north edge of the town is never hidden by it.
+ * The camera centres the player in a view that fills the window (src/adapters/viewport.ts) and stays inside the map;
+ * a map smaller than the view is centred, the rest is the void colour.
  */
-function townCamera(focus: Vec2, map: MapShape) {
+function townCamera(focus: Vec2, map: MapShape, viewWidth: number, viewHeight: number) {
   const width = (map.rows[0]?.length ?? 0) * TILE;
   const height = map.rows.length * TILE;
-  const view = cameraView({ x: focus.x, y: focus.y + SKY_BAND / 2 }, TOWN_VIEW.width, TOWN_VIEW.height, { width, height: height + SKY_BAND });
-  return { ...view, y: view.y - SKY_BAND };
+  return cameraView(focus, viewWidth, viewHeight, { width, height });
 }
 
 /** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores; both for the tier picked now. */
@@ -315,10 +317,15 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     ],
   });
   canvas.parentElement?.append(touch.element);
+  /** The control hint bar along the bottom edge (null without the option). */
+  const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
 
   let walker: Walker = options.tile ? { pos: tileCentre(options.tile.x, options.tile.y), facing: { x: 0, y: 1 } } : startOf(map);
   let camera = walker.pos;
   let pixelScale = 1;
+  /** World pixels the camera shows, from the window (resize). */
+  let viewWidth = 512;
+  let viewHeight = 320;
   let stopped = false;
   let raf = 0;
   let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'tutor' | 'gacha' | 'evolve' | 'shrine' | 'online' | 'board'; portrait?: string } | null = null;
@@ -428,7 +435,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   };
 
   function resize(): void {
-    pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
+    const fit = fitCanvasToWindow(canvas, isTouchUi());
+    pixelScale = fit.pixelScale;
+    viewWidth = fit.viewWidth;
+    viewHeight = fit.viewHeight;
   }
 
   function moveInput(): Vec2 {
@@ -1017,7 +1027,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     renderRoom();
     camera = followCamera(camera, walker.pos, dt);
     resize();
-    const view = townCamera(camera, map);
+    const view = townCamera(camera, map, viewWidth, viewHeight);
     const timeMs = now - start;
     const perf = devPerfProbe();
     const drawAt = perf ? performance.now() : 0;
@@ -1031,7 +1041,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       ctx,
       view,
       {
-        prompt: target ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
+        // The hint bar says it with the device's own glyph; the floating text stays on touch and when the hints are off.
+        prompt: target && (isTouchUi() || !options.hints?.enabled()) ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
         dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
         banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),
@@ -1039,6 +1050,17 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       },
       timeMs,
       sheets,
+    );
+    hints?.update(
+      {
+        place: 'town',
+        interact: target && !dialog ? (target.kind === 'npc' ? 'talk' : target.kind === 'waystone' ? 'travel' : 'read') : null,
+        minimap: false,
+        spectating: false,
+        suppressed: dialog !== null || exitWindow !== null || closeShop !== null || fade !== null || plea !== null || tour !== null,
+        band: { left: 12, right: 12, bottom: 12 },
+      },
+      timeMs,
     );
     if (perf) {
       perf.record('frame', dt);
@@ -1057,6 +1079,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       closeShop?.();
       closeShop = null;
       touch.dispose();
+      hints?.dispose();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

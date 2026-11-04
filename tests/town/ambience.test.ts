@@ -3,10 +3,10 @@ import { WORLD } from '../../src/data/world';
 import { isWall, TILE, tileOf } from '../../src/core/tiles';
 import { buildTownGrid } from '../../src/town/map';
 import { townArena } from '../../src/town/interact';
-import { birdAt, fogBank, leafAt, startWander, stepWander } from '../../src/town/ambience';
+import { fogBank, leafAt, startWander, stepWander } from '../../src/town/ambience';
 
 describe('ambient particles', () => {
-  it('keeps leaves inside the view and birds in the sky band, the same at the same time', () => {
+  it('keeps leaves and fog inside the view, the same at the same time', () => {
     for (let i = 0; i < 20; i++) {
       for (const ms of [0, 1234, 98765, 4e6]) {
         const leaf = leafAt(i, ms, 512, 320);
@@ -14,10 +14,6 @@ describe('ambient particles', () => {
         expect(leaf.x).toBeLessThan(512);
         expect(leaf.y).toBeGreaterThanOrEqual(0);
         expect(leaf.y).toBeLessThan(320);
-        const bird = birdAt(i, ms, 512, 64);
-        expect(bird.y).toBeLessThan(64);
-        expect(bird.x).toBeGreaterThanOrEqual(-30);
-        expect(birdAt(i, ms, 512, 64)).toEqual(bird);
         const fog = fogBank(i, ms, 300, 512, 320);
         expect(fog.x).toBeGreaterThanOrEqual(-120);
         expect(fog.x).toBeLessThan(512 + 120);

@@ -171,7 +171,6 @@ const COLORS = {
   /** Wall tops are lighter than the void outside the map and carry a block pattern, so the two never blur together. */
   tileWallTop: '#1a1523',
   tileWallBlock: '#211b2c',
-  mapVoid: '#000000',
   mapRim: '#4b4163',
   tileWallFace: '#433a57',
   tileWallLip: '#5a4f73',
@@ -671,7 +670,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const grid = state.arena.tiles;
       // The Sima draws its eclipse backdrop where the void would be.
       if (!sima) {
-        ctx.fillStyle = COLORS.mapVoid;
+        // Beyond the map (a view larger than a small map shows it): the dungeon's own darkest colour, never the page's.
+        ctx.fillStyle = COLORS.wall;
         ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       }
       tiles(grid, view, state.collapse, timeMs, sima?.abyss === true);

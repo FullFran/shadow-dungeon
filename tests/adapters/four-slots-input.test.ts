@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SLOT_KEY_CODES, toPlayerInput, type RawInput } from '../../src/adapters/input';
 import { IDLE_TOUCH, mergeInputs, touchToPlayerInput, type TouchAimContext, type TouchFrame } from '../../src/adapters/touch';
-import { fitCanvas } from '../../src/adapters/fit';
+import { playViewport } from '../../src/adapters/viewport';
 import { type HudBox, hudRects, hudScaleFor, hudSpace } from '../../src/ui/hud-layout';
 import { vec } from '../../src/core/vec';
 import { combatLayout, NO_INSETS } from '../../src/ui/touch-layout';
@@ -56,8 +56,8 @@ describe('four slots: HUD windows', () => {
     [844, 390, true],
   ] as const) {
     it(`four slot windows fit with no overlap at ${w}x${h}${touch ? ' (touch)' : ''}`, () => {
-      const fit = fitCanvas(w, h, 512, 320, touch ? 3 : 1, touch);
-      const space = hudSpace(512 * fit.pixelScale, 320 * fit.pixelScale, hudScaleFor(w, h, fit.pixelScale, touch));
+      const fit = playViewport(w, h, touch ? 3 : 1, touch);
+      const space = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(w, h, fit.pixelScale, touch));
       const rects = hudRects(space, { chip: true, slots: 4, minimap: { cols: 40, rows: 28 }, touch });
       expect(rects.slots).toHaveLength(4);
       const boxes: [string, HudBox][] = [
@@ -78,19 +78,19 @@ describe('four slots: HUD windows', () => {
     });
   }
 
-  // The action buttons (src/ui/touch-layout.ts) in the HUD space of a phone: the canvas is centred and 1 HUD px is `css` CSS px.
+  // The action buttons (src/ui/touch-layout.ts) in the HUD space of a phone: the canvas fills the window and 1 HUD px is `css` CSS px.
   function buttonsInHud(w: number, h: number): HudBox[] {
-    const css = Math.min(w / 512, h / 320);
-    const left = (w - 512 * css) / 2;
-    const top = (h - 320 * css) / 2;
+    const css = playViewport(w, h, 3, true).zoom;
+    const left = 0;
+    const top = 0;
     const layout = combatLayout({ width: w, height: h }, NO_INSETS, ['lock', 'roll', 'boost', 'area', 'heavy', 'fast']);
     return Object.values(layout.buttons).map((b) => ({ x: (b.x - b.width / 2 - left) / css, y: (b.y - b.height / 2 - top) / css, width: b.width / css, height: b.height / css }));
   }
 
   for (const [w, h] of [[844, 390], [740, 360], [640, 360], [932, 430], [1024, 768], [568, 320]] as const) {
     it(`touch ${w}x${h}: no slot window sits under the action buttons, and none overlaps another panel`, () => {
-      const fit = fitCanvas(w, h, 512, 320, 3, true);
-      const space = hudSpace(512 * fit.pixelScale, 320 * fit.pixelScale, hudScaleFor(w, h, fit.pixelScale, true));
+      const fit = playViewport(w, h, 3, true);
+      const space = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(w, h, fit.pixelScale, true));
       for (const [chip, slots] of [[true, 4], [false, 4], [false, 2], [true, 3]] as const) {
         const rects = hudRects(space, { chip, slots, minimap: { cols: 40, rows: 28 }, touch: true });
         const buttons = buttonsInHud(w, h);
