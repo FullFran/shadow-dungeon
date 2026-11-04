@@ -47,3 +47,4 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 
 - L1 (2026-11-04): S1, S2 with screenshots of install notice, shrine, board, gallery, friends, account.
 - L2 (2026-11-04): asked Clerk vs native PocketBase OAuth; owner chose Clerk (S3). Clerk app created and linked with `clerk` CLI; Discord enabled, password min length 8; keys in `.env.local` (now gitignored).
+- L3 (2026-11-04, T4): Santuario and Tablón rebuilt as picker windows (`src/app/shrine.ts`, `src/app/board.ts`, pure models `shrine-hall.ts` and `board-view.ts`, shared `src/ui/hall-nav.ts` and `src/styles/hall.css`). Tests iterate every `SHRINE_BOSSES`, `GAUNTLETS` and mission kind. Added `abandonMission`/`abandonAt` for the new Abandonar action (confirm dialog); accept limits, rewards and records untouched. Shrine heralds stay as a third tab once met.
