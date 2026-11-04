@@ -59,7 +59,7 @@ describe('four slots: HUD windows', () => {
       const fit = playViewport(w, h, touch ? 3 : 1, touch);
       const space = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(w, h, fit.pixelScale, touch));
       const rects = hudRects(space, { chip: true, slots: 4, minimap: { cols: 40, rows: 28 }, touch });
-      expect(rects.slots).toHaveLength(4);
+      expect(rects.slots).toHaveLength(touch ? 0 : 4);
       const boxes: [string, HudBox][] = [
         ['status', rects.status],
         ['log', rects.log],

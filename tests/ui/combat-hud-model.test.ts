@@ -69,7 +69,7 @@ describe('epithets', () => {
 
 const model = (species: (typeof roster)[number], hpShare = 0.6, extra: Partial<BossBar> = {}) =>
   bossBarModel({
-    bar: { enemyId: 'b1', species, hp: 600 * hpShare, maxHp: 600, stance: null, ...extra },
+    bar: { enemyId: 'b1', species: species as BossBar['species'], hp: 600 * hpShare, maxHp: 600, stance: null, ...extra },
     enemy: { types: ['ghost'], hitstunMs: 0, ai: { mode: 'approach' } as never },
     chip: 0.9,
   });

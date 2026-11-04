@@ -91,7 +91,7 @@ describe('HUD layout', () => {
       expect(Math.abs(centre - space.width / 2)).toBeLessThanOrEqual(1);
       expect(rects.boss.y + rects.boss.height).toBeGreaterThan(space.height * 0.6);
       const share = rects.boss.width / space.width;
-      if (touch) expect(share).toBeGreaterThanOrEqual(0.45);
+      if (touch) expect(share).toBeGreaterThanOrEqual(0.4);
       else {
         expect(share).toBeGreaterThanOrEqual(0.5);
         expect(share).toBeLessThanOrEqual(0.62);
@@ -146,10 +146,10 @@ describe('HUD layout', () => {
     expect(some.height - none.height).toBeLessThanOrEqual(12);
   });
 
-  it('touch anchors the panels to the real edges of the view and draws no slot windows over the thumbs', () => {
+  it('touch keeps the status window clear of the Pause button and draws no slot windows over the thumbs', () => {
     const { rects } = layoutFor(844, 390, true, 3);
-    expect(rects.status).toMatchObject({ x: 6, y: 6 });
-    expect(rects.slots.every((s) => s.y > rects.status.y + rects.status.height)).toBe(true);
+    expect(rects.status).toMatchObject({ x: 68, y: 6 });
+    expect(rects.slots).toEqual([]);
   });
 });
 

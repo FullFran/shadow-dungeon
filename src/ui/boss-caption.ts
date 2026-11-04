@@ -17,8 +17,8 @@ export interface BossCaption {
   cue: BossCue;
 }
 
-/** `Signo Gema «Destello del Ladrón»` -> sign and name. */
-const SPLIT = /^(.*?)\s*«(.+)»\s*$/;
+/** `Signo Gema «Destello del Ladrón»` (or `Gem Sign "Thief's Glint"`) -> sign and name. */
+const SPLIT = /^(.*?)\s*[«“"](.+?)[»”"]\s*$/;
 
 const has = (key: string): boolean => t(key) !== key;
 
