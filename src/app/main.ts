@@ -1246,8 +1246,8 @@ function galleryCinematic(root: HTMLElement, scene: Exclude<GalleryScene, { kind
   return () => screen.remove();
 }
 
-/** Reload-proof play (app/run-resume.ts): a device-local record, apart from the profile (it never syncs). */
-const resumeStore = browserStore();
+/** Reload-proof play (app/run-resume.ts): a device-local record, apart from the profile (its key is not in PROFILE_KEYS: it never syncs). */
+const resumeStore = store;
 const resumeWho = () => ({ owner: storedOwner(resumeStore), build: APP_VERSION });
 /** The page threw since it opened: a stored run that crashes the page is dropped instead of crashing it on every reload. */
 let pageCrashed = false;
