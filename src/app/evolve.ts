@@ -195,7 +195,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
     const parts: HTMLElement[] = [];
     chainView(row.species).forEach((form, i) => {
       if (i > 0) parts.push(h('span', { className: 'ev-arrow' }, [pixelSvgOf(EVOLVE_SHOP_ICONS.arrow!, 'px-icon')]));
-      const sprite = h('span', { className: `ev-form${form.known ? (form.species === row.species ? ' is-current' : '') : ' is-unknown'}` }, [portrait(options.sheets, form.species, 3, form.known && wearsShiny(save, form.species))]);
+      const sprite = h('span', { className: `ev-form sprite-box${form.known ? (form.species === row.species ? ' is-current' : '') : ' is-unknown'}` }, [portrait(options.sheets, form.species, 3, form.known && wearsShiny(save, form.species))]);
       sprite.setAttribute('role', 'img');
       sprite.setAttribute('aria-label', form.known ? t(`species.${form.species}`) : t('evolve.unknown'));
       parts.push(sprite);
@@ -211,7 +211,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
   const cardOf = (row: EvolveRow): HTMLButtonElement => {
     const { filled, total } = stageDots(row);
     const card = h('button', { className: `es-card ev-card${row.ready ? ' is-ready' : ''}`, type: 'button' }, [
-      h('span', { className: 'es-card-art' }, [portrait(options.sheets, row.species, 2, wearsShiny(save, row.species))]),
+      h('span', { className: 'es-card-art sprite-box' }, [portrait(options.sheets, row.species, 2, wearsShiny(save, row.species))]),
       h('span', { className: 'es-card-name', textContent: t(`species.${row.species}`) }),
       dots(filled, total),
       ...(row.ready ? [h('span', { className: 'es-card-tag', textContent: t('evolve.ready') })] : []),

@@ -13,8 +13,7 @@
 .tu-species { flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 0 2px; }
 .tu-species::-webkit-scrollbar { display: none; }
 .tu-chip { all: unset; box-sizing: border-box; flex: none; display: flex; align-items: center; gap: 6px; width: 9rem; height: 44px; padding: 0 10px 0 4px; cursor: pointer; border: 2px solid transparent; border-radius: 6px; }
-.tu-chip-art { flex: none; width: 36px; height: 36px; display: grid; place-items: end center; overflow: hidden; }
-.tu-chip-art canvas { image-rendering: pixelated; width: auto !important; height: 48px !important; margin-bottom: -10px; }
+.tu-chip-art { flex: none; width: 40px; height: 40px; }
 .tu-chip-name { min-width: 0; font-size: 18px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tu-chip:hover { background: var(--relic-slab); }
 .tu-chip.is-current { background: var(--relic-slab); border-color: var(--md-cursor); }
@@ -113,7 +112,7 @@
   .tu-window { height: calc(100dvh - 24px); }
   .tu-window > .md-window-body { gap: 6px; }
   .tu-top { height: 38px; gap: 4px; }
-  .tu-back { height: 34px; padding: 0 10px; font-size: 16px; } .tu-step { width: 28px; height: 34px; } .tu-chip { width: 7rem; height: 34px; } .tu-chip-art { width: 28px; height: 28px; } .tu-chip-art canvas { height: 38px !important; margin-bottom: -8px; } .tu-chip-name { font-size: 16px; }
+  .tu-back { height: 34px; padding: 0 10px; font-size: 16px; } .tu-step { width: 28px; height: 34px; } .tu-chip { width: 7rem; height: 34px; } .tu-chip-art { width: 30px; height: 30px; } .tu-chip-name { font-size: 16px; }
   .tu-balance { height: 34px; font-size: 18px; padding: 0 6px; } .tu-balance svg.px-icon { width: 20px; height: 20px; }
   .tu-tabs { height: 30px; } .tu-tab { height: 30px; font-size: 15px; padding: 0 8px; gap: 4px; flex-basis: 7rem; } .tu-tab svg.px-icon { width: 18px; height: 18px; }
   .tu-body { grid-template-columns: minmax(0, 1fr) 17rem; gap: 10px; }

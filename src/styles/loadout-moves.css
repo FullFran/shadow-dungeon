@@ -8,8 +8,7 @@
 
 /* Head: portrait, types, the ability (or "no passive") and the run goal as one small line. */
 .lm-head { flex: none; display: grid; grid-template-columns: 64px auto minmax(0, 1fr) minmax(0, 22rem); align-items: center; gap: 12px; height: 64px; }
-.lm-head-art { width: 64px; height: 64px; display: grid; place-items: end center; overflow: hidden; }
-.lm-head-art canvas { image-rendering: pixelated; width: auto !important; height: 84px !important; margin-bottom: -14px; }
+.lm-head-art { width: 64px; height: 64px; }
 .lm-head-types { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 .lm-head-types .type-badge { font-size: 13px; padding: 0 6px; line-height: 1.5; }
 .lm-ability { min-width: 0; }
@@ -131,7 +130,7 @@
 @media (max-height: 560px), (max-width: 900px) {
   .lm-window, #app > .lm-window { height: calc(100dvh - 44px); padding: 14px 14px 10px; }
   .lm-window > .md-window-body { gap: 5px; }
-  .lm-head { height: 28px; grid-template-columns: 28px auto minmax(0, 1fr); gap: 8px; } .lm-head-art { width: 28px; height: 28px; } .lm-head-art canvas { height: 40px !important; margin-bottom: -8px; }
+  .lm-head { height: 28px; grid-template-columns: 28px auto minmax(0, 1fr); gap: 8px; } .lm-head-art { width: 28px; height: 28px; }
   .lm-head-types { flex-direction: row; } .lm-head-types .type-badge { font-size: 11px; }
   .lm-window .lm-objective, .lm-window .lm-ability-label { display: none; }
   .lm-window .lm-ability-text { margin: 0; font-size: 12px; -webkit-line-clamp: 2; line-height: 1.2; } .lm-ability-text strong { font-size: 14px; }

@@ -108,7 +108,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     const name = ability.kind === 'passive' ? t(ability.nameKey) : null;
     const text = ability.kind === 'passive' ? t(ability.descriptionKey) : t(ability.key);
     head.replaceChildren(
-      h('span', { className: 'lm-head-art' }, [options.portrait(2)]),
+      h('span', { className: 'lm-head-art sprite-box' }, [options.portrait(2)]),
       h('div', { className: 'lm-head-types' }, species.types.map(options.typeBadge)),
       h('div', { className: 'lm-ability' }, [
         h('p', { className: 'lm-ability-label', textContent: t('loadout.ability') }),

@@ -4,6 +4,7 @@ import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
 import { hasFemaleArt } from '../core/gender';
 import type { PokemonType } from '../data/types';
 import { sheetKey, type SheetStore } from '../adapters/assets';
+import '../ui/sprite-fit';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
@@ -111,7 +112,53 @@ export function typeBadge(type: PokemonType): HTMLElement {
   return h('span', { className: `type-badge type-${type}`, textContent: t(`type.${type}`) });
 }
 
-/** A species' idle animation on a small canvas, scaled by a whole number; its shiny sheet with `shiny`, its female with `female`. */
+/** The pixels an idle animation really covers (union of every frame's opaque area), in frame coordinates. */
+interface Bounds {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+const boundsCache = new WeakMap<CanvasImageSource, Bounds>();
+
+function opaqueBounds(image: CanvasImageSource, frames: number, fw: number, fh: number): Bounds {
+  const cached = boundsCache.get(image);
+  if (cached) return cached;
+  const probe = document.createElement('canvas');
+  probe.width = fw;
+  probe.height = fh;
+  const ctx = probe.getContext('2d', { willReadFrequently: true });
+  let x0 = fw;
+  let y0 = fh;
+  let x1 = -1;
+  let y1 = -1;
+  if (ctx) {
+    for (let f = 0; f < frames; f++) {
+      ctx.clearRect(0, 0, fw, fh);
+      ctx.drawImage(image, f * fw, 0, fw, fh, 0, 0, fw, fh);
+      const data = ctx.getImageData(0, 0, fw, fh).data;
+      for (let y = 0; y < fh; y++) {
+        for (let x = 0; x < fw; x++) {
+          if (data[(y * fw + x) * 4 + 3]! > 8) {
+            x0 = Math.min(x0, x);
+            x1 = Math.max(x1, x);
+            y0 = Math.min(y0, y);
+            y1 = Math.max(y1, y);
+          }
+        }
+      }
+    }
+  }
+  const bounds = x1 < 0 ? { x: 0, y: 0, w: fw, h: fh } : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  boundsCache.set(image, bounds);
+  return bounds;
+}
+
+/**
+ * A species' idle animation on a canvas; its shiny sheet with `shiny`, its female with `female`. Alone it is the whole
+ * frame scaled by a whole number. Inside a `.sprite-box` (src/ui/sprite-fit.ts) the canvas is cropped to the pixels the
+ * animation really covers, so the box fits the creature itself, headroom included, and nothing is cut.
+ */
 export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale = SCALE, shiny = false, female = false): HTMLCanvasElement {
   const key = lookKey(SPRITE_KEYS[SPECIES[species].sprite], shiny, female);
   const meta = SPRITES.sprites[key]?.anims.Idle;
@@ -122,15 +169,21 @@ export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale 
   canvas.style.height = `${canvas.height * scale}px`;
   void sheets.then((store) => {
     const image = meta && store.get(sheetKey(key, meta.file));
-    const ctx = canvas.getContext('2d');
-    if (!meta || !image || !ctx) return;
+    if (!meta || !image || !canvas.getContext('2d')) return;
     const start = performance.now();
+    let crop: Bounds | null = null;
     const frame = (now: number) => {
       if (!canvas.isConnected) return;
+      if (!crop) {
+        crop = canvas.parentElement?.classList.contains('sprite-box') ? opaqueBounds(image, meta.frameCount, meta.frameWidth, meta.frameHeight) : { x: 0, y: 0, w: meta.frameWidth, h: meta.frameHeight };
+        canvas.width = crop.w;
+        canvas.height = crop.h;
+      }
       const f = frameAtTime(meta.durations, now - start, true);
-      ctx.imageSmoothingEnabled = false;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, f * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, 0, 0, meta.frameWidth, meta.frameHeight);
+      const c = canvas.getContext('2d')!;
+      c.imageSmoothingEnabled = false;
+      c.clearRect(0, 0, canvas.width, canvas.height);
+      c.drawImage(image, f * meta.frameWidth + crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);

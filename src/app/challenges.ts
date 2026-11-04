@@ -157,7 +157,7 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
   const cards = rows.map((row) => {
     const state = cardOf(row);
     const card = h('button', { className: `es-card ch-card${state.enabled ? '' : ' is-locked'}${state.closed >= 3 ? ' is-done' : ''}`, type: 'button' }, [
-      h('span', { className: `es-card-art${row.open ? '' : ' is-dim'}` }, art(row, 2)),
+      h('span', { className: `es-card-art sprite-box${row.open ? '' : ' is-dim'}` }, art(row, 2)),
       h('span', { className: 'es-card-name', textContent: t(`species.${row.form}`) }),
       h('span', { className: 'ch-card-senda', textContent: t(row.dungeon.lore.nameKey) }),
       gems(state.closed),
@@ -184,7 +184,7 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
     const line = row.dungeon.challenge!.line;
     stage.style.setProperty('--sp-glow', TYPE_COLORS[SPECIES[row.form].types[0]!].core);
     for (const card of cards) card.classList.toggle('is-focused', card.dataset.dungeon === row.dungeon.id);
-    stage.replaceChildren(h('div', { className: 'es-stage-glow' }), h('div', { className: `ch-stage-sprite${row.open ? '' : ' is-dim'}` }, art(row, 4)), h('div', { className: 'es-stage-sign ch-sign' }));
+    stage.replaceChildren(h('div', { className: 'es-stage-glow' }), h('div', { className: `ch-stage-sprite sprite-box${row.open ? '' : ' is-dim'}` }, art(row, 4)), h('div', { className: 'es-stage-sign ch-sign' }));
     title.textContent = t(row.dungeon.lore.nameKey);
     hook.textContent = hookText(row.dungeon);
     const pays = row.dungeon.challenge!.materials;

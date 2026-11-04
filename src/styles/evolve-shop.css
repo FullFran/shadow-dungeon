@@ -33,8 +33,7 @@
 .es-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); grid-auto-rows: 176px; gap: 10px; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 4px 2px; scrollbar-color: var(--md-border-shade) transparent; }
 .es-card { all: unset; box-sizing: border-box; position: relative; height: 176px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px; cursor: pointer; text-align: center;
   background: radial-gradient(120% 80% at 50% 0%, #241b22, var(--relic-slab) 70%); border: 2px solid var(--relic-slab-edge); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 rgba(0, 0, 0, 0.45); }
-.es-card-art { flex: none; width: 100%; height: 104px; display: grid; place-items: end center; overflow: hidden; }
-.es-card-art canvas { image-rendering: pixelated; width: auto !important; height: 120px !important; margin-bottom: -18px; }
+.es-card-art { flex: none; width: 100%; height: 100px; }
 .es-card > * { flex: none; }
 .es-card-name { font-size: 22px; line-height: 1.15; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .es-card-tag { position: absolute; top: 6px; right: 6px; padding: 0 6px; border-radius: 4px; font-family: var(--md-text-font); font-weight: 700; font-size: 11px; line-height: 1.7; color: var(--md-ink); background: var(--md-cursor); }
@@ -54,8 +53,7 @@
 
 /* Evolución: the line as sprites with arrows, then what the step costs. */
 .ev-chain { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: 4px; padding-bottom: 14px; }
-.ev-form { flex: none; width: 68px; height: 92px; display: grid; place-items: end center; overflow: hidden; }
-.ev-form canvas { image-rendering: pixelated; width: auto !important; height: 104px !important; margin-bottom: -16px; }
+.ev-form { flex: none; width: 68px; height: 100px; }
 .ev-form.is-current canvas { filter: drop-shadow(0 0 6px rgba(255, 138, 61, 0.7)); }
 .ev-form.is-unknown canvas { filter: brightness(0) drop-shadow(0 0 2px rgba(190, 160, 230, 0.55)); opacity: 0.9; }
 .ev-arrow { flex: none; align-self: center; margin-bottom: 14px; }
@@ -103,10 +101,10 @@
   .es-chips { gap: 4px; } .es-chip { height: 22px; font-size: 11px; padding: 0 3px; gap: 3px; } .es-chip svg.px-icon { width: 14px; height: 14px; }
   .es-primary { height: 38px; font-size: 16px; } .es-primary svg.px-icon { width: 20px; height: 20px; }
   .es-grid { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); grid-auto-rows: 100px; gap: 6px; }
-  .es-card { height: 100px; padding: 4px; gap: 2px; } .es-card-art { height: 56px; } .es-card-art canvas { height: 64px !important; margin-bottom: -10px; }
+  .es-card { height: 100px; padding: 4px; gap: 2px; } .es-card-art { height: 56px; }
   .es-card-name { font-size: 16px; } .es-card-tag { font-size: 9px; top: 4px; right: 4px; }
   .es-back { font-size: 16px; padding: 3px 14px; } .ev-foot-aux { gap: 8px; }
-  .ev-chain { padding-bottom: 6px; gap: 2px; } .ev-form { width: 46px; height: 58px; } .ev-form canvas { height: 64px !important; margin-bottom: -10px; }
+  .ev-chain { padding-bottom: 6px; gap: 2px; } .ev-form { width: 46px; height: 62px; }
   .ev-arrow { margin-bottom: 8px; } .ev-arrow svg.px-icon { width: 14px; height: 14px; }
   .ev-spark svg.px-icon { width: 16px; height: 16px; } .ev-sparks { gap: 2px; margin-left: 6px; }
   .ev-needs { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; height: 50px; padding-top: 4px; gap: 2px; }

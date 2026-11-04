@@ -92,7 +92,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   const chips = new Map<SpeciesId, HTMLButtonElement>();
   for (const id of roster()) {
     const chip = h('button', { className: 'tu-chip', type: 'button' }, [
-      h('span', { className: 'tu-chip-art' }, options.portrait ? [options.portrait(id, 1)] : []),
+      h('span', { className: 'tu-chip-art sprite-box' }, options.portrait ? [options.portrait(id, 1)] : []),
       h('span', { className: 'tu-chip-name', textContent: t(`species.${id}`) }),
     ]);
     chip.setAttribute('aria-label', t(`species.${id}`));
