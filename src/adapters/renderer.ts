@@ -32,7 +32,7 @@ import { AIM_DRAG } from './touch';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine, drawGateNotice, drawWaitLine, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
-import { drawCaptureNotice, drawCardDeclaration, drawDungeonIntro, drawNowPlaying, drawSpellBanner, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { drawCaptureNotice, drawDungeonIntro, drawNowPlaying, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor, type CrystalDraw } from './cave-decor';
@@ -41,7 +41,13 @@ import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
 import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
-import { drawHud } from './hud';
+import { drawHud, slotCount } from './hud';
+import { bossBar } from '../core/boss';
+import { createCombatHudState, drawBossCaption, drawCombatPanels } from './combat-hud';
+import { createPortraitDrawer } from './hud-portrait';
+import type { LastDevice } from './last-device';
+import type { PadStyle } from '../app/gamepad-help-data';
+import { bossRect, minimapRect } from '../ui/hud-layout';
 import { hudSpace } from '../ui/hud-layout';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
@@ -77,8 +83,11 @@ export interface RenderFrame {
   juice: JuiceState;
   view: Rect;
   pixelScale: number;
-  /** Integer scale of the screen-space HUD (src/ui/hud-layout.ts); the pixel scale when absent. */
+  /** Scale of the screen-space HUD (src/ui/hud-layout.ts `hudScaleFor`); the pixel scale when absent. */
   hudScale?: number;
+  /** The device the player used last and the pad style, for the move slots' key glyphs. */
+  device?: LastDevice;
+  padStyle?: PadStyle;
   /** Current floor of the run (1-based), for the HUD. */
   floor: number;
   exit: Rect | null;
@@ -214,6 +223,8 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   hold: '#c9a8ff',
   hurt: '#ff5a5a',
   heal: '#6ee07a',
+  burn: TYPE_COLORS.fire.core,
+  poison: TYPE_COLORS.poison.glow,
 };
 
 /** The Sima's hunter: Houndour's sheets in the eclipse's shadow. */
@@ -248,6 +259,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   let openedNotice: GateNotice | null = null;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
+  // The combat HUD's presentation state (chip trails, the boss entrance) and the portrait drawer.
+  const combatHud = createCombatHudState();
+  const portrait = createPortraitDrawer(sheets);
 
   function drawSprite(choice: AnimChoice, pos: Vec2, alpha = 1, scaleBy = 1): void {
     const meta = SPRITES.sprites[choice.sprite]?.anims[choice.anim];
@@ -1586,18 +1600,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(x - 12, y + 3, Math.round(24 * Math.max(0, Math.min(1, hp / maxHp))), 3);
   }
 
+  /** Damage numbers: outlined in ink, bigger for heavy hits, coloured by effectiveness ("!" on a super-effective hit), status ticks in their own colour. */
   function numbers(list: readonly FloatingNumber[]): void {
     ctx.textAlign = 'center';
     for (const n of list) {
       const life = n.ageMs / JUICE.numberLifeMs;
+      // Pops in a little larger, then settles while it rises.
+      const pop = 1 + 0.35 * Math.max(0, 1 - n.ageMs / 120);
       ctx.globalAlpha = 1 - life * life;
-      ctx.font = canvasFont(n.big ? 16 : FONT.hudPx, true);
+      const tick = n.style === 'burn' || n.style === 'poison';
+      const size = n.big ? 22 : tick ? FONT.hudPx : 16;
+      ctx.font = canvasFont(Math.round(size * pop), true);
       // Fraction-of-max-HP hazards (collapse, fog chill) are not whole numbers: show them rounded.
-      const text = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
+      const base = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
+      const text = n.style === 'super' ? `${base}!` : base;
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
       ctx.fillStyle = '#000000';
-      ctx.fillText(text, x + 1, y + 1);
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1]] as const) ctx.fillText(text, x + dx, y + dy);
       ctx.fillStyle = NUMBER_COLORS[n.style];
       ctx.fillText(text, x, y);
     }
@@ -1801,19 +1821,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
-    drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false, frame.shownAs);
+    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
+    drawHud(ctx, current, juice, hud);
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined);
-    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height);
+    // The message log keeps clear of the boss block: on desktop it sits over it while a boss fights, else at the bottom edge.
+    const bossOn = bossBar(current) !== null;
+    const logBottom = bossOn && !frame.touchUi ? bossRect(hud, slotCount(current.player.loadout), false).y - 4 + 6 : hud.height;
+    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, logBottom);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
     if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, hud.width, hud.height);
     if (frame.nowPlaying) {
       // Touch: above the message log, clear of the action buttons in the bottom-right corner.
       const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
-      const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
+      const grid = current.arena.tiles;
+      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows) : null;
+      const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : { x: hud.width - 8, y: (underMap ? underMap.y + underMap.height : 24) + 14, align: 'right' as const };
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
-    if (frame.spell?.declare) drawCardDeclaration(ctx, frame.spell, timeMs, hud.width, hud.height);
-    else if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
+    if (frame.spell) drawBossCaption(ctx, frame.spell, timeMs, hud);
     if (frame.capture) drawCaptureNotice(ctx, frame.capture, timeMs, hud.width, hud.height, t('card.mastered'), t('card.reward').replace('{coins}', String(frame.capture.coins)).replace('{heal}', String(frame.capture.heal)));
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));

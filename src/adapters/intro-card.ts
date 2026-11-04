@@ -89,6 +89,11 @@ export interface SpellBanner {
   /** The full Touhou-style name, small above the big one (a declaration). */
   title?: string;
   declare?: true;
+  /** The event's stance or card id and the boss species, for the announcement's sign and cue (src/ui/boss-caption.ts). */
+  stance?: string;
+  species?: string;
+  /** A herald's generated card name. */
+  heraldName?: string;
 }
 
 /** How long a declaration holds the screen (it lasts about as long as the boss's break). */
@@ -180,13 +185,13 @@ export function drawSpellBanner(ctx: CanvasRenderingContext2D, spell: SpellBanne
 }
 
 /** Draws "♪ title" at the top right, under the minimap's corner. */
-export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, nowMs: number, width: number, height: number, at?: { x: number; y: number }): void {
+export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, nowMs: number, width: number, height: number, at?: { x: number; y: number; align?: 'left' | 'right' }): void {
   const alpha = noteAlpha(note, nowMs);
   if (alpha <= 0) return;
   ctx.globalAlpha = alpha;
   ctx.font = canvasFont();
-  // `at`: left-aligned there (touch: the bottom-right corner belongs to the action buttons).
-  if (at) pixelText(ctx, note.title, at.x, at.y, PALETTE.textDim, 'left');
+  // `at`: there (touch: the bottom-right corner belongs to the action buttons; desktop: under the minimap, clear of the slots).
+  if (at) pixelText(ctx, note.title, at.x, at.y, PALETTE.textDim, at.align ?? 'left');
   else pixelText(ctx, note.title, width - 8, height - 46, PALETTE.textDim, 'right');
   ctx.globalAlpha = 1;
 }

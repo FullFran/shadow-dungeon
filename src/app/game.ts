@@ -109,6 +109,8 @@ import { mountLocationPlaque } from '../ui/location-plaque';
 import { dungeonPlace, shrinePlace, simaBandPlace } from '../ui/location-plaque-model';
 import { bossPlaque, cardPlaque, introPlaque } from '../adapters/floor-plaque';
 import { hintBand } from '../ui/play-hints-model';
+import { trackLastDevice } from '../adapters/last-device';
+import { bossRect, liftHintBand } from '../ui/hud-layout';
 import type { PadStyle } from './gamepad-help-data';
 import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
 
@@ -315,6 +317,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The location plaque (src/ui/location-plaque.ts) names each floor, stratum and boss on arrival; it replaces the canvas floor card and dungeon title. Null in the sim and tests. */
   const plaque = options.hints ? mountLocationPlaque(canvas.parentElement ?? document.body) : null;
   let plaqued: { card: FloorCard | null; intro: DungeonIntro | null } = { card: null, intro: null };
+  /** The device used last, for the move slots' key glyphs (the hint bar tracks its own). */
+  const device = trackLastDevice();
   let inputSuspended = false;
   /** Keyboard + mouse, touch and the controller, suspended and disposed together. */
   const input = {
@@ -1708,6 +1712,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     view = cameraView(camera, viewWidth, viewHeight, world.arena);
     lockView = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
+    device.poll();
     const bar = bossBar(world);
     // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
     const cardKey = bar ? (heraldCardName(world, bar.enemyId, bar.stance) ?? spellCardKey(bar.species, bar.stance)) : null;
@@ -1717,7 +1722,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // A card fight's declaration is a dramatic moment: the card's own name big, its Touhou name small above it (adapters/intro-card.ts).
       const herald = heraldCardName(world, bar!.enemyId, bar!.stance);
       const card = cardInfo(cardNow);
-      spell = herald ? { name: herald, shownAtMs: realMs, declare: true } : card ? { name: t(`boss.stance.${cardNow}`), title: t(cardKey), shownAtMs: realMs, declare: true } : { name: t(cardKey), shownAtMs: realMs };
+      spell = {
+        ...(herald ? { name: herald, shownAtMs: realMs, declare: true as const, heraldName: herald } : card ? { name: t(`boss.stance.${cardNow}`), title: t(cardKey), shownAtMs: realMs, declare: true as const } : { name: t(cardKey), shownAtMs: realMs }),
+        stance: cardNow,
+        species: bar!.species,
+      };
     }
     if (!paused && cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
@@ -1748,6 +1757,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       view,
       pixelScale,
       hudScale,
+      device: device.current(),
+      padStyle: options.hints?.padStyle?.() ?? 'xbox',
       floor: run.floor,
       exit,
       exitOpen: exit !== null && roomCleared(world),
@@ -1803,7 +1814,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // The bar sits in the free stretch of the bottom edge (src/ui/play-hints-model.ts `hintBand`), in CSS px.
       const css = (zoom / pixelScale) * hudScale;
       const space = { width: canvas.width / hudScale, height: canvas.height / hudScale };
-      const band = hintBand(space, slotCount(world.player.loadout));
+      // A boss fight lifts it over the boss bar (src/ui/hud-layout.ts `liftHintBand`): they would share the bottom edge.
+      const slots = slotCount(world.player.loadout);
+      const band = liftHintBand(hintBand(space, slots), bossBar(world) !== null && !isTouchUi() ? bossRect(space, slots, false) : null, space);
       hints.update(
         {
           place: 'run',
@@ -1863,6 +1876,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay?.dispose();
       hints?.dispose();
       plaque?.dispose();
+      device.dispose();
       spectateButton.remove();
       sign?.element.remove();
       victoryBand?.remove();
