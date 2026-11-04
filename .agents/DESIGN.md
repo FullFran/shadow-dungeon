@@ -105,6 +105,25 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside
   its own region. Settings open the shared settings window over it (Esc goes back one step); co-op shows one note: the run keeps going.
   Keys: Up/Down (W/S) move, Left/Right cross to the item chips, Enter/Space act, Esc/Start resume.
+- **Combat HUD** (`src/ui/hud-layout.ts`, `src/ui/combat-hud-model.ts`, `src/ui/boss-caption.ts`, `src/ui/combat-icons.ts`, `src/data/boss-lore.ts`, drawn by `src/adapters/combat-hud.ts`; owner 2026-11-04). Canvas, in a HUD space of 640x360 "HUD px" (11 px pixel-font grid). Scale rule:
+  desktop = how many 640x360 fit the window (2 at 1280x720, 3 at 1920x1080, 4 at 2560x1440; half steps below 2, never under 1); touch = the canvas scale
+  with the compact metrics (HUD space under 340 high). Layout (regular / compact):
+  - **Boss bar**, bottom centre, 57% of the width (touch: half, 300 max, clear of the thumb buttons). Name in large spaced caps, epithet (lore line) under it,
+    type badge and status icons (stun, poison, burn, mark, weakened, guard, held) at the right of the name row; the bar has a gilt frame, diamond ends, a
+    delayed chip trail in `cursor` gold (hold 250 ms, drain 350 ms), phase notches (card segments; Aegislash's 50% unsheathing), one diamond pip per spell
+    card under a seal icon (passed dim, live gold) and the card clock with an hourglass (red in the last 5 s). Entrance: name 420 ms, bar fills over 900 ms.
+    Defeat: dark band across the lower third with "GUARDIÁN CAÍDO" / "GUARDIAN FELLED" in gold for 3.4 s.
+  - **Status window**, top left, 214x84: portrait in a sprite-fit box with a level badge, HP bar with numbers and chip trail, stamina bolt bar, a thin XP line, the
+    passive mask icon with its state in words, stairs + floor, coin + coins, held-items chip. Co-op partners: 22 px frames under it (portrait, name, HP; downed =
+    dim + skull + "Caído"). Touch: starts right of the Pause button.
+  - **Move slots**, bottom right, 52x52 squares (never under 44 CSS px at scale 1): slot-role icon (fast, heavy, boost, area), a band and wash in the move's type colour,
+    the key or pad button of the last device used (`src/adapters/bindings.ts`, gamepad help data), name squeezed to fit, radial cooldown sweep with seconds,
+    red wash and name when stamina is short, tier-coloured rank diamonds. 1-2 slots in a row, 3-4 as a 2x2 block. Touch draws none.
+  - **Boss announcement**, upper third (below the location plaque): the move name large in ember between gilt brackets, its sign under it with a seal icon,
+    one telegraph cue (volley, ring, area, dash, summon, guard: icon and a line). Enter 180 ms, hold 1.5 s, exit 300 ms; reduced motion = plain fade.
+  - Collisions are settled in the layout model: the message log lifts over the boss block, the hint bar rises over it during a boss fight (`liftHintBand`), the
+    now-playing line sits under the minimap, the level-up flash sits under the announcement. Damage numbers are ink-outlined and bigger on heavy hits, "!" on
+    super-effective, burn and poison in their own colour. `tests/ui/hud-layout.test.ts` proves no two panels overlap at every viewport.
 Play view (town and every dungeon, owner 2026-11-04): full-bleed. The canvas covers the viewport, no margins and no page chrome;
 the logical view follows the window aspect (`src/adapters/viewport.ts`: integer pixel scale on desktop, 320 world px on the short
 side on touch), so a wide window shows more map, never a stretched one. Beyond a small map the dungeon's darkest wall colour
@@ -118,6 +137,9 @@ Accessibility: every hub control is a real `<button>` with an accessible name; a
 - Window open 120 ms ease-out (existing). Focus halo 120 ms. Backdrop: slow corona pulse (1.4 s), embers, fog drift —
   reason: the scene is alive while the player decides. Partner idle animation from its sprite.
 - `prefers-reduced-motion`: no fog drift, no pulse on Play, embers static.
+- Combat HUD (§4): the boss announcement enters in 180 ms (it settles from 112% like a seal pressed down, its rule draws out from the middle), holds 1.5 s and exits in
+  300 ms: reason, it must stand out at the moment the player has to read an attack. The boss entrance (name 420 ms, bar 900 ms), the chip trail (<= 600 ms: Doherty) and
+  the felled banner (300 ms in, 700 ms out) each say what just happened. `prefers-reduced-motion`: the announcement only fades (no settle, no drawn rule).
 
 ## 6. Accessibility Baselines
 
@@ -150,3 +172,7 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.
 - 2026-11-04 (owner: "Rediseña también el menú de pausa ... un mapa mucho más realista y visible"): the pause menu becomes a relic window with actions, a real floor plan (tileset colours, fog, pixel-icon markers, legend) and a run summary card that absorbs the held items (§4). Supersedes the plain cursor list plus a separate "Objetos equipados" window. Quick settings now open the full settings window.
 - 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).
+- 2026-11-04 (owner: "rediseña y haz mucho más grande ... todo esto dentro de combate ... la barra de jefe ... que tenga estética de jefe de Dark Souls"): the combat HUD is redone at the relic scale (§4 Combat HUD): HUD scale
+  from the viewport (2 at 1280x720, 3 at 1920x1080), a bottom-centre Souls boss bar with epithet, chip trail, phase notches, card pips, status icons, entrance and "felled" banner, a
+  bigger partner status window with co-op frames, square relic move slots with device glyphs and radial cooldowns, and a boss-event announcement with a telegraph cue. Supersedes the 196x58 status box, the
+  104x30 move chips, the 260 px boss bar and the thin spell strip.
