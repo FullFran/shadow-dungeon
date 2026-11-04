@@ -6,12 +6,12 @@
 .hl-body { display: grid; grid-template-columns: 19rem minmax(0, 1fr); gap: 16px; min-height: 0; flex: 1; }
 .hl-sheet { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 0; padding: 12px 16px 14px; box-sizing: border-box; overflow: hidden;
   background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 30px color-mix(in srgb, var(--md-ink) 60%, transparent); }
-.hl-stage { position: relative; flex: none; width: 100%; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; --hl-glow: var(--relic-ember); }
-.hl-stage-glow { position: absolute; left: 50%; bottom: 10px; width: 200px; height: 130px; transform: translateX(-50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--hl-glow) 45%, transparent), transparent); pointer-events: none; }
-.hl-stage-art { position: relative; z-index: 1; margin-bottom: -40px; display: grid; place-items: end center; }
-.hl-stage-art canvas { display: block; image-rendering: pixelated; }
-.hl-stage-icon { width: 80px; height: 80px; margin-bottom: 36px; }
-.hl-stage-sign { width: 150px; height: 28px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--hl-glow) 70%, var(--md-ink)); background: radial-gradient(closest-side, color-mix(in srgb, var(--md-ink) 75%, transparent), transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--hl-glow) 50%, transparent); }
+.hl-stage { position: relative; flex: none; width: 100%; height: 156px; --hl-glow: var(--relic-ember); }
+.hl-stage-glow { position: absolute; left: 50%; bottom: 14px; width: 200px; height: 130px; transform: translateX(-50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--hl-glow) 45%, transparent), transparent); pointer-events: none; }
+/* Sprite box (.agents/DESIGN.md §4): the whole frame fits, feet on the ground line (about 75% down the frame), over the sign. */
+.hl-stage-art { position: absolute; z-index: 1; left: 50%; top: 0; width: 200px; height: 140px; transform: translateX(-50%); }
+.hl-stage-icon { position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; margin: -50px 0 0 -40px; }
+.hl-stage-sign { position: absolute; left: 50%; bottom: 2px; margin-left: -75px; width: 150px; height: 28px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--hl-glow) 70%, var(--md-ink)); background: radial-gradient(closest-side, color-mix(in srgb, var(--md-ink) 75%, transparent), transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--hl-glow) 50%, transparent); }
 .hl-name { margin: 2px 0 0; max-width: 100%; text-align: center; font-size: 28px; line-height: 1.05; color: var(--md-text); text-shadow: 0 3px 0 var(--md-ink); overflow-wrap: anywhere; }
 .hl-chips { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; min-height: 26px; }
 .hl-chip { display: inline-block; padding: 0 8px; border-radius: 4px; font-family: var(--md-text-font); font-weight: 700; font-size: 13px; line-height: 1.9; color: var(--md-text-dim); border: 1px solid var(--relic-gold-deep); }
@@ -42,12 +42,11 @@
 .hl-cta[data-locked] svg.px-icon { filter: grayscale(1); opacity: 0.6; }
 .hl-cta[data-action="abandon"] { border-color: var(--relic-blood); }
 
-.hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); grid-auto-rows: 168px; gap: 10px; align-content: start; min-height: 0; overflow: hidden; padding: 4px 6px 4px 2px; }
-.hl-card { all: unset; box-sizing: border-box; position: relative; height: 168px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; cursor: pointer; text-align: center;
+.hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); grid-auto-rows: 176px; gap: 10px; align-content: start; min-height: 0; overflow: hidden; padding: 4px 6px 4px 2px; }
+.hl-card { all: unset; box-sizing: border-box; position: relative; height: 176px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; cursor: pointer; text-align: center;
   background: radial-gradient(120% 80% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 70%); border: 2px solid var(--relic-slab-edge); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 color-mix(in srgb, var(--md-ink) 45%, transparent); }
-.hl-card-art { flex: none; width: 100%; height: 84px; display: grid; place-items: end center; overflow: hidden; }
-.hl-card-art canvas { image-rendering: pixelated; width: auto !important; height: 100px !important; margin-bottom: -16px; }
-.hl-card-icon { width: 56px; height: 56px; align-self: center; }
+.hl-card-art { flex: none; width: 100%; height: 92px; margin-top: 14px; }
+.hl-card-icon { display: block; width: 56px; height: 56px; margin: 18px auto 0; }
 .hl-card-name { font-size: 20px; line-height: 1.05; color: var(--md-text); max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .hl-card-sub { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-family: var(--md-text-font); font-weight: 700; font-size: 13px; line-height: 1.2; color: var(--md-text-dim); max-width: 100%; }
 .hl-card-sub em { font-style: normal; color: var(--md-text-dim); margin-left: 4px; }
@@ -113,8 +112,8 @@
   .hl-window > .md-window-title { top: -14px; }
   .hl-window > .md-window-body { gap: 6px; }
   .hl-body { grid-template-columns: 13rem minmax(0, 1fr); gap: 10px; }
-  .hl-stage { height: 70px; } .hl-stage-glow { width: 130px; height: 80px; } .hl-stage-sign { width: 90px; height: 16px; }
-  .hl-stage-art { transform: scale(0.5); transform-origin: 50% 100%; margin-bottom: -24px; } .hl-stage-icon { width: 64px; height: 64px; margin-bottom: 20px; }
+  .hl-stage { height: 76px; } .hl-stage-glow { width: 130px; height: 70px; bottom: 6px; } .hl-stage-sign { width: 90px; height: 16px; margin-left: -45px; bottom: 8px; }
+  .hl-stage-art { width: 100px; height: 72px; } .hl-stage-icon { width: 48px; height: 48px; margin: -30px 0 0 -24px; }
   .hl-sheet { gap: 4px; padding: 6px 8px; justify-content: space-between; }
   .hl-name { font-size: 18px; } .hl-chips { min-height: 0; } .hl-chip { font-size: 11px; line-height: 1.6; }
   .hl-rules { border-top: 0; padding-top: 0; } .hl-rules p:nth-of-type(n+2), .hl-order, .hl-hint, .hl-stage-sign { display: none; }
@@ -122,7 +121,7 @@
   .hl-record .hl-line:nth-of-type(n+3) { display: none; }
   .hl-cta { height: 44px; font-size: 16px; } .hl-cta svg.px-icon { width: 20px; height: 20px; }
   .hl-grid, .oa-grid { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); grid-auto-rows: 92px; gap: 6px; } .oa-grid .hl-card { height: 92px; }
-  .hl-card { height: 92px; padding: 4px; gap: 2px; } .hl-card-art { height: 44px; } .hl-card-art canvas { height: 56px !important; margin-bottom: -10px; } .hl-card-icon { width: 36px; height: 36px; }
+  .hl-card { height: 92px; padding: 4px; gap: 2px; } .hl-card-art { height: 48px; margin-top: 0; } .hl-card-icon { width: 36px; height: 36px; margin-top: 6px; }
   .hl-card-name { font-size: 14px; -webkit-line-clamp: 1; } .hl-card-sub { font-size: 11px; } .hl-card-sub em { display: none; } .hl-card-state { font-size: 9px; top: 3px; right: 3px; }
   .hl-back { min-height: 44px; font-size: 16px; padding: 0 14px; }
   .oa-top, .bd-top { gap: 6px; }

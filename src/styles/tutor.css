@@ -1,4 +1,4 @@
-/* The move tutor (src/app/tutor-screen.ts; .agents/DESIGN.md §4): quiet cards beside one sheet with a live preview; fixed geometry, one ember action. */
+/* The move tutor (src/app/tutor-screen.ts; .agents/DESIGN.md §4 accordion list): one column of calm rows in slot accordions beside one sheet with a live preview; fixed geometry, one ember highlight. */
 .tu-window { display: flex; flex-direction: column; width: min(72rem, 100%); height: min(50rem, calc(100dvh - 48px)); }
 .tu-window > .md-window-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; overflow: hidden !important; }
 .tu-window button { font-family: inherit; }
@@ -13,45 +13,54 @@
 .tu-species { flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center; height: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 0 2px; }
 .tu-species::-webkit-scrollbar { display: none; }
 .tu-chip { all: unset; box-sizing: border-box; flex: none; display: flex; align-items: center; gap: 6px; width: 9rem; height: 44px; padding: 0 10px 0 4px; cursor: pointer; border: 2px solid transparent; border-radius: 6px; }
-.tu-chip-art { flex: none; width: 36px; height: 36px; display: grid; place-items: end center; overflow: hidden; }
-.tu-chip-art canvas { image-rendering: pixelated; width: auto !important; height: 48px !important; margin-bottom: -10px; }
+.tu-chip-art { flex: none; width: 40px; height: 40px; }
 .tu-chip-name { min-width: 0; font-size: 18px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tu-chip:hover { background: var(--relic-slab); }
 .tu-chip.is-current { background: var(--relic-slab); border-color: var(--md-cursor); }
 .tu-chip.is-current .tu-chip-name { color: var(--md-cursor); }
-.tu-back:focus-visible, .tu-step:focus-visible, .tu-chip:focus-visible, .tu-tab:focus-visible, .tu-card:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); outline: none; }
+.tu-back:focus-visible, .tu-step:focus-visible, .tu-chip:focus-visible, .tu-group-head:focus-visible, .tu-row:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-cursor) 45%, transparent); outline: none; }
 .tu-balance { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; box-sizing: border-box; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--md-cursor); }
 .tu-balance svg.px-icon { width: 24px; height: 24px; }
 
-/* Slot filter tabs: flat, the open one underlined. */
-.tu-tabs { flex: none; display: flex; gap: 4px; height: 40px; border-bottom: 1px solid var(--relic-gold-deep); }
-.tu-tab { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 0 1 9rem; min-width: 0; height: 40px; padding: 0 12px; cursor: pointer; font-size: 18px; color: var(--md-text-dim); border-bottom: 3px solid transparent; white-space: nowrap; }
-.tu-tab svg.px-icon { flex: none; width: 22px; height: 22px; opacity: 0.75; }
-.tu-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.tu-tab:hover { color: var(--md-text); }
-.tu-tab.is-on { color: var(--md-cursor); border-bottom-color: var(--md-cursor); }
-.tu-tab.is-on svg.px-icon { opacity: 1; }
-
-/* Body: the grid beside the sheet. */
+/* Body: the list beside the sheet. */
 .tu-body { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 20px; min-height: 0; flex: 1; }
 
-/* Grid of move cards: three to a row, name and one state each. */
-.tu-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 78px; gap: 12px; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 8px 4px 2px; scrollbar-color: var(--md-border-shade) transparent; }
-.tu-window .tu-empty { grid-column: 1 / -1; margin: 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
-.tu-card { all: unset; box-sizing: border-box; height: 78px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 12px; cursor: pointer; overflow: hidden;
-  background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-top: 4px solid var(--tu-edge, var(--relic-slab-edge)); border-radius: 6px; }
-.tu-card:hover { border-color: var(--md-border-shade); border-top-color: var(--tu-edge); }
-.tu-card.is-focused { border-color: var(--md-cursor); border-top-color: var(--tu-edge); }
-.tu-card-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.tu-card-row svg.px-icon { flex: none; width: 24px; height: 24px; }
-.tu-card-name { min-width: 0; font-size: 22px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tu-card.is-locked .tu-card-name { color: var(--md-disabled); }
-.tu-card.is-locked svg.px-icon { filter: saturate(0.3) brightness(0.8); }
-.tu-state { display: flex; align-items: center; gap: 5px; height: 18px; font-family: var(--md-text-font); font-weight: 700; font-size: 14px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; }
-.tu-state svg.px-icon { width: 16px; height: 16px; }
-.tu-state.is-known { color: #7fe08a; }
-.tu-state.is-buy.is-ok { color: var(--md-cursor); }
-.tu-state.is-locked { color: var(--md-disabled); }
+/* The list: one column, one accordion per slot, scrolling inside (never the page). */
+.tu-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 8px 2px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.tu-list::-webkit-scrollbar { width: 8px; }
+.tu-list::-webkit-scrollbar-thumb { background: var(--md-border-shade); border-radius: 4px; }
+.tu-list::-webkit-scrollbar-track { background: transparent; }
+.tu-window .tu-empty { margin: 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+.tu-group { flex: none; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 6px; }
+.tu-group.is-open { border-color: var(--relic-gold-deep); }
+.tu-group-head { all: unset; box-sizing: border-box; width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 12px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+.tu-group-head:hover { background: color-mix(in srgb, var(--md-text) 5%, transparent); }
+.tu-chevron { flex: none; width: 0; height: 0; border-left: 7px solid var(--md-text-dim); border-top: 5px solid transparent; border-bottom: 5px solid transparent; transition: transform 140ms ease-out; }
+.tu-group.is-open .tu-chevron { transform: rotate(90deg); border-left-color: var(--md-cursor); }
+.tu-group-head svg.px-icon { flex: none; width: 24px; height: 24px; }
+.tu-group-name { flex: 1; min-width: 0; font-size: 22px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tu-group.is-open .tu-group-name { color: var(--md-cursor); }
+.tu-group-count, .tu-group-max { flex: none; font-family: var(--md-text-font); font-size: 13px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; }
+.tu-group-max.has-max { color: var(--md-text); }
+/* Expand: the body grows from 0fr to 1fr in 140 ms; a closed body is inert. */
+.tu-group-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 140ms ease-out; }
+.tu-group.is-open > .tu-group-body { grid-template-rows: 1fr; }
+.tu-group-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
+.tu-group.is-open > .tu-group-body > .tu-group-inner { padding: 2px 8px 8px; }
+.tu-row { all: unset; box-sizing: border-box; flex: none; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+.tu-row:hover { background: color-mix(in srgb, var(--md-text) 5%, transparent); }
+.tu-row.is-focused { background: color-mix(in srgb, var(--md-text) 8%, transparent); }
+.tu-row-name { flex: 1; min-width: 0; font-size: 20px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tu-row.is-locked .tu-row-name { color: var(--md-disabled); }
+.tu-row .tu-pips { flex: none; }
+.tu-row-state { flex: none; min-width: 7.5rem; display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; font-family: var(--md-text-font); font-size: 14px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; }
+.tu-row-state svg.px-icon { width: 16px; height: 16px; filter: saturate(0.3) brightness(0.8); }
+.tu-row-state.is-locked { color: var(--md-disabled); }
+/* The one ember highlight (Von Restorff): the focused row, when its action can be paid now. */
+.tu-row.is-focused.is-ok .tu-row-state { color: var(--md-cursor); }
+@media (prefers-reduced-motion: reduce) {
+  .tu-group-body, .tu-chevron { transition: none; }
+}
 
 /* Sheet: preview, name, three numbers, what it does, one note, the action. */
 .tu-sheet { --tu-edge: var(--relic-gold-deep); display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px 14px 14px; box-sizing: border-box; overflow: hidden;
@@ -106,19 +115,19 @@
 @media (max-width: 1100px) {
   .tu-body { grid-template-columns: minmax(0, 1fr) 22rem; gap: 14px; }
   .tu-chip { width: 8rem; }
-  .tu-card { padding: 0 10px; } .tu-card-name { font-size: 18px; } .tu-card-row { gap: 6px; } .tu-card-row svg.px-icon { width: 20px; height: 20px; }
+  .tu-row-name { font-size: 18px; }
 }
 
 @media (max-height: 560px), (max-width: 900px) {
   .tu-window { height: calc(100dvh - 24px); }
   .tu-window > .md-window-body { gap: 6px; }
   .tu-top { height: 38px; gap: 4px; }
-  .tu-back { height: 34px; padding: 0 10px; font-size: 16px; } .tu-step { width: 28px; height: 34px; } .tu-chip { width: 7rem; height: 34px; } .tu-chip-art { width: 28px; height: 28px; } .tu-chip-art canvas { height: 38px !important; margin-bottom: -8px; } .tu-chip-name { font-size: 16px; }
+  .tu-back { height: 34px; padding: 0 10px; font-size: 16px; } .tu-step { width: 28px; height: 34px; } .tu-chip { width: 7rem; height: 34px; } .tu-chip-art { width: 30px; height: 30px; } .tu-chip-name { font-size: 16px; }
   .tu-balance { height: 34px; font-size: 18px; padding: 0 6px; } .tu-balance svg.px-icon { width: 20px; height: 20px; }
-  .tu-tabs { height: 30px; } .tu-tab { height: 30px; font-size: 15px; padding: 0 8px; gap: 4px; flex-basis: 7rem; } .tu-tab svg.px-icon { width: 18px; height: 18px; }
   .tu-body { grid-template-columns: minmax(0, 1fr) 17rem; gap: 10px; }
-  .tu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 52px; gap: 8px; }
-  .tu-card { height: 52px; gap: 3px; padding: 0 8px; } .tu-card-name { font-size: 16px; } .tu-card-row svg.px-icon { width: 18px; height: 18px; } .tu-state { height: 14px; font-size: 12px; }
+  .tu-list { gap: 6px; }
+  .tu-group-head { min-height: 44px; padding: 0 10px 0 8px; gap: 8px; } .tu-group-name { font-size: 18px; } .tu-group-head svg.px-icon { width: 20px; height: 20px; } .tu-group-count, .tu-group-max { font-size: 12px; }
+  .tu-row { gap: 8px; padding: 0 8px; } .tu-row-name { font-size: 16px; } .tu-row-state { min-width: 0; font-size: 12px; }
   .tu-sheet { gap: 4px; padding: 6px 8px 8px; } .tu-preview { min-height: 60px; }
   .tu-sheet-head { display: flex; align-items: center; gap: 6px; } .tu-name { flex: 1; min-width: 0; font-size: 22px; } .tu-badges { flex: none; height: 20px; } .tu-badges .type-badge { font-size: 12px; } .tu-badges .tier-badge, .tu-slot { display: none; }
   .tu-stat { height: 36px; gap: 2px; } .tu-stat-value { font-size: 18px; } .tu-stat-label { font-size: 11px; }
@@ -127,16 +136,3 @@
   .tu-act { height: 36px; font-size: 16px; gap: 6px; } .tu-act svg.px-icon { width: 20px; height: 20px; }
   .tu-foot { display: none; }
 }
-
-/* Rank at a glance (owner, 2026-11-03): pips + "Rango n/2" on one line, the action chip below in its own colour:
-   green = you can rank up / learn now, dim = not enough coins, gold = max rank, grey = locked. */
-.tu-state-wrap { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; width: 100%; }
-.tu-rankline { display: inline-flex; align-items: center; gap: 6px; }
-.tu-rank { font-family: var(--md-text-font); font-weight: 700; font-size: 12px; color: var(--md-text-dim); }
-.tu-rank.is-new { color: var(--md-text-dim); font-weight: 700; }
-.tu-state { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 4px; font-family: var(--md-text-font); font-weight: 700; font-size: 12px; line-height: 1.7; border: 1px solid transparent; }
-.tu-state svg.px-icon { width: 14px; height: 14px; }
-.tu-state.is-rank.is-ok, .tu-state.is-buy.is-ok { color: #9ff0a6; border-color: rgba(127, 224, 138, 0.55); background: rgba(40, 90, 50, 0.35); }
-.tu-state.is-rank.is-short, .tu-state.is-buy.is-short { color: var(--md-text-dim); border-color: rgba(179, 166, 144, 0.35); background: rgba(0, 0, 0, 0.3); }
-.tu-state.is-maxed { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
-.tu-state.is-locked { color: var(--md-disabled); border-color: rgba(143, 132, 137, 0.4); background: rgba(0, 0, 0, 0.3); }

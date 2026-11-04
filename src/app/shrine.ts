@@ -144,7 +144,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
     else stage.style.removeProperty('--hl-glow');
     stage.replaceChildren(
       h('div', { className: 'hl-stage-glow' }),
-      h('div', { className: 'hl-stage-art' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 4) : pixelIconSvg(card.icon, 'px-icon hl-stage-icon')]),
+      h('div', { className: 'hl-stage-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 4) : pixelIconSvg(card.icon, 'px-icon hl-stage-icon')]),
       h('div', { className: 'hl-stage-sign' }),
     );
     name.textContent = sealed ? t('shrine.sealed.name') : title;
@@ -191,7 +191,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
     cardEls = cards.map((card) => {
       const sealed = card.state === 'locked';
       const label = sealed ? t('shrine.sealed.name') : card.kind === 'herald' ? (options.heralds.find((e) => String(e.seed) === card.id)?.name ?? '') : card.kind === 'gauntlet' ? gauntletName(card.id as GauntletId) : bossName(card.id);
-      const art = h('span', { className: 'hl-card-art' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 2) : pixelIconSvg(card.icon, 'px-icon hl-card-icon')]);
+      const art = h('span', { className: 'hl-card-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 2) : pixelIconSvg(card.icon, 'px-icon hl-card-icon')]);
       const sub = sealed
         ? card.kind === 'gauntlet'
           ? t('shrine.locked').replace('{count}', String(card.missing))

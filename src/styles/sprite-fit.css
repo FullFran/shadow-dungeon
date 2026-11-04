@@ -1,0 +1,6 @@
+/* Sprite fit rule (.agents/DESIGN.md §4, src/ui/sprite-fit.ts). Put `sprite-box` on the element that holds a portrait canvas
+   and give that element a fixed size: the whole idle frame is scaled to fit it, standing on its bottom edge. The box never clips.
+   The canvas fills the box absolutely, so its percentage size never depends on the box's own content. */
+:where(.sprite-box) { display: block; position: relative; }
+.sprite-box { overflow: visible; }
+.sprite-box > canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; margin: 0; object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; }

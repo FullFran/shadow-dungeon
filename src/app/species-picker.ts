@@ -66,7 +66,7 @@ export function speciesPicker(options: SpeciesPickerOptions): HTMLElement[] {
     const species = SPECIES[id];
     const glow = TYPE_COLORS[species.types[0]!];
     stage.style.setProperty('--sp-glow', glow.core);
-    stage.replaceChildren(h('div', { className: 'sp-stage-glow' }), h('div', { className: 'sp-stage-sprite' }, [options.portrait(options.sheets, id, 5)]), h('div', { className: 'sp-stage-sign' }));
+    stage.replaceChildren(h('div', { className: 'sp-stage-glow' }), h('div', { className: 'sp-stage-sprite sprite-box' }, [options.portrait(options.sheets, id, 5)]), h('div', { className: 'sp-stage-sign' }));
     name.textContent = t(`species.${id}`);
     types.replaceChildren(...species.types.map(options.typeBadge), ...(options.shiny(id) ? [h('span', { className: 'sp-chip sp-chip-shiny', textContent: t('loadout.shiny') })] : []));
     const s = speciesStats(id);
@@ -83,7 +83,7 @@ export function speciesPicker(options: SpeciesPickerOptions): HTMLElement[] {
 
   const cards = roster.map((id) => {
     const card = h('button', { className: `sp-card${id === options.current ? ' is-current' : ''}`, type: 'button' }, [
-      h('span', { className: 'sp-card-art' }, [options.portrait(options.sheets, id, 2)]),
+      h('span', { className: 'sp-card-art sprite-box' }, [options.portrait(options.sheets, id, 2)]),
       h('span', { className: 'sp-card-name', textContent: t(`species.${id}`) }),
       h('span', { className: 'sp-card-types' }, SPECIES[id].types.map(options.typeBadge)),
       ...(id === options.current ? [h('span', { className: 'sp-card-picked', textContent: t('loadout.picked') })] : []),

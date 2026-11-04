@@ -67,6 +67,21 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
 - **Friends window** (`src/app/friends-window.ts`): the picker pattern applied to a social list: a sheet (your code, add by
   code) beside a column of cards (avatar tile with a diamond state pip, name, state line, actions). Signed out it is one
   compact card that opens the drawer.
+- **Accordion list** (`src/app/tutor-screen.ts`, `src/app/tutor-groups.ts`, `src/styles/tutor.css`): one column of groups
+  scrolling inside its own region (styled scrollbar, never the page). Header = real `<button>` with `aria-expanded` and
+  `aria-controls`, 48 px tall: chevron, category pixel icon, name, count, how many are at max rank. Body = `role="region"`
+  labelled by its header, `inert` while closed. One group open on arrival (Miller), the rest closed (Hick). Rows are
+  calm (≥ 44 px): name, rank pips, one quiet state at the right; the single ember is the focused row's payable state
+  (Von Restorff). Keys: Up/Down walk headers and open rows, Left/Right fold/unfold (Left on a row climbs to its header),
+  Enter/Space on a header toggles. Expand 140 ms (`grid-template-rows` 0fr to 1fr), none under `prefers-reduced-motion`.
+  Category tabs are dropped when the groups are the filter (two controls for one job is clutter).
+- **Sprite fit rule** (`src/ui/sprite-fit.ts`, `src/styles/sprite-fit.css`): a Pokémon is never cropped. Its box has a
+  fixed size and the class `sprite-box`; the canvas fills the box (`object-fit: contain`, bottom-centred) and, inside a
+  `sprite-box`, is cropped to the pixels the idle animation really covers (`portrait()` in `src/app/loadout.ts`), so the
+  box fits the creature itself and reserves its headroom. Forbidden: `overflow: hidden` on a sprite box, negative
+  `margin-bottom` or a fixed `height: Npx !important` on a sprite canvas, scaling a whole stage with `transform`.
+  Every box is declared in `SPRITE_BOXES`; `tests/ui/sprite-fit.test.ts` fits every playable species (base, shiny,
+  female sheets) and every shrine boss in every box and checks the stylesheet agrees.
 
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
 
@@ -97,3 +112,10 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-03: Hub icons are original coloured pixel art (16×16), not single-stroke line glyphs.
 - 2026-11-04: Account entry becomes a right-hand side drawer (Google, Discord, email, guest with honest pros and cons)
   instead of a centred window; Friends follows the picker pattern (owner). Provider marks are our own pixel drawings.
+- 2026-11-04 (owner: "Los pokemon se cortan, que no pase en ningún otro sitio"): sprite fit rule. Every Pokémon is drawn whole
+  inside a fixed `sprite-box` (shrine sheet and cards, species picker, Maestro chips, evolution, challenges, loadout head,
+  gacha collection); cropping with negative margins and `overflow: hidden` is banned (§4).
+- 2026-11-04 (owner: "la descripción tapa cosas"): the achievements window owns one row per part (head, body that scrolls
+  inside, detail, foot); a tile holds its own date, it never spills into the row above or below.
+- 2026-11-04 (owner: "Sigue pareciéndome demasiado saturado"): the Maestro becomes an accordion list (§4): one column,
+  four slot groups, calm rows, scroll inside. Supersedes the 3-column move card grid and the slot tabs of 2026-11-03.

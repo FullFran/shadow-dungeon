@@ -209,7 +209,7 @@ export function gachaPage(options: GachaPageOptions): { element: HTMLElement; fo
           const face = portrait(options.sheets, e.species, 1, e.shiny);
           const state = e.owned ? t('gacha.page.collection.owned') : t('gacha.page.collection.missing');
           const li = h('li', { className: `gp-own ${e.owned ? 'is-owned' : 'is-missing'}` }, [
-            h('div', { className: 'gp-own-art' }, [face, ...(e.shiny ? [icon('sparkle', 'px-icon gp-own-spark')] : [])]),
+            h('div', { className: 'gp-own-art sprite-box' }, [face, ...(e.shiny ? [icon('sparkle', 'px-icon gp-own-spark')] : [])]),
             h('span', { className: 'gp-own-name', textContent: t(`species.${e.species}`) }),
             h('span', { className: 'gp-own-state' }, [icon(e.owned ? 'owned' : 'unknown'), state]),
           ]);
@@ -262,7 +262,7 @@ export function gachaPage(options: GachaPageOptions): { element: HTMLElement; fo
       h('div', { className: 'gp-socket' }),
       capsuleHalves(),
       h('div', { className: 'gp-card' }, [
-        h('div', { className: 'gp-card-art' }, [face, ...(result.shiny ? [icon('sparkle', 'px-icon gp-card-spark')] : [])]),
+        h('div', { className: 'gp-card-art sprite-box' }, [face, ...(result.shiny ? [icon('sparkle', 'px-icon gp-card-spark')] : [])]),
         h('h3', { className: 'gp-card-name', textContent: t(`species.${result.species}`) }),
         h('p', { className: 'gp-card-rarity', textContent: `${t(`gacha.rarity.${result.rarity}`)}${result.shiny ? ` · ${t('gacha.page.reveal.shiny')}` : ''}` }),
         h('p', { className: `gp-card-tag ${result.duplicate ? 'is-dup' : 'is-new'}`, textContent: tag }),
