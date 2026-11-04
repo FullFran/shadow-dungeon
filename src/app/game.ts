@@ -1658,7 +1658,6 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       hints.update(
         {
           place: 'run',
-          interact: null,
           minimap: minimap !== null && world.arena.tiles !== undefined,
           spectating: watching !== null,
           suppressed: closeMenu !== null || closePick !== null || closeChoice !== null || closeMemory !== null || closeCinematic !== null || ended,

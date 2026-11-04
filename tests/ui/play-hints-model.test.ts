@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { INTERACT_KEY_CODES, LOCK_KEYS, MAP_KEY, MENU_KEY, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES, SPECTATE_KEY, keyLabel } from '../../src/adapters/bindings';
 import { toPlayerInput, type RawInput } from '../../src/adapters/input';
@@ -6,9 +7,9 @@ import { catalog } from '../../src/i18n';
 import { vec } from '../../src/core/vec';
 import { playViewport } from '../../src/adapters/viewport';
 import { HUD_BOX, hudRects, hudScaleFor, hudSpace } from '../../src/ui/hud-layout';
-import { HINT_HOLD_MS, createHintFade, hintBand, hintSignature, hintsFor, type Hint, type HintContext, type HintId } from '../../src/ui/play-hints-model';
+import { HINT_HOLD_MS, createHintFade, hintBand, hintSignature, hintSizes, hintsFor, interactGlyphs, type Hint, type HintContext, type HintId } from '../../src/ui/play-hints-model';
 
-const base: HintContext = { device: 'keyboard', place: 'run', interact: null, minimap: true, spectating: false, padStyle: 'xbox' };
+const base: HintContext = { device: 'keyboard', place: 'run', minimap: true, spectating: false, padStyle: 'xbox' };
 const ctx = (over: Partial<HintContext> = {}): HintContext => ({ ...base, ...over });
 const ids = (hints: Hint[]): HintId[] => hints.map((h) => h.id);
 const hint = (hints: Hint[], id: HintId): Hint => hints.find((h) => h.id === id)!;
@@ -68,18 +69,19 @@ describe('keyboard hints match the real bindings', () => {
 describe('the town', () => {
   const town = (over: Partial<HintContext> = {}) => hintsFor(ctx({ place: 'town', ...over }));
 
-  it('shows move, the quick wheel and the menu, and interact only with something in range', () => {
+  it('shows move, the quick wheel and the menu; interact lives in the world tooltip, never in the bar', () => {
     expect(ids(town())).toEqual(['move', 'wheel', 'menu']);
-    expect(ids(town({ interact: 'talk' }))).toEqual(['move', 'interact', 'wheel', 'menu']);
+    for (const device of ['keyboard', 'gamepad'] as const) expect(ids(hintsFor(ctx({ device, place: 'town' })))).not.toContain('interact' as HintId);
   });
 
-  it('interact shows keys the town really answers to, with a verb for what is in range', () => {
-    for (const [kind, key] of [['talk', 'hint.talk'], ['read', 'hint.read'], ['travel', 'hint.travel']] as const) {
-      const interact = hint(town({ interact: kind }), 'interact');
-      expect(interact.labelKey).toBe(key);
-      for (const code of codes(interact)) expect(INTERACT_KEY_CODES).toContain(code);
-      expect(interact.glyphs.map((g) => g.label)).toEqual(['E', 'Enter']);
-    }
+  it('the interact glyphs are keys the town really answers to, the pad confirm button, and nothing on touch', () => {
+    const keyboard = interactGlyphs('keyboard', 'xbox');
+    expect(keyboard.map((g) => g.label)).toEqual(['E']);
+    for (const g of keyboard) expect(INTERACT_KEY_CODES).toContain(g.id);
+    const rows = GAMEPAD_HELP.menus.find((r) => r.action === 'confirm')!;
+    expect(interactGlyphs('gamepad', 'xbox').map((g) => g.id)).toEqual(rows.buttons);
+    expect(interactGlyphs('gamepad', 'playstation').map((g) => g.label)).toEqual(rows.buttons.map((b) => buttonName(b, 'playstation')));
+    expect(interactGlyphs('touch', 'xbox')).toEqual([]);
   });
 
   it('the town does not offer combat keys', () => {
@@ -111,10 +113,9 @@ describe('gamepad hints match the controller help table', () => {
     expect(hint(hintsFor(ctx({ device: 'gamepad', padStyle: 'playstation' })), 'roll').glyphs[0]!.label).toBe('✕');
   });
 
-  it('the town takes confirm for interact, back-as-start for the menu and the wheel on the minimap button', () => {
-    const hints = hintsFor(ctx({ device: 'gamepad', place: 'town', interact: 'read' }));
-    expect(ids(hints)).toEqual(['move', 'interact', 'wheel', 'menu']);
-    expect(buttons(hint(hints, 'interact'))).toEqual(rows('menus', 'confirm').buttons);
+  it('the town takes back-as-start for the menu and the wheel on the minimap button', () => {
+    const hints = hintsFor(ctx({ device: 'gamepad', place: 'town' }));
+    expect(ids(hints)).toEqual(['move', 'wheel', 'menu']);
     expect(buttons(hint(hints, 'wheel'))).toEqual(rows('combat', 'minimap').buttons);
     expect(buttons(hint(hints, 'menu'))).toEqual(rows('combat', 'menu').buttons);
   });
@@ -126,7 +127,7 @@ describe('gamepad hints match the controller help table', () => {
 
 describe('touch', () => {
   it('hides the bar in every context (the touch controls already show their buttons)', () => {
-    for (const place of ['run', 'town'] as const) for (const interact of [null, 'talk'] as const) for (const spectating of [false, true]) expect(hintsFor(ctx({ device: 'touch', place, interact, spectating }))).toEqual([]);
+    for (const place of ['run', 'town'] as const) for (const spectating of [false, true]) expect(hintsFor(ctx({ device: 'touch', place, spectating }))).toEqual([]);
   });
 });
 
@@ -135,9 +136,8 @@ describe('labels are translated', () => {
     const seen = new Set<string>();
     for (const device of ['keyboard', 'gamepad'] as const)
       for (const place of ['run', 'town'] as const)
-        for (const interact of [null, 'talk', 'read', 'travel'] as const)
-          for (const spectating of [false, true]) for (const minimap of [false, true]) for (const h of hintsFor(ctx({ device, place, interact, spectating, minimap }))) seen.add(h.labelKey);
-    expect(seen.size).toBeGreaterThanOrEqual(9);
+        for (const spectating of [false, true]) for (const minimap of [false, true]) for (const h of hintsFor(ctx({ device, place, spectating, minimap }))) seen.add(h.labelKey);
+    expect(seen.size).toBeGreaterThanOrEqual(8);
     for (const language of ['es', 'en'] as const) for (const key of seen) expect(catalog(language)[key], `${language} ${key}`).toBeTruthy();
   });
 });
@@ -163,7 +163,7 @@ describe('fade', () => {
     expect(sig(a)).not.toBe(sig(ctx({ device: 'gamepad' })));
     expect(sig(ctx({ device: 'gamepad' }))).not.toBe(sig(ctx({ device: 'gamepad', padStyle: 'playstation' })));
     expect(sig(a)).not.toBe(sig(ctx({ minimap: false })));
-    expect(sig(ctx({ place: 'town' }))).not.toBe(sig(ctx({ place: 'town', interact: 'talk' })));
+    expect(sig(ctx({ place: 'town' }))).not.toBe(sig(ctx({ place: 'run' })));
   });
 });
 
@@ -183,4 +183,34 @@ describe('where the bar sits', () => {
       });
     }
   }
+});
+
+/** Owner, 2026-11-04: "más grande las ayudas visuales": keycaps >= 28 px, labels >= 16 px, chips >= 40 px on desktop. */
+describe('how big the bar is', () => {
+  for (const [w, h] of [[1920, 1080], [1440, 900], [1366, 768], [1280, 720], [1024, 640], [800, 600]] as const) {
+    it(`${w}x${h}: keycaps >= 28, labels >= 16, chips >= 40`, () => {
+      const size = hintSizes(h);
+      expect(size.keycap).toBeGreaterThanOrEqual(28);
+      expect(size.label).toBeGreaterThanOrEqual(16);
+      expect(size.chip).toBeGreaterThanOrEqual(40);
+      expect(size.chip).toBeGreaterThanOrEqual(size.keycap + 8);
+    });
+  }
+
+  it('shrinks sensibly on a short window and never grows past the tall size', () => {
+    const tall = hintSizes(1080);
+    const short = hintSizes(430);
+    expect(short.chip).toBeLessThan(tall.chip);
+    expect(short.keycap).toBeLessThan(tall.keycap);
+    expect(short.keycap).toBeGreaterThanOrEqual(20);
+    expect(short.label).toBeGreaterThanOrEqual(12);
+    expect(hintSizes(2160)).toEqual(tall);
+  });
+
+  it('the stylesheet reads the sizes from the variables the DOM sets (no hard 22 px caps)', () => {
+    const css = readFileSync(`${new URL('../../', import.meta.url).pathname}src/styles/play-hints.css`, 'utf8');
+    expect(css).toContain('var(--ph-chip');
+    expect(css).toContain('var(--ph-key');
+    expect(css).toContain('var(--ph-label');
+  });
 });

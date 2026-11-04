@@ -384,10 +384,6 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
 }
 
 export interface TownOverlay {
-  /** "E / Enter: talk" over the target in range. */
-  prompt: { text: string; pos: Vec2 } | null;
-  /** The dialog box; `portrait`: the speaker's sheet, shown in a framed box over it (Mystery Dungeon style). */
-  dialog: { speaker: string; text: string; done: boolean; portrait?: string } | null;
   /** The map's name on arrival, fading out. */
   banner?: { text: string; alpha: number } | null;
   /** Black over everything while changing maps (0..1). */
@@ -422,38 +418,10 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
   return lines;
 }
 
-/** A speaker's portrait over the dialog box: its idle frame, facing you, in a small framed window. */
-function drawPortrait(ctx: CanvasRenderingContext2D, sheets: SheetStore, sprite: string, x: number, y: number, timeMs: number): void {
-  const meta = SPRITES.sprites[sprite]?.anims.Idle;
-  const image = meta && sheets.get(sheetKey(sprite, meta.file));
-  const size = 46;
-  drawPanel(ctx, x, y, size, size);
-  if (!meta || !image) return;
-  const frame = frameAtTime(meta.durations, timeMs, true);
-  // Close up, like a Mystery Dungeon portrait: twice the sheet, the face in the frame.
-  const scale = 2;
-  const dw = meta.frameWidth * scale;
-  const dh = meta.frameHeight * scale;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x + 3, y + 3, size - 6, size - 6);
-  ctx.clip();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(image, frame * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, Math.round(x + size / 2 - dw / 2), Math.round(y + size / 2 - dh / 2 + 10), dw, dh);
-  ctx.restore();
-}
-
-/** Interaction prompt and the dialog box (Mystery Dungeon window language), in view pixels. */
-export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
+/** Names over walkers, the map banner and the fade, in view pixels. The interact tooltip and the dialogue box are DOM (src/ui/world-tooltip.ts, src/ui/dialogue-box.ts). */
+export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
   ctx.font = canvasFont();
   for (const label of overlay.names ?? []) nameLabel(ctx, view, label);
-  if (overlay.prompt && !overlay.dialog) {
-    const width = Math.ceil(ctx.measureText(overlay.prompt.text).width) + 12;
-    const x = Math.round(Math.min(view.width - width - 4, Math.max(4, overlay.prompt.pos.x - view.x - width / 2)));
-    const y = Math.round(Math.max(4, overlay.prompt.pos.y - view.y - 52));
-    drawPanel(ctx, x, y, width, 16, { fill: 0.9 });
-    pixelText(ctx, overlay.prompt.text, x + 6, y + 12, PALETTE.text);
-  }
   if (overlay.banner && overlay.banner.alpha > 0) {
     const text = overlay.banner.text;
     const width = Math.ceil(ctx.measureText(text).width) + 28;
@@ -463,29 +431,8 @@ export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overl
     pixelText(ctx, text, view.width / 2, BANNER_TOP + 14, PALETTE.cursor, 'center');
     ctx.globalAlpha = 1;
   }
-  drawDialog(ctx, view, overlay, timeMs, sheets);
   if (overlay.fade && overlay.fade > 0) {
     ctx.fillStyle = `rgba(0, 0, 0, ${overlay.fade})`;
     ctx.fillRect(0, 0, view.width, view.height);
-  }
-}
-
-function drawDialog(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
-  const dialog = overlay.dialog;
-  if (!dialog) return;
-  const x = 16;
-  const w = view.width - 32;
-  const h = 70;
-  // Clear of the fan-project notice at the bottom of the page.
-  const y = view.height - h - 24;
-  if (dialog.portrait && sheets) drawPortrait(ctx, sheets, dialog.portrait, x, y - 50, timeMs);
-  drawPanel(ctx, x, y, w, h);
-  pixelText(ctx, dialog.speaker, x + 10, y + 15, PALETTE.cursor);
-  const lines = wrapText(dialog.text, w - 24, (s) => ctx.measureText(s).width);
-  lines.slice(0, 3).forEach((line, i) => pixelText(ctx, line, x + 10, y + 31 + i * 13, PALETTE.text));
-  if (dialog.done && Math.floor(timeMs / 400) % 2 === 0) {
-    // "More" marker: a small down-pointing triangle (the pixel font has no glyph for it).
-    ctx.fillStyle = PALETTE.cursor;
-    for (let row = 0; row < 3; row++) ctx.fillRect(x + w - 16 + row, y + h - 12 + row, 5 - row * 2, 1);
   }
 }

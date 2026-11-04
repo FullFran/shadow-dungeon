@@ -1,0 +1,32 @@
+/* The world tooltip (src/ui/world-tooltip.ts; .agents/DESIGN.md §4 "World tooltip"): a relic chip with a pointer, anchored over
+   the one target `interact` would pick. Colours come from --md-* and --relic-*. Placement is inline (transform), computed by
+   src/ui/world-tooltip-model.ts; the pointer's tip sits at --wt-arrow-x. */
+.wt { position: fixed; width: max-content; z-index: 4; left: 0; top: 0; pointer-events: none; font-family: var(--md-font); visibility: hidden; opacity: 0; will-change: transform; }
+.wt.is-on { visibility: visible; opacity: 1; }
+.wt-chip { position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; min-width: 44px; padding: 5px 16px 5px 8px; box-sizing: border-box; cursor: default;
+  background: var(--relic-slab); border: 2px solid var(--md-border); border-radius: 4px; color: var(--md-text); font: inherit; font-size: 20px; line-height: 1.1; letter-spacing: 0.02em;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5), 0 0 14px rgba(255, 138, 61, 0.35); white-space: nowrap; }
+.wt-verb { color: var(--md-cursor); }
+.wt-glyphs { display: inline-flex; align-items: center; gap: 3px; }
+.wt-glyphs[hidden] { display: none; }
+.wt-glyphs .pad-glyph { height: 28px; width: auto; }
+.wt-key { display: inline-block; min-width: 30px; height: 30px; padding: 0 7px; box-sizing: border-box; border: 2px solid var(--md-border); border-radius: 2px; background: var(--relic-slab-edge); color: var(--md-text);
+  box-shadow: 0 2px 0 var(--md-border-shade); font: inherit; font-size: 17px; line-height: 24px; text-align: center; }
+/* The pointer: a gilt diamond half hidden behind the chip, towards the target. */
+.wt-arrow { position: absolute; z-index: 1; left: var(--wt-arrow-x, 50%); width: 12px; height: 12px; margin-left: -6px; box-sizing: border-box; background: var(--relic-slab); transform: rotate(45deg); }
+.wt[data-side='above'] .wt-arrow, .wt:not([data-side]) .wt-arrow { bottom: -7px; border: 2px solid var(--md-border); border-top-color: transparent; border-left-color: transparent; }
+.wt[data-side='below'] .wt-arrow { top: -7px; border: 2px solid var(--md-border); border-bottom-color: transparent; border-right-color: transparent; }
+/* Touch: the chip is the button (Fitts: at least 44 px, here 52). */
+.wt.is-touch { pointer-events: none; }
+.wt.is-touch .wt-chip { pointer-events: auto; cursor: pointer; min-height: 52px; min-width: 52px; }
+.wt-chip:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+
+/* Reason for the motion (Doherty): it rises 6 px into place in 120 ms so the eye follows where it came from. Reduced motion: it simply is there. */
+@media (prefers-reduced-motion: no-preference) {
+  .wt { transition: opacity 120ms ease-out, visibility 0s linear 120ms; }
+  .wt.is-on { transition: opacity 120ms ease-out, visibility 0s; }
+  .wt-chip { transition: translate 120ms ease-out; translate: 0 6px; }
+  .wt[data-side='below'] .wt-chip { translate: 0 -6px; }
+  .wt.is-on .wt-chip { translate: 0 0; }
+}
+@media (max-height: 520px) { .wt-chip { font-size: 18px; } }

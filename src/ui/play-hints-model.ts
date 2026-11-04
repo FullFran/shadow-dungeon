@@ -10,13 +10,11 @@ import { HUD_BOX, hudRects } from './hud-layout';
  */
 export type HintDevice = 'keyboard' | 'gamepad' | 'touch';
 export type HintPlace = 'town' | 'run';
-export type HintId = 'move' | 'attack' | 'roll' | 'lock' | 'map' | 'wheel' | 'menu' | 'next' | 'interact';
+export type HintId = 'move' | 'attack' | 'roll' | 'lock' | 'map' | 'wheel' | 'menu' | 'next';
 
 export interface HintContext {
   device: HintDevice;
   place: HintPlace;
-  /** What is in range to use, in the town. */
-  interact: 'talk' | 'read' | 'travel' | null;
   /** The floor has a minimap to show. */
   minimap: boolean;
   /** Co-op, fainted: watching a teammate. */
@@ -38,7 +36,7 @@ export interface Hint {
   glyphs: HintGlyph[];
 }
 
-const LABELS: Record<Exclude<HintId, 'interact'>, string> = {
+const LABELS: Record<HintId, string> = {
   move: 'hint.move',
   attack: 'hint.attack',
   roll: 'controls.short.roll',
@@ -48,7 +46,6 @@ const LABELS: Record<Exclude<HintId, 'interact'>, string> = {
   menu: 'controls.short.menu',
   next: 'spectate.next',
 };
-const INTERACT_LABELS = { talk: 'hint.talk', read: 'hint.read', travel: 'hint.travel' } as const;
 
 const keys = (codes: readonly string[]): HintGlyph[] => codes.map((id) => ({ kind: 'key', id, label: keyLabel(id) }));
 const pad = (buttons: readonly string[], style: PadStyle): HintGlyph[] => buttons.map((id) => ({ kind: 'pad', id, label: buttonName(id, style) }));
@@ -74,8 +71,6 @@ function keyboardGlyphs(id: HintId): readonly string[] {
       return [MENU_KEY];
     case 'next':
       return [SPECTATE_KEY];
-    case 'interact':
-      return INTERACT_KEY_CODES.slice(0, 2);
   }
 }
 
@@ -94,8 +89,6 @@ function padGlyphs(id: HintId): readonly string[] {
       return row('combat', 'minimap');
     case 'menu':
       return row('combat', 'menu');
-    case 'interact':
-      return row('menus', 'confirm');
     case 'next':
       return [];
   }
@@ -103,7 +96,7 @@ function padGlyphs(id: HintId): readonly string[] {
 
 function idsFor(ctx: HintContext): HintId[] {
   if (ctx.device === 'touch') return [];
-  if (ctx.place === 'town') return [...(['move'] as const), ...(ctx.interact ? (['interact'] as const) : []), 'wheel', 'menu'];
+  if (ctx.place === 'town') return ['move', 'wheel', 'menu'];
   // A fainted co-op player cannot move or attack; only the keyboard has a key for the next teammate.
   if (ctx.spectating) return [...(ctx.device === 'keyboard' ? (['next'] as const) : []), ...(ctx.minimap ? (['map'] as const) : []), 'menu'];
   return ['move', 'attack', 'roll', 'lock', ...(ctx.minimap ? (['map'] as const) : []), 'menu'];
@@ -112,13 +105,13 @@ function idsFor(ctx: HintContext): HintId[] {
 export function hintsFor(ctx: HintContext): Hint[] {
   return idsFor(ctx).map((id) => ({
     id,
-    labelKey: id === 'interact' ? INTERACT_LABELS[ctx.interact!] : LABELS[id],
+    labelKey: LABELS[id],
     glyphs: ctx.device === 'gamepad' ? pad(padGlyphs(id), ctx.padStyle) : keys(keyboardGlyphs(id)),
   }));
 }
 
-/** Changes whenever the bar would look different (device, pad style, which hints, what is in range). */
-export const hintSignature = (ctx: HintContext, hints: readonly Hint[]): string => `${ctx.device}${ctx.device === 'gamepad' ? `:${ctx.padStyle}` : ''}|${ctx.place}|${ctx.interact ?? '-'}|${hints.map((h) => h.id).join(',')}`;
+/** Changes whenever the bar would look different (device, pad style, which hints). */
+export const hintSignature = (ctx: HintContext, hints: readonly Hint[]): string => `${ctx.device}${ctx.device === 'gamepad' ? `:${ctx.padStyle}` : ''}|${ctx.place}|${hints.map((h) => h.id).join(',')}`;
 
 export interface HintFade {
   /** Tells the fade the context now on screen; a different one shows the bar again. */
@@ -155,4 +148,36 @@ export function hintBand(space: { width: number; height: number }, slots: number
   const bottomRow = rects.slots.filter((slot) => slot.y + slot.height >= space.height - margin);
   const right = bottomRow.length > 0 ? Math.min(...bottomRow.map((slot) => slot.x)) - gap : space.width - margin;
   return { left: rects.log.x + rects.log.width + gap, right, bottom: margin };
+}
+
+/**
+ * The glyphs of the "use what is in range" action, for the world tooltip and the dialogue box (the bar no longer
+ * carries it): the town answers to E (Enter and Space too), the pad to its confirm button, touch taps the element.
+ */
+export function interactGlyphs(device: HintDevice, style: PadStyle): HintGlyph[] {
+  if (device === 'touch') return [];
+  if (device === 'gamepad') return pad(row('menus', 'confirm'), style);
+  return keys(INTERACT_KEY_CODES.slice(0, 1));
+}
+
+export interface HintSizes {
+  /** Chip height, CSS px. */
+  chip: number;
+  /** Keycap height. */
+  keycap: number;
+  /** Label font size. */
+  label: number;
+  /** Pad glyph height. */
+  pad: number;
+}
+
+/**
+ * Owner, 2026-11-04 ("más grande las ayudas visuales"): the bar is sized from the window's height. Desktop never goes
+ * under a 40 px chip, a 28 px keycap and a 16 px label; only a short window (a landscape laptop pushed to its limit)
+ * steps down, so the bar keeps clear of the HUD there.
+ */
+export function hintSizes(windowHeight: number): HintSizes {
+  if (windowHeight >= 800) return { chip: 48, keycap: 32, label: 18, pad: 30 };
+  if (windowHeight >= 540) return { chip: 42, keycap: 28, label: 16, pad: 26 };
+  return { chip: 34, keycap: 24, label: 14, pad: 22 };
 }
