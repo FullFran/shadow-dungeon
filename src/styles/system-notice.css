@@ -1,0 +1,54 @@
+/* The system notice (src/ui/notice.ts; .agents/DESIGN.md §4 "System notice"): update, install and news over one blurred, darkened veil.
+   Owner 2026-11-04: "con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual". Colours are tokens only;
+   timings come from noticeMotion() as custom properties on the veil. */
+.sys-notice-veil { position: fixed; inset: 0; z-index: 40; box-sizing: border-box; display: flex; align-items: flex-start; justify-content: center;
+  padding: clamp(12px, 8vh, 72px) 16px 16px; overflow: auto;
+  /* Solid ink where blur is not wanted or not there. */
+  background: color-mix(in srgb, var(--md-ink) 88%, transparent); animation: sys-notice-fade var(--notice-veil-ms, 160ms) ease-out both; }
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .sys-notice-veil { background: color-mix(in srgb, var(--md-ink) 60%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sys-notice-veil { background: color-mix(in srgb, var(--md-ink) 88%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+.sys-notice { box-sizing: border-box; width: min(640px, 92vw); max-height: 100%; display: flex; flex-direction: column; gap: 14px; padding: 20px 24px 14px;
+  background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px var(--md-border-shade), 0 6px 0 4px color-mix(in srgb, var(--md-ink) 60%, transparent), 0 0 48px color-mix(in srgb, var(--relic-ember) 18%, transparent);
+  animation: sys-notice-drop var(--notice-card-ms, 220ms) ease-out both; }
+.sys-notice-head { display: flex; align-items: center; gap: 16px; }
+.sys-notice-icon { flex: none; width: 48px; height: 48px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--md-cursor) 40%, transparent)); }
+.sys-notice-title { margin: 0; min-width: 0; font-size: 33px; line-height: 1.05; font-weight: 400; color: var(--md-text); text-shadow: 0 2px 0 var(--md-ink); overflow-wrap: anywhere; }
+.sys-notice-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.sys-notice-line { display: flex; align-items: flex-start; gap: 12px; font-family: var(--md-text-font); font-size: 17px; line-height: 1.4; color: var(--md-text); }
+.sys-notice-line-icon { flex: none; width: 24px; height: 24px; margin-top: 0; }
+.sys-notice-line > span { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.sys-notice-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.sys-notice-foot { display: flex; justify-content: center; }
+
+.sys-notice-primary, .sys-notice-quiet, .sys-notice-link { all: unset; box-sizing: border-box; cursor: pointer; }
+.sys-notice-primary, .sys-notice-quiet { flex: 1 1 12rem; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; padding: 0 20px; border-radius: 6px; text-align: center; }
+.sys-notice-primary { font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--md-text);
+  background: linear-gradient(180deg, var(--relic-blood), var(--md-ink)); border: 2px solid var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
+.sys-notice-quiet { font-size: 18px; color: var(--md-text-dim); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); box-shadow: 0 0 0 2px var(--md-ink); }
+.sys-notice-link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); text-decoration: underline; text-underline-offset: 3px; }
+.sys-notice-primary:hover, .sys-notice-primary:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent), 0 0 26px color-mix(in srgb, var(--relic-ember) 55%, transparent); }
+.sys-notice-quiet:hover, .sys-notice-quiet:focus-visible, .sys-notice-link:hover, .sys-notice-link:focus-visible { color: var(--md-cursor); }
+.sys-notice-quiet:hover, .sys-notice-quiet:focus-visible { border-color: var(--md-border); }
+.sys-notice-quiet:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent); }
+.sys-notice-link:focus-visible { outline: 2px solid var(--md-cursor); outline-offset: 2px; }
+.sys-notice-primary:focus-visible, .sys-notice-quiet:focus-visible { outline: none; }
+.sys-notice button:disabled { cursor: default; opacity: 0.6; }
+
+/* Short windows (844x390): the same card, tighter, so card and buttons fit under the top margin. */
+@media (max-height: 560px) {
+  .sys-notice-veil { padding-top: 10px; }
+  .sys-notice { gap: 8px; padding: 12px 20px 6px; }
+  .sys-notice-title { font-size: 28px; }
+  .sys-notice-lines { gap: 4px; }
+  .sys-notice-line { line-height: 1.3; }
+  .sys-notice-line > span { -webkit-line-clamp: 1; line-clamp: 1; }
+}
+
+@keyframes sys-notice-fade { from { opacity: 0; } }
+@keyframes sys-notice-drop { from { opacity: 0; transform: translateY(var(--notice-drop, -24px)); } }

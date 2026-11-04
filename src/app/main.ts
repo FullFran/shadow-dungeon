@@ -123,7 +123,9 @@ import { buildDiagnostics, createDiagnosticsLog, diagnosticsText, type Diagnosti
 import { isLinkProbe } from '../net/diagnostics';
 import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
+import { notices } from '../ui/notice';
 import { setupPwa } from '../ui/pwa';
+import { newsNotice } from '../pwa/notices';
 import { endActions, endHeading, hostGoneRoute, materialsEarned, returnPlace, roomGone, victoryLine, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
@@ -219,6 +221,7 @@ const pwa = setupPwa({
     if (app?.querySelector('.title-logo, .hub-logo') && !app.querySelector('.town-shop')) titleScreen(app);
   },
 });
+if (import.meta.env.DEV) void import('./dev-notices').then((dev) => dev.queueDevNotices(window.location.search));
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
@@ -629,9 +632,10 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
 let patchNotesChecked = false;
 
 /**
- * Opens "Novedades" instead of the title once after an update to a version
- * this browser has not seen (src/app/patch-notes.ts); a brand-new install only
- * records the version. True when the notes are on screen.
+ * Queues the "Novedades" notice once after an update to a version this
+ * browser has not seen (src/app/patch-notes.ts); a brand-new install only
+ * records the version. The seen flag is written here, as before; the title is
+ * always drawn (false), the notice shows over it when the queue allows.
  */
 function patchNotesOnBoot(root: HTMLElement): boolean {
   if (patchNotesChecked) return false;
@@ -641,8 +645,10 @@ function patchNotesOnBoot(root: HTMLElement): boolean {
   if (due === 'none') return false;
   markVersionSeen(store, APP_VERSION);
   if (due === 'record') return false;
-  newsScreen(root, () => titleScreen(root));
-  return true;
+  // The notes are a system notice over the hub now (queued after an update or install notice); "Ver novedades" opens the screen.
+  const release = CHANGELOG.find((entry) => entry.version === APP_VERSION);
+  if (release) notices.enqueue(newsNotice(release, () => newsScreen(root, () => titleScreen(root))));
+  return false;
 }
 
 /** "Novedades": every release's notes, newest first; `back` leaves it. */
