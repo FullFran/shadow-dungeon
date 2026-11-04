@@ -2,6 +2,7 @@ import type { ChallengeLine, DungeonDef } from '../data/dungeons';
 import type { SimaBand } from '../data/sima';
 import type { WorldMapId } from '../data/world';
 import type { PlaceIconId } from './icons/place-icons';
+import { HUD_BOX, statusRect } from './hud-layout';
 import type { PixelIconId } from './pixel-icons';
 
 /**
@@ -114,4 +115,48 @@ export function plaquePhase(timing: PlaqueTiming, ageMs: number): PlaquePhase {
   if (ageMs < 0 || ageMs >= timing.totalMs) return 'gone';
   if (ageMs < timing.inMs) return 'in';
   return ageMs < timing.inMs + timing.holdMs ? 'hold' : 'out';
+}
+
+/** The plaque's type and icon sizes, CSS px (`note` 0: the note line is not shown). */
+export interface PlaqueMetrics {
+  name: number;
+  sub: number;
+  note: number;
+  icon: number;
+  /** The icon frame around the art. */
+  frame: number;
+}
+
+/**
+ * The plaque follows the HUD scale rule (src/ui/hud-layout.ts `hudScaleFor`): the size it always had (22 px name, 32 px
+ * icon) at scale 1, 24/36 at 1.5 (1280x720, 1440x900) and 26/40 at 2 (1920x1080 and up), so it stays in proportion with the
+ * minimal HUD and is never invasive. A phone held sideways keeps the small plaque.
+ */
+export function plaqueMetrics(hudScale: number, touch: boolean): PlaqueMetrics {
+  if (touch) return { name: 18, sub: 14, note: 0, icon: 32, frame: 40 };
+  if (hudScale >= 2) return { name: 26, sub: 18, note: 15, icon: 40, frame: 52 };
+  if (hudScale >= 1.5) return { name: 24, sub: 17, note: 14, icon: 36, frame: 48 };
+  // Under scale 1.5 the window is small: the quiet note line steps aside so the plaque stays clear of the boss announcement.
+  return { name: 22, sub: 16, note: 0, icon: 32, frame: 44 };
+}
+
+/** The widest a plaque may be, CSS px: 34 rem, and always clear of the status block and the minimap column. */
+export function plaqueMaxWidth(cssWidth: number, cssHeight: number, hudUnit: number, touch: boolean): number {
+  const status = statusRect({ height: cssHeight / hudUnit }, touch);
+  // A 40 x 28 minimap is the widest column on the right.
+  const minimap = HUD_BOX.minimapMargin + 40 * (touch ? HUD_BOX.minimapTilePxTouch : HUD_BOX.minimapTilePx) + 2 * HUD_BOX.minimapFrame;
+  const side = Math.max(status.x + status.width, minimap) * hudUnit + 8;
+  return Math.max(160, Math.min(touch ? 26 * 16 : 34 * 16, cssWidth - 32, cssWidth - 2 * side));
+}
+
+/**
+ * The largest box the plaque can take (name, rule, subtitle and note showing), CSS px, so a test can prove it keeps clear of
+ * the status block, the minimap and the boss strip. `hudUnit` is CSS px per HUD px.
+ */
+export function plaqueBox(cssWidth: number, cssHeight: number, hudUnit: number, touch: boolean): { x: number; y: number; width: number; height: number } {
+  const m = plaqueMetrics(hudUnit, touch);
+  const width = plaqueMaxWidth(cssWidth, cssHeight, hudUnit, touch);
+  const text = m.name * 1.1 + 3 + 5 + 3 + m.sub * 1.15 + (m.note > 0 ? 3 + m.note * 1.2 : 0);
+  const body = Math.max(m.frame, text) + (touch ? 10 : 16) + 4;
+  return { x: (cssWidth - width) / 2, y: touch ? 6 : 12, width, height: body };
 }

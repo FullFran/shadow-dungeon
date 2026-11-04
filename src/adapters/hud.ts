@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import type { GateState } from '../core/gates';
 import type { PlayerState, Rect, WorldState } from '../core/state';
 import { drawPanel, pixelText } from '../ui/canvas';
-import type { HudBox } from '../ui/hud-layout';
+import { toastRect, type HudBox } from '../ui/hud-layout';
 import { canvasFont, PALETTE, RARITY, TIER_COLORS } from '../ui/tokens';
 import { MAX_RANK, moveTier } from '../data/tutor';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
@@ -49,11 +49,12 @@ export function heldItems(items: readonly ItemId[]): HeldItem[] {
   return out;
 }
 
-function flashText(flash: NonNullable<JuiceState['flash']>, species: string): string {
-  if (flash.kind === 'levelUp') return levelUpText(species, flash.level ?? 1);
+/** The toast's short line: the message log keeps the long ones ("¡Mimikyu subió al nivel 3!"). */
+export function flashText(flash: NonNullable<JuiceState['flash']>): string {
+  if (flash.kind === 'levelUp') return t('hud.toast.levelUp').replace('{level}', String(flash.level ?? 1));
   if (flash.kind === 'item') return t('hud.itemTriggered').replace('{item}', t(`item.${flash.item ?? ''}`));
   if (flash.kind === 'passive') return t('hud.passiveTriggered').replace('{passive}', t(`passive.${flash.passive ?? ''}`));
-  return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
+  return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.toast.disguiseBroken');
 }
 
 /** "12 P": Pokémonedas earned so far this run. */
@@ -127,20 +128,34 @@ export function slotRankPips(player: Pick<PlayerState, 'moveRanks'>, moveId: Mov
 /** Width and height of the HUD space (src/ui/hud-layout.ts). */
 type HudSize = Pick<Rect, 'width' | 'height'>;
 
+/** How the toast fades: in over 120 ms, out over its last 400 ms, so the 1.6 s flash never pops. */
+export function toastAlpha(ageMs: number, lifeMs: number = JUICE.flashMs): number {
+  if (ageMs < 0 || ageMs >= lifeMs) return 0;
+  return Math.min(1, ageMs / 120, (lifeMs - ageMs) / 400);
+}
+
 /**
- * The HUD flashes in HUD-space units (the caller has applied the HUD scale): "perfect dodge", "level up" and the
- * like, under the boss announcement. The panels (status window, co-op frames, move slots, boss bar) are drawn by
+ * The flash toast in HUD-space units (the caller has applied the HUD scale; fix pass 3, owner 2026-11-04: nothing flashes in
+ * the middle of the arena): "perfect dodge", "disguise broken", "level up", an item or a passive acting show as one small
+ * plate under the status block for 1.6 s. The panels (status window, co-op frames, move slots, boss bar) are drawn by
  * `drawCombatPanels` (src/adapters/combat-hud.ts); the minimap and the message log by their own modules.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize): void {
-  const { player } = state;
-  if (juice.flash) {
-    const life = juice.flash.ageMs / JUICE.flashMs;
-    ctx.globalAlpha = 1 - life;
-    ctx.font = canvasFont(22, true);
-    pixelText(ctx, flashText(juice.flash, player.species), screen.width / 2, Math.round(screen.height * 0.47) - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
-    ctx.globalAlpha = 1;
-  }
+export function drawFlashToast(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, view: { touch: boolean }): void {
+  const flash = juice.flash;
+  if (!flash) return;
+  const alpha = toastAlpha(flash.ageMs);
+  if (alpha <= 0) return;
+  const box = toastRect(screen, { partners: state.remotes.length, touch: view.touch });
+  const text = flashText(flash);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawPanel(ctx, box.x, box.y, box.width, box.height, { alpha: 0.85, fill: 0.8 });
+  ctx.font = canvasFont();
+  const squeeze = Math.min(1, (box.width - 10) / Math.max(1, ctx.measureText(text).width));
+  ctx.translate(box.x + box.width / 2, 0);
+  ctx.scale(squeeze, 1);
+  pixelText(ctx, text, 0, box.y + box.height - 4, FLASH_COLORS[flash.kind], 'center');
+  ctx.restore();
 }
 
 /** The line of the floor's gate (core/gates.ts) while it holds: what keeps the stairs shut. */

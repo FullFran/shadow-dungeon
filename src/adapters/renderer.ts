@@ -41,7 +41,7 @@ import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
 import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
-import { drawHud, slotCount } from './hud';
+import { drawFlashToast, slotCount } from './hud';
 import { createCombatHudState, drawBossCaption, drawCombatPanels } from './combat-hud';
 import { createPortraitDrawer } from './hud-portrait';
 import type { LastDevice } from './last-device';
@@ -1823,7 +1823,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
     drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
-    drawHud(ctx, current, juice, hud);
+    drawFlashToast(ctx, current, juice, hud, { touch: frame.touchUi ?? false });
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false));
     // The message log is the bottom-left corner's (the boss block is clear of it); it dims while a fight is on.
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height, combatHud.combat);

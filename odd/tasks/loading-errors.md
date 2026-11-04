@@ -30,3 +30,9 @@ Cause: `loadSheets()` fetches every sheet of every species at boot and the partn
 - [x] i18n es and en for every message (tests/i18n.test.ts and net-error.test.ts).
 - [x] Solo, co-op, town, Sima, shrine, challenges: run preload covers the player species and the dungeon's pool; the rest loads lazily. Not measured in a browser: a full run start (only the hub, offline reload and error screens were).
 - [x] `npm run prove` unchanged: 166 cards survivable, 24/24 solver fights, no diff in reports/proof/.
+
+## Pass 3 (2026-11-04)
+
+- [x] Error card and fatal screen use an original `error` pixel icon, not the padlock (`tests/ui/status-icon.test.ts`, `tests/ui/pixel-icons.test.ts`).
+- [x] The town tile loader and the sprite loader report an `asset` error once per session through `reportAssetFailure` (`tests/adapters/asset-report.test.ts`); the town no longer draws flat colours silently.
+- [x] Parity: sprites and tiles are the two asset consumers that raise it; portraits use the same `image` loader and the same reporter.

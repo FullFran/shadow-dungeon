@@ -22,7 +22,8 @@ export const JUICE = {
   numberLifeMs: 800,
   /** Pixels a damage number rises over its life. */
   numberRisePx: 22,
-  flashMs: 900,
+  /** The flash toast (src/adapters/hud.ts) stays this long. */
+  flashMs: 1600,
   /** Peak screen rumble next to (or on) the collapse front; it fades out `COLLAPSE.rumbleTiles` away. */
   rumblePx: 1.5,
 } as const;

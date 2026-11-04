@@ -1,5 +1,6 @@
 import { INTERACT_KEY_CODES, LOCK_KEYS, MAP_KEY, MENU_KEY, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES, SPECTATE_KEY, keyLabel } from '../adapters/bindings';
 import { GAMEPAD_HELP, buttonName, type PadStyle } from '../app/gamepad-help-data';
+import type { FightKind } from './combat-hud-model';
 import { HUD_BOX, type HudDims, hudRects } from './hud-layout';
 
 /**
@@ -169,6 +170,8 @@ export interface HintSizes {
   label: number;
   /** Pad glyph height. */
   pad: number;
+  /** Whether the action names show next to the glyphs; a fight shows keycaps only. */
+  labels: boolean;
 }
 
 /**
@@ -176,8 +179,11 @@ export interface HintSizes {
  * under a 40 px chip, a 28 px keycap and a 16 px label; only a short window (a landscape laptop pushed to its limit)
  * steps down, so the bar keeps clear of the HUD there.
  */
-export function hintSizes(windowHeight: number): HintSizes {
-  if (windowHeight >= 800) return { chip: 48, keycap: 32, label: 18, pad: 30 };
-  if (windowHeight >= 540) return { chip: 42, keycap: 28, label: 16, pad: 26 };
-  return { chip: 34, keycap: 24, label: 14, pad: 22 };
+export function hintSizes(windowHeight: number, fight: FightKind = 'calm'): HintSizes {
+  // Fix pass 3 (owner, 2026-11-04): with enemies near or a boss fight the bar was the largest thing on screen, so it
+  // shrinks to a row of small keycaps (no labels, 28 px chips); the large size stays for the calm and the town.
+  if (fight !== 'calm') return { chip: 28, keycap: 20, label: 12, pad: 20, labels: false };
+  if (windowHeight >= 800) return { chip: 48, keycap: 32, label: 18, pad: 30, labels: true };
+  if (windowHeight >= 540) return { chip: 42, keycap: 28, label: 16, pad: 26, labels: true };
+  return { chip: 34, keycap: 24, label: 14, pad: 22, labels: true };
 }

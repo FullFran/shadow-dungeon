@@ -1,5 +1,6 @@
 import { PLACE_ICONS } from './icons/place-icons';
-import { plaqueTiming, type Plaque, type PlaqueTiming } from './location-plaque-model';
+import { hudScaleFor } from './hud-layout';
+import { plaqueMaxWidth, plaqueMetrics, plaqueTiming, type Plaque, type PlaqueTiming } from './location-plaque-model';
 import { PIXEL_ICONS, pixelSvgOf, type PixelIcon } from './pixel-icons';
 import '../styles/location-plaque.css';
 
@@ -38,6 +39,22 @@ const msVars = (timing: PlaqueTiming): Record<string, string> => ({
   '--lp-out': `${timing.outMs}ms`,
 });
 
+/** Short landscape windows (phones) keep the small plaque of the stylesheet; desktop sizes follow the HUD scale rule. */
+const SHORT_WINDOW = 520;
+
+function applySize(root: HTMLElement): void {
+  const names = ['--lp-name-size', '--lp-sub-size', '--lp-note-size', '--lp-icon-size', '--lp-frame-size', '--lp-max', '--lp-note-display'];
+  if (window.innerHeight <= SHORT_WINDOW) {
+    for (const name of names) root.style.removeProperty(name);
+    return;
+  }
+  const scale = hudScaleFor(window.innerWidth, window.innerHeight, 1, false);
+  const m = plaqueMetrics(scale, false);
+  const values = [m.name, m.sub, m.note, m.icon, m.frame, plaqueMaxWidth(window.innerWidth, window.innerHeight, scale, false)];
+  root.style.setProperty('--lp-note-display', m.note > 0 ? 'block' : 'none');
+  values.forEach((value, i) => root.style.setProperty(names[i]!, `${value}px`));
+}
+
 export function mountLocationPlaque(parent: HTMLElement): LocationPlaque {
   const root = el('div', 'lp');
   root.setAttribute('role', 'status');
@@ -73,6 +90,7 @@ export function mountLocationPlaque(parent: HTMLElement): LocationPlaque {
       root.replaceChildren(plate);
       root.className = `lp lp-${plaque.variant}`;
       root.dataset.motion = timing.motion;
+      applySize(root);
       for (const [name, value] of Object.entries(msVars(timing))) root.style.setProperty(name, value);
       // Restart the animations of a plaque that replaces another.
       root.hidden = false;

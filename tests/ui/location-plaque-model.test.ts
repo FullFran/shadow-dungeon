@@ -5,7 +5,9 @@ import { WORLD } from '../../src/data/world';
 import { catalog } from '../../src/i18n';
 import { PLACE_ICONS } from '../../src/ui/icons/place-icons';
 import { PIXEL_ICONS } from '../../src/ui/pixel-icons';
-import { BOSS_PLACE, dungeonPlace, PLAQUE_VARIANTS, plaquePhase, plaqueTiming, plaqueOf, shrinePlace, simaBandPlace, townPlace, type PlaceDef } from '../../src/ui/location-plaque-model';
+import { hudRects, hudScaleFor, hudSpace } from '../../src/ui/hud-layout';
+import { playViewport } from '../../src/adapters/viewport';
+import { BOSS_PLACE, dungeonPlace, plaqueBox, plaqueMetrics, PLAQUE_VARIANTS, plaquePhase, plaqueTiming, plaqueOf, shrinePlace, simaBandPlace, townPlace, type PlaceDef } from '../../src/ui/location-plaque-model';
 
 const allPlaces = (): { label: string; place: PlaceDef }[] => [
   ...Object.values(WORLD).map((m) => ({ label: `town ${m.id}`, place: townPlace(m.id) })),
@@ -93,4 +95,47 @@ describe('plaque timing', () => {
     expect(plaquePhase(timing, timing.inMs + timing.holdMs + 100)).toBe('out');
     expect(plaquePhase(timing, timing.totalMs + 1)).toBe('gone');
   });
+});
+
+/** The plaque follows the HUD scale rule (src/ui/hud-layout.ts): modestly larger on big windows, never invasive. */
+describe('location plaque size', () => {
+  const hudScale = (w: number, h: number, touch: boolean): number => hudScaleFor(w, h, playViewport(w, h, touch ? 3 : 1, touch).pixelScale, touch);
+
+  it('keeps today at the smallest scale and grows by steps with the HUD scale, inside name 20-26 px and icon 32-40 px', () => {
+    const at = (w: number, h: number) => plaqueMetrics(hudScale(w, h, false), false);
+    expect(at(800, 600)).toMatchObject({ name: 22, icon: 32 });
+    expect(at(1440, 900).name).toBeGreaterThan(22);
+    expect(at(1440, 900).icon).toBeGreaterThan(32);
+    expect(at(1920, 1080).name).toBeGreaterThanOrEqual(at(1440, 900).name);
+    for (const [w, h] of [[800, 600], [1280, 720], [1440, 900], [1920, 1080], [2560, 1440]] as const) {
+      const m = plaqueMetrics(hudScale(w, h, false), false);
+      expect(m.name, `${w}x${h}`).toBeGreaterThanOrEqual(20);
+      expect(m.name, `${w}x${h}`).toBeLessThanOrEqual(26);
+      expect(m.icon, `${w}x${h}`).toBeGreaterThanOrEqual(32);
+      expect(m.icon, `${w}x${h}`).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it('touch keeps the small plaque (18 px name, 32 px icon)', () => {
+    expect(plaqueMetrics(2, true)).toMatchObject({ name: 18, icon: 32 });
+  });
+
+  for (const [w, h, touch] of [[1920, 1080, false], [1700, 950, false], [1440, 900, false], [1280, 720, false], [1024, 640, false], [800, 600, false]] as const) {
+    it(`its largest box clears the status block, the minimap and the boss strip at ${w}x${h}${touch ? ' (touch)' : ''}`, () => {
+      // Touch keeps its own rule (phones held sideways): the plaque there is not part of this proof.
+      const fit = playViewport(w, h, touch ? 3 : 1, touch);
+      const scale = hudScaleFor(w, h, fit.pixelScale, touch);
+      const space = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, scale);
+      const rects = hudRects(space, { chip: true, slots: 4, partners: 3, minimap: { cols: 40, rows: 28 }, touch });
+      // HUD px -> CSS px.
+      const css = fit.cssWidth / (fit.viewWidth * fit.pixelScale);
+      const unit = css * scale;
+      const box = plaqueBox(fit.cssWidth, fit.cssHeight, unit, touch);
+      const toCss = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x * unit, y: b.y * unit, width: b.width * unit, height: b.height * unit });
+      const hit = (a: typeof box, b: typeof box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+      for (const [name, r] of [['status', rects.status], ['chips', rects.chips], ['minimap', rects.minimap!], ['boss', rects.boss], ['caption', rects.caption]] as const) expect(hit(box, toCss(r)), name).toBe(false);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(fit.cssWidth);
+    });
+  }
 });

@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { playViewport } from '../../src/adapters/viewport';
 import { itemsChip } from '../../src/adapters/hud';
 import { setLanguage } from '../../src/i18n';
-import { BOSS_BAR, type HudBox, bossStackRect, hudRects, hudScaleFor, hudSpace, liftHintBand } from '../../src/ui/hud-layout';
-import { hintBand } from '../../src/ui/play-hints-model';
+import { BOSS_BAR, type HudBox, bossStackRect, captionNameSize, hudRects, hudScaleFor, hudSpace, liftHintBand, toastRect } from '../../src/ui/hud-layout';
+import { hintBand, hintSizes } from '../../src/ui/play-hints-model';
 
 const MINIMAP = { cols: 40, rows: 28 };
 
@@ -58,7 +58,7 @@ const VIEWPORTS = [
 ] as const;
 
 /** The hint bar's footprint in HUD pixels: its free band, lifted over the boss block while a boss fights. 56 CSS px tall covers the enlarged bar. */
-const hintBox = (band: { left: number; right: number; bottom: number }, space: { height: number }, scale: number): HudBox => ({ x: band.left, y: space.height - band.bottom - 56 / scale, width: band.right - band.left, height: 56 / scale });
+const hintBox = (band: { left: number; right: number; bottom: number }, space: { height: number }, scale: number, cssHeight = 56): HudBox => ({ x: band.left, y: space.height - band.bottom - cssHeight / scale, width: band.right - band.left, height: cssHeight / scale });
 
 describe('HUD layout', () => {
   for (const [w, h, touch] of VIEWPORTS) {
@@ -94,13 +94,19 @@ describe('HUD layout', () => {
       const centre = rects.boss.x + rects.boss.width / 2;
       expect(Math.abs(centre - space.width / 2)).toBeLessThanOrEqual(1);
       expect(rects.boss.y + rects.boss.height).toBeGreaterThan(space.height * 0.6);
+      // Raised (owner, 2026-11-04): 5 to 7% of the viewport's height stays under the bar (desktop).
+      if (!touch) {
+        const below = (space.height - (rects.boss.y + rects.boss.height)) / space.height;
+        expect(below).toBeGreaterThanOrEqual(0.05);
+        expect(below).toBeLessThanOrEqual(0.075);
+      }
       const share = rects.boss.width / space.width;
       if (touch) expect(share).toBeGreaterThanOrEqual(0.4);
       else {
         expect(share).toBeGreaterThanOrEqual(0.3);
         expect(share).toBeLessThanOrEqual(0.42);
-        // The bar itself, frame included, is at most 14 CSS px thick.
-        expect(BOSS_BAR.frame * scale).toBeLessThanOrEqual(14);
+        // The bar itself, frame and finials included, is at most 18 CSS px thick at 1440x900 (and 24 at the largest scale).
+        expect(BOSS_BAR.frame * scale).toBeLessThanOrEqual(w === 1440 ? 18 : 24);
       }
     });
   }
@@ -110,8 +116,9 @@ describe('HUD layout', () => {
       const { rects, space, scale } = layoutFor(w, h, false, 1, { slots: 4 });
       for (const slot of rects.slots) {
         expect(slot.width).toBe(slot.height);
-        expect(slot.width * scale).toBeGreaterThanOrEqual(44);
-        expect(slot.width * scale).toBeLessThanOrEqual(52);
+        // Owner, 2026-11-04: bigger so the key glyph fits whole beside the icon (52 to 60 CSS px).
+        expect(slot.width * scale).toBeGreaterThanOrEqual(52);
+        expect(slot.width * scale).toBeLessThanOrEqual(60);
         expect(slot.x).toBeGreaterThan(space.width / 2);
         expect(slot.y).toBeGreaterThan(space.height / 2);
       }
@@ -161,13 +168,23 @@ describe('HUD layout', () => {
     expect(rects.status.height * scale).toBeLessThanOrEqual(72);
   });
 
-  it('the boss announcement sits right above the boss bar, below the middle of the screen', () => {
+  it('the boss announcement sits at the top centre, bigger, above the middle of the screen', () => {
     for (const [w, h] of [[1280, 720], [1440, 900], [1920, 1080], [990, 750]] as const) {
-      const { rects, space } = layoutFor(w, h, false, 1, { slots: 4 });
-      expect(rects.caption.y + rects.caption.height).toBeLessThanOrEqual(rects.boss.y);
-      expect(rects.caption.y).toBeGreaterThanOrEqual(space.height * 0.75);
-      expect(rects.caption.width).toBe(rects.boss.width);
+      const { rects, space, scale } = layoutFor(w, h, false, 1, { slots: 4 });
+      expect(rects.caption.y + rects.caption.height).toBeLessThanOrEqual(space.height * 0.25);
+      expect(rects.caption.y).toBeGreaterThanOrEqual(rects.status.y);
+      expect(Math.abs(rects.caption.x + rects.caption.width / 2 - space.width / 2)).toBeLessThanOrEqual(1);
+      expect(rects.caption.width).toBeGreaterThanOrEqual(space.width * 0.3);
+      expect(captionNameSize(scale, false) * scale).toBeGreaterThanOrEqual(26);
+      expect(captionNameSize(scale, false) * scale).toBeLessThanOrEqual(30);
     }
+  });
+
+  it('on touch the announcement fits between the status window and the minimap', () => {
+    const { rects } = layoutFor(844, 390, true, 3);
+    expect(rects.caption.x).toBeGreaterThanOrEqual(rects.status.x + rects.status.width);
+    expect(rects.caption.x + rects.caption.width).toBeLessThanOrEqual(rects.minimap!.x);
+    expect(rects.caption.width).toBeGreaterThanOrEqual(120);
   });
 
   it('touch keeps the status window clear of the Pause button and draws no slot windows over the thumbs', () => {
@@ -208,16 +225,60 @@ describe('combat HUD footprint', () => {
       expect(share).toBeLessThanOrEqual(0.12);
     });
 
-    it(`stays under 15% even while a boss event is announced at ${w}x${h}`, () => {
+    it(`stays under 16% even while a boss event is announced (the bigger top-centre announcement lasts 1.8 s) at ${w}x${h}`, () => {
       const { boxes, space } = owned(w, h);
       const caption = layoutFor(w, h, false, 1, { slots: 4 }).rects.caption;
-      expect((boxes.reduce((sum, b) => sum + area(b), 0) + area(caption)) / (space.width * space.height)).toBeLessThanOrEqual(0.15);
+      expect((boxes.reduce((sum, b) => sum + area(b), 0) + area(caption)) / (space.width * space.height)).toBeLessThanOrEqual(0.16);
     });
 
     it(`keeps the central 50% x 50% of the viewport clear at ${w}x${h}`, () => {
       const { boxes, space } = owned(w, h);
       const centre: HudBox = { x: space.width * 0.25, y: space.height * 0.25, width: space.width * 0.5, height: space.height * 0.5 };
       for (const box of [...boxes, layoutFor(w, h, false, 1, { slots: 4 }).rects.caption]) expect(overlaps(box, centre), JSON.stringify(box)).toBe(false);
+    });
+
+    it(`keeps the centre clear of the flash toast (level, passive, disguise, dodge, item) even with a full party at ${w}x${h}`, () => {
+      const { space } = owned(w, h);
+      const centre: HudBox = { x: space.width * 0.25, y: space.height * 0.25, width: space.width * 0.5, height: space.height * 0.5 };
+      for (const partners of [0, 1, 3]) expect(overlaps(toastRect(space, { partners }), centre), `${partners} partners`).toBe(false);
+    });
+  }
+});
+
+/** The flashes ("¡Disfraz roto!", level up, passive, item, perfect dodge) are a small toast under the status block (owner, 2026-11-04). */
+describe('flash toast', () => {
+  for (const [w, h, touch] of VIEWPORTS) {
+    it(`sits under the status block, clear of every panel and of the centre at ${w}x${h}${touch ? ' (touch)' : ''}`, () => {
+      const { rects, space } = layoutFor(w, h, touch, touch ? 3 : 1, { slots: 4, partners: 3 });
+      const toast = toastRect(space, { partners: 3, touch });
+      const others: [string, HudBox][] = [['status', rects.status], ['chips', rects.chips], ['log', rects.log], ['boss', rects.boss], ['caption', rects.caption], ['minimap', rects.minimap!], ...rects.partners.map((p, i) => [`partner${i}`, p] as [string, HudBox]), ...rects.slots.map((s, i) => [`slot${i}`, s] as [string, HudBox])];
+      for (const [name, box] of others) expect(overlaps(toast, box), name).toBe(false);
+      expect(toast.y).toBeGreaterThanOrEqual(rects.status.y + rects.status.height);
+      expect(toast.x).toBeLessThan(space.width * 0.25);
+      expect(toast.x + toast.width).toBeLessThanOrEqual(space.width * 0.25);
+      expect(toast.width).toBeGreaterThanOrEqual(touch ? 96 : 160);
+      expect(toast.height).toBeLessThanOrEqual(20);
+      expect(toast.y + toast.height).toBeLessThanOrEqual(space.height);
+    });
+  }
+});
+
+/** The hint bar, compact in a fight (owner, 2026-11-04: it was the largest thing on screen at the start of a fight). */
+describe('hint bar in a fight', () => {
+  for (const [w, h, touch] of VIEWPORTS.filter((v) => !v[2])) {
+    it(`the compact fight bar is lighter than the calm bar and clear of the boss stack at ${w}x${h}`, () => {
+      const { rects, space, scale } = layoutFor(w, h, touch, 1, { slots: 4 });
+      const fight = hintSizes(h, 'boss');
+      const calm = hintSizes(h, 'calm');
+      const band = liftHintBand(hintBand(space, 4), bossStackRect(space, 4), space);
+      const box = hintBox(band, space, scale, fight.chip + 4);
+      expect(fight.chip + 4).toBeLessThan(calm.chip + 4);
+      expect(overlaps(box, rects.boss)).toBe(false);
+      expect(overlaps(box, rects.caption)).toBe(false);
+      expect(overlaps(box, rects.log)).toBe(false);
+      for (const slot of rects.slots) expect(overlaps(box, slot)).toBe(false);
+      // At most a quarter of the HUD space's height at the start of the fight.
+      expect(box.height).toBeLessThanOrEqual(space.height * 0.1);
     });
   }
 });

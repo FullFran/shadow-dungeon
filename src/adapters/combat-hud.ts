@@ -12,7 +12,7 @@ import { BOSS_CUES, bossCaption, captionMotion, CAPTION_LIFE_MS } from '../ui/bo
 import { STAMINA_MAX, bossBarModel, createBossStage, createChipTrail, createCombatFade, createPassiveNote, fightKind, fillOf, moveSlotModel, type BossStage, type BossStatus, type ChipTrail, type CombatFade, type MoveSlotModel, type PassiveNote } from '../ui/combat-hud-model';
 import { COMBAT_ICONS, drawIcon } from '../ui/combat-icons';
 import { drawPanel, noLigatures } from '../ui/canvas';
-import { BOSS_BAR, HUD_METRICS, bossRect, captionRect, chipsRect, hudVariant, slotRect, statusRect, type HudBox, type HudDims, type HudVariant } from '../ui/hud-layout';
+import { BOSS_BAR, HUD_METRICS, bossRect, captionNameSize, captionRect, chipsRect, hudVariant, slotRect, statusRect, type HudBox, type HudDims, type HudVariant } from '../ui/hud-layout';
 import { canvasFont, PALETTE, RELIC, TIER_COLORS, TYPE_COLORS } from '../ui/tokens';
 import { levelProgress } from '../core/progression';
 import { passiveStatus, itemsChip, coinsLabel, slotCount } from './hud';
@@ -142,6 +142,72 @@ function relicBar(ctx: Ctx, x: number, y: number, w: number, h: number, fill: nu
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(x, y + Math.ceil(h * 0.65), filled, h - Math.ceil(h * 0.65));
   ctx.globalAlpha = alpha;
+}
+
+/** One gilt finial at the end of the boss bar: a pointed cap, taller than the frame, with an ink outline and a dark stud. */
+function finial(ctx: Ctx, cx: number, cy: number, half: number, dir: 1 | -1): void {
+  const tip = cx + dir * 3;
+  ctx.beginPath();
+  ctx.moveTo(cx - dir * 2, cy - half);
+  ctx.lineTo(cx + dir * 1, cy - half + 2);
+  ctx.lineTo(cx + dir * 1, cy - 3);
+  ctx.lineTo(tip + dir * 2, cy);
+  ctx.lineTo(cx + dir * 1, cy + 3);
+  ctx.lineTo(cx + dir * 1, cy + half - 2);
+  ctx.lineTo(cx - dir * 2, cy + half);
+  ctx.closePath();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = PALETTE.ink;
+  ctx.stroke();
+  ctx.fillStyle = GOLD;
+  ctx.fill();
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(Math.round(cx - 1), Math.round(cy - 1), 2, 2);
+}
+
+/**
+ * The boss bar in the sombre souls style: a dark iron frame (ink outline, slab body, an engraved inner line), a gilt hairline
+ * with corner studs, spiked finials at both ends, the fill in dark blood with a lighter top line, and the damage trail in ember
+ * (the only warmth). `thick` is the fill's height; the frame adds 3 HUD px on each side (BOSS_BAR.frame).
+ */
+function ironBar(ctx: Ctx, x: number, y: number, w: number, thick: number, fill: number, chip: number, colour: string): void {
+  const alpha = ctx.globalAlpha;
+  // Frame: ink, then iron with a gilt hairline and an engraved inner line (11 HUD px tall in all).
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x - 3, y - 3, w + 6, thick + 6);
+  ctx.fillStyle = RELIC.slabEdge;
+  ctx.fillRect(x - 2, y - 2, w + 4, thick + 4);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(x - 2, y - 2, w + 4, 1);
+  ctx.fillRect(x - 2, y + thick + 1, w + 4, 1);
+  ctx.fillStyle = PALETTE.borderShade;
+  ctx.fillRect(x - 1, y - 1, w + 2, 1);
+  ctx.fillRect(x - 1, y + thick, w + 2, 1);
+  // Trough, trail, fill.
+  ctx.fillStyle = PALETTE.barBack;
+  ctx.fillRect(x, y, w, thick);
+  const chipW = Math.round(w * Math.min(1, Math.max(0, chip)));
+  const filled = Math.round(w * Math.min(1, Math.max(0, fill)));
+  if (chipW > filled) {
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fillStyle = RELIC.ember;
+    ctx.fillRect(x + filled, y, chipW - filled, thick);
+    ctx.globalAlpha = alpha;
+  }
+  ctx.fillStyle = colour;
+  ctx.fillRect(x, y, filled, thick);
+  ctx.globalAlpha = alpha * 0.3;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x, y, filled, 1);
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x, y + thick - 1, filled, 1);
+  ctx.globalAlpha = alpha;
+  // Corner studs and the finials.
+  ctx.fillStyle = GOLD;
+  for (const sx of [x - 2, x + w + 1]) for (const sy of [y - 2, y + thick + 1]) ctx.fillRect(sx, sy, 1, 1);
+  finial(ctx, x - 6, y + thick / 2, 6, -1);
+  finial(ctx, x + w + 6, y + thick / 2, 6, 1);
 }
 
 /** A small rank/card diamond with a dark outline. */
@@ -360,7 +426,7 @@ function partnerFrames(ctx: Ctx, state: WorldState, screen: HudSize, view: Comba
 
 const SLOT_ICON = ['slotFast', 'slotHeavy', 'slotBoost', 'slotArea'] as const;
 
-/** A small slot: the move's icon, its key glyph and the cooldown sweep; ranks as tiny pips. Names show elsewhere (idle list, pause). */
+/** A slot: the move's icon centred, its key glyph in a corner cap and the cooldown sweep; ranks as tiny pips. Names show elsewhere (idle list, pause). */
 function slotWindow(ctx: Ctx, model: MoveSlotModel, box: HudBox, nowMs: number, ui: Ui): void {
   const { x, y, width: s } = box;
   const empty = model.state === 'empty';
@@ -381,7 +447,9 @@ function slotWindow(ctx: Ctx, model: MoveSlotModel, box: HudBox, nowMs: number, 
     ctx.fillRect(x + 2, y + 2, s - 4, 2);
   }
   const dim = model.state === 'cooling' || empty;
-  smallIcon(ctx, SLOT_ICON[model.index] ?? 'slotFast', x + (s - ui.s) / 2, y + (s - ui.s) / 2 - 1, ui, dim ? 0.5 : 1);
+  // The move's icon, about 26 CSS px, centred a little low and right so the key's corner cap never touches it.
+  const big: Ui = { scale: ui.scale, u: 26 / 16 / ui.scale, s: 26 / ui.scale };
+  smallIcon(ctx, SLOT_ICON[model.index] ?? 'slotFast', x + (s - big.s) / 2 + s * 0.05, y + (s - big.s) / 2 + s * 0.1, big, dim ? 0.5 : 1);
   if (model.state === 'poor') {
     ctx.globalAlpha = 0.22;
     ctx.fillStyle = PALETTE.hpLow;
@@ -402,7 +470,8 @@ function slotWindow(ctx: Ctx, model: MoveSlotModel, box: HudBox, nowMs: number, 
   ctx.restore();
   if (model.cooldown) outlined(ctx, String(model.cooldown.seconds), x + s / 2, y + s / 2 + 4, PALETTE.cursor, 11, 'center');
   if (empty) return;
-  if (model.key) keycap(ctx, model.key.label, x + 2, y + s - 12, model.key.kind, dim, 10);
+  // The key glyph in its own cap in the top-left corner, whole (owner 2026-11-04: it was clipped over the icon).
+  if (model.key) keycap(ctx, model.key.label, x + 2, y + 2, model.key.kind, dim, 11);
   // Mejoras: the rank as tiny squares in the move's tier colour, bottom right.
   if (model.rank) {
     for (let i = 0; i < model.rank.max; i++) {
@@ -532,7 +601,7 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
   const { x, y, width: w } = box;
   const bx = x + 4;
   const bw = w - 8;
-  const nameBase = y + 12;
+  const nameBase = y + 11;
 
   // Name and epithet fade in first; the frame follows.
   ctx.globalAlpha = stage.enter;
@@ -563,23 +632,28 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
     }
   }
   const room = rx - bx - 6;
-  const nameW = spaced(ctx, model.name.toUpperCase(), bx, nameBase, PALETTE.text, 12, 1, 'left');
-  // Epithet (the lore line), the stance in play after it: only what fits on the line.
+  const nameW = spaced(ctx, model.name.toUpperCase(), bx, nameBase, PALETTE.text, 12, 2, 'left');
+  // A thin ornament (hairline with a lit diamond), then the epithet dimmer, and the stance in play: only what fits.
   const epithet = model.tag ? `${model.epithet} · ${model.tag}` : model.epithet;
-  if (room - nameW > 70) fitted(ctx, epithet, bx + nameW + 8, nameBase, room - nameW - 8, herald ? herald.colour : PALETTE.textDim);
+  const afterName = bx + nameW + 6;
+  if (room - nameW > 70) {
+    ctx.fillStyle = PALETTE.borderShade;
+    ctx.fillRect(Math.round(afterName), nameBase - 4, 8, 1);
+    diamond(ctx, Math.round(afterName) + 11, nameBase - 3.5, 1.5, GOLD, GOLD);
+    fitted(ctx, epithet, afterName + 16, nameBase, room - nameW - 22, herald ? herald.colour : PALETTE.textDim);
+  }
 
-  // The thin gilt bar.
+  // The bar: an iron frame with gilt finials, a darker blood fill, the chip trail in ember.
   ctx.globalAlpha = Math.min(1, stage.enter * 2);
-  const colour = herald ? herald.colour : model.guarded ? '#8fb3ff' : PALETTE.eclipse;
-  const by = y + 19;
-  relicBar(ctx, bx, by, bw, BOSS_BAR.thick, shownFill, chip, colour);
-  for (const ex of [bx - 5, bx + bw + 5]) diamond(ctx, ex, by + BOSS_BAR.thick / 2, 2, GOLD, GOLD);
+  const colour = herald ? herald.colour : model.guarded ? '#8fb3ff' : RELIC.blood;
+  const by = y + 15;
+  ironBar(ctx, bx, by, bw, BOSS_BAR.thick, shownFill, chip, colour);
   // Phase notches: a tick where each card's segment ends (passed ones dim, the next one pulses in "tu turno").
   for (const notch of model.notches) {
     const nx = Math.round(bx + bw * notch.at);
     ctx.globalAlpha = notch.passed ? 0.35 : 1;
     ctx.fillStyle = notch.live ? PALETTE.cursor : PALETTE.text;
-    ctx.fillRect(nx, by - 2, 1, BOSS_BAR.thick + 4);
+    ctx.fillRect(nx, by - 1, 1, BOSS_BAR.thick + 2);
   }
   ctx.globalAlpha = 1;
 }
@@ -618,10 +692,26 @@ const prefersReducedMotion = (): boolean => {
   }
 };
 
+/** An ornamental bracket for the announcement: a gilt rule with serifs at both ends and a lit diamond in the middle, `dir` 1 opens to the right. */
+function bracket(ctx: Ctx, x: number, y: number, h: number, dir: 1 | -1): void {
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x - 1, y - 1, 3, h + 2);
+  ctx.fillRect(dir > 0 ? x - 1 : x - 7, y - 1, 8, 3);
+  ctx.fillRect(dir > 0 ? x - 1 : x - 7, y + h - 2, 8, 3);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(x, y, 1, h);
+  ctx.fillRect(dir > 0 ? x : x - 6, y, 7, 1);
+  ctx.fillRect(dir > 0 ? x : x - 6, y + h - 1, 7, 1);
+  ctx.fillStyle = PALETTE.borderShade;
+  ctx.fillRect(x + dir * 2, y + 3, 1, h - 6);
+  diamond(ctx, x + dir * 5, y + h / 2, 2, PALETTE.cursor, GOLD);
+}
+
 /**
- * A boss event announced in a compact strip right above the boss bar, never over the arena (the telegraph on the floor is
- * the information): the move's name (~22 CSS px) with a drawn rule under it, then one small line, the sign and the
- * telegraph cue with its icon. Enters in 160 ms, holds 1.4 s, leaves in 240 ms; under reduced motion it only fades.
+ * A boss event announced at the top centre, on the line a quarter down the screen (never over the arena's middle; the telegraph
+ * on the floor is the information): the move's name (~28 CSS px, ember-red with an ink outline) between two gilt brackets with
+ * a drawn rule under it, then one line, the sign with its seal icon and the telegraph cue with its icon. Enters in 160 ms, holds
+ * 1.6 s, leaves in 240 ms; under reduced motion it only fades.
  */
 export function drawBossCaption(ctx: Ctx, spell: SpellBanner, nowMs: number, screen: HudDims, view: Pick<CombatView, 'scale' | 'touch'>, slots = 4): void {
   const age = nowMs - spell.shownAtMs;
@@ -633,19 +723,22 @@ export function drawBossCaption(ctx: Ctx, spell: SpellBanner, nowMs: number, scr
   const caption = (spell.stance ? bossCaption(spell.stance, spell.species ?? null, spell.heraldName) : null) ?? { name: spell.name, sign: spell.title ? spell.title : t('boss.sign.omen'), cue: 'area' as const };
   const box = captionRect(screen, view.touch ? 0 : slots, view.touch);
   const cx = box.x + box.width / 2;
-  const size = view.touch ? 14 : Math.round(22 / view.scale);
-  const nameBase = box.y + size;
+  const size = captionNameSize(view.scale, view.touch);
+  const nameBase = box.y + size + 2;
+  const inner = box.width - 28;
 
   ctx.save();
   ctx.globalAlpha = motion.alpha;
-  // A dark band behind, fading to the sides: the arena stays visible above it.
+  // A dark band behind, fading to the sides: the arena stays visible around it.
   const band = ctx.createLinearGradient(box.x - 20, 0, box.x + box.width + 20, 0);
   band.addColorStop(0, 'rgba(5,4,7,0)');
-  band.addColorStop(0.15, 'rgba(5,4,7,0.6)');
-  band.addColorStop(0.85, 'rgba(5,4,7,0.6)');
+  band.addColorStop(0.12, 'rgba(5,4,7,0.72)');
+  band.addColorStop(0.88, 'rgba(5,4,7,0.72)');
   band.addColorStop(1, 'rgba(5,4,7,0)');
   ctx.fillStyle = band;
   ctx.fillRect(box.x - 20, box.y, box.width + 40, box.height);
+  bracket(ctx, box.x + 8, box.y + 2, box.height - 4, 1);
+  bracket(ctx, box.x + box.width - 8, box.y + 2, box.height - 4, -1);
   // The name settles from a little larger, like a seal pressed down.
   ctx.save();
   ctx.translate(cx, nameBase);
@@ -654,22 +747,24 @@ export function drawBossCaption(ctx: Ctx, spell: SpellBanner, nowMs: number, scr
   ctx.translate(-cx, -nameBase);
   const upper = caption.name.toUpperCase();
   const natural = widthOf(ctx, upper, size) + 2 * Math.max(0, upper.length - 1);
-  if (natural <= box.width - 8) spaced(ctx, upper, cx, nameBase, PALETTE.eclipseGlow, size, 2, 'center');
-  else fitted(ctx, upper, box.x + 4, nameBase, box.width - 8, PALETTE.eclipseGlow, 'center', size);
+  if (natural <= inner) spaced(ctx, upper, cx, nameBase, PALETTE.eclipseGlow, size, 2, 'center');
+  else fitted(ctx, upper, box.x + 14, nameBase, inner, PALETTE.eclipseGlow, 'center', size);
   ctx.restore();
-  // The rule draws out from the middle.
-  const rule = Math.round((box.width - 8) * motion.rule);
+  // The rule draws out from the middle, a lit diamond at its centre.
+  const rule = Math.round(inner * motion.rule);
+  const ruleY = nameBase + 4;
   ctx.fillStyle = GOLD;
-  ctx.fillRect(Math.round(cx - rule / 2), nameBase + 4, rule, 1);
-  // One small line: the sign (seal icon) and the telegraph cue (its icon and how to read it).
+  ctx.fillRect(Math.round(cx - rule / 2), ruleY, rule, 1);
+  if (motion.rule >= 1) diamond(ctx, cx, ruleY + 0.5, 2, PALETTE.eclipseGlow, GOLD);
+  // One line: the sign (seal icon) and the telegraph cue (its icon and how to read it).
   const cue = BOSS_CUES.includes(caption.cue) ? caption.cue : 'area';
   const sign = caption.sign.toUpperCase();
   const hint = t(`boss.cue.${cue}`);
   const signW = widthOf(ctx, sign) + ui.s + 3;
   const hintW = widthOf(ctx, hint) + ui.s + 3;
-  const gap = 10;
-  const squeeze = Math.min(1, (box.width - 8) / (signW + gap + hintW));
-  const lineBase = box.y + box.height - 3;
+  const gap = 12;
+  const squeeze = Math.min(1, inner / (signW + gap + hintW));
+  const lineBase = box.y + box.height - 4;
   const left = cx - ((signW + gap + hintW) * squeeze) / 2;
   ctx.save();
   ctx.translate(left, 0);
@@ -684,7 +779,7 @@ export function drawBossCaption(ctx: Ctx, spell: SpellBanner, nowMs: number, scr
 
 // -- Entry --------------------------------------------------------------------------------------------------------
 
-/** The combat HUD's panels for one frame (the flashes, gate notices and the rest stay with `drawHud`). */
+/** The combat HUD's panels for one frame (the flash toast, gate notices and the rest stay with `drawFlashToast` and the renderer). */
 export function drawCombatPanels(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatView): void {
   const combat = view.state.fade.update(fightKind(state) !== 'calm', view.nowMs);
   view.state.combat = combat;
