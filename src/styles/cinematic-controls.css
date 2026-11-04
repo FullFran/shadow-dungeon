@@ -1,0 +1,52 @@
+/* Shared cinematic controls (src/ui/cinematic-controls.ts; .agents/DESIGN.md §4 Cinematic controls): Auto pill above the Skip relic button, bottom-right. Colours come from the tokens only. */
+.cine-controls { position: fixed; z-index: 6; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  opacity: 0; pointer-events: none; transition: opacity 240ms ease-out; }
+.cine-controls.is-available { opacity: 0.65; pointer-events: auto; }
+.cine-controls.is-available.is-awake, .cine-controls.is-available:hover, .cine-controls.is-available:focus-within { opacity: 1; }
+
+.cine-skip, .cine-auto { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; cursor: pointer; color: var(--md-text); background: var(--relic-slab);
+  border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), inset 0 0 0 1px color-mix(in srgb, var(--md-border) 40%, transparent); }
+.cine-skip:hover, .cine-skip:focus-visible, .cine-auto:hover, .cine-auto:focus-visible { border-color: var(--md-border); color: var(--md-cursor); }
+.cine-skip:focus-visible, .cine-auto:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
+.cine-skip.is-locked { cursor: default; }
+
+/* Skip: ring + double chevron, the word, the device glyph. */
+.cine-skip { min-height: 46px; gap: 10px; padding: 0 14px 0 8px; font-size: 20px; line-height: 1; touch-action: none; }
+.cine-icon { position: relative; flex: none; width: 36px; height: 36px; display: grid; place-items: center; }
+.cine-icon svg.px-icon { width: 24px; height: 24px; }
+.cine-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.cine-ring circle { fill: none; stroke-width: 3; }
+.cine-ring-track { stroke: var(--relic-gold-deep); opacity: 0.55; }
+.cine-ring-arc { stroke: var(--md-cursor); }
+.cine-skip.is-holding { color: var(--md-cursor); border-color: var(--md-border); }
+.cine-glyph { display: inline-flex; align-items: center; margin-left: 2px; }
+.cine-glyph svg.pad-glyph { height: 24px; width: auto; }
+.cine-glyph kbd { font-family: var(--md-font); font-size: 14px; line-height: 1; padding: 4px 7px; color: var(--md-text-dim); background: var(--md-ink); border: 1px solid var(--relic-gold-deep); border-radius: 3px; }
+
+/* Auto: a small pill, the dot breathes slowly while it is on (the text is moving by itself). */
+.cine-auto { min-height: 38px; gap: 8px; padding: 0 14px 0 10px; font-size: 18px; line-height: 1; color: var(--md-text-dim); }
+.cine-auto svg.px-icon { width: 22px; height: 22px; flex: none; filter: grayscale(1) brightness(0.7); }
+.cine-dot { width: 10px; height: 10px; flex: none; background: var(--md-disabled); border: 1px solid var(--md-ink); border-radius: 50%; }
+.cine-auto.is-on { color: var(--md-text); border-color: var(--md-border); }
+.cine-auto.is-on svg.px-icon { filter: none; }
+.cine-auto.is-on .cine-dot { background: var(--relic-ember); box-shadow: 0 0 8px color-mix(in srgb, var(--relic-ember) 70%, transparent); animation: cine-dot 2.4s ease-in-out infinite; }
+@keyframes cine-dot { 50% { opacity: 0.45; transform: scale(0.8); } }
+
+html.touch .cine-skip { min-height: 50px; }
+html.touch .cine-auto { min-height: 44px; }
+/* Short landscape (a phone): the pair sits in one row so it stays clear of the narration. */
+@media (max-height: 520px) {
+  .cine-controls { flex-direction: row; align-items: center; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cine-controls { transition: none; }
+  .cine-auto.is-on .cine-dot { animation: none; }
+}
+/* Never over the narration: where the stage fills the height, the lines sit above the corner stack. */
+@media (max-height: 760px) {
+  .prologue .prologue-text:not(.is-voice) { bottom: 20%; }
+}
+/* Short landscape: the pair is one row (50 px), so the lines need less room. */
+@media (max-height: 520px) {
+  .prologue .prologue-text:not(.is-voice) { bottom: 16%; }
+}

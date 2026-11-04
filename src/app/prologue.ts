@@ -2,6 +2,7 @@ import type { SheetStore } from '../adapters/assets';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
 import { t } from '../i18n';
+import { mountCinematicControls } from '../ui/cinematic-controls';
 import { cameraAt, holdAtMs, holdProgress, panelAlpha, panelAt, revealedChars, revealEndMs, SKIP, skipAvailable, stageScale, startOf } from '../ui/cinematic';
 import { h } from '../ui/window';
 
@@ -9,7 +10,7 @@ import { h } from '../ui/window';
  * The prologue player: plays PROLOGUE on a low-res canvas scaled up by a
  * whole number (pixelated; below 2x, the exact fit: `stageScale`), with the
  * narration typed out in the DOM below the picture. Skippable after the first second by holding Esc or Enter, or by
- * clicking "Saltar". When it ends or is skipped it calls `onDone` once; the
+ * holding the shared "Saltar" button (src/ui/cinematic-controls.ts). When it ends or is skipped it calls `onDone` once; the
  * caller decides what comes next (the route name is PROLOGUE_ROUTE). It
  * cleans up by itself when it leaves the page.
  */
@@ -82,37 +83,23 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const text = h('div', { className: 'prologue-text' }, lines);
   text.setAttribute('aria-live', 'polite');
   const stage = h('div', { className: 'prologue-stage' }, [canvas, text]);
-  const hold = h('span', { className: 'prologue-hold' });
-  const skip = h('button', { className: 'prologue-skip', type: 'button', textContent: t('prologue.skip') });
-  skip.append(hold);
-  const hint = h('p', { className: 'prologue-hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('prologue.skipHint') }), h('span', { className: 'on-touch', textContent: t('prologue.skipHint.touch') })]);
-  // Press to advance or Auto (odd/tasks/menu-redesign.md S13): the button shows and toggles the mode; ▼ marks a panel waiting for a press.
+  // Press to advance or Auto (odd/tasks/menu-redesign.md S13): the pill shows and toggles the mode; ▼ marks a panel waiting for a press.
   let auto = readAuto();
-  const autoButton = h('button', { className: 'prologue-auto', type: 'button', textContent: t('cinematic.auto') });
   const nextMark = h('span', { className: 'prologue-next', textContent: '▼' });
   nextMark.setAttribute('aria-hidden', 'true');
   text.append(nextMark);
-  const showAuto = () => {
-    autoButton.classList.toggle('is-on', auto);
-    autoButton.setAttribute('aria-pressed', String(auto));
-  };
-  showAuto();
-  autoButton.addEventListener('click', (e) => {
-    e.stopPropagation();
-    auto = !auto;
-    writeAuto(auto);
-    showAuto();
+  const controls = mountCinematicControls({
+    auto,
+    onAuto: (on) => {
+      auto = on;
+      writeAuto(on);
+    },
+    onSkip: () => finish(),
   });
-  const element = h('section', { className: 'prologue' }, [stage, skip, autoButton, hint]);
+  const element = h('section', { className: 'prologue' }, [stage, controls.element]);
   element.setAttribute('aria-label', options.label ?? t('title.prologue'));
   const panels = options.panels ?? PROLOGUE;
   const skipAfterMs = options.skipAfterMs ?? SKIP.availableAfterMs;
-  // Skippable from the start: visible at once, without the fade-in.
-  if (skipAfterMs <= 0) {
-    skip.classList.add('is-visible');
-    hint.classList.add('is-visible');
-  }
-
   const ctx = canvas.getContext('2d');
   let started: number | null = null;
   let pressedAt: number | null = null;
@@ -138,6 +125,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   const cleanup = () => {
     window.removeEventListener('keydown', onKeyDown, true);
     window.removeEventListener('keyup', onKeyUp, true);
+    controls.dispose();
     options.music?.stop();
   };
   const finish = () => {
@@ -164,12 +152,9 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   };
   window.addEventListener('keydown', onKeyDown, true);
   window.addEventListener('keyup', onKeyUp, true);
-  skip.addEventListener('click', () => {
-    if (skipAvailable(elapsed, skipAfterMs)) finish();
-  });
   // Touch: holding a finger anywhere on the picture is the held skip key (the same progress bar).
   element.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' || e.target === skip || pressedAt !== null || !skipAvailable(elapsed, skipAfterMs)) return;
+    if (e.pointerType !== 'touch' || (e.target instanceof Node && controls.element.contains(e.target)) || pressedAt !== null || !skipAvailable(elapsed, skipAfterMs)) return;
     pressedAt = performance.now();
   });
   const letGo = (e: PointerEvent) => {
@@ -253,10 +238,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
       else drawPrologue(ctx, moment.panel.scene as PrologueScene, time, camera, alpha);
     }
     renderText(moment.index, moment.localMs, alpha);
-    const canSkip = skipAvailable(elapsed, skipAfterMs);
-    skip.classList.toggle('is-visible', canSkip);
-    hint.classList.toggle('is-visible', canSkip);
-    hold.style.width = `${holdProgress(pressedAt, now) * 100}%`;
+    controls.update(now, skipAvailable(elapsed, skipAfterMs), holdProgress(pressedAt, now));
     requestAnimationFrame(frame);
   };
   // The first frame draws as soon as the caller has put the screen on the page (no black flash).
