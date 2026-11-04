@@ -47,13 +47,21 @@
 .hub-altar-change:hover, .hub-altar-change:focus-visible { color: var(--md-cursor); border-color: var(--md-border); transform: translateY(-2px); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 35%, transparent), 0 6px 0 color-mix(in srgb, var(--md-ink) 55%, transparent); }
 .hub-altar-change:active { transform: translateY(1px); }
 
-/* Medium heights (laptops, 1366x768, 1280x720): a smaller partner box and plate, the altar keeps its scale. */
-@media (max-height: 800px) {
-  .hub-altar { --sh: 166px; }
-  .hub-altar-sprite { width: 200px; height: 164px; }
-  .hub-plate { gap: 5px; margin-top: 6px; padding: 8px 16px 10px; }
-  .hub-plate-kicker { display: none; }
+/* Laptops (a 14" MacBook Pro window is about 1512x830): the altar drops to 2x below 1000 px of height, so the partner,
+   its altar and the plate keep clear of the logo and of Play (owner, 2026-11-04: "en mi MacBook Pro 14 se ve demasiado grande"). */
+@media (max-height: 999px) and (min-width: 901px) {
+  .hub-altar { --k: 2; --sh: 178px; }
+  .hub-altar-sprite { width: 210px; height: 176px; }
+  .hub-plate { width: 272px; gap: 5px; margin-top: 6px; padding: 8px 16px 10px; }
   .hub-plate-name { font-size: 30px; }
+}
+/* Medium heights (1366x768, 1280x800): a smaller partner box and plate. */
+@media (max-height: 860px) and (min-width: 901px) {
+  .hub-altar { --sh: 150px; }
+  .hub-altar-sprite { width: 180px; height: 148px; }
+  .hub-plate { width: 256px; gap: 4px; padding: 6px 14px 8px; }
+  .hub-plate-kicker { display: none; }
+  .hub-plate-name { font-size: 28px; }
 }
 /* Short or narrow screens (phones in landscape, 844x390): half-scale altar, the plate is one row. */
 @media (max-height: 560px), (max-width: 900px) {
@@ -71,8 +79,9 @@
 @media (prefers-reduced-motion: reduce) { .hub-altar-corona, .hub-altar-glow, .hub-altar-embers i { animation: none; } .hub-altar-embers { display: none; } .hub-altar-change { transition: none; } }
 /* 1280x720 and shorter laptops: the partner box shrinks a little more so the plate keeps clear of Play. */
 @media (max-height: 740px) and (min-width: 901px) {
-  .hub-altar { --sh: 138px; }
-  .hub-altar-sprite { width: 170px; height: 138px; }
-  .hub-plate { gap: 4px; padding: 6px 14px 8px; }
-  .hub-plate-name { font-size: 28px; }
+  .hub-altar { --sh: 124px; }
+  .hub-altar-sprite { width: 150px; height: 122px; }
+  .hub-plate { width: 240px; gap: 3px; padding: 5px 12px 7px; }
+  .hub-plate-name { font-size: 24px; }
+  .hub-plate-passive { display: none; }
 }

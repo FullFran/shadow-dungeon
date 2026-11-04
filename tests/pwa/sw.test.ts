@@ -133,4 +133,18 @@ describe('service worker', () => {
     const { sandbox } = load();
     expect(sandbox.strategyFor!({ url: `${SCOPE}portraits/0778.png`, mode: 'cors', method: 'GET', range: false }, SCOPE)).toBe('cache-first');
   });
+
+  it('never caches or serves an HTML page as art or a bundle file (a deploy in progress answers missing files with index.html)', () => {
+    const { sandbox } = load();
+    const ok = sandbox.isCacheable as (path: string, type: string | null) => boolean;
+    expect(ok('portraits/0104/0000/Normal.png', 'image/png')).toBe(true);
+    expect(ok('sprites/0104/0000/Idle-Anim.png', 'image/png')).toBe(true);
+    expect(ok('music/crypt.ogg', 'audio/ogg')).toBe(true);
+    expect(ok('assets/index-Q1.css', 'text/css; charset=utf-8')).toBe(true);
+    expect(ok('assets/index-AbC123.js', 'text/javascript')).toBe(true);
+    expect(ok('portraits/0104/0000/Normal.png', 'text/html; charset=utf-8')).toBe(false);
+    expect(ok('assets/index-Q1.css', 'text/html')).toBe(false);
+    expect(ok('assets/index-Q1.css', null)).toBe(false);
+  });
 });
+

@@ -92,15 +92,36 @@ self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
+// A file the server does not have (yet: a deploy in progress) can come back as the game's index.html with a 200. Cached,
+// that page would stand in for a sprite, a portrait or the stylesheet until the cache is cleared, so only the expected
+// kinds of content are ever stored or served from the cache.
+function isCacheable(path, contentType) {
+  var type = String(contentType || '').toLowerCase();
+  if (!type || type.indexOf('text/html') === 0) return false;
+  if (path.indexOf('assets/') === 0) return /css|javascript|json|wasm|font|image|audio/.test(type);
+  if (path.indexOf('fonts/') === 0) return /font|octet-stream/.test(type);
+  if (path.indexOf('music/') === 0) return /audio|ogg|mpeg|octet-stream/.test(type);
+  return /image|octet-stream/.test(type);
+}
+
+function scopePath(url) {
+  return new URL(url).pathname.slice(new URL(self.registration.scope).pathname.length);
+}
+
 function cacheFirst(request) {
+  var path = scopePath(request.url);
   return caches.match(request).then(function (cached) {
-    if (cached) return cached;
+    if (cached && isCacheable(path, cached.headers.get('content-type'))) return cached;
     return fetch(request).then(function (response) {
-      if (response.ok && response.type === 'basic') {
+      if (response.ok && response.type === 'basic' && isCacheable(path, response.headers.get('content-type'))) {
         var copy = response.clone();
-        var path = new URL(request.url).pathname.slice(new URL(self.registration.scope).pathname.length);
         caches.open(cacheNameFor(path)).then(function (cache) {
           return cache.put(request, copy);
+        });
+      } else if (cached) {
+        // A poisoned entry from an earlier visit: drop it so the next request asks the network again.
+        caches.open(cacheNameFor(path)).then(function (cache) {
+          return cache.delete(request);
         });
       }
       return response;
