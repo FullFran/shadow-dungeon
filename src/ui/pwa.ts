@@ -1,6 +1,9 @@
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
-import { bannerVisible, installOffer, isIosSafari, neverShowBanner, type InstallOffer } from '../pwa/install';
+import { bannerVisible, installCard, installOffer, isIosSafari, runInstallAction, type InstallAction, type InstallChoice, type InstallOffer } from '../pwa/install';
+import { INSTALL_ICON } from './icons/install-icons';
+import { pixelSvgOf } from './pixel-icons';
+import '../styles/install-card.css';
 import { registerServiceWorker } from '../pwa/register';
 import { cursorList } from './cursor-list';
 import { h, mdWindow } from './window';
@@ -93,36 +96,46 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     const current = offer();
     if (!bannerVisible(options.store, current, bannerShown)) return;
     bannerShown = true;
-    const node = h('div', { className: 'pwa-banner' });
+    const card = installCard(current);
+    if (!card) return;
+    /*
+     * A relic card at the hub's bottom-left, just above the news card: that corner holds no rail, no logo and
+     * no partner, so the card never covers them (top-centre sits on the logo and the altar). Click outside does
+     * nothing; Esc is "Ahora no". Its buttons carry data-hub, so the hub's arrows and the pad reach them.
+     */
+    const node = h('section', { className: 'pwa-banner pwa-card' });
+    node.setAttribute('role', 'region');
+    node.setAttribute('aria-label', t(card.titleKey));
     const close = () => {
-      list.dispose();
+      window.removeEventListener('keydown', onKey, true);
       node.remove();
     };
-    const list = cursorList({
-      layout: 'horizontal',
-      keyboard: false,
-      items: [
-        current === 'prompt'
-          ? {
-              label: t('pwa.installNow'),
-              onConfirm: () => {
-                close();
-                install(parent);
-              },
-            }
-          : { label: t('pwa.ok'), onConfirm: close },
-        ...(current === 'prompt' ? [{ label: t('pwa.later'), onConfirm: close }] : []),
-        {
-          label: t('pwa.never'),
-          onConfirm: () => {
-            neverShowBanner(options.store);
-            close();
-          },
-        },
-      ],
-    });
-    node.append(mdWindow({ className: 'still' }, [h('p', { textContent: t(current === 'prompt' ? 'pwa.banner' : 'pwa.ios') }), list.element]));
-    parent.append(node);
+    const run = (action: InstallAction) => {
+      const result = runInstallAction(action, options.store);
+      if (result.close) close();
+      if (result.install) install(parent);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!node.isConnected) return window.removeEventListener('keydown', onKey, true);
+      if (e.key !== 'Escape' || document.querySelector('.town-shop, .pwa-ios')) return;
+      e.preventDefault();
+      run('later');
+    };
+    const button = (choice: InstallChoice, className: string) => {
+      const b = h('button', { className, type: 'button', textContent: t(choice.label) });
+      b.dataset.hub = `install-${choice.action}`;
+      b.addEventListener('click', () => run(choice.action));
+      return b;
+    };
+    node.append(
+      h('div', { className: 'pwa-card-head' }, [
+        pixelSvgOf(INSTALL_ICON, 'px-icon pwa-card-icon'),
+        h('div', { className: 'pwa-card-text' }, [h('h2', { className: 'pwa-card-title', textContent: t(card.titleKey) }), ...card.bodyKeys.map((key) => h('p', { className: 'pwa-card-line', textContent: t(key) }))]),
+      ]),
+      h('div', { className: 'pwa-card-actions' }, [button(card.primary, 'pwa-card-primary'), ...(card.secondary ? [button(card.secondary, 'pwa-card-quiet')] : []), button(card.never, 'pwa-card-link')]),
+    );
+    window.addEventListener('keydown', onKey, true);
+    (parent.querySelector('.hub') ?? parent).append(node);
   }
 
   function corner(parent: HTMLElement): void {

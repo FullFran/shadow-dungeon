@@ -36,3 +36,48 @@ export function bannerVisible(store: KeyValueStore, offer: InstallOffer, shownTh
 export function neverShowBanner(store: KeyValueStore): void {
   store.set(BANNER_KEY, 'never');
 }
+
+/** What a button of the install card does (the card is presentation only; these are the old banner's three transitions). */
+export type InstallAction = 'install' | 'later' | 'never';
+
+export interface InstallChoice {
+  action: InstallAction;
+  /** i18n key of the label. */
+  label: string;
+}
+
+/**
+ * The install card's content (pure): one primary, at most one quiet choice and the small "never" link.
+ * Where the browser has a prompt the primary installs; on iOS, which only has Share steps, it acknowledges.
+ */
+export interface InstallCard {
+  titleKey: string;
+  bodyKeys: string[];
+  primary: InstallChoice;
+  secondary?: InstallChoice;
+  never: InstallChoice;
+}
+
+export function installCard(offer: InstallOffer): InstallCard | null {
+  const never: InstallChoice = { action: 'never', label: 'pwa.never' };
+  if (offer === 'prompt') {
+    return {
+      titleKey: 'pwa.card.title',
+      bodyKeys: ['pwa.card.fullscreen', 'pwa.card.app'],
+      primary: { action: 'install', label: 'pwa.installNow' },
+      secondary: { action: 'later', label: 'pwa.later' },
+      never,
+    };
+  }
+  if (offer === 'ios') return { titleKey: 'pwa.card.title', bodyKeys: ['pwa.ios'], primary: { action: 'later', label: 'pwa.ok' }, never };
+  return null;
+}
+
+/**
+ * Applies an action to the stored state: "never" is the only one that writes (it silences the card for good);
+ * "later" only closes it for this page (the page already counts it as shown). Every action closes the card.
+ */
+export function runInstallAction(action: InstallAction, store: KeyValueStore): { close: true; install: boolean } {
+  if (action === 'never') neverShowBanner(store);
+  return { close: true, install: action === 'install' };
+}
