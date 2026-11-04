@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../src/i18n';
 import { WORLD } from '../../src/data/world';
-import { groupOfGlyph, groupOptions, MENU_GROUPS, menuOptionServices, optionsLayout, type MenuGlyph } from '../../src/town/menu-groups';
+import { groupOfGlyph, groupOptions, MENU_GROUPS, disclosureLayout, menuOptionServices, type MenuGlyph } from '../../src/town/menu-groups';
 import { menuGeometry } from '../../src/town/sheet-model';
 import { looseServices, townMapMarkers } from '../../src/town/town-map';
 import { TOWN_SERVICES } from '../../src/town/town-menu';
@@ -46,25 +46,24 @@ describe('option groups', () => {
   });
 });
 
-describe('options layout never needs a scroll', () => {
+describe('disclosure layout never needs a scroll', () => {
   for (const map of Object.values(WORLD)) {
     const markers = townMapMarkers(map, ALL);
     const options = [...menuOptionServices(looseServices(markers, ALL), ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
     const sizes = groupOptions(options).map((g) => g.options.length);
     for (const [w, h] of VIEWPORTS) {
       it(`${map.id} at ${w}x${h}`, () => {
-        const layout = optionsLayout(sizes, menuGeometry(w, h));
+        const layout = disclosureLayout(sizes, menuGeometry(w, h));
         expect(layout.needed).toBeLessThanOrEqual(layout.available);
-        // Every group is placed once, and each column keeps menu order (columns are balanced, not cut in order).
-        expect([...layout.columns.flat()].sort((a, b) => a - b)).toEqual(sizes.map((_, i) => i));
-        for (const col of layout.columns) expect([...col].sort((a, b) => a - b)).toEqual(col);
-        if (h <= 520) expect(layout.mode).toBe('grid');
+        expect(layout.mode).toBe(h <= 520 ? 'tiles' : 'accordion');
       });
     }
   }
 
-  it('uses the single list when it fits and two columns when it does not', () => {
-    expect(optionsLayout([2, 2, 2, 3], menuGeometry(1920, 1080)).mode).toBe('list');
-    expect(optionsLayout([5, 4, 3, 3], menuGeometry(1280, 720)).mode).toBe('cols');
+  it('grows the rows when there is room and shrinks the options (never the group rows) when there is not', () => {
+    const big = disclosureLayout([5, 6, 3, 3], menuGeometry(1920, 1080));
+    const small = disclosureLayout([5, 6, 3, 3], menuGeometry(1280, 720));
+    expect(big.groupRow).toBeGreaterThan(small.groupRow);
+    expect(small.groupRow).toBeGreaterThanOrEqual(56);
   });
 });

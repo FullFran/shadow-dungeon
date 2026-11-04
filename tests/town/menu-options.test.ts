@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD } from '../../src/data/world';
-import { GROUP_HEADER, groupOptions, HOSTED_BY, ICON_SIZE, menuOptionServices, OPTION_ROW, OPTION_ROW_GAP, optionsLayout, type MenuGlyph } from '../../src/town/menu-groups';
+import { disclosureLayout, groupOptions, HOSTED_BY, ICON_SIZE, menuOptionServices, type MenuGlyph } from '../../src/town/menu-groups';
 import { cardPin, initialFocus, menuGeometry } from '../../src/town/sheet-model';
 import { looseServices, townMapMarkers } from '../../src/town/town-map';
 import { PLACE_SERVICES, TOWN_SERVICES, type TownService } from '../../src/town/town-menu';
@@ -74,28 +74,22 @@ describe('options that make no sense here are removed, never a feature made unre
 
 const sizesOf = (map: TownMap): number[] => groupOptions([...optionsOf(map).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }]).map((g) => g.options.length);
 
-describe('bigger rows, still no scroll', () => {
-  it('rows are at least 56 px and the icon 36 px', () => {
-    expect(OPTION_ROW).toBeGreaterThanOrEqual(56);
+describe('big group rows, options on intent, still no scroll', () => {
+  it('group rows are at least 56 px, option rows at least 44 and the icon 36 px', () => {
     expect(ICON_SIZE).toBe(36);
-  });
-
-  it('every group has its header, a single option too (owner: show the title on a lone option)', () => {
-    const geo = menuGeometry(1920, 1080);
-    expect(optionsLayout([2], geo).needed - optionsLayout([1], geo).needed).toBe(OPTION_ROW + OPTION_ROW_GAP);
-    expect(optionsLayout([1], geo).needed).toBeGreaterThanOrEqual(GROUP_HEADER + OPTION_ROW);
+    for (const [w, h] of VIEWPORTS) {
+      const l = disclosureLayout([5, 6, 3, 3], menuGeometry(w, h));
+      expect(l.groupRow).toBeGreaterThanOrEqual(56);
+      expect(l.optionRow).toBeGreaterThanOrEqual(44);
+    }
   });
 
   for (const map of Object.values(WORLD)) {
     for (const [w, h] of VIEWPORTS) {
-      it(`${map.id} at ${w}x${h} fits without a scroll`, () => {
-        const layout = optionsLayout(sizesOf(map), menuGeometry(w, h));
+      it(`${map.id} at ${w}x${h} fits without a scroll with the biggest group open`, () => {
+        const layout = disclosureLayout(sizesOf(map), menuGeometry(w, h));
         expect(layout.needed).toBeLessThanOrEqual(layout.available);
       });
     }
   }
-
-  it('the refugio list stays one column at 1920x1080, 1440x900 and 1366x768', () => {
-    for (const [w, h] of [[1920, 1080], [1440, 900], [1366, 768]] as const) expect(optionsLayout(sizesOf(WORLD.refugio!), menuGeometry(w, h)).mode, `${w}x${h}`).toBe('list');
-  });
 });

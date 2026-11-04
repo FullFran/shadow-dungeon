@@ -236,19 +236,32 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   - **Place card** (`.tm-card`): relic slab with a gilt diamond pointer on its pin (`placeCard`: above, flipped below when there is no room, clamped to the map
     box): chip with the pixel icon, service name (cursor gold), who keeps it (NPC or place), one line of what you can do, and "Enter Open" (touch: "Tap again to
     open"). Rises 6 px in 120 ms; none under reduced motion. Short landscape: smaller card.
-  - **Options**: "Seguir" (56 px, the only ember) then four groups with a header and hairline: Tu equipo (Cambiar Pokémon, Phantump, Tutor, Tienda, Gacha),
-    Progreso (Mazmorras, Desafíos, Viajar, Santuario, Tablón, Logros, Galería), Social (Jugar en línea, Amigos, Cuenta), Sistema (Ajustes, Controles del mando,
-    Volver al inicio / the room's rows). Only options with no pin on this map are listed (the Refugio lists nine), every one of them kept. Rows are 48 px: 32 px
-    pixel icon, label, one line of help. `optionsLayout` picks the mode from the room: `list` when it fits, `cols` (two columns of groups, help in two 12 px
-    lines) when it does not, `grid` (3-4 columns of 64-72 px tiles, icon and label, help in the tooltip) on a short landscape window; `needed <= available` is
-    tested for every map at 1920x1080, 1440x900, 1366x768, 1280x720 and 844x390, so nothing scrolls.
-  - **Input**: arrows, WASD or the stick (the pad sends arrow keys) move focus between pins and options by their screen position (`stepMarker` on the real button
-    centres); Tab and Shift+Tab walk them in order; Enter or Space opens (a focused button answers its own press), Esc closes. Mouse hover on a pin shows its card; on touch
-    the first tap shows the card and the second opens (a pin chosen at the press opens on that tap); options open on one tap. The nearest pin to the player starts chosen.
+  - **Options, grouped disclosure** (owner 2026-11-04 "menos opciones de primeras ... que vayan apareciendo todas con el hover"; identical on every map): at rest the
+    column is only "Seguir" (the one ember, 56 px) and four large group rows (`restColumn`: Hick, 5 choices): original 16x16 group icon at 36 px (`GROUP_ICONS`: shield
+    = Tu equipo, banner on steps = Progreso, speech bubbles = Social, key = Sistema), title (21 px), one line of summary ("Pokémon, Tutor, Tienda…") and a count chip.
+    Group rows are 56 to 72 px, never below 56 (Fitts). Hover, keyboard or pad focus, or a tap on a row opens that group's options **in place under the row**
+    (accordion, left rule in old gold, 140 ms settle, instant under reduced motion): icon 32 px, label 17 px, one line of help, rows 44 to 56 px, <= 6 per group
+    (Miller). One group open at a time; hovering another swaps; leaving the column collapses after 250 ms (`LEAVE_DELAY_MS`), so a diagonal mouse move does not flicker.
+    Every group keeps all its options (Tu equipo 5, Progreso 6, Social 3, Sistema 3 with Volver al inicio or the room's rows); Logros stays in the Notice board.
+    Why accordion and not a flyout: a flyout beside a 380-470 px column would cover the right third of the map (pins and the card live there) or shrink the map
+    for good, and the map must stay whole and large; an accordion keeps the column width, keeps the map untouched and is the pattern Jakob's law predicts. Its known
+    flaw, rows shifting under a still mouse when a group above collapses, is handled in the view: a group row opens on a real `pointermove` (changed
+    coordinates), never on the `pointerenter` the browser fires after a layout shift.
+    `disclosureLayout` picks the row sizes from the room so the biggest group open still fits (`needed <= available`, tested for every map at 1920x1080, 1440x900,
+    1366x768, 1280x720, 844x390): group/option rows 72/56 at 1920x1080 and 1440x900, 56/48 at 1366x768 and 1280x720. On a short landscape window (<= 520 px high)
+    `tiles`: Seguir full width (48 px), the four groups a row of 56 px icon tiles (icon and short title), the open group's options an icon grid below (3 columns of
+    72 px tiles, label under the icon, help in the tooltip).
+  - **Input**: arrows, WASD or the stick (the pad sends arrow keys) move spatially between pins and the visible column (`stepMarker` on the real button centres; options
+    of a closed group are not stops); Tab and Shift+Tab walk the visible items in order. In the column the keys follow `columnStep`: Up/Down walk Seguir and the group
+    rows (landing on a row opens it); Right or Enter on a row opens it and moves focus to its first option; Up/Down inside; Left or Esc returns to the row; Esc on
+    Seguir or a row closes the menu; Left on a row or Up on Seguir goes back to the map pins. Mouse hover on a pin shows its card (focus on Seguir or a group shows none); on touch
+    the first tap on a pin shows the card and the second opens; the first tap on a group row opens it, a second tap closes it, a tap on an option runs it. A mouse click on a
+    hover-opened row keeps it open. The nearest pin to the player starts chosen.
   - **Entrance** (`menuTiming`): the panel slides up from below the window edge (`translateY(50vh + 50%)` to 0) in 260 ms ease-out, no overshoot, the veil fades 160 ms;
     leaving reverses in 200 ms (the veil too); under `prefers-reduced-motion` both are a 160 ms fade with no travel. Opening another window from the menu removes it
-    at once (that window has its own entrance). Contrast measured: option label 12.51, help 6.47, group header 7.32, Seguir 5.62, card name 10.73, card text 14.15,
-    card detail 7.32, ribbon name 5.35 to 5.90 (all >= 4.5).
+    at once (that window has its own entrance). Contrast measured: option label 12.51, help 6.47, Seguir 5.62, card name 10.73, card text 14.15,
+    card detail 7.32, ribbon name 5.35 to 5.90 (all >= 4.5); group row title 15.30 on the slab, summary 7.92 (6.47 on the lighter gradient stop), open title
+    11.61, count chip 16.52 and, open, ink on gold 12.53 (computed from the token hex values, WCAG 2.x relative luminance).
 - **Location plaque** (`src/ui/location-plaque.ts`, `src/ui/location-plaque-model.ts`, `src/adapters/floor-plaque.ts`, `src/ui/icons/place-icons.ts`,
   `src/styles/location-plaque.css`; owner 2026-11-04): one component names every place on arrival, replacing the canvas town banner, the
   floor card and the dungeon title. A carved relic plate at the top centre (`position: fixed`, top 12 px, 6 px on short landscape,
@@ -301,7 +314,7 @@ Accessibility: every hub control is a real `<button>` with an accessible name; a
 - Window open 120 ms ease-out (existing). Focus halo 120 ms. Backdrop: slow corona pulse (1.4 s), embers, fog drift —
   reason: the scene is alive while the player decides. Partner idle animation from its sprite.
 - `prefers-reduced-motion`: no fog drift, no pulse on Play, embers static.
-- Town map menu entrance: the panel slides up from below the window edge in 260 ms ease-out (no overshoot) while the veil fades in 160 ms, and leaves the same way in 200 ms; reason: the menu is a sheet lifted out of a satchel, and the town stays visible and dimmed behind it. Under `prefers-reduced-motion`: a 160 ms fade in and out, no travel (`menuTiming`, `src/town/sheet-model.ts`). The place card rises 6 px in 120 ms (Doherty), the chosen seal lifts 4 px in 120 ms, the "you are here" cross breathes (scale 1 to 1.18, 1.6 s) only without reduced motion.
+- Town map menu entrance: the panel slides up from below the window edge in 260 ms ease-out (no overshoot) while the veil fades in 160 ms, and leaves the same way in 200 ms; reason: the menu is a sheet lifted out of a satchel, and the town stays visible and dimmed behind it. Under `prefers-reduced-motion`: a 160 ms fade in and out, no travel (`menuTiming`, `src/town/sheet-model.ts`). The place card rises 6 px in 120 ms (Doherty), the chosen seal lifts 4 px in 120 ms, the "you are here" cross breathes (scale 1 to 1.18, 1.6 s) only without reduced motion. A group's options settle in 140 ms (opacity and 6 px rise, reason: they unfold from the row that owns them); instant under reduced motion.
 - Location plaque entrance: the plate unfurls from its centre (`scaleX` 0 to 1 with a centre clip) in 260 ms ease-out, then the icon and the text
   fade-rise 6 px over 160 ms, staggered 80 ms; it holds 2.2 s and leaves fading up 10 px in 300 ms ease-in. Reason: it marks the change of place
   without blocking play (Peak-End); it takes no input and never covers the HUD. Under `prefers-reduced-motion`: a plain 200 ms fade in and 300 ms
@@ -363,6 +376,7 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "tienes que hacer el sistema de estados de error y loading ... optimizar ... los sprites al iniciar"; then "el Cargando que no vaya en card, pon un spin loader custom, no la palabra cargando"): loading is a pixel spin loader with no card and no word, errors share one typed vocabulary with card, inline, fatal, toast and offline banner (§4); sprites load by need through one shared loader with a persistent art cache instead of all at boot. Supersedes the "Cargando…" relic window and the all-sheets boot load.
 - 2026-11-04 (owner: "el hud de combate lo quiero menos grande y menos invasivo ... más pequeño y minimalista"): the combat HUD is made peripheral (§4 Combat HUD): HUD scale 1 to 2 from an 800x450 authoring space, a 150x44 status block, ~46 px slots without names in a fight, a 40% thin boss bar with name and epithet on one line, the announcement as a strip above it (1.4 s), combat-aware dimming of chips, log and hints, a 2-line log, the minimap back to its size. Supersedes the large HUD of the entry above (214x84 status, 52 px slots with names, 57% boss bar, centre-screen announcement).
 - 2026-11-04 (owner: "esto debe ser un mapa que se vea completo lo máximo posible, bien detallado tipo pixel art, y lo quiero mapa tipo envejecido roto irregularmente por los alrededores. El menú debe salir de abajo animado, debe ser mucho más grande, al hacer hover por los sitios te muestra qué hay ahí, y luego a la derecha todas las opciones del menú mejor presentadas, estructuradas y posicionadas"): the town menu becomes a parchment map menu (§4 "Town map menu"): a 94vw x 88vh window rising from below, the whole town painted once as aged pixel art with a torn, burnt edge, wax-seal pins with an anchored place card, and the options in four groups beside it with Seguir as the only ember. Supersedes the thin gold outline plan on a flat panel with round pins, the caption line and the two columns of small labels (2026-11-02). Departure from the brief: a whole map scale is kept only while it wastes at most 10% of the limiting side (not 30%), because the owner's priority is the largest map.
+- 2026-11-04 (owner: "me gustaría que hubiese menos opciones de primeras, podrías poner las opciones generales y que vayan apareciendo todas con el hover, o simplificarlo de alguna forma para que no aparezcan tantas visualmente"): the town menu's options column becomes progressive disclosure, identical on every map (§4 "Town map menu"): at rest only Seguir and four large group rows (icon, title, summary, count), a group's options unfold in place on hover, focus or tap (accordion, one open at a time, 250 ms leave delay), keyboard and pad walk rows then options, a compact tile variant on short landscape windows. Supersedes the always-visible ~17 rows in a list or two balanced columns (`optionsLayout`, dense 48 px rows, group headers) of the same day. Accordion chosen over a flyout so the map is never covered.
 - 2026-11-04: Cinematic Skip and Auto controls redesigned once for every cinematic (owner): bigger relic Skip with a pixel double chevron, device glyph and a 0.6 s
   hold ring (Error prevention), Auto as a relic pill with a slow ember dot, bottom-right stack, quiet at rest (65%) and full for 2 s after any input. Supersedes the
   flat "Saltar" text button, the 3 px hold bar and the separate hint line.

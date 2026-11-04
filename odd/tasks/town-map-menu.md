@@ -58,3 +58,23 @@ Owner: "si no hago hover sobre ningún punto no debe salir nada"; "Un poco más 
 | Volver al inicio / room rows | keep | only way out |
 
 Quick wheel (Tab) and the title menu are untouched, so Logros still has those routes.
+
+## Round 4 (owner 2026-11-04): progressive disclosure, fewer options at first sight
+
+Owner: "me gustaría que hubiese menos opciones de primeras, podrías poner las opciones generales y que vayan apareciendo todas con el hover, o simplificarlo de alguna forma para que no aparezcan tantas visualmente".
+
+- [x] T7 RED then GREEN: `tests/town/menu-disclosure.test.ts` (at-rest column = Seguir + 4 group rows, open/close state machine with a fake clock, keyboard `columnStep`, every option reachable on every map, layout fits at five sizes); `src/town/menu-disclosure.ts`, `restColumn` and `disclosureLayout` in `src/town/menu-groups.ts`, `GROUP_ICONS` in `src/ui/icons/town-map-icons.ts`, i18n es + en group summaries.
+- [x] T8 View: group rows (`.tm-grow`), trays (`.tm-rows`), `tiles` mode for <= 520 px high; old `optionsLayout`, dense rows, two-column balancing and group headers removed.
+- [x] T9 Docs: DESIGN.md §4, §5, §8 (2026-11-04); choice accordion over flyout justified there.
+- [x] T10 Gates: see the report; Playwright (`tmenu3-check.mjs`) at the five sizes on refugio and ruinas: rest shows 5 buttons, no scroll, hover opens, swap, 250 ms leave, keyboard Down/Right/Left/Esc, touch tap opens and second tap closes.
+
+### Parity checklist (round 4)
+
+- [x] All six maps: one opener, one column; `tests/town/menu-every-map.test.ts` and `menu-disclosure.test.ts` iterate `WORLD` (rest column, every option reachable with Right/Down, `needed <= available` at five sizes).
+- [x] All four groups and every option kept (Tu equipo 5, Progreso 6 with Logros hosted by the board, Social 3, Sistema 3 / the room's rows).
+- [x] Solo and room: the room's rows file under Sistema as before; the room code stays on the ribbon.
+- [x] Place card rule: no card unless a pin is hovered or focused (group rows and options show none; measured `cardHidden:true` at rest, open and keyboard).
+- [x] Touch: first tap opens a group, second tap closes it, a tap on an option runs it (measured with Playwright touch at 844x390).
+- [x] Reduced motion: the 140 ms settle is removed under `prefers-reduced-motion`.
+- [x] i18n es + en: `townMenu.group.*.summary`, parity test.
+- [x] Save, net protocol, sim/prove: not touched (UI only). Quick wheel untouched.
