@@ -1299,7 +1299,7 @@ Cada mazmorra guarda la mejor planta y las victorias por nivel; los récords de 
 
 ### Cómo se ganan *(provisional)*
 
-Cada jugador suma lo suyo en su propio ordenador (también los invitados de una partida compartida; no viaja nada por la red). El HUD enseña lo ganado hasta ahora ("12 P") y la pantalla final lo desglosa junto al saldo nuevo.
+Cada jugador suma lo suyo en su propio ordenador (también los invitados de una partida compartida; no viaja nada por la red). El HUD enseña lo ganado hasta ahora ("12 P") y la pantalla final lo desglosa junto al saldo nuevo. Esa pantalla final es una ceremonia de resultado (propietario, 2026-11-04: «hazlo más estilo juego, ... más grande y más visual»): título enorme (Juramento cumplido, Has caído, El juramento resiste, Te has perdido), la criatura grande sobre un pedestal con brasas si ganas y ceniza si pierdes, fichas con icono para cada dato de siempre (tiempo, marca anterior, dificultad, cartas capturadas, jefes vencidos, sin rasguños, planta, nivel, semilla, objetos, grupo), la diferencia con tu marca anterior (+16,7 s en rojo si fue más lenta, −16,7 s en verde si más rápida), un sello «¡Nueva mejor marca!» cuando lo es, las Pokémonedas contando hacia arriba y botones grandes con la tecla o botón del mando. Entra escalonada en menos de 1,2 s; cualquier tecla o clic salta al final y con movimiento reducido sale ya completa.
 
 | Qué | Pokémonedas |
 |---|---|
