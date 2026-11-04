@@ -1,6 +1,9 @@
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
-import { bannerVisible, installOffer, isIosSafari, neverShowBanner, type InstallOffer } from '../pwa/install';
+import { bannerVisible, installCard, installOffer, isIosSafari, runInstallAction, type InstallAction, type InstallChoice, type InstallOffer } from '../pwa/install';
+import { INSTALL_ICON } from './icons/install-icons';
+import { pixelSvgOf } from './pixel-icons';
+import '../styles/install-card.css';
 import { registerServiceWorker } from '../pwa/register';
 import { cursorList } from './cursor-list';
 import { h, mdWindow } from './window';
@@ -93,36 +96,52 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     const current = offer();
     if (!bannerVisible(options.store, current, bannerShown)) return;
     bannerShown = true;
-    const node = h('div', { className: 'pwa-banner' });
+    const card = installCard(current);
+    if (!card) return;
+    /*
+     * A relic card in the news card's slot (bottom-left), or under the logo on short screens: the other corners
+     * hold the rails, the logo or the partner (styles/install-card.css). Click outside does nothing; Esc is
+     * "Ahora no". Its buttons carry data-hub, so the hub's arrows and the pad reach them.
+     */
+    const node = h('section', { className: 'pwa-banner pwa-card' });
+    node.setAttribute('role', 'region');
+    node.setAttribute('aria-label', t(card.titleKey));
+    // Where the card takes the news card's slot, the news card steps out of the hub's arrow navigation meanwhile.
+    const host = parent.querySelector('.hub') ?? parent;
+    const news = host.querySelector<HTMLElement>('.hub-news[data-hub]');
+    const newsHub = news?.dataset.hub;
+    if (news && typeof matchMedia === 'function' && matchMedia('(min-height: 561px) and (min-width: 901px)').matches) delete news.dataset.hub;
     const close = () => {
-      list.dispose();
+      window.removeEventListener('keydown', onKey, true);
       node.remove();
+      if (news && newsHub) news.dataset.hub = newsHub;
     };
-    const list = cursorList({
-      layout: 'horizontal',
-      keyboard: false,
-      items: [
-        current === 'prompt'
-          ? {
-              label: t('pwa.installNow'),
-              onConfirm: () => {
-                close();
-                install(parent);
-              },
-            }
-          : { label: t('pwa.ok'), onConfirm: close },
-        ...(current === 'prompt' ? [{ label: t('pwa.later'), onConfirm: close }] : []),
-        {
-          label: t('pwa.never'),
-          onConfirm: () => {
-            neverShowBanner(options.store);
-            close();
-          },
-        },
-      ],
-    });
-    node.append(mdWindow({ className: 'still' }, [h('p', { textContent: t(current === 'prompt' ? 'pwa.banner' : 'pwa.ios') }), list.element]));
-    parent.append(node);
+    const run = (action: InstallAction) => {
+      const result = runInstallAction(action, options.store);
+      if (result.close) close();
+      if (result.install) install(parent);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!node.isConnected) return window.removeEventListener('keydown', onKey, true);
+      if (e.key !== 'Escape' || document.querySelector('.town-shop, .pwa-ios')) return;
+      e.preventDefault();
+      run('later');
+    };
+    const button = (choice: InstallChoice, className: string) => {
+      const b = h('button', { className, type: 'button', textContent: t(choice.label) });
+      b.dataset.hub = `install-${choice.action}`;
+      b.addEventListener('click', () => run(choice.action));
+      return b;
+    };
+    node.append(
+      h('div', { className: 'pwa-card-head' }, [
+        pixelSvgOf(INSTALL_ICON, 'px-icon pwa-card-icon'),
+        h('div', { className: 'pwa-card-text' }, [h('h2', { className: 'pwa-card-title', textContent: t(card.titleKey) }), ...card.bodyKeys.map((key) => h('p', { className: 'pwa-card-line', textContent: t(key) }))]),
+      ]),
+      h('div', { className: 'pwa-card-actions' }, [button(card.primary, 'pwa-card-primary'), ...(card.secondary ? [button(card.secondary, 'pwa-card-quiet')] : []), button(card.never, 'pwa-card-link')]),
+    );
+    window.addEventListener('keydown', onKey, true);
+    host.append(node);
   }
 
   function corner(parent: HTMLElement): void {
