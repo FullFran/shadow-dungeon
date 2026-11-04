@@ -63,15 +63,13 @@ export interface HudMetrics {
   slotGap: number;
   /** The boss block: name and epithet on one line, then the thin bar. */
   bossHeight: number;
-  /** The announcement strip just above the boss block: the move's name, then the sign and the cue on one line. */
-  captionHeight: number;
   /** The boss block's bottom edge, from the bottom of the space. */
   bossBottom: number;
 }
 
 export const HUD_METRICS: Record<HudVariant, HudMetrics> = {
-  regular: { margin: 8, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 150, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 24, captionHeight: 34, bossBottom: 8 },
-  compact: { margin: 6, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 104, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 24, captionHeight: 32, bossBottom: 10 },
+  regular: { margin: 8, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 150, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 26, bossBottom: 8 },
+  compact: { margin: 6, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 104, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 26, bossBottom: 10 },
 };
 
 /** The regular metrics need this much height; a phone held sideways (320) and short windows use the compact ones. */
@@ -82,10 +80,10 @@ export type HudDims = Pick<HudSpace, 'width' | 'height'> & { scale?: number };
 
 export const hudVariant = (space: Pick<HudSpace, 'height'>): HudVariant => (space.height >= REGULAR_MIN_HEIGHT ? 'regular' : 'compact');
 
-/** Move slots are about 46 CSS px squares whatever the scale (never under 44: Fitts), so a HUD px count that follows the scale. */
-const SLOT_CSS = 46;
+/** Move slots are about 56 CSS px squares whatever the scale (owner 2026-11-04: bigger, so the key glyph fits whole), so a HUD px count that follows the scale. */
+const SLOT_CSS = 56;
 const DEFAULT_SCALE = 1.5;
-export const slotSizeFor = (scale: number = DEFAULT_SCALE): number => Math.min(52, Math.max(24, Math.ceil(SLOT_CSS / scale)));
+export const slotSizeFor = (scale: number = DEFAULT_SCALE): number => Math.min(60, Math.max(24, Math.ceil(SLOT_CSS / scale)));
 
 /** HUD scale: the canvas scale on touch; on desktop how many 800x450 fit the window, in half steps, between 1 and 2. */
 export function hudScaleFor(viewportWidth: number, viewportHeight: number, pixelScale: number, touch: boolean): number {
@@ -131,6 +129,24 @@ export function chipsRect(space: Pick<HudSpace, 'height'>, chip: boolean, touch 
   return { x: status.x, y: status.y + status.height + 1, width: status.width, height: m.chipsHeight + (chip ? m.chipHeight : 0) };
 }
 
+/** The flash toast (level up, passive, disguise, dodge, item): a one-line plate, at most this wide and tall (HUD px). */
+export const TOAST = { width: 190, height: 16, gap: 3 } as const;
+
+/**
+ * Where the flash toast goes (fix pass 3, owner 2026-11-04): in the left column under the status block, its chips and the
+ * co-op frames, never in the arena's middle. It stays within the left quarter of the space so the central 50% x 50% is
+ * clear whatever the window; on touch (the pause button holds the top-left corner) it starts at the margin.
+ */
+export function toastRect(space: Pick<HudSpace, 'width' | 'height'>, options: { partners?: number; touch?: boolean } = {}): HudBox {
+  const touch = options.touch === true;
+  const m = HUD_METRICS[hudVariant(space)];
+  const chips = chipsRect(space, true, touch);
+  const partners = options.partners ?? 0;
+  const bottom = partners > 0 ? chips.y + chips.height + m.partnerGap + partners * (m.partnerHeight + m.partnerGap) - m.partnerGap : chips.y + chips.height;
+  const x = touch ? m.margin : chipsRect(space, true, false).x;
+  return { x, y: bottom + TOAST.gap, width: Math.max(0, Math.min(TOAST.width, Math.floor(space.width * 0.25) - x - 1)), height: TOAST.height };
+}
+
 /** The block the slots take (width x height) so the boss block can keep clear of it. */
 function slotBlock(space: HudDims, count: number): { width: number; height: number } {
   const m = HUD_METRICS[hudVariant(space)];
@@ -161,8 +177,11 @@ export function minimapRect(space: Pick<HudSpace, 'width'>, cols: number, rows: 
   return { x: space.width - margin - cols * tilePx - frame, y: margin - frame, width: cols * tilePx + 2 * frame, height: rows * tilePx + 2 * frame };
 }
 
-/** The boss bar itself: the fill is `thick` HUD px, the dark outline and gilt hairline make the frame (7 HUD px, 14 CSS px at the largest scale). */
-export const BOSS_BAR = { thick: 3, frame: 7 } as const;
+/** The boss bar itself: the fill is `thick` HUD px, the dark outline and gilt hairline make the frame (11 HUD px: 16.5 CSS px at 1440x900). */
+export const BOSS_BAR = { thick: 5, frame: 11 } as const;
+
+/** The share of the space's height left under the boss block on desktop. */
+const BOSS_LIFT = 0.06;
 
 /** Boss block width as a share of the space: a thin bar, not a banner. */
 const BOSS_SHARE = 0.4;
@@ -176,7 +195,8 @@ const BOSS_TOUCH = { share: 0.5, max: 300 } as const;
 export function bossRect(space: HudDims, slots = 4, touch = false): HudBox {
   const m = HUD_METRICS[hudVariant(space)];
   let width: number;
-  let bottom = m.bossBottom;
+  // Raised off the bottom edge: 6% of the space's height stays under the bar (owner 2026-11-04), clear of the hint bar's row.
+  let bottom = Math.max(m.bossBottom, Math.round(space.height * BOSS_LIFT));
   if (touch) {
     width = Math.min(Math.round(space.width * BOSS_TOUCH.share), BOSS_TOUCH.max);
     // Above the message log of the bottom-left corner (the log stays at the bottom on touch).
@@ -189,18 +209,34 @@ export function bossRect(space: HudDims, slots = 4, touch = false): HudBox {
   return { x: Math.round((space.width - width) / 2), y: space.height - bottom - m.bossHeight, width, height: m.bossHeight };
 }
 
-/** The announcement strip: the boss block's width, right above it (never over the arena's middle; the floor telegraph is the information). */
-export function captionRect(space: HudDims, slots = 4, touch = false): HudBox {
+/** The announcement's move name in HUD px: about 28 CSS px on desktop (26 to 30 at every scale), 14 on touch. */
+export const captionNameSize = (scale: number, touch: boolean): number => (touch ? 14 : Math.round(28 / scale));
+
+/** Name, rule and the sign and cue line, with room for the filigree: what the announcement takes in height (HUD px). */
+const captionHeightFor = (scale: number, touch: boolean): number => captionNameSize(scale, touch) + (touch ? 22 : 26);
+
+/**
+ * The boss announcement (owner 2026-11-04): the top centre, its bottom edge on the arena-centre line (a quarter of the height) so
+ * it never enters the central 50% x 50%, below the place where the location plaque shows on area entry. On touch it takes
+ * the stretch between the status window and the minimap.
+ */
+export function captionRect(space: HudDims, _slots = 4, touch = false): HudBox {
+  const scale = space.scale ?? DEFAULT_SCALE;
   const m = HUD_METRICS[hudVariant(space)];
-  const boss = bossRect(space, slots, touch);
-  return { x: boss.x, y: boss.y - m.slotGap - m.captionHeight, width: boss.width, height: m.captionHeight };
+  const height = captionHeightFor(scale, touch);
+  if (touch) {
+    const status = statusRect(space, true);
+    const minimapLeft = space.width - HUD_BOX.minimapMargin - 40 * HUD_BOX.minimapTilePxTouch - 2 * HUD_BOX.minimapFrame;
+    const x = status.x + status.width + 4;
+    return { x, y: m.margin, width: Math.max(120, minimapLeft - 4 - x), height };
+  }
+  const width = Math.max(280, Math.min(460, Math.round(space.width * 0.36)));
+  return { x: Math.round((space.width - width) / 2), y: Math.floor(space.height * 0.25) - height, width, height };
 }
 
-/** The boss block and the announcement strip over it, as one box: what the hint bar must keep clear of in a boss fight. */
+/** What the hint bar must keep clear of in a boss fight: the boss block (the announcement is at the top now). */
 export function bossStackRect(space: HudDims, slots = 4, touch = false): HudBox {
-  const boss = bossRect(space, slots, touch);
-  const caption = captionRect(space, slots, touch);
-  return { x: boss.x, y: caption.y, width: boss.width, height: boss.y + boss.height - caption.y };
+  return bossRect(space, slots, touch);
 }
 
 export interface HudRectsOptions {

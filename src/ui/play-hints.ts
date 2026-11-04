@@ -147,11 +147,14 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
         fit = true;
       }
       if (sig !== '') fade.touch(sig, nowMs);
-      // Owner, 2026-11-04: bigger aids. Chip, keycap and label follow the window's height (hintSizes).
+      // Owner, 2026-11-04: bigger aids when calm; compact keycaps (28 px chips, no labels) with enemies near or a boss.
+      // Chip, keycap and label follow the window's height and the fight (hintSizes).
+      const fight = state.fight ?? 'calm';
       const height = Math.round(window.innerHeight);
-      if (height !== sizeKey) {
-        sizeKey = height;
-        const size = hintSizes(height);
+      const key2 = height * 4 + (fight === 'calm' ? 0 : 1);
+      if (key2 !== sizeKey) {
+        sizeKey = key2;
+        const size = hintSizes(height, fight);
         bar.style.setProperty('--ph-chip', `${size.chip}px`);
         bar.style.setProperty('--ph-key', `${size.keycap}px`);
         bar.style.setProperty('--ph-label', `${size.label}px`);
@@ -178,7 +181,6 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
         bar.classList.toggle('is-on', on);
       }
       // Owner, 2026-11-04 (minimalist pass): near enemies dim the bar to ~40%; a boss fight hides it once its first 5 s are over.
-      const fight = state.fight ?? 'calm';
       bossSince = fight === 'boss' ? (bossSince ?? nowMs) : null;
       const wantQuiet = bossSince !== null && nowMs - bossSince > BOSS_HINT_MS;
       const wantDim = fight !== 'calm';

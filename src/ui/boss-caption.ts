@@ -37,8 +37,8 @@ export function bossCaption(stance: string, species: SpeciesId | string | null, 
 
 export { BOSS_CUES };
 
-/** Entrance 160 ms, hold 1.4 s, exit 240 ms: the floor telegraph is the information, the strip only names it. */
-export const CAPTION_MS = { enter: 160, hold: 1400, exit: 240 } as const;
+/** Entrance 160 ms, hold 1.6 s, exit 240 ms: the floor telegraph is the information, the strip only names it. */
+export const CAPTION_MS = { enter: 160, hold: 1600, exit: 240 } as const;
 export const CAPTION_LIFE_MS = CAPTION_MS.enter + CAPTION_MS.hold + CAPTION_MS.exit;
 
 /** Opacity at `ageMs` since the caption appeared. */

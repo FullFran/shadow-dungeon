@@ -41,5 +41,26 @@ Owner: "el hud de combate lo quiero menos grande y menos invasivo ... igual de b
 - [x] Every boss: one `bossBlock` and one caption path; the roster and caption tests in `combat-hud-model.test.ts` still iterate every boss and card.
 - [x] Solo and co-op: partner frames moved under the chips; touch keeps the compact metrics (844x390 screenshot).
 - [x] Dungeons: the HUD is the renderer's, shared by all.
-- [x] Information reachable: idle shows passive state, held items, floor, coins and slot names; the pause window lists moves and items. Pending, not cut: the passive state and XP are not in the pause card (they show when idle).
+- [x] Information reachable: idle shows passive state, held items, floor, coins and slot names; the pause window lists moves and items. The passive state and XP are now in the pause card (pass 3).
 - [x] i18n: no new strings. Gameplay unchanged: `npm run prove`.
+
+## Pass 3: fix everything pending + owner feedback (2026-11-04)
+
+Owner: "arreglar todo"; "la barra de vida un poco más arriba, más decorada estilo Dark Souls sombrío"; slots "más grandes para que las teclas quepan"; boss attacks "arriba y un poco más grandes y decorados".
+
+- [x] F1 Hint bar compact in a fight (`hintSizes(height, fight)`: 28 px chips, labels hidden), large when calm; tests in `tests/ui/play-hints-model.test.ts`, `tests/ui/hud-layout.test.ts`.
+- [x] F2 Flashes to a toast under the status block (`toastRect`, `drawFlashToast`, 1.6 s). Centred flashes found: perfectDodge, disguiseBroken, levelUp, item, passive (all five of `FlashKind`; nothing else flashed in the middle). Centre-clear test extended.
+- [x] F3 Location plaque follows the HUD scale (`plaqueMetrics`, `plaqueBox`, tested at 6 desktop windows against status, minimap, boss and announcement).
+- [x] F4 Original `error` 16x16 icon for the error card and the fatal screen.
+- [x] F5 Town tiles and sprites report once per session (`reportAssetFailure`, `imageState`), `tests/adapters/asset-report.test.ts`.
+- [x] F6 Pause summary: level, XP bar and passive (`pauseSummary`, `tests/app/pause-model.test.ts`).
+- [x] A Boss bar raised (6% clear below), iron frame, finials, blood fill, ember trail, small-caps name with ornament.
+- [x] B Slots about 56 CSS px, key glyph in a corner cap, icon centred; 12% budget holds (11.86% at 1280x720, 8.6% at 1440x900, 9.1% at 1920x1080).
+- [x] C Boss announcement at the top centre (~28 CSS px, brackets, rule diamond, hold 1.6 s); announced-event budget 15.2% at 1280x720, limit moved 15% to 16% (transient, 1.8 s).
+
+### Parity checklist (pass 3)
+- [x] Every boss and card: the announcement is one drawing path (`drawBossCaption`); roster and caption tests untouched and green.
+- [x] Every playable species: pause passive line (`passiveStatus` per species test); toast text is species-free.
+- [x] Solo and co-op: toast sits under the partner frames (`toastRect` with 0, 1, 3 partners tested). Touch: toast at the margin, announcement between status and minimap (tested); touch plaque keeps its small size and is not part of the plaque overlap proof (pre-existing: it can touch the status window on a 568 px phone).
+- [x] i18n es and en: `hud.toast.*`, `pause.stat.level|xp|passive`, `pause.xpMax`.
+- [x] Gameplay unchanged: `npm run prove`.

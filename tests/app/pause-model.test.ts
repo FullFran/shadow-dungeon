@@ -8,6 +8,11 @@ import { catalog, LANGUAGES } from '../../src/i18n';
 import { pauseEntries, type MenuActions, type PauseEntry } from '../../src/app/menu';
 import { formatRunTime, pauseActions, pauseSummary, type PauseRunInfo } from '../../src/app/pause-model';
 import { PAUSE_ICONS } from '../../src/ui/icons/pause-icons';
+import { passiveStatus } from '../../src/adapters/hud';
+import { PROGRESSION } from '../../src/data/progression';
+
+/** Total XP at which `level` starts. */
+const levelXpAt = (level: number): number => PROGRESSION.levelXp[level - 1]!;
 
 const noop = () => undefined;
 const base: MenuActions = { resume: noop, restart: noop, quit: noop };
@@ -102,6 +107,8 @@ const info = (over: Partial<PauseRunInfo> = {}): PauseRunInfo => ({
   coins: 42,
   loadout: ['ember', null, null, null],
   coop: false,
+  xp: 0,
+  passive: { text: 'Disfraz: intacto', ready: true },
   ...over,
 });
 
@@ -149,6 +156,34 @@ describe('pause summary', () => {
       const tr = (key: string) => catalog(language)[key] ?? '';
       for (const d of [...DUNGEONS, ...CHALLENGES]) expect(pauseSummary(info({ dungeon: d.id }), [], tr).dungeonName, `${language} ${d.id}`).toBeTruthy();
       for (const difficulty of DIFFICULTIES) expect(pauseSummary(info({ difficulty }), [], tr).difficultyName, `${language} ${difficulty}`).toBeTruthy();
+    }
+  });
+});
+
+describe('pause summary: level, XP and passive', () => {
+  it('carries the level, how far into it the run is and the passive state (hidden in combat, read here)', () => {
+    const s = pauseSummary(info({ xp: levelXpAt(3) + 0.5 * (levelXpAt(4) - levelXpAt(3)), passive: { text: 'Disfraz: roto', ready: false } }), []);
+    expect(s.level).toBe(3);
+    expect(s.xpFill).toBeCloseTo(0.5, 5);
+    expect(s.xpText).toBe('50 %');
+    expect(s.passive).toEqual({ text: 'Disfraz: roto', ready: false });
+  });
+
+  it('says max at the cap', () => {
+    const s = pauseSummary(info({ xp: PROGRESSION.levelXp.at(-1)! + 10 }), []);
+    expect(s.level).toBe(PROGRESSION.levelXp.length);
+    expect(s.xpFill).toBe(1);
+    expect(s.xpText).toBe(catalog('es')['pause.xpMax']);
+  });
+
+  it('every language names the level, the experience and the passive', () => {
+    for (const language of LANGUAGES) for (const key of ['pause.stat.level', 'pause.stat.xp', 'pause.stat.passive', 'pause.xpMax']) expect(catalog(language)[key], `${language} ${key}`).toBeTruthy();
+  });
+
+  it('every playable species gets its passive line in the summary', () => {
+    for (const species of PLAYABLE_SPECIES) {
+      const s = pauseSummary(info({ species, passive: passiveStatus({ species, disguiseBroken: true, illusionBroken: false, flashFire: false }) }), []);
+      expect(s.passive.text, species).toContain(':');
     }
   });
 });

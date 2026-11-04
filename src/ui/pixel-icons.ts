@@ -12,7 +12,7 @@ export interface PixelIcon {
 /** Icons of hub actions that are not town services. */
 export const HUB_ICON_IDS = ['play', 'news', 'fullscreen', 'prologue', 'credits', 'report', 'install', 'tickets', 'coin', 'lock'] as const;
 
-export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror';
+export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'error' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror';
 
 export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
   pokemon: {
@@ -578,6 +578,28 @@ export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
       '...kooooooook...',
       '...kkkkkkkkkk...',
       '................',
+      '................',
+      '................',
+    ],
+  },
+  // A rune stone split by a crack, one half slipped: the error state (not the hub padlock). Original art.
+  error: {
+    palette: { c: '#e8283a', g: '#c9a45a', k: '#140c11', o: '#5c4526', s: '#8f8489', t: '#b8b0bb' },
+    rows: [
+      '................',
+      '...kkkkkkkkkk...',
+      '..kttttttttttk..',
+      '..ktssssscksok..',
+      '..ktsgssckssok..',
+      '..ktsgsck.ssok..',
+      '..ktssck..gsok..',
+      '..ktsgck.s.sok..',
+      '..ktsscksgssok..',
+      '..ktsscksss.ok..',
+      '..ktsgcksssgok..',
+      '..ktssckssssok..',
+      '..kooooooooook..',
+      '...kkkkkkkkkk...',
       '................',
       '................',
     ],

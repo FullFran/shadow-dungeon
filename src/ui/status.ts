@@ -60,7 +60,7 @@ export function errorCard(options: ErrorCardOptions): HTMLElement {
     });
     actions.append(retry);
   }
-  card.append(pixelIconSvg('lock', 'px-icon st-card-icon'), title, hint);
+  card.append(pixelIconSvg('error', 'px-icon st-card-icon'), title, hint);
   if (actions.childElementCount) card.append(actions);
   return card;
 }
@@ -92,7 +92,7 @@ export function fatalError(options: FatalOptions): HTMLElement {
   });
   const actions = el('div', 'st-card-actions');
   actions.append(button(t('error.reload'), 'rk-ember', options.onReload), copy);
-  body.append(pixelIconSvg('lock', 'px-icon st-card-icon'), title, el('p', 'st-card-hint', t('error.fatal.hint')), actions, note);
+  body.append(pixelIconSvg('error', 'px-icon st-card-icon'), title, el('p', 'st-card-hint', t('error.fatal.hint')), actions, note);
   root.append(body);
   return root;
 }

@@ -214,3 +214,37 @@ describe('how big the bar is', () => {
     expect(css).toContain('var(--ph-label');
   });
 });
+
+/** Owner, 2026-11-04 (fix pass 3): the bar was the largest thing on screen at the start of a fight. */
+describe('how big the bar is in a fight', () => {
+  for (const [w, h] of [[1920, 1080], [1440, 900], [1280, 720], [1024, 640]] as const) {
+    for (const fight of ['near', 'boss'] as const) {
+      it(`${w}x${h} ${fight}: chips <= 28 px, keycaps only (labels hidden)`, () => {
+        const size = hintSizes(h, fight);
+        expect(size.chip).toBeLessThanOrEqual(28);
+        expect(size.keycap).toBeLessThanOrEqual(size.chip - 6);
+        expect(size.labels).toBe(false);
+        expect(size.pad).toBeLessThanOrEqual(size.chip - 6);
+      });
+    }
+
+    it(`${w}x${h}: calm keeps the large size and the labels`, () => {
+      const calm = hintSizes(h, 'calm');
+      expect(calm).toEqual(hintSizes(h));
+      expect(calm.labels).toBe(true);
+      expect(calm.chip).toBeGreaterThanOrEqual(34);
+    });
+  }
+
+  it('a fight chip is clearly smaller than the calm one at every height', () => {
+    for (const h of [430, 640, 720, 900, 1080, 2160]) expect(hintSizes(h, 'boss').chip).toBeLessThan(hintSizes(h, 'calm').chip);
+  });
+
+  it('the stylesheet hides the labels in a fight and the DOM sets the size variables from the fight', () => {
+    const root = new URL('../../', import.meta.url).pathname;
+    const css = readFileSync(`${root}src/styles/play-hints.css`, 'utf8');
+    expect(css).toMatch(/\.ph\.is-fighting[^{]*\.ph-label/);
+    const dom = readFileSync(`${root}src/ui/play-hints.ts`, 'utf8');
+    expect(dom).toContain('hintSizes(height, ');
+  });
+});

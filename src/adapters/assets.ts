@@ -81,6 +81,24 @@ async function loadDomImage(url: string, priority: Priority): Promise<HTMLImageE
 
 const failedUrls: string[] = [];
 
+let assetReported = false;
+
+/**
+ * Tells the error model (`asset` kind) that an image could not be had, the first time in the session only: the sprite
+ * loader and the town tile loader both call it, so one broken dev server or CDN raises one toast, not one per file.
+ * The technical report still lists every URL (`failedAssets`).
+ */
+export function reportAssetFailure(scope: string): void {
+  if (assetReported) return;
+  assetReported = true;
+  reportError(appError('asset'), scope);
+}
+
+/** Forgets that a failure was reported (tests). */
+export const resetAssetReports = (): void => {
+  assetReported = false;
+};
+
 const loader = createAssetLoader<SheetImage>({
   base: SHEET_BASE,
   maxActive: 8,
@@ -90,7 +108,7 @@ const loader = createAssetLoader<SheetImage>({
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   onFailure: (url) => {
     failedUrls.push(url);
-    reportError(appError('asset'), 'sprite');
+    reportAssetFailure('sprite');
   },
 });
 
@@ -105,6 +123,9 @@ export type { AssetState, Priority };
 
 /** Any image URL (a portrait, a tile) through the same cache; a failure resolves to the placeholder. */
 export const image = (url: string, priority: Priority = 'high'): Promise<SheetImage> => loader.image(url, { priority });
+
+/** The state of an image by URL (a tile, a portrait): `failed` once it gave up and stands in as the placeholder. */
+export const imageState = (url: string): AssetState => loader.stateOfUrl(url);
 
 export const sheet = (key: string, priority: Priority = 'high'): Promise<SheetImage> => loader.sheet(key, { priority });
 

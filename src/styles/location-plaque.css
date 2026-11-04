@@ -1,6 +1,6 @@
 /* The location plaque (src/ui/location-plaque.ts; .agents/DESIGN.md §4 "Location plaque"): a carved relic plate at the top centre.
    Colours come from the --md-* / --relic-* tokens only. It never takes input and sits above the play view, below windows. */
-.lp { position: fixed; z-index: 3; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); width: max-content; max-width: min(34rem, calc(100vw - 32px)); pointer-events: none; font-family: var(--md-font); color: var(--md-text);
+.lp { position: fixed; z-index: 3; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); width: max-content; max-width: var(--lp-max, min(34rem, calc(100vw - 32px))); pointer-events: none; font-family: var(--md-font); color: var(--md-text);
   --lp-frame: var(--md-border); --lp-bevel: var(--md-border-shade); --lp-top: var(--md-window-top); --lp-bottom: var(--md-window-bottom); --lp-name: var(--md-text); --lp-glow: transparent; --lp-accent: var(--md-cursor); }
 .lp[hidden] { display: none; }
 
@@ -20,16 +20,16 @@
 .lp-cap::after { content: ''; position: absolute; left: 10px; top: calc(50% - 2px); width: 4px; height: 4px; background: var(--lp-accent); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
 .lp-cap-r { transform: scaleX(-1); }
 
-.lp-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--lp-bevel); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink); }
-.lp-icon-art { width: 32px; height: 32px; image-rendering: pixelated; shape-rendering: crispEdges; }
+.lp-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--lp-frame-size, 44px); height: var(--lp-frame-size, 44px); box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--lp-bevel); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink); }
+.lp-icon-art { width: var(--lp-icon-size, 32px); height: var(--lp-icon-size, 32px); image-rendering: pixelated; shape-rendering: crispEdges; }
 
 .lp-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 3px; }
-.lp-name { font-size: 22px; line-height: 1.1; letter-spacing: 0.02em; color: var(--lp-name); text-shadow: 0 2px 0 var(--md-ink); overflow-wrap: anywhere; }
+.lp-name { font-size: var(--lp-name-size, 22px); line-height: 1.1; letter-spacing: 0.02em; color: var(--lp-name); text-shadow: 0 2px 0 var(--md-ink); overflow-wrap: anywhere; }
 /* Thin divider ornament: a hairline fading out both ways with a lit diamond in the middle. */
 .lp-rule { position: relative; align-self: stretch; height: 5px; background: linear-gradient(90deg, var(--lp-frame), color-mix(in srgb, var(--lp-frame) 20%, transparent)) left center / 100% 1px no-repeat; }
 .lp-rule::after { content: ''; position: absolute; left: 0; top: 0; width: 5px; height: 5px; background: var(--lp-accent); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.lp-sub { font-size: 16px; line-height: 1.15; color: var(--md-text-dim); }
-.lp-note { font-family: var(--md-text-font); font-size: 14px; line-height: 1.2; color: var(--md-text-dim); max-width: 26rem; }
+.lp-sub { font-size: var(--lp-sub-size, 16px); line-height: 1.15; color: var(--md-text-dim); }
+.lp-note { display: var(--lp-note-display, block); font-family: var(--md-text-font); font-size: var(--lp-note-size, 14px); line-height: 1.2; color: var(--md-text-dim); max-width: 26rem; }
 
 /* Short landscape windows (phones): a smaller name, the same 32 px icon, and the plaque hugs the top edge. */
 @media (max-height: 520px) {

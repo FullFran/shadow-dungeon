@@ -37,3 +37,15 @@ describe('pixel icons', () => {
     ]);
   });
 });
+
+describe('error icon', () => {
+  it('is an original 16x16 broken-rune icon, not the hub padlock', () => {
+    const icon = PIXEL_ICONS.error;
+    expect(icon.rows).toHaveLength(16);
+    for (const row of icon.rows) expect(row).toHaveLength(16);
+    expect(icon.rows).not.toEqual(PIXEL_ICONS.lock.rows);
+    const letters = new Set(icon.rows.join('').replaceAll('.', ''));
+    for (const letter of letters) expect(icon.palette[letter], letter).toBeDefined();
+    expect(pixelIconRects(icon).length).toBeGreaterThan(10);
+  });
+});
