@@ -78,6 +78,8 @@ export interface Account {
   online(): void;
   register(email: string, password: string): Promise<AuthOutcome>;
   logIn(email: string, password: string): Promise<AuthOutcome>;
+  /** Signs in with a Clerk session token (adapters/clerk-auth.ts): exchanged for the game session, then the same sync decision as a password login. */
+  logInClerk(clerkToken: string): Promise<AuthOutcome>;
   /** Mails a link to choose a new password: to the signed-in account's email, else to `email`. The session stays until the password changes. */
   requestPasswordReset(email?: string): Promise<AuthOutcome>;
   /** The open choice, if any. */
@@ -302,7 +304,11 @@ export function createAccount(deps: AccountDeps): Account {
   }
 
   async function signedIn(email: string, password: string): Promise<AuthOutcome> {
-    const login = await deps.api.logIn(email, password);
+    return startSession(await deps.api.logIn(email, password));
+  }
+
+  /** The common tail of every login: the cloud save is read, then the decision table runs. */
+  async function startSession(login: Awaited<ReturnType<AccountApi['logIn']>>): Promise<AuthOutcome> {
     if (!login.ok) return { ok: false, error: errorOf(login.error) };
     const remote = await deps.api.getSave(login.value.token, login.value.userId);
     if (!remote.ok) return { ok: false, error: errorOf(remote.error) };
@@ -432,6 +438,9 @@ export function createAccount(deps: AccountDeps): Account {
     },
     logIn(email, password) {
       return signedIn(email.trim(), password);
+    },
+    async logInClerk(clerkToken) {
+      return startSession(await deps.api.clerkSession(clerkToken));
     },
     async requestPasswordReset(email = '') {
       const clean = session?.email ?? email.trim();

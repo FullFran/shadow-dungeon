@@ -71,6 +71,8 @@ export interface AccountApi {
   /** Mails a link to choose a new password; the server answers the same whether or not the account exists. */
   requestPasswordReset(email: string): Promise<ApiResult<void>>;
   refresh(token: string): Promise<ApiResult<AuthSession>>;
+  /** Trades a Clerk session token for this game's session (`POST /api/sd/clerk/session`, Bearer). 503 (Clerk unset on the server) reads as `server`. */
+  clerkSession(clerkToken: string): Promise<ApiResult<AuthSession>>;
   getSave(token: string, userId: string): Promise<ApiResult<RemoteSave | null>>;
   createSave(token: string, userId: string, data: SaveData): Promise<ApiResult<RemoteSave>>;
   updateSave(token: string, saveId: string, data: SaveData, rev: number): Promise<ApiResult<RemoteSave>>;
@@ -136,12 +138,12 @@ const fail = <T>(kind: Exclude<ApiError['kind'], 'conflict'>): ApiResult<T> => (
  * in the `Authorization` header, as PocketBase expects it (no "Bearer").
  */
 export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) => globalThis.fetch(input, init)): AccountApi {
-  async function call<T>(method: string, path: string, options: { token?: string; body?: unknown }, read: (body: unknown) => T | null): Promise<ApiResult<T>> {
+  async function call<T>(method: string, path: string, options: { token?: string; body?: unknown; bearer?: boolean }, read: (body: unknown) => T | null): Promise<ApiResult<T>> {
     let response: Response;
     try {
       const headers: Record<string, string> = {};
       if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-      if (options.token) headers.Authorization = options.token;
+      if (options.token) headers.Authorization = options.bearer ? `Bearer ${options.token}` : options.token;
       const init: RequestInit = { method, headers };
       if (options.body !== undefined) init.body = JSON.stringify(options.body);
       if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') init.signal = AbortSignal.timeout(TIMEOUT_MS);
@@ -192,6 +194,8 @@ export function httpAccountApi(base: string, fetchFn: FetchFn = (input, init) =>
     },
     requestPasswordReset: (email) => done(call('POST', '/api/collections/users/request-password-reset', { body: { email } }, () => true as const)),
     refresh: (token) => call('POST', '/api/collections/users/auth-refresh', { token }, authSession),
+    // A Clerk JWT goes as a Bearer token (PocketBase's own tokens do not); the answer is the auth-with-password shape.
+    clerkSession: async (clerkToken) => (clerkToken ? call('POST', '/api/sd/clerk/session', { token: clerkToken, bearer: true }, authSession) : fail('unauthorized')),
     async getSave(token, userId) {
       if (!RECORD_ID.test(userId)) return fail('rejected');
       const query = new URLSearchParams({ filter: `(user='${userId}')`, perPage: '1' });
