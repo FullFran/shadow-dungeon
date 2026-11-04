@@ -1519,6 +1519,7 @@
   "tutor.preview.play": "Ver el movimiento",
   "tutor.preview.label": "Vista previa de {move}",
   "tutor.preview.none": "Este movimiento no se puede mostrar aquí.",
+  "loadout.preview.zoom": "Ampliar la vista previa",
   "tutor.title": "Maestro de movimientos",
   "tutor.text": "Smeargle enseña los movimientos que tu Pokémon aprende en su tierra natal, y pule los que ya sabe.",
   "tutor.hint": "Elige un movimiento y pulsa Enter para aprenderlo. ◀ ▶ cambian de Pokémon y de filtro.",

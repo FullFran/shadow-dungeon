@@ -9,7 +9,7 @@ import type { SpeciesId } from '../data/species';
 import { t } from '../i18n';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { h } from '../ui/window';
-import { createFrameLoop, createPreviewSim, PREVIEW, type FrameLoop, type PreviewSim } from './move-preview';
+import { createFrameLoop, createPreviewSim, frameStage, previewExtent, PREVIEW, type Box, type FrameLoop, type PreviewSim } from './move-preview';
 
 /**
  * The preview's canvas: the game's renderer on the preview sim (move-preview.ts), one at a time.
@@ -28,11 +28,10 @@ export interface MovePreview {
   dispose(): void;
 }
 
-const SCALE = 2;
-/** The camera's height range in world pixels: the canvas follows its box, within what the room can show. */
-const MIN_VIEW_H = 84;
-const MAX_VIEW_H = 190;
-const viewHeightFor = (aspect: number): number => Math.round(Math.min(MAX_VIEW_H, Math.max(MIN_VIEW_H, PREVIEW.view.width / aspect)));
+/** Backing store before the stage has a size (first layout). */
+const FALLBACK_PX = { width: 352, height: 220 };
+/** The stage never renders more than this many device pixels a side (a huge window must not cost a huge canvas). */
+const MAX_PX = 1400;
 /** Frames kept for the cost readout. */
 const COST_FRAMES = 240;
 
@@ -40,15 +39,27 @@ const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMe
 
 export function createMovePreview(options: { sheets?: Promise<SheetStore> }): MovePreview {
   const canvas = h('canvas', { className: 'tu-preview-canvas' });
-  let view: { x: number; y: number; width: number; height: number } = { ...PREVIEW.view };
-  const fit = (aspect: number): void => {
-    const height = viewHeightFor(aspect);
-    if (height === view.height) return;
-    view = { x: PREVIEW.view.x, y: Math.round(PREVIEW.centre.y - height / 2), width: PREVIEW.view.width, height };
-    canvas.height = height * SCALE;
+  // The camera frames the whole cast (previewExtent) for the stage's own aspect; the backing store matches the
+  // stage in device pixels and `pixelScale` is the (fractional) zoom, so nothing is cropped and nothing is blurred.
+  let view: Box = { ...PREVIEW.view };
+  let pixelScale = 2;
+  let extent: Box | null = null;
+  let aspect = FALLBACK_PX.width / FALLBACK_PX.height;
+  const reframe = (): void => {
+    view = frameStage(extent ?? PREVIEW.view, aspect);
+    pixelScale = canvas.width / view.width;
   };
-  canvas.width = PREVIEW.view.width * SCALE;
-  canvas.height = PREVIEW.view.height * SCALE;
+  const fit = (cssWidth: number, cssHeight: number): void => {
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
+    const width = Math.max(16, Math.min(MAX_PX, Math.round(cssWidth * dpr)));
+    const height = Math.max(16, Math.min(MAX_PX, Math.round(cssHeight * dpr)));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    aspect = width / height;
+    reframe();
+  };
+  canvas.width = FALLBACK_PX.width;
+  canvas.height = FALLBACK_PX.height;
   canvas.setAttribute('role', 'img');
   const note = h('p', { className: 'tu-preview-note' });
   const play = h('button', { className: 'tu-preview-play', type: 'button' }, [pixelIconSvg('play', 'px-icon'), h('span', { textContent: t('tutor.preview.play') })]);
@@ -79,7 +90,7 @@ export function createMovePreview(options: { sheets?: Promise<SheetStore> }): Mo
       alpha: sim.alpha,
       juice,
       view,
-      pixelScale: SCALE,
+      pixelScale,
       floor: 1,
       exit: null,
       exitOpen: false,
@@ -131,7 +142,7 @@ export function createMovePreview(options: { sheets?: Promise<SheetStore> }): Mo
   const resizer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
     const box = element.getBoundingClientRect();
     if (box.width > 0 && box.height > 0) {
-      fit(box.width / box.height);
+      fit(box.width, box.height);
       draw();
     }
   }) : null;
@@ -172,6 +183,8 @@ export function createMovePreview(options: { sheets?: Promise<SheetStore> }): Mo
     element,
     show(species, move, rank) {
       sim = createPreviewSim(species, move, rank);
+      extent = sim ? previewExtent(species, move, rank) : null;
+      reframe();
       juice = initialJuice();
       director?.reset();
       if (sim) director?.prepare(sim.world.player.loadout);

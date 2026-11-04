@@ -38,7 +38,7 @@
 .lm-pips i.is-on { background: var(--md-cursor); border-color: var(--md-cursor); }
 
 /* Body: the grid of the open slot's moves beside the sheet. */
-.lm-body { display: grid; grid-template-columns: minmax(0, 1fr) 24rem; gap: 20px; min-height: 0; flex: 1; }
+.lm-body { display: grid; grid-template-columns: minmax(0, 1fr) 27rem; gap: 18px; min-height: 0; flex: 1; }
 .lm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 72px; gap: 12px; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 8px 4px 2px; scrollbar-color: var(--md-border-shade) transparent; }
 .lm-window .lm-empty { grid-column: 1 / -1; margin: 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
 .lm-card { all: unset; box-sizing: border-box; height: 72px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 12px; cursor: pointer; overflow: hidden;
@@ -53,33 +53,35 @@
 .lm-back:focus-visible, .lm-slot:focus-visible, .lm-card:focus-visible, .lm-seg:focus-visible, .lm-switch:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); outline: none; }
 
 /* Sheet: preview, name, three numbers, what it does, the matchup, one action. */
-.lm-sheet { --lm-edge: var(--relic-gold-deep); display: flex; flex-direction: column; gap: 8px; min-height: 0; padding: 12px 14px 14px; box-sizing: border-box; overflow: hidden;
+.lm-sheet { --lm-edge: var(--relic-gold-deep); display: flex; flex-direction: column; gap: 6px; min-height: 0; padding: 10px 12px 12px; box-sizing: border-box; overflow: hidden;
   background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-top: 4px solid var(--lm-edge); border-radius: 6px; }
-.lm-sheet .tu-preview { position: relative; flex: 1 1 0; min-height: 70px; display: grid; place-items: center; overflow: hidden; background: #050407; border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
+.lm-sheet .tu-preview { position: relative; flex: 1 1 0; min-height: 150px; display: grid; place-items: center; overflow: hidden; background: #050407; border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
 .lm-sheet .tu-preview-canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; display: block; }
 .lm-sheet .tu-preview.is-static .tu-preview-canvas { display: none; }
+.lm-sheet .tu-preview.is-zoomable { cursor: zoom-in; }
+.lm-sheet .tu-preview.is-zoomable:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); outline: none; }
 .lm-window .lm-sheet .tu-preview-note { display: none; margin: 0; padding: 0 16px; text-align: center; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
 .lm-sheet .tu-preview.is-static .tu-preview-note { display: block; }
 .lm-sheet .tu-preview-play { all: unset; box-sizing: border-box; position: absolute; inset: auto 8px 8px auto; display: none; align-items: center; gap: 6px; height: 36px; padding: 0 12px; cursor: pointer; font-size: 18px; color: #ffe2b0; background: rgba(5, 4, 7, 0.85); border: 2px solid var(--md-cursor); border-radius: 6px; }
 .lm-sheet .tu-preview-play svg.px-icon { width: 20px; height: 20px; }
 .lm-sheet .tu-preview.is-still .tu-preview-play { display: inline-flex; }
 .lm-sheet .tu-preview-play:focus-visible { box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); outline: none; }
-.lm-sheet-head { flex: none; display: grid; gap: 6px; }
-.lm-name { margin: 0; font-size: 33px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lm-badges { display: flex; align-items: center; gap: 6px; height: 26px; overflow: hidden; }
+.lm-sheet-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lm-name { margin: 0; min-width: 0; font-size: 28px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lm-badges { flex: none; display: flex; align-items: center; gap: 6px; height: 26px; overflow: hidden; }
 .lm-badges .type-badge, .lm-badges .tier-badge { flex: none; font-size: 14px; line-height: 1.5; padding: 0 7px; }
 .lm-kind { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); white-space: nowrap; }
 .lm-kind svg.px-icon { width: 20px; height: 20px; }
 .lm-badges .lm-pips { margin-left: auto; }
 .lm-stats { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.lm-stat { display: grid; align-content: center; justify-items: center; gap: 4px; height: 56px; padding: 0 4px; min-width: 0; background: rgba(5, 4, 7, 0.55); border-radius: 4px; }
-.lm-stat-value { font-size: 28px; line-height: 1; color: var(--md-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.lm-stat-label { font-family: var(--md-text-font); font-size: 13px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lm-stat { display: grid; align-content: center; justify-items: center; gap: 2px; height: 42px; padding: 0 4px; min-width: 0; background: rgba(5, 4, 7, 0.55); border-radius: 4px; }
+.lm-stat-value { font-size: 22px; line-height: 1; color: var(--md-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lm-stat-label { font-family: var(--md-text-font); font-size: 12px; line-height: 1; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .lm-window .lm-desc, .lm-window .lm-note { margin: 0; font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; color: var(--md-text); }
-.lm-desc { flex: none; height: 3.9em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.lm-window .lm-note { flex: none; height: 2.6em; font-size: 13px; color: var(--md-text-dim); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lm-desc { flex: none; height: 2.6em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lm-window .lm-note { flex: none; height: 1.3em; font-size: 13px; color: var(--md-text-dim); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
 /* The sheet's action: a gold slab (Comenzar below is the screen's only ember). */
-.lm-act { all: unset; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 48px; padding: 0 10px; cursor: pointer; font-size: 22px; letter-spacing: 0.04em; color: var(--md-text); white-space: nowrap;
+.lm-act { all: unset; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 44px; padding: 0 10px; cursor: pointer; font-size: 22px; letter-spacing: 0.04em; color: var(--md-text); white-space: nowrap;
   background: linear-gradient(180deg, #2c2218, #15100c); border: 2px solid var(--md-border); border-radius: 6px; }
 .lm-act[hidden] { display: none; }
 .lm-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -120,11 +122,27 @@
 .lm-window .lm-keys { margin: 0; flex: none; font-family: var(--md-text-font); font-size: 12px; line-height: 1; color: var(--md-text-dim); }
 
 @media (max-width: 1100px) {
-  .lm-body { grid-template-columns: minmax(0, 1fr) 21rem; gap: 14px; }
+  .lm-body { grid-template-columns: minmax(0, 1fr) 26rem; gap: 14px; }
   .lm-head { grid-template-columns: 64px auto minmax(0, 1fr) minmax(0, 16rem); }
   .lm-card { padding: 0 10px; } .lm-card-name { font-size: 18px; } .lm-slot-move { font-size: 18px; }
-  .lm-sheet .tu-preview { min-height: 56px; } .lm-desc { height: 2.6em; -webkit-line-clamp: 2; }
+  .lm-sheet .tu-preview { min-height: 130px; }
   .lm-field-label { display: none; } .lm-seg { padding: 0 9px; font-size: 16px; }
+}
+
+/* Desktop: the head, slot tiles and setup row stay slim so the sheet keeps a tall preview stage (the move preview must read whole). */
+@media (min-height: 561px) and (min-width: 901px) {
+  .lm-window > .md-window-body { gap: 6px; }
+  .lm-head { height: 40px; grid-template-columns: 40px auto minmax(0, 1fr) minmax(0, 20rem); } .lm-head-art { width: 40px; height: 40px; }
+  .lm-head-types { flex-direction: row; }
+  .lm-window .lm-ability-label { display: none; }
+  .lm-window .lm-ability-text { margin: 0; font-size: 13px; line-height: 1.2; }
+  .lm-window .lm-objective { font-size: 12px; -webkit-line-clamp: 2; }
+  .lm-slot { height: 48px; gap: 3px; } .lm-slot-move { font-size: 19px; }
+  .lm-setup { height: 56px; padding-top: 6px; }
+}
+/* Short desktop windows (1366x768, 1280x720): the side notes give their room to the stage. */
+@media (max-height: 820px) and (min-height: 561px) and (min-width: 901px) {
+  .lm-window .lm-hint, .lm-window .lm-keys, .lm-window .lm-note { display: none; }
 }
 
 @media (max-height: 560px), (max-width: 900px) {
@@ -135,12 +153,14 @@
   .lm-window .lm-objective, .lm-window .lm-ability-label { display: none; }
   .lm-window .lm-ability-text { margin: 0; font-size: 12px; -webkit-line-clamp: 2; line-height: 1.2; } .lm-ability-text strong { font-size: 14px; }
   .lm-slots { gap: 6px; } .lm-slot { height: 42px; gap: 2px; padding: 0 8px; } .lm-slot-kind { height: 14px; font-size: 11px; } .lm-slot-kind svg.px-icon { width: 14px; height: 14px; } .lm-slot-kind .lm-pips { display: none; } .lm-slot-move { font-size: 15px; }
-  .lm-body { grid-template-columns: minmax(0, 1fr) 17rem; gap: 8px; }
+  .lm-body { grid-template-columns: minmax(0, 1fr) 20rem; gap: 8px; }
   .lm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 46px; gap: 6px; }
   .lm-card { height: 46px; gap: 3px; padding: 0 8px; } .lm-card-name { font-size: 15px; } .lm-card-row { height: 14px; } .lm-equipped { font-size: 11px; } .lm-card-row .tier-badge { display: none; }
-  .lm-sheet { gap: 4px; padding: 6px 8px 8px; } .lm-sheet .tu-preview { min-height: 36px; }
+  .lm-sheet { gap: 4px; padding: 6px 8px 8px; } .lm-sheet .tu-preview { min-height: 84px; }
   .lm-sheet-head { display: flex; align-items: center; gap: 6px; } .lm-name { flex: 1; min-width: 0; font-size: 20px; } .lm-badges { flex: none; height: 20px; } .lm-badges .type-badge { font-size: 11px; } .lm-badges .tier-badge, .lm-kind, .lm-badges .lm-pips { display: none; }
-  .lm-stat { height: 32px; gap: 2px; } .lm-stat-value { font-size: 16px; } .lm-stat-label { font-size: 10px; }
+  .lm-stats { display: none; }
+  /* The sheet's stage needs the height: the ability line (the title already names the Pokémon) and the matchup note go; a press on the stage opens it enlarged. */
+  .lm-head { display: none; } .lm-window .lm-note { display: none; }
   .lm-desc { display: none; } .lm-window .lm-note { height: 1.3em; -webkit-line-clamp: 1; font-size: 11px; }
   .lm-act { height: 32px; font-size: 14px; gap: 6px; } .lm-act svg.px-icon { width: 18px; height: 18px; }
   .lm-setup { grid-template-columns: auto minmax(0, 1fr) auto; height: 40px; padding-top: 4px; gap: 10px; }
