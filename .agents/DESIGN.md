@@ -75,6 +75,14 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   (Von Restorff). Keys: Up/Down walk headers and open rows, Left/Right fold/unfold (Left on a row climbs to its header),
   Enter/Space on a header toggles. Expand 140 ms (`grid-template-rows` 0fr to 1fr), none under `prefers-reduced-motion`.
   Category tabs are dropped when the groups are the filter (two controls for one job is clutter).
+- **Hint bar** (`.ph`, `src/ui/play-hints.ts`, `src/ui/play-hints-model.ts`, `src/styles/play-hints.css`): relic chips (slab fill,
+  slab-edge frame, 4 px radius, hard drop) along the bottom edge, in the free stretch between the message log and the move slots
+  so it never covers the player or HUD. Each chip is the glyph of the last device used (square pixel keycaps for the keyboard,
+  the pad glyphs of the controller help for xbox/playstation) plus a 16 px label; at most six. Only what is available now (the
+  interact chip appears with something in range, gilt frame and ember glow, and stays while it is). Touch hides it. Shows 5 s
+  after the context changes, then fades 400 ms (none under `prefers-reduced-motion`); labels step back (move and attack first,
+  then all) when the stretch is narrow. Fullscreen toggle button (pixel icon) at its end, always faint; F11 and Alt+Enter too.
+  Setting: Settings, Accessibility, "Ayudas de control". Bindings come from `src/adapters/bindings.ts`.
 - **Sprite fit rule** (`src/ui/sprite-fit.ts`, `src/styles/sprite-fit.css`): a Pokémon is never cropped. Its box has a
   fixed size and the class `sprite-box`; the canvas fills the box (`object-fit: contain`, bottom-centred) and, inside a
   `sprite-box`, is cropped to the pixels the idle animation really covers (`portrait()` in `src/app/loadout.ts`), so the
@@ -82,6 +90,12 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   `margin-bottom` or a fixed `height: Npx !important` on a sprite canvas, scaling a whole stage with `transform`.
   Every box is declared in `SPRITE_BOXES`; `tests/ui/sprite-fit.test.ts` fits every playable species (base, shiny,
   female sheets) and every shrine boss in every box and checks the stylesheet agrees.
+
+Play view (town and every dungeon, owner 2026-11-04): full-bleed. The canvas covers the viewport, no margins and no page chrome;
+the logical view follows the window aspect (`src/adapters/viewport.ts`: integer pixel scale on desktop, 320 world px on the short
+side on touch), so a wide window shows more map, never a stretched one. Beyond a small map the dungeon's darkest wall colour
+fills. The view is top-down: no sky, horizon or sun is drawn (the eclipse survives only as a tint). HUD panels and the touch
+layer anchor to the real viewport edges. The legal notice is not drawn over play.
 
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
 
@@ -119,3 +133,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   inside, detail, foot); a tile holds its own date, it never spills into the row above or below.
 - 2026-11-04 (owner: "Sigue pareciéndome demasiado saturado"): the Maestro becomes an accordion list (§4): one column,
   four slot groups, calm rows, scroll inside. Supersedes the 3-column move card grid and the slot tabs of 2026-11-03.
+- 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).
