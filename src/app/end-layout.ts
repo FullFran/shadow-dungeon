@@ -12,6 +12,8 @@ export const MAX_TILES = 6;
 export type { EndIconId };
 
 export interface EndRewards {
+  /** The card title («Pokémonedas»). */
+  title: string;
   /** The headline earning (counts up). */
   hero: EndLine | null;
   /** The new balance. */
@@ -44,7 +46,7 @@ export function endLayout(view: EndView): EndLayout {
     if (TILE_CARDS.has(card.id)) {
       for (const line of card.lines) (line.wide ? details : figures).push(line);
     } else if (REWARD_CARDS.has(card.id)) {
-      reward ??= { hero: null, balance: null, rows: [] };
+      reward ??= { title: card.title, hero: null, balance: null, rows: [] };
       for (const line of card.lines) {
         if (line.tone === 'coin') reward.hero = line;
         else if (line.tone === 'balance') reward.balance = line;
@@ -53,4 +55,15 @@ export function endLayout(view: EndView): EndLayout {
     } else cards.push(card);
   }
   return { tiles: figures.slice(0, MAX_TILES), more: figures.slice(MAX_TILES), details, reward, cards, seal: view.seal ?? null };
+}
+
+/**
+ * How many of the twelve grid columns each tile spans so the grid has no holes: rows of three (four columns each), a row of
+ * two (six each), a lone tile full width; four tiles make one row of four.
+ */
+export function tileSpans(count: number): number[] {
+  if (count === 4) return [3, 3, 3, 3];
+  const spans: number[] = [];
+  for (let left = count; left > 0; left -= 3) spans.push(...Array<number>(Math.min(3, left)).fill(left >= 3 ? 4 : 12 / left));
+  return spans;
 }

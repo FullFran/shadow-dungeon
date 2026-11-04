@@ -1,60 +1,231 @@
-/* The end screen of a run, a trial or the Sima (src/app/end-screen.ts). .agents/DESIGN.md §4: a dialog over the frozen game,
-   cards that group the figures, one ember action, fixed geometry, colours only from tokens. */
+/* The end screen of a run, a trial or the Sima (src/app/end-screen.ts). .agents/DESIGN.md §4 "End screen" and §5: a result
+   ceremony in a dialog over the dimmed frozen game, big title with a gilt rule, the creature on a carved pedestal, stat tiles,
+   a rewards row, big relic buttons, one ember action. Fixed geometry, no page scroll, colours only from tokens. */
 .rs-veil { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
-  background: color-mix(in srgb, var(--md-ink) 74%, transparent); }
+  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--md-ink) 58%, transparent), color-mix(in srgb, var(--md-ink) 82%, transparent) 90%);
+  animation: rs-veil-in 150ms ease-out both; }
 /* The game's last frame stays under the veil: no pointer, no crosshair. */
 canvas.game.is-frozen { pointer-events: none; cursor: default; }
 
-#app .rs-window.result { display: flex; flex-direction: column; width: min(50rem, calc(100vw - 24px)); min-width: 0; max-height: calc(100dvh - 32px); padding: 18px 22px 16px; box-sizing: border-box; text-align: left; }
-#app .rs-window.result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 5px var(--md-cursor), 0 0 34px color-mix(in srgb, var(--md-cursor) 40%, transparent); }
-#app .rs-window.result.defeat, #app .rs-window.result.cut { border-color: var(--relic-blood); }
-#app .rs-window > .md-window-body { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; overflow: hidden !important; }
+#app .rs-window.result { --rs-art-h: 240px; display: flex; flex-direction: column; width: min(1100px, 92vw); min-width: 0; min-height: min(78dvh, 880px); max-height: min(88dvh, 940px); padding: 20px 28px 18px; box-sizing: border-box; text-align: left; }
+#app .rs-window.result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 5px var(--md-cursor), 0 0 60px color-mix(in srgb, var(--md-cursor) 34%, transparent); }
+#app .rs-window.result.eclipse { border-color: var(--md-eclipse-glow); box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 5px var(--md-eclipse), 0 0 60px color-mix(in srgb, var(--md-eclipse) 38%, transparent); }
+#app .rs-window.result.defeat, #app .rs-window.result.cut { border-color: var(--relic-blood); box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 5px var(--relic-blood); }
+#app .rs-window > .md-window-body { display: flex; flex-direction: column; gap: 14px; min-height: 0; flex: 1; overflow: hidden !important; }
 
-.rs-head { flex: none; display: flex; align-items: center; gap: 18px; }
-/* Sprite box (.agents/DESIGN.md §4): the whole frame fits, feet on the bottom edge. */
-.rs-art { flex: none; width: 160px; height: 112px; }
-.rs-head-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.rs-title { margin: 0; font-size: 34px; line-height: 1.05; letter-spacing: 0.06em; color: var(--md-text); text-shadow: 0 3px 0 var(--md-ink); overflow-wrap: anywhere; }
-.rs-window.victory .rs-title { color: var(--md-cursor); text-shadow: 0 0 16px color-mix(in srgb, var(--md-cursor) 55%, transparent), 0 3px 0 var(--md-ink); }
-.rs-window.defeat .rs-title, .rs-window.cut .rs-title { color: var(--md-eclipse); }
-.rs-sub { margin: 0; font-family: var(--md-text-font); font-size: 18px; line-height: 1.25; color: var(--md-text); }
-.rs-note { margin: 0; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
+/* Head: the outcome in a huge title, a gilt rule with a lit gem, the line under it. */
+.rs-head { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: rs-rise 360ms ease-out var(--at, 0ms) both; }
+#app .rs-window .rs-title { margin: 0; max-width: 100%; font-size: clamp(30px, min(5.4vw, 8.4vh), 68px); line-height: 1.02; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 400; color: var(--md-text); text-shadow: 0 4px 0 var(--md-ink); overflow-wrap: anywhere; }
+.rs-window.victory .rs-title { color: var(--md-cursor); text-shadow: 0 0 26px color-mix(in srgb, var(--md-cursor) 60%, transparent), 0 4px 0 var(--md-ink); }
+.rs-window.defeat .rs-title, .rs-window.cut .rs-title { color: var(--md-eclipse); text-shadow: 0 0 18px color-mix(in srgb, var(--md-eclipse) 40%, transparent), 0 4px 0 var(--md-ink); }
+.rs-window.eclipse .rs-title { color: var(--md-eclipse-glow); text-shadow: 0 0 30px color-mix(in srgb, var(--md-eclipse) 70%, transparent), 0 4px 0 var(--md-ink); }
+#app .rs-window.has-cards .rs-title { font-size: clamp(28px, min(5vw, 6.4vh), 58px); }
+.rs-window.has-cards .rs-sub { font-size: clamp(15px, 2vh, 20px); }
+.rs-rule { display: flex; align-items: center; gap: 10px; width: min(620px, 78%); }
+.rs-rule-line { flex: 1; height: 2px; background: linear-gradient(90deg, transparent, var(--md-border) 70%); }
+.rs-rule-line:last-child { background: linear-gradient(270deg, transparent, var(--md-border) 70%); }
+.rs-rule-gem { flex: none; width: 10px; height: 10px; transform: rotate(45deg); background: var(--md-cursor); border: 2px solid var(--md-ink); box-shadow: 0 0 0 2px var(--md-border), 0 0 12px var(--md-cursor); }
+.rs-window.defeat .rs-rule-gem, .rs-window.cut .rs-rule-gem { background: var(--md-eclipse); box-shadow: 0 0 0 2px var(--relic-blood); }
+.rs-window.eclipse .rs-rule-gem { background: var(--md-eclipse-glow); box-shadow: 0 0 0 2px var(--md-eclipse), 0 0 14px var(--md-eclipse); }
+.rs-sub { margin: 0; max-width: 62ch; font-family: var(--md-text-font); font-size: clamp(16px, 2.2vh, 22px); line-height: 1.3; color: var(--md-text); }
+.rs-head .rs-note { margin: 0; max-width: 70ch; font-family: var(--md-text-font); font-size: 15px; line-height: 1.35; color: var(--md-text-dim); }
 
-.rs-cards { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; align-content: start; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
-.rs-cards-1 { grid-template-columns: minmax(0, 1fr); }
-.rs-cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.rs-cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.rs-card { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
-.rs-card-title { margin: 0 0 3px; font-size: 14px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--md-cursor); }
-.rs-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; }
-.rs-label { flex: none; color: var(--md-text-dim); }
-.rs-figure { min-width: 0; display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; text-align: right; }
-.rs-value { font-weight: 700; color: var(--md-text); overflow-wrap: anywhere; }
-.rs-coin { width: 16px; height: 16px; flex: none; align-self: center; }
-.rs-line.is-coin .rs-value { color: var(--md-cursor); }
-.rs-line.is-best .rs-value { font-size: 22px; color: var(--md-cursor); }
-.rs-badge { padding: 0 7px; border-radius: 4px; font-size: 12px; line-height: 1.7; font-weight: 700; color: var(--md-ink); background: var(--md-cursor); }
-.rs-card .rs-note { font-size: 13px; }
+/* Stage: the creature on its pedestal, then the board of figures. */
+.rs-stage { flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.5fr); gap: 22px; align-items: stretch; }
+.rs-hero { position: relative; min-width: 0; min-height: calc(var(--rs-art-h) + 44px); animation: rs-appear 420ms ease-out var(--at, 0ms) both; }
+.rs-cone { position: absolute; inset: 0 6% 36px; clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, color-mix(in srgb, var(--relic-ember) 34%, transparent), transparent 88%); }
+.rs-window.defeat .rs-cone, .rs-window.cut .rs-cone { background: linear-gradient(180deg, color-mix(in srgb, var(--md-text-dim) 14%, transparent), transparent 80%); }
+.rs-window.eclipse .rs-cone { background: linear-gradient(180deg, color-mix(in srgb, var(--md-eclipse) 30%, transparent), transparent 88%); }
+.rs-pedestal { position: absolute; left: 14%; right: 14%; bottom: 0; height: 60px; }
+.rs-pedestal::before { content: ''; position: absolute; left: -5%; right: -5%; bottom: 0; height: 16px; background: linear-gradient(180deg, var(--relic-slab-edge), var(--relic-slab)); border: 2px solid var(--relic-gold-deep); box-shadow: 0 0 0 2px var(--md-ink); }
+.rs-step { position: absolute; left: 0; right: 0; top: 14px; bottom: 14px; background: linear-gradient(180deg, var(--relic-slab-edge), var(--relic-slab)); border: 2px solid var(--relic-gold-deep); box-shadow: 0 0 0 2px var(--md-ink), inset 0 -10px 0 color-mix(in srgb, var(--md-ink) 55%, transparent); }
+.rs-top { position: absolute; left: 6%; right: 6%; top: 0; height: 26px; z-index: 1; clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); background: linear-gradient(180deg, var(--md-border-shade), var(--relic-slab-edge)); }
+.rs-window.victory .rs-top { background: linear-gradient(180deg, color-mix(in srgb, var(--relic-ember) 55%, var(--md-border-shade)), var(--relic-slab-edge)); }
+.rs-art { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: min(100%, 320px); height: 240px; z-index: 2; }
+.rs-window.defeat .rs-art canvas, .rs-window.cut .rs-art canvas { filter: grayscale(0.75) brightness(0.8); }
+.rs-window.victory .rs-art canvas { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--relic-ember) 55%, transparent)); }
+.rs-window.eclipse .rs-art canvas { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--md-eclipse) 55%, transparent)); }
 
-.rs-actions.md-list { flex: none; flex-wrap: nowrap; justify-content: center; gap: 12px; }
-.rs-actions .md-item { min-height: 48px; padding: 0 26px; justify-content: center; border-radius: 6px; font-size: 20px; letter-spacing: 0.06em; text-align: center; border: 2px solid var(--relic-gold-deep); background: var(--relic-slab); color: var(--md-text-dim); box-shadow: 0 0 0 2px var(--md-ink); }
+/* Embers rise on a win, ash falls on a loss. */
+.rs-particles { position: absolute; inset: 0 0 30px; overflow: hidden; pointer-events: none; z-index: 3; }
+.rs-particle { position: absolute; left: var(--x); bottom: 0; width: var(--s); height: var(--s); background: var(--relic-ember); box-shadow: 0 0 6px var(--relic-ember); opacity: 0; animation: rs-ember var(--t) linear var(--d) infinite; }
+.rs-window.defeat .rs-particle, .rs-window.cut .rs-particle { bottom: auto; top: 0; background: var(--md-text-dim); box-shadow: none; animation-name: rs-ash; }
+.rs-window.eclipse .rs-particle { background: var(--md-eclipse-glow); box-shadow: 0 0 6px var(--md-eclipse); }
+
+/* The seal of a new best slams onto the hero. */
+.rs-seal { position: absolute; top: 4px; right: -4px; z-index: 4; display: flex; align-items: center; gap: 8px; max-width: 78%; padding: 8px 14px; transform: rotate(-8deg); background: var(--relic-blood); color: var(--md-text); border: 3px double var(--md-cursor); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink), 0 0 26px color-mix(in srgb, var(--md-cursor) 45%, transparent); animation: rs-slam 300ms cubic-bezier(0.2, 1.5, 0.4, 1) var(--at, 0ms) both; }
+.rs-seal-icon { flex: none; width: 32px; height: 32px; image-rendering: pixelated; }
+.rs-seal-text { font-size: 20px; line-height: 1.05; letter-spacing: 0.08em; text-transform: uppercase; color: var(--md-cursor); }
+
+/* The board: tiles, details, rewards, cards. */
+.rs-board { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.rs-tiles { --rows: 2; flex: 1 1 auto; max-height: calc(var(--rows) * 150px + (var(--rows) - 1) * 10px); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(96px, 1fr); gap: 10px; }
+.rs-tile, .rs-detail, .rs-rewards, .rs-card { background: linear-gradient(180deg, color-mix(in srgb, var(--relic-slab-edge) 60%, var(--relic-slab)), var(--relic-slab)); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); animation: rs-rise 280ms ease-out var(--at, 0ms) both; }
+.rs-tile { container-type: inline-size; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 10px 14px 12px; }
+.rs-tile-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rs-ico { flex: none; width: 36px; height: 36px; image-rendering: pixelated; }
+.rs-tile-label { min-width: 0; overflow-wrap: anywhere; font-family: var(--md-text-font); font-size: 15px; line-height: 1.2; color: var(--md-text-dim); }
+.rs-tile-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.rs-tile-value { font-size: min(clamp(26px, 3.6vh, 38px), 24cqw); line-height: 1.05; color: var(--md-text); white-space: nowrap; }
+.rs-tile-value.is-long { font-size: min(clamp(20px, 2.8vh, 28px), 15cqw); }
+.rs-tile-value.is-mark { font-family: var(--md-text-font); font-weight: 700; color: var(--md-good); }
+.rs-tile.is-best { border-color: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink), 0 0 22px color-mix(in srgb, var(--md-cursor) 38%, transparent); }
+.rs-tile.is-best .rs-tile-value { color: var(--md-cursor); }
+/* The time against the previous best: +16.7 s red when slower, −16.7 s green when faster. */
+.rs-delta { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 4px; border: 2px solid currentColor; font-size: 17px; line-height: 1.3; background: var(--md-ink); }
+.rs-delta::before { content: ''; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; }
+.rs-delta.is-slower { color: var(--md-danger); }
+.rs-delta.is-slower::before { border-bottom: 7px solid currentColor; }
+.rs-delta.is-faster { color: var(--md-good); }
+.rs-delta.is-faster::before { border-top: 7px solid currentColor; }
+.rs-delta.is-even { color: var(--md-text-dim); }
+.rs-delta.is-even::before { display: none; }
+
+.rs-details { flex: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.rs-detail { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 12px; }
+.rs-detail .rs-ico { width: 28px; height: 28px; }
+.rs-detail-label { flex: none; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+.rs-detail-value { min-width: 0; margin-left: auto; font-family: var(--md-text-font); font-size: 16px; font-weight: 700; line-height: 1.25; text-align: right; color: var(--md-text); overflow-wrap: anywhere; }
+
+.rs-rewards { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 10px; }
+.rs-window .rs-section-title { margin: 0; font-size: 14px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--md-cursor); }
+.rs-reward-body { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 22px; }
+.rs-reward-main { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.rs-reward-hero { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rs-ico-big { width: 48px; height: 48px; image-rendering: pixelated; }
+.rs-ico-small { width: 20px; height: 20px; flex: none; image-rendering: pixelated; }
+.rs-reward-text { display: flex; flex-direction: column; min-width: 0; }
+.rs-reward-label { font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+.rs-reward-value { font-size: clamp(30px, 5vh, 46px); line-height: 1; color: var(--md-cursor); text-shadow: 0 0 14px color-mix(in srgb, var(--md-cursor) 40%, transparent), 0 3px 0 var(--md-ink); font-variant-numeric: tabular-nums; }
+.rs-reward-balance { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 4px; border: 2px solid var(--relic-gold-deep); background: var(--md-ink); }
+.rs-reward-value-small { font-size: 20px; color: var(--md-text); }
+.rs-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 8px; align-content: center; }
+.rs-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 10px; border-radius: 4px; border: 2px solid var(--md-border-shade); background: var(--md-ink); font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; }
+.rs-chip-label { color: var(--md-text-dim); }
+.rs-chip-value { font-weight: 700; color: var(--md-text); }
+
+/* The Sima gives the board most of the width (the creature is the narrow column). */
+.rs-stage.has-cards { grid-template-columns: minmax(0, 0.55fr) minmax(0, 2fr); }
+/* With cards (the Sima) the board is a grid: figures on the left, the score and events beside them (scrolling inside), the rewards below. */
+.rs-board.has-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: start; grid-template-areas: 'tiles cards' 'details cards' 'rewards rewards'; }
+.rs-board.has-cards > .rs-tiles { grid-area: tiles; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; max-height: none; }
+.rs-board.has-cards > .rs-tiles > .rs-tile { grid-column: span 1 !important; }
+.rs-board.has-cards > .rs-details { grid-area: details; grid-template-columns: minmax(0, 1fr); align-self: start; }
+.rs-board.has-cards > .rs-cards { grid-area: cards; contain: size; min-height: 0; align-self: stretch; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.rs-board.has-cards > .rs-rewards { grid-area: rewards; }
+/* The Sima's score and events: cards under the figures; when they do not fit, the board scrolls inside (the only place that may). */
+.rs-cards { flex: none; display: flex; flex-direction: column; gap: 10px; }
+.rs-card { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; }
+.rs-row { display: flex; align-items: center; gap: 8px; font-family: var(--md-text-font); font-size: 16px; line-height: 1.3; }
+.rs-row-label { color: var(--md-text-dim); }
+.rs-row-value { margin-left: auto; font-weight: 700; color: var(--md-text); text-align: right; overflow-wrap: anywhere; }
+.rs-card .rs-note { margin: 0; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
+
+/* Actions: big relic buttons, one ember. */
+.rs-foot { flex: none; display: flex; justify-content: center; }
+.rs-actions.md-list { flex-wrap: nowrap; justify-content: center; gap: 16px; }
+.rs-actions .md-item { min-height: 60px; padding: 0 28px; justify-content: center; border-radius: 6px; font-size: 24px; letter-spacing: 0.06em; text-align: center; border: 2px solid var(--relic-gold-deep); background: var(--relic-slab); color: var(--md-text-dim); box-shadow: 0 0 0 2px var(--md-ink); transition: opacity 200ms, filter 200ms; }
 .rs-actions .md-cursor { display: none; }
 .rs-actions .md-label { flex: none; }
+.rs-btn { display: inline-flex; align-items: center; gap: 12px; }
+.rs-btn-icon { width: 28px; height: 28px; flex: none; image-rendering: pixelated; }
+.rs-glyphs { display: inline-flex; align-items: center; gap: 5px; margin-left: 4px; }
+.rs-glyphs .pad-glyph { height: 26px; width: auto; }
+.rs-key { display: inline-block; min-width: 30px; height: 28px; padding: 0 7px; box-sizing: border-box; border: 2px solid var(--md-border); border-radius: 2px; background: var(--relic-slab-edge); color: var(--md-text); font-family: var(--md-font); font-size: 15px; line-height: 24px; text-align: center; box-shadow: 0 2px 0 var(--md-ink); }
 /* The one ember action (Von Restorff). */
-.rs-actions .md-item.rs-primary { color: var(--md-text); border-color: var(--md-border); background: linear-gradient(180deg, var(--relic-blood), var(--md-ink)); box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
-.rs-actions .md-item.is-active, .rs-actions .md-item:focus-visible { border-color: var(--md-cursor); color: var(--md-text); outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent); }
+.rs-actions .md-item.rs-primary { color: var(--md-text); border-color: var(--md-border); background: linear-gradient(180deg, var(--relic-blood), var(--md-ink)); box-shadow: 0 0 0 2px var(--md-ink), 0 0 22px color-mix(in srgb, var(--relic-ember) 40%, transparent); }
+.rs-actions .md-item.is-active, .rs-actions .md-item:focus-visible { border-color: var(--md-cursor); color: var(--md-text); outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 55%, transparent); }
 .rs-actions .md-item:hover { border-color: var(--md-border); color: var(--md-text); }
+/* Until the entrance has played (or is skipped) the buttons wait, dimmed; a press only skips. */
+.is-waiting .rs-actions .md-item { opacity: 0.5; filter: saturate(0.5); }
 
-@media (max-width: 760px) { .rs-cards-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .rs-cards-2, .rs-cards-3 { grid-template-columns: minmax(0, 1fr); } }
+@keyframes rs-veil-in { from { opacity: 0; } }
+@keyframes rs-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes rs-appear { from { opacity: 0; transform: scale(0.94); } }
+@keyframes rs-slam { from { opacity: 0; transform: scale(2.6) rotate(-18deg); } 70% { opacity: 1; } }
+@keyframes rs-ember { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 0.95; } 100% { transform: translateY(calc(var(--rs-art-h) * -1)); opacity: 0; } }
+@keyframes rs-ash { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 0.7; } 100% { transform: translate(12px, var(--rs-art-h)); opacity: 0; } }
+
+/* Skipped (any key or click) and reduced motion: every beat is at its final state, nothing moves. */
+.rs-window.is-skipped *, .rs-window.is-still * { animation: none !important; transition: none !important; }
+.rs-window.is-skipped .rs-particle, .rs-window.is-still .rs-particle { opacity: 0.6; transform: translateY(calc(var(--rs-art-h) * -0.4)); }
+.rs-window.defeat.is-skipped .rs-particle, .rs-window.defeat.is-still .rs-particle, .rs-window.cut.is-skipped .rs-particle, .rs-window.cut.is-still .rs-particle { transform: translateY(calc(var(--rs-art-h) * 0.4)); }
+@media (prefers-reduced-motion: reduce) {
+  .rs-veil, .rs-window * { animation: none !important; transition: none !important; }
+  .rs-particle { opacity: 0.6; transform: translateY(calc(var(--rs-art-h) * -0.4)); }
+}
+
+/* Tall windows (1920x1080 and up): a wider, bigger ceremony. */
+@media (min-height: 940px) {
+  #app .rs-window.result { --rs-art-h: 300px; width: min(1240px, 92vw); padding: 26px 36px 24px; }
+  .rs-art { height: 300px; }
+  .rs-ico { width: 44px; height: 44px; }
+  .rs-tile-label { font-size: 17px; }
+  .rs-tiles { grid-auto-rows: minmax(128px, 1fr); max-height: calc(var(--rows) * 176px + (var(--rows) - 1) * 10px); }
+  .rs-tile-value { font-size: min(46px, 24cqw); } .rs-tile-value.is-long { font-size: min(32px, 15cqw); }
+  .rs-delta { font-size: 20px; }
+  .rs-reward-value { font-size: 54px; } .rs-ico-big { width: 56px; height: 56px; }
+  .rs-chip { font-size: 16px; } .rs-detail-label { font-size: 16px; } .rs-detail-value { font-size: 18px; }
+  .rs-actions .md-item { min-height: 68px; font-size: 26px; padding: 0 34px; }
+  .rs-seal-text { font-size: 24px; }
+}
+
+/* Mid-height windows (1366x768 and 1280x720): a smaller pedestal and tighter tiles keep everything inside. */
+@media (max-height: 860px) {
+  #app .rs-window.result { --rs-art-h: 190px; padding: 16px 24px 14px; }
+  #app .rs-window > .md-window-body { gap: 10px; }
+  .rs-art { height: 190px; }
+  .rs-ico { width: 30px; height: 30px; }
+  .rs-tile { padding: 8px 12px 9px; gap: 4px; }
+  .rs-tiles { grid-auto-rows: minmax(80px, 1fr); max-height: calc(var(--rows) * 130px + (var(--rows) - 1) * 10px); }
+  .rs-board { gap: 10px; }
+  .rs-rewards { padding: 8px 12px 10px; gap: 6px; }
+  .rs-ico-big { width: 40px; height: 40px; }
+  .rs-actions .md-item { min-height: 56px; }
+}
+@media (max-width: 760px) {
+  .rs-stage { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.5fr); gap: 14px; }
+}
+/* Short landscape (844x390): sprite left, tiles in three columns, a smaller title, no extra hint. */
 @media (max-height: 560px) {
-  .rs-veil { padding: 8px; }
-  #app .rs-window.result { padding: 10px 14px 10px; max-height: calc(100dvh - 16px); }
-  #app .rs-window > .md-window-body { gap: 8px; }
-  .rs-head { gap: 12px; } .rs-art { width: 112px; height: 72px; }
-  .rs-title { font-size: 24px; } .rs-sub { font-size: 15px; } .rs-note { font-size: 12px; }
-  .rs-card { padding: 6px 10px; } .rs-card-title { font-size: 12px; } .rs-line { font-size: 13px; line-height: 1.25; } .rs-line.is-best .rs-value { font-size: 18px; }
-  .rs-actions .md-item { min-height: 44px; font-size: 17px; padding: 0 18px; }
+  .rs-veil { padding: 6px; }
+  #app .rs-window.result { --rs-art-h: 104px; width: min(1100px, 98vw); max-height: calc(100dvh - 12px); padding: 8px 14px 8px; }
+  #app .rs-window > .md-window-body { gap: 6px; }
+  .rs-head { gap: 3px; }
+  #app .rs-window .rs-title { font-size: 28px; }
+  .rs-sub, .rs-window.has-cards .rs-sub { font-size: 12px; line-height: 1.2; }
+  .rs-head .rs-note { font-size: 12px; }
+  .rs-stage { grid-template-columns: minmax(0, 0.55fr) minmax(0, 1.9fr); gap: 12px; }
+  .rs-hero { min-height: calc(var(--rs-art-h) + 34px); }
+  .rs-art { height: 104px; bottom: 18px; }
+  .rs-pedestal { height: 36px; left: 4%; right: 4%; }
+  .rs-step { top: 9px; }
+  .rs-top { height: 16px; }
+  .rs-seal { top: -2px; right: -6px; padding: 3px 8px; gap: 5px; }
+  .rs-seal-icon { width: 20px; height: 20px; } .rs-seal-text { font-size: 12px; }
+  .rs-board { gap: 6px; }
+  .rs-tiles { gap: 6px; grid-auto-rows: auto; max-height: none; flex: 0 1 auto; }
+  .rs-tile { grid-column: span 2 !important; }
+  .rs-tile { padding: 4px 6px 5px; gap: 1px; }
+  .rs-tile-label { overflow-wrap: normal; }
+  .rs-tile-head { gap: 4px; } .rs-ico { width: 20px; height: 20px; }
+  .rs-tile-label { font-size: 11px; line-height: 1.1; }
+  .rs-tile-value { font-size: min(20px, 24cqw); } .rs-tile-value.is-long { font-size: min(16px, 15cqw); }
+  .rs-delta { font-size: 12px; padding: 0 5px; border-width: 1px; }
+  .rs-details { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .rs-detail { padding: 3px 8px; gap: 6px; } .rs-detail .rs-ico { width: 18px; height: 18px; }
+  .rs-detail-label, .rs-detail-value { font-size: 12px; }
+  .rs-rewards { padding: 4px 8px 5px; gap: 3px; }
+  .rs-window .rs-section-title { display: none; }
+  .rs-ico-big { width: 28px; height: 28px; }
+  .rs-reward-value { font-size: 24px; } .rs-reward-label { font-size: 12px; }
+  .rs-reward-balance { padding: 2px 8px; gap: 5px; } .rs-reward-value-small { font-size: 14px; }
+  .rs-ico-small { width: 14px; height: 14px; }
+  .rs-chips { gap: 3px 5px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } .rs-chip { padding: 1px 6px; font-size: 11px; gap: 4px; border-width: 1px; }
+  .rs-card { padding: 5px 9px; gap: 2px; } .rs-row { font-size: 12px; } .rs-card .rs-note { font-size: 11px; }
+  .rs-actions .md-item { min-height: 44px; font-size: 18px; padding: 0 18px; }
+  .rs-btn { gap: 8px; } .rs-btn-icon { width: 20px; height: 20px; }
+  .rs-foot { gap: 0; }
 }
 
 #app:has(.rs-veil) > .notice { display: none; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endLayout, MAX_TILES, endIconOf } from '../../src/app/end-layout';
+import { endLayout, MAX_TILES, endIconOf, tileSpans } from '../../src/app/end-layout';
 import { endModel, type EndInput, type EndView } from '../../src/app/end-model';
 import { resultModel, shrineEndView, type ResultInput } from '../../src/app/shrine-result';
 import type { RunSummary } from '../../src/app/game';
@@ -116,5 +116,23 @@ describe('shrine result as tiles, delta and seal', () => {
     expect(endLayout(shrineEndView(input(r, { before: { bestMs: 99_000 } }), 'N', tr, time)).seal).toBe(tr('shrine.newBest'));
     expect(endLayout(shrineEndView(input(r, { before: { bestMs: 10_000 } }), 'N', tr, time)).seal).toBeNull();
     expect(endLayout(shrineEndView(input(r, { victory: false, before: null }), 'N', tr, time)).seal).toBeNull();
+  });
+});
+
+describe('tile spans', () => {
+  it('fill every row of the twelve-column grid, with no holes, for any count', () => {
+    for (let n = 1; n <= 9; n++) {
+      const spans = tileSpans(n);
+      expect(spans, `${n}`).toHaveLength(n);
+      let row = 0;
+      for (const [i, span] of spans.entries()) {
+        row += span;
+        if (row === 12) row = 0;
+        expect(row, `${n} tile ${i}`).toBeLessThan(12);
+      }
+      expect(row, `${n} ends on a full row`).toBe(0);
+    }
+    expect(tileSpans(5)).toEqual([4, 4, 4, 6, 6]);
+    expect(tileSpans(4)).toEqual([3, 3, 3, 3]);
   });
 });
