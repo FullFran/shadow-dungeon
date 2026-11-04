@@ -46,4 +46,5 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 ## Log
 
 - L1 (2026-11-04): S1, S2 with screenshots of install notice, shrine, board, gallery, friends, account.
+- L3 (2026-11-04, T2 client): `@clerk/clerk-js` 6.42.1 (exact) behind `src/adapters/clerk-auth.ts`; `Account.logInClerk` + `clerkSession` exchange; `src/app/auth-flow.ts`; account side drawer (`src/app/account-drawer.ts`, replaces the account window; Account, Options, Settings, Friends and the hub plate all open it); Friends window redesigned (`src/app/friends-window.ts`); provider icons in `src/ui/icons/account-icons.ts` (own file, to avoid conflicts on `pixel-icons.ts`). Parity: es/en strings (i18n test green), drawer and friends keyboard/touch checked at 1440x900, 1366x768, 844x390, 390x844 with zero page scroll and zero inner scroll on the drawer. Not run: a real Clerk round trip (no dev key in this worktree; needs `.env.local` and the server endpoint of T1).
 - L2 (2026-11-04): asked Clerk vs native PocketBase OAuth; owner chose Clerk (S3). Clerk app created and linked with `clerk` CLI; Discord enabled, password min length 8; keys in `.env.local` (now gitignored).

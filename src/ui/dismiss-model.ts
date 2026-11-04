@@ -22,7 +22,7 @@ const CONTROL_TAGS = new Set(['button', 'a', 'input', 'textarea', 'select', 'lab
 /** Classes of things that are not the backdrop although they sit on it. */
 const CONTROL_CLASSES = ['dd-popup', 'dd-option', 'notice', 'achievement-toast', 'toast', 'touch-back', 'touch-chrome', 'rotate-hint'];
 /** Roots whose bare surface is a backdrop. */
-const BACKDROP_CLASSES = ['town-shop', 'overlay'];
+const BACKDROP_CLASSES = ['town-shop', 'overlay', 'drawer-veil'];
 
 /** What a press landed on, from the target up to the root (`path[0]` is the target). */
 export function classifyPath(path: readonly PathNode[]): PathKind {

@@ -33,7 +33,10 @@ import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
 import { APP_VERSION, buildLabel } from './build-info';
 import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion } from './patch-notes';
-import { accountWindow, setupAccount, type AccountView } from './account-screen';
+import { setupAccount } from './account-screen';
+import { openAccountDrawer } from './account-drawer';
+import { createAuthFlow } from './auth-flow';
+import { clerkFromEnv } from '../adapters/clerk-auth';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
 import { loadoutScreen, portrait, typeBadge, type LineGender, type ShinySkins } from './loadout';
@@ -66,7 +69,8 @@ import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { installDismiss } from '../ui/dismiss';
 import { adminAccess, ticketsWindow } from './tickets-screen';
-import { friendsHeartbeat, friendsWindow, type Heartbeat } from './friends-screen';
+import { friendsHeartbeat, type Heartbeat } from './friends-screen';
+import { friendsWindow } from './friends-window';
 import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
@@ -131,9 +135,8 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
 applyTokens(document.documentElement);
-/** Redraws the open account window in place (the screen or the town's overlay) and the view it shows; declared before the account, whose start may report a change at once. */
+/** Redraws the open account drawer in place; declared before the account, whose start may report a change at once. */
 let accountRedraw: (() => void) | null = null;
-let accountView: AccountView | null = null;
 /** One client for the public calls (Sima ranking, public profile); the account keeps its own. */
 const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 /** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
@@ -162,8 +165,7 @@ const { account, store } = setupAccount({
     if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
     if (openFriends && openFriends.email !== signedInEmail()) openFriends.leave();
     friendsBeat?.sync();
-    const app = document.getElementById('app');
-    if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
+    accountRedraw?.();
   },
   onReplaced: () => {
     // The picked species must still be in the (possibly new) roster.
@@ -179,6 +181,8 @@ const gamepads = createGamepads({
     if (app) toast(app, t('gamepad.connected'));
   },
 });
+/** Sign-in for the account drawer: Clerk when the build has a publishable key, else the password endpoints (app/auth-flow.ts). */
+const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, window.location.origin), account });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
@@ -1132,33 +1136,26 @@ function reportScreen(root: HTMLElement, back: () => void): void {
   show(root, [open.element]);
 }
 
-/** The account screen (log in, sign up, log out, delete; cloud sync choices, status and backups), from the title or Settings. */
-function accountScreen(root: HTMLElement, back: () => void, view: AccountView = 'main'): void {
-  accountRedraw = () => accountScreen(root, back);
-  accountView = view;
-  show(root, [accountWindow({ account, refresh: (next) => accountScreen(root, back, next), onBack: back }, view)]);
+/** The account drawer over whatever is on screen (the title, Options, Settings, Friends); `back` runs when it closes. */
+function accountScreen(_root: HTMLElement, back: () => void): void {
+  townAccount(document.body, back);
 }
 
-/** The account window over the town (its Esc menu, solo or in a room): the town, the room and its session stay underneath. */
+/** The account drawer over the town (its Esc menu, solo or in a room) or any screen: the scene, the room and its session stay underneath. */
 function townAccount(parent: HTMLElement, onClose: () => void): () => void {
-  const overlay = h('div', { className: 'town-shop' });
-  let closed = false;
-  const render = (view: AccountView = 'main'): void => {
-    if (closed) return;
-    accountRedraw = () => render('main');
-    accountView = view;
-    overlay.replaceChildren(accountWindow({ account, refresh: render, onBack: onClose }, view));
-  };
-  render();
-  parent.append(overlay);
-  return () => {
-    closed = true;
-    if (overlay.isConnected) {
+  let closeDrawer = (): void => undefined;
+  const drawer = openAccountDrawer({
+    account,
+    flow: authFlow,
+    parent,
+    onClose: () => {
       accountRedraw = null;
-      accountView = null;
-    }
-    overlay.remove();
-  };
+      onClose();
+    },
+  });
+  closeDrawer = drawer.close;
+  accountRedraw = drawer.redraw;
+  return () => closeDrawer();
 }
 
 /**
@@ -2313,6 +2310,16 @@ if (root) {
   });
   // A press that starts and ends on the backdrop closes the open menu like Esc (ui/dismiss.ts).
   installDismiss();
+  // Back from Google or Discord (`/?sso=1`): Clerk finishes, the game session follows, then the parameter goes.
+  void authFlow.returnFromSso(window.location.search).then((result) => {
+    if (!result) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('sso');
+    window.history.replaceState(null, '', url);
+    toast(root, t(result.ok ? 'account.drawer.signedIn' : `account.error.${result.error}`));
+    // The cloud may hold other progress: the drawer is where that choice is made.
+    if (result.ok && account.pendingChoice()) townAccount(document.body, () => undefined);
+  });
   // Development server only: `?unlock=all` opens everything in this browser's local save.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'all') unlockEverything(store);
   // Development server only: `?unlock=veteran` writes an advanced, believable profile (dev-unlock.ts) and the story flags of a long-time

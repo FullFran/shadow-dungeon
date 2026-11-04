@@ -57,6 +57,17 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
 - **Pixel icons** (`src/ui/pixel-icons.ts`): 16×16 maps, 3–6 colours each, rendered as crisp SVG rects. Every
   service has one; line glyphs (`glyphSvg`) remain only on the inked town plan.
 
+- **Side drawer** (`.drawer-veil` + `.ad-drawer`, `src/app/account-drawer.ts`): the quick-entry pattern for short forms and
+  account state (owner, 2026-11-04). A full-height relic slab (400 px, 100% under 520 px) slides in from the right over a
+  darkened scene; click outside and Esc close it (`ui/dismiss.ts`), focus is trapped, arrows/Tab move through the controls,
+  Enter acts. Order top to bottom: why in one line, providers, divider, form, the one ember call to action, the guest
+  choice as an equal block (at most three facts per side, no pressure). In a short landscape window (max-height 520 px)
+  the two halves sit side by side. Slide 160 ms ease-out (the panel comes from the edge it lives on); none under
+  `prefers-reduced-motion`. Pending shows at once, errors stay inline. Shared controls: `src/styles/relic-controls.css`.
+- **Friends window** (`src/app/friends-window.ts`): the picker pattern applied to a social list: a sheet (your code, add by
+  code) beside a column of cards (avatar tile with a diamond state pip, name, state line, actions). Signed out it is one
+  compact card that opens the drawer.
+
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
 
 ## 5. Motion System
@@ -84,3 +95,5 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-03: Windows move from Mystery Dungeon blue to the souls "relic" slab (dark stone, old-gold frame,
   ember cursor). Supersedes the blue window palette of `PALETTE` (2026-10).
 - 2026-11-03: Hub icons are original coloured pixel art (16×16), not single-stroke line glyphs.
+- 2026-11-04: Account entry becomes a right-hand side drawer (Google, Discord, email, guest with honest pros and cons)
+  instead of a centred window; Friends follows the picker pattern (owner). Provider marks are our own pixel drawings.

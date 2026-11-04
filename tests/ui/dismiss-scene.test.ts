@@ -8,4 +8,7 @@ describe('dismiss scene', () => {
     expect(sceneOf(doc(['.gp'])).kind).toBe('other');
     expect(sceneOf(doc([])).kind).toBe('menu');
   });
+  it('an open account drawer is an overlay, also over the title hub', () => {
+    expect(sceneOf(doc(['.drawer-veil', '.hub'])).kind).toBe('overlay');
+  });
 });
