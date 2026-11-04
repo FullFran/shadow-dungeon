@@ -78,11 +78,39 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
 - **Hint bar** (`.ph`, `src/ui/play-hints.ts`, `src/ui/play-hints-model.ts`, `src/styles/play-hints.css`): relic chips (slab fill,
   slab-edge frame, 4 px radius, hard drop) along the bottom edge, in the free stretch between the message log and the move slots
   so it never covers the player or HUD. Each chip is the glyph of the last device used (square pixel keycaps for the keyboard,
-  the pad glyphs of the controller help for xbox/playstation) plus a 16 px label; at most six. Only what is available now (the
-  interact chip appears with something in range, gilt frame and ember glow, and stays while it is). Touch hides it. Shows 5 s
-  after the context changes, then fades 400 ms (none under `prefers-reduced-motion`); labels step back (move and attack first,
-  then all) when the stretch is narrow. Fullscreen toggle button (pixel icon) at its end, always faint; F11 and Alt+Enter too.
-  Setting: Settings, Accessibility, "Ayudas de control". Bindings come from `src/adapters/bindings.ts`.
+  the pad glyphs of the controller help for xbox/playstation) plus a label; at most six. Sizes come from the window height
+  (`hintSizes`, owner 2026-11-04 "más grande las ayudas visuales"): desktop chip >= 40 px (42 mid, 48 tall), keycap >= 28 px,
+  label >= 16 px; under 540 px of height 34 / 24 / 14 so it keeps clear of the HUD. It no longer carries the interact action (the
+  World tooltip does). Touch hides it. Shows 5 s after the context changes, then fades 400 ms (none under `prefers-reduced-motion`);
+  labels step back (move and attack first, then all) when the stretch is narrow. Fullscreen toggle button (pixel icon, same height as
+  a chip) at its end, always faint; F11 and Alt+Enter too. Setting: Settings, Accessibility, "Ayudas de control". Bindings come from
+  `src/adapters/bindings.ts`.
+- **World tooltip** (`.wt`, `src/ui/world-tooltip.ts`, pure model `src/ui/world-tooltip-model.ts`, `src/styles/world-tooltip.css`; owner
+  2026-11-04 "cuando haya que interactuar, que salga como tooltip cerca de lo que vas a hacer"): the interact prompt. One relic chip with
+  a gilt diamond pointer, anchored over the single target `interact` would pick (the same `nearestInteractable` call), never two (Selective
+  Attention). Content: the device glyph (E keycap, the pad's confirm button; on touch none, the chip is the button, >= 52 px) and the
+  verb of the real interaction kind (`interactKind`: Hablar, Leer, Viajar, Entrar, Comprar, Aprender, Probar suerte, Evolucionar,
+  Encender). Placement (`placeTooltip`): above the target and centred, clamped to the screen with an 8 px margin, below it when
+  there is no room above, slid sideways past the player's sprite box when that is what stands in the way: never over the player, never
+  over the target. Follows the target every frame (CSS px from the world position and the zoom). Rises 6 px in 120 ms (Doherty); none
+  under `prefers-reduced-motion`. Replaces the interact chip of the hint bar and the floating canvas text.
+- **Dialogue box** (`.db`, `src/ui/dialogue-box.ts`, model `dialogueView` in `src/town/dialog.ts`, sources in `src/town/dialogue-sources.ts`,
+  `src/styles/dialogue-box.css`; owner 2026-11-04 "rediseña también los diálogos"): a relic slab at the bottom edge (max 980 px) for every
+  line the town speaks (villagers, signs and statues, the board, the beacon, the pleas, the tour guide). Left, the speaker's portrait in a
+  120 px `sprite-box` (the Sprite fit rule: whole creature, cropped to what the idle animation covers, never clipped); none for signs.
+  A name plate sits on the slab's top edge. Body: Atkinson Hyperlegible 20 px (18 px under 520 px of height), line height 1.5, three lines
+  of room reserved so the box never jumps while it types. Typewriter at 40 characters per second; a press completes the page, the next
+  one moves on; instant under `prefers-reduced-motion` (`openDialog(lines, true)`). Foot: page counter "n / N" only when there are
+  several pages, and the continue button (>= 44 px: device glyph + "Continuar"/"Cerrar" on the last page), dimmed until the page is
+  complete, then ember with a stepped arrow (bobs only without reduced motion). A click or tap on the slab advances. Choices: none exist
+  inside a dialogue today (the oracle's answer is a window), so none are drawn; add them as relic buttons with the shared window navigation
+  when one appears.
+- **Creature scale** (`src/adapters/creature-scale.ts`, `CREATURE_SCALE = 1.5`; owner 2026-11-04 "Haz los pokemon también más grandes"): every
+  Pokémon in the world (player, remote players, enemies, bosses, clones, figurations, town villagers, walkers and co-op walkers) is drawn at
+  1.5x, nearest-neighbour, around its feet. Visual only: hitbox radius, collision, lock-on, AI ranges, telegraphs and network state never read it.
+  Shadows, name tags, aura rings, marks and status icons scale with `withCreatureScale`; a herald or wound factor multiplies it, so bosses keep
+  their relative size. Why 1.5: frames are 24-56 px against 32 px tiles; 1.5 makes the common 32x48 frame 48x72 and keeps 3 device pixels per
+  source pixel at the 2x desktop zoom (crisp); 2x would tower over house doors.
 - **Sprite fit rule** (`src/ui/sprite-fit.ts`, `src/styles/sprite-fit.css`): a Pokémon is never cropped. Its box has a
   fixed size and the class `sprite-box`; the canvas fills the box (`object-fit: contain`, bottom-centred) and, inside a
   `sprite-box`, is cropped to the pixels the idle animation really covers (`portrait()` in `src/app/loadout.ts`), so the
@@ -148,3 +176,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.
 - 2026-11-04 (owner: "Rediseña también el menú de pausa ... un mapa mucho más realista y visible"): the pause menu becomes a relic window with actions, a real floor plan (tileset colours, fog, pixel-icon markers, legend) and a run summary card that absorbs the held items (§4). Supersedes the plain cursor list plus a separate "Objetos equipados" window. Quick settings now open the full settings window.
 - 2026-11-04 (owner: "Quita los márgenes, añade ayudas visuales de controles, ... pantalla completa y quita lo del eclipse puesto en la parte de arriba"): the play view is full-bleed (§3), the town sky band and birds and the Sima's eclipse disc and spires are removed (top-down, no horizon), and an in-game hint bar with device glyphs is added (§4).
+- 2026-11-04 (owner: "Haz los pokemon también más grandes", "cuando haya que interactuar, que salga como tooltip cerca de lo que vas a hacer", "rediseña también los diálogos", "más grande las ayudas visuales"): creatures are drawn at 1.5x (Creature scale, §4); interaction becomes a world tooltip over its target and leaves the hint bar (§4); the canvas dialogue box becomes a DOM relic slab with portrait, name plate, typewriter, page counter and continue glyph (§4); the hint bar grows (chip >= 40 px, keycap >= 28 px, label >= 16 px). Supersedes the interact chip of the 2026-11-04 hint bar and the Mystery Dungeon canvas dialogue box.
