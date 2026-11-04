@@ -8,7 +8,7 @@ import type { Difficulty } from '../data/difficulty';
 import { TILE, tileOf } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import { image as assetImage, type SheetImage, type SheetStore } from '../adapters/assets';
+import { image as assetImage, imageState, reportAssetFailure, type SheetImage, type SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
 import { cameraView, followCamera } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
@@ -207,6 +207,8 @@ export async function loadTownImages(): Promise<TownImages> {
   const base = `${import.meta.env.BASE_URL}tiles/town/`;
   const files = [...new Set([TOWN_GROUND.file, ...Object.values(GROUND_SHEETS), ...Object.values(TOWN_PROPS).map((p) => p.file)])];
   const loaded = await Promise.all(files.map(async (file) => [file, await assetImage(base + file)] as const));
+  // A tile that gave up stands in as a placeholder: say so once (the error model raises the toast) instead of drawing flat colours silently.
+  if (files.some((file) => imageState(base + file) === 'failed')) reportAssetFailure('tile');
   const out = new Map<string, SheetImage>();
   for (const [file, image] of loaded) out.set(file, image);
   return out;

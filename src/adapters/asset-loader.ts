@@ -34,6 +34,8 @@ export interface AssetLoader<I> {
   /** The sheet if it is already here. Otherwise undefined, and a background load starts so a later frame has it. */
   get(key: string): I | undefined;
   state(key: string): AssetState;
+  /** The state of any image by its full URL. */
+  stateOfUrl(url: string): AssetState;
   /** Loads the sheets; `onProgress` gets (settled, total) after each one. Resolves when all settled, failures included. */
   preload(keys: Iterable<string>, options?: { priority?: Priority; onProgress?(done: number, total: number): void }): Promise<void>;
 }
@@ -131,6 +133,7 @@ export function createAssetLoader<I>(deps: LoaderDeps<I>): AssetLoader<I> {
       return entry.state === 'pending' ? undefined : entry.value;
     },
     state: (key) => entries.get(urlOf(key))?.state ?? 'pending',
+  stateOfUrl: (url) => entries.get(url)?.state ?? 'pending',
     async preload(keys, options) {
       const list = [...new Set(keys)];
       let done = 0;
