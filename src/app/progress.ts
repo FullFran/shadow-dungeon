@@ -1,7 +1,7 @@
 import type { KeyValueStore } from '../adapters/storage';
 import { settleAchievements } from '../core/achievements';
 import { utcDateKey } from '../core/endless';
-import { acceptMission, advanceMissions, claimMission, EMPTY_MISSIONS, payMissionReward, pruneMissions, type MissionReward, type MissionState } from '../core/missions';
+import { abandonMission, acceptMission, advanceMissions, claimMission, EMPTY_MISSIONS, payMissionReward, pruneMissions, type MissionReward, type MissionState } from '../core/missions';
 import type { RunReport } from '../core/run-report';
 import type { AchievementDef } from '../data/achievements';
 import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
@@ -52,6 +52,15 @@ export function acceptAt(store: KeyValueStore, id: string, nowMs: number): SaveD
   if (!missions) return null;
   writeSave(store, withMissions(save, missions));
   return loadSave(store);
+}
+
+/** Abandons an accepted mission; false when it was not accepted (nothing written). */
+export function abandonAt(store: KeyValueStore, id: string, nowMs: number): boolean {
+  const save = loadSave(store);
+  const missions = abandonMission(missionsAt(save, nowMs), id);
+  if (!missions) return false;
+  writeSave(store, withMissions(save, missions));
+  return true;
 }
 
 /** Claims a completed mission and pays its reward (and any achievement it reaches); null when it is not complete (nothing written). */
