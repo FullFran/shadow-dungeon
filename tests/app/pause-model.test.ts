@@ -15,6 +15,37 @@ const full: MenuActions = { ...base, openReport: () => ({ element: {} as HTMLEle
 /** The rows of the list menu that came before the relic redesign (src/app/menu.ts before 2026-11-04), in order: nothing may be lost. */
 const BEFORE: PauseEntry[] = ['resume', 'restart', 'settings', 'report', 'copyReport', 'quit'];
 
+describe('pause fullscreen action', () => {
+  const fs = (active: boolean): MenuActions => ({ ...full, toggleFullscreen: noop, isFullscreen: () => active });
+
+  it('appears after the settings when the app offers it, and stays out of the way otherwise', () => {
+    expect(pauseEntries(fs(false))).toEqual(['resume', 'restart', 'settings', 'fullscreen', 'report', 'copyReport', 'quit']);
+    expect(pauseEntries(full)).not.toContain('fullscreen');
+  });
+
+  it('reflects the current state in its label and hint, in every language', () => {
+    for (const language of LANGUAGES) {
+      const tr = (key: string) => catalog(language)[key] ?? '';
+      const off = pauseActions(fs(false), tr).find((a) => a.id === 'fullscreen')!;
+      const on = pauseActions(fs(true), tr).find((a) => a.id === 'fullscreen')!;
+      expect(off.label, language).toBe(tr('hint.fullscreen.enter'));
+      expect(on.label, language).toBe(tr('hint.fullscreen.exit'));
+      expect(off.hint, language).toBeTruthy();
+      expect(on.hint, language).toBeTruthy();
+      expect(off.confirm).toBeNull();
+      expect(off.danger).toBe(false);
+    }
+    expect(PAUSE_ICONS.fullscreen).toBeDefined();
+  });
+
+  it('keeps one primary action and at most seven rows with it', () => {
+    const list = pauseActions(fs(false));
+    expect(list.length).toBeLessThanOrEqual(7);
+    expect(list.filter((a) => a.primary).map((a) => a.id)).toEqual(['resume']);
+    expect(list.at(-1)!.id).toBe('quit');
+  });
+});
+
 describe('pause actions', () => {
   it('keeps every action of the old list, in the same order', () => {
     expect(pauseActions(full).map((a) => a.id)).toEqual(BEFORE);

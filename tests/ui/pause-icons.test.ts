@@ -7,7 +7,7 @@ const entries = [...Object.entries(PAUSE_ICONS), ...Object.entries(MAP_ICONS)];
 
 describe('pause icons', () => {
   it('has an icon for every pause action and every map marker', () => {
-    for (const id of ['resume', 'restart', 'settings', 'report', 'copyReport', 'quit']) expect(PAUSE_ICONS[id as keyof typeof PAUSE_ICONS], id).toBeDefined();
+    for (const id of ['resume', 'restart', 'settings', 'fullscreen', 'report', 'copyReport', 'quit']) expect(PAUSE_ICONS[id as keyof typeof PAUSE_ICONS], id).toBeDefined();
     for (const kind of MARKER_KINDS) expect(MAP_ICONS[kind], kind).toBeDefined();
   });
 

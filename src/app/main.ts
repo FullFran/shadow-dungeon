@@ -1,7 +1,7 @@
 import { glyphSvg, type Glyph } from '../town/town-map-view';
 import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
-import { toggleFullscreen } from '../ui/fullscreen';
+import { fullscreenSupported, isFullscreen, toggleFullscreen } from '../ui/fullscreen';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
@@ -2021,7 +2021,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     gamepad: gamepads,
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
     openMenu: (actions, held, context) =>
-      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held, {
+      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root), ...(fullscreenSupported() ? { toggleFullscreen: () => void toggleFullscreen(), isFullscreen } : {}) }, held, {
         ...context,
         portrait: (id) => portrait(sheetsReady(), id, 4, skinOn(id), femaleOn(id)),
       }),

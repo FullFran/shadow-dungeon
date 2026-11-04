@@ -85,6 +85,7 @@ export const PAUSE_ICONS: Record<PauseEntry, PixelIcon> = {
   resume: PIXEL_ICONS.resume,
   restart: restart(),
   settings: PIXEL_ICONS.settings,
+  fullscreen: PIXEL_ICONS.fullscreen,
   report: PIXEL_ICONS.report,
   copyReport: copy(),
   quit: leave(),

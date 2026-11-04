@@ -22,13 +22,17 @@ export interface MenuActions {
   openReport?(back: () => void): { element: HTMLElement; dispose(): void };
   /** "Copiar informe técnico" (issue #6): copies this session's diagnostics. Absent: no row. */
   copyReport?(): void;
+  /** Fullscreen in and out (the same helper as F11 / Alt+Enter in play). Absent: no row. */
+  toggleFullscreen?(): void;
+  /** Whether the page is fullscreen now; the row's label follows it. */
+  isFullscreen?(): boolean;
 }
 
-export type PauseEntry = 'resume' | 'restart' | 'settings' | 'report' | 'copyReport' | 'quit';
+export type PauseEntry = 'resume' | 'restart' | 'settings' | 'fullscreen' | 'report' | 'copyReport' | 'quit';
 
 /** The menu's actions in order: the report rows only when the app offers them, always before quitting. */
 export function pauseEntries(actions: MenuActions): PauseEntry[] {
-  return ['resume', 'restart', 'settings', ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
+  return ['resume', 'restart', 'settings', ...(actions.toggleFullscreen ? (['fullscreen'] as const) : []), ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
 }
 
 /** The restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
@@ -51,7 +55,7 @@ export interface PauseAction {
   hint: string;
   /** The one ember action (Continuar). */
   primary: boolean;
-  /** Leaves the run: drawn in the danger colour. */
+  /** Leaves the run: sits last and apart; only its icon is tinted, the confirm dialog carries the danger. */
   danger: boolean;
   /** Stays in the list, dimmed and inert (a restart with no uses left). */
   disabled: boolean;
@@ -61,7 +65,7 @@ export interface PauseAction {
 
 export function pauseActions(actions: MenuActions, tr: (key: string) => string = t, coop = false): PauseAction[] {
   return pauseEntries(actions).map((id): PauseAction => {
-    const base = { id, hint: tr(`pause.hint.${id}`), primary: id === 'resume', danger: id === 'quit', disabled: false, confirm: null };
+    const base = { id, hint: id === 'fullscreen' ? '' : tr(`pause.hint.${id}`), primary: id === 'resume', danger: id === 'quit', disabled: false, confirm: null };
     switch (id) {
       case 'resume':
         return { ...base, label: tr('pause.resume') };
@@ -71,6 +75,10 @@ export function pauseActions(actions: MenuActions, tr: (key: string) => string =
       }
       case 'settings':
         return { ...base, label: tr('pause.settings') };
+      case 'fullscreen': {
+        const on = actions.isFullscreen?.() === true;
+        return { ...base, label: tr(on ? 'hint.fullscreen.exit' : 'hint.fullscreen.enter'), hint: tr(on ? 'pause.hint.fullscreenExit' : 'pause.hint.fullscreen') };
+      }
       case 'report':
         return { ...base, label: tr('title.report') };
       case 'copyReport':
