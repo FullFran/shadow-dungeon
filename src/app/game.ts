@@ -55,6 +55,7 @@ import { challengeOfRoad, dungeonById, musicFor, type DungeonId } from '../data/
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
+import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
 import { WISP_BERRY } from '../core/wisp';
@@ -110,7 +111,7 @@ import { dungeonPlace, shrinePlace, simaBandPlace } from '../ui/location-plaque-
 import { bossPlaque, cardPlaque, introPlaque } from '../adapters/floor-plaque';
 import { hintBand } from '../ui/play-hints-model';
 import { trackLastDevice } from '../adapters/last-device';
-import { bossRect, liftHintBand } from '../ui/hud-layout';
+import { bossStackRect, liftHintBand } from '../ui/hud-layout';
 import type { PadStyle } from './gamepad-help-data';
 import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
 
@@ -1813,15 +1814,17 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (hints) {
       // The bar sits in the free stretch of the bottom edge (src/ui/play-hints-model.ts `hintBand`), in CSS px.
       const css = (zoom / pixelScale) * hudScale;
-      const space = { width: canvas.width / hudScale, height: canvas.height / hudScale };
+      const space = { width: canvas.width / hudScale, height: canvas.height / hudScale, scale: hudScale };
       // A boss fight lifts it over the boss bar (src/ui/hud-layout.ts `liftHintBand`): they would share the bottom edge.
       const slots = slotCount(world.player.loadout);
-      const band = liftHintBand(hintBand(space, slots), bossBar(world) !== null && !isTouchUi() ? bossRect(space, slots, false) : null, space);
+      const fight = fightKind(world);
+      const band = liftHintBand(hintBand(space, slots), fight === 'boss' && !isTouchUi() ? bossStackRect(space, slots, false) : null, space);
       hints.update(
         {
           place: 'run',
           minimap: minimap !== null && world.arena.tiles !== undefined,
           spectating: watching !== null,
+          fight,
           suppressed: closeMenu !== null || closePick !== null || closeChoice !== null || closeMemory !== null || closeCinematic !== null || ended,
           band: { left: band.left * css, right: (space.width - band.right) * css, bottom: band.bottom * css },
         },

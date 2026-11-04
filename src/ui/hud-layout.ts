@@ -2,11 +2,11 @@
  * Where the canvas HUD goes, as pure math (.agents/DESIGN.md §4 "Combat HUD"). The HUD is drawn in its own
  * "HUD space": the canvas divided by a HUD scale.
  *
- * HUD scale rule. The panels are authored for a 640x360 HUD space (their text is the 11 px pixel-font grid), so the
- * scale is "how many times 640x360 fits the window":
- * - desktop: 2 at 1280x720, 3 at 1920x1080, 4 at 2560x1440; below 2 it moves in half steps (1.5 at 1024x640) and never
- *   drops under 1. Between whole steps it rounds down with a 0.35 bias, so 1700x950 (2.64) stays at 2 and gets a
- *   wider space instead of oversized panels.
+ * HUD scale rule (second pass, owner 2026-11-04: minimalist and peripheral). The panels are authored for an 800x450
+ * HUD space (their text is the 11 px pixel-font grid), so the scale is "how many times 800x450 fits the window",
+ * rounded down to half steps and kept between 1 and 2:
+ * - desktop: 1 up to 1599x899-ish windows (990x750 is 1), 1.5 at 1280x720 and 1440x900, 2 at 1920x1080 and above. A
+ *   scale never passes 2: a bigger window shows more arena and a wider HUD space, not bigger panels.
  * - touch: the canvas scale, so the HUD space is the 512x320 (or wider) view of a phone held sideways, which gets the
  *   compact variant of every panel.
  * A space 340 or more high uses the regular metrics, a lower one the compact metrics.
@@ -28,20 +28,21 @@ export interface HudSpace {
 export type HudVariant = 'regular' | 'compact';
 
 /** The HUD space (in HUD px) the panels are authored for; one scale step is this much of the window. */
-const DESKTOP_STEP = { width: 640, height: 360 } as const;
+const DESKTOP_STEP = { width: 800, height: 450 } as const;
 
-/** Bias of the whole-step rounding: 0.35 means 2.65 steps already count as 3. */
-const ROUND_BIAS = 0.35;
+/** The largest desktop HUD scale: bigger windows get a wider space, never bigger panels. */
+const MAX_DESKTOP_SCALE = 2;
 
 /** Panel sizes that do not depend on the variant, in HUD pixels. */
 export const HUD_BOX = {
   margin: 8,
   slotGap: 4,
-  /** The message log (src/adapters/message-log.ts): 4 lines of 13 px plus padding, 236 wide. */
-  logWidth: 236,
-  logHeight: 4 * 13 + 9,
-  /** The minimap (src/adapters/minimap.ts): 3 px per tile, 10 px from the top-right corner, a 4 px frame. */
-  minimapTilePx: 3,
+  /** The message log (src/adapters/message-log.ts): 2 lines of 12 px plus padding. */
+  logWidth: 170,
+  logHeight: 2 * 12 + 5,
+  /** The minimap (src/adapters/minimap.ts): 4 HUD px per tile on desktop (3 on touch), 10 px from the top-right corner, a 4 px frame. */
+  minimapTilePx: 4,
+  minimapTilePxTouch: 3,
   minimapMargin: 10,
   minimapFrame: 4,
 } as const;
@@ -51,38 +52,46 @@ export interface HudMetrics {
   margin: number;
   statusWidth: number;
   statusHeight: number;
-  /** The one-line held-items chip under the status window. */
+  /** The row of floor and coin chips under the status window, and the extra line the held-items chip takes. */
+  chipsHeight: number;
   chipHeight: number;
   /** The partner portrait box of the status window (a `sprite-box`: the creature is fitted whole inside). */
   portrait: number;
   partnerWidth: number;
   partnerHeight: number;
   partnerGap: number;
-  /** A move slot is a square. */
-  slot: number;
   slotGap: number;
-  /** The boss block: name, epithet, bar and pips. */
+  /** The boss block: name and epithet on one line, then the thin bar. */
   bossHeight: number;
+  /** The announcement strip just above the boss block: the move's name, then the sign and the cue on one line. */
+  captionHeight: number;
   /** The boss block's bottom edge, from the bottom of the space. */
   bossBottom: number;
 }
 
 export const HUD_METRICS: Record<HudVariant, HudMetrics> = {
-  regular: { margin: 8, statusWidth: 214, statusHeight: 84, chipHeight: 12, portrait: 44, partnerWidth: 214, partnerHeight: 22, partnerGap: 3, slot: 52, slotGap: 4, bossHeight: 64, bossBottom: 8 },
-  compact: { margin: 6, statusWidth: 178, statusHeight: 71, chipHeight: 11, portrait: 36, partnerWidth: 104, partnerHeight: 22, partnerGap: 3, slot: 40, slotGap: 4, bossHeight: 52, bossBottom: 10 },
+  regular: { margin: 8, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 150, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 24, captionHeight: 34, bossBottom: 8 },
+  compact: { margin: 6, statusWidth: 150, statusHeight: 44, chipsHeight: 15, chipHeight: 11, portrait: 36, partnerWidth: 104, partnerHeight: 20, partnerGap: 3, slotGap: 3, bossHeight: 24, captionHeight: 32, bossBottom: 10 },
 };
 
 /** The regular metrics need this much height; a phone held sideways (320) and short windows use the compact ones. */
 const REGULAR_MIN_HEIGHT = 340;
 
+/** The pieces of a HUD space the layout reads; `scale` (backing px per HUD px) sizes the touch targets, 1.5 when absent. */
+export type HudDims = Pick<HudSpace, 'width' | 'height'> & { scale?: number };
+
 export const hudVariant = (space: Pick<HudSpace, 'height'>): HudVariant => (space.height >= REGULAR_MIN_HEIGHT ? 'regular' : 'compact');
 
-/** HUD scale: the canvas scale on touch; on desktop how many 640x360 fit the window (whole steps from 2, half steps below). */
+/** Move slots are about 46 CSS px squares whatever the scale (never under 44: Fitts), so a HUD px count that follows the scale. */
+const SLOT_CSS = 46;
+const DEFAULT_SCALE = 1.5;
+export const slotSizeFor = (scale: number = DEFAULT_SCALE): number => Math.min(52, Math.max(24, Math.ceil(SLOT_CSS / scale)));
+
+/** HUD scale: the canvas scale on touch; on desktop how many 800x450 fit the window, in half steps, between 1 and 2. */
 export function hudScaleFor(viewportWidth: number, viewportHeight: number, pixelScale: number, touch: boolean): number {
   if (touch) return pixelScale;
   const steps = Math.min(viewportWidth / DESKTOP_STEP.width, viewportHeight / DESKTOP_STEP.height);
-  const scale = steps >= 2 ? Math.floor(steps + ROUND_BIAS) : Math.floor(steps * 2) / 2;
-  return Math.max(1, scale);
+  return Math.min(MAX_DESKTOP_SCALE, Math.max(1, Math.floor(steps * 2) / 2));
 }
 
 /** The HUD space of a canvas of `canvasWidth` x `canvasHeight` backing pixels at `scale`. */
@@ -91,61 +100,80 @@ export const hudSpace = (canvasWidth: number, canvasHeight: number, scale: numbe
 export interface HudRects {
   variant: HudVariant;
   status: HudBox;
-  /** Co-op partners' compact frames, in order, under the status window. */
+  /** The floor and coin chips under the status window (plus the held-items line when idle), which fade in combat. */
+  chips: HudBox;
+  /** Co-op partners' compact frames, in order, under the chips. */
   partners: HudBox[];
   /** Move slots in slot order: a 2x2 block (or a row of up to two) at the bottom right; none on touch (the thumb buttons carry the moves). */
   slots: HudBox[];
-  /** The message log at its tallest (all lines showing). */
+  /** The message log at its tallest (all lines showing), bottom left. */
   log: HudBox;
-  /** The boss block (name, epithet, bar, pips), bottom centre. */
+  /** The boss block (name, epithet, thin bar, pips), bottom centre. */
   boss: HudBox;
+  /** The boss announcement strip, right above the boss block (drawn only while an event is announced). */
+  caption: HudBox;
   minimap: HudBox | null;
 }
 
 /** Touch: the Pause button (src/ui/touch-layout.ts) holds the top-left corner, so the status window starts after it. */
 const TOUCH_STATUS_X = 68;
 
-/** The status window: top left (touch: right of the Pause button); one line taller with the held-items chip. */
-export function statusRect(space: Pick<HudSpace, 'height'>, chip: boolean, touch = false): HudBox {
+/** The status window: top left (touch: right of the Pause button). Its size never changes. */
+export function statusRect(space: Pick<HudSpace, 'height'>, touch = false): HudBox {
   const m = HUD_METRICS[hudVariant(space)];
-  return { x: touch ? TOUCH_STATUS_X : m.margin, y: m.margin, width: m.statusWidth, height: m.statusHeight + (chip ? m.chipHeight : 0) };
+  return { x: touch ? TOUCH_STATUS_X : m.margin, y: m.margin, width: m.statusWidth, height: m.statusHeight };
+}
+
+/** The chips under the status window; `chip` adds the held-items line (shown only while idle). */
+export function chipsRect(space: Pick<HudSpace, 'height'>, chip: boolean, touch = false): HudBox {
+  const m = HUD_METRICS[hudVariant(space)];
+  const status = statusRect(space, touch);
+  return { x: status.x, y: status.y + status.height + 1, width: status.width, height: m.chipsHeight + (chip ? m.chipHeight : 0) };
 }
 
 /** The block the slots take (width x height) so the boss block can keep clear of it. */
-function slotBlock(space: Pick<HudSpace, 'height'>, count: number): { width: number; height: number } {
+function slotBlock(space: HudDims, count: number): { width: number; height: number } {
   const m = HUD_METRICS[hudVariant(space)];
-  return count > 2 ? { width: 2 * m.slot + m.slotGap, height: 2 * m.slot + m.slotGap } : { width: count * m.slot + Math.max(0, count - 1) * m.slotGap, height: m.slot };
+  const slot = slotSizeFor(space.scale);
+  return count > 2 ? { width: 2 * slot + m.slotGap, height: 2 * slot + m.slotGap } : { width: count * slot + Math.max(0, count - 1) * m.slotGap, height: slot };
 }
 
 /**
- * Move slot `index` of `count`: square relic slots in the bottom-right corner, a row up to two, a 2x2 block for more
+ * Move slot `index` of `count`: small square slots in the bottom-right corner, a row up to two, a 2x2 block for more
  * (fast and heavy on top, boost and area under them). Touch draws none: the bottom right is the action buttons'.
  */
-export function slotRect(space: Pick<HudSpace, 'width' | 'height'>, index: number, count: number): HudBox {
+export function slotRect(space: HudDims, index: number, count: number): HudBox {
   const m = HUD_METRICS[hudVariant(space)];
+  const slot = slotSizeFor(space.scale);
   const block = slotBlock(space, count);
   const left = space.width - m.margin - block.width;
   const top = space.height - m.margin - block.height;
-  if (count <= 2) return { x: left + index * (m.slot + m.slotGap), y: top, width: m.slot, height: m.slot };
-  return { x: left + (index % 2) * (m.slot + m.slotGap), y: top + Math.floor(index / 2) * (m.slot + m.slotGap), width: m.slot, height: m.slot };
+  if (count <= 2) return { x: left + index * (slot + m.slotGap), y: top, width: slot, height: slot };
+  return { x: left + (index % 2) * (slot + m.slotGap), y: top + Math.floor(index / 2) * (slot + m.slotGap), width: slot, height: slot };
 }
+
+/** The minimap tile in HUD px: 4 on desktop (the size it had before the HUD scale rule), 3 on touch. */
+export const minimapTilePx = (touch: boolean): number => (touch ? HUD_BOX.minimapTilePxTouch : HUD_BOX.minimapTilePx);
 
 /** The minimap frame for a `cols` x `rows` grid; the map itself starts `minimapFrame` inside. */
-export function minimapRect(space: Pick<HudSpace, 'width'>, cols: number, rows: number): HudBox {
-  const { minimapTilePx: px, minimapMargin: margin, minimapFrame: frame } = HUD_BOX;
-  return { x: space.width - margin - cols * px - frame, y: margin - frame, width: cols * px + 2 * frame, height: rows * px + 2 * frame };
+export function minimapRect(space: Pick<HudSpace, 'width'>, cols: number, rows: number, tilePx: number = HUD_BOX.minimapTilePx): HudBox {
+  const { minimapMargin: margin, minimapFrame: frame } = HUD_BOX;
+  return { x: space.width - margin - cols * tilePx - frame, y: margin - frame, width: cols * tilePx + 2 * frame, height: rows * tilePx + 2 * frame };
 }
 
-/** Boss block width as a share of the space: the Souls bar is long. */
-const BOSS_SHARE = 0.57;
+/** The boss bar itself: the fill is `thick` HUD px, the dark outline and gilt hairline make the frame (7 HUD px, 14 CSS px at the largest scale). */
+export const BOSS_BAR = { thick: 3, frame: 7 } as const;
+
+/** Boss block width as a share of the space: a thin bar, not a banner. */
+const BOSS_SHARE = 0.4;
 /** Touch: the bar keeps clear of the thumb buttons. */
 const BOSS_TOUCH = { share: 0.5, max: 300 } as const;
 
 /**
- * The boss block, bottom centre: ~57% of the width on desktop (never reaching into the slot block), about half on touch.
- * `slots` is how many slot windows are drawn (0 on touch).
+ * The boss block, bottom centre: 40% of the width on desktop (never reaching into the slot block or the log), about half
+ * on touch. `slots` is how many slot windows are drawn (0 on touch).
  */
-export function bossRect(space: Pick<HudSpace, 'width' | 'height'>, slots = 4, touch = false): HudBox {
+export function bossRect(space: HudDims, slots = 4, touch = false): HudBox {
   const m = HUD_METRICS[hudVariant(space)];
   let width: number;
   let bottom = m.bossBottom;
@@ -154,41 +182,58 @@ export function bossRect(space: Pick<HudSpace, 'width' | 'height'>, slots = 4, t
     // Above the message log of the bottom-left corner (the log stays at the bottom on touch).
     bottom = m.margin + HUD_BOX.logHeight + m.slotGap;
   } else {
-    const reserve = slotBlock(space, Math.max(1, slots)).width + m.margin + m.slotGap * 2;
+    const reserve = Math.max(slotBlock(space, Math.max(1, slots)).width, HUD_BOX.logWidth) + m.margin + m.slotGap * 2;
     width = Math.min(Math.round(space.width * BOSS_SHARE), space.width - 2 * reserve);
   }
   width = Math.max(200, Math.min(width, space.width - 2 * m.margin));
   return { x: Math.round((space.width - width) / 2), y: space.height - bottom - m.bossHeight, width, height: m.bossHeight };
 }
 
+/** The announcement strip: the boss block's width, right above it (never over the arena's middle; the floor telegraph is the information). */
+export function captionRect(space: HudDims, slots = 4, touch = false): HudBox {
+  const m = HUD_METRICS[hudVariant(space)];
+  const boss = bossRect(space, slots, touch);
+  return { x: boss.x, y: boss.y - m.slotGap - m.captionHeight, width: boss.width, height: m.captionHeight };
+}
+
+/** The boss block and the announcement strip over it, as one box: what the hint bar must keep clear of in a boss fight. */
+export function bossStackRect(space: HudDims, slots = 4, touch = false): HudBox {
+  const boss = bossRect(space, slots, touch);
+  const caption = captionRect(space, slots, touch);
+  return { x: boss.x, y: caption.y, width: boss.width, height: boss.y + boss.height - caption.y };
+}
+
 export interface HudRectsOptions {
+  /** The held-items line is showing (idle only: it is hidden in combat). */
   chip: boolean;
   slots: number;
   minimap?: { cols: number; rows: number };
   touch?: boolean;
-  /** A boss fight is on (default true: the layout always reserves the boss block); false drops the log to the bottom edge. */
+  /** Kept for callers that still pass it: the log is always the bottom-left corner now. */
   boss?: boolean;
-  /** Co-op partners (their frames sit under the status window). */
+  /** Co-op partners (their frames sit under the chips). */
   partners?: number;
 }
 
-export function hudRects(space: Pick<HudSpace, 'width' | 'height'>, options: HudRectsOptions): HudRects {
+export function hudRects(space: HudDims, options: HudRectsOptions): HudRects {
   const touch = options.touch === true;
   const variant = hudVariant(space);
   const m = HUD_METRICS[variant];
-  const status = statusRect(space, options.chip, touch);
+  const status = statusRect(space, touch);
+  const chips = chipsRect(space, options.chip, touch);
   const boss = bossRect(space, touch ? 0 : options.slots, touch);
-  const partners = Array.from({ length: options.partners ?? 0 }, (_, i): HudBox => ({ x: status.x, y: status.y + status.height + m.partnerGap + i * (m.partnerHeight + m.partnerGap), width: m.partnerWidth, height: m.partnerHeight }));
-  const lifted = options.boss !== false && !touch;
-  const logBottom = lifted ? boss.y - m.slotGap : space.height - m.margin;
+  const caption = captionRect(space, touch ? 0 : options.slots, touch);
+  const partners = Array.from({ length: options.partners ?? 0 }, (_, i): HudBox => ({ x: status.x, y: chips.y + chips.height + m.partnerGap + i * (m.partnerHeight + m.partnerGap), width: m.partnerWidth, height: m.partnerHeight }));
   return {
     variant,
     status,
+    chips,
     partners,
     slots: touch ? [] : Array.from({ length: options.slots }, (_, i) => slotRect(space, i, options.slots)),
-    log: { x: m.margin, y: logBottom - HUD_BOX.logHeight, width: HUD_BOX.logWidth, height: HUD_BOX.logHeight },
+    log: { x: m.margin, y: space.height - m.margin - HUD_BOX.logHeight, width: HUD_BOX.logWidth, height: HUD_BOX.logHeight },
     boss,
-    minimap: options.minimap ? minimapRect(space, options.minimap.cols, options.minimap.rows) : null,
+    caption,
+    minimap: options.minimap ? minimapRect(space, options.minimap.cols, options.minimap.rows, minimapTilePx(touch)) : null,
   };
 }
 
@@ -200,8 +245,8 @@ export interface BandLike {
 }
 
 /**
- * During a boss fight the hint bar rises over the boss block so the two never share the bottom edge. Only `bottom`
- * changes: the band's sides already clear the message log (which sits over the boss block's left) and the slots.
+ * During a boss fight's first seconds the hint bar rises over the boss block and its announcement strip so the three
+ * never share the bottom edge (it hides after 5 s). Only `bottom` changes.
  */
 export function liftHintBand<B extends BandLike>(band: B, boss: HudBox | null, space: Pick<HudSpace, 'height'>): B {
   if (!boss) return band;

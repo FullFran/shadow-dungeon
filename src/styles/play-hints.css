@@ -7,6 +7,10 @@
 .ph-list { display: flex; flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; opacity: 0; white-space: nowrap; }
 .ph.is-on .ph-list { opacity: 1; }
 .ph.too-narrow .ph-list { display: none; }
+/* Minimalist pass (owner 2026-11-04): dimmed while enemies are near, hidden 5 s into a boss fight. */
+.ph.is-fighting.is-on .ph-list { opacity: 0.4; }
+.ph.is-quiet .ph-list, .ph.is-quiet .ph-fs { opacity: 0; pointer-events: none; }
+.ph.is-fighting .ph-fs { opacity: 0.3; }
 /* Reason for the motion (Selective Attention): the bar leaves by itself once nothing new needs saying. Reduced motion: it simply goes. */
 @media (prefers-reduced-motion: no-preference) { .ph-list { transition: opacity 400ms ease-out; } .ph-fs { transition: opacity 160ms ease-out; } }
 

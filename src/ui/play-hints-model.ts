@@ -1,6 +1,6 @@
 import { INTERACT_KEY_CODES, LOCK_KEYS, MAP_KEY, MENU_KEY, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES, SPECTATE_KEY, keyLabel } from '../adapters/bindings';
 import { GAMEPAD_HELP, buttonName, type PadStyle } from '../app/gamepad-help-data';
-import { HUD_BOX, hudRects } from './hud-layout';
+import { HUD_BOX, type HudDims, hudRects } from './hud-layout';
 
 /**
  * What the in-game hint bar shows (.agents/DESIGN.md §4 "Hint bar"): the actions available right now with the
@@ -142,7 +142,7 @@ export interface HintBand {
   bottom: number;
 }
 
-export function hintBand(space: { width: number; height: number }, slots: number): HintBand {
+export function hintBand(space: HudDims, slots: number): HintBand {
   const { margin, slotGap: gap } = HUD_BOX;
   const rects = hudRects(space, { chip: false, slots });
   const bottomRow = rects.slots.filter((slot) => slot.y + slot.height >= space.height - margin);

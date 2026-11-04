@@ -42,12 +42,11 @@ import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawHud, slotCount } from './hud';
-import { bossBar } from '../core/boss';
 import { createCombatHudState, drawBossCaption, drawCombatPanels } from './combat-hud';
 import { createPortraitDrawer } from './hud-portrait';
 import type { LastDevice } from './last-device';
 import type { PadStyle } from '../app/gamepad-help-data';
-import { bossRect, minimapRect } from '../ui/hud-layout';
+import { minimapRect, minimapTilePx } from '../ui/hud-layout';
 import { hudSpace } from '../ui/hud-layout';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
@@ -1823,24 +1822,22 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
-    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
+    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
     drawHud(ctx, current, juice, hud);
-    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined);
-    // The message log keeps clear of the boss block: on desktop it sits over it while a boss fights, else at the bottom edge.
-    const bossOn = bossBar(current) !== null;
-    const logBottom = bossOn && !frame.touchUi ? bossRect(hud, slotCount(current.player.loadout), false).y - 4 + 6 : hud.height;
-    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, logBottom);
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false));
+    // The message log is the bottom-left corner's (the boss block is clear of it); it dims while a fight is on.
+    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height, combatHud.combat);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
     if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, hud.width, hud.height);
     if (frame.nowPlaying) {
       // Touch: above the message log, clear of the action buttons in the bottom-right corner.
       const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
       const grid = current.arena.tiles;
-      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows) : null;
+      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows, minimapTilePx(frame.touchUi ?? false)) : null;
       const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : { x: hud.width - 8, y: (underMap ? underMap.y + underMap.height : 24) + 14, align: 'right' as const };
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
-    if (frame.spell) drawBossCaption(ctx, frame.spell, timeMs, hud);
+    if (frame.spell) drawBossCaption(ctx, frame.spell, timeMs, hud, { scale: hudScale, touch: frame.touchUi ?? false }, slotCount(current.player.loadout));
     if (frame.capture) drawCaptureNotice(ctx, frame.capture, timeMs, hud.width, hud.height, t('card.mastered'), t('card.reward').replace('{coins}', String(frame.capture.coins)).replace('{heal}', String(frame.capture.heal)));
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));
