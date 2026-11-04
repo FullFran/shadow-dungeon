@@ -27,6 +27,8 @@ export interface AccountDrawerOptions {
   flow: AuthFlow;
   /** Called after the drawer is gone (Esc, outside press, close or "seguir como invitado"). */
   onClose(): void;
+  /** Called after `onClose` when the player picked "seguir como invitado" (the welcome gate carries on as a guest). */
+  onGuest?(): void;
   parent?: HTMLElement;
   /** The player's face avatar (the partner's portrait) for the signed-in header; the mail's initial when absent. */
   face?: () => HTMLElement | null;
@@ -194,7 +196,10 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       h('div', { className: 'ad-guest-title' }, [icon('guest'), h('h3', { textContent: t('account.drawer.guest.title') })]),
       h('p', { className: 'ad-guest-sub', textContent: t('account.drawer.guest.sub') }),
       h('div', { className: 'ad-facts-pair' }, [list(t('account.drawer.guest.pros'), GUEST_PROS, 'is-pro'), list(t('account.drawer.guest.cons'), GUEST_CONS, 'is-con')]),
-      button(t('account.drawer.guest.cta'), 'rk-wide', close),
+      button(t('account.drawer.guest.cta'), 'rk-wide', () => {
+        close();
+        options.onGuest?.();
+      }),
       h('div', { className: 'ad-tools' }, [link(t('sync.backups'), () => ((view = 'backups'), render())), link(t('sync.wipe'), () => void wipe())]),
     ]);
   }
