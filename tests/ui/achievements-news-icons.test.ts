@@ -31,14 +31,14 @@ describe('achievements and news icons', () => {
     });
   }
 
-  it('every changelog icon names a drawn icon, and every image is a small webp under public/news', () => {
+  it('every changelog icon names a drawn icon, and every image is a small webp under src/assets/news', () => {
     for (const release of CHANGELOG)
       for (const section of CHANGELOG_SECTIONS)
         for (const item of release.sections[section] ?? []) {
           if (item.icon) expect(ACH_NEWS_ICONS[item.icon], item.icon).toBeDefined();
           if (item.image) {
             expect(item.image).toMatch(/^news\/[a-z0-9-]+\.webp$/);
-            const file = join(__dirname, '../../public', item.image);
+            const file = join(__dirname, '../../src/assets', item.image);
             expect(existsSync(file), item.image).toBe(true);
             expect(statSync(file).size, item.image).toBeLessThan(60 * 1024);
           }

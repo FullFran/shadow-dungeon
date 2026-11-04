@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Downloads the "Normal" face portraits of every playable species (base, shiny and female looks) from PMDCollab
-// SpriteCollab (CC BY-NC 4.0, the source of the sprites) into public/portraits/<sprite key>/Normal.png, mirroring
+// SpriteCollab (CC BY-NC 4.0, the source of the sprites) into src/assets/portraits/<sprite key>/Normal.png, mirroring
 // public/sprites. Writes src/data/portrait-meta.json (the pinned source commit and the keys that exist upstream)
 // and the "## Portraits" section of CREDITS.md. A look without art of its own is simply left out: the game falls
 // back to the base portrait of the form (src/data/portraits.ts), and says so in the manifest-driven test.
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { parseCreditNames, parseCredits, resolveAuthor } from './sprite-lib.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const OUT = join(ROOT, 'public', 'portraits');
+const OUT = join(ROOT, 'src', 'assets', 'portraits');
 const OUT_META = join(ROOT, 'src', 'data', 'portrait-meta.json');
 const OUT_CREDITS = join(ROOT, 'CREDITS.md');
 const SPRITE_META = join(ROOT, 'src', 'data', 'sprite-meta.json');

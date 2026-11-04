@@ -16,7 +16,7 @@ export interface ChangelogItem {
   en: string;
   /** Key of a drawn icon (src/ui/icons/achievements-news-icons.ts) for this row; the section's icon when absent. */
   icon?: string;
-  /** A screenshot under public/news/ (e.g. "news/title-hub.webp"), shown as a small thumbnail. */
+  /** A screenshot under src/assets/news/ (bundled, src/adapters/bundled-art.ts) (e.g. "news/title-hub.webp"), shown as a small thumbnail. */
   image?: string;
 }
 

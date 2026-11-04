@@ -1,3 +1,4 @@
+import { newsImageUrl } from '../adapters/bundled-art';
 import type { KeyValueStore } from '../adapters/storage';
 import { CHANGELOG, CHANGELOG_SECTIONS, compareVersions, type ChangelogItem, type ChangelogSection, type Release } from '../data/changelog';
 import { getLanguage, t } from '../i18n';
@@ -92,7 +93,7 @@ function newsRow(item: ChangelogItem, section: ChangelogSection, language: 'es' 
   const { head, rest } = splitHeadline(item[language]);
   const row = h('li', { className: 'news-row' }, [icon(item.icon ?? NEWS_SECTION_ICONS[section], 'news-row-icon'), h('p', { className: 'news-row-text' }, [h('strong', { textContent: head }), rest])]);
   if (item.image) {
-    const picture = h('img', { src: `${import.meta.env.BASE_URL}${item.image}`, alt: head, loading: 'lazy', decoding: 'async' });
+    const picture = h('img', { src: newsImageUrl(item.image), alt: head, loading: 'lazy', decoding: 'async' });
     const thumb = h('button', { type: 'button', className: 'news-thumb' }, [picture]);
     thumb.setAttribute('aria-pressed', 'false');
     thumb.setAttribute('aria-label', `${t('news.image.zoom')}: ${head}`);

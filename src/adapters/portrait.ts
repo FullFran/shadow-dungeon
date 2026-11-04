@@ -1,3 +1,4 @@
+import { portraitAssetUrl } from './bundled-art';
 import { portraitFor } from '../data/portraits';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
@@ -8,7 +9,8 @@ import { sheetImage, sheetKey, type SheetStore } from './assets';
 import { frameAtTime } from './sprite-anim';
 
 /** The URL the browser loads a portrait from (one place, so a sprite loader can later route it). */
-export const portraitUrl = (file: string): string => `${import.meta.env.BASE_URL}portraits/${file}`;
+/** A bundled portrait (src/data/bundled-art.ts); an empty URL makes the img fail, so the head crop takes over. */
+export const portraitUrl = (file: string): string => portraitAssetUrl(file) ?? '';
 
 export interface FaceOptions {
   /** Outer side of the frame in CSS px. */

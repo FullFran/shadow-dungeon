@@ -6,7 +6,7 @@ import { PLAYABLE_SPECIES, SPECIES } from '../../src/data/species';
 import { lookKey, SPRITE_KEYS } from '../../src/data/sprites';
 
 /** Owner, 2026-11-04: the profile plate shows the partner's face (PMDCollab portraits), not the walking sprite again. */
-const ROOT = new URL('../../public/portraits/', import.meta.url).pathname;
+const ROOT = new URL('../../src/assets/portraits/', import.meta.url).pathname;
 
 describe('face portraits', () => {
   it('records the SpriteCollab commit they were downloaded from', () => {
@@ -46,5 +46,25 @@ describe('face portraits', () => {
 
   it('an unknown key has no portrait (the view draws a cropped head instead)', () => {
     expect(portraitFor('9999/0000')).toBeNull();
+  });
+});
+
+describe('bundled art (sd-pre serves assets/ but not the raw public portraits/ and news/ folders, 2026-11-04)', () => {
+  it('every portrait and news image is a bundled asset, not a raw public file', async () => {
+    const { portraitUrl } = await import('../../src/adapters/portrait');
+    const { newsImageUrl } = await import('../../src/adapters/bundled-art');
+    const { CHANGELOG, CHANGELOG_SECTIONS } = await import('../../src/data/changelog');
+    for (const file of PORTRAIT_MANIFEST.files) {
+      const url = portraitUrl(`${file}/Normal.png`);
+      expect(url, file).not.toMatch(/^(\.\/|\/)?portraits\//);
+      expect(url, file).toMatch(/assets\/portraits\//);
+    }
+    for (const release of CHANGELOG)
+      for (const section of CHANGELOG_SECTIONS)
+        for (const item of release.sections[section] ?? [])
+          if (item.image) {
+            const url = newsImageUrl(item.image);
+            expect(url, item.image).toMatch(/assets\/news\//);
+          }
   });
 });
