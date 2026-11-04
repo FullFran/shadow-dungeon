@@ -29,7 +29,8 @@ import { markVisited, readVisited, travelDestinations, type TravelDestination } 
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
 import { townMapView, type TownMapEntry } from './town-map-view';
-import { looseServices, townMapMarkers } from './town-map';
+import { looseServices, placeCards, townMapMarkers } from './town-map';
+import { menuTiming } from './sheet-model';
 import { wheelServices } from './quick-wheel';
 import { quickWheelView } from './quick-wheel-view';
 import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
@@ -898,7 +899,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   /** The Esc menu: every town service as a window, then back to the title (a room: its own rows, copy the code, leave). */
   const openTownMenu: TownWindowOpener = (parent, onClose) => {
+    // Leaving to another window or the title is instant (that one has its own entrance); "Seguir" and Esc sink away.
+    let instant = false;
     const pick = (action: () => void) => () => {
+      instant = true;
       onClose();
       action();
     };
@@ -909,19 +913,26 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const available = new Set(townMenuServices(services(), lobby !== null));
     const entry = (service: TownService, id: string = service): TownMapEntry => ({ id, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) });
     const markers = townMapMarkers(map, available);
+    const cards = placeCards(markers, map);
     const open = townMapView({
-      heading: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
+      heading: lobby ? `${t(map.nameKey)} · ${lobby.code()}` : t(map.nameKey),
       map,
-      placed: markers.map((m) => ({ ...m, entry: entry(m.service, m.id) })),
-      column: [...looseServices(markers, available).map((s) => entry(s)), ...end, { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose }],
+      placed: markers.map((m, i) => ({ ...m, entry: { ...entry(m.service, m.id), who: t(cards[i]!.whoKey) } })),
+      options: [...looseServices(markers, available).map((s) => entry(s)), ...end],
+      primary: { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose },
       player: { x: walker.pos.x / TILE, y: walker.pos.y / TILE },
       onClose,
     });
-    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    const overlay = h('div', { className: 'town-shop tm-veil' }, [open.element]);
     parent.append(overlay);
     return () => {
       open.dispose();
-      overlay.remove();
+      if (instant) overlay.remove();
+      else {
+        // The panel sinks back the way it came (menuTiming); a stray press meanwhile reaches nothing.
+        overlay.classList.add('is-leaving');
+        window.setTimeout(() => overlay.remove(), menuTiming(matchMedia('(prefers-reduced-motion: reduce)').matches).exitMs);
+      }
     };
   };
 
