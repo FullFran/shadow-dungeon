@@ -5,6 +5,7 @@ import type { Rect } from '../core/state';
 import { TILE } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from '../adapters/assets';
+import { CREATURE_SCALE, drawCreatureFrame, withCreatureScale } from '../adapters/creature-scale';
 import { directionRow, frameAtTime } from '../adapters/sprite-anim';
 import { visibleTiles } from '../adapters/view';
 import { emberAt, hash01 } from '../ui/eclipse';
@@ -55,10 +56,13 @@ function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: Tow
   const meta = SPRITES.sprites[c.sprite]?.anims[anim] ?? SPRITES.sprites[c.sprite]?.anims.Idle;
   const image = meta && sheets.get(sheetKey(c.sprite, meta.file));
   const bob = c.floats ? Math.round(Math.sin(timeMs / 400) * 2) - 6 : 0;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.beginPath();
-  ctx.ellipse(Math.round(c.pos.x), Math.round(c.pos.y), c.floats ? 7 : 10, c.floats ? 3 : 4.5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // The shadow grows with the art, around the feet (src/adapters/creature-scale.ts).
+  withCreatureScale(ctx, c.pos, () => {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(Math.round(c.pos.x), Math.round(c.pos.y), c.floats ? 7 : 10, c.floats ? 3 : 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
   if (!meta || !image) {
     ctx.fillStyle = '#ff00ff';
     ctx.fillRect(Math.round(c.pos.x - 6), Math.round(c.pos.y - 16), 12, 16);
@@ -66,18 +70,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: Tow
   }
   const frame = frameAtTime(meta.durations, timeMs, true);
   const row = Math.min(directionRow(c.facing), meta.rows - 1);
-  const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.75 };
-  ctx.drawImage(
-    image,
-    frame * meta.frameWidth,
-    row * meta.frameHeight,
-    meta.frameWidth,
-    meta.frameHeight,
-    Math.round(c.pos.x - anchor.x),
-    Math.round(c.pos.y - anchor.y + bob),
-    meta.frameWidth,
-    meta.frameHeight,
-  );
+  drawCreatureFrame(ctx, image, meta, frame, row, c.pos, 1, bob * CREATURE_SCALE);
 }
 
 /** Run of `=` tiles through (x, y) along one axis. */
@@ -406,7 +399,7 @@ export interface TownOverlay {
 /** A name in the pixel font with a one-pixel dark outline, centred over a walker's head. */
 function nameLabel(ctx: CanvasRenderingContext2D, view: Rect, label: { text: string; pos: Vec2; dim?: boolean }): void {
   const x = Math.round(label.pos.x - view.x);
-  const y = Math.round(label.pos.y - view.y - 34);
+  const y = Math.round(label.pos.y - view.y - Math.round(34 * CREATURE_SCALE));
   if (x < -60 || x > view.width + 60 || y < -12 || y > view.height + 10) return;
   ctx.globalAlpha = label.dim ? 0.6 : 1;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) pixelText(ctx, label.text, x + dx, y + dy, '#0b0410', 'center');

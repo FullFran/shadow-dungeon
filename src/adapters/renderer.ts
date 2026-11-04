@@ -1,4 +1,5 @@
 import type { Figuration } from './figurations';
+import { drawCreatureFrame, withCreatureScale } from './creature-scale';
 import { drawHerald, heraldScale } from './herald-vfx';
 import { heraldOf } from '../core/herald/brain';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
@@ -256,20 +257,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y - 16), 12, 16);
       return;
     }
-    const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.75 };
     const row = Math.min(choice.row, meta.rows - 1);
     ctx.globalAlpha = alpha;
-    ctx.drawImage(
-      image,
-      choice.frame * meta.frameWidth,
-      row * meta.frameHeight,
-      meta.frameWidth,
-      meta.frameHeight,
-      Math.round(pos.x - anchor.x * scaleBy),
-      Math.round(pos.y - anchor.y * scaleBy),
-      meta.frameWidth * scaleBy,
-      meta.frameHeight * scaleBy,
-    );
+    drawCreatureFrame(ctx, image, meta, choice.frame, row, pos, scaleBy);
     ctx.globalAlpha = 1;
   }
 
@@ -1676,9 +1666,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push({
         y: pos.y,
         draw: () => {
-          shadow(pos, enemy.radius);
-          if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
-          if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
+          // The creature's shadow and auras grow with its art (src/adapters/creature-scale.ts); the Sima's nest is drawn in code at its own size.
+          const grows = enemy.species !== 'eclipse-nest';
+          const around = (draw: () => void): void => (grows ? withCreatureScale(ctx, pos, draw) : draw());
+          around(() => {
+            shadow(pos, enemy.radius);
+            if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
+            if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
+          });
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
@@ -1697,7 +1692,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           }
           // The player's shadow (the tutorial dungeon's boss) is an original creature drawn in code, never a sheet.
           if (enemy.species === 'shadow-self') {
-            drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs);
+            around(() => drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs));
             return;
           }
           // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
@@ -1708,8 +1703,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (frame.silhouettes?.has(enemy.id)) ctx.filter = SILHOUETTE_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? woundScale(worldDifficulty(current)) : 1));
           ctx.filter = 'none';
-          if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
-          if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);
+          if (enemy.alive && (enemy.leader || enemy.broken)) around(() => leaderMarks(enemy, pos, timeMs));
+          if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) around(() => gateTargetMark(enemy, pos, current.gate!.kind, timeMs));
         },
       });
       // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
@@ -1723,9 +1718,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     drawables.push({
       y: playerPos.y,
       draw: () => {
-        shadow(playerPos, TUNING.player.radius);
-        chargeRing(current.player, playerPos);
-        if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
+        withCreatureScale(ctx, playerPos, () => {
+          shadow(playerPos, TUNING.player.radius);
+          chargeRing(current.player, playerPos);
+          if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
+        });
         // Under Illusion (Zorua) the player shimmers, half see-through.
         const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
         drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled * vanishAlpha(current.player.action));
@@ -1738,13 +1735,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push({
         y: pos.y,
         draw: () => {
-          shadow(pos, TUNING.player.radius);
-          chargeRing(remote.player, pos);
+          withCreatureScale(ctx, pos, () => {
+            shadow(pos, TUNING.player.radius);
+            chargeRing(remote.player, pos);
+          });
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
           drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, (remote.player.hp > 0 ? 1 : 0.7) * vanishAlpha(remote.player.action));
-          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
-          // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
-          if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);
+          withCreatureScale(ctx, pos, () => {
+            nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
+            // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
+            if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);
+          });
         },
       });
     }
@@ -1765,17 +1766,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
 
     const hovered = current.enemies.find((e) => e.id === frame.hoverId && e.alive);
-    if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
+    if (hovered) withCreatureScale(ctx, posOf(hovered.id, hovered.pos), () => hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius));
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
-    if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
+    if (target) withCreatureScale(ctx, posOf(target.id, target.pos), () => lockMarker(posOf(target.id, target.pos), target.radius, timeMs));
     // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
     for (const e of current.enemies) {
       if (!e.alive || !e.dot) continue;
       const at = posOf(e.id, e.pos);
-      fx?.drawLoop(ctx, e.dot.kind === 'burn' ? WORLD_CUES.burn : WORLD_CUES.poison, { x: at.x, y: at.y + 2, placement: 'ground', fitHeight: e.radius * 2.6 }, timeMs);
+      withCreatureScale(ctx, at, () => fx?.drawLoop(ctx, e.dot!.kind === 'burn' ? WORLD_CUES.burn : WORLD_CUES.poison, { x: at.x, y: at.y + 2, placement: 'ground', fitHeight: e.radius * 2.6 }, timeMs));
     }
-    if (current.player.poison) fx?.drawLoop(ctx, WORLD_CUES.poison, { x: playerPos.x, y: playerPos.y + 2, placement: 'ground', fitHeight: 26 }, timeMs);
-    for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
+    if (current.player.poison) withCreatureScale(ctx, playerPos, () => fx?.drawLoop(ctx, WORLD_CUES.poison, { x: playerPos.x, y: playerPos.y + 2, placement: 'ground', fitHeight: 26 }, timeMs));
+    for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) withCreatureScale(ctx, posOf(e.id, e.pos), () => statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs));
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     if (current.fogWall) fogWallVeil(current.fogWall.line, current.arena.width, timeMs);
     if (frame.touchAim && !target) aimLine(playerPos, frame.touchAim);
