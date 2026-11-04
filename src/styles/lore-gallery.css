@@ -1,0 +1,77 @@
+/* The lore gallery (src/app/gallery-view.ts; .agents/DESIGN.md §4 picker pattern): card grid + sheet, fixed geometry, relic slabs. Colours come from tokens; --gv-tint is the group's own colour (set per card). */
+.gv-window { display: flex; flex-direction: column; width: min(68rem, 100%); height: min(42rem, calc(100dvh - 64px)); }
+.gv-window > .md-window-body { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; overflow: hidden !important; }
+.gv-progress { flex: none; display: flex; align-items: center; gap: 14px; }
+.gv-progress-label { flex: none; font-size: 20px; color: var(--md-text); }
+.gv-bar { flex: 1; height: 12px; background: var(--md-bar-back); border: 2px solid var(--md-ink); border-radius: 3px; box-shadow: 0 0 0 1px var(--relic-gold-deep); overflow: hidden; }
+.gv-bar > i, .gv-mini > i { display: block; height: 100%; background: linear-gradient(90deg, var(--relic-ember-deep), var(--relic-ember) 60%, var(--md-cursor)); }
+.gv-body { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 16px; min-height: 0; flex: 1; }
+
+/* Cards */
+.gv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); grid-auto-rows: 150px; gap: 10px; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 4px 2px; scrollbar-color: var(--md-border-shade) transparent; }
+.gv-card { all: unset; box-sizing: border-box; position: relative; height: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 10px; cursor: pointer; text-align: center;
+  background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--gv-tint) 16%, var(--relic-slab-edge)), var(--relic-slab) 70%); border: 2px solid var(--relic-slab-edge); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 rgba(0, 0, 0, 0.45); }
+.gv-vignette { flex: none; display: grid; place-items: center; width: 100%; height: 66px; border-radius: 4px; border: 2px solid var(--md-ink); box-shadow: 0 0 0 1px var(--relic-gold-deep);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gv-tint) 55%, var(--relic-slab)), var(--relic-slab) 95%); }
+.gv-vignette .px-icon { width: 44px; height: 44px; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--gv-tint) 70%, transparent)); }
+.gv-card-title { max-width: 100%; font-size: 21px; line-height: 1; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-card-count { font-family: var(--md-text-font); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--md-text-dim); }
+.gv-mini { width: 70%; height: 6px; background: var(--md-bar-back); border: 1px solid var(--md-ink); border-radius: 3px; overflow: hidden; }
+.gv-card-hint { font-family: var(--md-text-font); font-size: 12px; line-height: 1.25; color: var(--md-disabled); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.gv-card.is-locked { background: linear-gradient(180deg, var(--relic-slab), var(--md-ink)); border-style: dashed; }
+.gv-card.is-locked .gv-vignette { background: var(--md-ink); box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--relic-gold-deep); }
+.gv-card.is-locked .gv-vignette .px-icon { filter: none; opacity: 0.85; }
+.gv-card.is-locked .gv-card-title { color: var(--md-disabled); }
+.gv-card:hover, .gv-card.is-focused { border-color: var(--md-border); }
+.gv-card:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45), 0 0 20px rgba(255, 138, 61, 0.4); outline: none; }
+
+/* Sheet */
+.gv-sheet { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 12px 14px 12px; box-sizing: border-box; overflow: hidden;
+  background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6); }
+.gv-sheet-head { flex: none; display: flex; align-items: center; gap: 12px; }
+.gv-sheet-head .gv-vignette { width: 72px; height: 72px; }
+.gv-sheet-head .gv-vignette .px-icon { width: 52px; height: 52px; }
+.gv-sheet-titles { min-width: 0; }
+.gv-sheet-title { margin: 0; font-size: 26px; line-height: 1.05; color: var(--md-text); text-shadow: 0 3px 0 var(--md-ink); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.gv-sheet-count { margin: 4px 0 0; font-family: var(--md-text-font); font-weight: 700; font-size: 14px; color: var(--md-cursor); font-variant-numeric: tabular-nums; }
+.gv-sheet-hint { flex: none; display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 10px; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); border: 1px dashed var(--relic-gold-deep); border-radius: 4px; }
+.gv-sheet-hint .px-icon { width: 24px; height: 24px; }
+.gv-rows { list-style: none; margin: 0; padding: 0 4px 0 0; display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
+.gv-row { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid var(--relic-gold-deep); }
+.gv-row:first-child { border-top: 0; padding-top: 0; }
+.gv-row-title { font-size: 19px; line-height: 1.1; color: var(--md-text); }
+.gv-row.is-locked .gv-row-title { color: var(--md-disabled); }
+.gv-row-plays { display: flex; gap: 8px; }
+.gv-play { all: unset; box-sizing: border-box; flex: 1; min-width: 0; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 10px; cursor: pointer; font-size: 18px; color: var(--md-text);
+  background: var(--relic-slab-edge); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.gv-play .px-icon { width: 22px; height: 22px; }
+.gv-play:hover, .gv-play:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
+.gv-play:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45), 0 0 16px rgba(255, 138, 61, 0.35); }
+.gv-play.is-locked { cursor: default; color: var(--md-disabled); background: var(--md-ink); border-style: dashed; }
+.gv-play[aria-disabled='true'] { cursor: not-allowed; color: var(--md-disabled); border-style: dashed; }
+
+/* Foot */
+.gv-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gv-back { all: unset; box-sizing: border-box; min-height: 44px; display: inline-flex; align-items: center; padding: 0 22px; cursor: pointer; font-size: 22px; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.gv-back:hover, .gv-back:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
+.gv-back:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45); }
+.gv-hint { margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
+@media (prefers-reduced-motion: no-preference) { .gv-card { transition: border-color 120ms ease-out, box-shadow 120ms ease-out; } }
+
+/* Phones and short screens (844x390): narrower sheet, compact cards. */
+@media (max-height: 560px), (max-width: 900px) {
+  .gv-window { height: calc(100dvh - 24px); }
+  .gv-window > .md-window-body { gap: 6px; }
+  .gv-progress-label { font-size: 16px; } .gv-bar { height: 10px; }
+  .gv-body { grid-template-columns: minmax(0, 1fr) 15rem; gap: 10px; }
+  .gv-grid { grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr)); grid-auto-rows: 84px; gap: 6px; }
+  .gv-card { height: 84px; padding: 4px 4px 6px; gap: 2px; }
+  .gv-vignette { height: 36px; } .gv-vignette .px-icon { width: 28px; height: 28px; }
+  .gv-card-title { font-size: 15px; } .gv-card-count { font-size: 11px; } .gv-card-hint { font-size: 10px; -webkit-line-clamp: 2; } .gv-mini { display: none; }
+  .gv-sheet { padding: 6px 8px; gap: 6px; }
+  .gv-sheet-head .gv-vignette { width: 44px; height: 44px; } .gv-sheet-head .gv-vignette .px-icon { width: 30px; height: 30px; }
+  .gv-sheet-title { font-size: 18px; } .gv-sheet-count { font-size: 12px; margin-top: 2px; }
+  .gv-sheet-hint { font-size: 12px; padding: 4px 8px; } .gv-sheet-hint .px-icon { width: 18px; height: 18px; }
+  .gv-row-title { font-size: 15px; } .gv-play { font-size: 15px; min-height: 44px; }
+  .gv-hint { display: none; } .gv-back { font-size: 16px; padding: 0 16px; }
+}

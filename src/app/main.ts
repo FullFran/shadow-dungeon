@@ -45,7 +45,8 @@ import { hasSeenSimaScene, markSimaSceneSeen, simaEndScene, simaPanels, simaPlea
 import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
 import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
-import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
+import { galleryGroups, type GalleryScene } from './lore-gallery';
+import { galleryView } from './gallery-view';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
 import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
@@ -1171,54 +1172,36 @@ function townAccount(parent: HTMLElement, onClose: () => void): () => void {
 function townGallery(root: HTMLElement) {
   return (parent: HTMLElement, onClose: () => void, replayPlea: (() => void) | null): (() => void) => {
     const overlay = h('div', { className: 'town-shop' });
-    const groups = galleryGroups();
-    let open: { element: HTMLElement; dispose(): void } | null = null;
     let closeScene: (() => void) | null = null;
-    const render = (group: number | null, initial = 0): void => {
-      open?.dispose();
-      const seen = readGallerySeen(store, settings.starterChosen);
-      if (group === null) {
-        open = menuWindow({
-          title: t('gallery.title'),
-          intro: t('gallery.intro'),
-          rows: groups.map((g, i) => ({ label: g.title(t), about: t('gallery.group.about').replace('{seen}', String(groupSeen(g, seen))).replace('{total}', String(g.entries.length)), onConfirm: () => render(i) })),
-          back: { label: t('menu.back'), about: t('gallery.back.about'), onConfirm: onClose },
-          className: 'town-menu',
-          initial,
+    const view = galleryView({
+      groups: galleryGroups(),
+      seen: readGallerySeen(store, settings.starterChosen),
+      // The pleas replay on the crater's rim, alone only.
+      canPlay: (entry) => entry.scene.kind !== 'plea' || replayPlea !== null,
+      onPlay: (entry, done) => {
+        const scene = entry.scene;
+        if (scene.kind === 'plea') {
+          replayPlea?.();
+          done();
+          return;
+        }
+        closeScene = galleryCinematic(root, scene, () => {
+          closeScene = null;
+          done();
         });
-      } else {
-        const g = groups[group]!;
-        open = menuWindow({
-          title: g.title(t),
-          rows: g.entries.map((e, i) => {
-            const unlocked = galleryUnlocked(e.scene, seen);
-            const roomPlea = e.scene.kind === 'plea' && !replayPlea;
-            return {
-              label: unlocked ? e.label(t) : t('gallery.locked'),
-              about: !unlocked ? t('gallery.locked.about') : roomPlea ? t('gallery.plea.room') : t('gallery.play.about'),
-              onConfirm: () => {
-                if (!unlocked || roomPlea || closeScene) return;
-                if (e.scene.kind === 'plea') return replayPlea?.();
-                closeScene = galleryCinematic(root, e.scene, () => {
-                  closeScene = null;
-                  render(group, i);
-                });
-              },
-            };
-          }),
-          back: { label: t('menu.back'), about: t('gallery.groups.about'), onConfirm: () => render(null, group) },
-          className: 'town-menu',
-          initial,
-        });
-      }
-      overlay.replaceChildren(open.element);
-    };
-    render(null);
+      },
+      onBack: onClose,
+    });
+    // A click on the veil closes the window.
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) onClose();
+    });
+    overlay.append(view.element);
     parent.append(overlay);
     return () => {
       closeScene?.();
       closeScene = null;
-      open?.dispose();
+      view.dispose();
       overlay.remove();
     };
   };
