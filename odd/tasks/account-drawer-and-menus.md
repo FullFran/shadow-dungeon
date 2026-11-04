@@ -21,7 +21,7 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 
 ## Tasks
 
-- T1 delegated (worktree): server Clerk exchange endpoint + `clerk_id` field migration + tests. RED: `server/internal/hooks` (or new package) test for verify→link→create and 401/503.
+- T1 done (de27297, cherry-picked; go test/vet green; live 401 on a bad token with CLERK_SECRET_KEY set; real JWKS path untried until a real sign-in; extra statuses 409 email linked to another Clerk user, 502 Clerk unreachable; no `azp` check yet): server Clerk exchange endpoint + `clerk_id` field migration + tests. RED: `server/internal/hooks` (or new package) test for verify→link→create and 401/503.
 - T2 delegated (worktree): client Clerk adapter (`src/adapters/clerk-auth.ts`), account drawer (email+password with sign-up email code, Google, Discord, guest with pros/cons), Friends window redesign. RED: adapter and drawer model tests.
 - T3 delegated (worktree): install notice + Gallery redesign. RED: view-model tests.
 - T4 delegated (worktree): Shrine + Mission board redesign. RED: view-model tests.
