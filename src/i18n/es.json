@@ -64,6 +64,8 @@
   "quiz.retake": "Repetir test",
   "app.title": "Mazmorra Sombría",
   "app.loading": "Cargando…",
+  "resume.restoring": "Restaurando partida…",
+  "resume.restored": "Partida restaurada. Sigues donde lo dejaste.",
   "notice.fanProject": "Proyecto fan sin ánimo de lucro. Pokémon y sus personajes son propiedad de Nintendo, Creatures Inc., GAME FREAK y The Pokémon Company.",
   "notice.sprites": "Sprites de los artistas de PMDCollab SpriteCollab (CC BY-NC 4.0). Créditos en CREDITS.md.",
   "language.label": "Idioma",

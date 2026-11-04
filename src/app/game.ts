@@ -1,4 +1,5 @@
 import { pausesOnLeave } from './pause-on-leave';
+import { packMinimap, unpackMinimap, type ResumeWriter, type RunPart } from './run-resume';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
 import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
@@ -243,6 +244,12 @@ export interface GameOptions {
   tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
   /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
   hints?: { enabled(): boolean; padStyle?(): PadStyle };
+  /**
+   * Solo only: reload-proof play (app/run-resume.ts). `from` is a stored run to continue: it comes back exactly as it was,
+   * paused with the menu open. `writer` keeps the record (floor changes, every few seconds, on leaving the page) and
+   * clears it when the run ends; `crashed` says whether the page threw since it opened.
+   */
+  resume?: { from?: RunPart; writer: ResumeWriter; crashed(): boolean };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
 }
@@ -587,7 +594,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let showMinimap = true;
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
-  const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /** Restoring a stored run: the floor's entry lines, voices and sounds stay quiet (nothing new happened). */
+  let quiet = false;
+  const say = (text: string, tone: LogTone) => {
+    if (!quiet) log = pushMessage(log, text, tone, realMs);
+  };
   /**
    * The Senda's spoken lines (odd/tasks/menu-redesign.md S13, owner: "que en el
    * modo un jugador paren el juego hasta que le des"): alone, each line waits in
@@ -598,7 +609,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let storyBox: HTMLElement | null = null;
   const tell = (text: string, tone: LogTone) => {
     say(text, tone);
-    if (net) return;
+    if (net || quiet) return;
     storyLines.push(text);
     if (!storyBox) nextStoryLine();
   };
@@ -691,7 +702,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     return bands ? simaBandAt(bands, run.floor) : null;
   };
   function announceFloor(descended: boolean): void {
-    teach({ floorStart: run.floor, events: [] });
+    if (!quiet) teach({ floorStart: run.floor, events: [] });
     const lore = dungeonOf(run).lore;
     const bands = dungeonOf(run).endless?.bands;
     // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
@@ -752,7 +763,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro = { name, subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
       card = null;
     }
-    for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
+    if (!quiet) for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
     storyFloor();
   }
@@ -987,6 +998,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     music();
     say(t('bonfire.back'), 'good');
     if (net?.role === 'host') net.session.sendRetry(run.floor, true);
+    keepRun();
   }
 
   /** Each step: the mid-boss just fell, so its bonfire lights and this peer's state is kept (core/bonfire.ts). */
@@ -1111,6 +1123,109 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Back in the antechamber of a boss floor: its silence again (core/run.ts `floorMusic`).
     music();
     announceFloor(false);
+    keepRun();
+  }
+
+  // Reload-proof play (app/run-resume.ts): a solo run keeps its record, and a stored one comes back paused.
+  const resume = net ? undefined : options.resume;
+  /** How often the record is refreshed while playing, and how soon after a hit (so a killed tab cannot undo a blow). */
+  const KEEP_EVERY_MS = 3000;
+  const KEEP_AFTER_HIT_MS = 500;
+  let sinceKeptMs = 0;
+  let hurtSinceKept = false;
+  /** The state last written, to skip a second write of the same moment (the menu opening, then the page hiding). */
+  let kept: { world: WorldState; run: RunState } | null = null;
+  function capturePart(): RunPart {
+    return {
+      run,
+      world,
+      floorStart,
+      tally,
+      floorStartTally,
+      kills,
+      floorStartKills,
+      floorHit,
+      restartsUsed,
+      simaSpent,
+      floorStartSpent,
+      bossPicks: [...bossPicks],
+      simaLog: [...simaLog],
+      memoriesRead: [...memoriesRead],
+      bossesMourned: [...bossesMourned],
+      lowHpSaid,
+      merchantBerries,
+      merchantSold,
+      shrineTimePaid,
+      eventRewarded,
+      bonfire,
+      bonfireUsed,
+      trial,
+      trialHit,
+      realMs,
+      ...(minimap ? { minimap: packMinimap(minimap.seen) } : {}),
+    };
+  }
+  /** Writes the record now (never in a shared run or after the end). A player who is down leaves none: a reload must not undo the blow. */
+  function keepRun(): void {
+    if (!resume || ended) return;
+    sinceKeptMs = 0;
+    hurtSinceKept = false;
+    if (world.player.hp <= 0) return resume.writer.suspend();
+    if (kept && kept.world === world && kept.run === run) return;
+    kept = { world, run };
+    resume.writer.save(capturePart(), resume.crashed());
+  }
+  /** A stored run back, exactly as it was and paused: the menu is open, "Continuar" plays on. */
+  function restoreRun(p: RunPart): void {
+    quiet = true;
+    run = p.run;
+    world = { ...p.world, lock: configureLock(p.world.lock, lockSettings) };
+    floorStart = { ...p.floorStart, lock: configureLock(p.floorStart.lock, lockSettings) };
+    tally = p.tally;
+    floorStartTally = p.floorStartTally;
+    kills = p.kills;
+    floorStartKills = p.floorStartKills;
+    floorHit = p.floorHit;
+    restartsUsed = p.restartsUsed;
+    simaSpent = p.simaSpent;
+    floorStartSpent = p.floorStartSpent;
+    bossPicks = new Set(p.bossPicks);
+    simaLog.splice(0, simaLog.length, ...p.simaLog);
+    for (const i of p.memoriesRead) memoriesRead.add(i);
+    for (const i of p.bossesMourned) bossesMourned.add(i);
+    lowHpSaid = p.lowHpSaid;
+    merchantBerries = p.merchantBerries;
+    merchantSold = p.merchantSold;
+    shrineTimePaid = p.shrineTimePaid;
+    eventRewarded = p.eventRewarded;
+    bonfire = p.bonfire;
+    bonfireUsed = p.bonfireUsed;
+    trial = p.trial;
+    trialHit = p.trialHit;
+    realMs = p.realMs;
+    lastEvent = world.simaEvent;
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
+    touch.setHidden('boost', !world.player.loadout[2]);
+    touch.setHidden('area', !world.player.loadout[3]);
+    prev = world;
+    accumulator = 0;
+    camera = world.player.pos;
+    view = cameraView(camera, viewWidth, viewHeight, world.arena);
+    lockView = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
+    music();
+    announceFloor(false);
+    quiet = false;
+    // Nothing new happened: no title cards or music notes over a floor already under way.
+    intro = null;
+    card = null;
+    nowPlaying = null;
+    const seen = minimap ? unpackMinimap(p.minimap, minimap.cols, minimap.rows) : null;
+    if (minimap && seen) minimap.seen.set(seen);
+    say(t('resume.restored'), 'info');
+    // An item pick still on offer stays open under the menu; the menu itself is the pause.
+    offerPick();
+    showMenu();
   }
 
   // Leaving the page (another tab, another window, the browser's help) pauses a solo run (app/pause-on-leave.ts).
@@ -1118,16 +1233,23 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (pausesOnLeave({ shared: Boolean(net), ended, menuOpen: closeMenu !== null })) showMenu();
   };
   const onHidden = () => {
-    if (document.hidden) onLeavePage();
+    if (document.hidden) {
+      onLeavePage();
+      keepRun();
+    }
   };
   window.addEventListener('blur', onLeavePage);
   document.addEventListener('visibilitychange', onHidden);
+  // A reload or a closed tab: the record is current when the page goes (also when the tab was never hidden first).
+  const onPageHide = () => keepRun();
+  window.addEventListener('pagehide', onPageHide);
   const pausePalette = () => {
     const band = simaBand();
     return band ? simaPalette(band) : dungeonOf(run).palette;
   };
   function showMenu(): void {
     if (closeMenu || ended || !options.openMenu) return;
+    keepRun();
     // Release everything held: menu clicks must not attack, and keys held now must not stick.
     input.setSuspended(true);
     audio?.setDucked(true);
@@ -1137,6 +1259,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         restart: restartFloor,
         ...(net ? {} : { restartsLeft: trial ? 0 : restartsLeft(difficulty, restartsUsed) }),
         quit: () => {
+          // Leaving on purpose abandons the run: it must not come back on the next reload.
+          resume?.writer.end();
           hideMenu();
           // An online room keeps this player: a guest only leaves the run, the host brings the room back (`onQuit`).
           quitSession(net);
@@ -1315,6 +1439,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function end(result: GameResult, cut?: CutShort): void {
     if (ended) return;
     ended = true;
+    // A finished run never comes back: the record goes now, before the end screen, so a reload on it cannot undo a defeat.
+    resume?.writer.end();
     hidePick();
     if (result === 'victory' && !cut && !trial) showVictoryBand();
     audio?.setMusic(null);
@@ -1394,6 +1520,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     announceFloor(true);
     // The guardian's floor opens with its cinematic (a herald's with its intro); a pick carried down the stairs (shared run) waits for it.
     simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+    keepRun();
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
@@ -1484,7 +1611,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       for (const line of eventMessages(events, (id) => shownAs.get(id) ?? world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
       for (const event of events) {
-        if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
+        if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') {
+          lastHurtAt = realMs;
+          hurtSinceKept = true;
+        }
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
         if (event.type === 'berryEaten' && event.berryId.includes(WISP_BERRY) && !wispFound) {
           wispFound = true;
@@ -1556,6 +1686,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
+    if (resume && !ended && frameMs > 0) {
+      sinceKeptMs += frameMs;
+      if (world.player.hp <= 0 || sinceKeptMs >= KEEP_EVERY_MS || (hurtSinceKept && sinceKeptMs >= KEEP_AFTER_HIT_MS)) keepRun();
+    }
     fx.store.tick(realMs);
     fx.update(frameMs);
     fxDirector.observe(world, realMs);
@@ -1685,11 +1819,16 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
 
   resize();
-  music();
-  lastEvent = world.simaEvent;
-  announceFloor(false);
-  // Development start below floor 1 (`?floor=`): the guardian's cinematic on its floor.
-  simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+  if (resume?.from) restoreRun(resume.from);
+  else {
+    music();
+    lastEvent = world.simaEvent;
+    announceFloor(false);
+    // Development start below floor 1 (`?floor=`): the guardian's cinematic on its floor.
+    simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+    // The record exists from the first moment (it replaces the town's), not only after the first few seconds.
+    keepRun();
+  }
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
@@ -1727,7 +1866,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       spectateButton.remove();
       sign?.element.remove();
       victoryBand?.remove();
+      // The run is over for this page (quit, end screen, another screen): no record of it stays.
+      resume?.writer.end();
       window.removeEventListener('blur', onLeavePage);
+      window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('keydown', onSignKey, true);
       storyBox?.remove();

@@ -270,6 +270,11 @@ function safeLines(globalBoard: ((difficulty: Difficulty) => string[]) | undefin
 
 export interface TownHandle {
   stop(): void;
+  /**
+   * Where the walker stands, for the reload-proof record (app/run-resume.ts): the map and the tile. Null while the
+   * town is stopped, fading between maps, in a cutscene (plea, tour) or a room's (the group never restores).
+   */
+  place(): { at: WorldMapId; tile: { x: number; y: number } } | null;
 }
 
 /** What can be talked to or read on a map. */
@@ -1098,6 +1103,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   const handle: TownHandle = {
+    place() {
+      if (stopped || fade || plea || tour || lobby) return null;
+      return { at: map.id, tile: tileOf(walker.pos) };
+    },
     stop() {
       if (stopped) return;
       stopped = true;

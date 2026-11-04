@@ -37,9 +37,9 @@ describe('the Senda «before» cinematic, every attempt', () => {
     expect(skipAvailable(0)).toBe(false);
   });
 
-  it('the app plays it with no seen gate and the skip at once; solo only, as before', () => {
+  it('the app plays it with no seen gate and the skip at once; solo only, never again when a stored run comes back', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
-    expect(main).toMatch(/if \(story && !shared\.net && !devStoryDone\(\)\) await new Promise<void>\(\(resolve\) => storyCinematic\(root, story, 'before', resolve\)\);/);
+    expect(main).toMatch(/if \(story && !shared\.net && !resume && !devStoryDone\(\)\) await new Promise<void>\(\(resolve\) => storyCinematic\(root, story, 'before', resolve\)\);/);
     const cinematic = main.slice(main.indexOf('function storyCinematic('), main.indexOf('function heraldCinematic('));
     expect(cinematic).toContain('const panels = storyPanels(story, phase, t);');
     expect(cinematic).toContain('skipAfterMs: STORY_SKIP_AFTER_MS');

@@ -6,6 +6,8 @@
 export interface KeyValueStore {
   get(key: string): string | null;
   set(key: string, value: string): void;
+  /** Deletes the key (absent on a store that cannot: callers then blank it). */
+  remove?(key: string): void;
 }
 
 export function memoryStore(): KeyValueStore {
@@ -14,6 +16,9 @@ export function memoryStore(): KeyValueStore {
     get: (key) => data.get(key) ?? null,
     set: (key, value) => {
       data.set(key, value);
+    },
+    remove: (key) => {
+      data.delete(key);
     },
   };
 }
@@ -32,6 +37,13 @@ export function browserStore(): KeyValueStore {
         globalThis.localStorage?.setItem(key, value);
       } catch {
         // Not persisted; the game keeps working with in-memory settings.
+      }
+    },
+    remove(key) {
+      try {
+        globalThis.localStorage?.removeItem(key);
+      } catch {
+        // Nothing to remove.
       }
     },
   };
