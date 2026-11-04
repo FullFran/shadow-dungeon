@@ -1,4 +1,5 @@
 import type { HeldItem } from '../adapters/hud';
+import { MAX_LEVEL, levelProgress } from '../core/progression';
 import { dungeonById } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
 import type { MoveId } from '../data/moves';
@@ -99,6 +100,10 @@ export interface PauseRunInfo {
   elapsedMs: number;
   coins: number;
   loadout: readonly (MoveId | null)[];
+  /** The run's total experience; the level and how far into it are derived from it. */
+  xp: number;
+  /** The partner's passive and its state now (`passiveStatus`): hidden in combat, read here. */
+  passive: { text: string; ready: boolean };
   /** A shared run: it keeps going for the partners while this menu is open. */
   coop: boolean;
 }
@@ -120,6 +125,11 @@ export interface PauseSummary {
   moves: PauseMove[];
   items: HeldItem[];
   coop: boolean;
+  level: number;
+  /** How far into the level (0..1) and its words: "62 %", or "Máximo" at the cap. */
+  xpFill: number;
+  xpText: string;
+  passive: { text: string; ready: boolean };
 }
 
 /** "12:34", or "1:02:05" past the hour. */
@@ -132,6 +142,7 @@ export function formatRunTime(ms: number): string {
 }
 
 export function pauseSummary(info: PauseRunInfo, held: readonly HeldItem[], tr: (key: string) => string = t): PauseSummary {
+  const { level, fill } = levelProgress(info.xp);
   return {
     species: info.species,
     speciesName: tr(`species.${info.species}`),
@@ -146,5 +157,9 @@ export function pauseSummary(info: PauseRunInfo, held: readonly HeldItem[], tr: 
     }),
     items: [...held],
     coop: info.coop,
+    level,
+    xpFill: fill,
+    xpText: level >= MAX_LEVEL ? tr('pause.xpMax') : `${Math.floor(fill * 100)} %`,
+    passive: info.passive,
   };
 }

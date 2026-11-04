@@ -70,7 +70,7 @@ import { tileOf } from '../core/tiles';
 import { distance, length, vec, type Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
-import { heldItems, type HeldItem } from '../adapters/hud';
+import { heldItems, passiveStatus, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
 import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type LogTone, type MessageLog } from '../adapters/message-log';
@@ -1274,7 +1274,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       },
       heldItems(world.player.items),
       {
-        info: { species: world.player.species, dungeon: run.dungeon, floor: run.floor, difficulty, elapsedMs: realMs, coins: Math.max(0, coinsInHand()), loadout: world.player.loadout, coop: Boolean(net) },
+        info: { species: world.player.species, dungeon: run.dungeon, floor: run.floor, difficulty, elapsedMs: realMs, coins: Math.max(0, coinsInHand()), loadout: world.player.loadout, xp: world.player.xp, passive: passiveStatus(world.player), coop: Boolean(net) },
         map: { model: cropPauseMap(buildPauseMap(world, minimap, view)), palette: pausePalette() },
       },
     );

@@ -126,6 +126,10 @@ export function pauseView(options: PauseViewOptions): PauseView {
       h('span', { className: 'pz-move-text' }, [h('strong', { textContent: move.name }), h('small', { textContent: t(`slot.${move.slot}`) })]),
     ]),
   );
+  const xpFill = h('span', { className: 'pz-xp-fill' });
+  xpFill.style.width = `${Math.round(summary.xpFill * 100)}%`;
+  const xpBar = h('span', { className: 'pz-xp' }, [xpFill]);
+  xpBar.setAttribute('aria-hidden', 'true');
   const detail = h('p', { className: 'pz-detail', textContent: summary.items[0]?.description ?? '' });
   detail.setAttribute('aria-live', 'polite');
   const itemChips = summary.items.map((item) => {
@@ -150,6 +154,17 @@ export function pauseView(options: PauseViewOptions): PauseView {
       stat(null, t('pause.stat.difficulty'), summary.difficultyName),
       stat(null, t('pause.stat.time'), summary.time),
       stat(pixelIconSvg('coin', 'px-icon'), t('pause.stat.coins'), t('hud.coins').replace('{coins}', String(summary.coins))),
+    ]),
+    h('div', { className: 'pz-vitals' }, [
+      h('div', { className: 'pz-stat pz-level' }, [
+        h('span', { className: 'pz-stat-label', textContent: `${t('pause.stat.level')} · ${t('pause.stat.xp')}` }),
+        h('strong', { className: 'pz-stat-value', textContent: `${t('hud.status.level').replace('{n}', String(summary.level))} · ${summary.xpText}` }),
+        xpBar,
+      ]),
+      h('div', { className: `pz-stat pz-passive${summary.passive.ready ? ' is-ready' : ''}` }, [
+        h('span', { className: 'pz-stat-label', textContent: t('pause.stat.passive') }),
+        h('strong', { className: 'pz-stat-value', textContent: summary.passive.text }),
+      ]),
     ]),
     h('section', { className: 'pz-section' }, [h('h4', { className: 'pz-section-title', textContent: t('pause.moves') }), h('ul', { className: 'pz-moves' }, moveTiles)]),
     h('section', { className: 'pz-section pz-items' }, [h('h4', { className: 'pz-section-title', textContent: t('pause.items') }), items]),
