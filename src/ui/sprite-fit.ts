@@ -46,4 +46,5 @@ export const SPRITE_BOXES: readonly SpriteBox[] = [
   { file: 'src/styles/challenges.css', selector: '.ch-stage-sprite', minW: 200, h: 160 },
   { file: 'src/styles/loadout-moves.css', selector: '.lm-head-art', minW: 56, h: 64 },
   { file: 'src/styles/gacha-page.css', selector: '.gp-own-art', minW: 100, h: 84 },
+  { file: 'src/styles/end-screen.css', selector: '.rs-art', minW: 112, h: 112 },
 ];

@@ -16,6 +16,8 @@ import type { SheetStore } from '../adapters/assets';
 import { coinText } from './coin-lines';
 import { portrait } from './loadout';
 import type { TrialSummary } from './game';
+import { endScreen, endVeil } from './end-screen';
+import { shrineEndView } from './shrine-result';
 import { hallCards, hallTabs, type HallInput, type HallTab, type OathCard } from './shrine-hall';
 import '../styles/hall.css';
 
@@ -122,7 +124,9 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const rules = h('div', { className: 'hl-rules' });
   const record = h('div', { className: 'hl-record' });
   const swear = h('button', { className: 'hl-cta', type: 'button' }, [pixelIconSvg('play', 'px-icon'), h('span', { textContent: t('shrine.swear') })]);
-  const sheet = h('section', { className: 'hl-sheet' }, [stage, name, state, rules, record, swear]);
+  // The rules and the record scroll inside their own region; the stage, name, chips and «Jurar» keep fixed rows (nothing sits under the button).
+  const sheetBody = h('div', { className: 'oa-sheet-body' }, [rules, record]);
+  const sheet = h('section', { className: 'hl-sheet oa-sheet' }, [stage, name, state, sheetBody, swear]);
   const grid = h('div', { className: 'hl-grid oa-grid' });
   grid.setAttribute('aria-label', t('shrine.title'));
   const back = h('button', { className: 'hl-back', type: 'button', textContent: t('menu.back') });
@@ -269,7 +273,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   const win = mdWindow({ title: t('shrine.title'), className: 'oa-window hl-window' }, [h('div', { className: 'oa-top' }, [tabBar, tierBar]), h('div', { className: 'hl-body' }, [sheet, grid]), foot]);
   const stopNav = hallNav(win, {
     controls: () => [...tabEls.values(), ...tierButtons, ...cardEls, swear, back],
-    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => c.classList.contains('is-beaten') || c.classList.contains('is-sworn')) ?? cardEls[0],
+    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => !c.classList.contains('is-locked')) ?? cardEls[0],
     onBack: options.onBack,
   });
   return { element: win, dispose: stopNav };
@@ -284,6 +288,7 @@ export interface ShrineResultOptions {
   /** Pokémonedas paid (a gauntlet's first clear on its tier), else 0. */
   coins: number;
   balance: number;
+  sheets?: Promise<SheetStore>;
   /** Absent in an online room (the host starts the next one from the altar). */
   onRetry?(): void;
   onBack(): void;
@@ -296,28 +301,9 @@ export function requestName(request: TrialRequest, heraldName?: string): string 
   return bossName(request.id);
 }
 
-/** The shrine's end screen: the trial, its time, captures and «Sin rasguños», a new best, the coins, then retry or back. */
+/** The shrine's end screen (relic look, shared with every run's end): the outcome and the boss, the record card, the coins, then back (primary) or retry. */
 export function shrineResultScreen(options: ShrineResultOptions, heraldName?: string): HTMLElement {
   const { trial, victory, before } = options;
-  const newBest = victory && (before === null || trial.ms < before.bestMs);
-  const list = cursorList({
-    items: [
-      ...(options.onRetry ? [{ label: t('screen.retry'), onConfirm: options.onRetry }] : []),
-      { label: t(options.onRetry ? 'shrine.back' : 'shrine.room.back'), onConfirm: options.onBack },
-    ],
-    onBack: options.onBack,
-    label: t('shrine.title'),
-    className: 'result-actions',
-  });
-  return mdWindow({ title: t('shrine.title'), className: `result ${victory ? 'victory' : 'defeat'} shrine-result` }, [
-    h('h1', { textContent: t(victory ? 'shrine.won' : 'shrine.lost') }),
-    h('p', { textContent: `${requestName(options.request, heraldName)} · ${t(`difficulty.${options.request.difficulty}`)}` }),
-    statLine(t('shrine.time'), trialTime(trial.ms)),
-    ...(trial.stops.length > 1 ? [statLine(t('shrine.beaten'), `${trial.beaten}/${trial.stops.length}`)] : []),
-    statLine(t('shrine.captures'), String(trial.captures)),
-    ...(victory && trial.noHit ? [statLine(t('shrine.noHit'), '✓')] : []),
-    ...(newBest ? [h('p', { className: 'shrine-new', textContent: t('shrine.newBest') })] : before ? [statLine(t('shrine.best'), trialTime(before.bestMs))] : []),
-    ...(options.coins > 0 ? [statLine(t('shrine.reward'), coinText(options.coins, (key) => t(key))), statLine(t('screen.coins.balance'), coinText(options.balance, (key) => t(key)))] : []),
-    list.element,
-  ]);
+  const view = shrineEndView({ request: options.request, victory, trial, before, coins: options.coins, balance: options.balance, canRetry: options.onRetry !== undefined }, requestName(options.request, heraldName), (key) => t(key), trialTime);
+  return endVeil(endScreen({ view, ...(options.sheets ? { sheets: options.sheets } : {}), onAction: (id) => (id === 'retry' ? options.onRetry?.() : options.onBack()) }));
 }

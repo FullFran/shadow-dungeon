@@ -65,6 +65,11 @@
 .hl-hint { margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
 
 /* Hall of oaths */
+.oa-window { height: min(46rem, calc(100dvh - 64px)); }
+/* Sheet = column of fixed rows (stage, name, chips, button) and one scrolling region (rules + record) between them. */
+.oa-sheet > .hl-name, .oa-sheet > .hl-chips, .oa-sheet > .hl-cta { flex: none; }
+.oa-sheet-body { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.oa-sheet-body > .hl-rules, .oa-sheet-body > .hl-record { flex: none; overflow: visible; }
 .oa-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 176px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
 .oa-grid .hl-card { height: 176px; }
 .oa-top { flex: none; display: flex; gap: 12px; align-items: stretch; }
@@ -115,6 +120,14 @@
   .hl-stage { height: 76px; } .hl-stage-glow { width: 130px; height: 70px; bottom: 6px; } .hl-stage-sign { width: 90px; height: 16px; margin-left: -45px; bottom: 8px; }
   .hl-stage-art { width: 100px; height: 72px; } .hl-stage-icon { width: 48px; height: 48px; margin: -30px 0 0 -24px; }
   .hl-sheet { gap: 4px; padding: 6px 8px; justify-content: space-between; }
+  /* Short landscape: the sheet becomes two columns (art, name, chips | scrolling rules and record) over one fixed button row. */
+  .oa-window .hl-body { grid-template-columns: 20rem minmax(0, 1fr); }
+  .oa-sheet { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); grid-template-rows: 64px auto 1fr auto; column-gap: 8px; row-gap: 2px; align-items: start; }
+  .oa-sheet > .hl-stage { grid-column: 1; grid-row: 1; height: 64px; } .oa-sheet .hl-stage-art { width: 96px; height: 60px; } .oa-sheet .hl-stage-glow { width: 100px; height: 50px; bottom: 4px; }
+  .oa-sheet > .hl-name { grid-column: 1; grid-row: 2; } .oa-sheet > .hl-chips { grid-column: 1; grid-row: 3; align-self: start; }
+  .oa-sheet > .oa-sheet-body { grid-column: 2; grid-row: 1 / 4; align-self: stretch; }
+  .oa-sheet > .hl-cta { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; }
+  .oa-sheet-body { gap: 2px; } .oa-sheet-body .hl-record .hl-line:nth-of-type(n+3) { display: flex; }
   .hl-name { font-size: 18px; } .hl-chips { min-height: 0; } .hl-chip { font-size: 11px; line-height: 1.6; }
   .hl-rules { border-top: 0; padding-top: 0; } .hl-rules p:nth-of-type(n+2), .hl-order, .hl-hint, .hl-stage-sign { display: none; }
   .hl-rules h3 { display: none; } .hl-record h3 { display: none; } .hl-record { padding-top: 2px; } .hl-record p, .hl-rules p { font-size: 12px; margin-bottom: 1px; }
@@ -129,4 +142,13 @@
   .oa-tier { padding: 0 4px; gap: 0; } .oa-tier-label { display: none; } .oa-tier-btn { min-width: 44px; padding: 0 6px; font-size: 14px; }
   .bd-slots { gap: 6px; } .bd-slot { min-height: 44px; padding: 2px 6px; gap: 6px; } .bd-slot-icon { width: 24px; height: 24px; } .bd-slot-title { font-size: 13px; } .bd-slot-count { display: none; }
   .bd-saldo { padding: 0 8px; font-size: 15px; } .bd-saldo-label { display: none; } .bd-saldo .px-icon { width: 22px; height: 22px; }
+}
+
+/* Laptop heights (about 700-800 px): a shorter stage so the rules and the record of the sheet fit without scrolling. */
+@media (max-height: 800px) and (min-height: 561px) and (min-width: 901px) {
+  .oa-sheet { gap: 4px; padding: 8px 14px 10px; }
+  .oa-sheet > .hl-stage { height: 104px; } .oa-sheet .hl-stage-art { width: 160px; height: 92px; } .oa-sheet .hl-stage-glow { width: 150px; height: 80px; bottom: 10px; }
+  .oa-sheet .hl-stage-sign { width: 110px; height: 20px; margin-left: -55px; } .oa-sheet .hl-stage-icon { width: 64px; height: 64px; margin: -40px 0 0 -32px; }
+  .oa-sheet > .hl-name { font-size: 24px; } .oa-sheet > .hl-chips { min-height: 22px; }
+  .oa-sheet-body { gap: 4px; }
 }

@@ -119,3 +119,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   inside, detail, foot); a tile holds its own date, it never spills into the row above or below.
 - 2026-11-04 (owner: "Sigue pareciéndome demasiado saturado"): the Maestro becomes an accordion list (§4): one column,
   four slot groups, calm rows, scroll inside. Supersedes the 3-column move card grid and the slot tabs of 2026-11-03.
+- 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.

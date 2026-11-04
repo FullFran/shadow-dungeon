@@ -44,7 +44,7 @@ describe('hall of oaths cards', () => {
     }
     for (const tier of DIFFICULTIES) {
       for (const card of hallCards('gauntlets', input({ tier }))) {
-        expect(card.state).toBe('beaten');
+        expect(card.state).toBe('open');
         expect(card.reward).toBe(gauntletReward(card.id as 'guardians', tier));
         expect(card.rewardTaken).toBe(false);
       }
@@ -59,10 +59,27 @@ describe('hall of oaths cards', () => {
     expect(card.best?.noHit).toBe(true);
   });
 
+  it('an unlocked gauntlet without a record is open, never beaten; only a real kill reads beaten', () => {
+    for (const tier of DIFFICULTIES) {
+      for (const g of GAUNTLETS) {
+        const sealed = hallCards('gauntlets', input({ tier, beaten: new Set() })).find((c) => c.id === g.id)!;
+        const open = hallCards('gauntlets', input({ tier })).find((c) => c.id === g.id)!;
+        const { records } = recordTrial(EMPTY_SHRINE, { kind: 'gauntlet', id: g.id, difficulty: tier, victory: true, ms: 90_000, noHit: false, captures: 0 });
+        const sworn = hallCards('gauntlets', input({ tier, shrine: records })).find((c) => c.id === g.id)!;
+        expect([sealed.state, open.state, sworn.state], `${g.id} ${tier}`).toEqual(['locked', 'open', 'sworn']);
+      }
+      for (const stop of SHRINE_BOSSES) {
+        const cards = (beaten: Set<string>) => hallCards('reflections', input({ tier, beaten })).find((c) => c.id === stop.boss)!;
+        expect(cards(new Set()).state, stop.boss).toBe('locked');
+        expect(cards(allBeaten).state, stop.boss).toBe('beaten');
+      }
+    }
+  });
+
   it('lists the heralds met as fightable cards by seed, the last met first', () => {
     const cards = hallCards('heralds', input({ heralds: [{ seed: 7, name: 'Vigía' }, { seed: 9, name: 'Faro' }] }));
     expect(cards.map((c) => c.id)).toEqual(['9', '7']);
-    expect(cards.every((c) => c.state === 'beaten' && c.kind === 'herald')).toBe(true);
+    expect(cards.every((c) => c.state === 'open' && c.kind === 'herald')).toBe(true);
   });
 
   it('tabs count what is open and show the best time of the tier; heralds only once met', () => {

@@ -12,7 +12,7 @@ import type { PixelIconId } from '../ui/pixel-icons';
  * and herald as a card with its state. A boss not yet beaten is a sealed slab: no name, no sprite.
  */
 export type HallTab = 'reflections' | 'gauntlets' | 'heralds';
-export type OathState = 'sworn' | 'beaten' | 'locked';
+export type OathState = 'sworn' | 'beaten' | 'open' | 'locked';
 
 export interface HallInput {
   shrine: ShrineRecords;
@@ -26,7 +26,7 @@ export interface OathCard {
   id: string;
   kind: 'boss' | 'gauntlet' | 'herald';
   state: OathState;
-  /** Sworn: a record on this tier. Beaten: fightable, no record yet. Locked: sealed. */
+  /** Sworn: a record on this tier. Beaten: a boss that fell, no record on the tier. Open: a gauntlet or herald you may fight, never won on the tier. Locked: sealed. */
   icon: PixelIconId;
   /** The boss shown (null while sealed, for a gauntlet or a herald). */
   species: SpeciesId | null;
@@ -45,14 +45,15 @@ const MAX_HERALDS = 8;
 /** The last heralds met first. */
 export const metHeralds = (heralds: readonly BestiaryEntry[], max = MAX_HERALDS): BestiaryEntry[] => [...heralds].reverse().slice(0, max);
 
-const stateOf = (unlocked: boolean, best: TrialBest | null): OathState => (!unlocked ? 'locked' : best ? 'sworn' : 'beaten');
+/** «Vencido» is only for a boss that really fell; an unlocked gauntlet without a record is just «Abierto». */
+const stateOf = (unlocked: boolean, best: TrialBest | null, kind: 'boss' | 'gauntlet'): OathState => (!unlocked ? 'locked' : best ? 'sworn' : kind === 'boss' ? 'beaten' : 'open');
 
 export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
   const { shrine, beaten, tier } = input;
   if (tab === 'reflections') {
     return SHRINE_BOSSES.map((stop): OathCard => {
       const best = trialBest(shrine, 'boss', stop.boss, tier);
-      const state = stateOf(beaten.has(stop.boss), best);
+      const state = stateOf(beaten.has(stop.boss), best, 'boss');
       return {
         id: stop.boss,
         kind: 'boss',
@@ -71,7 +72,7 @@ export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
   if (tab === 'gauntlets') {
     return GAUNTLETS.map((g): OathCard => {
       const best = trialBest(shrine, 'gauntlet', g.id, tier);
-      const state = stateOf(gauntletUnlocked(g.id, beaten), best);
+      const state = stateOf(gauntletUnlocked(g.id, beaten), best, 'gauntlet');
       return {
         id: g.id,
         kind: 'gauntlet',
@@ -88,7 +89,7 @@ export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
     });
   }
   return metHeralds(input.heralds).map(
-    (e): OathCard => ({ id: String(e.seed), kind: 'herald', state: 'beaten', icon: 'mirror', species: null, stops: [heraldStop(e.seed)], best: null, group: null, reward: null, rewardTaken: false, missing: 0 }),
+    (e): OathCard => ({ id: String(e.seed), kind: 'herald', state: 'open', icon: 'mirror', species: null, stops: [heraldStop(e.seed)], best: null, group: null, reward: null, rewardTaken: false, missing: 0 }),
   );
 }
 
@@ -127,6 +128,7 @@ export const SHRINE_HALL_KEYS = [
   'shrine.swear',
   'shrine.state.sworn',
   'shrine.state.beaten',
+  'shrine.state.open',
   'shrine.state.locked',
   'shrine.sealed.boss',
   'shrine.sealed.name',
