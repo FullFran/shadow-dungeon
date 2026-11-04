@@ -1525,6 +1525,7 @@
   "tutor.preview.play": "Watch the move",
   "tutor.preview.label": "Preview of {move}",
   "tutor.preview.none": "This move cannot be shown here.",
+  "loadout.preview.zoom": "Enlarge the preview",
   "tutor.title": "Move tutor",
   "tutor.text": "Smeargle teaches the moves your Pokémon learns back home, and polishes the ones it already knows.",
   "tutor.hint": "Pick a move and press Enter to learn it. ◀ ▶ change the Pokémon and the filter.",

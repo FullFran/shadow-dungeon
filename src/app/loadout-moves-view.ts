@@ -15,6 +15,7 @@ import { h, mdWindow } from '../ui/window';
 import { abilityOf, defaultSlot, equipMove, rankPips, slotTiles, type SlotTile } from './loadout-moves';
 import { createMovePreview, type MovePreview } from './move-preview-view';
 import { moveInfoLines } from './move-info';
+import { openPreviewZoom } from './move-preview-zoom';
 import { hubStep } from './title-hub';
 import { tierName } from './tutor';
 import '../styles/loadout-moves.css';
@@ -193,6 +194,36 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     if (focused) equip(focused);
   });
   const sheet = h('section', { className: 'lm-sheet' }, [preview.element, h('div', { className: 'lm-sheet-head' }, [sName, sBadges]), sStats, sDesc, sNote, act]);
+  // Small screens: the sheet's stage is a strip, so a press on it opens the preview enlarged (move-preview-zoom.ts).
+  const compactMedia = typeof matchMedia === 'function' ? matchMedia('(max-height: 560px), (max-width: 900px)') : null;
+  const zoomable = (): boolean => compactMedia?.matches === true && focused !== null;
+  const syncZoom = (): void => {
+    const on = zoomable();
+    preview.element.classList.toggle('is-zoomable', on);
+    if (on) {
+      preview.element.setAttribute('role', 'button');
+      preview.element.tabIndex = 0;
+      preview.element.setAttribute('aria-label', t('loadout.preview.zoom'));
+    } else {
+      preview.element.removeAttribute('role');
+      preview.element.removeAttribute('tabindex');
+      preview.element.removeAttribute('aria-label');
+    }
+  };
+  const zoom = (): void => {
+    if (zoomable() && focused) openPreviewZoom({ species: options.species, move: focused, rank: rankOf(focused), sheets: options.sheets });
+  };
+  preview.element.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.tu-preview-play')) return;
+    zoom();
+  });
+  preview.element.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    e.stopPropagation();
+    zoom();
+  });
+  compactMedia?.addEventListener('change', syncZoom);
   const stat = (label: string, value: string): HTMLElement => h('div', { className: 'lm-stat' }, [h('span', { className: 'lm-stat-value', textContent: value }), h('span', { className: 'lm-stat-label', textContent: label })]);
 
   function showSheet(id: MoveId | null): void {
@@ -202,10 +233,12 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
       for (const part of [sBadges, sStats, sDesc, sNote]) part.replaceChildren();
       act.hidden = true;
       focused = null;
+      syncZoom();
       return;
     }
     act.hidden = false;
     focused = id;
+    syncZoom();
     const def = MOVES[id];
     const kind = tiles[selected]!.kind;
     sheet.style.setProperty('--lm-edge', TYPE_COLORS[def.type].core);

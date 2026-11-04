@@ -6,6 +6,8 @@ import { createWorld, spawnEnemy } from '../core/world';
 import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { SPECIES, type SpeciesId } from '../data/species';
+import { SPRITE_KEYS, SPRITES } from '../data/sprites';
+import { rankedMove } from '../core/rank-effects';
 
 /**
  * The move tutor's live preview (owner, 2026-11-03: "de cada ataque se vea un
@@ -16,11 +18,12 @@ import { SPECIES, type SpeciesId } from '../data/species';
  * It owns no input, audio, save or achievements: nothing leaves the sim.
  */
 export const PREVIEW = {
-  arena: { width: 300, height: 200 },
-  /** The fixed camera: a window on the middle of the room, this wide; its height follows the canvas (move-preview-view.ts). */
-  view: { x: 62, y: 50, width: 176, height: 99 },
+  /** Roomy on purpose: the camera frames each move (frameStage) and must never look past the floor. */
+  arena: { width: 800, height: 480 },
+  /** The resting camera (the aim window of the sim's input, and the framing before a move is chosen); the view shown is `frameStage`. */
+  view: { x: 312, y: 190, width: 176, height: 99 },
   /** Where the pair stands (the dummy's distance depends on the move). */
-  centre: { x: 150, y: 100 },
+  centre: { x: 400, y: 240 },
   /** Idle beat before each cast, so the pose is seen before the move. */
   castAtMs: 300,
   /** The shortest loop; a long move stretches it. */
@@ -185,4 +188,119 @@ export function createFrameLoop(env: { raf(cb: (now: number) => void): number; c
     },
   };
   return loop;
+}
+
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+type Acc = { x0: number; y0: number; x1: number; y1: number };
+const grow = (a: Acc, x0: number, y0: number, x1: number, y1: number): void => {
+  a.x0 = Math.min(a.x0, x0);
+  a.y0 = Math.min(a.y0, y0);
+  a.x1 = Math.max(a.x1, x1);
+  a.y1 = Math.max(a.y1, y1);
+};
+const growCircle = (a: Acc, p: Vec2, r: number): void => grow(a, p.x - r, p.y - r, p.x + r, p.y + r);
+
+/** The animations the preview can show (the pair stands, casts and gets hit; it never falls, hops or sleeps). */
+const SHOWN_ANIMS: ReadonlySet<string> = new Set(['Idle', 'Walk', 'Attack', 'Strike', 'Swing', 'Shoot', 'Charge', 'SpAttack', 'Double', 'Hurt']);
+
+interface Sides {
+  left: number;
+  right: number;
+  up: number;
+  down: number;
+}
+
+/** What a sprite occupies around its feet point: the largest frame of any of its animations, on the renderer's anchor (Sprite fit rule: whole, never cropped). */
+function spriteSides(keys: readonly string[]): Sides {
+  const sides = { left: 0, right: 0, up: 0, down: 0 };
+  for (const key of keys) {
+    for (const [anim, meta] of Object.entries(SPRITES.sprites[key]?.anims ?? {})) {
+      if (!SHOWN_ANIMS.has(anim)) continue;
+      const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.75 };
+      sides.left = Math.max(sides.left, anchor.x);
+      sides.right = Math.max(sides.right, meta.frameWidth - anchor.x);
+      sides.up = Math.max(sides.up, anchor.y);
+      sides.down = Math.max(sides.down, meta.frameHeight - anchor.y);
+    }
+  }
+  return sides;
+}
+
+/** The sprite sheets a species can show while it casts (its forms too: Mimikyu busted, Aegislash blade). */
+const keysOf = (sprite: string): string[] => Object.entries(SPRITE_KEYS).filter(([name]) => name === sprite || name.startsWith(sprite)).map(([, key]) => key);
+
+/** Room kept around the extent so the effect is never flush with the stage edge (world pixels). */
+export const FRAME_MARGIN = 10;
+/** The camera never shows less than this wide: a small move is not blown up. */
+export const MIN_FRAME_WIDTH = 120;
+
+const extents = new Map<string, Box>();
+
+/**
+ * Everything of the cast that must stay on screen: both sprites wherever they stand during the loop
+ * and the effect's greatest reach (area ring or cone, dash path, projectile path and size, zones,
+ * the buff aura). Measured on the real simulation, plus the ranges of the (ranked, fully charged) move.
+ */
+export function previewExtent(species: SpeciesId, move: MoveId, rank = 0): Box {
+  const key = `${species}|${move}|${rank}`;
+  const cached = extents.get(key);
+  if (cached) return cached;
+  const start = previewWorld(species, move, rank);
+  const sim = createPreviewSim(species, move, rank);
+  if (!start || !sim) return { ...PREVIEW.view };
+  const acc: Acc = { x0: Number.POSITIVE_INFINITY, y0: Number.POSITIVE_INFINITY, x1: Number.NEGATIVE_INFINITY, y1: Number.NEGATIVE_INFINITY };
+  const def = rankedMove(move, rank);
+  const size = Math.max(1, ...(def.charge ?? []).map((c) => c.sizeMultiplier));
+  const mine = spriteSides(keysOf(SPECIES[species].sprite));
+  const theirs = spriteSides(keysOf(PREVIEW.dummy));
+  const place = (p: Vec2, s: Sides): void => grow(acc, p.x - s.left, p.y - s.up, p.x + s.right, p.y + s.down);
+  const at = (world: WorldState): void => {
+    place(world.player.pos, mine);
+    for (const e of world.enemies) place(e.pos, theirs);
+    for (const shot of world.projectiles) growCircle(acc, shot.pos, shot.radius + 8);
+  };
+  at(start);
+  const p0 = start.player.pos;
+  const d0 = start.enemies[0]!.pos;
+  const hb = def.hitbox;
+  if (hb.kind === 'arc') {
+    const r = hb.range * size;
+    // A sector facing +x: its arc spans ±half the angle, so it reaches back behind the player only past 180 degrees.
+    const half = Math.min(Math.PI, (hb.arcDegrees * Math.PI) / 360);
+    grow(acc, p0.x + Math.min(0, r * Math.cos(half)), p0.y - r * Math.sin(Math.min(half, Math.PI / 2)), p0.x + r, p0.y + r * Math.sin(Math.min(half, Math.PI / 2)));
+  } else if (hb.kind === 'dash') grow(acc, p0.x, p0.y - hb.radius * size, p0.x + hb.distance, p0.y + hb.radius * size);
+  else if (hb.kind === 'self') growCircle(acc, p0, 30);
+  if (def.zone) {
+    growCircle(acc, def.zone.at === 'impact' ? d0 : p0, def.zone.radius);
+    if (def.zone.at === 'line') growCircle(acc, d0, def.zone.radius);
+  }
+  if (def.buff) growCircle(acc, p0, 30);
+  const steps = Math.ceil(cycleLength(MOVES[move]) / FIXED_DT_MS);
+  for (let i = 0; i < steps; i++) {
+    sim.advance(FIXED_DT_MS);
+    if (i % 3 === 0) at(sim.world);
+  }
+  const box = { x: acc.x0, y: acc.y0, width: acc.x1 - acc.x0, height: acc.y1 - acc.y0 };
+  extents.set(key, box);
+  return box;
+}
+
+/**
+ * The camera for a stage of `aspect` (width / height) that holds `extent` whole, with a margin,
+ * centred on it. Never narrower than MIN_FRAME_WIDTH; any aspect works (wide strip or square).
+ */
+export function frameStage(extent: Box, aspect: number): Box {
+  const width = Math.max(MIN_FRAME_WIDTH, extent.width + 2 * FRAME_MARGIN, (extent.height + 2 * FRAME_MARGIN) * aspect);
+  const height = width / aspect;
+  const x = extent.x + extent.width / 2 - width / 2;
+  const y = extent.y + extent.height / 2 - height / 2;
+  // Slide the camera back onto the floor when it would look past the room (it still holds the extent: that is inside the room).
+  const shift = (at: number, size: number, room: number): number => (size >= room ? at : Math.min(Math.max(at, 0), room - size));
+  return { x: shift(x, width, PREVIEW.arena.width), y: shift(y, height, PREVIEW.arena.height), width, height };
 }

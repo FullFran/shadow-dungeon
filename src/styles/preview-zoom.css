@@ -1,0 +1,17 @@
+/* The enlarged move preview (src/app/move-preview-zoom.ts): a veil, one relic window, one big stage, Back. */
+.pz-veil { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 12px; box-sizing: border-box;
+  background: radial-gradient(ellipse at 50% 45%, rgba(5, 4, 7, 0.6), rgba(5, 4, 7, 0.92) 75%); animation: pz-in 140ms ease-out both; }
+@keyframes pz-in { from { opacity: 0; } }
+.pz-window { width: min(46rem, 100%); max-height: none; }
+.pz-window > .md-window-body { display: flex; flex-direction: column; gap: 8px; overflow: hidden !important; }
+.pz-stage { height: min(26rem, calc(100dvh - 9.5rem)); min-height: 8rem; display: flex; }
+.pz-stage .tu-preview { position: relative; flex: 1 1 auto; display: grid; place-items: center; overflow: hidden; background: #050407; border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
+.pz-stage .tu-preview-canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; display: block; }
+.pz-stage .tu-preview.is-static .tu-preview-canvas { display: none; }
+.pz-window .tu-preview-note { display: none; margin: 0; padding: 0 16px; text-align: center; font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); }
+.pz-stage .tu-preview.is-static .tu-preview-note { display: block; }
+.pz-stage .tu-preview-play { all: unset; box-sizing: border-box; position: absolute; inset: auto 8px 8px auto; display: none; align-items: center; gap: 6px; height: 44px; padding: 0 12px; cursor: pointer; font-size: 18px; color: #ffe2b0; background: rgba(5, 4, 7, 0.85); border: 2px solid var(--md-cursor); border-radius: 6px; }
+.pz-stage .tu-preview.is-still .tu-preview-play { display: inline-flex; }
+.pz-back { all: unset; box-sizing: border-box; flex: none; display: grid; place-items: center; height: 44px; cursor: pointer; font-size: 22px; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.pz-back:hover, .pz-back:focus-visible { color: var(--md-cursor); border-color: var(--md-border); outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45); }
+@media (prefers-reduced-motion: reduce) { .pz-veil { animation: none; } }
