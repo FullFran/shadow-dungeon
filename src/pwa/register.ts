@@ -14,8 +14,42 @@ export function serviceWorkerUrl(moduleUrl: string): string {
   return `./sw.js?v=${encodeURIComponent(file)}`;
 }
 
+/** What the dev cleanup needs from `navigator.serviceWorker` and `caches`, faked in tests. */
+interface WorkerRegistry {
+  getRegistrations(): Promise<ReadonlyArray<{ unregister(): Promise<boolean> }>>;
+}
+interface CacheRegistry {
+  keys(): Promise<string[]>;
+  delete(name: string): Promise<boolean>;
+}
+
+/**
+ * Development only: a worker left on this origin by an earlier production build (a `vite preview` on the same
+ * port) would keep serving cached art and scripts to the dev server, and a dev page that lost its worker of
+ * effects once would never get it back. Unregisters every worker and drops the game's caches; returns how many
+ * workers went.
+ */
+export async function clearDevServiceWorkers(workers: WorkerRegistry, cacheStorage: CacheRegistry | null): Promise<number> {
+  const registrations = await workers.getRegistrations();
+  await Promise.all(registrations.map((r) => r.unregister()));
+  if (cacheStorage) {
+    const names = await cacheStorage.keys();
+    await Promise.all(names.filter((name) => name.startsWith('mazmorra-')).map((name) => cacheStorage.delete(name)));
+  }
+  return registrations.length;
+}
+
 export function registerServiceWorker(onUpdate: (apply: () => void) => void): void {
-  if (import.meta.env.DEV || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (import.meta.env.DEV) {
+    void clearDevServiceWorkers(navigator.serviceWorker, typeof caches === 'undefined' ? null : caches)
+      .then((removed) => {
+        // The page was served through the stale worker: load it again straight from the dev server.
+        if (removed > 0 && navigator.serviceWorker.controller) window.location.reload();
+      })
+      .catch(() => undefined);
+    return;
+  }
   const container = navigator.serviceWorker;
   let reloading = false;
   const offer = (worker: ServiceWorker) =>
