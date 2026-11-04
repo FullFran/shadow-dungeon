@@ -29,7 +29,7 @@ import (
 func main() {
 	cfg := setup.FromEnv(setup.Getenv)
 	turn := turnapi.FromEnv(setup.Getenv)
-	clerkVerifier := clerkauth.FromEnv(setup.Getenv)
+	clerkVerifier := clerkauth.FromEnv(setup.Getenv, cfg.Origins)
 	os.Args = setup.WithOrigins(os.Args, cfg.Origins)
 
 	app := pocketbase.NewWithConfig(pocketbase.Config{
