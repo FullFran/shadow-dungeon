@@ -283,6 +283,18 @@ fills. The view is top-down: no sky, horizon or sun is drawn (the eclipse surviv
 layer anchor to the real viewport edges. The legal notice is not drawn over play.
 
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
+- **Cinematic controls** (`src/ui/cinematic-controls.ts`, pure rules `src/ui/cinematic-controls-model.ts`, `src/styles/cinematic-controls.css`; owner 2026-11-04
+  "los botones de saltar y el badge de auto en las cinemáticas ponlos un pelín más grandes y rediséñalos"): one pair of controls for every cinematic, mounted by
+  the one player (`src/app/prologue.ts`: prologue, guardians, Sima, Sendas, heralds, gallery replays). A stack in the bottom-right corner (safe-area aware), Auto
+  above Skip. **Skip** = relic slab (gilt hairline, ink outline), 46 px tall (50 px touch; was ~32), 24 px pixel double chevron inside a 36 px ring, label "Saltar"
+  (Pixelify 20 px) and the glyph of the device used last: `Esc` keycap, the pad's B (`glyphSvg`), or "Mantén" on touch. Skipping by button is a hold of 0.6 s
+  (`CONTROLS.buttonHoldMs`) with the ring filling around the icon (Error prevention: a stray click used to cut a scene for good); a click with no pointer
+  (screen reader, `detail` 0) still skips at once. Keys are unchanged: Esc or Enter held 0.8 s, pad B/A the same, a finger held on the picture. **Auto** = pill, 38 px
+  (44 px touch), play pixel icon, "Auto" and an ember dot: on = bone text, gilt border, dot pulsing slowly (2.4 s, opacity and scale only); off = dim, grey dot.
+  Same toggle and storage as before (`aria-pressed`). Both are quiet at rest (65% opacity), full for 2 s after any input, on hover and on focus, and appear only
+  once Skip counts (after 1 s, or at once where `skipAfterMs` is 0). On heights up to 760 px the narration lifts (bottom 20%, 16% up to 520 px) so it never sits under
+  the stack; up to 520 px the pair is one row. `prefers-reduced-motion`: no dot pulse, no opacity fade, and the ring fills in 8 whole steps. Measured at 1440x900
+  and 844x390 (prologue, guardian, Sima): no overlap with the narration. Replaces `.prologue-skip`, `.prologue-auto`, `.prologue-hint` and the 3 px hold bar.
 
 ## 5. Motion System
 
@@ -352,3 +364,6 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "el hud de combate lo quiero menos grande y menos invasivo ... más pequeño y minimalista"): the combat HUD is made peripheral (§4 Combat HUD): HUD scale 1 to 2 from an 800x450 authoring space, a 150x44 status block, ~46 px slots without names in a fight, a 40% thin boss bar with name and epithet on one line, the announcement as a strip above it (1.4 s), combat-aware dimming of chips, log and hints, a 2-line log, the minimap back to its size. Supersedes the large HUD of the entry above (214x84 status, 52 px slots with names, 57% boss bar, centre-screen announcement).
 ||||||| parent of c72ccc6 (feat(town): parchment map menu rising from below with pin cards and grouped options)
 - 2026-11-04 (owner: "esto debe ser un mapa que se vea completo lo máximo posible, bien detallado tipo pixel art, y lo quiero mapa tipo envejecido roto irregularmente por los alrededores. El menú debe salir de abajo animado, debe ser mucho más grande, al hacer hover por los sitios te muestra qué hay ahí, y luego a la derecha todas las opciones del menú mejor presentadas, estructuradas y posicionadas"): the town menu becomes a parchment map menu (§4 "Town map menu"): a 94vw x 88vh window rising from below, the whole town painted once as aged pixel art with a torn, burnt edge, wax-seal pins with an anchored place card, and the options in four groups beside it with Seguir as the only ember. Supersedes the thin gold outline plan on a flat panel with round pins, the caption line and the two columns of small labels (2026-11-02). Departure from the brief: a whole map scale is kept only while it wastes at most 10% of the limiting side (not 30%), because the owner's priority is the largest map.
+- 2026-11-04: Cinematic Skip and Auto controls redesigned once for every cinematic (owner): bigger relic Skip with a pixel double chevron, device glyph and a 0.6 s
+  hold ring (Error prevention), Auto as a relic pill with a slow ember dot, bottom-right stack, quiet at rest (65%) and full for 2 s after any input. Supersedes the
+  flat "Saltar" text button, the 3 px hold bar and the separate hint line.
