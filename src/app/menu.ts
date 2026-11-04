@@ -1,9 +1,15 @@
 import type { HeldItem } from '../adapters/hud';
-import { ITEMS } from '../data/items';
+import type { TilePalette } from '../data/dungeons';
+import type { SpeciesId } from '../data/species';
 import { t } from '../i18n';
-import { cursorList, type ListItem } from '../ui/cursor-list';
-import { h, mdWindow } from '../ui/window';
-import { settingItems, type SettingsAccess } from './settings-panel';
+import { h } from '../ui/window';
+import type { PauseMapModel } from './pause-map';
+import { pauseSummary, type MenuActions, type PauseRunInfo } from './pause-model';
+import { pauseView, type PauseView } from './pause-view';
+import { settingsView, type SettingsView } from './settings-view';
+import type { SettingsAccess } from './settings-panel';
+
+export { pauseEntries, restartLabel, type MenuActions, type PauseEntry } from './pause-model';
 
 /**
  * Pause policy of the Esc menu. The solo demo pauses the simulation while the
@@ -17,140 +23,104 @@ export function simulationPaused(menuOpen: boolean, pauseOnMenu: boolean = PAUSE
   return menuOpen && pauseOnMenu;
 }
 
-export interface MenuActions {
-  resume(): void;
-  restart(): void;
-  quit(): void;
-  /** Solo restarts of this floor still allowed by the tier (data/difficulty.ts); null or absent = unlimited. */
-  restartsLeft?: number | null;
-  /** "Reportar un problema" (issue #9): the report form shown in the menu; `back` returns to it. Absent: no row. */
-  openReport?(back: () => void): { element: HTMLElement; dispose(): void };
-  /** "Copiar informe técnico" (issue #6): copies this session's diagnostics. Absent: no row. */
-  copyReport?(): void;
-}
-
-export type PauseEntry = 'resume' | 'restart' | 'settings' | 'report' | 'copyReport' | 'quit';
-
-/** The Esc menu's rows in order: the report rows only when the app offers them, always before quitting. */
-export function pauseEntries(actions: MenuActions): PauseEntry[] {
-  return ['resume', 'restart', 'settings', ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
-}
-
-/** The Esc menu's restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
-export function restartLabel(restartsLeft: number | null | undefined, tr: (key: string) => string): string {
-  if (restartsLeft === null || restartsLeft === undefined) return tr('pause.restart');
-  return restartsLeft > 0 ? `${tr('pause.restart')} (${restartsLeft})` : tr('pause.restartNone');
-}
-
 export type MenuSettings = SettingsAccess;
 
-/** Past this many different items the list goes to two columns (and scrolls when it still does not fit). */
-export const ITEMS_TWO_COLUMNS = 6;
-
-/** The held items window: each item with its stacks and what it does, in its rarity colour. */
-function itemsWindow(held: readonly HeldItem[]): HTMLElement {
-  const body =
-    held.length === 0
-      ? [h('p', { className: 'dim', textContent: t('pause.noItems') })]
-      : [
-          h(
-            'ul',
-            { className: 'held-items' },
-            held.map((item) =>
-              h('li', { className: `rarity-${ITEMS[item.id].rarity}` }, [
-                h('strong', { textContent: `${item.name}${item.count > 1 ? ` ×${item.count}` : ''}` }),
-                h('div', { className: 'dim', textContent: item.description }),
-              ]),
-            ),
-          ),
-        ];
-  return mdWindow({ title: t('pause.items'), className: held.length > ITEMS_TWO_COLUMNS ? 'items many' : 'items' }, body);
+/** What the pause menu needs besides the actions: the run's own data and how to draw the partner. */
+export interface PauseContext {
+  info: PauseRunInfo;
+  portrait?(species: SpeciesId): HTMLElement;
+  /** The floor plan of the run (src/app/pause-map.ts) and the colours of its tileset. */
+  map?: { model: PauseMapModel; palette: TilePalette } | null;
 }
 
 /**
- * Builds the Esc menu overlay inside `parent`: a cursor menu (resume, restart
- * floor, quick settings, quit) beside the held items. Esc itself is the
- * game's key (it closes the menu), so the list has no back action; the
- * settings view has a Back row. Returns a function that removes the overlay.
+ * Builds the pause menu overlay inside `parent` (src/app/pause-view.ts, the relic window; the model is
+ * src/app/pause-model.ts). Settings open the shared Settings window over it and the report form takes its place;
+ * Back returns to the menu with the cursor on the row that opened it. Esc itself is the game's key (it closes the
+ * menu from the list); inside the settings it goes back one step. Returns a function that removes the overlay.
  */
-export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actions: MenuActions, held: readonly HeldItem[] = []): () => void {
-  const overlay = h('div', { className: 'overlay pause' });
+export function openPauseMenu(parent: HTMLElement, settings: MenuSettings, actions: MenuActions, held: readonly HeldItem[], context: PauseContext): () => void {
+  // `no-dismiss`: a press on the veil never closes this menu (ui/dismiss-model.ts); only Continuar, Esc and Start resume.
+  const overlay = h('div', { className: 'overlay pause no-dismiss' });
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
   let view: 'main' | 'settings' | 'report' = 'main';
-  let list: ReturnType<typeof cursorList> | null = null;
-  let report: { element: HTMLElement; dispose(): void } | null = null;
+  let current: { dispose(): void } | null = null;
   let opened = false;
 
-  function render(): void {
-    list?.dispose();
-    list = null;
-    report?.dispose();
-    report = null;
-    const access: MenuSettings = {
-      ...settings,
-      setLanguage(language) {
-        settings.setLanguage(language);
-        render();
-      },
-    };
-    const back = () => {
-      view = 'main';
-      render();
-    };
-    const rows: Record<PauseEntry, () => ListItem> = {
-      resume: () => ({ label: t('pause.resume'), onConfirm: actions.resume }),
-      // Harder tiers limit "Restart floor" per floor (docs/gdd.md §9); with none left the row stays, dimmed and inert.
-      restart: () =>
-        actions.restartsLeft === 0
-          ? { label: restartLabel(0, t), className: 'dim', onConfirm: () => undefined }
-          : { label: restartLabel(actions.restartsLeft, t), onConfirm: actions.restart },
-      settings: () => ({
-        label: t('pause.settings'),
-        onConfirm: () => {
-          view = 'settings';
-          render();
-        },
-      }),
-      report: () => ({
-        label: t('title.report'),
-        onConfirm: () => {
-          view = 'report';
-          render();
-        },
-      }),
-      copyReport: () => ({ label: t('lobby.copyReport'), onConfirm: () => actions.copyReport?.() }),
-      quit: () => ({ label: t('pause.quit'), onConfirm: actions.quit }),
-    };
-    // The report form takes the menu's place; its own Back row comes back here.
+  function render(returnTo?: 'settings' | 'report'): void {
+    current?.dispose();
+    current = null;
     if (view === 'report' && actions.openReport) {
-      report = actions.openReport(back);
+      const report = actions.openReport(() => {
+        view = 'main';
+        render('report');
+      });
+      current = report;
       overlay.setAttribute('aria-label', t('title.report'));
       overlay.replaceChildren(h('div', { className: 'screen-row' }, [report.element]));
       return;
     }
-    const main: ListItem[] = pauseEntries(actions).map((entry) => rows[entry]());
-    const current = cursorList({ items: view === 'main' ? main : [], label: t('pause.title') });
-    list = current;
-    // Settings rows rebuild in place after each change, keeping the cursor.
-    const refreshSettings = () => current.setItems([...settingItems(access, refreshSettings), { label: t('menu.back'), onConfirm: back }]);
-    if (view === 'settings') refreshSettings();
-    const still = opened;
+    if (view === 'settings') {
+      const access: MenuSettings = {
+        ...settings,
+        setLanguage(language) {
+          settings.setLanguage(language);
+          render();
+        },
+      };
+      let sheet: SettingsView | null = null;
+      const leave = () => {
+        view = 'main';
+        render('settings');
+      };
+      // Esc inside the settings goes back one step, not out of the pause: claimed before the game's own handler sees it.
+      const onEsc = (e: KeyboardEvent): void => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        const open = (document.activeElement as HTMLElement | null)?.getAttribute('aria-expanded') === 'true';
+        if (open || document.activeElement instanceof HTMLInputElement) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        leave();
+      };
+      window.addEventListener('keydown', onEsc, true);
+      sheet = settingsView({ access, onBack: leave });
+      current = {
+        dispose: () => {
+          window.removeEventListener('keydown', onEsc, true);
+          sheet?.dispose();
+        },
+      };
+      overlay.setAttribute('aria-label', t('pause.settings'));
+      overlay.replaceChildren(sheet.element);
+      return;
+    }
+    const main: PauseView = pauseView({
+      actions,
+      still: opened,
+      ...(returnTo ? { initial: returnTo } : {}),
+      summary: pauseSummary(context.info, held),
+      ...(context.portrait ? { portrait: context.portrait } : {}),
+      map: context.map ?? null,
+      onSettings: () => {
+        view = 'settings';
+        render();
+      },
+      onReport: () => {
+        view = 'report';
+        render();
+      },
+    });
+    current = main;
     opened = true;
     overlay.setAttribute('aria-label', t('pause.title'));
-    overlay.replaceChildren(
-      h('div', { className: 'screen-row' }, [
-        mdWindow({ title: view === 'main' ? t('pause.title') : t('pause.settings'), className: view === 'main' ? 'pause-menu' : 'pause-settings', still }, [current.element]),
-        view === 'main' ? itemsWindow(held) : null,
-      ]),
-    );
+    overlay.replaceChildren(main.element);
   }
 
   render();
   parent.append(overlay);
   return () => {
-    list?.dispose();
-    report?.dispose();
+    current?.dispose();
     overlay.remove();
   };
 }

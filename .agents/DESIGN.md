@@ -83,6 +83,19 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   Every box is declared in `SPRITE_BOXES`; `tests/ui/sprite-fit.test.ts` fits every playable species (base, shiny,
   female sheets) and every shrine boss in every box and checks the stylesheet agrees.
 
+- **Pause window** (`src/app/pause-view.ts`, `src/app/pause-model.ts`, `src/app/pause-map.ts`, `src/styles/pause.css`): one centred relic
+  window over the dimmed, frozen run (the overlay is a `no-dismiss` veil: a press outside does nothing, so a stray click never resumes a
+  run or reaches an action). Three fixed columns, no page scroll: actions (slab rows ≥ 44 px, 32 px colour pixel icon, name, one quiet
+  line; Continuar first and the only ember, Salir last and in the danger colour, Hick ≤ 7); the floor plan; the run summary card.
+  Destructive rows (restart, quit) go through `confirmDialog` with a consequence line; a disabled row stays and says why. The floor plan
+  paints the explored tiles of the dungeon's own tileset at the largest whole pixel scale that fits (`mapScale`, crisp, cropped to the
+  known area plus a margin), fog on the frontier, markers as 16×16 pixel icons (player, partner, stairs, berry, enemy, event, gate) and a
+  legend of what is shown; it knows only what the minimap knows. The summary card holds the partner in a `sprite-box` (`.pz-sprite`),
+  dungeon and floor, tier, time, coins, the four moves with their slot icon and the held items (with an empty state). Under 520 px of
+  height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside
+  its own region. Settings open the shared settings window over it (Esc goes back one step); co-op shows one note: the run keeps going.
+  Keys: Up/Down (W/S) move, Left/Right cross to the item chips, Enter/Space act, Esc/Start resume.
+
 Accessibility: every hub control is a real `<button>` with an accessible name; arrows move focus spatially, Enter confirms.
 
 ## 5. Motion System
@@ -120,3 +133,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "Sigue pareciéndome demasiado saturado"): the Maestro becomes an accordion list (§4): one column,
   four slot groups, calm rows, scroll inside. Supersedes the 3-column move card grid and the slot tabs of 2026-11-03.
 - 2026-11-04 (owner: "lo de ganar y perder rediséñalo también"): every win/lose end screen (dungeon, challenge, Sima, shrine, co-op) shares one relic dialog (`src/app/end-screen.ts`): sprite box + outcome, cards that group the figures, pixel coin on rewards, at most two actions with one ember. In-game menus and end screens are dialogs over the run's frozen last frame (`ui/scene.ts`); the eclipse/town backdrop belongs to the title and hub only.
+- 2026-11-04 (owner: "Rediseña también el menú de pausa ... un mapa mucho más realista y visible"): the pause menu becomes a relic window with actions, a real floor plan (tileset colours, fog, pixel-icon markers, legend) and a run summary card that absorbs the held items (§4). Supersedes the plain cursor list plus a separate "Objetos equipados" window. Quick settings now open the full settings window.
