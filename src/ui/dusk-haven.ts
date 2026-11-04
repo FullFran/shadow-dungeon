@@ -7,9 +7,9 @@ import { Grid, seeded, type Light, type Palette } from './pixel-grid';
  * ruined houses on both sides (gable ends towards you, long walls receding to the
  * vanishing point), boarded windows with the odd candle, missing roof tiles, dead ivy,
  * crows on the ridges, graves, dead trees and a mud road whose puddles hold the red of
- * the eclipse. Only Mimikyu's stall and the storyteller's board keep a light for company.
+ * the eclipse. Only the gacha stall and the notice board keep a light for company.
  * Static and prerendered; props return the lights they give off, and src/ui/eclipse.ts
- * animates only those, the smoke, the two residents and the sky.
+ * animates only those, the smoke and the sky.
  */
 
 /** The horizon, as a fraction of the height. */
@@ -19,7 +19,7 @@ export const HORIZON = 0.56;
 export const roadHalfFrac = (d: number): number => 0.008 + d * 0.16;
 const groundFrac = (d: number): number => HORIZON + d * (1 - HORIZON);
 
-/** Where each prop stands (its ground point, fractions of the canvas): residents keep to these. */
+/** Where each prop stands (its ground point, fractions of the canvas): the stall and the board. */
 export const HAVEN_PROPS: Record<string, { x: number; y: number }> = {
   stall: { x: 0.5 - roadHalfFrac(0.38) - 0.04, y: groundFrac(0.38) },
   board: { x: 0.5 + roadHalfFrac(0.3) + 0.05, y: groundFrac(0.3) },

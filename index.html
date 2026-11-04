@@ -652,7 +652,7 @@
         grid-template-columns: minmax(170px, 1fr) minmax(280px, 2fr) minmax(170px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'top top top' 'left altar right' 'bottom bottom bottom';
         padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 8px max(24px, env(safe-area-inset-left)); }
       /* Small hub text reads in Atkinson Hyperlegible (bold, a touch of tracking); titles and buttons stay pixel. */
-      .hub-label, .hub-rail-title, .hub-altar-kicker, .hub-news-text small, .hub-profile-text small, .hub-logo .title-alt, .hub-play small, .hub-online small, .hub-altar-change { font-family: var(--md-text-font); font-weight: 700; -webkit-font-smoothing: antialiased; }
+      .hub-label, .hub-rail-title, .hub-news-text small, .hub-profile-text small, .hub-logo .title-alt, .hub-play small, .hub-online small { font-family: var(--md-text-font); font-weight: 700; -webkit-font-smoothing: antialiased; }
       /* Pixel icons own their colours: no inherited stroke or fill from the line-glyph styles around them. */
       svg.px-icon, svg.px-icon * { stroke: none !important; }
       svg.px-icon { fill: none; image-rendering: pixelated; shape-rendering: crispEdges; }
@@ -669,8 +669,6 @@
         box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.08), inset 0 -8px 14px rgba(0, 0, 0, 0.55), 0 6px 0 rgba(0, 0, 0, 0.5); }
       .hub-top { grid-area: top; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 16px; }
       .hub-profile { justify-self: start; display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 6px; max-width: 100%; }
-      .hub-profile-face { width: 60px; height: 60px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 4px; background: radial-gradient(circle at 50% 70%, rgba(255, 138, 61, 0.25), #0b080b 70%); border: 1px solid var(--relic-slab-edge); }
-      .hub-profile-face canvas { width: auto !important; height: 100% !important; image-rendering: pixelated; }
       .hub-profile-text { display: flex; flex-direction: column; min-width: 0; }
       .hub-profile-text strong { font-size: 22px; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hub-profile-text small { font-size: 13px; color: var(--md-text-dim); white-space: nowrap; }
@@ -705,44 +703,6 @@
       .hub-rail-right { grid-area: right; justify-self: end; }
       .hub-rail-title { grid-column: 1 / -1; margin: 0 0 2px; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--md-border); opacity: 0.85; text-shadow: 0 2px 0 var(--md-ink); }
       .hub-rail-right .hub-rail-title { text-align: right; }
-      /* The partner on its altar, lit by the eclipse from behind. */
-      .hub-altar { grid-area: altar; align-self: center; justify-self: center; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
-      .hub-altar-stage { position: relative; width: 300px; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
-      .hub-altar-glow { position: absolute; left: 50%; bottom: 30px; width: 300px; height: 260px; transform: translateX(-50%); pointer-events: none;
-        background: radial-gradient(closest-side, rgba(255, 138, 61, 0.38), rgba(232, 40, 58, 0.14) 55%, transparent); animation: hub-glow 3.2s ease-in-out infinite; }
-      @keyframes hub-glow { 50% { opacity: 0.7; transform: translateX(-50%) scale(0.94); } }
-      .hub-altar-sprite { position: relative; z-index: 1; margin-bottom: -26px; filter: drop-shadow(0 0 14px rgba(255, 138, 61, 0.35)); }
-      .hub-altar-sprite canvas { display: block; image-rendering: pixelated; }
-      /* The partner stands in a gilt rune circle on the town square, not on a stone (owner: the slab did not read). */
-      /* A flat summoning sign on the ground in the eclipse's red, never rotated (a rotated ellipse stood up on its edge). */
-      .hub-altar-stone { position: relative; width: 230px; height: 46px; margin-top: 0; border-radius: 50%; border: 2px solid rgba(255, 106, 61, 0.7);
-        background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), rgba(120, 16, 24, 0.35) 72%, transparent);
-        box-shadow: 0 0 22px rgba(232, 40, 58, 0.45), inset 0 0 16px rgba(255, 106, 61, 0.3); animation: hub-sign 3.2s ease-in-out infinite; }
-      .hub-altar-stone::before { content: ''; position: absolute; inset: 7px 24px; border-radius: 50%; border: 1px dashed rgba(255, 191, 94, 0.55); }
-      .hub-altar-stone::after { content: ''; position: absolute; left: 50%; top: 50%; width: 76px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0, 0, 0, 0.7); }
-      @keyframes hub-sign { 50% { box-shadow: 0 0 34px rgba(232, 40, 58, 0.65), inset 0 0 20px rgba(255, 106, 61, 0.45); } }
-      /* Sprite frames keep empty room under the feet: pull the feet down into the circle. */
-      .hub-altar-sprite { margin-bottom: -64px; }
-      .hub-altar-kicker { margin: 14px 0 2px; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--md-border); }
-      .hub-altar-name { margin: 0; font-size: 33px; color: var(--md-text); text-shadow: 0 0 14px rgba(255, 138, 61, 0.4), 0 3px 0 var(--md-ink); letter-spacing: 0.04em; }
-      .hub-altar-types { display: flex; gap: 6px; margin-top: 6px; justify-content: center; }
-      .hub-altar-change { all: unset; margin-top: 8px; padding: 2px 14px; font-size: 16px; cursor: pointer; color: var(--md-text-dim); border: 1px solid var(--relic-gold-deep); border-radius: 4px; background: rgba(5, 4, 7, 0.6); }
-      .hub-altar-change:hover, .hub-altar-change:focus-visible { color: var(--md-cursor); border-color: var(--md-border); box-shadow: 0 0 12px rgba(255, 138, 61, 0.4); }
-      /* The partner's nameplate: a relic slab of its own so the name never sits loose on the scene. */
-      .hub-plate { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; min-width: 240px; padding: 8px 20px 12px; box-sizing: border-box;
-        background: linear-gradient(180deg, rgba(31, 23, 29, 0.94), rgba(12, 9, 13, 0.94)); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
-        box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.1), 0 8px 0 rgba(0, 0, 0, 0.45), 0 0 26px rgba(0, 0, 0, 0.7); }
-      .hub-plate::before { content: ''; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: var(--md-cursor); border: 2px solid var(--md-ink); box-shadow: 0 0 10px rgba(255, 138, 61, 0.7); }
-      .hub-plate .hub-altar-kicker { margin: 4px 0 0; }
-      .hub-plate .hub-altar-name { font-size: 33px; line-height: 1; }
-      .hub-plate .hub-altar-types { margin-top: 0; }
-      .hub-plate-passive { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-family: var(--md-text-font); font-weight: 700; font-size: 14px; color: var(--md-text-dim); cursor: help; }
-      .hub-plate-gem { width: 8px; height: 8px; transform: rotate(45deg); background: var(--relic-ember); box-shadow: 0 0 6px rgba(255, 138, 61, 0.8); }
-      .hub-plate .hub-altar-change { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; padding: 3px 12px 3px 6px; }
-      .hub-plate .hub-altar-change svg.px-icon { width: 20px; height: 20px; }
-      @media (max-height: 760px) { .hub-plate { padding: 6px 16px 8px; gap: 4px; min-width: 200px; } .hub-plate .hub-altar-name { font-size: 27px; } }
-      @media (max-height: 560px), (max-width: 900px) { .hub-plate { min-width: 0; padding: 4px 12px 6px; margin-top: 4px; } .hub-plate .hub-altar-name { font-size: 20px; } .hub-plate-passive { display: none; } }
-      @media (max-height: 460px) { .hub-plate { padding: 2px 10px 3px; margin-top: 0; } .hub-plate::before, .hub-plate .hub-altar-kicker, .hub-plate .hub-altar-types, .hub-plate .hub-altar-change, .hub-plate .hub-plate-passive { display: none; } .hub-plate .hub-altar-name { font-size: 16px; margin: 0; } }
       .hub-bottom { grid-area: bottom; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 16px; }
       .hub-news { all: unset; box-sizing: border-box; position: relative; justify-self: start; display: flex; align-items: center; gap: 12px; max-width: 320px; padding: 10px 16px 10px 10px; cursor: pointer;
         background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 rgba(0, 0, 0, 0.5); }
@@ -786,9 +746,6 @@
       }
       /* Short screens (phones in landscape): the partner block shrinks so it never runs into the logo or the buttons. */
       @media (max-height: 460px) {
-        .hub-altar-stage { width: 140px; height: 84px; } .hub-altar-glow { width: 150px; height: 110px; bottom: 8px; }
-        .hub-altar-sprite { transform: scale(0.45); transform-origin: 50% 100%; margin-bottom: -30px; } .hub-altar-stone { width: 110px; height: 24px; }
-        .hub-altar-name { font-size: 16px; margin-top: 2px; } .hub-altar-types, .hub-altar-kicker, .hub-altar-change { display: none; }
       }
       /* Small phones in landscape (667x375): the news card keeps its icon, the links shrink to fit one row. */
       @media (max-width: 720px) {
@@ -796,24 +753,18 @@
         .hub-links { gap: 4px; } .hub-links .hub-slab { width: 40px; height: 40px; } .hub-links .hub-slab .px-icon { width: 26px; height: 26px; }
         .hub-play-name { font-size: 26px; } .hub-online span { font-size: 14px; }
       }
-      @media (prefers-reduced-motion: reduce) { .hub-play, .hub-altar-glow, .hub-altar-stone { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
+      @media (prefers-reduced-motion: reduce) { .hub-play { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
       /* Shorter screens: smaller logo and altar, rails in three columns. */
       @media (max-height: 760px) {
-        .hub-altar-stage { width: 240px; height: 190px; } .hub-altar-glow { width: 240px; height: 200px; }
-        .hub-altar-sprite { transform: scale(0.8); transform-origin: 50% 100%; } .hub-altar-stone { width: 190px; height: 48px; margin-top: 0; } .hub-altar-sprite { margin-bottom: -52px; }
-        .hub-altar-kicker { margin-top: 12px; } .hub-altar-name { font-size: 27px; }
         .hub-rail { gap: 12px 12px; } .hub-slab { width: 56px; height: 56px; } .hub-slab .px-icon { width: 36px; height: 36px; }
       }
       @media (max-height: 560px), (max-width: 900px) {
         .hub { padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left)); gap: 6px 12px; grid-template-columns: auto 1fr auto; }
         .hub-logo h1 { font-size: 30px; } .hub-logo .title-alt { font-size: 11px; margin-top: 4px; } .hub-logo .title-alt::before, .hub-logo .title-alt::after { width: 18px; margin: 0 6px; }
-        .hub-profile { padding: 4px 10px 4px 4px; gap: 8px; } .hub-profile-face { width: 40px; height: 40px; } .hub-profile-text strong { font-size: 16px; } .hub-profile-text small { display: none; }
+        .hub-profile { padding: 4px 10px 4px 4px; gap: 8px; } .hub-profile .face { width: 40px; height: 40px; } .hub-profile-text strong { font-size: 16px; } .hub-profile-text small { display: none; }
         .hub-chip { height: 38px; font-size: 18px; padding: 0 10px 0 6px; } .hub-system .hub-slab { width: 44px; height: 44px; }
         .hub-rail { grid-template-columns: repeat(3, auto); gap: 6px 8px; } .hub-rail-title { display: none; }
         .hub-slab { width: 48px; height: 48px; } .hub-slab .px-icon { width: 30px; height: 30px; } .hub-label { font-size: 12px; }
-        .hub-altar-stage { width: 170px; height: 120px; } .hub-altar-glow { width: 180px; height: 150px; bottom: 16px; }
-        .hub-altar-sprite { transform: scale(0.55); margin-bottom: -36px; } .hub-altar-stone { width: 140px; height: 34px; margin-top: 0; }
-        .hub-altar-kicker { display: none; } .hub-altar-name { font-size: 20px; margin-top: 6px; } .hub-altar-change { display: none; }
         .hub-news { max-width: 210px; padding: 6px 10px 6px 6px; } .hub-news .px-icon { width: 28px; height: 28px; } .hub-news-text span { font-size: 12px; -webkit-line-clamp: 1; } .hub-news-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
         .hub-play { min-width: 0; padding: 6px 20px 6px 12px; gap: 10px; } .hub-play-name { font-size: 30px; } .hub-play-icon { width: 30px; height: 30px; } .hub-play small { font-size: 12px; }
         .hub-online { font-size: 16px; padding: 4px 12px 4px 8px; gap: 8px; } .hub-online .px-icon { width: 26px; height: 26px; } .hub-online small { display: none; }

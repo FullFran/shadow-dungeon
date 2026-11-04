@@ -72,6 +72,29 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   message must out-rank the hub (Von Restorff) without a timer or fake urgency. Dev check: `?notice=install,update,news` on the dev server. Contrast
   computed by hand on the slab base (design-gates script not run): text 15.3:1, quiet label and link 7.92:1, primary label on blood 6.41:1. Replaces the
   bottom-left install card (`.pwa-card`) and the bottom update toast (`.pwa-toast`); the news no longer replaces the hub on boot.
+- **Partner altar** (`src/app/title-hub-view.ts`, `src/ui/altar-art.ts`, `src/app/partner-plate.ts`, `src/styles/hub-altar.css`; owner 2026-11-04
+  "presenta mejor a tu pokemon"): the hub's focal point (Von Restorff; JUGAR stays the only ember CTA). The partner stands on a carved
+  eclipse-stone altar (three stepped drums, pixel art on a 128×54 cell grid with palette keys, drawn once and scaled by a whole number
+  `--k`: 3 on desktop, 1 on short or narrow screens), the eclipse corona behind it (a dark disc ringed red, a slow 4.2 s breath in opacity
+  and scale), ember light from below (a warm pool under the altar, four embers rising) and the idle animation of its own sprite. The
+  partner is a `sprite-box` (250×214 desktop, 200×164 under 800 px of height, 170×138 under 740, 100×62 compact) standing on the middle of
+  the top face, never clipped. Nameplate = a stone tablet hung from the altar's front with a gilt stud: kicker "Tu compañero", name
+  (Pixelify 38/30/28 px), type chips (the type colours of `.type-badge`), the Senda bond chip only when a chapter is closed, the passive
+  on one line (description as tooltip) and "Cambiar" as a relic button (>= 44 px, Pokémon icon, gilt frame, ember halo on focus).
+  Compact (max-height 560 px or max-width 900 px): the plate is one row, name and chips left, the 44 px icon button right (its name stays
+  as `aria-label`). Only transform and opacity animate; none of it moves under `prefers-reduced-motion`. The backdrop shows the town alone:
+  no wandering Pokémon (Mimikyu and Gastly were removed, `src/ui/town-walkers.ts` is gone). Measured at 1920×1080, 1440×900, 1366×768,
+  1280×720 and 844×390: no overlap with the logo, rails, news, JUGAR, online, links or profile plate (gap to JUGAR 122, 32, 23, 19 and 12 px).
+- **Face avatar** (`facePortrait` in `src/adapters/portrait.ts`, `src/data/portraits.ts`, `src/styles/face-portrait.css`; owner 2026-11-04
+  "un avatar custom con la cara del pokémon, no el sprite repetido"): an identity is a face, not the walking sprite. The PMDCollab "Normal"
+  portrait (40×40, CC BY-NC 4.0, `tools/fetch-portraits.mjs` pins the SpriteCollab commit in `src/data/portrait-meta.json`, files in
+  `public/portraits/<sprite key>/Normal.png`, credits in CREDITS.md) is drawn crisp (`image-rendering: pixelated`) in a relic frame: gilt
+  ring, ink bevel, the species' first type colour as the inner edge, an ember vignette. It follows the shiny and female look of the
+  partner; a look without art of its own falls back to the base portrait of the form (`portraitFor` says `own` or `fallback`), and a
+  missing file or no portrait at all to the head cropped from the idle frame, never a broken image. Used in the hub profile plate (60 px,
+  40 px compact) and the signed-in account drawer (48 px). Not used where the scene needs the creature (pause summary, dialogue, end
+  screens keep their `sprite-box`). Friends and co-op frames do not carry a species yet (the server's friends list has no avatar field):
+  pending.
 - **Side drawer** (`.drawer-veil` + `.ad-drawer`, `src/app/account-drawer.ts`): the quick-entry pattern for short forms and
   account state (owner, 2026-11-04). A full-height relic slab (400 px, 100% under 520 px) slides in from the right over a
   darkened scene; click outside and Esc close it (`ui/dismiss.ts`), focus is trapped, arrows/Tab move through the controls,
@@ -240,3 +263,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   bigger partner status window with co-op frames, square relic move slots with device glyphs and radial cooldowns, and a boss-event announcement with a telegraph cue. Supersedes the 196x58 status box, the
   104x30 move chips, the 260 px boss bar and the thin spell strip.
 - 2026-11-04 (owner: "el aviso este y de nueva actualización y demás que salga con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual"): update, install and news notices become one System notice (§4) over a darkened, blurred veil, top centre and large. Scoped decision: the blur applies to these notices only; the "blurred-free vignette" rule of overlays and windows stands for everything else. Supersedes the small bottom-left install card, the bottom update toast and the news screen opening by itself on boot.
+- 2026-11-04 (owner: "quita al mimikyu y al gastly de ahí y presenta mejor a tu pokemon", "según el pokémon que tengas tengas un avatar custom con la cara del pokémon, no el sprite repetido"): the hub backdrop loses its residents; the partner stands on a carved altar with a corona, ember light and a nameplate that carries name, types, bond, passive and a 44 px "Cambiar" button (§4 Partner altar); the profile plate and the account drawer show the partner's face portrait (§4 Face avatar). Supersedes the flat red rune ellipse and the small nameplate of 2026-11-03, and the two residents of the same date.
