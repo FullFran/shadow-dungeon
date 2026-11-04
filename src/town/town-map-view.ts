@@ -4,7 +4,7 @@ import '../styles/town-map.css';
 import { SEAL_BACKING, YOU_ARE_HERE } from '../ui/icons/town-map-icons';
 import { PIXEL_ICONS, pixelIconSvg, pixelSvgOf, type PixelIconId } from '../ui/pixel-icons';
 import { h } from '../ui/window';
-import { groupOptions, optionsLayout, type MenuGlyph, type OptionsLayout } from './menu-groups';
+import { gridTile, groupOptions, optionsLayout, type MenuGlyph, type OptionsLayout } from './menu-groups';
 import { cardPin, cartoucheRect, initialFocus, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
 import { paintTownSheet } from './sheet-paint';
 import { stepMarker, type TownMapMarker } from './town-map';
@@ -181,9 +181,8 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   const groups = groupOptions(options.options);
   const groupNodes = groups.map((g) => {
     const rowsEl = h('div', { className: 'tm-rows' }, g.options.map((o) => optionButton(o, 'tm-opt')));
-    // A group of one option has no header (menu-groups.ts): the row alone is its region.
-    const section = h('section', { className: 'tm-group' }, g.options.length > 1 ? [h('h3', { className: 'tm-group-title', textContent: t(g.titleKey) }), rowsEl] : [rowsEl]);
-    if (g.options.length === 1) section.setAttribute('aria-label', t(g.titleKey));
+    // Every group keeps its title (menu-groups.ts GROUP_HEADER), a single option too.
+    const section = h('section', { className: 'tm-group' }, [h('h3', { className: 'tm-group-title', textContent: t(g.titleKey) }), rowsEl]);
     return section;
   });
   const optionEntries = groups.flatMap((g) => g.options);
@@ -237,9 +236,10 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   function applyOptions(l: OptionsLayout): void {
     const key = `${l.mode}:${l.gridCols}:${l.columns.map((c) => c.join(',')).join('|')}`;
     optionsEl.dataset.mode = l.mode;
+    optionsEl.classList.toggle('is-dense', l.dense);
     if (l.mode === 'grid') {
       optionsEl.style.setProperty('--tm-cols', String(l.gridCols));
-      optionsEl.style.setProperty('--tm-tile', l.gridCols === 3 ? '72px' : '64px');
+      optionsEl.style.setProperty('--tm-tile', `${gridTile(l.gridCols)}px`);
     }
     if (key === appliedKey) return;
     appliedKey = key;

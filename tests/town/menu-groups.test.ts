@@ -55,8 +55,9 @@ describe('options layout never needs a scroll', () => {
       it(`${map.id} at ${w}x${h}`, () => {
         const layout = optionsLayout(sizes, menuGeometry(w, h));
         expect(layout.needed).toBeLessThanOrEqual(layout.available);
-        // Every group is placed once, in order.
-        expect(layout.columns.flat()).toEqual(sizes.map((_, i) => i));
+        // Every group is placed once, and each column keeps menu order (columns are balanced, not cut in order).
+        expect([...layout.columns.flat()].sort((a, b) => a - b)).toEqual(sizes.map((_, i) => i));
+        for (const col of layout.columns) expect([...col].sort((a, b) => a - b)).toEqual(col);
         if (h <= 520) expect(layout.mode).toBe('grid');
       });
     }

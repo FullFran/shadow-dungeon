@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD } from '../../src/data/world';
 import { catalog } from '../../src/i18n';
-import { groupOptions, menuOptionServices, optionsLayout, type MenuGlyph } from '../../src/town/menu-groups';
+import { readFileSync } from 'node:fs';
+import { GROUP_HEADER, groupHeight, groupOptions, optionsLayout, townMenuOptions, type MenuGlyph } from '../../src/town/menu-groups';
 import { cardPin, initialFocus, menuGeometry, sheetFit } from '../../src/town/sheet-model';
 import { paintTownSheet } from '../../src/town/sheet-paint';
-import { looseServices, townMapMarkers } from '../../src/town/town-map';
+import { townMapMarkers } from '../../src/town/town-map';
 import { NPC_SERVICE, TOWN_SERVICES, type TownService } from '../../src/town/town-menu';
 
 // Owner, 2026-11-04: "el menú con el mapa hazlo consistente en todas las partes del mapa global, todos los mapas".
@@ -33,17 +34,15 @@ describe('the map menu on every map of the world', () => {
         for (const p of places) expect(markers.map((m) => m.id), map.id).toContain(p);
       });
 
-      it('lists every service once: as a pin, hosted by the waystone or a kept option, or hosted by another window', () => {
-        const options = menuOptionServices(looseServices(markers, ALL), ALL);
-        const waystone = markers.some((m) => m.id === 'waystone') ? ['dungeons', 'challenges', 'travel'] : [];
-        const seen = [...markers.map((m) => m.service), ...options];
-        expect(new Set(seen).size, `${map.id} no doubles among pins and options (a waystone pin is the dungeons one)`).toBe(seen.length);
-        for (const s of TOWN_SERVICES) expect(seen.includes(s) || waystone.includes(s) || s === 'achievements', `${map.id} ${s}`).toBe(true);
+      it('the options column is identical on every map (owner: "el menú solo debe cambiar el mapa, lo demás debe ser igual siempre")', () => {
+        const options = townMenuOptions(ALL);
+        // Every service, pins or not; the achievements live in the notice board's window.
+        expect(options).toEqual(TOWN_SERVICES.filter((s) => s !== 'achievements'));
       });
 
       it('opens on Seguir with no card, and fits whole at the five sizes with a scroll-free option list', () => {
         expect(cardPin(initialFocus(markers.length), markers.length)).toBeNull();
-        const glyphs = [...menuOptionServices(looseServices(markers, ALL), ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
+        const glyphs = [...townMenuOptions(ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
         const sizes = groupOptions(glyphs).map((g) => g.options.length);
         for (const [w, h] of VIEWPORTS) {
           const geo = menuGeometry(w, h);
@@ -56,4 +55,14 @@ describe('the map menu on every map of the world', () => {
       });
     });
   }
+
+  it('the scene builds the options from townMenuOptions only, never from the map', () => {
+    const scene = readFileSync('src/town/scene.ts', 'utf8');
+    expect(scene).toMatch(/options: \[\.\.\.townMenuOptions\(available\)/);
+    expect(scene).not.toMatch(/looseServices\(/);
+  });
+
+  it('every group shows its title, a single-option group too', () => {
+    expect(groupHeight(1)).toBe(GROUP_HEADER + 56);
+  });
 });

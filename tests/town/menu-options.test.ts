@@ -80,9 +80,10 @@ describe('bigger rows, still no scroll', () => {
     expect(ICON_SIZE).toBe(36);
   });
 
-  it('a group with a single option has no header, so it takes no header height', () => {
+  it('every group has its header, a single option too (owner: show the title on a lone option)', () => {
     const geo = menuGeometry(1920, 1080);
-    expect(optionsLayout([2], geo).needed - optionsLayout([1], geo).needed).toBe(OPTION_ROW + OPTION_ROW_GAP + GROUP_HEADER);
+    expect(optionsLayout([2], geo).needed - optionsLayout([1], geo).needed).toBe(OPTION_ROW + OPTION_ROW_GAP);
+    expect(optionsLayout([1], geo).needed).toBeGreaterThanOrEqual(GROUP_HEADER + OPTION_ROW);
   });
 
   for (const map of Object.values(WORLD)) {

@@ -1,5 +1,5 @@
 import type { MenuGeometry } from './sheet-model';
-import type { TownService } from './town-menu';
+import { TOWN_SERVICES, type TownService } from './town-menu';
 
 /**
  * The options beside the town map, grouped by purpose (owner, 2026-11-04: "todas las opciones del menú mejor presentadas,
@@ -55,12 +55,25 @@ export function menuOptionServices(loose: readonly TownService[], available: Rea
   });
 }
 
+/**
+ * The options column, the same on every map (owner, 2026-11-04: "el menú solo debe cambiar el mapa, lo demás debe ser igual
+ * siempre"): every available service in menu order, pins or not, but those another kept window hosts (HOSTED_BY).
+ */
+export function townMenuOptions(available: ReadonlySet<TownService>): TownService[] {
+  return menuOptionServices(TOWN_SERVICES.filter((s) => available.has(s)), available);
+}
+
+/** Icon grid tile side for a column count (CSS px): 72, 64, then 58 for five columns (still >= 44). */
+export const gridTile = (cols: number): number => (cols <= 3 ? 72 : cols === 4 ? 64 : 58);
+
 export type OptionsMode = 'list' | 'cols' | 'grid';
 
 /** Row, header and gap sizes of the options column, CSS px (src/styles/town-map.css reads the same numbers). */
 export const OPTION_ROW = 56;
+/** The row height when two columns of 56 px rows still do not fit (a 1280x720 window with every option): 48 px, still >= 44. */
+export const OPTION_ROW_DENSE = 48;
 export const OPTION_ROW_GAP = 2;
-/** A group's header line; a group with a single option has none (it needs no label to be a region). */
+/** A group's header line, on every group (a lone option reads as part of the group above without it). */
 export const GROUP_HEADER = 20;
 export const GROUP_GAP = 6;
 /** "Seguir" (56 px) and the gap under it. */
@@ -74,13 +87,15 @@ export interface OptionsLayout {
   columns: number[][];
   /** Columns of the icon grid (grid mode). */
   gridCols: number;
+  /** Rows of OPTION_ROW_DENSE instead of OPTION_ROW (two columns only). */
+  dense: boolean;
   /** Height the options need and the height there is (CSS px): needed <= available means no scroll. */
   needed: number;
   available: number;
 }
 
-const groupHeight = (n: number): number => (n > 1 ? GROUP_HEADER : 0) + n * OPTION_ROW + Math.max(0, n - 1) * OPTION_ROW_GAP;
-const stack = (sizes: readonly number[]): number => sizes.reduce((sum, n) => sum + groupHeight(n), 0) + Math.max(0, sizes.length - 1) * GROUP_GAP;
+export const groupHeight = (n: number, row: number = OPTION_ROW): number => GROUP_HEADER + n * row + Math.max(0, n - 1) * OPTION_ROW_GAP;
+const stack = (sizes: readonly number[], row: number = OPTION_ROW): number => sizes.reduce((sum, n) => sum + groupHeight(n, row), 0) + Math.max(0, sizes.length - 1) * GROUP_GAP;
 
 /**
  * How the options are laid out for a window: a single list when it fits (rows >= 56 px), two columns of groups when it does not,
@@ -91,19 +106,28 @@ export function optionsLayout(sizes: readonly number[], geo: MenuGeometry): Opti
   const all = sizes.map((_, i) => i);
   if (geo.compact) {
     const items = sizes.reduce((a, b) => a + b, 0) + 1;
-    const tile = (cols: number): number => (cols === 3 ? 72 : 64);
-    const need = (cols: number): number => Math.ceil(items / cols) * tile(cols) + (Math.ceil(items / cols) - 1) * GRID_GAP;
-    const gridCols = need(3) <= available ? 3 : 4;
-    return { mode: 'grid', columns: [all], gridCols, needed: need(gridCols), available };
+    const need = (cols: number): number => Math.ceil(items / cols) * gridTile(cols) + (Math.ceil(items / cols) - 1) * GRID_GAP;
+    const gridCols = [3, 4, 5].find((cols) => need(cols) <= available) ?? 5;
+    return { mode: 'grid', columns: [all], gridCols, dense: false, needed: need(gridCols), available };
   }
   const list = PRIMARY_BLOCK + stack(sizes);
-  if (list <= available) return { mode: 'list', columns: [all], gridCols: 0, needed: list, available };
-  // Two columns: the first k groups on the left, the rest on the right, whichever split is shortest.
-  let best = { k: Math.max(1, Math.ceil(sizes.length / 2)), height: Infinity };
-  for (let k = 1; k < sizes.length; k++) {
-    const height = Math.max(stack(sizes.slice(0, k)), stack(sizes.slice(k)));
-    if (height < best.height) best = { k, height };
-  }
-  if (sizes.length < 2) return { mode: 'list', columns: [all], gridCols: 0, needed: list, available };
-  return { mode: 'cols', columns: [all.slice(0, best.k), all.slice(best.k)], gridCols: 0, needed: PRIMARY_BLOCK + best.height, available };
+  if (list <= available) return { mode: 'list', columns: [all], gridCols: 0, dense: false, needed: list, available };
+  if (sizes.length < 2) return { mode: 'list', columns: [all], gridCols: 0, dense: false, needed: list, available };
+  // Two columns: the most balanced split of the groups (each column keeps menu order), so the options never need a scroll.
+  const split = (row: number) => {
+    let best = { left: all.slice(0, Math.ceil(sizes.length / 2)), height: Infinity };
+    for (let mask = 1; mask < (1 << sizes.length) - 1; mask++) {
+      const left = all.filter((i) => mask & (1 << i));
+      const right = all.filter((i) => !(mask & (1 << i)));
+      if (!left.includes(0)) continue;
+      const height = Math.max(stack(left.map((i) => sizes[i]!), row), stack(right.map((i) => sizes[i]!), row));
+      if (height < best.height) best = { left, height };
+    }
+    return best;
+  };
+  const roomy = split(OPTION_ROW);
+  const dense = PRIMARY_BLOCK + roomy.height > available;
+  const best = dense ? split(OPTION_ROW_DENSE) : roomy;
+  const right = all.filter((i) => !best.left.includes(i));
+  return { mode: 'cols', columns: [best.left, right], gridCols: 0, dense, needed: PRIMARY_BLOCK + best.height, available };
 }
