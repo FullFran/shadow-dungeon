@@ -24,6 +24,7 @@ Guests keep playing without an account; that is all client-side.
 | `internal/ranking/` | Pure Sima ranking rule over the saves (table-driven tests); `rankingapi/` serves it |
 | `internal/reports/` | Bug report fields and limits; `reportsapi/` serves `POST /api/sd/reports`, `reportsadmin/` the admins' routes, `reportmail/` announces new reports |
 | `internal/friends/` | Friend code and room code formats, caps and the presence rule; `friendsapi/` serves `/api/sd/friends` |
+| `internal/clerkauth/` | Clerk session token to PocketBase auth token (`POST /api/sd/clerk/session`); the Clerk check sits behind a small `Verifier` interface |
 | `internal/lore/` | The embedded lore (`data/`) and its pure index and search; `loreapi/` serves it over HTTP |
 | `tools/sync-lore.sh` | Copies the lore from the game repo into `internal/lore/data/` |
 | `tools/report-to-issue.sh` | Renders an exported bug report as a GitHub issue body (offline) |
@@ -368,6 +369,26 @@ Accounts add each other by a friend code, to see who is online and join their ro
 
 **What is stored.** `friend_cards`: account, code, last heartbeat, room code. `friendships`: the pair, who asked, who was asked, accepted or not. An account that has not opened the friends window has no card, and its heartbeats store nothing unless it has a friend. The migration adds both collections and touches no existing row; codes come lazily so that existing accounts that never use friends store nothing. Deleting an account removes its card and links (cascade). Every API rule is nil: the records API cannot list, view, create, edit or delete them, and `profiles` filters and expands cannot reach them (`friendsapi_test.go`).
 
+## Clerk sign-in
+
+Clerk is the identity provider (email + password, Google, Discord); PocketBase stays the data store. The game signs in with Clerk, then trades the Clerk session token for a PocketBase one. Package `internal/clerkauth`.
+
+`POST /api/sd/clerk/session`, header `Authorization: Bearer <Clerk session JWT>`, no body. `200` answers exactly what `auth-with-password` does (`{"token","record"}`, built with `apis.RecordAuthResponse`), so the client uses the token unchanged.
+
+| Status | When |
+|---|---|
+| `200` | Token valid and the primary Clerk email is verified |
+| `401` | Header missing or not `Bearer`, or the token is forged or expired |
+| `422` | The Clerk user has no primary email, or it is not verified (Clerk status other than `verified`) |
+| `409` | The email matches an account already linked to a different Clerk user |
+| `429` | Past 10 per IP per minute (rate-limit rule `POST /api/sd/clerk/session`) |
+| `502` | Clerk's API could not be reached |
+| `503` | `CLERK_SECRET_KEY` is unset |
+
+**Which account.** The token is verified against the instance JWKS with the official Go SDK (`github.com/clerk/clerk-sdk-go/v2`), then the user is read from the Clerk Backend API. Then: a `users` record whose `clerk_id` is that Clerk user id wins; else the record with the same email (case-insensitive) is linked (`clerk_id` set, marked verified); else an account is created (email, random password, verified). Clerk-created accounts get no password the player knows; password reset by email still works.
+
+**Schema.** Migration `1793664000_users_clerk_id.go` adds `users.clerk_id`: hidden (never in a response) and unique only when non-empty. Tests use a fake `Verifier`; nothing touches the network.
+
 ## Run locally
 
 Requires Go 1.27 or newer (`go.mod` says `go 1.27`; an older `go` downloads
@@ -413,10 +434,11 @@ these settings are overwritten on the next start.
 | `SD_MAIL_FROM_NAME` | `Mazmorra Sombría` | Sender name |
 | `SD_APP_URL` | `https://sd-api.fullfran.com` | Public API URL used in the email links |
 | `SD_APP_NAME` | `Mazmorra Sombría` | Game name in the emails |
+| `CLERK_SECRET_KEY` | empty (Clerk sign-in off) | Clerk Backend secret key (`sk_...`) of the instance whose sessions are accepted. Secret. Unset: `POST /api/sd/clerk/session` answers 503 (logged once at start) and password sign-in is unaffected |
 
 Rate limits (PocketBase's built-in limiter, per IP or per user):
 `*:auth` 10/min (log in, refresh, OAuth2), `users:create` 5 per 10 min
-(sign-up), `saves:create` 10/min, `saves:update` 30/min, `*:create`
+(sign-up), `POST /api/sd/clerk/session` 10/min, `saves:create` 10/min, `saves:update` 30/min, `*:create`
 20/min, `/api/batch` 3/s (batch is disabled anyway), `/api/` 300 per 10 s.
 
 ## OAuth2 apps
