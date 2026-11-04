@@ -1,6 +1,8 @@
 import { t } from '../i18n';
 import { h } from '../ui/window';
+import { buildAltar } from '../ui/altar-art';
 import { pixelIconSvg } from '../ui/pixel-icons';
+import '../styles/hub-altar.css';
 import { hubStep, type HubButton, type HubDirection, type HubId } from './title-hub';
 
 /**
@@ -16,7 +18,7 @@ export interface TitleHubOptions {
   /** Opens a button's screen or window (never called for a locked one). */
   onPick(id: HubId): void;
   /** The partner's animated sprite, its name and its type badges. */
-  partner: { portrait: HTMLElement; name: string; badges: HTMLElement[]; passive?: { name: string; description: string } } | null;
+  partner: { portrait: HTMLElement; name: string; badges: HTMLElement[]; passive?: { name: string; description: string }; /** "Vínculo 2": only when a Senda chapter is closed. */ bond?: string } | null;
   /** Nickname (or "Caminante"), its small portrait and the record line. */
   profile: { name: string; portrait: HTMLElement | null; line: string };
   coins: number;
@@ -28,6 +30,14 @@ export interface TitleHubOptions {
   touch: boolean;
   /** Focus this control first (back from a window: the one that opened it). */
   initial?: HubId;
+}
+
+/** The altar's carved stone, prerendered pixel art scaled by a whole number in CSS (src/styles/hub-altar.css). */
+function altarStone(): HTMLCanvasElement {
+  const stone = buildAltar();
+  stone.className = 'hub-altar-stone';
+  stone.setAttribute('aria-hidden', 'true');
+  return stone;
 }
 
 export function titleHub(options: TitleHubOptions): { element: HTMLElement; focus(id?: HubId): void; dispose(): void } {
@@ -104,28 +114,33 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
 
   const partner = options.partner
     ? (() => {
-        const change = h('button', { className: 'hub-altar-change', type: 'button', textContent: t('hub.partner.change') });
-        const pokemon = options.buttons.find((b) => b.id === 'pokemon');
-        if (pokemon) {
-          change.dataset.hub = 'partner';
-          change.addEventListener('click', () => pick(pokemon));
-        }
         const p = options.partner;
-        if (pokemon && !pokemon.locked) change.prepend(pixelIconSvg('pokemon'));
-        // A relic nameplate under the partner (owner: "Presenta mejor el caminante que usas"): name, types, passive, change.
+        const pokemon = options.buttons.find((b) => b.id === 'pokemon');
+        const canChange = !!pokemon && !pokemon.locked;
+        // The altar's nameplate (owner, 2026-11-04): name, type chips, bond, the passive on one line, and the change relic button.
+        const change = h('button', { className: 'hub-altar-change', type: 'button' }, [pixelIconSvg('pokemon'), h('span', { textContent: t('hub.partner.change') })]);
+        change.dataset.hub = 'partner';
+        change.setAttribute('aria-label', t('hub.partner.change'));
+        if (pokemon) change.addEventListener('click', () => pick(pokemon));
         const plate = h('div', { className: 'hub-plate' }, [
-          h('p', { className: 'hub-altar-kicker', textContent: t('hub.partner') }),
-          h('h2', { className: 'hub-altar-name', textContent: p.name }),
-          h('div', { className: 'hub-altar-types' }, p.badges),
+          h('p', { className: 'hub-plate-kicker', textContent: t('hub.partner') }),
+          h('h2', { className: 'hub-plate-name', textContent: p.name }),
+          h('div', { className: 'hub-plate-chips' }, [...p.badges, ...(p.bond ? [h('span', { className: 'hub-plate-bond', textContent: p.bond })] : [])]),
           ...(p.passive ? [h('p', { className: 'hub-plate-passive', title: p.passive.description }, [h('span', { className: 'hub-plate-gem' }), h('span', { textContent: p.passive.name })])] : []),
-          ...(pokemon && !pokemon.locked ? [change] : []),
+          ...(canChange ? [change] : []),
         ]);
         return h('section', { className: 'hub-altar' }, [
-          h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-glow' }), h('div', { className: 'hub-altar-sprite' }, [p.portrait]), h('div', { className: 'hub-altar-stone' })]),
+          h('div', { className: 'hub-altar-stage' }, [
+            h('div', { className: 'hub-altar-corona' }),
+            h('div', { className: 'hub-altar-glow' }),
+            altarStone(),
+            h('div', { className: 'hub-altar-sprite sprite-box' }, [p.portrait]),
+            h('div', { className: 'hub-altar-embers' }, [h('i'), h('i'), h('i'), h('i')]),
+          ]),
           plate,
         ]);
       })()
-    : h('section', { className: 'hub-altar is-empty' }, [h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-glow' }), h('div', { className: 'hub-altar-stone' })])]);
+    : h('section', { className: 'hub-altar is-empty' }, [h('div', { className: 'hub-altar-stage' }, [h('div', { className: 'hub-altar-corona' }), h('div', { className: 'hub-altar-glow' }), altarStone()])]);
 
   const newsButton = options.buttons.find((b) => b.id === 'news');
   const newsCard = options.news && newsButton

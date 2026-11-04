@@ -3729,6 +3729,7 @@
   "hub.locked.starter": "Elige antes a tu compañero: pulsa Jugar.",
   "hub.partner": "Tu compañero",
   "hub.partner.change": "Cambiar",
+  "hub.partner.bond": "Vínculo {n}",
   "hub.coins": "Pokémonedas",
   "hub.record": "Mejor planta {floor} · {runs} expediciones",
   "hub.record.none": "Aún no has descendido",

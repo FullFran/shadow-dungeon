@@ -28,7 +28,7 @@ import { generateRoomCode, normalizeRoomCode, roomCodeFromSearch } from '../net/
 import { createSession, type NetSession } from '../net/session';
 import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
-import { eclipseBackdrop, setBackdropSheets } from '../ui/eclipse';
+import { eclipseBackdrop } from '../ui/eclipse';
 import { sceneLayers } from '../ui/scene';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
@@ -85,7 +85,10 @@ import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type ChallengeLine, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { facePortrait } from '../adapters/portrait';
+import { partnerPlate } from './partner-plate';
+import { lineRoot } from '../data/player-evolutions';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
@@ -107,7 +110,7 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
-import { recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { bondLine, recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
 import { sendaTier, sendaTierOpen, type StoryRun } from '../core/story';
 import { shopWindow } from './shop';
@@ -548,8 +551,6 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
   if (patchNotesOnBoot(root)) return;
   const save = loadSave(store);
   const records = readRecords(store);
-  // The backdrop's Pokémon come from the same sheets as the partner.
-  setBackdropSheets(sheetsReady());
   const back = (id: HubId) => () => titleScreen(root, id);
   /** A town window over the hub; closing it redraws the hub (coins, language and partner may have changed). */
   const overlay = (id: HubId, open: (parent: HTMLElement, onClose: () => void, depart: (dungeon: string) => void) => () => void) => {
@@ -597,16 +598,20 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
     buttons: hubButtons(state),
     onPick: (id) => action[id](),
     partner: settings.starterChosen
-      ? {
-          portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()),
-          name: t(`species.${species}`),
-          badges: SPECIES[species].types.map(typeBadge),
-          ...(SPECIES[species].passive ? { passive: { name: t(`passive.${SPECIES[species].passive}`), description: t(`passive.${SPECIES[species].passive}.description`) } } : {}),
-        }
+      ? (() => {
+          const plate = partnerPlate(species, bondLine(save, lineRoot(species) as ChallengeLine)?.level ?? null);
+          return {
+            portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()),
+            name: t(plate.nameKey),
+            badges: plate.types.map(typeBadge),
+            ...(plate.passiveKey ? { passive: { name: t(plate.passiveKey), description: t(`${plate.passiveKey}.description`) } } : {}),
+            ...(plate.bond ? { bond: t('hub.partner.bond').replace('{n}', String(plate.bond)) } : {}),
+          };
+        })()
       : null,
     profile: {
       name: settings.nickname || t('hub.wanderer'),
-      portrait: settings.starterChosen ? portrait(sheetsReady(), species, 2, skinOn(), femaleOn()) : null,
+      portrait: settings.starterChosen ? facePortrait(species, { size: 60, shiny: skinOn(), female: femaleOn(), sheets: sheetsReady() }) : null,
       line: records.runs > 0 ? t('hub.record').replace('{floor}', String(best)).replace('{runs}', String(records.runs)) : t('hub.record.none'),
     },
     coins: save.coins,
@@ -1152,6 +1157,7 @@ function townAccount(parent: HTMLElement, onClose: () => void): () => void {
     account,
     flow: authFlow,
     parent,
+    face: () => (settings.starterChosen ? facePortrait(settings.species, { size: 48, shiny: skinOn(), female: femaleOn(), sheets: sheetsReady() }) : null),
     onClose: () => {
       accountRedraw = null;
       onClose();

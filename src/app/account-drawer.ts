@@ -28,6 +28,8 @@ export interface AccountDrawerOptions {
   /** Called after the drawer is gone (Esc, outside press, close or "seguir como invitado"). */
   onClose(): void;
   parent?: HTMLElement;
+  /** The player's face avatar (the partner's portrait) for the signed-in header; the mail's initial when absent. */
+  face?: () => HTMLElement | null;
 }
 
 export interface AccountDrawer {
@@ -313,7 +315,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     );
     return [
       h('div', { className: 'ad-main' }, [
-        h('div', { className: 'ad-who' }, [h('span', { className: 'ad-avatar' }, [h('span', { textContent: (email[0] ?? '?').toUpperCase() })]), h('div', { className: 'ad-who-text' }, [h('p', { className: 'ad-who-label', textContent: t('account.signedInAs') }), h('p', { className: 'ad-who-mail', textContent: email || t('account.title') })])]),
+        h('div', { className: 'ad-who' }, [options.face?.() ?? h('span', { className: 'ad-avatar' }, [h('span', { textContent: (email[0] ?? '?').toUpperCase() })]), h('div', { className: 'ad-who-text' }, [h('p', { className: 'ad-who-label', textContent: t('account.signedInAs') }), h('p', { className: 'ad-who-mail', textContent: email || t('account.title') })])]),
         h('p', { className: 'ad-sync', textContent: line || t('account.synced') }),
         ...items,
         say,

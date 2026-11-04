@@ -3729,6 +3729,7 @@
   "hub.locked.starter": "Choose your partner first: press Play.",
   "hub.partner": "Your partner",
   "hub.partner.change": "Change",
+  "hub.partner.bond": "Bond {n}",
   "hub.coins": "Poké Coins",
   "hub.record": "Best floor {floor} · {runs} expeditions",
   "hub.record.none": "You have not descended yet",
