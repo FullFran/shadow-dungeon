@@ -46,7 +46,9 @@ export function menuGeometry(vw: number, vh: number): MenuGeometry {
   const gap = compact ? 10 : 16;
   const room = panel.w - 2 * pad - gap;
   const height = panel.h - 2 * pad;
-  return { panel, compact, pad, gap, mapBox: { w: room * 0.6, h: height }, optionsBox: { w: room * 0.4, h: height } };
+  // The map takes 60% of the room on a short landscape window; elsewhere the options keep a readable 380-470 px and the map gets the rest.
+  const optionsW = compact ? room * 0.4 : Math.min(470, Math.max(380, room * 0.36));
+  return { panel, compact, pad, gap, mapBox: { w: room - optionsW, h: height }, optionsBox: { w: optionsW, h: height } };
 }
 
 export interface SheetFit {
@@ -59,12 +61,15 @@ export interface SheetFit {
   height: number;
 }
 
-/** A whole scale that fills less than this share of the box along its limiting side gives way to a fractional one. */
-const MIN_FILL = 0.7;
+/**
+ * A whole scale that fills less than this share of the box along its limiting side gives way to a fractional one (owner: the map
+ * must show as large as it can, so a whole scale is kept only while it wastes at most 10%).
+ */
+export const SHEET_MIN_FILL = 0.9;
 
 /**
  * The largest scale at which the whole sheet fits the box: a whole number of pixels per art pixel (crisp), or the exact
- * fractional fit when the whole one would waste more than 30% of the limiting side (or the box is smaller than the art).
+ * fractional fit when the whole one would waste more than 10% of the limiting side (or the box is smaller than the art).
  * The art is painted once; a fractional scale only resizes the finished canvas by CSS (pixelated).
  */
 export function sheetFit(cols: number, rows: number, boxW: number, boxH: number): SheetFit {
@@ -72,7 +77,7 @@ export function sheetFit(cols: number, rows: number, boxW: number, boxH: number)
   const artH = rows * TILE_ART + 2 * SHEET_MARGIN;
   const raw = Math.max(0.01, Math.min(boxW / artW, boxH / artH));
   const whole = Math.floor(raw);
-  const scale = whole >= 1 && whole / raw >= MIN_FILL ? whole : raw;
+  const scale = whole >= 1 && whole / raw >= SHEET_MIN_FILL ? whole : raw;
   return { artW, artH, scale, width: artW * scale, height: artH * scale };
 }
 

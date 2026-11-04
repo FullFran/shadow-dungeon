@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD } from '../../src/data/world';
-import { cartoucheRect, compassRect, menuGeometry, menuTiming, placeCard, seedOf, sheetFit, SHEET_MARGIN, TILE_ART, tornMask } from '../../src/town/sheet-model';
+import { cartoucheRect, compassRect, menuGeometry, menuTiming, placeCard, seedOf, SHEET_MIN_FILL, sheetFit, SHEET_MARGIN, TILE_ART, tornMask } from '../../src/town/sheet-model';
 
 // Owner, 2026-11-04: the town menu is a map that shows the whole town, large, with a torn parchment edge, rising from the bottom.
 const VIEWPORTS = [
@@ -28,6 +28,15 @@ describe('menu geometry', () => {
     expect(menuGeometry(1440, 900).compact).toBe(false);
   });
 
+  it('gives the options 380-470 px on a desktop window and the map at least 60% of the room', () => {
+    for (const [w, h] of VIEWPORTS.filter(([, vh]) => vh > 520)) {
+      const g = menuGeometry(w, h);
+      expect(g.optionsBox.w, `${w}x${h}`).toBeGreaterThanOrEqual(380);
+      expect(g.optionsBox.w, `${w}x${h}`).toBeLessThanOrEqual(470);
+      expect(g.mapBox.w / (g.mapBox.w + g.optionsBox.w), `${w}x${h}`).toBeGreaterThanOrEqual(0.6);
+    }
+  });
+
   it('keeps both boxes inside the panel', () => {
     for (const [w, h] of VIEWPORTS) {
       const g = menuGeometry(w, h);
@@ -53,19 +62,21 @@ describe('sheetFit shows the whole map at every viewport', () => {
         const raw = Math.min(mapBox.w / fit.artW, mapBox.h / fit.artH);
         if (Number.isInteger(fit.scale)) {
           expect(fit.scale + 1).toBeGreaterThan(raw);
-          // A whole scale is only kept while it wastes at most 30% of the limiting side.
-          expect(fit.scale / raw).toBeGreaterThanOrEqual(0.7);
+          // A whole scale is only kept while it wastes at most 10% of the limiting side.
+          expect(fit.scale / raw).toBeGreaterThanOrEqual(SHEET_MIN_FILL);
         } else {
           expect(fit.scale).toBeCloseTo(raw, 5);
-          expect(Math.floor(raw) / raw < 0.7 || Math.floor(raw) < 1).toBe(true);
+          expect(Math.floor(raw) / raw < SHEET_MIN_FILL || Math.floor(raw) < 1).toBe(true);
         }
       });
     }
   }
 
-  it('is crisp (whole scale) on the big desktop windows', () => {
-    const { mapBox } = menuGeometry(1920, 1080);
-    expect(Number.isInteger(sheetFit(32, 24, mapBox.w, mapBox.h).scale)).toBe(true);
+  it('keeps a whole (crisp) scale when it fills the box, and goes fractional to fill it otherwise', () => {
+    // 32 x 22 tiles = 284 x 204 art pixels: a box of three times that, or a hair more, takes the whole 3x.
+    expect(sheetFit(32, 22, 284 * 3 + 20, 204 * 3 + 20).scale).toBe(3);
+    // A box that would leave a quarter of the width empty at 2x gets the exact fit instead.
+    expect(sheetFit(32, 22, 284 * 2.6, 204 * 5).scale).toBeCloseTo(2.6, 5);
   });
 });
 

@@ -955,6 +955,7 @@
   "townMenu.place.waystone": "Piedra guía",
   "townMenu.here": "Estás aquí",
   "townMenu.card.open": "Abrir",
+  "townMenu.card.new": "Novedad",
   "townMenu.card.tap": "Toca otra vez para abrir",
   "townMenu.map.label": "Plano de {name}",
   "townMenu.options.label": "Opciones del menú",

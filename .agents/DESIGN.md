@@ -55,7 +55,7 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
 - **Chip** (`.hub-chip`): pixel icon + tabular number on a slab.
 - **Overlay** (`.town-shop`): service windows open over a darkened, blurred-free vignette of the scene (system notices are the one scoped exception: they blur; see System notice and the 2026-11-04 decision).
 - **Pixel icons** (`src/ui/pixel-icons.ts`): 16×16 maps, 3–6 colours each, rendered as crisp SVG rects. Every
-  service has one; line glyphs (`glyphSvg`) remain only on the inked town plan.
+  service has one; line glyphs (`glyphSvg`) remain only as the fallback for a glyph with no pixel icon.
 
 - **System notice** (`src/ui/notice.ts`, pure model `src/ui/notice-model.ts`, notices as data `src/pwa/notices.ts`, `src/styles/system-notice.css`; owner
   2026-11-04 "con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual"): one component for every notice the game
@@ -213,6 +213,43 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   **Actions**: big relic buttons (>= 56 px, 68 px on tall windows, 44 px on short landscape) with a pixel icon and the device glyph (Enter / pad A on the
   primary; a line under them gives Esc / pad B for the way back; none on touch); one ember primary ("Volver ..."), "Volver a intentarlo" a quiet slab. Keys:
   arrows or WASD, Enter confirms, Esc or B takes the primary. Colours only from tokens.
+||||||| parent of c72ccc6 (feat(town): parchment map menu rising from below with pin cards and grouped options)
+- **Town map menu** (`src/town/town-map-view.ts`, `src/town/sheet-paint.ts`, `src/town/sheet-raster.ts`, `src/town/sheet-model.ts`, `src/town/menu-groups.ts`,
+  `src/ui/icons/town-map-icons.ts`, `src/styles/town-map.css`; owner 2026-11-04 "esto debe ser un mapa que se vea completo lo máximo posible, bien detallado
+  tipo pixel art ... envejecido roto irregularmente por los alrededores ... el menú debe salir de abajo animado, mucho más grande, al hacer hover por los sitios
+  te muestra qué hay ahí, y a la derecha todas las opciones mejor presentadas, estructuradas y posicionadas"): the Esc menu of the town. One relic window
+  (`.town-map.tm-panel`, role dialog) of 94vw x 88vh capped at 1500 x 900 over the dimmed town (veil `.town-shop.tm-veil`, so click outside and Esc close it
+  through `ui/dismiss.ts`). Left, the whole map of the current place on an aged parchment; right, the options. Laws: Common Region (groups), Von Restorff
+  (Seguir the only ember), Proximity (card anchored to its pin), Fitts (rows >= 48 px, pin hit area 44 px), Jakob (map left, options right), Hick (4 groups).
+  - **Sheet** (`paintTownSheet`): drawn once per open into an RGBA buffer (`Raster`, palette keys, no canvas needed, so it is hashed and tested) at 8 art px per
+    tile plus a 14 px margin, from the real town data: grass wash with tufts, roads with edge lines and pebbles, water with waves and shore, bridges, chasm
+    hatching, rock, trees (round and pine) on forest tiles, every prop kind with its own painter (houses with pitched roofs, stall awning, tower, statues, graves,
+    ruins...), roads running off the map to arrowheads, a cartographic frame with ticks, a compass rose and a ribbon cartouche whose text is real DOM text. Every
+    colour is a mix of tokens (`sheetPalette`: bone, old gold, `good`, `xp`, blood, ink). Aging is deterministic per map id: mottled paper, ink wear (2% gone, 5%
+    pale), dithered stains and a coffee ring, two fold creases, and a torn, burnt outline (`tornMask`: value noise plus round bites, never deeper than the
+    margin, burnt rim, singed band). Never redrawn per frame; resizing only changes the CSS size.
+  - **Scale** (`sheetFit`): the largest scale that shows the whole sheet in the left box; whole (crisp, `image-rendering: pixelated`) only while it wastes <= 10% of
+    the limiting side, else the exact fraction, shown by blowing the art up by whole pixels to the next whole scale and shrinking that smoothly by CSS so
+    pixels stay even. Geometry (`menuGeometry`): options 380-470 px, map the rest; on a short landscape window (<= 520 px high) map 60%, options 40%.
+  - **Pins**: a wax seal (`SEAL_BACKING`, 20x20, original) with the service's 32 px colour pixel icon pressed in, on a 44 px button; hover, focus or the chosen state
+    lifts the seal 4 px with an ember glow and a gold ring; a blood diamond only for real unseen content (none feeds it yet). The player is a red cross
+    (`YOU_ARE_HERE`, original 16x16), never a character sprite.
+  - **Place card** (`.tm-card`): relic slab with a gilt diamond pointer on its pin (`placeCard`: above, flipped below when there is no room, clamped to the map
+    box): chip with the pixel icon, service name (cursor gold), who keeps it (NPC or place), one line of what you can do, and "Enter Open" (touch: "Tap again to
+    open"). Rises 6 px in 120 ms; none under reduced motion. Short landscape: smaller card.
+  - **Options**: "Seguir" (56 px, the only ember) then four groups with a header and hairline: Tu equipo (Cambiar Pokémon, Phantump, Tutor, Tienda, Gacha),
+    Progreso (Mazmorras, Desafíos, Viajar, Santuario, Tablón, Logros, Galería), Social (Jugar en línea, Amigos, Cuenta), Sistema (Ajustes, Controles del mando,
+    Volver al inicio / the room's rows). Only options with no pin on this map are listed (the Refugio lists nine), every one of them kept. Rows are 48 px: 32 px
+    pixel icon, label, one line of help. `optionsLayout` picks the mode from the room: `list` when it fits, `cols` (two columns of groups, help in two 12 px
+    lines) when it does not, `grid` (3-4 columns of 64-72 px tiles, icon and label, help in the tooltip) on a short landscape window; `needed <= available` is
+    tested for every map at 1920x1080, 1440x900, 1366x768, 1280x720 and 844x390, so nothing scrolls.
+  - **Input**: arrows, WASD or the stick (the pad sends arrow keys) move focus between pins and options by their screen position (`stepMarker` on the real button
+    centres); Tab and Shift+Tab walk them in order; Enter or Space opens (a focused button answers its own press), Esc closes. Mouse hover on a pin shows its card; on touch
+    the first tap shows the card and the second opens (a pin chosen at the press opens on that tap); options open on one tap. The nearest pin to the player starts chosen.
+  - **Entrance** (`menuTiming`): the panel slides up from below the window edge (`translateY(50vh + 50%)` to 0) in 260 ms ease-out, no overshoot, the veil fades 160 ms;
+    leaving reverses in 200 ms (the veil too); under `prefers-reduced-motion` both are a 160 ms fade with no travel. Opening another window from the menu removes it
+    at once (that window has its own entrance). Contrast measured: option label 12.51, help 6.47, group header 7.32, Seguir 5.62, card name 10.73, card text 14.15,
+    card detail 7.32, ribbon name 5.35 to 5.90 (all >= 4.5).
 - **Location plaque** (`src/ui/location-plaque.ts`, `src/ui/location-plaque-model.ts`, `src/adapters/floor-plaque.ts`, `src/ui/icons/place-icons.ts`,
   `src/styles/location-plaque.css`; owner 2026-11-04): one component names every place on arrival, replacing the canvas town banner, the
   floor card and the dungeon title. A carved relic plate at the top centre (`position: fixed`, top 12 px, 6 px on short landscape,
@@ -261,6 +298,7 @@ Accessibility: every hub control is a real `<button>` with an accessible name; a
 - Window open 120 ms ease-out (existing). Focus halo 120 ms. Backdrop: slow corona pulse (1.4 s), embers, fog drift —
   reason: the scene is alive while the player decides. Partner idle animation from its sprite.
 - `prefers-reduced-motion`: no fog drift, no pulse on Play, embers static.
+- Town map menu entrance: the panel slides up from below the window edge in 260 ms ease-out (no overshoot) while the veil fades in 160 ms, and leaves the same way in 200 ms; reason: the menu is a sheet lifted out of a satchel, and the town stays visible and dimmed behind it. Under `prefers-reduced-motion`: a 160 ms fade in and out, no travel (`menuTiming`, `src/town/sheet-model.ts`). The place card rises 6 px in 120 ms (Doherty), the chosen seal lifts 4 px in 120 ms, the "you are here" cross breathes (scale 1 to 1.18, 1.6 s) only without reduced motion.
 - Location plaque entrance: the plate unfurls from its centre (`scaleX` 0 to 1 with a centre clip) in 260 ms ease-out, then the icon and the text
   fade-rise 6 px over 160 ms, staggered 80 ms; it holds 2.2 s and leaves fading up 10 px in 300 ms ease-in. Reason: it marks the change of place
   without blocking play (Peak-End); it takes no input and never covers the HUD. Under `prefers-reduced-motion`: a plain 200 ms fade in and 300 ms
@@ -320,3 +358,5 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "no debería salir el círculo rojo ni el hueco para tu pokémon, debe primero pedirte elegir si como invitado o iniciar sesión y guiarte primero al onboarding/cuestionario para elegir tu caminante, que también debe rediseñarse al completo"): a profile with no walker never meets the hub or its empty altar; it enters through a Welcome gate (account or guest, §4), then the prologue, a redesigned Questionnaire (one question per slab, oath-rune progress rail, relic answer cards with original pixel icons, 180 ms slide) and a Walker reveal (silhouette lit on an altar with embers, one ember call to action), then the first run (§4, §5). Scoring, question and answer texts and the story order are unchanged. Supersedes the black-screen quiz of MD-style cursor lists and its Accept/Choose window.
 - 2026-11-04 (owner: "Mejora más aún esto, hazlo más estilo juego, y todo mejor presentado, más grande y más visual"): the shared end screen becomes a result ceremony (§4, §5): a huge outcome title with a gilt rule, the creature large on a pedestal with embers (win) or ash (loss), icon stat tiles with a time delta, a new-best seal, a counting rewards panel, big relic buttons with device glyphs, a skippable staggered entrance. Supersedes the small relic window with a plain table of the same day (2026-11-04 end screen entry above) and its cards grid.
 - 2026-11-04 (owner: "tienes que hacer el sistema de estados de error y loading ... optimizar ... los sprites al iniciar"; then "el Cargando que no vaya en card, pon un spin loader custom, no la palabra cargando"): loading is a pixel spin loader with no card and no word, errors share one typed vocabulary with card, inline, fatal, toast and offline banner (§4); sprites load by need through one shared loader with a persistent art cache instead of all at boot. Supersedes the "Cargando…" relic window and the all-sheets boot load.
+||||||| parent of c72ccc6 (feat(town): parchment map menu rising from below with pin cards and grouped options)
+- 2026-11-04 (owner: "esto debe ser un mapa que se vea completo lo máximo posible, bien detallado tipo pixel art, y lo quiero mapa tipo envejecido roto irregularmente por los alrededores. El menú debe salir de abajo animado, debe ser mucho más grande, al hacer hover por los sitios te muestra qué hay ahí, y luego a la derecha todas las opciones del menú mejor presentadas, estructuradas y posicionadas"): the town menu becomes a parchment map menu (§4 "Town map menu"): a 94vw x 88vh window rising from below, the whole town painted once as aged pixel art with a torn, burnt edge, wax-seal pins with an anchored place card, and the options in four groups beside it with Seguir as the only ember. Supersedes the thin gold outline plan on a flat panel with round pins, the caption line and the two columns of small labels (2026-11-02). Departure from the brief: a whole map scale is kept only while it wastes at most 10% of the limiting side (not 30%), because the owner's priority is the largest map.
