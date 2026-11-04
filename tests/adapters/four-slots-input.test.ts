@@ -104,9 +104,10 @@ describe('four slots: HUD windows', () => {
     });
   }
 
-  it('desktop shows the four windows in one compact row', () => {
-    const rects = hudRects({ width: 1024, height: 640 }, { chip: false, slots: 4 });
-    expect(new Set(rects.slots.map((s) => s.y)).size).toBe(1);
-    expect(rects.slots[0]!.width).toBeLessThan(104);
+  it('desktop shows the four relic slots as a square 2x2 block in the corner', () => {
+    const rects = hudRects({ width: 640, height: 360 }, { chip: false, slots: 4 });
+    expect(new Set(rects.slots.map((s) => s.y)).size).toBe(2);
+    expect(new Set(rects.slots.map((s) => s.x)).size).toBe(2);
+    expect(rects.slots.every((s) => s.width === s.height)).toBe(true);
   });
 });
