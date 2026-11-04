@@ -20,7 +20,7 @@ import { FONT, PALETTE } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { npcView } from './residents';
 import type { StoryProgress } from '../core/story';
-import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
+import { advanceDialog, dialogueView, npcLines, openDialog, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, RUN_FACTOR, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
 import { arrival, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
@@ -48,6 +48,12 @@ import { INTERACT_KEY_CODES } from '../adapters/bindings';
 import { mountPlayHints } from '../ui/play-hints';
 import { mountLocationPlaque } from '../ui/location-plaque';
 import { plaqueOf, townPlace } from '../ui/location-plaque-model';
+import { trackLastDevice } from '../adapters/last-device';
+import { creatureRect } from '../adapters/creature-scale';
+import { SPRITES } from '../data/sprites';
+import { mountDialogueBox } from '../ui/dialogue-box';
+import { mountWorldTooltip } from '../ui/world-tooltip';
+import { interactKind, type Box } from '../ui/world-tooltip-model';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { drawTownOverlay, drawTownWorld, type TownCharacter, type TownImages } from './render';
 
@@ -278,6 +284,15 @@ function targetsOf(map: WorldMap): Target[] {
   ];
 }
 
+/** The target's on-screen footprint in world px, for the tooltip's anchor: a villager's creature rect, else the tile it stands on. */
+function targetRect(target: Target, species: TownNpc['species']): { x: number; y: number; width: number; height: number } {
+  if (target.kind === 'npc') {
+    const meta = SPRITES.sprites[SPRITE_KEYS[species]]?.anims.Idle;
+    if (meta) return creatureRect(meta, target.pos);
+  }
+  return { x: target.pos.x - TILE / 2, y: target.pos.y - TILE / 2, width: TILE, height: TILE };
+}
+
 /** Where a visit of `map` starts: its spawn, else one tile inside its first link. */
 function startOf(map: WorldMap): Walker {
   if (map.spawn) return { pos: tileCentre(map.spawn.x, map.spawn.y), facing: { x: 0, y: 1 } };
@@ -319,12 +334,21 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     ],
   });
   canvas.parentElement?.append(touch.element);
+  /** The device used last, for the glyphs of the tooltip and the dialogue box. */
+  const device = trackLastDevice();
+  /** Reduced motion: dialogue pages show whole, no typewriter (and the tooltip does not rise). */
+  const speak = (lines: readonly string[]): DialogState => openDialog(lines, typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /** The one tooltip over the target `interact` would pick, and the dialogue box (DESIGN.md §4). */
+  const tooltip = mountWorldTooltip(canvas.parentElement ?? document.body, { device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onActivate: () => !exitWindow && interact() });
+  const dialogueBox = mountDialogueBox(canvas.parentElement ?? document.body, { sheets, device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onAdvance: () => !exitWindow && interact() });
   /** The control hint bar along the bottom edge (null without the option). */
   const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
 
   let walker: Walker = options.tile ? { pos: tileCentre(options.tile.x, options.tile.y), facing: { x: 0, y: 1 } } : startOf(map);
   let camera = walker.pos;
   let pixelScale = 1;
+  /** CSS pixels per world pixel (the tooltip anchors in CSS px). */
+  let zoom = 1;
   /** World pixels the camera shows, from the window (resize). */
   let viewWidth = 512;
   let viewHeight = 320;
@@ -441,6 +465,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function resize(): void {
     const fit = fitCanvasToWindow(canvas, isTouchUi());
     pixelScale = fit.pixelScale;
+    zoom = fit.zoom;
     viewWidth = fit.viewWidth;
     viewHeight = fit.viewHeight;
   }
@@ -508,31 +533,31 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     if (target.kind === 'shrine') {
       // The altar speaks, then the shrine opens (in a room: the host's pick for everyone, main.ts).
-      dialog = { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
+      dialog = { speaker: t('world.lore.shrine.name'), state: speak([t('world.lore.shrine.1')]), opens: 'shrine' };
       return;
     }
     if (target.kind === 'beacon') {
       dialog =
         beaconAction(lobby) === 'open'
-          ? { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.1')]), opens: 'online' }
-          : { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.room')]) };
+          ? { speaker: t('town.name.beacon'), state: speak([t('town.beacon.1')]), opens: 'online' }
+          : { speaker: t('town.name.beacon'), state: speak([t('town.beacon.room')]) };
       return;
     }
     if (target.kind === 'lore') {
       const cleared = clearedDungeons(readRecords(browserStore()));
-      dialog = { speaker: t(target.point.nameKey), state: openDialog(loreLines(target.point, cleared).map((key) => t(key))) };
+      dialog = { speaker: t(target.point.nameKey), state: speak(loreLines(target.point, cleared).map((key) => t(key))) };
       return;
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy', options.globalBoard)), ...(options.openBoard ? { opens: 'board' as const } : {}) }
+        ? { speaker: t('town.name.board'), state: speak(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy', options.globalBoard)), ...(options.openBoard ? { opens: 'board' as const } : {}) }
         : npcDialog(target.npc);
   }
 
   /** What an NPC says now: a resident's lines depend on the player's Senda progress. */
   function npcDialog(npc: TownNpc): NonNullable<typeof dialog> {
     const view = npcView(npc, options.story);
-    return { speaker: t(view.nameKey), state: openDialog(npcLines(view, talk(npc.id)).map((key) => t(key))), ...(npc.opens ? { opens: npc.opens } : {}) };
+    return { speaker: t(view.nameKey), state: speak(npcLines(view, talk(npc.id)).map((key) => t(key))), portrait: npcSprite(view.species), ...(npc.opens ? { opens: npc.opens } : {}) };
   }
 
   /** Opens a stall window (the shop, or the move tutor's: `open`) over the town. */
@@ -605,7 +630,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const openPleaAnswer: TownWindowOpener = (parent, onClose) => {
     const answer = (choice: PleaAnswer) => () => {
       onClose();
-      dialog = { speaker: t('town.name.oracle'), state: openDialog([t(replyKey(choice))]) };
+      dialog = { speaker: t('town.name.oracle'), state: speak([t(replyKey(choice))]) };
     };
     const list = cursorList({ items: PLEA_ANSWERS.map((choice) => ({ label: t(answerKey(choice)), onConfirm: answer(choice) })), onBack: answer('silent'), label: t('town.name.oracle') });
     const overlay = h('div', { className: 'town-shop plea-answer' }, [mdWindow({ title: t('town.name.oracle'), className: 'narrow' }, [list.element])]);
@@ -679,7 +704,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       closeShop?.();
       closeShop = null;
       touch.setSuspended(false);
-      dialog = { speaker: t('lobby.room'), state: openDialog([blocked]) };
+      dialog = { speaker: t('lobby.room'), state: speak([blocked]) };
       return;
     }
     handle.stop();
@@ -756,7 +781,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const before = def?.unlockedBy ? DUNGEONS.find((d) => d.id === def.unlockedBy) : undefined;
     const line =
       action === 'host-only' ? t('lobby.hostOnly') : action === 'locked' && before ? t('world.sealed.locked').replace('{dungeon}', t(before.lore.nameKey)) : t('world.sealed.missing');
-    dialog = { speaker: name, state: openDialog([line]) };
+    dialog = { speaker: name, state: speak([line]) };
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -810,7 +835,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   const hostOnly = () => {
-    dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
+    dialog = { speaker: t('lobby.room'), state: speak([t('lobby.hostOnly')]) };
   };
   const leaveTown = (go: (() => void) | undefined) => {
     if (!go) return;
@@ -993,7 +1018,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (plea && !fade && !dialog) {
       plea = stepPlea(plea, dt, TILE);
       const actor = pleaActor(plea);
-      if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: openDialog(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
+      if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: speak(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
       // Everyone has spoken: the player answers Phantump's question.
       if (plea.phase === 'choose' && !closeShop) openShopWindow(openPleaAnswer);
       if (plea.phase === 'done') endPlea();
@@ -1004,7 +1029,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (tour && !fade && !dialog) {
       tour = stepTour(tour, dt, TILE);
       const stop = tourStop(tour);
-      if (tour.phase === 'talk' && stop) dialog = { speaker: t(TOWN_TOUR.nameKey), state: openDialog(tourKeys(stop).map((key) => t(key))), portrait: npcSprite(TOWN_TOUR.species) };
+      if (tour.phase === 'talk' && stop) dialog = { speaker: t(TOWN_TOUR.nameKey), state: speak(tourKeys(stop).map((key) => t(key))), portrait: npcSprite(TOWN_TOUR.species) };
     }
     if (tour) walker = { pos: tour.player, facing: playerFacing(tour, TILE) };
     if (tour?.phase === 'done') endTour();
@@ -1038,26 +1063,26 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade || plea || tour ? null : nearestInteractable(walker.pos, targets);
-    touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
+    // The tooltip replaces "Hablar" on the touch layer and the floating prompt: one chip over the one target.
+    touch.setHidden('talk', true);
     touch.setHidden('pause', exitWindow !== null || closeShop !== null);
-    if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));
+    device.poll();
     drawTownOverlay(
       ctx,
       view,
       {
-        // The hint bar says it with the device's own glyph; the floating text stays on touch and when the hints are off.
-        prompt: target && (isTouchUi() || !options.hints?.enabled()) ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
-        dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
         fade: fadeAlpha(fade),
         names: nameLabels(),
       },
       timeMs,
-      sheets,
     );
+    const origin = canvas.getBoundingClientRect();
+    const onScreen = (rect: { x: number; y: number; width: number; height: number }): Box => ({ x: origin.left + (rect.x - view.x) * zoom, y: origin.top + (rect.y - view.y) * zoom, w: rect.width * zoom, h: rect.height * zoom });
+    tooltip.update(target && !dialog ? { kind: interactKind(target), target: onScreen(targetRect(target, target.kind === 'npc' ? npcView(target.npc, options.story).species : 'mimikyu')), avoid: onScreen(creatureRect(SPRITES.sprites[sprite]?.anims.Idle ?? { frameWidth: 32, frameHeight: 48 }, walker.pos)) } : null);
+    dialogueBox.update(dialog ? { speaker: dialog.speaker, view: dialogueView(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null, timeMs);
     hints?.update(
       {
         place: 'town',
-        interact: target && !dialog ? (target.kind === 'npc' ? 'talk' : target.kind === 'waystone' ? 'travel' : 'read') : null,
         minimap: false,
         spectating: false,
         suppressed: dialog !== null || exitWindow !== null || closeShop !== null || fade !== null || plea !== null || tour !== null,
@@ -1084,6 +1109,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       touch.dispose();
       hints?.dispose();
       plaque.dispose();
+      tooltip.dispose();
+      dialogueBox.dispose();
+      device.dispose();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

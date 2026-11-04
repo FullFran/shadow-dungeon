@@ -4,7 +4,7 @@ import { glyphSvg } from '../app/gamepad-pad';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { t } from '../i18n';
 import { isFullscreen, toggleFullscreen } from './fullscreen';
-import { createHintFade, hintSignature, hintsFor, type Hint, type HintContext, type HintPlace } from './play-hints-model';
+import { createHintFade, hintSignature, hintSizes, hintsFor, type Hint, type HintContext, type HintPlace } from './play-hints-model';
 import { PIXEL_ICONS, pixelSvgOf } from './pixel-icons';
 import '../styles/credits-controls.css';
 import '../styles/play-hints.css';
@@ -18,7 +18,6 @@ import '../styles/play-hints.css';
  */
 export interface PlayHintState {
   place: HintPlace;
-  interact: HintContext['interact'];
   minimap: boolean;
   spectating: boolean;
   /** A window, a dialog or a cinematic is on screen: the bar stays out of its way. */
@@ -52,7 +51,7 @@ function itemOf(hint: Hint, style: PadStyle): HTMLElement {
     'ph-glyphs',
     hint.glyphs.map((g) => (g.kind === 'pad' ? glyphSvg(g.id, style) : el('kbd', 'ph-key', [g.label]))),
   );
-  const item = el('li', hint.id === 'interact' ? 'ph-item is-interact' : 'ph-item', [glyphs, el('span', 'ph-label', [t(hint.labelKey)])]);
+  const item = el('li', 'ph-item', [glyphs, el('span', 'ph-label', [t(hint.labelKey)])]);
   item.dataset.hint = hint.id;
   return item;
 }
@@ -80,6 +79,7 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
   let showButton = true;
   let language = '';
   let pressed = false;
+  let sizeKey = -1;
 
   const setLabel = (): void => {
     const label = t(pressed ? 'hint.fullscreen.exit' : 'hint.fullscreen.enter');
@@ -108,14 +108,14 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
   syncPressed();
 
   /**
-   * Glyphs and labels fit the free stretch, or the labels of the self-evident keys (move, attack) step back, or all
-   * labels do, or the row hides (the button stays if it fits).
+   * Chips fit the free stretch in one row or two (the second grows upwards, over free ground); else the labels of the
+   * self-evident keys (move, attack) step back, then all labels, then the row hides (the button stays if it fits).
    */
   const fitBar = (): void => {
     bar.classList.remove('trim', 'compact', 'too-narrow');
-    const room = bar.clientWidth - (showButton ? fullscreen.offsetWidth + 8 : 0);
+    const rowHeight = (list.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0;
     for (const step of ['trim', 'compact', 'too-narrow']) {
-      if (list.offsetWidth <= room) break;
+      if (rowHeight === 0 || list.offsetHeight <= rowHeight * 2 + 8) break;
       bar.classList.add(step);
     }
   };
@@ -123,7 +123,7 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
   return {
     update(state, nowMs) {
       tracker.poll();
-      const ctx: HintContext = { device: tracker.current(), place: state.place, interact: state.interact, minimap: state.minimap, spectating: state.spectating, padStyle: options.padStyle?.() ?? 'xbox' };
+      const ctx: HintContext = { device: tracker.current(), place: state.place, minimap: state.minimap, spectating: state.spectating, padStyle: options.padStyle?.() ?? 'xbox' };
       const next = hintsFor(ctx);
       const sig = hintSignature(ctx, next);
       const lang = t('hint.bar');
@@ -138,6 +138,17 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
         fit = true;
       }
       if (sig !== '') fade.touch(sig, nowMs);
+      // Owner, 2026-11-04: bigger aids. Chip, keycap and label follow the window's height (hintSizes).
+      const height = Math.round(window.innerHeight);
+      if (height !== sizeKey) {
+        sizeKey = height;
+        const size = hintSizes(height);
+        bar.style.setProperty('--ph-chip', `${size.chip}px`);
+        bar.style.setProperty('--ph-key', `${size.keycap}px`);
+        bar.style.setProperty('--ph-label', `${size.label}px`);
+        bar.style.setProperty('--ph-pad', `${size.pad}px`);
+        fit = true;
+      }
       const key = `${state.band.left}|${state.band.right}|${state.band.bottom}`;
       if (key !== band) {
         band = key;
@@ -152,7 +163,7 @@ export function mountPlayHints(parent: HTMLElement, options: PlayHintsOptions): 
         fullscreen.hidden = !wantButton;
         fit = true;
       }
-      const shown = options.enabled() && !state.suppressed && hints.length > 0 && (fade.visible(nowMs) || state.interact !== null);
+      const shown = options.enabled() && !state.suppressed && hints.length > 0 && (fade.visible(nowMs));
       if (shown !== on) {
         on = shown;
         bar.classList.toggle('is-on', on);
