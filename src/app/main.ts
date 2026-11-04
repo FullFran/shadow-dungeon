@@ -64,7 +64,8 @@ import { menuWindow } from '../ui/menu-window';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { type SettingsAccess } from './settings-panel';
 import { settingsView } from './settings-view';
-import { openTown, type TownOptions } from '../town/scene';
+import { openTown, type TownHandle, type TownOptions } from '../town/scene';
+import { clearResume, createResumeWriter, newRunId, readResume, storedOwner, townRecord, writeResume, type ResumeRecord, type RunLaunch } from './run-resume';
 import { pleaReady } from '../town/plea';
 import { hasSeenTour, markTourSeen } from '../town/tour';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
@@ -1245,6 +1246,61 @@ function galleryCinematic(root: HTMLElement, scene: Exclude<GalleryScene, { kind
   return () => screen.remove();
 }
 
+/** Reload-proof play (app/run-resume.ts): a device-local record, apart from the profile (it never syncs). */
+const resumeStore = browserStore();
+const resumeWho = () => ({ owner: storedOwner(resumeStore), build: APP_VERSION });
+/** The page threw since it opened: a stored run that crashes the page is dropped instead of crashing it on every reload. */
+let pageCrashed = false;
+window.addEventListener('error', () => {
+  pageCrashed = true;
+});
+
+/** The solo town keeps the walker's map and tile (every 2 s and as the page goes), until the town is left. */
+function keepTownSpot(handle: TownHandle): void {
+  const who = resumeWho();
+  const runId = newRunId();
+  const save = () => {
+    const place = handle.place();
+    const record = place ? townRecord(who, runId, place, Date.now()) : null;
+    if (record) writeResume(resumeStore, record);
+  };
+  const onHide = () => save();
+  const timer = window.setInterval(save, 2000);
+  window.addEventListener('pagehide', onHide);
+  document.addEventListener('visibilitychange', onHide);
+  save();
+  const stop = handle.stop.bind(handle);
+  handle.stop = () => {
+    window.clearInterval(timer);
+    window.removeEventListener('pagehide', onHide);
+    document.removeEventListener('visibilitychange', onHide);
+    stop();
+    // Only this visit's own record: a run that began meanwhile has already replaced it.
+    clearResume(resumeStore, runId);
+  };
+}
+
+/** The title is skipped when a record is waiting: the town at its spot, or the run, both paused behind the menu. True when it took over. */
+function resumeBoot(root: HTMLElement): boolean {
+  const who = resumeWho();
+  const record = readResume(resumeStore, who.owner, who.build);
+  if (!record) return false;
+  applyLanguage(settings.language);
+  if (record.kind === 'town') {
+    townScreen(root, { at: record.at, tile: record.tile, startWindow: 'menu' });
+    return true;
+  }
+  waitScreen(root, t('resume.restoring'));
+  const { launch } = record;
+  const trial = launch.trial ? { ...launch.trial, pick: { ...launch.trial.pick, loadout: [...launch.trial.pick.loadout] } } : undefined;
+  void play(root, undefined, launch.dungeon, launch.seed, trial, record).catch(() => {
+    // A record that cannot start is gone, and the title is where the player lands, as before.
+    clearResume(resumeStore);
+    titleScreen(root);
+  });
+  return true;
+}
+
 /**
  * The hub town (src/town): walk around; its route exit goes on exactly like
  * "Play" (`newAdventure`), Esc goes back to the title. It keeps the title
@@ -1264,7 +1320,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
   const { tour: forceTour, ...place } = at ?? {};
   // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
   const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
-  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
+  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place }).then(keepTownSpot);
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1967,7 +2023,7 @@ function endlessScore(summary: RunSummary): EndScore {
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun): Promise<void> {
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun, resume?: Extract<ResumeRecord, { kind: 'run' }>): Promise<void> {
   if (!sheets) {
     waitScreen(root, t('app.loading'));
     await sheetsReady();
@@ -1976,11 +2032,13 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
   let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: tierFor(dungeonById(dungeon), sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story)) };
   // `?boss=<seed>`: that herald on a Sima herald floor.
-  const boss = devBoss();
+  const boss = resume ? undefined : devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
   // A shrine trial: solo, its own arenas and tier, no dev overrides.
   if (trial) shared = { seed: seed ?? runSeed(), dungeon, difficulty: trial.request.difficulty };
-  if (!join && !trial && netMode()) {
+  // A stored run comes back with its own seed and tier, never today's settings or the dev overrides.
+  if (resume) shared = { seed: resume.launch.seed, dungeon: resume.launch.dungeon, difficulty: resume.launch.difficulty };
+  if (!join && !trial && !resume && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
   }
@@ -1992,18 +2050,27 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, difficulty: join.difficulty ?? DEFAULT_DIFFICULTY, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
   }
   const online = join?.online ?? false;
+  // A shared run has nowhere to come back to (no rejoin): whatever solo record was left is stale now.
+  if (shared.net) clearResume(resumeStore);
   // A Senda chapter (each peer its own save; the tier is the run's): its cinematic first, alone.
   const story = trial ? null : storyRunOf(loadSave(store), dungeonById(shared.dungeon ?? dungeon), shared.difficulty ?? DEFAULT_DIFFICULTY);
-  if (story && !shared.net && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
+  if (story && !shared.net && !resume && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
   // The Sima's mouth (docs/sima-redesign.md §5.1): the first descent on this device, alone, after the villagers' pleas.
   const sima = !trial && dungeonById(shared.dungeon ?? dungeon).endless !== undefined;
-  if (sima && !shared.net && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => {
+  if (sima && !shared.net && !resume && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => {
       if (!simaScene(root, 'mouth', { species: settings.species }, resolve, false)) resolve();
     });
   const canvas = h('canvas', { className: 'game' });
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
+  // Reload-proof play: a solo run keeps its record; a stored one is continued, paused behind the menu.
+  pageCrashed = false;
+  const launch: RunLaunch = resume
+    ? resume.launch
+    : { dungeon: shared.dungeon ?? dungeon, seed: shared.seed!, difficulty: shared.difficulty ?? DEFAULT_DIFFICULTY, ...(trial ? { trial: { request: trial.request, from: trial.from, pick: trial.pick } } : {}) };
+  const keep = shared.net ? null : { writer: createResumeWriter(resumeStore, resumeWho(), launch, newRunId(), 0, Date.now), crashed: () => pageCrashed, ...(resume ? { from: resume.part } : {}) };
   running = startGame(canvas, sheets!, {
+    ...(keep ? { resume: keep } : {}),
     species: trial?.pick.species ?? settings.species,
     // Only moves the species knows reach a run (the tutor's, once bought); its Mejoras go with it.
     loadout: knownLoadout(loadSave(store), trial?.pick.species ?? settings.species, trial?.pick.loadout ?? settings.loadout),
@@ -2278,6 +2345,6 @@ if (root) {
   if (onGachaPath() && townIsOpen()) showGachaPage(root);
   else {
     if (onGachaPath()) window.history.replaceState(null, '', leaveUrl(window.location.pathname));
-    if (!devScreen(root)) titleScreen(root);
+    if (!devScreen(root) && !resumeBoot(root)) titleScreen(root);
   }
 }
