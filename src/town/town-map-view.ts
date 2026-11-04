@@ -5,7 +5,7 @@ import { SEAL_BACKING, YOU_ARE_HERE } from '../ui/icons/town-map-icons';
 import { PIXEL_ICONS, pixelIconSvg, pixelSvgOf, type PixelIconId } from '../ui/pixel-icons';
 import { h } from '../ui/window';
 import { groupOptions, optionsLayout, type MenuGlyph, type OptionsLayout } from './menu-groups';
-import { cartoucheRect, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
+import { cardPin, cartoucheRect, initialFocus, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
 import { paintTownSheet } from './sheet-paint';
 import { stepMarker, type TownMapMarker } from './town-map';
 import type { TownService } from './town-menu';
@@ -17,7 +17,7 @@ import type { TownService } from './town-menu';
  * Left: the whole town painted once (src/town/sheet-paint.ts) at the largest crisp scale, service pins as wax seals, a place card
  * anchored to the chosen pin. Right: "Seguir" (the one ember) and the other options in groups (src/town/menu-groups.ts).
  * Arrows, WASD or a stick (the gamepad sends arrow keys) move spatially between every pin and option; Enter opens; Esc closes. A mouse
- * hover shows a pin's card; on touch the first tap shows it and the second opens. Options open on one tap.
+ * hover shows a pin's card (and nothing shows otherwise, not even on open); on touch the first tap shows it and the second opens. Options open on one tap.
  */
 export interface TownMapEntry {
   id: string;
@@ -181,7 +181,10 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   const groups = groupOptions(options.options);
   const groupNodes = groups.map((g) => {
     const rowsEl = h('div', { className: 'tm-rows' }, g.options.map((o) => optionButton(o, 'tm-opt')));
-    return h('section', { className: 'tm-group' }, [h('h3', { className: 'tm-group-title', textContent: t(g.titleKey) }), rowsEl]);
+    // A group of one option has no header (menu-groups.ts): the row alone is its region.
+    const section = h('section', { className: 'tm-group' }, g.options.length > 1 ? [h('h3', { className: 'tm-group-title', textContent: t(g.titleKey) }), rowsEl] : [rowsEl]);
+    if (g.options.length === 1) section.setAttribute('aria-label', t(g.titleKey));
+    return section;
   });
   const optionEntries = groups.flatMap((g) => g.options);
   const optionButtons = groupNodes.flatMap((n) => [...n.querySelectorAll<HTMLButtonElement>('.tm-opt')]);
@@ -212,9 +215,18 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     Object.assign(sheet.style, { left: `${offset.x}px`, top: `${offset.y}px`, width: `${fit.width}px`, height: `${fit.height}px` });
     const c = cartoucheRect(artW);
     Object.assign(title.style, { left: `${(c.x / artW) * 100}%`, top: `${(c.y / artH) * 100}%`, width: `${(c.w / artW) * 100}%`, height: `${(c.h / artH) * 100}%`, fontSize: `${Math.max(11, Math.min(24, Math.round(c.h * fit.scale * 0.5)))}px` });
+    fitTitle();
     const layoutNow = optionsLayout(groups.map((g) => g.options.length), menuGeometry(window.innerWidth, window.innerHeight));
     applyOptions(layoutNow);
     placeCardFor(index);
+  }
+  /** A long name (the Ciénaga's) shrinks until it fits its ribbon whole, never below 8 px, instead of being clipped. */
+  function fitTitle(): void {
+    let size = parseFloat(title.style.fontSize);
+    while (title.scrollWidth > title.clientWidth + 1 && size > 8) {
+      size -= 1;
+      title.style.fontSize = `${size}px`;
+    }
   }
   /** The window's geometry (src/town/sheet-model.ts): the options column's width and the mode its groups are laid out in. */
   function applyGeometry(): void {
@@ -248,7 +260,7 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     );
   }
   function placeCardFor(i: number): void {
-    if (i >= pinCount || card.hidden) return;
+    if (cardPin(i, pinCount) === null || card.hidden) return;
     const m = placed[i]!;
     const anchor = { x: offset.x + (artX(m.x) / artW) * fit.width, y: offset.y + (artX(m.y) / artH) * fit.height };
     const spot = placeCard(anchor, { w: card.offsetWidth, h: card.offsetHeight }, { w: area.clientWidth, h: area.clientHeight }, 34);
@@ -261,7 +273,7 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     index = i;
     items.forEach((b, j) => b.classList.toggle('is-active', j === i));
     if (focus && document.activeElement !== items[i]) items[i]!.focus({ preventScroll: true });
-    if (i < pinCount) {
+    if (cardPin(i, pinCount) !== null) {
       fillCard(entries[i]!);
       card.hidden = false;
       // Restart the small rise on every new pin.
@@ -289,25 +301,14 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     button.addEventListener('pointerenter', (e) => {
       if (e.pointerType === 'mouse' && index !== i) select(i);
     });
+    // The mouse leaving a pin hides its card: the focus goes back to "Seguir" (owner: nothing shows unless a pin is hovered).
+    button.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse' && i < pinCount && index === i) select(pinCount);
+    });
     button.addEventListener('focus', () => {
       if (index !== i) select(i, false);
     });
   });
-
-  // The pin nearest the player first (its card already open), else "Seguir".
-  const start = (): number => {
-    if (!options.player || pinCount === 0) return pinCount;
-    let best = 0;
-    let bestD = Infinity;
-    placed.forEach((m, i) => {
-      const d = Math.hypot(m.x - options.player!.x, m.y - options.player!.y);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    });
-    return best;
-  };
 
   const onKey = (e: KeyboardEvent): void => {
     const dir = DIRS[e.code];
@@ -344,12 +345,9 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     observer.observe(area);
   } else window.addEventListener('resize', onResize);
   applyOptions(optionsLayout(groups.map((g) => g.options.length), menuGeometry(window.innerWidth, window.innerHeight)));
-  index = start();
+  // "Seguir" has the focus and no card shows until a pin is hovered or focused.
+  index = initialFocus(pinCount);
   items.forEach((b, j) => b.classList.toggle('is-active', j === index));
-  if (index < pinCount) {
-    fillCard(entries[index]!);
-    card.hidden = false;
-  }
   requestAnimationFrame(() => {
     layout();
     items[index]?.focus({ preventScroll: true });

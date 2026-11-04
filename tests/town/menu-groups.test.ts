@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { catalog } from '../../src/i18n';
 import { WORLD } from '../../src/data/world';
-import { groupOfGlyph, groupOptions, MENU_GROUPS, optionsLayout, type MenuGlyph } from '../../src/town/menu-groups';
+import { groupOfGlyph, groupOptions, MENU_GROUPS, menuOptionServices, optionsLayout, type MenuGlyph } from '../../src/town/menu-groups';
 import { menuGeometry } from '../../src/town/sheet-model';
 import { looseServices, townMapMarkers } from '../../src/town/town-map';
 import { TOWN_SERVICES } from '../../src/town/town-menu';
@@ -49,7 +49,7 @@ describe('option groups', () => {
 describe('options layout never needs a scroll', () => {
   for (const map of Object.values(WORLD)) {
     const markers = townMapMarkers(map, ALL);
-    const options = [...looseServices(markers, ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
+    const options = [...menuOptionServices(looseServices(markers, ALL), ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
     const sizes = groupOptions(options).map((g) => g.options.length);
     for (const [w, h] of VIEWPORTS) {
       it(`${map.id} at ${w}x${h}`, () => {

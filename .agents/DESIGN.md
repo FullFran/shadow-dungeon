@@ -220,7 +220,7 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   te muestra qué hay ahí, y a la derecha todas las opciones mejor presentadas, estructuradas y posicionadas"): the Esc menu of the town. One relic window
   (`.town-map.tm-panel`, role dialog) of 94vw x 88vh capped at 1500 x 900 over the dimmed town (veil `.town-shop.tm-veil`, so click outside and Esc close it
   through `ui/dismiss.ts`). Left, the whole map of the current place on an aged parchment; right, the options. Laws: Common Region (groups), Von Restorff
-  (Seguir the only ember), Proximity (card anchored to its pin), Fitts (rows >= 48 px, pin hit area 44 px), Jakob (map left, options right), Hick (4 groups).
+  (Seguir the only ember), Proximity (card anchored to its pin), Fitts (rows >= 56 px, label 19 px, help 14 px, icon 36 px, pin hit area 44 px), Selective Attention (no place card on open or while Seguir or an option has the focus; only a hovered or focused pin shows one; focus starts on Seguir; Logros is left out because the Notice board window hosts it; a group of one option has no header), Jakob (map left, options right), Hick (4 groups).
   - **Sheet** (`paintTownSheet`): drawn once per open into an RGBA buffer (`Raster`, palette keys, no canvas needed, so it is hashed and tested) at 8 art px per
     tile plus a 14 px margin, from the real town data: grass wash with tufts, roads with edge lines and pebbles, water with waves and shore, bridges, chasm
     hatching, rock, trees (round and pine) on forest tiles, every prop kind with its own painter (houses with pitched roofs, stall awning, tower, statues, graves,

@@ -45,14 +45,27 @@ export function groupOptions<T extends { glyph: MenuGlyph }>(options: readonly T
   })).filter((g) => g.options.length > 0);
 }
 
+export const HOSTED_BY: Partial<Record<TownService, TownService>> = { achievements: 'board' };
+
+/** The loose services listed as options: those a kept service's window does not already host. */
+export function menuOptionServices(loose: readonly TownService[], available: ReadonlySet<TownService>): TownService[] {
+  return loose.filter((s) => {
+    const host = HOSTED_BY[s];
+    return host === undefined || !available.has(host);
+  });
+}
+
 export type OptionsMode = 'list' | 'cols' | 'grid';
 
 /** Row, header and gap sizes of the options column, CSS px (src/styles/town-map.css reads the same numbers). */
-export const OPTION_ROW = 48;
-export const OPTION_ROW_GAP = 4;
-export const GROUP_HEADER = 26;
-export const GROUP_GAP = 8;
-export const PRIMARY_BLOCK = 64;
+export const OPTION_ROW = 56;
+export const OPTION_ROW_GAP = 2;
+/** A group's header line; a group with a single option has none (it needs no label to be a region). */
+export const GROUP_HEADER = 20;
+export const GROUP_GAP = 6;
+/** "Seguir" (56 px) and the gap under it. */
+export const PRIMARY_BLOCK = 60;
+export const ICON_SIZE = 36;
 const GRID_GAP = 6;
 
 export interface OptionsLayout {
@@ -66,11 +79,11 @@ export interface OptionsLayout {
   available: number;
 }
 
-const groupHeight = (n: number): number => GROUP_HEADER + n * OPTION_ROW + Math.max(0, n - 1) * OPTION_ROW_GAP;
+const groupHeight = (n: number): number => (n > 1 ? GROUP_HEADER : 0) + n * OPTION_ROW + Math.max(0, n - 1) * OPTION_ROW_GAP;
 const stack = (sizes: readonly number[]): number => sizes.reduce((sum, n) => sum + groupHeight(n), 0) + Math.max(0, sizes.length - 1) * GROUP_GAP;
 
 /**
- * How the options are laid out for a window: a single list when it fits (rows >= 48 px), two columns of groups when it does not,
+ * How the options are laid out for a window: a single list when it fits (rows >= 56 px), two columns of groups when it does not,
  * and an icon grid (labels under 32 px icons) on a short landscape window. `needed <= available` is the no-scroll guarantee.
  */
 export function optionsLayout(sizes: readonly number[], geo: MenuGeometry): OptionsLayout {

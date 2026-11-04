@@ -28,6 +28,7 @@ import { startWander, stepWander, type WanderState } from './ambience';
 import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
+import { menuOptionServices } from './menu-groups';
 import { townMapView, type TownMapEntry } from './town-map-view';
 import { looseServices, placeCards, townMapMarkers } from './town-map';
 import { menuTiming } from './sheet-model';
@@ -918,7 +919,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       heading: lobby ? `${t(map.nameKey)} · ${lobby.code()}` : t(map.nameKey),
       map,
       placed: markers.map((m, i) => ({ ...m, entry: { ...entry(m.service, m.id), who: t(cards[i]!.whoKey) } })),
-      options: [...looseServices(markers, available).map((s) => entry(s)), ...end],
+      options: [...menuOptionServices(looseServices(markers, available), available).map((s) => entry(s)), ...end],
       primary: { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose },
       player: { x: walker.pos.x / TILE, y: walker.pos.y / TILE },
       onClose,
