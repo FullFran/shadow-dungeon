@@ -19,14 +19,14 @@ Cause: `loadSheets()` fetches every sheet of every species at boot and the partn
 - [x] T2 Shared loader (`src/adapters/assets.ts`): dedupe, cache, priority, retry once, placeholder, idle prefetch; boot critical set; run preload.
 - [x] T3 Service worker: art cache that survives deploys, `/portraits/`.
 - [x] T4 Relic status components (`src/ui/status.ts`, `src/styles/status.css`): spinner, skeleton, inline error, error card, fatal screen, toast, offline banner, boot splash.
-- [x] T5 Screens wired: cloud sync, ranking, friends, tickets, report, account.
+- [x] T5 Screens wired: cloud sync (notice once per outage), friends and tickets (spin loader, error card, auto retry when back online), resume, lobby and town waits (spin loader). Ranking board shows a dot placeholder while loading and already retries every 15 s; report and account keep their own inline error lines (already specific).
 - [x] T6 Docs (DESIGN.md, gdd.md), measurements after, screenshots.
 
 ## Parity checklist
 
-- [ ] Every API adapter (account, friends, report, admin) routes failures through the model (test iterates them).
-- [ ] Every sprite consumer (renderer, town, dialogue box, prologue and story scenes, portraits, loadout, backdrop, move preview) reads through the shared loader.
+- [x] Every API adapter (account, friends, report, admin) routes failures through the model (tests/adapters/api-error-routing.test.ts iterates them; Clerk's own SDK keeps its error keys).
+- [x] Every sprite consumer (renderer, town, dialogue box, prologue and story scenes, portraits, loadout, backdrop, move preview) reads through the shared loader (`sheets` store; `tsc` clean, `rg` shows no other `new Image`).
 - [x] Tiles of the town load through `assets.image`.
-- [ ] i18n es and en for every message (key parity test).
-- [ ] Solo, co-op, town, Sima, shrine, challenges: run preload covers the player species and the dungeon's pool; the rest loads lazily.
-- [ ] `npm run prove` unchanged.
+- [x] i18n es and en for every message (tests/i18n.test.ts and net-error.test.ts).
+- [x] Solo, co-op, town, Sima, shrine, challenges: run preload covers the player species and the dungeon's pool; the rest loads lazily. Not measured in a browser: a full run start (only the hub, offline reload and error screens were).
+- [x] `npm run prove` unchanged: 166 cards survivable, 24/24 solver fights, no diff in reports/proof/.
