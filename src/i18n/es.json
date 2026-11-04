@@ -3777,7 +3777,7 @@
   "shrine.rules": "Reglas",
   "shrine.record": "Marca",
   "shrine.noRecord": "Aún sin marca en esta dificultad.",
-  "shrine.reward.none": "Sin premio: solo queda la marca.",
+  "shrine.reward.none": "Sin premio",
   "shrine.tab.open": "{open}/{total} abiertos",
   "shrine.tab.best": "Mejor {time}",
   "shrine.gauntlet.order": "Orden de los jefes",

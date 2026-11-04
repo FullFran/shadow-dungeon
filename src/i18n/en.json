@@ -3777,7 +3777,7 @@
   "shrine.rules": "Rules",
   "shrine.record": "Record",
   "shrine.noRecord": "No record yet on this difficulty.",
-  "shrine.reward.none": "No prize: only the record remains.",
+  "shrine.reward.none": "No prize",
   "shrine.tab.open": "{open}/{total} open",
   "shrine.tab.best": "Best {time}",
   "shrine.gauntlet.order": "Order of the bosses",
