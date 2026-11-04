@@ -53,10 +53,25 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   (gold frame + ember halo), locked (desaturated icon + padlock pip, still focusable, explains why), badge (blood pip).
 - **Play slab** (`.hub-play`): the only ember element; 72 px tall; label + one line on where it leads.
 - **Chip** (`.hub-chip`): pixel icon + tabular number on a slab.
-- **Overlay** (`.town-shop`): service windows open over a darkened, blurred-free vignette of the scene.
+- **Overlay** (`.town-shop`): service windows open over a darkened, blurred-free vignette of the scene (system notices are the one scoped exception: they blur; see System notice and the 2026-11-04 decision).
 - **Pixel icons** (`src/ui/pixel-icons.ts`): 16×16 maps, 3–6 colours each, rendered as crisp SVG rects. Every
   service has one; line glyphs (`glyphSvg`) remain only on the inked town plan.
 
+- **System notice** (`src/ui/notice.ts`, pure model `src/ui/notice-model.ts`, notices as data `src/pwa/notices.ts`, `src/styles/system-notice.css`; owner
+  2026-11-04 "con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual"): one component for every notice the game
+  raises about itself: update ("Nueva versión disponible"), install ("Lleva la mazmorra contigo") and news ("Novedades de la versión"). A full-viewport
+  veil (ink 60% + `backdrop-filter: blur(6px)`; solid ink 88% where blur is unsupported or `prefers-reduced-transparency`) and one relic slab anchored top
+  centre, `min(640px, 92vw)`, gilt frame: 48 px pixel icon (install crystal, update rune stone, news scroll), title Pixelify 33 px (28 px under 560 px of
+  height), up to three lines in Atkinson 17 px each with a 24 px pixel icon, then big relic buttons (52 px): one ember primary (Instalar / Actualizar
+  ahora / Ver novedades), one quiet secondary (Ahora no / Más tarde) and, only where it exists, the "No volver a mostrar" text link (44 px target).
+  Behaviour: one at a time, priority update > install > news (`NOTICE_PRIORITY`), shown only on the hub (never in a run, the town, a service window
+  or the drawer) and never while `setNoticesBlocked(true)` (the first-run welcome toggles it through the `sd:notices-blocked` event). The page behind is
+  `inert`, focus is trapped in the card, Enter is the primary, Esc the secondary, a press on the veil is the secondary for install and news only; the update
+  is never closed by a veil press and its primary keeps the card up until the page reloads (no half state). "Más tarde" on the update puts it off 10 minutes.
+  Entrance: veil fades 160 ms, card drops 24 px in 220 ms ease-out; under `prefers-reduced-motion` both only fade (`noticeMotion`). Reason: a system
+  message must out-rank the hub (Von Restorff) without a timer or fake urgency. Dev check: `?notice=install,update,news` on the dev server. Contrast
+  computed by hand on the slab base (design-gates script not run): text 15.3:1, quiet label and link 7.92:1, primary label on blood 6.41:1. Replaces the
+  bottom-left install card (`.pwa-card`) and the bottom update toast (`.pwa-toast`); the news no longer replaces the hub on boot.
 - **Side drawer** (`.drawer-veil` + `.ad-drawer`, `src/app/account-drawer.ts`): the quick-entry pattern for short forms and
   account state (owner, 2026-11-04). A full-height relic slab (400 px, 100% under 520 px) slides in from the right over a
   darkened scene; click outside and Esc close it (`ui/dismiss.ts`), focus is trapped, arrows/Tab move through the controls,
@@ -224,3 +239,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   from the viewport (2 at 1280x720, 3 at 1920x1080), a bottom-centre Souls boss bar with epithet, chip trail, phase notches, card pips, status icons, entrance and "felled" banner, a
   bigger partner status window with co-op frames, square relic move slots with device glyphs and radial cooldowns, and a boss-event announcement with a telegraph cue. Supersedes the 196x58 status box, the
   104x30 move chips, the 260 px boss bar and the thin spell strip.
+- 2026-11-04 (owner: "el aviso este y de nueva actualización y demás que salga con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual"): update, install and news notices become one System notice (§4) over a darkened, blurred veil, top centre and large. Scoped decision: the blur applies to these notices only; the "blurred-free vignette" rule of overlays and windows stands for everything else. Supersedes the small bottom-left install card, the bottom update toast and the news screen opening by itself on boot.

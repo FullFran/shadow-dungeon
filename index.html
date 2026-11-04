@@ -76,10 +76,6 @@
       .pwa-corner svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       .pwa-corner:hover, .pwa-corner:focus-visible { filter: brightness(1.08); transform: translateY(-1px); }
       html.touch .pwa-corner { font-size: 15px; padding: 5px 10px; }
-      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
-      body:has(.pwa-banner) .pwa-corner { display: none; }
-      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
-      body:has(.pwa-banner) .pwa-corner { display: none; }
       /* On the plan only the chosen seal names itself (the caption names it too): close seals never pile their labels up. */
       .town-map-board .town-map-mark:not(.selected) .town-map-label { display: none; }
       /* "You are here": a plain pulsing ring and dot, never a character. */
@@ -632,10 +628,7 @@
       .touch-lock::before, .touch-lock::after { position: absolute; top: 50%; margin-top: -0.5em; font-size: 10px; opacity: 0.7; }
       .touch-lock::before { content: '◀'; left: -14px; }
       .touch-lock::after { content: '▶'; right: -14px; }
-      /* ---- PWA (src/ui/pwa.ts): install banner and update toast ---- */
-      .pwa-toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; z-index: 25; font-size: 18px; white-space: nowrap; }
-      .pwa-toast-action { font: inherit; min-height: 44px; padding: 2px 14px; color: var(--md-ink); background: var(--md-cursor); border: 0; border-radius: 6px; cursor: pointer; }
-      #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
+      /* ---- PWA: the install, update and news notices are system notices (src/styles/system-notice.css) ---- */
 
       /* ---- Title hub (src/app/title-hub-view.ts; .agents/DESIGN.md §3-4; odd/tasks/title-hub.md) ---- */
       /* Every menu screen fits the viewport too (owner, 2026-11-03: "que no haya scroll"): the page never scrolls, the notice sits in the flow,

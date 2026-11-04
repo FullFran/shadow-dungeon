@@ -22,3 +22,24 @@ const crystal = (): PixelIcon => {
 };
 
 export const INSTALL_ICON: PixelIcon = crystal();
+
+/**
+ * The update notice's icon (16x16, same ink outline): an ember rune stone, a ring of two arrows turning
+ * round a lit core, "the dungeon renews itself". A plain `PixelIcon`, drawn with `pixelSvgOf`.
+ */
+const rune = (): PixelIcon => {
+  const g = new Grid();
+  // The stone: a rounded slab.
+  g.rect(2, 1, 12, 14, 's').rect(3, 0, 10, 16, 's');
+  g.outline();
+  g.rect(3, 2, 10, 12, 'd');
+  // Two arrows chasing round a core (the update cycle).
+  g.line(5, 5, 9, 5, 'e').line(9, 5, 10, 6, 'e').line(10, 6, 10, 7, 'e').set(8, 4, 'e').set(9, 3, 'e').set(9, 4, 'e');
+  g.line(11, 10, 7, 10, 'e').line(7, 10, 6, 9, 'e').line(6, 9, 6, 8, 'e').set(8, 11, 'e').set(7, 12, 'e').set(7, 11, 'e');
+  g.rect(7, 7, 2, 2, 'g').set(7, 7, 'w');
+  // Lit upper-left edge of the stone.
+  g.line(3, 2, 3, 12, 'l').line(4, 1, 11, 1, 'l');
+  return g.icon({ s: '#6b6075', d: '#2b1b3d', l: '#a89bb8', e: '#ff8a3d', g: '#ffbf5e', w: '#ece3d3' });
+};
+
+export const UPDATE_ICON: PixelIcon = rune();
