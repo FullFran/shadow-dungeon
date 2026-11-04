@@ -3932,5 +3932,20 @@
   "dialogue.page": "{page} / {pages}",
   "hint.move": "Mover",
   "hint.map": "Mapa",
-  "plaque.boss": "Guardián"
+  "plaque.boss": "Guardián",
+  "onb.welcome.lore": "El eclipse se alzó sobre las ruinas y algo te espera abajo, en la oscuridad.",
+  "onb.welcome.account.title": "Iniciar sesión / Crear cuenta",
+  "onb.welcome.account.cta": "Entrar",
+  "onb.welcome.guest.cta": "Jugar",
+  "onb.welcome.device": "Ya tengo partida en este dispositivo",
+  "onb.welcome.hint": "Elige cómo entrar. Podrás cambiarlo más tarde desde tu perfil.",
+  "onb.welcome.choices": "Cómo quieres entrar",
+  "onb.quiz.progress": "Pregunta {n} de {total}",
+  "onb.quiz.hint": "1-3: elegir · Esc: atrás",
+  "onb.quiz.hint.touch": "Toca una respuesta",
+  "onb.reveal.kicker": "Tu caminante",
+  "onb.reveal.chosen": "Has elegido tu propio camino.",
+  "onb.reveal.start": "Comenzar",
+  "onb.reveal.retake": "Repetir cuestionario",
+  "onb.reveal.hint": "Intro: comenzar · Esc: volver a las preguntas"
 }

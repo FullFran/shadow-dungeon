@@ -3932,5 +3932,20 @@
   "dialogue.page": "{page} / {pages}",
   "hint.move": "Move",
   "hint.map": "Map",
-  "plaque.boss": "Guardian"
+  "plaque.boss": "Guardian",
+  "onb.welcome.lore": "The eclipse rose over the ruins, and something waits for you below, in the dark.",
+  "onb.welcome.account.title": "Sign in / Create account",
+  "onb.welcome.account.cta": "Enter",
+  "onb.welcome.guest.cta": "Play",
+  "onb.welcome.device": "I already have a game on this device",
+  "onb.welcome.hint": "Choose how to enter. You can change it later from your profile.",
+  "onb.welcome.choices": "How do you want to enter",
+  "onb.quiz.progress": "Question {n} of {total}",
+  "onb.quiz.hint": "1-3: choose · Esc: back",
+  "onb.quiz.hint.touch": "Tap an answer",
+  "onb.reveal.kicker": "Your walker",
+  "onb.reveal.chosen": "You chose your own path.",
+  "onb.reveal.start": "Begin",
+  "onb.reveal.retake": "Retake the questionnaire",
+  "onb.reveal.hint": "Enter: begin · Esc: back to the questions"
 }
