@@ -193,7 +193,7 @@ const { account, store } = setupAccount({
     const app = document.getElementById('app');
     // A walker that arrived with the cloud profile ends the onboarding: the welcome's drawer closes and routes on, any other step re-checks.
     if (onboardingDrawer) onboardingDrawer.close();
-    else if (app?.querySelector('.ob')) onboardingGate(app);
+    else if (app?.querySelector('.ob')) titleScreen(app);
     if (app?.querySelector('.title-logo')) titleScreen(app);
   },
 });
@@ -757,6 +757,7 @@ function adoptReturningPlayer(): void {
  * First-run onboarding (owner, 2026-11-04): welcome gate (account or guest) -> prologue -> questionnaire -> reveal -> the first run.
  * Each step writes where it got to (app/onboarding.ts) and comes back here, so a reload continues where the player was.
  * Returns true when it took the screen; false when the profile has a walker and the hub goes on.
+ * Only titleScreen calls it: every other step routes through titleScreen, which draws the hub on false.
  */
 function onboardingGate(root: HTMLElement): boolean {
   adoptReturningPlayer();
@@ -777,7 +778,7 @@ function onboardingGate(root: HTMLElement): boolean {
   setNoticesBlocked(true);
   const go = (step: OnboardingStep, patch: Partial<ReturnType<typeof readOnboarding>> = {}): void => {
     writeOnboarding(store, { ...readOnboarding(store), ...patch, step });
-    onboardingGate(root);
+    titleScreen(root);
   };
   if (route === 'welcome') {
     welcome(root, () => go(afterWelcome(hasSeenPrologue(store))));
@@ -820,7 +821,7 @@ function welcome(root: HTMLElement, asGuest: () => void): void {
         accountRedraw = null;
         onboardingDrawer = null;
         // Signed in: a cloud walker goes to the hub, else the onboarding goes on. A sync choice still open (the cloud holds a game this device has not taken) waits here.
-        if (account.state().kind === 'signed-in' && !account.pendingChoice()) onboardingGate(root);
+        if (account.state().kind === 'signed-in' && !account.pendingChoice()) titleScreen(root);
       },
     });
     accountRedraw = drawer.redraw;
@@ -2482,7 +2483,7 @@ if (root) {
     // At the welcome gate the drawer carries on from there (it routes on when it closes, or at once with no choice to make).
     if (result.ok && root.querySelector('.ob-welcome')) {
       if (account.pendingChoice()) welcomeOpenAccount?.();
-      else onboardingGate(root);
+      else titleScreen(root);
       return;
     }
     // The cloud may hold other progress: the drawer is where that choice is made.
