@@ -60,3 +60,97 @@ export const YOU_ARE_HERE: PixelIcon = {
   palette: { k: PALETTE.ink, r: RELIC.blood, h: PALETTE.eclipseGlow },
   rows: crossRows(),
 };
+
+/**
+ * One original 16x16 icon per option group (the rest rows of the disclosure column, .agents/DESIGN.md §4 "Town map menu"):
+ * a heater shield (Tu equipo), a banner on stone steps (Progreso), two speech bubbles (Social), a key (Sistema).
+ * Token colours only.
+ */
+const gold = { k: PALETTE.ink, g: PALETTE.border, G: PALETTE.borderShade, r: RELIC.blood, w: PALETTE.text, s: PALETTE.textDim };
+
+export const GROUP_ICONS: Record<'team' | 'progress' | 'social' | 'system', PixelIcon> = {
+  team: {
+    palette: { k: gold.k, g: gold.g, r: gold.r, w: gold.w },
+    rows: [
+      '................',
+      '..kkkkkkkkkkkk..',
+      '.kggggggggggggk.',
+      '.kgrrrrwwrrrrgk.',
+      '.kgrrrrwwrrrrgk.',
+      '.kgwwwwwwwwwwgk.',
+      '.kgwwwwwwwwwwgk.',
+      '.kgrrrrwwrrrrgk.',
+      '.kgrrrrwwrrrrgk.',
+      '..kgrrrwwrrrgk..',
+      '..kgrrrwwrrrgk..',
+      '...kgrrwwrrgk...',
+      '....kgrwwrgk....',
+      '.....kggggk.....',
+      '......kkkk......',
+      '................',
+    ],
+  },
+  progress: {
+    palette: { k: gold.k, g: gold.g, r: gold.r, s: gold.s, S: gold.G },
+    rows: [
+      '................',
+      '....kkkkkkkk....',
+      '....krrrrrrrk...',
+      '.....krrggrk....',
+      '......krrrrk....',
+      '.......kkkkk....',
+      '...........k....',
+      '...........k....',
+      '...........k....',
+      '.........kkkkkk.',
+      '.........ksssSk.',
+      '.....kkkkksssSk.',
+      '.....ksssssssSk.',
+      '.kkkkkksssssSSk.',
+      '.ksssssssssssSk.',
+      '.kkkkkkkkkkkkkk.',
+    ],
+  },
+  social: {
+    palette: { k: gold.k, g: gold.g, w: gold.w },
+    rows: [
+      '................',
+      '.kkkkkkkkk......',
+      '.kwwwwwwwk......',
+      '.kwkwkwkwk......',
+      '.kwwwwwwwk......',
+      '.kkkkwkkkk......',
+      '...kwk..........',
+      '.......kkkkkkkk.',
+      '.......kggggggk.',
+      '.......kgkgkggk.',
+      '.......kggggggk.',
+      '.......kkkkgkkk.',
+      '..........kgk...',
+      '...........k....',
+      '................',
+      '................',
+    ],
+  },
+  system: {
+    palette: { k: gold.k, g: gold.g, G: gold.G },
+    rows: [
+      '................',
+      '................',
+      '................',
+      '................',
+      '..kkkk..........',
+      '.kggggk.........',
+      'kggkkggk........',
+      'kggkkggkkkkkkkk.',
+      'kggkkggGGGGGGGk.',
+      'kggkkggkkkkkkkk.',
+      '.kggggk...kgkgk.',
+      '..kkkk....kkkkk.',
+      '................',
+      '................',
+      '................',
+      '................',
+    ],
+  },
+};

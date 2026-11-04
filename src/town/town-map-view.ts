@@ -1,10 +1,11 @@
 import type { WorldMap } from '../data/world';
 import { t } from '../i18n';
 import '../styles/town-map.css';
-import { SEAL_BACKING, YOU_ARE_HERE } from '../ui/icons/town-map-icons';
+import { GROUP_ICONS, SEAL_BACKING, YOU_ARE_HERE } from '../ui/icons/town-map-icons';
 import { PIXEL_ICONS, pixelIconSvg, pixelSvgOf, type PixelIconId } from '../ui/pixel-icons';
 import { h } from '../ui/window';
-import { gridTile, groupOptions, optionsLayout, type MenuGlyph, type OptionsLayout } from './menu-groups';
+import { disclosureLayout, groupOptions, MENU_GROUPS, type DisclosureLayout, type MenuGlyph } from './menu-groups';
+import { columnStep, createDisclosure, type ColumnFocus, type ColumnKey, type Disclosure } from './menu-disclosure';
 import { cardPin, cartoucheRect, initialFocus, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
 import { paintTownSheet } from './sheet-paint';
 import { stepMarker, type TownMapMarker } from './town-map';
@@ -179,22 +180,59 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   };
   const primaryButton = optionButton(primary, 'tm-primary');
   const groups = groupOptions(options.options);
+  const sizes = groups.map((g) => g.options.length);
+  /** A group row at rest: its own pixel icon, title, one line of summary and how many options sit behind it. */
+  const groupButton = (g: (typeof groups)[number], rowsId: string): HTMLButtonElement => {
+    const icon = h('span', { className: 'tm-icon' }, [pixelSvgOf(GROUP_ICONS[g.id], 'px-icon')]);
+    const text = h('span', { className: 'tm-text' }, [h('strong', { className: 'tm-label', textContent: t(g.titleKey) }), h('small', { className: 'tm-about', textContent: t(MENU_GROUPS.find((m) => m.id === g.id)!.summaryKey) })]);
+    const button = h('button', { className: 'tm-grow', type: 'button' }, [icon, text, h('span', { className: 'tm-count', textContent: String(g.options.length) })]);
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', rowsId);
+    return button;
+  };
   const groupNodes = groups.map((g) => {
-    const rowsEl = h('div', { className: 'tm-rows' }, g.options.map((o) => optionButton(o, 'tm-opt')));
-    // Every group keeps its title (menu-groups.ts GROUP_HEADER), a single option too.
-    const section = h('section', { className: 'tm-group' }, [h('h3', { className: 'tm-group-title', textContent: t(g.titleKey) }), rowsEl]);
-    return section;
+    const rowsEl = h('div', { className: 'tm-rows', id: `tm-rows-${g.id}` }, g.options.map((o) => optionButton(o, 'tm-opt')));
+    rowsEl.setAttribute('role', 'group');
+    rowsEl.setAttribute('aria-label', t(g.titleKey));
+    rowsEl.hidden = true;
+    return h('section', { className: 'tm-group' }, [groupButton(g, rowsEl.id), rowsEl]);
   });
+  const growButtons = groupNodes.map((n) => n.querySelector<HTMLButtonElement>('.tm-grow')!);
+  const rowsEls = groupNodes.map((n) => n.querySelector<HTMLElement>('.tm-rows')!);
   const optionEntries = groups.flatMap((g) => g.options);
   const optionButtons = groupNodes.flatMap((n) => [...n.querySelectorAll<HTMLButtonElement>('.tm-opt')]);
-  const groupsEl = h('div', { className: 'tm-groups' });
+  const groupsEl = h('div', { className: 'tm-groups' }, groupNodes);
   const optionsEl = h('nav', { className: 'tm-options' }, [primaryButton, groupsEl]);
   optionsEl.setAttribute('aria-label', t('townMenu.options.label'));
 
-  // Every focusable thing in one list: pins, then "Seguir", then the options.
-  const items: HTMLButtonElement[] = [...pins, primaryButton, ...optionButtons];
-  const entries: TownMapEntry[] = [...placed.map((m) => m.entry), primary, ...optionEntries];
+  // Every focusable thing in one list: pins, "Seguir", the group rows, then every group's options (hidden ones are skipped).
+  const items: HTMLButtonElement[] = [...pins, primaryButton, ...growButtons, ...optionButtons];
+  const rowEntries: TownMapEntry[] = groups.map((g, gi) => ({ id: `group-${g.id}`, label: t(g.titleKey), about: '', glyph: 'resume' as const, onConfirm: () => disclosure.activate(gi, 'toggle') }));
+  const entries: TownMapEntry[] = [...placed.map((m) => m.entry), primary, ...rowEntries, ...optionEntries];
   const pinCount = pins.length;
+  const primaryIndex = pinCount;
+  const growStart = pinCount + 1;
+  const optionStarts = sizes.map((_, g) => growStart + sizes.length + sizes.slice(0, g).reduce((a, b) => a + b, 0));
+  /** What item `i` is in the column (null: a map pin). */
+  const columnFocusOf = (i: number): ColumnFocus | null => {
+    if (i < pinCount) return null;
+    if (i === primaryIndex) return { kind: 'primary' };
+    if (i < growStart + sizes.length) return { kind: 'group', g: i - growStart };
+    const g = optionStarts.filter((s) => s <= i).length - 1;
+    return { kind: 'option', g, o: i - optionStarts[g]! };
+  };
+  const indexOfFocus = (f: ColumnFocus): number => (f.kind === 'primary' ? primaryIndex : f.kind === 'group' ? growStart + f.g : optionStarts[f.g]! + f.o);
+  const isShown = (b: HTMLElement): boolean => b.getClientRects().length > 0;
+
+  // ---- disclosure: one group open at a time; drawing it is all this does
+  const disclosure: Disclosure = createDisclosure((open) => {
+    groupNodes.forEach((node, g) => {
+      node.classList.toggle('is-open', g === open);
+      rowsEls[g]!.hidden = g !== open;
+      growButtons[g]!.setAttribute('aria-expanded', String(g === open));
+    });
+    optionsEl.dataset.open = open === null ? '' : String(open);
+  });
 
   const element = h('div', { className: 'md-window town-map tm-panel' }, [area, optionsEl]);
   element.setAttribute('role', 'dialog');
@@ -203,7 +241,6 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   // ---- layout: the scale of the map and the mode of the options, from the real room
   let fit = sheetFit(cols, rows, 1, 1);
   let offset = { x: 0, y: 0 };
-  let appliedKey = '';
   function layout(): void {
     const aw = area.clientWidth;
     const ah = area.clientHeight;
@@ -215,8 +252,7 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     const c = cartoucheRect(artW);
     Object.assign(title.style, { left: `${(c.x / artW) * 100}%`, top: `${(c.y / artH) * 100}%`, width: `${(c.w / artW) * 100}%`, height: `${(c.h / artH) * 100}%`, fontSize: `${Math.max(11, Math.min(24, Math.round(c.h * fit.scale * 0.5)))}px` });
     fitTitle();
-    const layoutNow = optionsLayout(groups.map((g) => g.options.length), menuGeometry(window.innerWidth, window.innerHeight));
-    applyOptions(layoutNow);
+    applyOptions(disclosureLayout(sizes, menuGeometry(window.innerWidth, window.innerHeight)));
     placeCardFor(index);
   }
   /** A long name (the Ciénaga's) shrinks until it fits its ribbon whole, never below 8 px, instead of being clipped. */
@@ -227,23 +263,13 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
       title.style.fontSize = `${size}px`;
     }
   }
-  /** The window's geometry (src/town/sheet-model.ts): the options column's width and the mode its groups are laid out in. */
-  function applyGeometry(): void {
-    const geo = menuGeometry(window.innerWidth, window.innerHeight);
-    element.style.setProperty('--tm-opt-w', `px`);
-    applyOptions(optionsLayout(groups.map((g) => g.options.length), geo));
-  }
-  function applyOptions(l: OptionsLayout): void {
-    const key = `${l.mode}:${l.gridCols}:${l.columns.map((c) => c.join(',')).join('|')}`;
+  /** The row sizes the window allows (menu-groups.ts disclosureLayout); CSS reads them as variables. */
+  function applyOptions(l: DisclosureLayout): void {
     optionsEl.dataset.mode = l.mode;
-    optionsEl.classList.toggle('is-dense', l.dense);
-    if (l.mode === 'grid') {
-      optionsEl.style.setProperty('--tm-cols', String(l.gridCols));
-      optionsEl.style.setProperty('--tm-tile', `${gridTile(l.gridCols)}px`);
-    }
-    if (key === appliedKey) return;
-    appliedKey = key;
-    groupsEl.replaceChildren(...l.columns.map((col) => h('div', { className: 'tm-col' }, col.map((i) => groupNodes[i]!))));
+    optionsEl.style.setProperty('--tm-group-row', `${l.groupRow}px`);
+    optionsEl.style.setProperty('--tm-opt-row', `${l.optionRow}px`);
+    optionsEl.style.setProperty('--tm-cols', String(l.gridCols));
+    optionsEl.style.setProperty('--tm-tile', `${l.optionRow}px`);
   }
 
   // ---- selection and the card
@@ -269,8 +295,16 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     card.style.setProperty('--tm-arrow', `${Math.max(14, Math.min(card.offsetWidth - 14, spot.arrowX))}px`);
     card.dataset.side = spot.side;
   }
+  /** True while a mouse event drives the selection: hovering must not open or close groups by itself (the disclosure's own rules do). */
+  let pointerDriven = false;
+  /** Keyboard, pad or focus moves open the group they land in (or close it when they land on Seguir or a pin) at once. */
+  function syncDisclosure(i: number): void {
+    const f = columnFocusOf(i);
+    disclosure.focus(f === null || f.kind === 'primary' ? null : f.kind === 'group' ? f.g : f.g);
+  }
   function select(i: number, focus = true): void {
     index = i;
+    if (!pointerDriven) syncDisclosure(i);
     items.forEach((b, j) => b.classList.toggle('is-active', j === i));
     if (focus && document.activeElement !== items[i]) items[i]!.focus({ preventScroll: true });
     if (cardPin(i, pinCount) !== null) {
@@ -286,24 +320,82 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   function confirm(i: number): void {
     entries[i]!.onConfirm();
   }
+  let lastPointerType = 'mouse';
+  let lastX = -1;
+  let lastY = -1;
+  /** Opens group `g` and puts the focus on its first option (Enter or Right on its row). */
+  function enterGroup(g: number): void {
+    disclosure.focus(g);
+    if (sizes[g]! > 0) select(optionStarts[g]!);
+  }
+  // The mouse leaving the column collapses the open group after a short delay; coming back inside it cancels that.
+  optionsEl.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'mouse') disclosure.enter();
+  });
+  optionsEl.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse') disclosure.leave();
+  });
   items.forEach((button, i) => {
     // Pressing focuses the button (and selects it) before the click arrives, so "was it already chosen?" is read at the press.
     let chosenAtPress = false;
-    button.addEventListener('pointerdown', () => {
+    button.addEventListener('pointerdown', (e) => {
       chosenAtPress = index === i;
+      lastPointerType = e.pointerType;
+      // The focus a press gives the button must not open or close a group on its own: the click decides (a tap would open and close it).
+      pointerDriven = true;
+      window.setTimeout(() => {
+        pointerDriven = false;
+      }, 500);
     });
+    const group = columnFocusOf(i)?.kind === 'group' ? (columnFocusOf(i) as { g: number }).g : -1;
     button.addEventListener('click', (e) => {
+      pointerDriven = false;
+      if (group >= 0) {
+        // A group row: Enter or a pad button (no pointer) opens it and enters it; a mouse click keeps it open; a tap toggles it.
+        if (e.detail === 0) enterGroup(group);
+        else disclosure.activate(group, lastPointerType === 'mouse' ? 'open' : 'toggle');
+        return;
+      }
       // A pin shows its card first on touch (no hover there): the second tap opens. Options open on one tap; Enter on a focused button always acts.
       if (i < pinCount && e.detail > 0 && !chosenAtPress) select(i);
       else confirm(i);
       chosenAtPress = false;
     });
     button.addEventListener('pointerenter', (e) => {
-      if (e.pointerType === 'mouse' && index !== i) select(i);
+      if (e.pointerType !== 'mouse' || group >= 0) return;
+      // Hovering Seguir, an option or a pin keeps the open group as it is (the leave delay decides); a pin never closes it at once.
+      disclosure.enter();
+      if (index !== i) {
+        pointerDriven = true;
+        select(i);
+        pointerDriven = false;
+      }
     });
+    // A group row opens on a real mouse move over it, not on enter: when another group collapses the rows shift under a still
+    // mouse and the browser fires enter/move events with the same coordinates, which must not open whatever slid underneath.
+    if (group >= 0) {
+      button.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const moved = e.clientX !== lastX || e.clientY !== lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (!moved || disclosure.open === group) {
+          if (moved) disclosure.enter();
+          return;
+        }
+        pointerDriven = true;
+        disclosure.hover(group);
+        if (index !== i) select(i);
+        pointerDriven = false;
+      });
+    }
     // The mouse leaving a pin hides its card: the focus goes back to "Seguir" (owner: nothing shows unless a pin is hovered).
     button.addEventListener('pointerleave', (e) => {
-      if (e.pointerType === 'mouse' && i < pinCount && index === i) select(pinCount);
+      if (e.pointerType === 'mouse' && i < pinCount && index === i) {
+        pointerDriven = true;
+        select(primaryIndex);
+        pointerDriven = false;
+      }
     });
     button.addEventListener('focus', () => {
       if (index !== i) select(i, false);
@@ -312,18 +404,41 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
 
   const onKey = (e: KeyboardEvent): void => {
     const dir = DIRS[e.code];
+    const here = columnFocusOf(index);
+    // Inside the column the keys follow the disclosure (menu-disclosure.ts columnStep); a pin, or a key the column hands back, moves spatially.
+    const colKey: ColumnKey | null = dir ? (dir.y < 0 ? 'up' : dir.y > 0 ? 'down' : dir.x < 0 ? 'left' : 'right') : e.code === 'Escape' ? 'escape' : null;
+    if (here && colKey) {
+      const move = columnStep(here, colKey, sizes);
+      if (move.pass === 'close') {
+        e.preventDefault();
+        options.onClose();
+        return;
+      }
+      if (move.pass !== 'spatial') {
+        e.preventDefault();
+        if (move.focus) {
+          disclosure.focus(move.open ?? null);
+          select(indexOfFocus(move.focus));
+        }
+        return;
+      }
+    }
     if (dir) {
       e.preventDefault();
       // Spatial: the nearest item within 60 degrees of the direction, measured on screen (pins and rows share one space).
-      const centres: TownMapMarker[] = items.map((b, i) => {
-        const r = b.getBoundingClientRect();
+      // Options of a closed group are not on screen, so they are not stops.
+      const shown = items.map((_, i) => i).filter((i) => isShown(items[i]!));
+      const centres: TownMapMarker[] = shown.map((i) => {
+        const r = items[i]!.getBoundingClientRect();
         return { id: String(i), service: 'shop' as TownService, x: r.left + r.width / 2, y: r.top + r.height / 2 };
       });
-      const next = stepMarker(centres, index, dir);
-      if (next !== index) select(next);
+      const next = stepMarker(centres, shown.indexOf(index), dir);
+      if (next >= 0 && shown[next] !== undefined && shown[next] !== index) select(shown[next]!);
     } else if (e.code === 'Tab') {
       e.preventDefault();
-      select((index + (e.shiftKey ? items.length - 1 : 1)) % items.length);
+      const shown = items.map((_, i) => i).filter((i) => isShown(items[i]!));
+      const at = Math.max(0, shown.indexOf(index));
+      select(shown[(at + (e.shiftKey ? shown.length - 1 : 1)) % shown.length]!);
     } else if (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter') {
       // A focused button answers its own Enter (a click); only when focus is elsewhere does the cursor confirm.
       if (!items.includes(document.activeElement as HTMLButtonElement)) {
@@ -344,7 +459,7 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     observer = new ResizeObserver(onResize);
     observer.observe(area);
   } else window.addEventListener('resize', onResize);
-  applyOptions(optionsLayout(groups.map((g) => g.options.length), menuGeometry(window.innerWidth, window.innerHeight)));
+  applyOptions(disclosureLayout(sizes, menuGeometry(window.innerWidth, window.innerHeight)));
   // "Seguir" has the focus and no card shows until a pin is hovered or focused.
   index = initialFocus(pinCount);
   items.forEach((b, j) => b.classList.toggle('is-active', j === index));
@@ -356,6 +471,7 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
   return {
     element,
     dispose: () => {
+      disclosure.close();
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('resize', onResize);
       observer?.disconnect();

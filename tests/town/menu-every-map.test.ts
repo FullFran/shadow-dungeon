@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { WORLD } from '../../src/data/world';
 import { catalog } from '../../src/i18n';
 import { readFileSync } from 'node:fs';
-import { GROUP_HEADER, groupHeight, groupOptions, optionsLayout, townMenuOptions, type MenuGlyph } from '../../src/town/menu-groups';
+import { disclosureLayout, groupOptions, restColumn, townMenuOptions, type MenuGlyph } from '../../src/town/menu-groups';
 import { cardPin, initialFocus, menuGeometry, sheetFit } from '../../src/town/sheet-model';
 import { paintTownSheet } from '../../src/town/sheet-paint';
 import { townMapMarkers } from '../../src/town/town-map';
@@ -49,7 +49,7 @@ describe('the map menu on every map of the world', () => {
           const fit = sheetFit(cols, map.rows.length, geo.mapBox.w, geo.mapBox.h);
           expect(fit.width, `${map.id} ${w}x${h}`).toBeLessThanOrEqual(geo.mapBox.w + 0.001);
           expect(fit.height, `${map.id} ${w}x${h}`).toBeLessThanOrEqual(geo.mapBox.h + 0.001);
-          const l = optionsLayout(sizes, geo);
+          const l = disclosureLayout(sizes, geo);
           expect(l.needed, `${map.id} ${w}x${h}`).toBeLessThanOrEqual(l.available);
         }
       });
@@ -62,7 +62,8 @@ describe('the map menu on every map of the world', () => {
     expect(scene).not.toMatch(/looseServices\(/);
   });
 
-  it('every group shows its title, a single-option group too', () => {
-    expect(groupHeight(1)).toBe(GROUP_HEADER + 56);
+  it('at rest the column is Seguir and four group rows on every map, whatever the map shows as pins', () => {
+    const glyphs = [...townMenuOptions(ALL).map((s): { glyph: MenuGlyph } => ({ glyph: s })), { glyph: 'title' as const }];
+    expect(restColumn(glyphs).map((r) => r.id)).toEqual(['resume', 'team', 'progress', 'social', 'system']);
   });
 });

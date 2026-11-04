@@ -13,15 +13,18 @@ export type MenuGroupId = 'team' | 'progress' | 'social' | 'system';
 export interface MenuGroup {
   id: MenuGroupId;
   titleKey: string;
+  /** The one-line summary under the title at rest ("Pokémon, Tutor, Tienda…"): the same on every map. */
+  summaryKey: string;
   services: readonly TownService[];
 }
 
 export const MENU_GROUPS: readonly MenuGroup[] = [
-  { id: 'team', titleKey: 'townMenu.group.team', services: ['pokemon', 'evolve', 'tutor', 'shop', 'gacha'] },
-  { id: 'progress', titleKey: 'townMenu.group.progress', services: ['dungeons', 'challenges', 'travel', 'shrine', 'board', 'achievements', 'gallery'] },
-  { id: 'social', titleKey: 'townMenu.group.social', services: ['online', 'friends', 'account'] },
-  { id: 'system', titleKey: 'townMenu.group.system', services: ['settings', 'controls'] },
+  { id: 'team', titleKey: 'townMenu.group.team', summaryKey: 'townMenu.group.team.summary', services: ['pokemon', 'evolve', 'tutor', 'shop', 'gacha'] },
+  { id: 'progress', titleKey: 'townMenu.group.progress', summaryKey: 'townMenu.group.progress.summary', services: ['dungeons', 'challenges', 'travel', 'shrine', 'board', 'achievements', 'gallery'] },
+  { id: 'social', titleKey: 'townMenu.group.social', summaryKey: 'townMenu.group.social.summary', services: ['online', 'friends', 'account'] },
+  { id: 'system', titleKey: 'townMenu.group.system', summaryKey: 'townMenu.group.system.summary', services: ['settings', 'controls'] },
 ];
+
 
 /** The group of an option's glyph: the leaving rows (title, room) belong to the system group; "Seguir" to none. */
 export function groupOfGlyph(glyph: MenuGlyph): MenuGroupId | null {
@@ -66,68 +69,59 @@ export function townMenuOptions(available: ReadonlySet<TownService>): TownServic
 /** Icon grid tile side for a column count (CSS px): 72, 64, then 58 for five columns (still >= 44). */
 export const gridTile = (cols: number): number => (cols <= 3 ? 72 : cols === 4 ? 64 : 58);
 
-export type OptionsMode = 'list' | 'cols' | 'grid';
+export interface RestRow {
+  kind: 'primary' | 'group';
+  id: string;
+  /** Options behind a group row (0 for Seguir). */
+  count: number;
+}
 
-/** Row, header and gap sizes of the options column, CSS px (src/styles/town-map.css reads the same numbers). */
-export const OPTION_ROW = 56;
-/** The row height when two columns of 56 px rows still do not fit (a 1280x720 window with every option): 48 px, still >= 44. */
-export const OPTION_ROW_DENSE = 48;
-export const OPTION_ROW_GAP = 2;
-/** A group's header line, on every group (a lone option reads as part of the group above without it). */
-export const GROUP_HEADER = 20;
-export const GROUP_GAP = 6;
-/** "Seguir" (56 px) and the gap under it. */
+/**
+ * What the column shows at rest (owner, 2026-11-04: "menos opciones de primeras"): Seguir and one row per group, nothing else.
+ * Hick: five choices. The options appear on intent (src/town/menu-disclosure.ts).
+ */
+export function restColumn(options: readonly { glyph: MenuGlyph }[]): RestRow[] {
+  return [{ kind: 'primary', id: 'resume', count: 0 }, ...groupOptions(options).map((g): RestRow => ({ kind: 'group', id: g.id, count: g.options.length }))];
+}
+
+/** Row, gap and padding sizes of the options column, CSS px (src/styles/town-map.css reads the same numbers). */
 export const PRIMARY_BLOCK = 60;
 export const ICON_SIZE = 36;
-const GRID_GAP = 6;
+export const ROW_GAP = 2;
+/** The open group's options sit in a tray with this much padding under them. */
+export const TRAY_PAD = 4;
+/** Seguir and the tile row in the compact variant. */
+const COMPACT_PRIMARY = 48;
+const COMPACT_GAP = 6;
+const COMPACT_TILE_ROW = 56;
+/** [group row, option row] pairs, roomiest first: group rows are never below 56 (Fitts), option rows never below 44. */
+const ROW_STEPS: readonly (readonly [number, number])[] = [[72, 56], [64, 56], [56, 56], [56, 48], [56, 44]];
 
-export interface OptionsLayout {
-  mode: OptionsMode;
-  /** Group indexes per column (one column in list and grid mode). */
-  columns: number[][];
-  /** Columns of the icon grid (grid mode). */
+export interface DisclosureLayout {
+  /** accordion: options expand in place under their row; tiles: four group tiles in a row and the open group's icon grid below. */
+  mode: 'accordion' | 'tiles';
+  groupRow: number;
+  optionRow: number;
+  /** Columns of the icon grid (tiles mode). */
   gridCols: number;
-  /** Rows of OPTION_ROW_DENSE instead of OPTION_ROW (two columns only). */
-  dense: boolean;
-  /** Height the options need and the height there is (CSS px): needed <= available means no scroll. */
+  /** Height the column needs with the biggest group open, and the height there is (CSS px): needed <= available means no scroll. */
   needed: number;
   available: number;
 }
 
-export const groupHeight = (n: number, row: number = OPTION_ROW): number => GROUP_HEADER + n * row + Math.max(0, n - 1) * OPTION_ROW_GAP;
-const stack = (sizes: readonly number[], row: number = OPTION_ROW): number => sizes.reduce((sum, n) => sum + groupHeight(n, row), 0) + Math.max(0, sizes.length - 1) * GROUP_GAP;
-
 /**
- * How the options are laid out for a window: a single list when it fits (rows >= 56 px), two columns of groups when it does not,
- * and an icon grid (labels under 32 px icons) on a short landscape window. `needed <= available` is the no-scroll guarantee.
+ * How the column is laid out for a window. The tallest case is the biggest group open, so that is what must fit: the roomiest
+ * step of ROW_STEPS that does, so the column is airy on a big window and never scrolls on a small one.
  */
-export function optionsLayout(sizes: readonly number[], geo: MenuGeometry): OptionsLayout {
+export function disclosureLayout(sizes: readonly number[], geo: MenuGeometry): DisclosureLayout {
   const available = geo.optionsBox.h;
-  const all = sizes.map((_, i) => i);
+  const most = Math.max(0, ...sizes);
   if (geo.compact) {
-    const items = sizes.reduce((a, b) => a + b, 0) + 1;
-    const need = (cols: number): number => Math.ceil(items / cols) * gridTile(cols) + (Math.ceil(items / cols) - 1) * GRID_GAP;
-    const gridCols = [3, 4, 5].find((cols) => need(cols) <= available) ?? 5;
-    return { mode: 'grid', columns: [all], gridCols, dense: false, needed: need(gridCols), available };
+    const need = (cols: number): number => COMPACT_PRIMARY + COMPACT_GAP + COMPACT_TILE_ROW + COMPACT_GAP + Math.ceil(most / cols) * gridTile(cols) + (Math.ceil(most / cols) - 1) * COMPACT_GAP;
+    const gridCols = [3, 4, 5].find((c) => need(c) <= available) ?? 5;
+    return { mode: 'tiles', groupRow: COMPACT_TILE_ROW, optionRow: gridTile(gridCols), gridCols, needed: need(gridCols), available };
   }
-  const list = PRIMARY_BLOCK + stack(sizes);
-  if (list <= available) return { mode: 'list', columns: [all], gridCols: 0, dense: false, needed: list, available };
-  if (sizes.length < 2) return { mode: 'list', columns: [all], gridCols: 0, dense: false, needed: list, available };
-  // Two columns: the most balanced split of the groups (each column keeps menu order), so the options never need a scroll.
-  const split = (row: number) => {
-    let best = { left: all.slice(0, Math.ceil(sizes.length / 2)), height: Infinity };
-    for (let mask = 1; mask < (1 << sizes.length) - 1; mask++) {
-      const left = all.filter((i) => mask & (1 << i));
-      const right = all.filter((i) => !(mask & (1 << i)));
-      if (!left.includes(0)) continue;
-      const height = Math.max(stack(left.map((i) => sizes[i]!), row), stack(right.map((i) => sizes[i]!), row));
-      if (height < best.height) best = { left, height };
-    }
-    return best;
-  };
-  const roomy = split(OPTION_ROW);
-  const dense = PRIMARY_BLOCK + roomy.height > available;
-  const best = dense ? split(OPTION_ROW_DENSE) : roomy;
-  const right = all.filter((i) => !best.left.includes(i));
-  return { mode: 'cols', columns: [best.left, right], gridCols: 0, dense, needed: PRIMARY_BLOCK + best.height, available };
+  const need = ([group, option]: readonly [number, number]): number => PRIMARY_BLOCK + sizes.length * group + Math.max(0, sizes.length - 1) * ROW_GAP + most * option + Math.max(0, most - 1) * ROW_GAP + TRAY_PAD;
+  const step = ROW_STEPS.find((s) => need(s) <= available) ?? ROW_STEPS[ROW_STEPS.length - 1]!;
+  return { mode: 'accordion', groupRow: step[0], optionRow: step[1], gridCols: 0, needed: need(step), available };
 }
