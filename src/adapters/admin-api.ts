@@ -4,6 +4,9 @@
  * goes only to `base`, in the `Authorization` header, as PocketBase expects it.
  */
 
+import { request } from './http';
+import type { ErrorKind } from './net-error';
+
 export const TICKET_STATUSES = ['new', 'triaged', 'issue', 'closed'] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 /** What an admin can set from the game; "issue" goes with a link the owner sets by hand. */
@@ -64,20 +67,17 @@ function ticket(raw: unknown): Ticket | null {
 
 export function httpAdminApi(base: string, fetchFn: FetchFn = (input, init) => globalThis.fetch(input, init)): AdminApi {
   async function call<T>(token: string, method: string, path: string, body: unknown, read: (body: unknown) => T | null): Promise<AdminResult<T>> {
+    const headers: Record<string, string> = { Authorization: token };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const sent = await request(
+      fetchFn,
+      `${base}${path}`,
+      { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}), cache: 'no-store', credentials: 'omit' },
+      { timeoutMs: TIMEOUT_MS, scope: 'admin' },
+    );
+    if (!sent.ok) return { ok: false, error: sent.error.kind === 'auth' ? 'denied' : 'unavailable' };
     try {
-      const headers: Record<string, string> = { Authorization: token };
-      if (body !== undefined) headers['Content-Type'] = 'application/json';
-      const response = await fetchFn(`${base}${path}`, {
-        method,
-        headers,
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        cache: 'no-store',
-        credentials: 'omit',
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if (response.status === 401 || response.status === 403) return { ok: false, error: 'denied' };
-      if (!response.ok) return { ok: false, error: 'unavailable' };
-      const value = read(await response.json());
+      const value = read(await sent.response.json());
       return value === null ? { ok: false, error: 'unavailable' } : { ok: true, value };
     } catch {
       return { ok: false, error: 'unavailable' };
@@ -101,4 +101,9 @@ export function httpAdminApi(base: string, fetchFn: FetchFn = (input, init) => g
       return call(token, 'PATCH', `/api/sd/admin/reports/${ref}`, { status }, ticket);
     },
   };
+}
+
+/** Which shared kind an admin failure is. */
+export function adminErrorKind(error: AdminError): ErrorKind {
+  return error === 'denied' ? 'auth' : 'server';
 }

@@ -1,5 +1,7 @@
 import { sanitizeNickname } from '../net/nickname';
 import { normalizeRoomCode, ROOM_CODE_ALPHABET } from '../net/room-code';
+import { request } from './http';
+import type { ErrorKind } from './net-error';
 
 /**
  * The friends' calls to the game API (`/api/sd/friends`, server/README.md
@@ -109,19 +111,17 @@ export function httpFriendsApi(base: string, fetchFn: FetchFn = (input, init) =>
   }
 
   async function call<T>(token: string, method: string, path: string, body: unknown, read: (body: unknown) => T | null): Promise<FriendsResult<T>> {
+    const headers: Record<string, string> = { Authorization: token };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const sent = await request(
+      fetchFn,
+      `${base}${path}`,
+      { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}), cache: 'no-store', credentials: 'omit' },
+      { timeoutMs: TIMEOUT_MS, scope: 'friends' },
+    );
+    if (!sent.ok) return { ok: false, error: sent.response ? await refusal(sent.response) : 'unavailable' };
     try {
-      const headers: Record<string, string> = { Authorization: token };
-      if (body !== undefined) headers['Content-Type'] = 'application/json';
-      const response = await fetchFn(`${base}${path}`, {
-        method,
-        headers,
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        cache: 'no-store',
-        credentials: 'omit',
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if (!response.ok) return { ok: false, error: await refusal(response) };
-      const value = read(response.status === 204 ? null : await response.json());
+      const value = read(sent.response.status === 204 ? null : await sent.response.json());
       return value === null ? { ok: false, error: 'unavailable' } : { ok: true, value };
     } catch {
       return { ok: false, error: 'unavailable' };
@@ -140,4 +140,18 @@ export function httpFriendsApi(base: string, fetchFn: FetchFn = (input, init) =>
     remove: (token, id) => (ID.test(id) ? call(token, 'DELETE', `/api/sd/friends/${id}`, undefined, done) : Promise.resolve({ ok: false, error: 'refused' })),
     presence: (token, room) => (room === null || normalizeRoomCode(room) === room ? call(token, 'POST', '/api/sd/friends/presence', { room }, done) : Promise.resolve({ ok: false, error: 'unavailable' })),
   };
+}
+
+/** Which shared kind a friends failure is. 'unavailable' covers the network and the server; the UI tells them apart by the browser's own online state. */
+export function friendsErrorKind(error: FriendsError): ErrorKind {
+  switch (error) {
+    case 'denied':
+      return 'auth';
+    case 'rate-limited':
+      return 'rate-limited';
+    case 'unavailable':
+      return 'server';
+    default:
+      return 'unexpected';
+  }
 }
