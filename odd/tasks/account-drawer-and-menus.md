@@ -29,16 +29,21 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 
 ## Parity checklist
 
-- [ ] es/en strings for every new label (i18n parity test)
-- [ ] Every shrine trial (Reflejos, Desafíos) and every board mission kind rendered by the new views (tests iterate data)
-- [ ] Every gallery scene (prologue, Sima, every Senda, Guardianes) in the new gallery (test iterates `galleryGroups`)
-- [ ] Solo and co-op: signed-in email flows to friends heartbeat and cloud sync unchanged
-- [ ] Save/migrate untouched (auth token shape unchanged)
-- [ ] Touch layout 844x390 and keyboard/gamepad focus for the drawer and every redesigned window
-- [ ] GDD account section updated; `.agents/DESIGN.md` drawer pattern + decision log
-- [ ] typecheck, vitest, build, prove; `go test ./...`
+- [x] es/en strings for every new label (i18n parity test green after merges, 3868 keys each before the last merge)
+- [x] Every shrine trial (Reflejos, Desafíos) and every board mission kind rendered by the new views (tests/app/shrine-hall.test.ts, tests/app/board-view.test.ts iterate data)
+- [x] Every gallery scene (prologue, Sima, every Senda, Guardianes) in the new gallery (test iterates `galleryGroups`)
+- [x] Solo and co-op: Clerk sign-in ends in the same PocketBase session (`logInClerk` → account session), so heartbeat and cloud sync are unchanged; live exchange verified locally (same user id on repeat)
+- [x] Save/migrate untouched (auth token shape unchanged, `apis.RecordAuthResponse`)
+- [ ] Touch layout 844x390 measured for every window; keyboard tried in Playwright for drawer, board, shrine, Maestro; gallery and install-card keys NOT browser-tested; no real gamepad
+- [x] GDD account section updated; `.agents/DESIGN.md` drawer pattern + decision log
+- [x] typecheck, vitest (4852 pass, only pre-existing `difficulty-tiers` digest fails), build, prove (166 cards, 24/24); `go test ./...` green
 
 ## Pending for the owner / Fran
+
+- Not tried in a real browser: Google/Discord redirect and `?sso=1` return, sign-up code step, reset password, new-device code.
+- Shrine 844x390: record text partly behind Jurar; unlocked gauntlet without record shows "Vencido" (should read "Abierto"); shrine result screen keeps the old style.
+- Hub altar, profile face and quiz portrait not on the shared sprite-fit rule (no clipping seen).
+- JWT `azp` check not added.
 
 - Production Clerk instance (`clerk deploy`) with own Google and Discord OAuth apps; dev instance uses Clerk shared credentials.
 - `CLERK_SECRET_KEY` on preprod/prod server, `VITE_CLERK_PUBLISHABLE_KEY` in the build.
@@ -49,3 +54,4 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 - L3 (2026-11-04, T2 client): `@clerk/clerk-js` 6.42.1 (exact) behind `src/adapters/clerk-auth.ts`; `Account.logInClerk` + `clerkSession` exchange; `src/app/auth-flow.ts`; account side drawer (`src/app/account-drawer.ts`, replaces the account window; Account, Options, Settings, Friends and the hub plate all open it); Friends window redesigned (`src/app/friends-window.ts`); provider icons in `src/ui/icons/account-icons.ts` (own file, to avoid conflicts on `pixel-icons.ts`). Parity: es/en strings (i18n test green), drawer and friends keyboard/touch checked at 1440x900, 1366x768, 844x390, 390x844 with zero page scroll and zero inner scroll on the drawer. Not run: a real Clerk round trip (no dev key in this worktree; needs `.env.local` and the server endpoint of T1).
 - L2 (2026-11-04): asked Clerk vs native PocketBase OAuth; owner chose Clerk (S3). Clerk app created and linked with `clerk` CLI; Discord enabled, password min length 8; keys in `.env.local` (now gitignored).
 - L3 (2026-11-04, T4): Santuario and Tablón rebuilt as picker windows (`src/app/shrine.ts`, `src/app/board.ts`, pure models `shrine-hall.ts` and `board-view.ts`, shared `src/ui/hall-nav.ts` and `src/styles/hall.css`). Tests iterate every `SHRINE_BOSSES`, `GAUNTLETS` and mission kind. Added `abandonMission`/`abandonAt` for the new Abandonar action (confirm dialog); accept limits, rewards and records untouched. Shrine heralds stay as a third tab once met.
+- L4 (2026-11-04): owner: sprites cut in the shrine ("que no pase en ningún otro sitio"), achievements description overlaps, Maestro too saturated → single-column accordions with internal scroll. Done in `odd/tasks/clip-achievements-maestro-fixes.md`.
