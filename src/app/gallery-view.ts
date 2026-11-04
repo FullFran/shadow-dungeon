@@ -23,6 +23,8 @@ export interface GalleryCard {
   title: string;
   seen: number;
   total: number;
+  /** The title for a card: a Senda drops its shared "La Senda del" so the distinguishing word survives the ellipsis. */
+  short: string;
   /** Nothing of the group was seen: it shows as a sealed slab. */
   locked: boolean;
   /** Where the unlock comes from, in general words (null once something is seen). */
@@ -42,12 +44,15 @@ export interface GalleryRow {
   scenes: GallerySceneRow[];
 }
 
+const SENDA_PREFIX = /^(?:La Senda (?:del|de la|de los|de)|The Path of(?: the)?)\s+/i;
+
 const hintKey = (id: string): string => (id.startsWith('senda-') ? 'gallery.hint.senda' : `gallery.hint.${id}`);
 
 export function galleryCards(groups: readonly GalleryGroup[], seen: GallerySeen, tr: Tr): GalleryCard[] {
   return groups.map((group) => {
     const count = groupSeen(group, seen);
-    return { id: group.id, title: group.title(tr), seen: count, total: group.entries.length, locked: count === 0, hint: count === 0 ? tr(hintKey(group.id)) : null };
+    const title = group.title(tr);
+    return { id: group.id, title, short: group.id.startsWith('senda-') ? title.replace(SENDA_PREFIX, '') : title, seen: count, total: group.entries.length, locked: count === 0, hint: count === 0 ? tr(hintKey(group.id)) : null };
   });
 }
 
@@ -154,7 +159,7 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
     const body = card.locked
       ? [h('span', { className: 'gv-card-hint', textContent: card.hint ?? '' })]
       : [h('span', { className: 'gv-card-count', textContent: fill(t('gallery.count'), { seen: String(card.seen), total: String(card.total) }) }), bar(card.seen / card.total, 'gv-mini')];
-    const el = h('button', { className: `gv-card${card.locked ? ' is-locked' : ''}`, type: 'button' }, [emblem(card.id, card.locked), h('span', { className: 'gv-card-title', textContent: card.title }), ...body]);
+    const el = h('button', { className: `gv-card${card.locked ? ' is-locked' : ''}`, type: 'button' }, [emblem(card.id, card.locked), h('span', { className: 'gv-card-title', textContent: card.short }), ...body]);
     tint(el, card.id);
     el.dataset.group = card.id;
     el.setAttribute('aria-label', card.locked ? `${card.title}, ${t('gallery.sealed')}. ${card.hint}` : `${card.title}, ${fill(t('gallery.count'), { seen: String(card.seen), total: String(card.total) })}`);

@@ -1,27 +1,35 @@
-/* The install invitation as a relic card (src/ui/pwa.ts banner; .agents/DESIGN.md §4 relic toast). Sits in the hub's bottom-left corner, above the news card. One ember primary, a quiet choice, a text link. */
-.pwa-card { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: 92px; z-index: 4; box-sizing: border-box; width: min(20rem, calc(100% - 48px)); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 10px;
+/* The install invitation as a relic card (src/ui/pwa.ts banner; .agents/DESIGN.md §4 relic toast). One ember primary, a quiet choice, a text link.
+   Where it sits: it takes the news card's slot (bottom-left, which the hub frees meanwhile), because every other corner holds a rail, the logo or the partner;
+   on short screens (844x390) there is no room beside JUGAR, so it floats top-centre in the sky under the logo instead. */
+.pwa-card { position: absolute; left: max(24px, env(safe-area-inset-left)); bottom: 8px; z-index: 4; box-sizing: border-box; width: clamp(18rem, 26vw, 22.5rem); display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 8px;
   background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 rgba(0, 0, 0, 0.5); }
-.pwa-card-head { display: flex; align-items: flex-start; gap: 12px; }
-.pwa-card-icon { width: 48px; height: 48px; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--md-cursor) 40%, transparent)); }
+.pwa-card-head { display: flex; align-items: flex-start; gap: 10px; }
+.pwa-card-icon { width: 44px; height: 44px; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--md-cursor) 40%, transparent)); }
 .pwa-card-text { min-width: 0; }
-.pwa-card-title { margin: 0; font-size: 22px; line-height: 1.05; color: var(--md-text); text-shadow: 0 2px 0 var(--md-ink); }
-.pwa-card-line { margin: 3px 0 0; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
-.pwa-card-actions { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 8px; }
+.pwa-card-title { margin: 0; font-size: 19px; line-height: 1.05; color: var(--md-text); text-shadow: 0 2px 0 var(--md-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pwa-card-line { margin: 2px 0 0; font-family: var(--md-text-font); font-size: 13px; line-height: 1.25; color: var(--md-text-dim); }
+.pwa-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; }
 .pwa-card-primary, .pwa-card-quiet, .pwa-card-link { all: unset; box-sizing: border-box; cursor: pointer; }
-.pwa-card-primary { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 22px; font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--md-text);
+.pwa-card-primary { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; font-size: 16px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--md-text);
   background: linear-gradient(180deg, var(--relic-blood), var(--md-ink)); border: 2px solid var(--md-cursor); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 0 16px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
-.pwa-card-quiet { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 14px; font-size: 18px; color: var(--md-text-dim); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
-.pwa-card-link { grid-column: 1 / -1; justify-self: start; min-height: 44px; display: inline-flex; align-items: center; margin-top: -6px; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); text-decoration: underline; text-underline-offset: 3px; }
+.pwa-card-quiet { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; font-size: 15px; color: var(--md-text-dim); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.pwa-card-link { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; font-family: var(--md-text-font); font-size: 11px; color: var(--md-text-dim); text-decoration: underline; text-underline-offset: 3px; }
 .pwa-card-primary:hover, .pwa-card-primary:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45), 0 0 24px color-mix(in srgb, var(--relic-ember) 55%, transparent); }
 .pwa-card-quiet:hover, .pwa-card-quiet:focus-visible, .pwa-card-link:hover, .pwa-card-link:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
 .pwa-card-quiet:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45); }
 .pwa-card-link:focus-visible { outline: 2px solid var(--md-cursor); outline-offset: 2px; }
+.pwa-card-primary:focus-visible, .pwa-card-quiet:focus-visible { outline: none; }
+/* The news card hands its slot over while the invitation is up (the hub's arrows skip it: pwa.ts drops its data-hub). */
+@media (min-height: 561px) and (min-width: 901px) { .hub:has(.pwa-card) .hub-news { visibility: hidden; } }
 @media (prefers-reduced-motion: no-preference) { .pwa-card { animation: relic-veil 160ms ease-out both; } }
 
-/* Short screens (844x390): a compact card, benefit lines tucked away, actions in one row. */
+/* Short screens (844x390): floating top-centre under the logo, one compact row of text and actions. */
 @media (max-height: 560px), (max-width: 900px) {
-  .pwa-card { left: max(16px, env(safe-area-inset-left)); bottom: 58px; width: 19rem; gap: 4px; padding: 6px 10px 4px; }
-  .pwa-card-icon { width: 32px; height: 32px; } .pwa-card-title { font-size: 17px; } .pwa-card-line { font-size: 12px; margin-top: 1px; }
-  .pwa-card-actions { grid-template-columns: auto auto 1fr; } .pwa-card-link { grid-column: auto; justify-self: end; margin-top: 0; font-size: 11px; }
-  .pwa-card-primary { font-size: 16px; padding: 0 14px; } .pwa-card-quiet { font-size: 14px; padding: 0 10px; }
+  .pwa-card { left: 50%; bottom: auto; top: 62px; transform: translateX(-50%); width: min(28rem, calc(100% - 32px)); flex-direction: row; align-items: center; gap: 10px; padding: 4px 10px; }
+  .pwa-card-head { flex: 1; min-width: 0; align-items: center; }
+  .pwa-card-icon { width: 32px; height: 32px; } .pwa-card-title { font-size: 15px; } .pwa-card-line { font-size: 11px; margin-top: 0; }
+  .pwa-card-line + .pwa-card-line { display: none; } .pwa-card-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .pwa-card-actions { flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0 6px; width: 200px; }
+  .pwa-card-primary { font-size: 15px; padding: 0 12px; } .pwa-card-quiet { font-size: 14px; padding: 0 8px; }
+  .pwa-card-link { flex-basis: 100%; min-height: 22px; justify-content: flex-end; margin-left: 0; font-size: 11px; }
 }

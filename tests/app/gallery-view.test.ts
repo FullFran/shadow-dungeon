@@ -27,6 +27,15 @@ describe('the gallery view model', () => {
     }
   });
 
+  it('shortens a Senda card title so its own word shows, in both languages', () => {
+    for (const language of LANGUAGES) {
+      const lang = (key: string) => catalog(language)[key] ?? key;
+      const shorts = galleryCards(galleryGroups(), NONE, lang).filter((c) => c.id.startsWith('senda-')).map((c) => c.short);
+      expect(new Set(shorts).size, language).toBe(shorts.length);
+      for (const short of shorts) expect(short, language).not.toMatch(/^(La Senda|The Path)/i);
+    }
+  });
+
   it('seals a group nothing of which was seen, with a hint that names no scene', () => {
     const groups = galleryGroups();
     for (const card of galleryCards(groups, NONE, tr)) {

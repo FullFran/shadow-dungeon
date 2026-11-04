@@ -64,10 +64,10 @@
   .gv-window > .md-window-body { gap: 6px; }
   .gv-progress-label { font-size: 16px; } .gv-bar { height: 10px; }
   .gv-body { grid-template-columns: minmax(0, 1fr) 15rem; gap: 10px; }
-  .gv-grid { grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr)); grid-auto-rows: 84px; gap: 6px; }
-  .gv-card { height: 84px; padding: 4px 4px 6px; gap: 2px; }
-  .gv-vignette { height: 36px; } .gv-vignette .px-icon { width: 28px; height: 28px; }
-  .gv-card-title { font-size: 15px; } .gv-card-count { font-size: 11px; } .gv-card-hint { font-size: 10px; -webkit-line-clamp: 2; } .gv-mini { display: none; }
+  .gv-grid { grid-template-columns: repeat(auto-fill, minmax(6.8rem, 1fr)); grid-auto-rows: 72px; gap: 6px; }
+  .gv-card { height: 72px; padding: 4px 4px 6px; gap: 2px; }
+  .gv-vignette { height: 30px; } .gv-vignette .px-icon { width: 24px; height: 24px; }
+  .gv-card-title { font-size: 15px; } .gv-card-count { font-size: 11px; } .gv-card-hint { display: none; } .gv-mini { display: none; }
   .gv-sheet { padding: 6px 8px; gap: 6px; }
   .gv-sheet-head .gv-vignette { width: 44px; height: 44px; } .gv-sheet-head .gv-vignette .px-icon { width: 30px; height: 30px; }
   .gv-sheet-title { font-size: 18px; } .gv-sheet-count { font-size: 12px; margin-top: 2px; }

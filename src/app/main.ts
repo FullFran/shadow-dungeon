@@ -204,7 +204,8 @@ const pwa = setupPwa({
   store,
   onOfferChange: () => {
     const app = document.getElementById('app');
-    if (app?.querySelector('.title-logo')) titleScreen(app);
+    // The title is the hub now (its logo is `.hub-logo`); a window open over it stays.
+    if (app?.querySelector('.title-logo, .hub-logo') && !app.querySelector('.town-shop')) titleScreen(app);
   },
 });
 const unlockAudio = () => audio.unlock();
@@ -1163,9 +1164,9 @@ function townAccount(parent: HTMLElement, onClose: () => void): () => void {
 }
 
 /**
- * The gallery over the town (its Esc menu; app/lore-gallery.ts): the groups,
- * then a group's scenes; a seen one plays again over the town (the window
- * waits under it), an unseen one is "???" and does nothing. Nothing is
+ * The gallery over the town (its Esc menu; app/gallery-view.ts): a card per
+ * group beside a sheet of its scenes; a seen one plays again over the town (the
+ * window waits under it), an unseen one is "???" and does nothing. Nothing is
  * written: no seen flag, save, record or story. The pleas replay on the
  * crater's rim through the town (`replayPlea`, alone only).
  */

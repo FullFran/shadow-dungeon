@@ -99,16 +99,22 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
     const card = installCard(current);
     if (!card) return;
     /*
-     * A relic card at the hub's bottom-left, just above the news card: that corner holds no rail, no logo and
-     * no partner, so the card never covers them (top-centre sits on the logo and the altar). Click outside does
-     * nothing; Esc is "Ahora no". Its buttons carry data-hub, so the hub's arrows and the pad reach them.
+     * A relic card in the news card's slot (bottom-left), or under the logo on short screens: the other corners
+     * hold the rails, the logo or the partner (styles/install-card.css). Click outside does nothing; Esc is
+     * "Ahora no". Its buttons carry data-hub, so the hub's arrows and the pad reach them.
      */
     const node = h('section', { className: 'pwa-banner pwa-card' });
     node.setAttribute('role', 'region');
     node.setAttribute('aria-label', t(card.titleKey));
+    // Where the card takes the news card's slot, the news card steps out of the hub's arrow navigation meanwhile.
+    const host = parent.querySelector('.hub') ?? parent;
+    const news = host.querySelector<HTMLElement>('.hub-news[data-hub]');
+    const newsHub = news?.dataset.hub;
+    if (news && typeof matchMedia === 'function' && matchMedia('(min-height: 561px) and (min-width: 901px)').matches) delete news.dataset.hub;
     const close = () => {
       window.removeEventListener('keydown', onKey, true);
       node.remove();
+      if (news && newsHub) news.dataset.hub = newsHub;
     };
     const run = (action: InstallAction) => {
       const result = runInstallAction(action, options.store);
@@ -135,7 +141,7 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
       h('div', { className: 'pwa-card-actions' }, [button(card.primary, 'pwa-card-primary'), ...(card.secondary ? [button(card.secondary, 'pwa-card-quiet')] : []), button(card.never, 'pwa-card-link')]),
     );
     window.addEventListener('keydown', onKey, true);
-    (parent.querySelector('.hub') ?? parent).append(node);
+    host.append(node);
   }
 
   function corner(parent: HTMLElement): void {
