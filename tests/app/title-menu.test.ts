@@ -15,7 +15,7 @@ describe('title menu', () => {
   // Superseded by the title hub (owner, 2026-11-03; odd/tasks/title-hub.md): the title draws every button from `hubButtons`.
   it('the title screen builds its buttons from the hub model only', () => {
     const main = readFileSync(join(__dirname, '../../src/app/main.ts'), 'utf8');
-    const title = main.slice(main.indexOf('function titleScreen('), main.indexOf('async function toggleFullscreen('));
+    const title = main.slice(main.indexOf('function titleScreen('), main.indexOf('let patchNotesChecked'));
     expect(title).toContain('buttons: hubButtons(state)');
     expect(title).not.toContain('cursorList(');
   });

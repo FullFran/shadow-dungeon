@@ -80,6 +80,7 @@ import { FxSystem } from '../adapters/fx/system';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
+import { BASE_VIEW } from '../adapters/viewport';
 import { isTouchUi } from '../adapters/touch-mode';
 import { holdWakeLock } from '../adapters/wake-lock';
 import { IDLE_TOUCH, mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
@@ -100,13 +101,15 @@ import { chapterOf, STORY_LOW_HP, STORY_MID_FLOOR, storyKeys, storyOf, type Stor
 import { simulationPaused, type MenuActions } from './menu';
 import { createNetOverlay } from './net-overlay';
 import { hudScaleFor } from '../ui/hud-layout';
+import { slotCount } from '../adapters/hud';
+import { mountPlayHints } from '../ui/play-hints';
+import { hintBand } from '../ui/play-hints-model';
+import type { PadStyle } from './gamepad-help-data';
+import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
 
 /** Endless, shared run: the host sends its clock about this often (and on every floor change). */
 const CLOCK_SEND_MS = 1000;
 
-/** World pixels shown on screen; the canvas is this times an integer scale. */
-export const VIEW_WIDTH = 512;
-export const VIEW_HEIGHT = 320;
 
 /** `eclipse`: the endless dungeon's clock ran out (a score end). */
 export type GameResult = 'defeat' | 'victory' | 'eclipse';
@@ -234,6 +237,8 @@ export interface GameOptions {
   simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
   /** The Crypt's tutorial signs this device has seen (app/tutorial.ts); absent: no signs. */
   tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
+  /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
+  hints?: { enabled(): boolean; padStyle?(): PadStyle };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
 }
@@ -294,6 +299,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ],
   });
   (canvas.parentElement ?? document.body).append(touch.element);
+  /** The control hint bar (null without the option: the sim and tests). */
+  const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
   let inputSuspended = false;
   /** Keyboard + mouse, touch and the controller, suspended and disposed together. */
   const input = {
@@ -408,6 +415,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let moving = false;
   let lastInput: PlayerInput | null = null;
   let pixelScale = 1;
+  /** World pixels the camera shows, from the window (resize). */
+  let viewWidth: number = BASE_VIEW.width;
+  let viewHeight: number = BASE_VIEW.height;
+  /** CSS pixels per world pixel (the canvas is this much bigger on screen than the world it shows). */
+  let zoom = 1;
   let hudScale = 1;
   let ended = false;
   /** `onEnd` ran (exactly once per run), and the end screen waiting to run it. */
@@ -419,7 +431,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let closeCinematic: (() => void) | null = null;
   /** Smoothed camera focus; the visible rect it gives is also the lock-on view. */
   let camera = world.player.pos;
-  let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+  let view = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
+  /**
+   * What the simulation sees of the camera (lock-on only considers enemies inside it): always the 512x320 view the game was
+   * balanced for, so a bigger window shows more of the floor without changing who can be locked or hit.
+   */
+  let lockView = view;
   let closeMenu: (() => void) | null = null;
   /** The held item pick overlay, while open. */
   let closePick: (() => void) | null = null;
@@ -1133,7 +1150,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       else choicePick?.(pickIndexForKey(e.code, 3)!);
       return;
     }
-    if (e.code === 'Escape') {
+    if (e.code === MENU_KEY) {
       e.preventDefault();
       if (closeMenu) hideMenu();
       else showMenu();
@@ -1147,8 +1164,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
       choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
-    else if (e.code === 'KeyQ' && watching !== null && !closeMenu) watchNext();
-    else if (e.code === 'Tab' && !closeMenu) {
+    else if (e.code === SPECTATE_KEY && watching !== null && !closeMenu) watchNext();
+    else if (e.code === MAP_KEY && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
       e.preventDefault();
       showMinimap = !showMinimap;
@@ -1156,8 +1173,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
 
   function resize(): void {
-    // Desktop: integer scale as before; touch: fills the screen (src/adapters/fit.ts).
-    pixelScale = fitCanvasToWindow(canvas, VIEW_WIDTH, VIEW_HEIGHT, isTouchUi());
+    // The canvas covers the window; the view follows its aspect (src/adapters/viewport.ts).
+    const fit = fitCanvasToWindow(canvas, isTouchUi());
+    pixelScale = fit.pixelScale;
+    viewWidth = fit.viewWidth;
+    viewHeight = fit.viewHeight;
+    zoom = fit.zoom;
     // The HUD scale follows the window on desktop (small panels on big screens), the canvas on touch.
     hudScale = hudScaleFor(window.innerWidth, window.innerHeight, pixelScale, isTouchUi());
   }
@@ -1392,7 +1413,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (hadInput(padInput)) padInUse = true;
       else if (hadInput(keys)) padInUse = false;
       const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), padInput);
-      const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
+      const playerInput = { ...(net && world.player.hp <= 0 ? idleInput(raw) : raw), view: lockView };
       if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
@@ -1534,7 +1555,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (watching !== null) spectateButton.textContent = t(isTouchUi() ? 'spectate.next' : 'spectate.nextKey');
     const watched = watching !== null ? world.remotes.find((r) => r.id === watching) : undefined;
     camera = followCamera(camera, watched ? watched.player.pos : lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
-    view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+    view = cameraView(camera, viewWidth, viewHeight, world.arena);
+    lockView = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
     const bar = bossBar(world);
     // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
@@ -1619,6 +1641,23 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       perf.record('enemies', world.enemies.length);
     }
     overlay?.update(realMs);
+    if (hints) {
+      // The bar sits in the free stretch of the bottom edge (src/ui/play-hints-model.ts `hintBand`), in CSS px.
+      const css = (zoom / pixelScale) * hudScale;
+      const space = { width: canvas.width / hudScale, height: canvas.height / hudScale };
+      const band = hintBand(space, slotCount(world.player.loadout));
+      hints.update(
+        {
+          place: 'run',
+          interact: null,
+          minimap: minimap !== null && world.arena.tiles !== undefined,
+          spectating: watching !== null,
+          suppressed: closeMenu !== null || closePick !== null || closeChoice !== null || closeMemory !== null || closeCinematic !== null || ended,
+          band: { left: band.left * css, right: (space.width - band.right) * css, bottom: band.bottom * css },
+        },
+        realMs,
+      );
+    }
     raf = requestAnimationFrame(frame);
   }
 
@@ -1660,6 +1699,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // A room's session outlives its run: the room goes back to the town together.
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
+      hints?.dispose();
       spectateButton.remove();
       sign?.element.remove();
       victoryBand?.remove();

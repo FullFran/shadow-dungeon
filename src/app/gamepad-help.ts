@@ -24,7 +24,7 @@ const STYLES: readonly { id: PadStyle; label: string }[] = [
 ];
 
 /** The layout last chosen, else the one of the connected pad, else Xbox. */
-function initialStyle(): PadStyle {
+export function initialStyle(): PadStyle {
   try {
     const saved = localStorage.getItem(STYLE_KEY);
     if (saved === 'xbox' || saved === 'playstation') return saved;

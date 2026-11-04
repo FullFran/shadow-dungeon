@@ -1,0 +1,31 @@
+/* The in-game hint bar (src/ui/play-hints.ts; .agents/DESIGN.md §4 "Hint bar"). Colours come from --md-* and --relic-*.
+   It lives in the free stretch of the bottom edge between the message log and the move slots (--ph-left/-right/-bottom,
+   set from the HUD layout), so it never covers the player or the HUD. */
+.ph { position: fixed; z-index: 3; left: var(--ph-left, 12px); right: var(--ph-right, 12px); bottom: var(--ph-bottom, 12px); display: flex; align-items: center; justify-content: center; gap: 8px;
+  pointer-events: none; font-family: var(--md-font); }
+.ph.is-suppressed { visibility: hidden; }
+.ph-list { display: inline-flex; flex-wrap: nowrap; gap: 4px; margin: 0; padding: 0; list-style: none; opacity: 0; white-space: nowrap; }
+.ph.is-on .ph-list { opacity: 1; }
+.ph.too-narrow .ph-list { display: none; }
+/* Reason for the motion (Selective Attention): the bar leaves by itself once nothing new needs saying. Reduced motion: it simply goes. */
+@media (prefers-reduced-motion: no-preference) { .ph-list { transition: opacity 400ms ease-out; } .ph-fs { transition: opacity 160ms ease-out; } }
+
+.ph-item { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 3px 7px 3px 4px; box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); color: var(--md-text); }
+.ph-item.is-interact { border-color: var(--md-border); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 138, 61, 0.35); }
+.ph-item.is-interact .ph-label { color: var(--md-cursor); }
+.ph-glyphs { display: inline-flex; align-items: center; gap: 2px; }
+.ph-glyphs .pad-glyph { height: 24px; width: auto; }
+/* A key as a chunky square cap with a hard drop (stone is not round). */
+.ph-key { display: inline-block; min-width: 21px; height: 22px; padding: 0 4px; box-sizing: border-box; border: 2px solid var(--md-border); border-radius: 2px; background: var(--relic-slab-edge); color: var(--md-text);
+  box-shadow: 0 2px 0 var(--md-border-shade); font: inherit; font-size: 11px; line-height: 18px; text-align: center; }
+.ph-label { font-size: 16px; line-height: 1.1; letter-spacing: 0.02em; }
+.ph.trim .ph-item:is([data-hint='move'], [data-hint='attack']) .ph-label, .ph.compact .ph-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ph.compact .ph-item { padding-right: 5px; }
+
+.ph-fs { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; box-sizing: border-box; cursor: pointer; pointer-events: auto; opacity: 0.55;
+  background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); }
+.ph-fs[hidden] { display: none; }
+.ph-fs:hover, .ph-fs:focus-visible, .ph.is-on .ph-fs { opacity: 1; }
+.ph-fs:hover, .ph-fs:focus-visible { border-color: var(--md-border); }
+.ph-fs:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+.ph-fs-icon { width: 28px; height: 28px; image-rendering: pixelated; shape-rendering: crispEdges; }
