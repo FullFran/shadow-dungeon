@@ -1,12 +1,12 @@
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import type { KeyValueStore } from '../adapters/storage';
 import { getLanguage, t } from '../i18n';
-import { cursorList, type ListItem } from '../ui/cursor-list';
-import { h, mdWindow } from '../ui/window';
-import { createAccount, MIN_PASSWORD, UNDO_MS, type Account, type AccountError, type Choice, type ChoiceAnswer, type Notice, type SyncInfo } from './account';
-import { backupProfile, parseImport, type Backup } from './backups';
+import type { ListItem } from '../ui/cursor-list';
+import { h } from '../ui/window';
+import { createAccount, UNDO_MS, type Account, type Choice, type ChoiceAnswer, type Notice, type SyncInfo } from './account';
+import type { Backup } from './backups';
 import { observeKeys, realTimers } from './cloud-sync';
-import { PROFILE_KEYS, profileSummary, type ProfileSummary } from './profile';
+import { PROFILE_KEYS, type ProfileSummary } from './profile';
 import { electLeader, type LockManagerLike } from './sync-leader';
 
 /**
@@ -73,18 +73,6 @@ function undoToast(text: string, undo: () => void): void {
   root.append(box);
 }
 
-/** A line the next account window shows once. */
-let flash: string | null = null;
-
-export type AccountView = 'main' | 'delete' | 'wipe' | 'overwrite' | 'discard' | 'backups';
-
-export interface AccountScreenOptions {
-  account: Account;
-  /** Rebuilds the screen (after signing in or out, or a choice), on `view`. */
-  refresh(view?: AccountView): void;
-  onBack(): void;
-}
-
 /** "hace unos segundos", "hace 5 min", "hace 2 h", "hace 3 días". */
 export function agoText(elapsedMs: number, tr: (key: string) => string = t): string {
   const minutes = Math.floor(Math.max(0, elapsedMs) / 60_000);
@@ -110,7 +98,10 @@ export function statusText(info: SyncInfo, nowMs: number, tr: (key: string) => s
   }
 }
 
-const dateText = (ms: number | null): string => (ms === null ? t('sync.card.noDate') : new Date(ms).toLocaleString(getLanguage() === 'en' ? 'en-GB' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short' }));
+/** What a choice may ask the screen to confirm first. */
+export type ChoiceStep = 'discard' | 'overwrite';
+
+export const dateText = (ms: number | null): string => (ms === null ? t('sync.card.noDate') : new Date(ms).toLocaleString(getLanguage() === 'en' ? 'en-GB' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short' }));
 
 /** One side of a choice: date, Pokémonedas, Pokémon, logros and best record. */
 export function cardText(summary: ProfileSummary, tr: (key: string) => string = t): string[] {
@@ -124,19 +115,8 @@ function card(title: string, summary: ProfileSummary): HTMLElement {
   return h('div', { className: 'sync-card' }, [h('p', { className: 'sync-card-title', textContent: title }), h('p', { className: 'dim', textContent: dateText(summary.savedAt) }), ...cardText(summary).map((line) => h('p', { textContent: line }))]);
 }
 
-/** A text field in the room-code field's look, without its capitals. */
-function field(type: 'email' | 'password', autocomplete: AutoFill, label: string): HTMLInputElement {
-  const input = h('input', { type, className: 'code-input account-input', placeholder: label });
-  input.autocomplete = autocomplete;
-  input.spellcheck = false;
-  input.setAttribute('autocapitalize', 'off');
-  input.setAttribute('autocorrect', 'off');
-  input.setAttribute('aria-label', label);
-  return input;
-}
-
 /** The choice views: what the player sees before anything moves. */
-function choiceView(choice: Choice, answer: (a: ChoiceAnswer) => void, go: (view: AccountView) => void): { body: Node[]; items: ListItem[] } {
+export function choiceView(choice: Choice, answer: (a: ChoiceAnswer) => void, go: (step: ChoiceStep) => void): { body: Node[]; items: ListItem[] } {
   switch (choice.kind) {
     case 'offer':
       return {
@@ -174,9 +154,9 @@ function choiceView(choice: Choice, answer: (a: ChoiceAnswer) => void, go: (view
   }
 }
 
-const reasonText = (b: Backup): string => t(`sync.backup.reason.${b.reason}`);
+export const reasonText = (b: Backup): string => t(`sync.backup.reason.${b.reason}`);
 
-function saveFile(text: string): void {
+export function saveFile(text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const link = h('a', { href: url, download: `mazmorra-sombria-${new Date().toISOString().slice(0, 10)}.json` });
   document.body.append(link);
@@ -185,157 +165,3 @@ function saveFile(text: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** The account window: sign in or up as a guest, a pending sync choice, the signed-in account, backups, and confirmations. */
-export function accountWindow(options: AccountScreenOptions, view: AccountView = 'main'): HTMLElement {
-  const { account } = options;
-  const status = h('p', { className: 'lobby-error account-status' });
-  status.setAttribute('role', 'status');
-  // A one-time line from the previous view ("Sesión cerrada. Tus datos siguen en este dispositivo.").
-  status.textContent = flash ?? '';
-  flash = null;
-  let busy = false;
-  /** Runs one request at a time; an error stays on screen, success rebuilds it. */
-  const run = async (task: () => Promise<{ ok: boolean; error?: AccountError }>, after: AccountView = 'main') => {
-    if (busy) return;
-    busy = true;
-    status.textContent = t('account.busy');
-    const result = await task();
-    busy = false;
-    if (result.ok) options.refresh(after);
-    else status.textContent = t(`account.error.${result.error}`);
-  };
-  const askReset = (sent: string, email?: string) =>
-    void run(async () => {
-      const result = await account.requestPasswordReset(email);
-      if (result.ok) flash = t(sent);
-      return result;
-    });
-  const go = (next: AccountView) => options.refresh(next);
-  const answer = (a: ChoiceAnswer) => void account.answer(a).then(() => options.refresh('main'));
-  const state = account.state();
-  const choice = account.pendingChoice();
-  const info = account.syncInfo();
-  let body: Node[];
-  let items: ListItem[];
-  let note = t('account.privacy');
-
-  if (view === 'delete' && state.kind === 'signed-in') {
-    body = [h('p', { textContent: t('account.deleteConfirm') })];
-    items = [
-      { label: t('account.deleteYes'), className: 'danger', onConfirm: () => void run(() => account.deleteAccount()) },
-      { label: t('account.deleteNo'), onConfirm: () => go('main') },
-    ];
-  } else if (view === 'wipe') {
-    body = [h('p', { textContent: t('sync.wipe.confirm') })];
-    items = [
-      {
-        label: t('sync.wipe.yes'),
-        className: 'danger',
-        onConfirm: () => {
-          account.wipeDevice();
-          go('main');
-        },
-      },
-      { label: t('account.deleteNo'), onConfirm: () => go('main') },
-    ];
-  } else if (view === 'overwrite' && choice?.kind === 'held') {
-    body = [h('p', { textContent: t('sync.held.overwriteConfirm') })];
-    items = [
-      { label: t('sync.held.overwriteYes'), className: 'danger', onConfirm: () => answer('overwrite') },
-      { label: t('account.deleteNo'), onConfirm: () => go('main') },
-    ];
-  } else if (view === 'discard' && choice?.kind === 'foreign') {
-    body = [h('p', { textContent: t('sync.foreign.discardConfirm') })];
-    items = [
-      { label: t('sync.foreign.discardYes'), className: 'danger', onConfirm: () => answer('discard') },
-      { label: t('account.deleteNo'), onConfirm: () => go('main') },
-    ];
-  } else if (view === 'backups') {
-    const backups = account.backups();
-    const picker = h('input', { type: 'file', className: 'sync-file' });
-    picker.accept = 'application/json,.json';
-    picker.hidden = true;
-    picker.addEventListener('change', () => {
-      const file = picker.files?.[0];
-      if (!file) return;
-      void file.text().then((text) => {
-        const profile = parseImport(text);
-        if (!profile) {
-          status.textContent = t('sync.backup.importBad');
-          return;
-        }
-        account.importProfile(profile);
-        go('backups');
-      });
-    });
-    body = [h('p', { textContent: backups.length > 0 ? t('sync.backup.intro') : t('sync.backup.none') }), picker];
-    items = [
-      ...backups.map(
-        (b): ListItem => ({
-          label: `${dateText(b.at)} · ${reasonText(b)}`,
-          value: h('span', { className: 'account-summary', textContent: cardText(profileSummary(backupProfile(b)))[0]! }),
-          onConfirm: () => {
-            account.restore(b.id);
-            go('backups');
-          },
-        }),
-      ),
-      { label: t('sync.backup.export'), onConfirm: () => saveFile(account.exportText()) },
-      { label: t('sync.backup.import'), onConfirm: () => picker.click() },
-      { label: t('menu.back'), onConfirm: () => go('main') },
-    ];
-    note = t('sync.backup.note');
-  } else if (state.kind === 'signed-in' && choice) {
-    ({ body, items } = choiceView(choice, answer, go));
-    if (choice.kind === 'held') items.push({ label: t('menu.back'), onConfirm: options.onBack });
-  } else if (state.kind === 'signed-in') {
-    const line = statusText(info, Date.now());
-    body = [h('p', {}, [t('account.signedInAs'), ' ', h('span', { className: 'account-email', textContent: state.email })]), h('p', { className: 'dim sync-status', textContent: line || t('account.synced') })];
-    items = [
-      ...(info.status === 'choice' ? [{ label: t('sync.check'), onConfirm: () => void account.check().then(() => go('main')) }] : []),
-      { label: t('sync.backups'), onConfirm: () => go('backups') },
-      // An account with no email (OAuth2) has nowhere to send the link.
-      ...(state.email ? [{ label: t('account.changePassword'), onConfirm: () => askReset('account.resetSentOwn') }] : []),
-      {
-        label: t('account.logOut'),
-        onConfirm: () => {
-          account.logOut();
-          flash = t('sync.loggedOut');
-          go('main');
-        },
-      },
-      { label: t('account.delete'), onConfirm: () => go('delete') },
-      { label: t('menu.back'), onConfirm: options.onBack },
-    ];
-  } else {
-    const email = field('email', 'username', t('account.email'));
-    const password = field('password', 'current-password', t('account.password'));
-    password.minLength = MIN_PASSWORD;
-    const logIn = () => void run(() => account.logIn(email.value, password.value));
-    const register = () => void run(() => account.register(email.value, password.value));
-    email.enterKeyHint = 'next';
-    password.enterKeyHint = 'go';
-    email.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') password.focus();
-    });
-    password.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') logIn();
-    });
-    body = [h('p', { textContent: t('account.guestIntro') })];
-    items = [
-      // The fields are the rows (their placeholder names them): two lines less on a phone.
-      { label: email, className: 'account-row', onConfirm: () => email.focus() },
-      { label: password, className: 'account-row', onConfirm: () => password.focus() },
-      { label: t('account.logIn'), onConfirm: logIn },
-      { label: t('account.register'), onConfirm: register },
-      { label: t('account.forgot'), onConfirm: () => askReset('account.resetSent', email.value) },
-      { label: t('sync.backups'), onConfirm: () => go('backups') },
-      { label: t('sync.wipe'), className: 'danger', onConfirm: () => go('wipe') },
-      { label: t('menu.back'), onConfirm: options.onBack },
-    ];
-  }
-
-  const back = view === 'main' ? options.onBack : () => go('main');
-  const list = cursorList({ items, onBack: back, label: t('account.title') });
-  return mdWindow({ title: t('account.title'), className: 'online account' }, [...body, list.element, status, h('p', { className: 'dim account-note', textContent: note })]);
-}

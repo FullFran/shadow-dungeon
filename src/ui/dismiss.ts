@@ -24,7 +24,7 @@ export function pathOf(event: Event): PathNode[] {
 
 /** What the page shows now. A service window or the pause menu over anything counts as an overlay. */
 export function sceneOf(doc: ParentNode = document): Scene {
-  if (doc.querySelector('.town-shop, .overlay.pause')) return { kind: 'overlay' };
+  if (doc.querySelector('.town-shop, .overlay.pause, .drawer-veil')) return { kind: 'overlay' };
   if (doc.querySelector('canvas.town')) return { kind: 'town' };
   if (doc.querySelector('canvas.game')) return { kind: 'run' };
   if (doc.querySelector('.hub')) return { kind: 'hub' };
