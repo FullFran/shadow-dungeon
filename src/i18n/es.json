@@ -3849,6 +3849,7 @@
   "shrine.result.previous": "Marca anterior",
   "shrine.result.first": "Primera marca",
   "shrine.result.faster": "{time} más rápido",
+  "shrine.result.slower": "{time} más lento",
   "shrine.state.locked": "Sellado",
   "shrine.sealed.boss": "Un sello antiguo lo guarda. Véncelo en una expedición y el juramento se abrirá.",
   "shrine.sealed.name": "???",

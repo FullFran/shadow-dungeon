@@ -191,6 +191,28 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside
   its own region. Settings open the shared settings window over it (Esc goes back one step); co-op shows one note: the run keeps going.
   Keys: Up/Down (W/S) move, Left/Right cross to the item chips, Enter/Space act, Esc/Start resume.
+- **End screen** (`src/app/end-screen.ts`, model `src/app/end-layout.ts` + `src/app/end-model.ts` + `src/app/shrine-result.ts`, entrance `src/app/end-choreography.ts`,
+  icons `src/ui/icons/end-icons.ts`, `src/styles/end-screen.css`; owner 2026-11-04 "hazlo más estilo juego, y todo mejor presentado, más grande y más visual"):
+  one result ceremony for every win and loss (dungeon, challenge, Sima, shrine Reflejo/Desafío/herald, co-op), a dialog over the dimmed, frozen last
+  frame of the run (the veil is 58-82% ink, never the title backdrop). The window is `min(1100px, 92vw)` (1240 px from 940 px of height) and up to 88vh.
+  Top to bottom: the **outcome title** (Pixelify 68 px on tall windows, `min(5.4vw, 8.4vh)`, 28 px on short landscape, uppercase, letter-spaced; ember-gold with
+  glow on a win, eclipse red on a loss or a cut run, eclipse-glow on the Sima) over a gilt rule with a lit gem, then the line under it (boss and tier, or the lore
+  line). Below, two columns. Left, the **hero**: the creature in a `sprite-box` (`.rs-art`, 320x300 on tall windows, 320x240 default, 190 mid, 104 short; the
+  Sprite fit rule, whole creature) standing on a carved pedestal under a light cone, with rising embers on a win, falling ash and a desaturated sprite on a
+  loss (a Sima end is ember-red). Right, the **board**: the **stat tiles** (icon 30-44 px + small label, value 26-46 px, at most six visible: Miller; spans
+  fill the six-column grid with no holes, `tileSpans`), a strip of **details** for long text (items, party), the **rewards** panel (coin icon, the total counting
+  up, the new balance as a chip, each breakdown line as an icon chip, materials), and for the Sima the **score and events cards** (the only region that
+  scrolls inside). Every line of the old table is kept (`endLayout` places each line of each card exactly once; a test walks every dungeon x outcome x solo/co-op).
+  Tiles per outcome: run (dungeon, challenge, tutorial, Sima, co-op): difficulty (skull), floor (stairs), level (star), seed (die), details items (pouch) and
+  party in co-op (two figures), rewards = coin lines (floors/stairs, enemies/sword, escapes/shield, guardian/crown, time/clock, share/skull, multiplier/pennant,
+  total/coin counted, balance/coin) and materials (gem); Sima adds the score card (mode/pennant, time/clock, rank/medal) and the events card. Shrine: time (clock),
+  previous best (crown), difficulty (skull), cards captured (card), bosses beaten (sword, gauntlets), unscathed (shield, a win with no hit), reward + balance (coin).
+  **Time delta** on the time tile of a win against a previous best: `+16.7 s` in `danger` red with an up triangle when slower, `−16.7 s` in `good` green with a down
+  triangle when faster, grey when equal; never on a defeat or a first clear (sign and triangle carry it, not colour alone). **New-best seal**: a blood-red stamp with
+  a double gold frame, a crown and "¡Nueva mejor marca!" / "Primera marca", slammed onto the hero at -8 degrees; only on a winning first clear or a faster win.
+  **Actions**: big relic buttons (>= 56 px, 68 px on tall windows, 44 px on short landscape) with a pixel icon and the device glyph (Enter / pad A on the
+  primary; a line under them gives Esc / pad B for the way back; none on touch); one ember primary ("Volver ..."), "Volver a intentarlo" a quiet slab. Keys:
+  arrows or WASD, Enter confirms, Esc or B takes the primary. Colours only from tokens.
 - **Location plaque** (`src/ui/location-plaque.ts`, `src/ui/location-plaque-model.ts`, `src/adapters/floor-plaque.ts`, `src/ui/icons/place-icons.ts`,
   `src/styles/location-plaque.css`; owner 2026-11-04): one component names every place on arrival, replacing the canvas town banner, the
   floor card and the dungeon title. A carved relic plate at the top centre (`position: fixed`, top 12 px, 6 px on short landscape,
@@ -245,6 +267,15 @@ Accessibility: every hub control is a real `<button>` with an accessible name; a
   300 ms: reason, it must stand out at the moment the player has to read an attack. The boss entrance (name 420 ms, bar 900 ms), the chip trail (<= 600 ms: Doherty) and
   the felled banner (300 ms in, 700 ms out) each say what just happened. `prefers-reduced-motion`: the announcement only fades (no settle, no drawn rule).
 
+- End screen choreography (`endTimeline`, `src/app/end-choreography.ts`; Peak-End: the result is the memorable peak, so it is staged): the veil fades 150 ms,
+  the title and rule rise 14 px over 360 ms at 150 ms, the hero appears (scale .94 to 1, 420 ms) at 300 ms, the tiles rise 280 ms staggered 60 ms from 420 ms,
+  the reward panel follows and its total counts up (300-800 ms by amount, whole numbers, exact at the end, never overshooting), the new-best seal slams in
+  (scale 2.6 to 1, rotate -18 to -8 degrees, 300 ms) after the last tile, and the buttons go live at `actionsAt <= 1.2 s` (dimmed until then). Reason: each beat
+  hands the eye to the next fact (outcome, who, what it cost, what it paid) and the stamp is the Von Restorff peak. Doherty: input is never blocked past 1.2 s,
+  and **any key or click skips to the final state** (the press that skips never also fires an action). Embers and ash loop slowly behind the creature (the
+  scene is alive; they carry no information). Under `prefers-reduced-motion` (or `reduced`): every beat at 0 ms, the final figure at once, no particles moving,
+  buttons live immediately.
+
 ## 6. Accessibility Baselines
 
 WCAG 2.2 AA: text ≥ 4.5:1 on the slab, large/pixel labels ≥ 3:1, focus always visible (gold frame + halo), keyboard
@@ -285,3 +316,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-04 (owner: "el aviso este y de nueva actualización y demás que salga con el fondo blur oscurecido, arriba y más grande para darle más prioridad visual"): update, install and news notices become one System notice (§4) over a darkened, blurred veil, top centre and large. Scoped decision: the blur applies to these notices only; the "blurred-free vignette" rule of overlays and windows stands for everything else. Supersedes the small bottom-left install card, the bottom update toast and the news screen opening by itself on boot.
 - 2026-11-04 (owner: "quita al mimikyu y al gastly de ahí y presenta mejor a tu pokemon", "según el pokémon que tengas tengas un avatar custom con la cara del pokémon, no el sprite repetido"): the hub backdrop loses its residents; the partner stands on a carved altar with a corona, ember light and a nameplate that carries name, types, bond, passive and a 44 px "Cambiar" button (§4 Partner altar); the profile plate and the account drawer show the partner's face portrait (§4 Face avatar). Supersedes the flat red rune ellipse and the small nameplate of 2026-11-03, and the two residents of the same date.
 - 2026-11-04 (owner: "no debería salir el círculo rojo ni el hueco para tu pokémon, debe primero pedirte elegir si como invitado o iniciar sesión y guiarte primero al onboarding/cuestionario para elegir tu caminante, que también debe rediseñarse al completo"): a profile with no walker never meets the hub or its empty altar; it enters through a Welcome gate (account or guest, §4), then the prologue, a redesigned Questionnaire (one question per slab, oath-rune progress rail, relic answer cards with original pixel icons, 180 ms slide) and a Walker reveal (silhouette lit on an altar with embers, one ember call to action), then the first run (§4, §5). Scoring, question and answer texts and the story order are unchanged. Supersedes the black-screen quiz of MD-style cursor lists and its Accept/Choose window.
+- 2026-11-04 (owner: "Mejora más aún esto, hazlo más estilo juego, y todo mejor presentado, más grande y más visual"): the shared end screen becomes a result ceremony (§4, §5): a huge outcome title with a gilt rule, the creature large on a pedestal with embers (win) or ash (loss), icon stat tiles with a time delta, a new-best seal, a counting rewards panel, big relic buttons with device glyphs, a skippable staggered entrance. Supersedes the small relic window with a plain table of the same day (2026-11-04 end screen entry above) and its cards grid.

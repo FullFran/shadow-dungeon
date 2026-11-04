@@ -6,6 +6,7 @@ import { endActions, endHeading, victoryLine } from './after-run';
 import { coinLines } from './coin-lines';
 import type { RunSummary } from './game';
 import { simaEventLines } from './sima-summary';
+import type { EndIconId } from '../ui/icons/end-icons';
 
 /**
  * Every win/lose end screen as data (owner, 2026-11-04: "lo de ganar y perder rediséñalo"), pure:
@@ -14,13 +15,28 @@ import { simaEventLines } from './sima-summary';
  */
 export type EndOutcome = 'victory' | 'defeat' | 'eclipse' | 'cut';
 
+/** How a time compares with the previous best: «+16.7 s» red when slower, «−16.7 s» green when faster. */
+export interface EndDelta {
+  tone: 'faster' | 'slower' | 'even';
+  text: string;
+  /** The same in words (for assistive tech). */
+  caption: string;
+}
 export interface EndLine {
   label: string;
   value: string;
-  /** A line to read first (a new best, the Pokémonedas earned). */
-  tone?: 'best' | 'coin';
+  /** The pixel icon of its tile or row (src/ui/icons/end-icons.ts). */
+  icon?: EndIconId;
+  /** A line to read first: a new best, the Pokémonedas earned (`coin`), the new balance (`balance`). */
+  tone?: 'best' | 'coin' | 'balance';
   /** A small gilt chip beside the value. */
   badge?: string;
+  /** The number behind a Pokémonedas figure (the view counts up to it). */
+  amount?: number;
+  /** A time against the previous best. */
+  delta?: EndDelta;
+  /** Long text (items, party, materials): a strip, not a tile. */
+  wide?: boolean;
 }
 export interface EndCard {
   id: string;
@@ -36,6 +52,8 @@ export interface EndView {
   notes: string[];
   species: SpeciesId;
   cards: EndCard[];
+  /** The stamp of a new best (its words), null otherwise. */
+  seal?: string | null;
   /** The primary first (one ember); never more than two. */
   actions: { id: EndActionId; label: string }[];
 }
@@ -70,28 +88,28 @@ export function endModel(input: EndInput, tr: (key: string) => string): EndView 
   const notes = [...(summary.cutShort ? [tr(`net.cutShort.${summary.cutShort}`)] : []), ...(closing ? [tr(closing)] : [])];
 
   const summaryLines: EndLine[] = [
-    { label: tr('difficulty.label'), value: tr(`difficulty.${summary.difficulty}`) },
-    { label: tr('screen.floorReached'), value: String(summary.floor) },
-    { label: tr('screen.level'), value: String(summary.level) },
-    { label: tr('screen.seed'), value: String(summary.seed) },
-    { label: tr('screen.items'), value: input.heldNames.length === 0 ? tr('screen.noItems') : input.heldNames.join(', ') },
-    ...(party ? [{ label: tr('screen.party'), value: party.join(', ') }] : []),
+    { label: tr('difficulty.label'), value: tr(`difficulty.${summary.difficulty}`), icon: 'skull' },
+    { label: tr('screen.floorReached'), value: String(summary.floor), icon: 'floor' },
+    { label: tr('screen.level'), value: String(summary.level), icon: 'level' },
+    { label: tr('screen.seed'), value: String(summary.seed), icon: 'seed' },
+    { label: tr('screen.items'), value: input.heldNames.length === 0 ? tr('screen.noItems') : input.heldNames.join(', '), icon: 'bag', wide: true },
+    ...(party ? [{ label: tr('screen.party'), value: party.join(', '), icon: 'party' as const, wide: true }] : []),
   ];
   const cards: EndCard[] = [{ id: 'summary', title: tr('screen.summary'), lines: summaryLines }];
 
   // The Sima's ×0.5 is its pay rate, not a difficulty: its line says so.
   const coinTr = (key: string): string => tr(score && key === 'screen.coins.multiplier' ? 'endless.coins.rate' : key);
-  const coinRows: EndLine[] = coinLines(summary.coins, input.balance, coinTr).map((line, i, all): EndLine => ({ ...line, ...(i === all.length - 2 ? { tone: 'coin' as const } : {}) }));
-  cards.push({ id: 'coins', title: tr('screen.coins'), lines: [...coinRows, ...(input.materials ? [{ label: tr('screen.materials'), value: input.materials }] : [])] });
+  const coinRows: EndLine[] = coinLines(summary.coins, input.balance, coinTr).map((line, i, all): EndLine => ({ ...line, ...(i === all.length - 2 ? { tone: 'coin' as const } : i === all.length - 1 ? { tone: 'balance' as const } : {}) }));
+  cards.push({ id: 'coins', title: tr('screen.coins'), lines: [...coinRows, ...(input.materials ? [{ label: tr('screen.materials'), value: input.materials, icon: 'gem' as const, wide: true }] : [])] });
 
   if (score) {
     cards.push({
       id: 'score',
       title: tr('endless.score'),
       lines: [
-        { label: tr('endless.score.mode'), value: `${tr(`endless.mode.${score.entry.mode}`)} · ${score.entry.date}` },
-        { label: tr('endless.score.time'), value: clockText(score.entry.clockMs) },
-        { label: tr('endless.score.rank'), value: score.rank === null ? tr('endless.score.unranked') : `#${score.rank}` },
+        { label: tr('endless.score.mode'), value: `${tr(`endless.mode.${score.entry.mode}`)} · ${score.entry.date}`, icon: 'mode' },
+        { label: tr('endless.score.time'), value: clockText(score.entry.clockMs), icon: 'clock' },
+        { label: tr('endless.score.rank'), value: score.rank === null ? tr('endless.score.unranked') : `#${score.rank}`, icon: 'medal' },
       ],
       notes: score.board.slice(0, 3).map((e, i) => scoreLine(e, i + 1, tr)),
     });

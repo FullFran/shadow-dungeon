@@ -47,7 +47,7 @@ export const SPRITE_BOXES: readonly SpriteBox[] = [
   { file: 'src/styles/loadout-moves.css', selector: '.lm-head-art', minW: 56, h: 64 },
   { file: 'src/styles/pause.css', selector: '.pz-sprite', minW: 112, h: 96 },
   { file: 'src/styles/gacha-page.css', selector: '.gp-own-art', minW: 100, h: 84 },
-  { file: 'src/styles/end-screen.css', selector: '.rs-art', minW: 112, h: 112 },
+  { file: 'src/styles/end-screen.css', selector: '.rs-art', minW: 112, h: 240 },
   { file: 'src/styles/hub-altar.css', selector: '.hub-altar-sprite', minW: 250, h: 214 },
   { file: 'src/styles/onboarding.css', selector: '.ob-altar-sprite', minW: 220, h: 200 },
   { file: 'src/styles/onboarding.css', selector: '.ob-pick-art', minW: 112, h: 96 },

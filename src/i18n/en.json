@@ -3849,6 +3849,7 @@
   "shrine.result.previous": "Previous best",
   "shrine.result.first": "First record",
   "shrine.result.faster": "{time} faster",
+  "shrine.result.slower": "{time} slower",
   "shrine.state.locked": "Sealed",
   "shrine.sealed.boss": "An old seal guards it. Defeat it on an expedition and the oath will open.",
   "shrine.sealed.name": "???",
