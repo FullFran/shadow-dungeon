@@ -198,3 +198,9 @@ export function placeCard(anchor: { x: number; y: number }, size: Box, bounds: B
   const y = above ? anchor.y - gap - size.h : Math.min(Math.max(0, bounds.h - size.h), anchor.y + gap);
   return { x, y, side: above ? 'above' : 'below', arrowX: anchor.x - x };
 }
+
+/** Where the keyboard or pad focus starts when the menu opens: "Seguir" (the index after the pins), never a pin (owner: no card until a pin is hovered). */
+export const initialFocus = (pinCount: number): number => pinCount;
+
+/** The pin whose place card shows for the focused item: only a pin, never "Seguir", an option or nothing (-1). */
+export const cardPin = (index: number, pinCount: number): number | null => (index >= 0 && index < pinCount ? index : null);

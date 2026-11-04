@@ -31,3 +31,30 @@ Branch: feat/title-hub (worktree). Design: `.agents/DESIGN.md` §4 "Town map men
 - [x] Quick wheel (Tab) untouched: same `glyphSvg` and `TownMapEntry`.
 - [ ] Unseen badge: the view and the card support `entry.badge`, but no town service has a cheap source of "unseen content" today, so nothing sets it. Pending until one exists (no fake badges).
 - [ ] Per-map hand-placed cartouche art variants (cartouche is one ribbon): not needed.
+
+## Round 2 (owner 2026-11-04): no card until intent, bigger options, fewer options, every map
+
+Owner: "si no hago hover sobre ningún punto no debe salir nada"; "Un poco más grande esto, quita de ahí las opciones que no tengan sentido"; "hazlo consistente en todas las partes del mapa global, todos los mapas".
+
+- [x] No card on open or while focus is on Seguir or an option (`initialFocus`, `cardPin`, `tests/town/menu-options.test.ts`); mouse leaving a pin returns focus to Seguir; touch keeps tap-to-show.
+- [x] Rows 56 px (was 48), label 19 px, about 14 px, icon 36 px; two-column mode keeps 56 px rows, 16/12 px text; measured at five sizes (`tmenu2-check.mjs`: no page scroll, no truncated label, refugio stays a single list down to 1280x720).
+- [x] A group with one option has no header (gallery in the Refugio sits headerless under the team group).
+- [x] Long ribbon names shrink to fit (Ciénaga at 844x390 was clipped).
+- [x] Every map: `tests/town/menu-every-map.test.ts` iterates `WORLD` (name es/en, deterministic sheet, pins = service NPCs + places, services once, opens on Seguir, fits and no scroll at the five sizes). One opener (`openTownMenu`) serves all six maps; no older menu remains.
+
+### Options log (keep / remove, with evidence)
+
+| Option | Verdict | Evidence |
+| --- | --- | --- |
+| Seguir | keep | closes the menu, primary |
+| Cambiar Pokémon (`pokemon`) | keep | no pin or host: `src/town/town-map.ts` PLACES/NPC_SERVICE have no pokemon; only entry to `pokemonScreen` (`src/app/main.ts:1461`) |
+| Phantump (`evolve`) | keep | pin only on Lago (NPC); elsewhere only here |
+| Logros (`achievements`) | REMOVE | the Notice board window has a "Logros" button (`src/app/board.ts:61`, wired `src/app/main.ts:1648`); `board` is a pin or an option on every map and in rooms (`openBoard` wired `main.ts:1461`, `2115`); `HOSTED_BY` in `src/town/menu-groups.ts`; kept if board is not wired |
+| Galería | keep | no host window links to it (`rg gallery` in board/achievements/friends/account: none) |
+| Amigos | keep | no host (online screen has no friends link) |
+| Cuenta | keep | Friends only opens it when signed out (`src/app/friends-window.ts:204`); signed-in account management has no other route in town |
+| Ajustes | keep | only route to settings |
+| Controles del mando | keep | NOT inside Ajustes: `src/app/settings-panel.ts` rows are language, lock, volume, accessibility, touch; the pad help is the separate `controlsWindow` (`src/app/gamepad-help.ts:85`). Meaningful in town (the menu is pad-driven) |
+| Volver al inicio / room rows | keep | only way out |
+
+Quick wheel (Tab) and the title menu are untouched, so Logros still has those routes.
