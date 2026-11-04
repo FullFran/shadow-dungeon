@@ -1,17 +1,13 @@
-import { sheetKey, type SheetStore } from '../adapters/assets';
-import { frameAtTime } from '../adapters/sprite-anim';
-import { SPRITES } from '../data/sprites';
 import { buildHaven, HORIZON, type HavenLayers } from './dusk-haven';
 import type { Light } from './pixel-grid';
 import { PALETTE } from './tokens';
-import { TOWN_RESIDENTS, walkerAt } from './town-walkers';
 
 /**
  * The animated backdrop of the menus: Dusk Haven under the Eclipse (src/ui/dusk-haven.ts
  * draws the town once per size; odd/tasks/title-hub.md T9). Per frame only the cheap,
  * living parts are drawn over the prerendered layers: a few twinkling stars, the
  * eclipse's breathing corona and slow rays, the props' lights (additive, flickering),
- * chimney smoke, the residents walking their corners (src/ui/town-walkers.ts), drifting
+ * chimney smoke, drifting
  * fog and embers. The buffer is about 300 px tall at any window size (whole-number
  * upscale with `image-rendering: pixelated`), so the art keeps its pixel size.
  */
@@ -45,77 +41,6 @@ function pxLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: numbe
     const x = Math.round(x0 + ((x1 - x0) * k) / steps);
     const y = Math.round(y0 + ((y1 - y0) * k) / steps);
     ctx.fillRect(x - Math.floor(width / 2), y, width, 1);
-  }
-}
-
-let castSheets: SheetStore | null = null;
-/** Per sheet: the sprite sunk into the eclipse light, and a red copy for the rim. */
-const cuts = new Map<string, { lit: HTMLCanvasElement; rim: HTMLCanvasElement }>();
-
-/** Lets the backdrop draw the residents once the sheets are loaded (the scene is complete without them). */
-export function setBackdropSheets(sheets: Promise<SheetStore>): void {
-  void sheets.then((loaded) => {
-    castSheets = loaded;
-    cuts.clear();
-  });
-}
-
-function cutOf(key: string, image: HTMLImageElement): { lit: HTMLCanvasElement; rim: HTMLCanvasElement } {
-  const cached = cuts.get(key);
-  if (cached) return cached;
-  const tinted = (color: string) => {
-    const c = document.createElement('canvas');
-    c.width = image.width;
-    c.height = image.height;
-    const g = c.getContext('2d');
-    if (g) {
-      g.drawImage(image, 0, 0);
-      g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = color;
-      g.fillRect(0, 0, image.width, image.height);
-    }
-    return c;
-  };
-  const cut = { lit: tinted('rgba(30, 6, 14, 0.4)'), rim: tinted('#ff5a3d') };
-  cuts.set(key, cut);
-  return cut;
-}
-
-const depthAt = (y: number, h: number): number => Math.max(0, Math.min(1, (y / h - HORIZON) / (1 - HORIZON)));
-/** Sprite scale at a ground depth: far small, near large. */
-const scaleAt = (depth: number): number => 0.5 + depth * 0.8;
-
-function drawResidents(ctx: CanvasRenderingContext2D, w: number, h: number, ms: number, pulse: number): void {
-  if (!castSheets) return;
-  const placed = TOWN_RESIDENTS.map((r) => ({ r, at: walkerAt(r, ms) })).sort((a, b) => a.at.y - b.at.y);
-  for (const { r, at } of placed) {
-    const anims = SPRITES.sprites[r.sprite]?.anims;
-    const meta = at.moving ? anims?.Walk : anims?.Idle;
-    const image = meta && castSheets.get(sheetKey(r.sprite, meta.file));
-    if (!meta || !image) continue;
-    const scale = scaleAt(depthAt(at.y * h, h)) * (h / 300);
-    const fw = meta.frameWidth;
-    const fh = meta.frameHeight;
-    const frame = frameAtTime(meta.durations, ms + r.id.length * 211, true);
-    const row = Math.min(at.dir, (meta.rows ?? 1) - 1);
-    const anchor = meta.anchor ?? { x: fw / 2, y: fh * 0.75 };
-    const footX = at.x * w;
-    const footY = at.y * h;
-    const lift = (r.float ?? 0) * scale + (r.float ? Math.sin(ms / 800 + footX) * 2 : 0);
-    const dx = Math.round(footX - anchor.x * scale);
-    const dy = Math.round(footY - lift - anchor.y * scale);
-    const dw = Math.round(fw * scale);
-    const dh = Math.round(fh * scale);
-    ctx.fillStyle = `rgba(0, 0, 0, ${r.float ? 0.22 : 0.5})`;
-    const sw = Math.max(3, Math.round(fw * scale * (r.float ? 0.3 : 0.42)));
-    ctx.fillRect(Math.round(footX - sw / 2), Math.round(footY), sw, Math.max(1, Math.round(2 * scale)));
-    const cut = cutOf(sheetKey(r.sprite, meta.file), image);
-    const sx = frame * fw;
-    const sy = row * fh;
-    ctx.globalAlpha = 0.4 + 0.35 * pulse;
-    ctx.drawImage(cut.rim, sx, sy, fw, fh, dx, dy - 1, dw, dh);
-    ctx.globalAlpha = 1;
-    ctx.drawImage(cut.lit, sx, sy, fw, fh, dx, dy, dw, dh);
   }
 }
 
@@ -214,7 +139,6 @@ function draw(ctx: CanvasRenderingContext2D, w: number, h: number, ms: number): 
   ctx.drawImage(haven.land, 0, 0);
   drawLights(ctx, haven.lights, ms);
   drawSmoke(ctx, haven.smoke, ms);
-  drawResidents(ctx, w, h, ms, pulse);
   const fog = fogOf(w);
   for (const [fy, speed, alpha] of [[0.6, 9000, 0.9], [0.86, 6000, 1]] as const) {
     const off = Math.round(((ms / speed) * w) % w);
@@ -317,7 +241,7 @@ export function eclipseBackdrop(): HTMLCanvasElement {
         node.style.height = `${h * pixel}px`;
       }
       const ctx = node.getContext('2d');
-      // Reduced motion: the scene holds still (one frame a second keeps the residents' places current).
+      // Reduced motion: the scene holds still (one frame a second).
       if (ctx) draw(ctx, w, h, reducedMotion() ? Math.floor((now - start) / 1000) * 1000 : now - start);
       requestAnimationFrame(frame);
     };
