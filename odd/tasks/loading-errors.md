@@ -15,18 +15,18 @@ Cause: `loadSheets()` fetches every sheet of every species at boot and the partn
 
 ## Tasks
 
-- [ ] T1 Error model (`src/adapters/net-error.ts`), `request()` with timeout and GET-only backoff (`src/adapters/http.ts`), adapters routed through it.
-- [ ] T2 Shared loader (`src/adapters/assets.ts`): dedupe, cache, priority, retry once, placeholder, idle prefetch; boot critical set; run preload.
-- [ ] T3 Service worker: art cache that survives deploys, `/portraits/`.
-- [ ] T4 Relic status components (`src/ui/status.ts`, `src/styles/status.css`): spinner, skeleton, inline error, error card, fatal screen, toast, offline banner, boot splash.
-- [ ] T5 Screens wired: cloud sync, ranking, friends, tickets, report, account.
-- [ ] T6 Docs (DESIGN.md, gdd.md), measurements after, screenshots.
+- [x] T1 Error model (`src/adapters/net-error.ts`), `request()` with timeout and GET-only backoff (`src/adapters/http.ts`), adapters routed through it.
+- [x] T2 Shared loader (`src/adapters/assets.ts`): dedupe, cache, priority, retry once, placeholder, idle prefetch; boot critical set; run preload.
+- [x] T3 Service worker: art cache that survives deploys, `/portraits/`.
+- [x] T4 Relic status components (`src/ui/status.ts`, `src/styles/status.css`): spinner, skeleton, inline error, error card, fatal screen, toast, offline banner, boot splash.
+- [x] T5 Screens wired: cloud sync, ranking, friends, tickets, report, account.
+- [x] T6 Docs (DESIGN.md, gdd.md), measurements after, screenshots.
 
 ## Parity checklist
 
 - [ ] Every API adapter (account, friends, report, admin) routes failures through the model (test iterates them).
 - [ ] Every sprite consumer (renderer, town, dialogue box, prologue and story scenes, portraits, loadout, backdrop, move preview) reads through the shared loader.
-- [ ] Tiles of the town load through `assets.image`.
+- [x] Tiles of the town load through `assets.image`.
 - [ ] i18n es and en for every message (key parity test).
 - [ ] Solo, co-op, town, Sima, shrine, challenges: run preload covers the player species and the dungeon's pool; the rest loads lazily.
 - [ ] `npm run prove` unchanged.
