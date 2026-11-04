@@ -17,7 +17,7 @@ import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
 import type { StarterId } from '../data/quiz';
 import { PROLOGUE_MUSIC } from '../data/prologue-music';
-import { loadSheets, type SheetStore } from '../adapters/assets';
+import { prefetchWhenIdle, preloadHub, preloadRun, sheets as sheetStore, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, getLanguage, setLanguage, t, type Language } from '../i18n';
@@ -61,6 +61,8 @@ import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from 
 import { hubButtons, type HubId } from './title-hub';
 import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
+import { bootSplash } from '../ui/boot-splash';
+import { loadingVeil } from '../ui/spinner';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { type SettingsAccess } from './settings-panel';
 import { settingsView } from './settings-view';
@@ -232,7 +234,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'F1') e.preventDefault();
 });
 setUiSound(() => audio.play('click'));
-let sheets: SheetStore | null = null;
+/** The shared sheet store: sheets load by need (adapters/assets.ts), never all at boot. */
+const sheets: SheetStore = sheetStore;
 let running: RunningGame | null = null;
 /** The shared run or lobby on screen, if any: its notices (room full, host left) only count while it is. */
 let current: NetSession | null = null;
@@ -476,11 +479,9 @@ function update(changes: Partial<Settings>): void {
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
-/** Sprite sheets, loaded once (the loadout portrait and the run share them). */
-let sheetsLoading: Promise<SheetStore> | null = null;
+/** The sheet store, ready at once: a portrait or a scene asks it for its own sheet and waits only for that one. */
 function sheetsReady(): Promise<SheetStore> {
-  sheetsLoading ??= loadSheets().then((loaded) => (sheets = loaded));
-  return sheetsLoading;
+  return Promise.resolve(sheets);
 }
 
 function notice(): HTMLElement {
@@ -530,9 +531,9 @@ function toast(root: HTMLElement, text: string): void {
 
 const TOAST_MS = 6000;
 
-/** Loading or connecting: a window with the text only. */
+/** Loading or connecting: the spin loader over the dimmed scene, no window and no word (`text` is only its hidden label). */
 function waitScreen(root: HTMLElement, text: string): void {
-  show(root, [mdWindow({ className: 'narrow wait' }, [h('p', { textContent: text })])]);
+  show(root, [loadingVeil(text)]);
 }
 
 /**
@@ -2024,10 +2025,8 @@ function endlessScore(summary: RunSummary): EndScore {
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
 async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun, resume?: Extract<ResumeRecord, { kind: 'run' }>): Promise<void> {
-  if (!sheets) {
-    waitScreen(root, t('app.loading'));
-    await sheetsReady();
-  }
+  // The player and floor 1 first; the rest of the dungeon's pool loads in the background.
+  await preloadRun(dungeonById(dungeon), trial?.pick.species ?? settings.species, skinOn(trial?.pick.species), femaleOn(trial?.pick.species));
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
   let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: tierFor(dungeonById(dungeon), sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story)) };
@@ -2069,7 +2068,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     ? resume.launch
     : { dungeon: shared.dungeon ?? dungeon, seed: shared.seed!, difficulty: shared.difficulty ?? DEFAULT_DIFFICULTY, ...(trial ? { trial: { request: trial.request, from: trial.from, pick: trial.pick } } : {}) };
   const keep = shared.net ? null : { writer: createResumeWriter(resumeStore, resumeWho(), launch, newRunId(), 0, Date.now), crashed: () => pageCrashed, ...(resume ? { from: resume.part } : {}) };
-  running = startGame(canvas, sheets!, {
+  running = startGame(canvas, sheets, {
     ...(keep ? { resume: keep } : {}),
     species: trial?.pick.species ?? settings.species,
     // Only moves the species knows reach a run (the tutor's, once bought); its Mejoras go with it.
@@ -2303,6 +2302,21 @@ function devScreen(root: HTMLElement): boolean {
   return true;
 }
 
+/**
+ * First paint of the title: the hub's own sheets (the partner's idle and the backdrop's residents) load first, behind the
+ * boot splash if that takes more than 150 ms; a slow network never holds the title longer than the cap. The rest loads by need.
+ */
+async function bootToTitle(root: HTMLElement): Promise<void> {
+  const splash = bootSplash(document.body);
+  const cap = new Promise<void>((resolve) => window.setTimeout(resolve, BOOT_CAP_MS));
+  await Promise.race([preloadHub(settings.species, skinOn(), femaleOn(), splash.progress), cap]);
+  await splash.done();
+  titleScreen(root);
+  prefetchWhenIdle();
+}
+
+const BOOT_CAP_MS = 8000;
+
 const root = document.getElementById('app');
 if (root) {
   // Menu click: any button press on the pages (the game canvas has none).
@@ -2345,6 +2359,6 @@ if (root) {
   if (onGachaPath() && townIsOpen()) showGachaPage(root);
   else {
     if (onGachaPath()) window.history.replaceState(null, '', leaveUrl(window.location.pathname));
-    if (!devScreen(root) && !resumeBoot(root)) titleScreen(root);
+    if (!devScreen(root) && !resumeBoot(root)) void bootToTitle(root);
   }
 }

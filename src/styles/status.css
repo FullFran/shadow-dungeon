@@ -1,0 +1,33 @@
+/* Loading and error states (.agents/DESIGN.md §4). Colours only from the design tokens (--md-*). */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Spin loader: an eclipse ring, the ember arc chasing round it. */
+.spin { display: inline-flex; align-items: center; justify-content: center; }
+.spin-ring { display: block; image-rendering: pixelated; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--relic-ember) 35%, transparent)); }
+.spin-ring rect { fill: var(--md-cursor); opacity: 0.18; animation: spin-chase 1s steps(8, end) infinite; animation-delay: calc(var(--spin-i) * -1s); }
+@keyframes spin-chase {
+  0% { opacity: 1; }
+  35% { opacity: 0.55; }
+  100% { opacity: 0.12; }
+}
+.spin.is-small .spin-ring { filter: none; }
+
+/* Over the dimmed scene, centred, with no window; it fades in after 150 ms so quick work never flashes it. */
+.spin-veil { position: fixed; inset: 0; z-index: 25; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--md-ink) 55%, transparent); opacity: 0; animation: spin-veil-in 120ms ease-out 150ms forwards; }
+@keyframes spin-veil-in { to { opacity: 1; } }
+
+/* Reduced motion: no chase and no rotation; the whole ring breathes slowly. */
+@media (prefers-reduced-motion: reduce) {
+  .spin-ring rect { animation: none; opacity: 0.85; }
+  .spin-ring { animation: spin-pulse 2.4s ease-in-out infinite; }
+  .spin-veil { animation: spin-veil-in 1ms linear 150ms forwards; }
+}
+@keyframes spin-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+/* Boot splash: the name, the ring and one lore tip over the ink page; a card-less, wordless-loading first impression. */
+.boot { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; box-sizing: border-box; background: radial-gradient(60% 50% at 50% 42%, color-mix(in srgb, var(--md-eclipse) 14%, transparent), transparent 70%), var(--md-ink); opacity: 1; transition: opacity 200ms ease-out; }
+.boot[hidden] { display: none; }
+.boot.is-leaving { opacity: 0; pointer-events: none; }
+.boot-title { margin: 0; font-size: 34px; letter-spacing: 0.08em; color: var(--md-eclipse); text-shadow: 0 0 18px color-mix(in srgb, var(--md-eclipse-glow) 45%, transparent), 0 3px 0 var(--md-ink); text-align: center; }
+.boot-tip { margin: 0; max-width: 28em; min-height: 3em; text-align: center; font-family: var(--md-text-font); font-size: 18px; line-height: 1.5; color: var(--md-text-dim); }
+@media (prefers-reduced-motion: reduce) { .boot { transition: none; } }

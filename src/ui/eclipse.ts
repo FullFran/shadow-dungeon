@@ -1,4 +1,4 @@
-import { sheetKey, type SheetStore } from '../adapters/assets';
+import { sheetKey, type SheetImage, type SheetStore } from '../adapters/assets';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { SPRITES } from '../data/sprites';
 import { buildHaven, HORIZON, type HavenLayers } from './dusk-haven';
@@ -60,7 +60,7 @@ export function setBackdropSheets(sheets: Promise<SheetStore>): void {
   });
 }
 
-function cutOf(key: string, image: HTMLImageElement): { lit: HTMLCanvasElement; rim: HTMLCanvasElement } {
+function cutOf(key: string, image: SheetImage): { lit: HTMLCanvasElement; rim: HTMLCanvasElement } {
   const cached = cuts.get(key);
   if (cached) return cached;
   const tinted = (color: string) => {

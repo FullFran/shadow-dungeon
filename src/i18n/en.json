@@ -617,7 +617,7 @@
   "endless.global.title": "Sima del Eclipse, global ranking ({tier}):",
   "endless.global.entry": "{rank}. {name} F{floor} {time}",
   "endless.global.you": "{entry} (you)",
-  "endless.global.loading": "loading… Read the board again in a moment.",
+  "endless.global.loading": "· · ·",
   "endless.global.unavailable": "unavailable right now (offline or the server is down). Your marks on this device are still above.",
   "endless.global.empty": "no account has a mark on this tier yet. Only accounts count; guests do not appear.",
   "endless.global.guest": "log in from \"Account\" to see it and appear on it. Guests do not appear.",

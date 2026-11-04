@@ -2,6 +2,7 @@ import { normalizeFriendCode, type FriendsApi, type FriendsError, type FriendsOv
 import { t } from '../i18n';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { pixelIconSvg } from '../ui/pixel-icons';
+import { spinLoader } from '../ui/spinner';
 import { h } from '../ui/window';
 import { friendsView, gateFor, loadFriends, type FriendsView } from './friends-screen';
 import { hubStep } from './title-hub';
@@ -56,7 +57,9 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
   let disposed = false;
   let poll: ReturnType<typeof setInterval> | null = null;
   const say = (key: string) => {
-    status.textContent = key ? t(key) : '';
+    // Loading is the spin loader (no word); anything else is a message line.
+    if (key === 'friends.loading') status.replaceChildren(spinLoader({ label: t(key), size: 32 }));
+    else status.textContent = key ? t(key) : '';
   };
 
   const input = h('input', { type: 'text', className: 'rk-input fr-input', placeholder: t('friends.codePlaceholder'), id: 'fr-code-input' });
@@ -207,7 +210,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
       h('span', { className: 'fr-head-online', textContent: view ? t('friends.onlineCount').replace('{n}', String(view.onlineCount)) : '' }),
       button(t('friends.reload'), 'rk-quiet', () => void load(true), 'reload'),
     ]);
-    const cards = view ? list(view) : h('ul', { className: 'fr-list' }, [h('li', { className: 'fr-empty', textContent: t('friends.loading') })]);
+    const cards = view ? list(view) : h('ul', { className: 'fr-list' }, [h('li', { className: 'fr-empty' }, [spinLoader({ label: t('friends.loading'), size: 48 })])]);
     return h('div', { className: 'fr-split' }, [side, h('section', { className: 'fr-main' }, [head, cards, status])]);
   }
 

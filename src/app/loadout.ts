@@ -3,7 +3,7 @@ import { SPECIES, STARTER_SPECIES, type SpeciesId } from '../data/species';
 import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
 import { hasFemaleArt } from '../core/gender';
 import type { PokemonType } from '../data/types';
-import { sheetKey, type SheetStore } from '../adapters/assets';
+import { sheetImage, sheetKey, type SheetStore } from '../adapters/assets';
 import '../ui/sprite-fit';
 import { frameAtTime } from '../adapters/sprite-anim';
 import { t } from '../i18n';
@@ -126,8 +126,8 @@ export function portrait(sheets: Promise<SheetStore>, species: SpeciesId, scale 
   canvas.height = meta?.frameHeight ?? 48;
   canvas.style.width = `${canvas.width * scale}px`;
   canvas.style.height = `${canvas.height * scale}px`;
-  void sheets.then((store) => {
-    const image = meta && store.get(sheetKey(key, meta.file));
+  void sheets.then(async (store) => {
+    const image = meta && (await sheetImage(store, sheetKey(key, meta.file)));
     if (!meta || !image || !canvas.getContext('2d')) return;
     const start = performance.now();
     let crop: Bounds | null = null;

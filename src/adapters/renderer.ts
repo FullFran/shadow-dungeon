@@ -253,6 +253,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const meta = SPRITES.sprites[choice.sprite]?.anims[choice.anim];
     const image = meta && sheets.get(sheetKey(choice.sprite, meta.file));
     if (!meta || !image) {
+      // On its way (lazy loading, adapters/assets.ts): draw nothing for a frame or two rather than a "missing sheet" mark.
+      if (meta && sheets.pending?.(sheetKey(choice.sprite, meta.file))) return;
       ctx.fillStyle = '#ff00ff';
       ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y - 16), 12, 16);
       return;

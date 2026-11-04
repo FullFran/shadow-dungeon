@@ -115,4 +115,22 @@ describe('service worker', () => {
     expect(strategy(`${SCOPE}music/a.ogg`, 'no-cors', 'GET', true)).toBe('network');
     expect(strategy('https://user.github.io/other-repo/sprites/a.png')).toBe('network');
   });
+
+  it('keeps sprites and portraits in an art cache that survives a new build, and drops it only when the art changes', async () => {
+    const { sandbox, run, stores, deleted } = load('v2');
+    expect(sandbox.ART_CACHE).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('sprites/0778/0000/Idle-Anim.png')).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('portraits/0778.png')).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('assets/index-x.js')).toBe('mazmorra-runtime-v2');
+    stores.set('mazmorra-art-dev', { added: [] });
+    stores.set('mazmorra-art-oldhash', { added: [] });
+    stores.set('mazmorra-runtime-v1', { added: [] });
+    await run('activate');
+    expect(deleted.sort()).toEqual(['mazmorra-art-oldhash', 'mazmorra-runtime-v1']);
+  });
+
+  it('serves portraits cache-first like the sprites', () => {
+    const { sandbox } = load();
+    expect(sandbox.strategyFor!({ url: `${SCOPE}portraits/0778.png`, mode: 'cors', method: 'GET', range: false }, SCOPE)).toBe('cache-first');
+  });
 });

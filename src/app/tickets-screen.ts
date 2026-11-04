@@ -1,6 +1,7 @@
 import type { AdminApi, AdminError, Ticket, TicketStatus, TriageStatus } from '../adapters/admin-api';
 import { t } from '../i18n';
 import { cursorList, type CursorList, type ListItem } from '../ui/cursor-list';
+import { spinLoader } from '../ui/spinner';
 import { h } from '../ui/window';
 
 /**
@@ -196,7 +197,7 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
 
   async function load(): Promise<void> {
     const token = options.token();
-    status.textContent = t('tickets.loading');
+    status.replaceChildren(spinLoader({ label: t('tickets.loading'), size: 32 }));
     const result = token ? await options.api.list(token) : ({ ok: false, error: 'denied' } as const);
     if (disposed) return;
     if (!result.ok) {

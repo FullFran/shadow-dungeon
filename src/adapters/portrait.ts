@@ -1,5 +1,5 @@
 import { SPRITES } from '../data/sprites';
-import { sheetKey, type SheetStore } from './assets';
+import { sheetImage, sheetKey, type SheetStore } from './assets';
 import { frameAtTime } from './sprite-anim';
 
 /**
@@ -21,8 +21,8 @@ export function idlePortrait(spriteKey: string | null, sheets: Promise<SheetStor
   canvas.height = meta.frameHeight;
   canvas.style.width = `${canvas.width * scale}px`;
   canvas.style.height = `${canvas.height * scale}px`;
-  void sheets.then((store) => {
-    const image = store.get(sheetKey(spriteKey, meta.file));
+  void sheets.then(async (store) => {
+    const image = await sheetImage(store, sheetKey(spriteKey, meta.file));
     const ctx = canvas.getContext('2d');
     if (!image || !ctx) return;
     const start = performance.now();
