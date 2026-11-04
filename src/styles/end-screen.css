@@ -1,0 +1,60 @@
+/* The end screen of a run, a trial or the Sima (src/app/end-screen.ts). .agents/DESIGN.md §4: a dialog over the frozen game,
+   cards that group the figures, one ember action, fixed geometry, colours only from tokens. */
+.rs-veil { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--md-ink) 74%, transparent); }
+/* The game's last frame stays under the veil: no pointer, no crosshair. */
+canvas.game.is-frozen { pointer-events: none; cursor: default; }
+
+#app .rs-window.result { display: flex; flex-direction: column; width: min(50rem, calc(100vw - 24px)); min-width: 0; max-height: calc(100dvh - 32px); padding: 18px 22px 16px; box-sizing: border-box; text-align: left; }
+#app .rs-window.result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 5px var(--md-cursor), 0 0 34px color-mix(in srgb, var(--md-cursor) 40%, transparent); }
+#app .rs-window.result.defeat, #app .rs-window.result.cut { border-color: var(--relic-blood); }
+#app .rs-window > .md-window-body { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1; overflow: hidden !important; }
+
+.rs-head { flex: none; display: flex; align-items: center; gap: 18px; }
+/* Sprite box (.agents/DESIGN.md §4): the whole frame fits, feet on the bottom edge. */
+.rs-art { flex: none; width: 160px; height: 112px; }
+.rs-head-text { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rs-title { margin: 0; font-size: 34px; line-height: 1.05; letter-spacing: 0.06em; color: var(--md-text); text-shadow: 0 3px 0 var(--md-ink); overflow-wrap: anywhere; }
+.rs-window.victory .rs-title { color: var(--md-cursor); text-shadow: 0 0 16px color-mix(in srgb, var(--md-cursor) 55%, transparent), 0 3px 0 var(--md-ink); }
+.rs-window.defeat .rs-title, .rs-window.cut .rs-title { color: var(--md-eclipse); }
+.rs-sub { margin: 0; font-family: var(--md-text-font); font-size: 18px; line-height: 1.25; color: var(--md-text); }
+.rs-note { margin: 0; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
+
+.rs-cards { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; align-content: start; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.rs-cards-1 { grid-template-columns: minmax(0, 1fr); }
+.rs-cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rs-cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rs-card { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.rs-card-title { margin: 0 0 3px; font-size: 14px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--md-cursor); }
+.rs-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; }
+.rs-label { flex: none; color: var(--md-text-dim); }
+.rs-figure { min-width: 0; display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; text-align: right; }
+.rs-value { font-weight: 700; color: var(--md-text); overflow-wrap: anywhere; }
+.rs-coin { width: 16px; height: 16px; flex: none; align-self: center; }
+.rs-line.is-coin .rs-value { color: var(--md-cursor); }
+.rs-line.is-best .rs-value { font-size: 22px; color: var(--md-cursor); }
+.rs-badge { padding: 0 7px; border-radius: 4px; font-size: 12px; line-height: 1.7; font-weight: 700; color: var(--md-ink); background: var(--md-cursor); }
+.rs-card .rs-note { font-size: 13px; }
+
+.rs-actions.md-list { flex: none; flex-wrap: nowrap; justify-content: center; gap: 12px; }
+.rs-actions .md-item { min-height: 48px; padding: 0 26px; justify-content: center; border-radius: 6px; font-size: 20px; letter-spacing: 0.06em; text-align: center; border: 2px solid var(--relic-gold-deep); background: var(--relic-slab); color: var(--md-text-dim); box-shadow: 0 0 0 2px var(--md-ink); }
+.rs-actions .md-cursor { display: none; }
+.rs-actions .md-label { flex: none; }
+/* The one ember action (Von Restorff). */
+.rs-actions .md-item.rs-primary { color: var(--md-text); border-color: var(--md-border); background: linear-gradient(180deg, var(--relic-blood), var(--md-ink)); box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
+.rs-actions .md-item.is-active, .rs-actions .md-item:focus-visible { border-color: var(--md-cursor); color: var(--md-text); outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent); }
+.rs-actions .md-item:hover { border-color: var(--md-border); color: var(--md-text); }
+
+@media (max-width: 760px) { .rs-cards-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .rs-cards-2, .rs-cards-3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-height: 560px) {
+  .rs-veil { padding: 8px; }
+  #app .rs-window.result { padding: 10px 14px 10px; max-height: calc(100dvh - 16px); }
+  #app .rs-window > .md-window-body { gap: 8px; }
+  .rs-head { gap: 12px; } .rs-art { width: 112px; height: 72px; }
+  .rs-title { font-size: 24px; } .rs-sub { font-size: 15px; } .rs-note { font-size: 12px; }
+  .rs-card { padding: 6px 10px; } .rs-card-title { font-size: 12px; } .rs-line { font-size: 13px; line-height: 1.25; } .rs-line.is-best .rs-value { font-size: 18px; }
+  .rs-actions .md-item { min-height: 44px; font-size: 17px; padding: 0 18px; }
+}
+
+#app:has(.rs-veil) > .notice { display: none; }

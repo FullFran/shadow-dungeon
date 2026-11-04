@@ -7,7 +7,7 @@ import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
 import { drawHeraldScene } from '../adapters/herald-scenes';
 import type { HeraldDef } from '../data/herald';
 import { readBestiary, recordHerald } from '../town/bestiary';
-import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest } from '../town/shrine-records';
+import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest, type TrialBest } from '../town/shrine-records';
 import type { GauntletId } from '../data/shrine';
 import { requestName, shrineResultScreen, shrineWindow, type ShrineView, type TrialRequest } from './shrine';
 import { loadoutBack, loadoutSpecies, loadoutStart, roomTrialOf, shrineFight, trialRequestOf, viewOf, type ShrineStep } from './shrine-route';
@@ -32,6 +32,8 @@ import { sceneLayers } from '../ui/scene';
 import { applyTokens, FONT } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
+import { endModel } from './end-model';
+import { endScreen, endVeil } from './end-screen';
 import { APP_VERSION, buildLabel } from './build-info';
 import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion } from './patch-notes';
 import { setupAccount } from './account-screen';
@@ -1711,7 +1713,7 @@ function trialEnd(root: HTMLElement, run: TrialRun, result: GameResult, summary:
   const herald = heraldName(request);
   // An online room goes back to its town (the host reopens it, the guests follow); no retry from here.
   const actions = from === 'room' ? { onBack: () => backToRoom(root) } : { onRetry: () => void playTrial(root, request, from, pick), onBack: () => shrineScreen(root, from, view, request.id) };
-  show(root, [shrineResultScreen({ request, victory, trial, before, coins, balance, ...actions }, herald)], true, victory ? 'victory' : 'defeat');
+  show(root, [shrineResultScreen({ request, victory, trial, before, coins, balance, sheets: sheetsReady(), ...actions }, herald)], false, victory ? 'victory' : 'defeat', true);
 }
 
 /** The upgrade shop from the title menu (its last entry). */
@@ -1945,33 +1947,6 @@ interface EndScore {
   board: readonly ScoreEntry[];
 }
 
-/** The Sima del Eclipse column of the end screen: mode, date, seed, floor and time left, rank, and the top of the board. */
-function scoreColumn(score: EndScore): HTMLElement {
-  const { entry } = score;
-  // Across both columns: this run on the left, the top of the board on the right (this run's row highlighted).
-  const top = h(
-    'div',
-    {},
-    score.board.slice(0, 3).map((e, i) => {
-      const row = h('p', { className: i + 1 === score.rank ? '' : 'dim', textContent: scoreLine(e, i + 1, t) });
-      row.style.margin = '0.15rem 0';
-      if (i + 1 === score.rank) row.style.color = 'var(--cursor, #ffd447)';
-      return row;
-    }),
-  );
-  const column = h('div', { className: 'endless-score' }, [
-    h('div', {}, [
-      h('h3', { className: 'dim', textContent: t('endless.score') }),
-      statLine(t('endless.score.mode'), `${t(`endless.mode.${entry.mode}`)} · ${entry.date}`),
-      statLine(t('endless.score.time'), clockText(entry.clockMs)),
-      statLine(t('endless.score.rank'), score.rank === null ? t('endless.score.unranked') : `#${score.rank}`),
-    ]),
-    h('div', {}, [h('h3', { className: 'dim', textContent: t('endless.board.top') }), top]),
-  ]);
-  Object.assign(column.style, { gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))', gap: '0 2.5rem' });
-  return column;
-}
-
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore, materials?: string | null): void {
   // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
   const inRoom = online && room !== null && current === room.session;
@@ -1979,55 +1954,10 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => hub(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
-  const items: ListItem[] = endActions({ online, tutorialWon: summary.dungeon === TUTORIAL.id && result === 'victory' }).map((action) =>
-    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : townIsOpen() ? 'screen.town' : 'screen.menu'), onConfirm: back },
-  );
   const held = heldItems(summary.items as ItemId[]);
-  show(root, [
-    mdWindow({ className: `result ${result}` }, [
-      h('h1', { textContent: t(endHeading(result, summary.cutShort).title) }),
-      // Victory names the dungeon's guardian, defeat the player's Pokémon (a run the host cut short says neither).
-      ...(endHeading(result, summary.cutShort).text
-        ? [h('p', { textContent: t(endHeading(result, summary.cutShort).text!).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) })]
-        : []),
-      // The host cut the run short: why it ended, and what was kept.
-      ...(summary.cutShort ? [h('p', { className: 'dim', textContent: t(`net.cutShort.${summary.cutShort}`) })] : []),
-      // A challenge's own closing line (its trial's lore).
-      ...(victoryLine(dungeonById(summary.dungeon), result) ? [h('p', { className: 'dim', textContent: t(victoryLine(dungeonById(summary.dungeon), result)!) })] : []),
-      // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
-      h('div', { className: 'result-columns' }, [
-        h('div', {}, [
-          h('h3', { className: 'dim', textContent: t('screen.summary') }),
-          statLine(t('difficulty.label'), t(`difficulty.${summary.difficulty}`)),
-          statLine(t('screen.floorReached'), String(summary.floor)),
-          statLine(t('screen.level'), String(summary.level)),
-          statLine(t('screen.seed'), String(summary.seed)),
-          statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
-          ...(party ? [statLine(t('screen.party'), party.join(', '))] : []),
-          // The Sima: the floor events taken this run.
-          ...(summary.simaEvents?.length
-            ? [h('h3', { className: 'dim', textContent: t('sima.summary.title') }), ...simaEventLines(summary.simaEvents, t).map((line) => simaLine(line))]
-            : []),
-        ]),
-        h('div', { className: 'coin-lines' }, [
-          h('h3', { className: 'dim', textContent: t('screen.coins') }),
-          // The Sima's ×0.5 is its pay rate, not a difficulty: its line says so.
-          ...coinLines(summary.coins, balance, (key) => t(score && key === 'screen.coins.multiplier' ? 'endless.coins.rate' : key)).map((line) => statLine(line.label, line.value)),
-          // A challenge clear: the materials it paid (after-run.ts).
-          ...(materials ? [statLine(t('screen.materials'), materials)] : []),
-        ]),
-        ...(score ? [scoreColumn(score)] : []),
-      ]),
-      cursorList({ items, onBack: back, className: 'result-actions' }).element,
-    ]),
-  ], true, result === 'eclipse' ? 'victory' : result);
-}
-
-/** One line of the Sima's events on the end screen: small and tight, so the actions stay in view. */
-function simaLine(text: string): HTMLElement {
-  const line = h('p', { className: 'dim', textContent: text });
-  Object.assign(line.style, { margin: '0.1rem 0', fontSize: '0.85em', lineHeight: '1.25' });
-  return line;
+  const view = endModel({ result, summary, online, balance, party, playerSpecies: settings.species, townOpen: townIsOpen(), heldNames: held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`), ...(score ? { score } : {}), materials }, t);
+  // A dialog over the run's last frame, not over the title's backdrop (ui/scene.ts).
+  show(root, [endVeil(endScreen({ view, sheets: sheetsReady(), onAction: (id) => (id === 'retry' ? retry() : back()) }))], false, result === 'eclipse' ? 'victory' : result, true);
 }
 
 /** Records an endless run's score (floor, time left, mode from its seed, the UTC day) and returns its rank. */
@@ -2276,6 +2206,23 @@ function devScreen(root: HTMLElement): boolean {
     },
     defeat: () =>
       resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 83, share: 0.75, total: 62 } }, false, loadSave(store).coins),
+    // `&result=victory|defeat`: a real run cut after three seconds, to see the end dialog over its frozen last frame.
+    runend: () => {
+      void play(root, undefined, devDungeon());
+      const result = new URLSearchParams(window.location.search).get('result') === 'victory' ? 'victory' : 'defeat';
+      window.setTimeout(() => resultScreen(root, result, summary, false, loadSave(store).coins), 3000);
+    },
+    // `&kind=boss|gauntlet|herald&won=1&ms=83400&before=91000&coins=195&retry=0`: the shrine's result screen on its own.
+    shrineresult: () => {
+      const params = new URLSearchParams(window.location.search);
+      const kind = params.get('kind') ?? 'boss';
+      const request = trialRequestOf(kind === 'gauntlet' ? { kind: 'gauntlet', id: 'guardians', difficulty: 'normal' } : kind === 'herald' ? { kind: 'herald', id: '7', difficulty: 'normal' } : { kind: 'boss', id: 'aegislash', difficulty: 'normal' })!;
+      const before = params.get('before');
+      const won = params.get('won') !== '0';
+      const trial = { stops: request.stops, beaten: won ? request.stops.length : 1, ms: Number(params.get('ms') ?? 83400), captures: 3, noHit: params.get('nohit') === '1' };
+      const actions = params.get('retry') === '0' ? { onBack: () => titleScreen(root) } : { onRetry: () => titleScreen(root), onBack: () => titleScreen(root) };
+      show(root, [shrineResultScreen({ request, victory: won, trial, before: before ? ({ bestMs: Number(before) } as TrialBest) : null, coins: Number(params.get('coins') ?? 0), balance: 640, sheets: sheetsReady(), ...actions })], false, won ? 'victory' : 'defeat', true);
+    },
     // Waits for the sprites so a screenshot shows the silhouettes.
     prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };

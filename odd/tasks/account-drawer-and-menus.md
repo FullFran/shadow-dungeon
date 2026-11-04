@@ -41,7 +41,7 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 ## Pending for the owner / Fran
 
 - Not tried in a real browser: Google/Discord redirect and `?sso=1` return, sign-up code step, reset password, new-device code.
-- Shrine 844x390: record text partly behind Jurar; unlocked gauntlet without record shows "Vencido" (should read "Abierto"); shrine result screen keeps the old style.
+- (done, L5) Shrine 844x390 sheet, "Abierto" chip and the shrine result screen.
 - Hub altar, profile face and quiz portrait not on the shared sprite-fit rule (no clipping seen).
 - JWT `azp` check not added.
 
@@ -55,3 +55,4 @@ Clerk is the identity provider; PocketBase stays the data store. The client sign
 - L2 (2026-11-04): asked Clerk vs native PocketBase OAuth; owner chose Clerk (S3). Clerk app created and linked with `clerk` CLI; Discord enabled, password min length 8; keys in `.env.local` (now gitignored).
 - L3 (2026-11-04, T4): Santuario and Tablón rebuilt as picker windows (`src/app/shrine.ts`, `src/app/board.ts`, pure models `shrine-hall.ts` and `board-view.ts`, shared `src/ui/hall-nav.ts` and `src/styles/hall.css`). Tests iterate every `SHRINE_BOSSES`, `GAUNTLETS` and mission kind. Added `abandonMission`/`abandonAt` for the new Abandonar action (confirm dialog); accept limits, rewards and records untouched. Shrine heralds stay as a third tab once met.
 - L4 (2026-11-04): owner: sprites cut in the shrine ("que no pase en ningún otro sitio"), achievements description overlaps, Maestro too saturated → single-column accordions with internal scroll. Done in `odd/tasks/clip-achievements-maestro-fixes.md`.
+- L5 (2026-11-04): shrine sheet is a column with a scrolling rules/record region above a fixed button row (two columns at 844x390); gauntlets and heralds without a record read `Abierto` (`OathState` gains `open`). Owner extension: every win/lose end screen shares one relic view (`src/app/end-screen.ts`, data in `end-model.ts` and `shrine-result.ts`, tests iterate every dungeon, challenge, Sima, outcome, solo/co-op); end screens and in-game dialogs sit over the run's frozen last frame, never the title backdrop (`src/ui/scene.ts`, `show(..., freeze)`). Parity: Cartas capturadas, retry, back, coin lines, materials, Sima score and events all kept; measured with Playwright at 1440x900, 1366x768, 1280x720, 844x390 (Sima end screen scrolls inside its cards region at 844x390). Dev screens `?screen=runend`, `?screen=shrineresult`. Not browser-tested: gamepad on the end screen, co-op end over a real room.
