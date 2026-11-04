@@ -45,5 +45,6 @@ export const SPRITE_BOXES: readonly SpriteBox[] = [
   { file: 'src/styles/evolve-shop.css', selector: '.ev-form', minW: 68, h: 100 },
   { file: 'src/styles/challenges.css', selector: '.ch-stage-sprite', minW: 200, h: 160 },
   { file: 'src/styles/loadout-moves.css', selector: '.lm-head-art', minW: 56, h: 64 },
+  { file: 'src/styles/pause.css', selector: '.pz-sprite', minW: 112, h: 96 },
   { file: 'src/styles/gacha-page.css', selector: '.gp-own-art', minW: 100, h: 84 },
 ];

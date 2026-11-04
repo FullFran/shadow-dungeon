@@ -2090,8 +2090,11 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     gamepad: gamepads,
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
-    openMenu: (actions, held) =>
-      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),
+    openMenu: (actions, held, context) =>
+      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held, {
+        ...context,
+        portrait: (id) => portrait(sheetsReady(), id, 4, skinOn(id), femaleOn(id)),
+      }),
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`): a room's run to the room's town, still in it (ticket SD-RIKZIZ);
     // a solo run to the hub (the title until the town opens: odd/tasks/menu-redesign.md S7).
     onQuit: () =>

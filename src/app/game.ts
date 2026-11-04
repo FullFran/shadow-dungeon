@@ -97,7 +97,8 @@ import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from '
 import { openMemoryCard } from './memory-card';
 import { FRAGMENT_REACH, fragmentSpot, type StoryRun } from '../core/story';
 import { chapterOf, STORY_LOW_HP, STORY_MID_FLOOR, storyKeys, storyOf, type StoryTrigger } from '../data/story-quests';
-import { simulationPaused, type MenuActions } from './menu';
+import { simulationPaused, type MenuActions, type PauseContext } from './menu';
+import { buildPauseMap, cropPauseMap } from './pause-map';
 import { createNetOverlay } from './net-overlay';
 import { hudScaleFor } from '../ui/hud-layout';
 
@@ -188,7 +189,7 @@ export interface GameOptions {
   /** The M key. */
   onToggleMute?(): void;
   /** Esc: shows the menu overlay (with the held items listed) and returns a function that removes it. */
-  openMenu?(actions: MenuActions, held: readonly HeldItem[]): () => void;
+  openMenu?(actions: MenuActions, held: readonly HeldItem[], context: PauseContext): () => void;
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
   onEnd(result: GameResult, summary: RunSummary): void;
@@ -1097,6 +1098,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
   window.addEventListener('blur', onLeavePage);
   document.addEventListener('visibilitychange', onHidden);
+  const pausePalette = () => {
+    const band = simaBand();
+    return band ? simaPalette(band) : dungeonOf(run).palette;
+  };
   function showMenu(): void {
     if (closeMenu || ended || !options.openMenu) return;
     // Release everything held: menu clicks must not attack, and keys held now must not stick.
@@ -1115,6 +1120,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         },
       },
       heldItems(world.player.items),
+      {
+        info: { species: world.player.species, dungeon: run.dungeon, floor: run.floor, difficulty, elapsedMs: realMs, coins: Math.max(0, coinsInHand()), loadout: world.player.loadout, coop: Boolean(net) },
+        map: { model: cropPauseMap(buildPauseMap(world, minimap, view)), palette: pausePalette() },
+      },
     );
   }
 
