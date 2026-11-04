@@ -92,12 +92,14 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   female sheets) and every shrine boss in every box and checks the stylesheet agrees.
 
 - **Pause window** (`src/app/pause-view.ts`, `src/app/pause-model.ts`, `src/app/pause-map.ts`, `src/styles/pause.css`): one centred relic
-  window over the dimmed, frozen run (the overlay is a `no-dismiss` veil: a press outside does nothing, so a stray click never resumes a
+  window over the dimmed, frozen run (one veil of 52-64% ink: the room, the player and the HUD stay readable behind it; a confirm opened over it
+  adds no second veil of its own; the overlay is a `no-dismiss` veil: a press outside does nothing, so a stray click never resumes a
   run or reaches an action). Three fixed columns, no page scroll: actions (slab rows ≥ 44 px, 32 px colour pixel icon, name, one quiet
-  line; Continuar first and the only ember, Salir last and in the danger colour, Hick ≤ 7); the floor plan; the run summary card.
+  line; Continuar first and the only ember; Pantalla completa after Ajustes, its label following the state; Salir last, apart and a quiet slab like the rest, the danger carried by its blood-tinted icon and the confirm dialog, Hick ≤ 7); the floor plan; the run summary card.
   Destructive rows (restart, quit) go through `confirmDialog` with a consequence line; a disabled row stays and says why. The floor plan
-  paints the explored tiles of the dungeon's own tileset at the largest whole pixel scale that fits (`mapScale`, crisp, cropped to the
-  known area plus a margin), fog on the frontier, markers as 16×16 pixel icons (player, partner, stairs, berry, enemy, event, gate) and a
+  paints the explored tiles of the dungeon's own tileset (floor checker with a faint grid, wall tops lit with a dark side, shaded faces) at the
+  largest whole pixel scale that fits (`planScale`, crisp; fractional only when a whole scale would leave over 35% of the panel empty;
+  cropped to the known area plus a margin so it fills the panel), dithered fog on the frontier, markers as 16×16 pixel icons (player, partner, stairs, berry, enemy, event, gate) and a
   legend of what is shown; it knows only what the minimap knows. The summary card holds the partner in a `sprite-box` (`.pz-sprite`),
   dungeon and floor, tier, time, coins, the four moves with their slot icon and the held items (with an empty state). Under 520 px of
   height or 900 px of width the columns shrink (11.5 / 1fr / 15.5 rem), hints and stat labels hide, and the item list scrolls inside

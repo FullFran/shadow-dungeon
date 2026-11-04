@@ -3881,6 +3881,8 @@
   "pause.hint.report": "Tell us what went wrong",
   "pause.hint.copyReport": "Technical data to attach",
   "pause.hint.quit": "Abandon the expedition",
+  "pause.hint.fullscreen": "Fill the whole screen",
+  "pause.hint.fullscreenExit": "Back to the window",
   "pause.confirm.restart.title": "Restart the floor",
   "pause.confirm.restart.body": "You return to the start of this floor and lose what you did on it. It spends a restart when the tier limits them.",
   "pause.confirm.restart.confirm": "Restart",

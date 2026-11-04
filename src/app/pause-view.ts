@@ -6,7 +6,7 @@ import { MAP_ICONS, PAUSE_ICONS } from '../ui/icons/pause-icons';
 import { TUTOR_ICONS } from '../ui/icons/tutor-icons';
 import { pixelIconSvg, pixelSvgOf } from '../ui/pixel-icons';
 import type { TilePalette } from '../data/dungeons';
-import { legendOf, mapColor, mapScale, paintPauseMap, type MapMarker, type PauseMapModel } from './pause-map';
+import { legendOf, mapColor, paintPauseMap, planScale, type MapMarker, type PauseMapModel } from './pause-map';
 import { h, mdWindow } from '../ui/window';
 import { pauseActions, type MenuActions, type PauseAction, type PauseEntry, type PauseSummary } from './pause-model';
 import '../styles/sprite-fit.css';
@@ -91,6 +91,10 @@ export function pauseView(options: PauseViewOptions): PauseView {
         return actions.restart();
       case 'settings':
         return options.onSettings();
+      case 'fullscreen':
+        actions.toggleFullscreen?.();
+        // The change lands a moment later (the browser's event); `fullscreenchange` refreshes the row too.
+        return void queueMicrotask(syncFullscreen);
       case 'report':
         return options.onReport();
       case 'copyReport':
@@ -99,6 +103,18 @@ export function pauseView(options: PauseViewOptions): PauseView {
         return actions.quit();
     }
   }
+
+  // The fullscreen row says which way it goes: its label follows the page's state.
+  function syncFullscreen(): void {
+    const next = pauseActions(actions, t, summary.coop).find((a) => a.id === 'fullscreen');
+    const row = rows.find((r) => r.dataset.action === 'fullscreen');
+    if (!next || !row) return;
+    row.querySelector('.pz-action-label')!.textContent = next.label;
+    row.querySelector('.pz-action-hint')!.textContent = next.hint;
+    row.setAttribute('aria-pressed', String(actions.isFullscreen?.() === true));
+  }
+  document.addEventListener('fullscreenchange', syncFullscreen);
+  syncFullscreen();
 
   // ---- summary card
   const sprite = h('div', { className: 'pz-sprite sprite-box' }, [options.portrait?.(summary.species)]);
@@ -198,6 +214,7 @@ export function pauseView(options: PauseViewOptions): PauseView {
     focus,
     dispose: () => {
       window.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('fullscreenchange', syncFullscreen);
       mapPanel.dispose();
     },
   };
@@ -231,19 +248,22 @@ function floorPlan(map: { model: PauseMapModel; palette: TilePalette } | null, f
   const markers = (): MapMarker[] => [...model.markers].sort((a, b) => MARKER_ORDER.indexOf(a.kind) - MARKER_ORDER.indexOf(b.kind));
   const draw = (): void => {
     // Layout size, not the bounding box: the window is still scaling in when this first runs.
-    const scale = mapScale(model, stage.clientWidth, stage.clientHeight);
-    canvas.width = model.cols * scale;
-    canvas.height = model.rows * scale;
-    board.style.width = `${canvas.width}px`;
-    board.style.height = `${canvas.height}px`;
+    if (stage.clientWidth < 2 || stage.clientHeight < 2) return;
+    const plan = planScale(model, stage.clientWidth, stage.clientHeight);
+    canvas.width = model.cols * plan.paintScale;
+    canvas.height = model.rows * plan.paintScale;
+    const width = Math.round(plan.width);
+    const height = Math.round(plan.height);
+    board.style.width = `${width}px`;
+    board.style.height = `${height}px`;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.imageSmoothingEnabled = false;
-      paintPauseMap(ctx, model, palette, scale);
+      paintPauseMap(ctx, model, palette, plan.paintScale);
     }
-    // The icons stay legible however small the tiles get, but never grow past the corridor they mark.
-    const size = Math.max(14, Math.min(24, scale * 4));
-    board.replaceChildren(canvas, ...markers().map((m) => place(m, size, scale)));
+    // The icons grow with the plan, never under 14 px and never past the corridor they mark (about one tile and a half).
+    const size = Math.max(14, Math.min(26, Math.round(plan.scale * 1.2)));
+    board.replaceChildren(canvas, ...markers().map((m) => place(m, size, plan.scale)));
   };
   const legend = legendOf(model);
   const swatch = (kind: (typeof legend.tiles)[number]): HTMLElement => {

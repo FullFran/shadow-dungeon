@@ -11,7 +11,7 @@ import { vec } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { CHALLENGES, DUNGEONS, ECLIPSE, floorsOf } from '../../src/data/dungeons';
-import { buildPauseMap, cropPauseMap, kindAt, legendOf, MAP_KINDS, mapColor, mapScale, MARKER_KINDS, paintPauseMap, type MapPen } from '../../src/app/pause-map';
+import { buildPauseMap, cropPauseMap, kindAt, legendOf, MAP_KINDS, mapColor, mapScale, MARKER_KINDS, paintPauseMap, planScale, type MapPen } from '../../src/app/pause-map';
 
 const VIEW: Rect = { x: 0, y: 0, width: 640, height: 360 };
 const everything: Rect = { x: -1e6, y: -1e6, width: 2e6, height: 2e6 };
@@ -116,6 +116,45 @@ describe('pause map model', () => {
   });
 });
 
+describe('pause map plan scale', () => {
+  const box = [[493, 444], [548, 560], [330, 200], [260, 150]] as const;
+  const sizes = [[12, 8], [24, 14], [40, 30], [90, 60], [200, 120]] as const;
+
+  it('makes the plan fill at least 60% of the panel along its limiting side, whatever the explored size', () => {
+    for (const [bw, bh] of box) {
+      for (const [cols, rows] of sizes) {
+        const plan = planScale({ cols, rows }, bw, bh);
+        expect(plan.width, `${cols}x${rows} in ${bw}x${bh}`).toBeLessThanOrEqual(bw + 0.5);
+        expect(plan.height).toBeLessThanOrEqual(bh + 0.5);
+        expect(Math.max(plan.width / bw, plan.height / bh), `${cols}x${rows} in ${bw}x${bh}`).toBeGreaterThanOrEqual(0.6);
+      }
+    }
+  });
+
+  it('stays on whole pixels per tile unless a whole scale would leave over 35% of the panel empty', () => {
+    for (const [bw, bh] of box) {
+      for (const [cols, rows] of sizes) {
+        const raw = Math.min(bw / cols, bh / rows);
+        const plan = planScale({ cols, rows }, bw, bh);
+        if (Math.floor(raw) >= 1 && Math.floor(raw) / raw >= 0.65) expect(plan.scale).toBe(Math.floor(raw));
+        expect(Number.isInteger(plan.paintScale)).toBe(true);
+        expect(plan.paintScale).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('picks the biggest crisp scale for a small explored area', () => {
+    expect(planScale({ cols: 12, rows: 8 }, 480, 320).scale).toBe(40);
+    expect(planScale({ cols: 12, rows: 8 }, 493, 444).scale).toBe(41);
+  });
+
+  it('goes fractional only when the whole scale would leave the panel mostly empty', () => {
+    const plan = planScale({ cols: 100, rows: 60 }, 190, 180);
+    expect(plan.scale).toBeCloseTo(1.9, 5);
+    expect(plan.paintScale).toBe(2);
+  });
+});
+
 describe('pause map crop and legend', () => {
   it('trims to the explored floor plus a margin and keeps every marker on its tile', () => {
     const { world, memory } = everyKind();
@@ -200,7 +239,9 @@ describe('pause map paints every dungeon', () => {
     const [a, b] = [DUNGEONS[0]!, DUNGEONS[1]!];
     expect(mapColor('floorA', a.palette)).toMatch(/^#[0-9a-f]{6}$/);
     expect(mapColor('floorA', b.palette)).not.toBe(mapColor('floorA', a.palette));
-    expect(mapColor('rock', a.palette)).toBe(a.palette.tileWallTop);
-    expect(mapColor('wall', a.palette)).toBe(a.palette.tileWallFace);
+    // Stone reads in three tones (lit top, shaded face, deep rock), all derived from this dungeon's tileset.
+    const stone = (['wall', 'face', 'rock'] as const).map((k) => mapColor(k, a.palette));
+    expect(new Set(stone).size).toBe(3);
+    expect(mapColor('wall', a.palette)).not.toBe(mapColor('wall', b.palette));
   });
 });

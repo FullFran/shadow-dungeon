@@ -1,6 +1,6 @@
 /* The pause menu in the relic look (src/app/pause-view.ts; .agents/DESIGN.md §4 "Pause window"): three fixed columns in one
-   relic window over the dimmed, frozen run: the actions, the floor plan, the run summary. Colours come from the tokens only. */
-.overlay.pause { box-sizing: border-box; padding: 28px 16px 16px; background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--md-ink) 38%, transparent), color-mix(in srgb, var(--md-ink) 82%, transparent) 80%); animation: relic-veil 160ms ease-out both; }
+   relic window over the dimmed, frozen run (one veil of 52-64% ink: the room, the player and the HUD stay readable behind it): the actions, the floor plan, the run summary. Colours come from the tokens only. */
+.overlay.pause { box-sizing: border-box; padding: 28px 16px 16px; background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--md-ink) 52%, transparent), color-mix(in srgb, var(--md-ink) 64%, transparent) 85%); animation: relic-veil 160ms ease-out both; }
 @media (prefers-reduced-motion: reduce) { .overlay.pause { animation: none; } }
 .pz-window { width: min(76rem, calc(100vw - 32px)); max-height: calc(100dvh - 44px); }
 .pz-body { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr) 19rem; gap: 16px; height: min(37rem, calc(100dvh - 7rem)); }
@@ -23,9 +23,9 @@
   box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
 .pz-action.is-primary .pz-action-hint { color: var(--md-text); }
 .pz-action.is-primary:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent), 0 0 24px color-mix(in srgb, var(--relic-ember) 55%, transparent); }
-/* Leaving sits at the bottom, apart, in the danger colour (Jakob). */
-.pz-action.is-danger { margin-top: auto; color: var(--md-danger); border-color: color-mix(in srgb, var(--relic-blood) 70%, var(--relic-gold-deep)); }
-.pz-action.is-danger:hover, .pz-action.is-danger:focus-visible { color: var(--md-danger); border-color: var(--md-danger); }
+/* Leaving sits at the bottom, apart, as a quiet row like the rest: only one ember per window (Von Restorff). The danger lives in its blood-tinted icon and in the confirm dialog. */
+.pz-action.is-danger { margin-top: auto; }
+.pz-action[aria-pressed='true'] .pz-action-icon { filter: drop-shadow(0 0 3px var(--relic-ember)); }
 .pz-action[aria-disabled='true'] { cursor: default; color: var(--md-disabled); border-color: var(--relic-slab-edge); }
 .pz-action[aria-disabled='true'] .pz-action-icon { opacity: 0.55; }
 .pz-action[aria-disabled='true']:hover { color: var(--md-disabled); border-color: var(--relic-slab-edge); }
@@ -91,8 +91,8 @@
 @media (max-height: 520px), (max-width: 900px) {
   .overlay.pause { padding: 24px 8px 8px; }
   .pz-window { width: calc(100vw - 16px); max-height: calc(100dvh - 32px); padding: 12px 12px 10px; }
-  .pz-body { grid-template-columns: 11.5rem minmax(0, 1fr) 15.5rem; gap: 10px; height: calc(100dvh - 4.4rem); }
-  .pz-actions { gap: 4px; }
+  .pz-body { grid-template-columns: 11.5rem minmax(0, 1fr) 15.5rem; gap: 10px; height: calc(100dvh - 4rem); }
+  .pz-actions { gap: 2px; }
   .pz-action { min-height: 44px; padding: 0 8px; gap: 8px; }
   .pz-action-icon, .pz-action-icon svg.px-icon { width: 24px; height: 24px; }
   .pz-action-label { font-size: 16px; }
@@ -120,3 +120,5 @@
   .pz-coop { font-size: 12px; padding: 4px 8px; }
 }
 html.touch .pz-item { min-height: 44px; }
+/* A dialog opened over the pause (the confirm) must not stack a second dark veil on the frozen game. */
+body:has(.overlay.pause) .rc-veil { background: color-mix(in srgb, var(--md-ink) 22%, transparent); }

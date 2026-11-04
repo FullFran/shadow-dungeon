@@ -14,9 +14,11 @@ Objective: the in-run pause menu leaves the old cursor list ("the old list" of o
 - T3 done: icons `src/ui/icons/pause-icons.ts`. RED: tests/ui/pause-icons.test.ts.
 - T4 done: view `src/app/pause-view.ts`, `src/styles/pause.css`, wiring in `src/app/menu.ts`, `game.ts`, `main.ts`; i18n es/en; DESIGN.md §4/§8; GDD.
 
+- T5 done (owner follow-up 2026-11-04, screenshot pause-1440): frozen game visible under one veil (52-64% ink; the confirm stacks no second one), plan scaled to fill the panel (`planScale`, RED tests in tests/app/pause-map.test.ts) and drawn as a dungeon (lit wall tops, shaded faces, checker, grid, dithered fog), Salir al menú a quiet row (one ember per window), Pantalla completa row (RED tests in tests/app/pause-model.test.ts).
+
 ## Actions before / after
 
-Before (`pauseEntries`): resume, restart (with uses left), quick settings, report, copy technical report, quit. After: the same six, same order, same logic. Restart and quit now confirm; settings open the full settings window over the pause.
+Before (`pauseEntries`): resume, restart (with uses left), quick settings, report, copy technical report, quit. After: the same six plus Pantalla completa (only where the browser allows it), same order, same logic. Restart and quit now confirm; settings open the full settings window over the pause.
 
 ## Parity checklist
 

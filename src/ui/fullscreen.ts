@@ -61,6 +61,9 @@ function fullscreenDeps(): FullscreenDeps {
   };
 }
 
+/** Whether this browser can take the page fullscreen at all (an iPhone's Safari cannot): the pause shows its row only then. */
+export const fullscreenSupported = (deps: FullscreenDeps = fullscreenDeps()): boolean => deps.request !== null && deps.exit !== null;
+
 /** Whether the page is fullscreen now. */
 export const isFullscreen = (deps: FullscreenDeps = fullscreenDeps()): boolean => deps.fullscreenElement !== null && deps.fullscreenElement !== undefined;
 

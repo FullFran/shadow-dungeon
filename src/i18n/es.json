@@ -3881,6 +3881,8 @@
   "pause.hint.report": "Cuéntanos qué ha fallado",
   "pause.hint.copyReport": "Datos técnicos para adjuntar",
   "pause.hint.quit": "Abandonas la expedición",
+  "pause.hint.fullscreen": "Ocupa toda la pantalla",
+  "pause.hint.fullscreenExit": "Vuelves a la ventana",
   "pause.confirm.restart.title": "Reiniciar la planta",
   "pause.confirm.restart.body": "Vuelves al inicio de esta planta y pierdes lo que has hecho en ella. Gasta un reinicio si el nivel los limita.",
   "pause.confirm.restart.confirm": "Reiniciar",
