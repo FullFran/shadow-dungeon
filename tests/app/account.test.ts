@@ -483,6 +483,18 @@ describe('a linked browser', () => {
     expect(decodeCloud(backend.dataOf('ana@example.com')).profile.records.dungeons['flooded-caves']?.bestFloor).toBe(3);
   });
 
+  it('tells the player once when the cloud cannot be reached for a save, not on every retry', async () => {
+    const { backend, d } = await linked();
+    backend.setDown('offline');
+    writeSave(d.game, save(130));
+    d.account.flush();
+    await settle();
+    writeSave(d.game, save(131));
+    d.account.flush();
+    await settle();
+    expect(d.notices.filter((n) => n.notice === 'sync-offline')).toHaveLength(1);
+  });
+
   it('a reload pushes progress made while offline', async () => {
     const { backend, d, storage } = await linked();
     backend.setDown('offline');

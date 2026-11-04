@@ -40,7 +40,7 @@ interface StoredAccount {
 
 export type AccountState = { kind: 'guest' } | { kind: 'signed-in'; email: string };
 /** Player-facing events. */
-export const NOTICES = ['cloud-loaded', 'expired', 'choose', 'resolved', 'restored', 'imported', 'external'] as const;
+export const NOTICES = ['cloud-loaded', 'expired', 'choose', 'resolved', 'restored', 'imported', 'external', 'sync-offline'] as const;
 export type Notice = (typeof NOTICES)[number];
 export const ACCOUNT_ERRORS = ['offline', 'unauthorized', 'rejected', 'rate-limited', 'server', 'too-short', 'invalid-email'] as const satisfies readonly (Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email')[];
 export type AccountError = (typeof ACCOUNT_ERRORS)[number];
@@ -170,8 +170,14 @@ export function createAccount(deps: AccountDeps): Account {
     lastStatus = next.status;
     writeSync(deps.store, next);
   };
+  let offlineNoticed = false;
   const setStatus = (status: SyncStatus) => {
     if (!session || sync().owner !== session.userId || lastStatus === status) return;
+    // A save that cannot reach the cloud is said once per outage (the retries are silent); progress stays safe on the device.
+    if (status === 'offline' && !offlineNoticed) {
+      offlineNoticed = true;
+      deps.onNotice('sync-offline');
+    } else if (status === 'synced' || status === 'resolved') offlineNoticed = false;
     setSync({ status });
     deps.onChange();
   };

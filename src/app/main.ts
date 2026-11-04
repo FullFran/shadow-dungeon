@@ -62,6 +62,9 @@ import { hubButtons, type HubId } from './title-hub';
 import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
 import { bootSplash } from '../ui/boot-splash';
+import { fatalError, offlineBanner, showToast } from '../ui/status';
+import { subscribeErrors } from '../adapters/net-error';
+import { sharedConnectivity } from './connectivity';
 import { loadingVeil } from '../ui/spinner';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
 import { type SettingsAccess } from './settings-panel';
@@ -271,6 +274,25 @@ document.addEventListener('visibilitychange', () => friendsBeat?.sync());
 const diagLog = createDiagnosticsLog(() => performance.now());
 window.addEventListener('error', (e) => diagLog.error(e.error ?? e.message, e.filename, e.lineno));
 window.addEventListener('unhandledrejection', (e) => diagLog.error(e.reason));
+
+/**
+ * The error system (odd/tasks/loading-errors.md): every classified failure of the network or of an asset reaches the
+ * technical report, tells the connectivity monitor (the offline banner) and, for sprites, raises one toast per session.
+ */
+const connectivity = sharedConnectivity();
+const offline = offlineBanner();
+document.body.append(offline.element);
+connectivity.subscribe(offline.set);
+offline.set(connectivity.online());
+let assetToastShown = false;
+subscribeErrors((error, scope) => {
+  connectivity.noteError(error);
+  diagLog.error(`${scope}: ${error.kind}`);
+  if (error.kind === 'asset' && !assetToastShown) {
+    assetToastShown = true;
+    showToast(t('error.toast.assets'));
+  }
+});
 
 /** Copies the technical report, pretty-printed, to the clipboard, and says whether it worked. */
 async function copyReport(root: HTMLElement): Promise<void> {
@@ -2307,6 +2329,16 @@ function devScreen(root: HTMLElement): boolean {
  * boot splash if that takes more than 150 ms; a slow network never holds the title longer than the cap. The rest loads by need.
  */
 async function bootToTitle(root: HTMLElement): Promise<void> {
+  try {
+    await bootTitle(root);
+  } catch (error) {
+    // The title could not even be drawn: the one place the game stops and says so.
+    diagLog.error(error);
+    root.replaceChildren(fatalError({ onReload: () => window.location.reload(), report: async () => diagnosticsText(await collectDiagnostics()) }));
+  }
+}
+
+async function bootTitle(root: HTMLElement): Promise<void> {
   const splash = bootSplash(document.body);
   const cap = new Promise<void>((resolve) => window.setTimeout(resolve, BOOT_CAP_MS));
   await Promise.race([preloadHub(settings.species, skinOn(), femaleOn(), splash.progress), cap]);

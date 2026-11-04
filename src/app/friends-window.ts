@@ -2,7 +2,11 @@ import { normalizeFriendCode, type FriendsApi, type FriendsError, type FriendsOv
 import { t } from '../i18n';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { pixelIconSvg } from '../ui/pixel-icons';
+import { friendsErrorKind } from '../adapters/friends-api';
+import { kindForScreen } from '../adapters/net-error';
 import { spinLoader } from '../ui/spinner';
+import { errorCard } from '../ui/status';
+import { sharedConnectivity } from './connectivity';
 import { h } from '../ui/window';
 import { friendsView, gateFor, loadFriends, type FriendsView } from './friends-screen';
 import { hubStep } from './title-hub';
@@ -55,6 +59,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
   const element = h('section', { className: 'md-window fr-window' }, [h('h2', { className: 'md-window-title', textContent: t('friends.title') }), body]);
   let data: FriendsOverview | null = null;
   let disposed = false;
+  let cancelAuto: () => void = () => undefined;
   let poll: ReturnType<typeof setInterval> | null = null;
   const say = (key: string) => {
     // Loading is the spin loader (no word); anything else is a message line.
@@ -79,6 +84,13 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
   }
   function fail(error: FriendsError): void {
     if (error === 'denied') return denied();
+    // A failed read of the list is a panel error with a retry; a refused action keeps its own line.
+    if (error === 'unavailable') {
+      const kind = kindForScreen(friendsErrorKind(error));
+      status.replaceChildren(errorCard({ kind, onRetry: () => void load(true) }));
+      if (kind === 'offline') cancelAuto = sharedConnectivity().retryWhenBack(() => void load(true));
+      return;
+    }
     say(errorKey(error));
   }
 
@@ -302,6 +314,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
     element,
     dispose: () => {
       disposed = true;
+      cancelAuto();
       window.removeEventListener('keydown', onKey, true);
       if (poll !== null) clearInterval(poll);
     },

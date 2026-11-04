@@ -62,3 +62,6 @@ export function reportError(error: AppError, scope: string): void {
     }
   }
 }
+
+/** A server-ish failure while the browser itself is offline is an offline failure: the message that helps is "no connection". */
+export const kindForScreen = (kind: ErrorKind, online = browserOnline()): ErrorKind => (online || kind === 'auth' ? kind : 'offline');

@@ -31,3 +31,20 @@
 .boot-title { margin: 0; font-size: 34px; letter-spacing: 0.08em; color: var(--md-eclipse); text-shadow: 0 0 18px color-mix(in srgb, var(--md-eclipse-glow) 45%, transparent), 0 3px 0 var(--md-ink); text-align: center; }
 .boot-tip { margin: 0; max-width: 28em; min-height: 3em; text-align: center; font-family: var(--md-text-font); font-size: 18px; line-height: 1.5; color: var(--md-text-dim); }
 @media (prefers-reduced-motion: reduce) { .boot { transition: none; } }
+
+/* Errors: inline line, panel card, fatal screen, toast, offline strip. */
+.st-inline { margin: 6px 0 0; font-family: var(--md-text-font); font-size: 16px; line-height: 1.4; color: var(--md-danger); }
+.st-card { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 420px; padding: 22px 24px 20px; text-align: center; color: var(--md-text);
+  background: linear-gradient(180deg, var(--relic-slab), var(--md-window-bottom)); border: 2px solid var(--relic-blood); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), inset 0 0 0 2px color-mix(in srgb, var(--md-ink) 85%, transparent), 0 6px 0 color-mix(in srgb, var(--md-ink) 50%, transparent); }
+.st-card-icon { width: 32px; height: 32px; color: var(--md-danger); }
+.st-card-title { margin: 0; font-size: 24px; line-height: 1.2; color: var(--md-eclipse); }
+.st-card-hint { margin: 0; font-family: var(--md-text-font); font-size: 17px; line-height: 1.45; color: var(--md-text-dim); }
+.st-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+.st-fatal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--md-ink) 88%, transparent); }
+.st-fatal-note { margin: 0; min-height: 1.4em; font-family: var(--md-text-font); font-size: 16px; color: var(--md-good); }
+.st-toast { position: fixed; left: 50%; bottom: 24px; z-index: 30; transform: translateX(-50%); max-width: min(92vw, 520px); padding: 12px 18px; font-family: var(--md-text-font); font-size: 17px; line-height: 1.4; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 color-mix(in srgb, var(--md-ink) 50%, transparent); animation: st-rise 120ms ease-out both; }
+.st-offline { position: fixed; top: 0; left: 0; right: 0; z-index: 35; padding: 6px 16px; text-align: center; font-family: var(--md-text-font); font-size: 16px; line-height: 1.4; color: var(--md-text); background: var(--relic-blood); border-bottom: 2px solid var(--relic-gold-deep); }
+.st-offline[hidden] { display: none; }
+.st-offline.is-back { background: var(--relic-slab); color: var(--md-good); }
+@keyframes st-rise { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .st-toast { animation: none; } }

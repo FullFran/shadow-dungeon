@@ -1,7 +1,11 @@
 import type { AdminApi, AdminError, Ticket, TicketStatus, TriageStatus } from '../adapters/admin-api';
 import { t } from '../i18n';
 import { cursorList, type CursorList, type ListItem } from '../ui/cursor-list';
+import { adminErrorKind } from '../adapters/admin-api';
+import { kindForScreen } from '../adapters/net-error';
 import { spinLoader } from '../ui/spinner';
+import { errorCard } from '../ui/status';
+import { sharedConnectivity } from './connectivity';
 import { h } from '../ui/window';
 
 /**
@@ -84,6 +88,7 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
   const element = h('section', { className: 'md-window shop tickets-window' }, [h('style', { textContent: STYLE }), title, body]);
   let list: CursorList | null = null;
   let disposed = false;
+  let cancelAuto: () => void = () => undefined;
   let tickets: Ticket[] = [];
   let total = 0;
   let filter: TicketFilter = 'new';
@@ -202,7 +207,11 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
     if (disposed) return;
     if (!result.ok) {
       if (result.error === 'denied') return denied();
-      status.textContent = t(errorKey(result.error));
+      // A panel failure: what happened and a way to try again, not a bare line.
+      const kind = kindForScreen(adminErrorKind(result.error));
+      status.replaceChildren(errorCard({ kind, onRetry: () => void load() }));
+      // No connection: it tries again by itself when the connection returns.
+      if (kind === 'offline') cancelAuto = sharedConnectivity().retryWhenBack(() => void load());
       return;
     }
     tickets = result.value.tickets;
@@ -217,6 +226,7 @@ export function ticketsWindow(options: TicketsWindowOptions): { element: HTMLEle
     element,
     dispose: () => {
       disposed = true;
+      cancelAuto();
       list?.dispose();
       list = null;
     },

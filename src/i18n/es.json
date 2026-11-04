@@ -3973,5 +3973,6 @@
   "boot.tip.5": "Lo que cae en la Sima no siempre se queda quieto.",
   "boot.tip.6": "Un Maestro de movimientos cobra poco y enseña mucho.",
   "boot.tip.7": "Tu compañero ve cosas que tú ya no ves.",
-  "boot.tip.8": "Hasta la noche más larga termina en brasas."
+  "boot.tip.8": "Hasta la noche más larga termina en brasas.",
+  "account.notice.sync-offline": "No se pudo guardar en la nube. Se reintentará."
 }
