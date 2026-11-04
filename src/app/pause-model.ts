@@ -1,0 +1,142 @@
+import type { HeldItem } from '../adapters/hud';
+import { dungeonById } from '../data/dungeons';
+import type { Difficulty } from '../data/difficulty';
+import type { MoveId } from '../data/moves';
+import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
+import type { SpeciesId } from '../data/species';
+import { t } from '../i18n';
+
+/**
+ * The model of the pause menu (src/app/pause-view.ts draws it; owner, 2026-11-04: the pause menu in the relic
+ * look). Pure, so each rule is a test: which actions exist and in which order, which of them lose progress and
+ * must be confirmed, and the run summary card (only data the run already has).
+ */
+
+export interface MenuActions {
+  resume(): void;
+  restart(): void;
+  quit(): void;
+  /** Solo restarts of this floor still allowed by the tier (data/difficulty.ts); null or absent = unlimited. */
+  restartsLeft?: number | null;
+  /** "Reportar un problema" (issue #9): the report form shown in the menu; `back` returns to it. Absent: no row. */
+  openReport?(back: () => void): { element: HTMLElement; dispose(): void };
+  /** "Copiar informe técnico" (issue #6): copies this session's diagnostics. Absent: no row. */
+  copyReport?(): void;
+}
+
+export type PauseEntry = 'resume' | 'restart' | 'settings' | 'report' | 'copyReport' | 'quit';
+
+/** The menu's actions in order: the report rows only when the app offers them, always before quitting. */
+export function pauseEntries(actions: MenuActions): PauseEntry[] {
+  return ['resume', 'restart', 'settings', ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
+}
+
+/** The restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
+export function restartLabel(restartsLeft: number | null | undefined, tr: (key: string) => string): string {
+  if (restartsLeft === null || restartsLeft === undefined) return tr('pause.restart');
+  return restartsLeft > 0 ? `${tr('pause.restart')} (${restartsLeft})` : tr('pause.restartNone');
+}
+
+/** What the shared confirm dialog says before an action that loses progress. */
+export interface PauseConfirm {
+  titleKey: string;
+  bodyKey: string;
+  confirmKey: string;
+}
+
+export interface PauseAction {
+  id: PauseEntry;
+  label: string;
+  /** One quiet line under the label: where the action leads. */
+  hint: string;
+  /** The one ember action (Continuar). */
+  primary: boolean;
+  /** Leaves the run: drawn in the danger colour. */
+  danger: boolean;
+  /** Stays in the list, dimmed and inert (a restart with no uses left). */
+  disabled: boolean;
+  /** Set when the action loses progress: it must be confirmed first. */
+  confirm: PauseConfirm | null;
+}
+
+export function pauseActions(actions: MenuActions, tr: (key: string) => string = t, coop = false): PauseAction[] {
+  return pauseEntries(actions).map((id): PauseAction => {
+    const base = { id, hint: tr(`pause.hint.${id}`), primary: id === 'resume', danger: id === 'quit', disabled: false, confirm: null };
+    switch (id) {
+      case 'resume':
+        return { ...base, label: tr('pause.resume') };
+      case 'restart': {
+        const none = actions.restartsLeft === 0;
+        return { ...base, label: restartLabel(actions.restartsLeft, tr), disabled: none, confirm: none ? null : { titleKey: 'pause.confirm.restart.title', bodyKey: 'pause.confirm.restart.body', confirmKey: 'pause.confirm.restart.confirm' } };
+      }
+      case 'settings':
+        return { ...base, label: tr('pause.settings') };
+      case 'report':
+        return { ...base, label: tr('title.report') };
+      case 'copyReport':
+        return { ...base, label: tr('lobby.copyReport') };
+      case 'quit':
+        return { ...base, label: tr('pause.quit'), confirm: { titleKey: 'pause.confirm.quit.title', bodyKey: coop ? 'pause.confirm.quit.bodyCoop' : 'pause.confirm.quit.body', confirmKey: 'pause.confirm.quit.confirm' } };
+    }
+  });
+}
+
+/** What the run knows about itself; the game fills it when the menu opens. */
+export interface PauseRunInfo {
+  species: SpeciesId;
+  dungeon: string;
+  floor: number;
+  difficulty: Difficulty;
+  /** Run time in game milliseconds (a solo run's pauses are not counted). */
+  elapsedMs: number;
+  coins: number;
+  loadout: readonly (MoveId | null)[];
+  /** A shared run: it keeps going for the partners while this menu is open. */
+  coop: boolean;
+}
+
+export interface PauseMove {
+  slot: SlotKind;
+  id: MoveId | null;
+  name: string;
+}
+
+export interface PauseSummary {
+  species: SpeciesId;
+  speciesName: string;
+  dungeonName: string;
+  floorLine: string;
+  difficultyName: string;
+  time: string;
+  coins: number;
+  moves: PauseMove[];
+  items: HeldItem[];
+  coop: boolean;
+}
+
+/** "12:34", or "1:02:05" past the hour. */
+export function formatRunTime(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+export function pauseSummary(info: PauseRunInfo, held: readonly HeldItem[], tr: (key: string) => string = t): PauseSummary {
+  return {
+    species: info.species,
+    speciesName: tr(`species.${info.species}`),
+    dungeonName: tr(dungeonById(info.dungeon).lore.nameKey),
+    floorLine: `${tr('hud.floor')} ${info.floor}`,
+    difficultyName: tr(`difficulty.${info.difficulty}`),
+    time: formatRunTime(info.elapsedMs),
+    coins: info.coins,
+    moves: PLAYER_SLOT_LAYOUT.map((slot, i) => {
+      const id = info.loadout[i] ?? null;
+      return { slot, id, name: id ? tr(`move.${id}`) : tr('pause.moveEmpty') };
+    }),
+    items: [...held],
+    coop: info.coop,
+  };
+}
