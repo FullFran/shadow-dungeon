@@ -15,7 +15,7 @@ describe('classifyPath (leaf first)', () => {
   });
   it('a press on the account drawer veil (a child of body) is "backdrop", inside the drawer is "window"', () => {
     expect(classifyPath([n('div', 'drawer-veil'), n('body'), n('html')])).toBe('backdrop');
-    expect(classifyPath([n('p'), n('aside', 'md-window', 'ad-drawer'), n('div', 'drawer-veil'), n('body')])).toBe('window');
+    expect(classifyPath([n('p'), n('aside', 'md-window', 'acct-drawer'), n('div', 'drawer-veil'), n('body')])).toBe('window');
     expect(decideDismiss({ down: [n('div', 'drawer-veil'), n('body')], up: [n('div', 'drawer-veil'), n('body')], scene: overlay, ...base })).toBe(true);
   });
   it('a press on the empty page of a menu screen is "backdrop"', () => {
