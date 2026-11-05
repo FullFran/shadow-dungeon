@@ -63,5 +63,24 @@ export function reportError(error: AppError, scope: string): void {
   }
 }
 
+type ReachedListener = (scope: string) => void;
+const reachedListeners = new Set<ReachedListener>();
+
+/** Every call that got an HTTP response (a refusal too: the server answered), so the offline banner learns the network is back. */
+export function subscribeReached(listener: ReachedListener): () => void {
+  reachedListeners.add(listener);
+  return () => void reachedListeners.delete(listener);
+}
+
+export function reportReached(scope: string): void {
+  for (const listener of [...reachedListeners]) {
+    try {
+      listener(scope);
+    } catch {
+      // A broken listener never hides the answer from the others.
+    }
+  }
+}
+
 /** A server-ish failure while the browser itself is offline is an offline failure: the message that helps is "no connection". */
 export const kindForScreen = (kind: ErrorKind, online = browserOnline()): ErrorKind => (online || kind === 'auth' ? kind : 'offline');

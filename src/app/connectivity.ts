@@ -15,6 +15,11 @@ export interface Connectivity {
   retryWhenBack(fn: () => void): () => void;
   /** Feeds a classified failure from the error sink. */
   noteError(error: AppError): void;
+  /**
+   * A request got an answer from the server: the network is up. An offline set by a failed request clears here, since
+   * the browser fires no `online` event when it never thought it was offline (a dropped request, a proxy login page).
+   */
+  noteReached(): void;
   dispose(): void;
 }
 
@@ -53,6 +58,9 @@ export function createConnectivity(env: ConnectivityEnv): Connectivity {
     },
     noteError(error) {
       if (error.kind === 'offline') set(false);
+    },
+    noteReached() {
+      set(true);
     },
     dispose() {
       for (const stop of stops) stop();

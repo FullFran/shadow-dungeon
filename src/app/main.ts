@@ -65,7 +65,7 @@ import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
 import { bootSplash } from '../ui/boot-splash';
 import { fatalError, offlineBanner, showToast } from '../ui/status';
-import { subscribeErrors } from '../adapters/net-error';
+import { subscribeErrors, subscribeReached } from '../adapters/net-error';
 import { sharedConnectivity } from './connectivity';
 import { loadingVeil } from '../ui/spinner';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
@@ -299,6 +299,7 @@ document.body.append(offline.element);
 connectivity.subscribe(offline.set);
 offline.set(connectivity.online());
 let assetToastShown = false;
+subscribeReached(() => connectivity.noteReached());
 subscribeErrors((error, scope) => {
   connectivity.noteError(error);
   diagLog.error(`${scope}: ${error.kind}`);
