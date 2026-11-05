@@ -3,6 +3,11 @@ dist/
 .vite/
 coverage/
 *.log
-.claude/
+.claude/*
+!.claude/skills/
 reports/balance/*.json
 reports/fx/
+
+# Local env files (secrets)
+.env.local
+.env.*.local

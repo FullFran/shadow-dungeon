@@ -1,0 +1,38 @@
+/* The in-game hint bar (src/ui/play-hints.ts; .agents/DESIGN.md §4 "Hint bar"). Colours come from --md-* and --relic-*.
+   It lives in the free stretch of the bottom edge between the message log and the move slots (--ph-left/-right/-bottom,
+   set from the HUD layout), so it never covers the player or the HUD. */
+.ph { position: fixed; z-index: 3; left: var(--ph-left, 12px); right: var(--ph-right, 12px); bottom: var(--ph-bottom, 12px); display: flex; align-items: flex-end; justify-content: center; gap: 8px;
+  pointer-events: none; font-family: var(--md-font); }
+.ph.is-suppressed { visibility: hidden; }
+.ph-list { display: flex; flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; opacity: 0; white-space: nowrap; }
+.ph.is-on .ph-list { opacity: 1; }
+.ph.too-narrow .ph-list { display: none; }
+/* Minimalist pass (owner 2026-11-04): dimmed while enemies are near, hidden 5 s into a boss fight. */
+.ph.is-fighting.is-on .ph-list { opacity: 0.4; }
+.ph.is-quiet .ph-list, .ph.is-quiet .ph-fs { opacity: 0; pointer-events: none; }
+.ph.is-fighting .ph-fs { opacity: 0.3; }
+/* Fix pass 3: in a fight the bar is keycaps only (the DOM also shrinks the chips to 28 px through the size variables). */
+.ph.is-fighting .ph-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ph.is-fighting .ph-item { padding: 2px 5px 2px 4px; gap: 4px; }
+.ph.is-fighting .ph-list { gap: 4px; }
+.ph.is-fighting { gap: 4px; }
+/* Reason for the motion (Selective Attention): the bar leaves by itself once nothing new needs saying. Reduced motion: it simply goes. */
+@media (prefers-reduced-motion: no-preference) { .ph-list { transition: opacity 400ms ease-out; } .ph-fs { transition: opacity 160ms ease-out; } }
+
+.ph-item { display: inline-flex; align-items: center; gap: 8px; min-height: var(--ph-chip, 40px); padding: 4px 12px 4px 7px; box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); color: var(--md-text); }
+.ph-glyphs { display: inline-flex; align-items: center; gap: 3px; }
+.ph-glyphs .pad-glyph { height: var(--ph-pad, 26px); width: auto; }
+/* A key as a chunky square cap with a hard drop (stone is not round). */
+.ph-key { display: inline-block; min-width: var(--ph-key, 28px); height: var(--ph-key, 28px); padding: 0 6px; box-sizing: border-box; border: 2px solid var(--md-border); border-radius: 2px; background: var(--relic-slab-edge); color: var(--md-text);
+  box-shadow: 0 2px 0 var(--md-border-shade); font: inherit; font-size: calc(var(--ph-key, 28px) * 0.5); line-height: calc(var(--ph-key, 28px) - 6px); text-align: center; }
+.ph-label { font-size: var(--ph-label, 16px); line-height: 1.1; letter-spacing: 0.02em; }
+.ph.trim .ph-item:is([data-hint='move'], [data-hint='attack']) .ph-label, .ph.compact .ph-label { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ph.compact .ph-item { padding-right: 7px; }
+
+.ph-fs { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--ph-chip, 40px); height: var(--ph-chip, 40px); padding: 0; box-sizing: border-box; cursor: pointer; pointer-events: auto; opacity: 0.55;
+  background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); }
+.ph-fs[hidden] { display: none; }
+.ph-fs:hover, .ph-fs:focus-visible, .ph.is-on .ph-fs { opacity: 1; }
+.ph-fs:hover, .ph-fs:focus-visible { border-color: var(--md-border); }
+.ph-fs:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+.ph-fs-icon { width: calc(var(--ph-chip, 40px) * 0.7); height: calc(var(--ph-chip, 40px) * 0.7); image-rendering: pixelated; shape-rendering: crispEdges; }

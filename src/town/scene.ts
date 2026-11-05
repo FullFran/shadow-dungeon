@@ -8,7 +8,7 @@ import type { Difficulty } from '../data/difficulty';
 import { TILE, tileOf } from '../core/tiles';
 import type { Arena } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import type { SheetStore } from '../adapters/assets';
+import { image as assetImage, imageState, reportAssetFailure, type SheetImage, type SheetStore } from '../adapters/assets';
 import { browserStore } from '../adapters/storage';
 import { cameraView, followCamera } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
@@ -20,16 +20,18 @@ import { FONT, PALETTE } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { npcView } from './residents';
 import type { StoryProgress } from '../core/story';
-import { advanceDialog, lineDone, npcLines, openDialog, shownText, tickDialog, type DialogState } from './dialog';
+import { advanceDialog, dialogueView, npcLines, openDialog, tickDialog, type DialogState } from './dialog';
 import { nearestInteractable, RUN_FACTOR, stepWalker, townArena, type Interactable, type Walker } from './interact';
 import { buildTownGrid, type MapShape } from './map';
-import { arrival, bannerAlpha, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
+import { arrival, entranceAt, entranceState, FADE_MS, fadeAlpha, linkAt, linkEdge, loreLines, offsetAlong, type Fade } from './overworld';
 import { startWander, stepWander, type WanderState } from './ambience';
 import { markVisited, readVisited, travelDestinations, type TravelDestination } from './travel';
 import { travelWindow } from './travel-window';
 import { serviceAboutKey, serviceLabelKey, TOWN_SERVICES, townMenuServices, type TownService } from './town-menu';
+import { townMenuOptions } from './menu-groups';
 import { townMapView, type TownMapEntry } from './town-map-view';
-import { looseServices, townMapMarkers } from './town-map';
+import { placeCards, townMapMarkers } from './town-map';
+import { menuTiming } from './sheet-model';
 import { wheelServices } from './quick-wheel';
 import { quickWheelView } from './quick-wheel-view';
 import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPlea, stepPlea, type PleaState } from './plea';
@@ -44,7 +46,18 @@ import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
 import { beatenBosses, readShrine, shrineBoardLine } from './shrine-records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
-import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type TownImages } from './render';
+import { INTERACT_KEY_CODES } from '../adapters/bindings';
+import { mountPlayHints } from '../ui/play-hints';
+import { mountLocationPlaque } from '../ui/location-plaque';
+import { plaqueOf, townPlace } from '../ui/location-plaque-model';
+import { trackLastDevice } from '../adapters/last-device';
+import { creatureRect } from '../adapters/creature-scale';
+import { SPRITES } from '../data/sprites';
+import { mountDialogueBox } from '../ui/dialogue-box';
+import { mountWorldTooltip } from '../ui/world-tooltip';
+import { interactKind, type Box } from '../ui/world-tooltip-model';
+import type { PadStyle } from '../app/gamepad-help-data';
+import { drawTownOverlay, drawTownWorld, type TownCharacter, type TownImages } from './render';
 
 /**
  * The town and the overworld around it (src/data/world.ts): the player's
@@ -57,8 +70,6 @@ import { drawTownOverlay, drawTownWorld, SKY_BAND, type TownCharacter, type Town
  * else opens the town menu (every service as a window, travel, back to the
  * title; src/town/town-menu.ts).
  */
-export const TOWN_VIEW = { width: 512, height: 320 } as const;
-
 /**
  * Opens a window over the town inside `parent` and returns a function that
  * closes it; `onClose` runs when the player leaves it, `depart` takes the
@@ -68,6 +79,8 @@ export type TownWindowOpener = (parent: HTMLElement, onClose: () => void, depart
 
 export interface TownOptions {
   sheets: Promise<SheetStore>;
+  /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
+  hints?: { enabled(): boolean; padStyle?(): PadStyle };
   /** Player species (a SPRITE_KEYS name); unknown names fall back to Mimikyu. */
   species: string;
   /** The player wears its line's shiny skin (odd/tasks/shiny-echo.md). */
@@ -88,6 +101,8 @@ export interface TownOptions {
   openTutor?: TownWindowOpener;
   /** Opens Mimikyu's gacha stall, like `openShop`. */
   openGacha?: TownWindowOpener;
+  /** Alone, the stall is its own page (/gacha, app/gacha-page.ts): the town is left for it, like the shrine; a room keeps `openGacha`'s window. */
+  openGachaPage?: () => void;
   /** Opens Phantump's evolution window, like `openShop` (its "Desafíos" row departs from it). */
   openEvolve?: TownWindowOpener;
   /** Opens the notice board's missions window once its records are read, like `openShop`. */
@@ -179,7 +194,7 @@ const MOVE_KEYS: Record<string, Vec2> = {
   ArrowRight: { x: 1, y: 0 },
 };
 
-const INTERACT_KEYS = new Set(['KeyE', 'Enter', 'NumpadEnter', 'Space']);
+const INTERACT_KEYS = new Set(INTERACT_KEY_CODES);
 
 const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
@@ -188,22 +203,15 @@ const FLOATERS = new Set<string>(['gastly', 'litwick', 'lampent', 'chandelure', 
 
 type Target = Interactable & ({ kind: 'npc'; npc: TownNpc } | { kind: 'board' } | { kind: 'waystone' } | { kind: 'shrine' } | { kind: 'beacon' } | { kind: 'lore'; point: LorePoint });
 
-function loadImage(url: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
-    image.src = url;
-  });
-}
-
 /** The town tiles from public/tiles/town (missing files draw as flat colours or not at all). */
 export async function loadTownImages(): Promise<TownImages> {
   const base = `${import.meta.env.BASE_URL}tiles/town/`;
   const files = [...new Set([TOWN_GROUND.file, ...Object.values(GROUND_SHEETS), ...Object.values(TOWN_PROPS).map((p) => p.file)])];
-  const loaded = await Promise.all(files.map(async (file) => [file, await loadImage(base + file)] as const));
-  const out = new Map<string, HTMLImageElement>();
-  for (const [file, image] of loaded) if (image) out.set(file, image);
+  const loaded = await Promise.all(files.map(async (file) => [file, await assetImage(base + file)] as const));
+  // A tile that gave up stands in as a placeholder: say so once (the error model raises the toast) instead of drawing flat colours silently.
+  if (files.some((file) => imageState(base + file) === 'failed')) reportAssetFailure('tile');
+  const out = new Map<string, SheetImage>();
+  for (const [file, image] of loaded) out.set(file, image);
   return out;
 }
 
@@ -216,14 +224,13 @@ export function playerSprite(species: string, shiny = false, female = false): st
 }
 
 /**
- * The camera centres the player in the part of the view below the sky band,
- * and may scroll up under the band so the north edge of the town is never hidden by it.
+ * The camera centres the player in a view that fills the window (src/adapters/viewport.ts) and stays inside the map;
+ * a map smaller than the view is centred, the rest is the void colour.
  */
-function townCamera(focus: Vec2, map: MapShape) {
+function townCamera(focus: Vec2, map: MapShape, viewWidth: number, viewHeight: number) {
   const width = (map.rows[0]?.length ?? 0) * TILE;
   const height = map.rows.length * TILE;
-  const view = cameraView({ x: focus.x, y: focus.y + SKY_BAND / 2 }, TOWN_VIEW.width, TOWN_VIEW.height, { width, height: height + SKY_BAND });
-  return { ...view, y: view.y - SKY_BAND };
+  return cameraView(focus, viewWidth, viewHeight, { width, height });
 }
 
 /** The notice board's lines: the local records of the first dungeon, if there are any, then the Sima del Eclipse's best scores; both for the tier picked now. */
@@ -258,6 +265,11 @@ function safeLines(globalBoard: ((difficulty: Difficulty) => string[]) | undefin
 
 export interface TownHandle {
   stop(): void;
+  /**
+   * Where the walker stands, for the reload-proof record (app/run-resume.ts): the map and the tile. Null while the
+   * town is stopped, fading between maps, in a cutscene (plea, tour) or a room's (the group never restores).
+   */
+  place(): { at: WorldMapId; tile: { x: number; y: number } } | null;
 }
 
 /** What can be talked to or read on a map. */
@@ -270,6 +282,15 @@ function targetsOf(map: WorldMap): Target[] {
     ...(map.beacon ? [{ id: 'beacon', kind: 'beacon', pos: { x: map.beacon.x * TILE, y: map.beacon.y * TILE } } as Target] : []),
     ...map.lore.map((point): Target => ({ id: point.id, kind: 'lore', point, pos: { x: point.x * TILE, y: point.y * TILE } })),
   ];
+}
+
+/** The target's on-screen footprint in world px, for the tooltip's anchor: a villager's creature rect, else the tile it stands on. */
+function targetRect(target: Target, species: TownNpc['species']): { x: number; y: number; width: number; height: number } {
+  if (target.kind === 'npc') {
+    const meta = SPRITES.sprites[SPRITE_KEYS[species]]?.anims.Idle;
+    if (meta) return creatureRect(meta, target.pos);
+  }
+  return { x: target.pos.x - TILE / 2, y: target.pos.y - TILE / 2, width: TILE, height: TILE };
 }
 
 /** Where a visit of `map` starts: its spawn, else one tile inside its first link. */
@@ -313,10 +334,24 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     ],
   });
   canvas.parentElement?.append(touch.element);
+  /** The device used last, for the glyphs of the tooltip and the dialogue box. */
+  const device = trackLastDevice();
+  /** Reduced motion: dialogue pages show whole, no typewriter (and the tooltip does not rise). */
+  const speak = (lines: readonly string[]): DialogState => openDialog(lines, typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /** The one tooltip over the target `interact` would pick, and the dialogue box (DESIGN.md §4). */
+  const tooltip = mountWorldTooltip(canvas.parentElement ?? document.body, { device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onActivate: () => !exitWindow && interact() });
+  const dialogueBox = mountDialogueBox(canvas.parentElement ?? document.body, { sheets, device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onAdvance: () => !exitWindow && interact() });
+  /** The control hint bar along the bottom edge (null without the option). */
+  const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
 
   let walker: Walker = options.tile ? { pos: tileCentre(options.tile.x, options.tile.y), facing: { x: 0, y: 1 } } : startOf(map);
   let camera = walker.pos;
   let pixelScale = 1;
+  /** CSS pixels per world pixel (the tooltip anchors in CSS px). */
+  let zoom = 1;
+  /** World pixels the camera shows, from the window (resize). */
+  let viewWidth = 512;
+  let viewHeight = 320;
   let stopped = false;
   let raf = 0;
   let dialog: { speaker: string; state: DialogState; opens?: 'shop' | 'tutor' | 'gacha' | 'evolve' | 'shrine' | 'online' | 'board'; portrait?: string } | null = null;
@@ -336,8 +371,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const held = new Set<string>();
   const start = performance.now();
   let last = start;
-  /** When the current map's name banner started (view time). */
-  let bannerAt = 0;
+  /** The location plaque (src/ui/location-plaque.ts): the current map announces itself on arrival, and once when the scene opens. */
+  const plaque = mountLocationPlaque(canvas.parentElement ?? document.body);
+  const announce = (): void => plaque.show(plaqueOf(townPlace(map.id), { name: t(map.nameKey) }));
+  announce();
 
   const sprite = playerSprite(options.species, options.shiny, options.female);
   const lobby = options.lobby ?? null;
@@ -391,7 +428,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     wanderers = new Map(map.wanderers.map((w) => [w.id, startWander(w)]));
     walker = at;
     camera = walker.pos;
-    bannerAt = performance.now() - start;
+    announce();
     markVisited(browserStore(), map.id);
   }
 
@@ -426,7 +463,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   };
 
   function resize(): void {
-    pixelScale = fitCanvasToWindow(canvas, TOWN_VIEW.width, TOWN_VIEW.height, isTouchUi());
+    const fit = fitCanvasToWindow(canvas, isTouchUi());
+    pixelScale = fit.pixelScale;
+    zoom = fit.zoom;
+    viewWidth = fit.viewWidth;
+    viewHeight = fit.viewHeight;
   }
 
   function moveInput(): Vec2 {
@@ -462,7 +503,12 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       if (!next && tour) tour = tourSpoken(tour);
       if (!next && opens === 'shop') openShopWindow();
       if (!next && opens === 'tutor') openShopWindow(options.openTutor);
-      if (!next && opens === 'gacha') openShopWindow(options.openGacha);
+      if (!next && opens === 'gacha') {
+        if (options.openGachaPage) {
+          handle.stop();
+          options.openGachaPage();
+        } else openShopWindow(options.openGacha);
+      }
       if (!next && opens === 'evolve') openShopWindow(options.openEvolve);
       if (!next && opens === 'board') openShopWindow(options.openBoard);
       if (!next && opens === 'shrine' && options.openShrine) {
@@ -487,31 +533,31 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     }
     if (target.kind === 'shrine') {
       // The altar speaks, then the shrine opens (in a room: the host's pick for everyone, main.ts).
-      dialog = { speaker: t('world.lore.shrine.name'), state: openDialog([t('world.lore.shrine.1')]), opens: 'shrine' };
+      dialog = { speaker: t('world.lore.shrine.name'), state: speak([t('world.lore.shrine.1')]), opens: 'shrine' };
       return;
     }
     if (target.kind === 'beacon') {
       dialog =
         beaconAction(lobby) === 'open'
-          ? { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.1')]), opens: 'online' }
-          : { speaker: t('town.name.beacon'), state: openDialog([t('town.beacon.room')]) };
+          ? { speaker: t('town.name.beacon'), state: speak([t('town.beacon.1')]), opens: 'online' }
+          : { speaker: t('town.name.beacon'), state: speak([t('town.beacon.room')]) };
       return;
     }
     if (target.kind === 'lore') {
       const cleared = clearedDungeons(readRecords(browserStore()));
-      dialog = { speaker: t(target.point.nameKey), state: openDialog(loreLines(target.point, cleared).map((key) => t(key))) };
+      dialog = { speaker: t(target.point.nameKey), state: speak(loreLines(target.point, cleared).map((key) => t(key))) };
       return;
     }
     dialog =
       target.kind === 'board'
-        ? { speaker: t('town.name.board'), state: openDialog(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy', options.globalBoard)), ...(options.openBoard ? { opens: 'board' as const } : {}) }
+        ? { speaker: t('town.name.board'), state: speak(readBoard(lobby?.difficulty?.() ?? options.difficulty?.() ?? 'easy', options.globalBoard)), ...(options.openBoard ? { opens: 'board' as const } : {}) }
         : npcDialog(target.npc);
   }
 
   /** What an NPC says now: a resident's lines depend on the player's Senda progress. */
   function npcDialog(npc: TownNpc): NonNullable<typeof dialog> {
     const view = npcView(npc, options.story);
-    return { speaker: t(view.nameKey), state: openDialog(npcLines(view, talk(npc.id)).map((key) => t(key))), ...(npc.opens ? { opens: npc.opens } : {}) };
+    return { speaker: t(view.nameKey), state: speak(npcLines(view, talk(npc.id)).map((key) => t(key))), portrait: npcSprite(view.species), ...(npc.opens ? { opens: npc.opens } : {}) };
   }
 
   /** Opens a stall window (the shop, or the move tutor's: `open`) over the town. */
@@ -569,7 +615,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         wanderers = new Map();
         walker = { pos: { x: PLEA_STAGE.player.x * TILE, y: PLEA_STAGE.player.y * TILE }, facing: { x: 0, y: 1 } };
         camera = { x: walker.pos.x, y: walker.pos.y + TILE * 2 };
-        bannerAt = performance.now() - start;
+        announce();
         plea = startPlea(TILE);
         fade = { phase: 'in', ms: 0 };
       },
@@ -584,7 +630,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const openPleaAnswer: TownWindowOpener = (parent, onClose) => {
     const answer = (choice: PleaAnswer) => () => {
       onClose();
-      dialog = { speaker: t('town.name.oracle'), state: openDialog([t(replyKey(choice))]) };
+      dialog = { speaker: t('town.name.oracle'), state: speak([t(replyKey(choice))]) };
     };
     const list = cursorList({ items: PLEA_ANSWERS.map((choice) => ({ label: t(answerKey(choice)), onConfirm: answer(choice) })), onBack: answer('silent'), label: t('town.name.oracle') });
     const overlay = h('div', { className: 'town-shop plea-answer' }, [mdWindow({ title: t('town.name.oracle'), className: 'narrow' }, [list.element])]);
@@ -619,7 +665,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   function beginTour(): void {
     const hub = WORLD[HUB];
     if (map.id !== hub.id || options.tile) enterMap(hub, startOf(hub));
-    bannerAt = performance.now() - start;
+    announce();
     tour = startTour(TILE, walker.pos);
     fade = { phase: 'in', ms: 0 };
   }
@@ -658,7 +704,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       closeShop?.();
       closeShop = null;
       touch.setSuspended(false);
-      dialog = { speaker: t('lobby.room'), state: openDialog([blocked]) };
+      dialog = { speaker: t('lobby.room'), state: speak([blocked]) };
       return;
     }
     handle.stop();
@@ -735,7 +781,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const before = def?.unlockedBy ? DUNGEONS.find((d) => d.id === def.unlockedBy) : undefined;
     const line =
       action === 'host-only' ? t('lobby.hostOnly') : action === 'locked' && before ? t('world.sealed.locked').replace('{dungeon}', t(before.lore.nameKey)) : t('world.sealed.missing');
-    dialog = { speaker: name, state: openDialog([line]) };
+    dialog = { speaker: name, state: speak([line]) };
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -774,7 +820,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       evolve: !!options.openEvolve,
       shop: !!options.openShop,
       tutor: !!options.openTutor,
-      gacha: !!options.openGacha,
+      gacha: !!(options.openGacha ?? options.openGachaPage),
       board: !!options.openBoard,
       achievements: !!options.openAchievements,
       shrine: !!options.openShrine,
@@ -789,7 +835,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   const hostOnly = () => {
-    dialog = { speaker: t('lobby.room'), state: openDialog([t('lobby.hostOnly')]) };
+    dialog = { speaker: t('lobby.room'), state: speak([t('lobby.hostOnly')]) };
   };
   const leaveTown = (go: (() => void) | undefined) => {
     if (!go) return;
@@ -832,7 +878,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       case 'tutor':
         return openShopWindow(options.openTutor);
       case 'gacha':
-        return openShopWindow(options.openGacha);
+        return options.openGachaPage ? leaveTown(options.openGachaPage) : openShopWindow(options.openGacha);
       case 'board':
         return openShopWindow(options.openBoard);
       case 'achievements':
@@ -856,7 +902,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
 
   /** The Esc menu: every town service as a window, then back to the title (a room: its own rows, copy the code, leave). */
   const openTownMenu: TownWindowOpener = (parent, onClose) => {
+    // Leaving to another window or the title is instant (that one has its own entrance); "Seguir" and Esc sink away.
+    let instant = false;
     const pick = (action: () => void) => () => {
+      instant = true;
       onClose();
       action();
     };
@@ -867,19 +916,26 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const available = new Set(townMenuServices(services(), lobby !== null));
     const entry = (service: TownService, id: string = service): TownMapEntry => ({ id, label: t(serviceLabelKey(service)), about: t(serviceAboutKey(service)), glyph: service, onConfirm: pick(() => serviceAction(service)) });
     const markers = townMapMarkers(map, available);
+    const cards = placeCards(markers, map);
     const open = townMapView({
-      heading: lobby ? `${t('townMenu.heading')} · ${lobby.code()}` : t('townMenu.heading'),
+      heading: lobby ? `${t(map.nameKey)} · ${lobby.code()}` : t(map.nameKey),
       map,
-      placed: markers.map((m) => ({ ...m, entry: entry(m.service, m.id) })),
-      column: [...looseServices(markers, available).map((s) => entry(s)), ...end, { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose }],
+      placed: markers.map((m, i) => ({ ...m, entry: { ...entry(m.service, m.id), who: t(cards[i]!.whoKey) } })),
+      options: [...townMenuOptions(available).map((s) => entry(s)), ...end],
+      primary: { id: 'resume', label: t('townMenu.resume'), about: t('townMenu.resume.about'), glyph: 'resume', onConfirm: onClose },
       player: { x: walker.pos.x / TILE, y: walker.pos.y / TILE },
       onClose,
     });
-    const overlay = h('div', { className: 'town-shop' }, [open.element]);
+    const overlay = h('div', { className: 'town-shop tm-veil' }, [open.element]);
     parent.append(overlay);
     return () => {
       open.dispose();
-      overlay.remove();
+      if (instant) overlay.remove();
+      else {
+        // The panel sinks back the way it came (menuTiming); a stray press meanwhile reaches nothing.
+        overlay.classList.add('is-leaving');
+        window.setTimeout(() => overlay.remove(), menuTiming(matchMedia('(prefers-reduced-motion: reduce)').matches).exitMs);
+      }
     };
   };
 
@@ -972,7 +1028,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (plea && !fade && !dialog) {
       plea = stepPlea(plea, dt, TILE);
       const actor = pleaActor(plea);
-      if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: openDialog(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
+      if (plea.phase === 'talk' && actor) dialog = { speaker: t(actor.nameKey), state: speak(pleaKeys(actor).map((key) => t(key))), portrait: npcSprite(actor.species) };
       // Everyone has spoken: the player answers Phantump's question.
       if (plea.phase === 'choose' && !closeShop) openShopWindow(openPleaAnswer);
       if (plea.phase === 'done') endPlea();
@@ -983,7 +1039,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (tour && !fade && !dialog) {
       tour = stepTour(tour, dt, TILE);
       const stop = tourStop(tour);
-      if (tour.phase === 'talk' && stop) dialog = { speaker: t(TOWN_TOUR.nameKey), state: openDialog(tourKeys(stop).map((key) => t(key))), portrait: npcSprite(TOWN_TOUR.species) };
+      if (tour.phase === 'talk' && stop) dialog = { speaker: t(TOWN_TOUR.nameKey), state: speak(tourKeys(stop).map((key) => t(key))), portrait: npcSprite(TOWN_TOUR.species) };
     }
     if (tour) walker = { pos: tour.player, facing: playerFacing(tour, TILE) };
     if (tour?.phase === 'done') endTour();
@@ -1010,28 +1066,39 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     renderRoom();
     camera = followCamera(camera, walker.pos, dt);
     resize();
-    const view = townCamera(camera, map);
+    const view = townCamera(camera, map, viewWidth, viewHeight);
     const timeMs = now - start;
     const perf = devPerfProbe();
     const drawAt = perf ? performance.now() : 0;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade || plea || tour ? null : nearestInteractable(walker.pos, targets);
-    touch.setHidden('talk', exitWindow !== null || closeShop !== null || (!target && !dialog));
+    // The tooltip replaces "Hablar" on the touch layer and the floating prompt: one chip over the one target.
+    touch.setHidden('talk', true);
     touch.setHidden('pause', exitWindow !== null || closeShop !== null);
-    if (target && !dialog) touch.setLabel('talk', t(target.kind === 'npc' ? 'touch.talk' : 'touch.read'));
+    device.poll();
     drawTownOverlay(
       ctx,
       view,
       {
-        prompt: target ? { text: t(`${target.kind === 'npc' ? 'town.talk' : target.kind === 'waystone' ? 'world.travel' : 'town.read'}${isTouchUi() ? '.touch' : ''}`), pos: target.pos } : null,
-        dialog: dialog ? { speaker: dialog.speaker, text: shownText(dialog.state), done: lineDone(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null,
-        banner: { text: t(map.nameKey), alpha: bannerAlpha(timeMs - bannerAt) },
         fade: fadeAlpha(fade),
         names: nameLabels(),
       },
       timeMs,
-      sheets,
+    );
+    const origin = canvas.getBoundingClientRect();
+    const onScreen = (rect: { x: number; y: number; width: number; height: number }): Box => ({ x: origin.left + (rect.x - view.x) * zoom, y: origin.top + (rect.y - view.y) * zoom, w: rect.width * zoom, h: rect.height * zoom });
+    tooltip.update(target && !dialog ? { kind: interactKind(target), target: onScreen(targetRect(target, target.kind === 'npc' ? npcView(target.npc, options.story).species : 'mimikyu')), avoid: onScreen(creatureRect(SPRITES.sprites[sprite]?.anims.Idle ?? { frameWidth: 32, frameHeight: 48 }, walker.pos)) } : null);
+    dialogueBox.update(dialog ? { speaker: dialog.speaker, view: dialogueView(dialog.state), ...(dialog.portrait ? { portrait: dialog.portrait } : {}) } : null, timeMs);
+    hints?.update(
+      {
+        place: 'town',
+        minimap: false,
+        spectating: false,
+        suppressed: dialog !== null || exitWindow !== null || closeShop !== null || fade !== null || plea !== null || tour !== null,
+        band: { left: 12, right: 12, bottom: 12 },
+      },
+      timeMs,
     );
     if (perf) {
       perf.record('frame', dt);
@@ -1041,6 +1108,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   }
 
   const handle: TownHandle = {
+    place() {
+      if (stopped || fade || plea || tour || lobby) return null;
+      return { at: map.id, tile: tileOf(walker.pos) };
+    },
     stop() {
       if (stopped) return;
       stopped = true;
@@ -1050,6 +1121,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       closeShop?.();
       closeShop = null;
       touch.dispose();
+      hints?.dispose();
+      plaque.dispose();
+      tooltip.dispose();
+      dialogueBox.dispose();
+      device.dispose();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);

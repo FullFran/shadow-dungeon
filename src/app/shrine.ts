@@ -1,17 +1,25 @@
 import { gauntletStops, heraldStop, SHRINE_BOSSES, type BossStop } from '../core/shrine';
-import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
+import type { Difficulty } from '../data/difficulty';
+import { DIFFICULTIES } from '../data/difficulty';
 import { dungeonById } from '../data/dungeons';
 import { GAUNTLETS, type GauntletId } from '../data/shrine';
+import { SPECIES } from '../data/species';
 import { t } from '../i18n';
 import type { BestiaryEntry } from '../town/bestiary';
-import { gauntletReward, gauntletUnlocked, trialBest, type ShrineRecords, type TrialBest } from '../town/shrine-records';
-import { cursorList, type ListItem } from '../ui/cursor-list';
-import { description } from '../ui/describe';
+import { trialBest, type ShrineRecords, type TrialBest } from '../town/shrine-records';
+import { cursorList } from '../ui/cursor-list';
+import { hallNav } from '../ui/hall-nav';
+import { pixelIconSvg } from '../ui/pixel-icons';
+import { TYPE_COLORS } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
 import type { SheetStore } from '../adapters/assets';
 import { coinText } from './coin-lines';
 import { portrait } from './loadout';
 import type { TrialSummary } from './game';
+import { endScreen, endVeil } from './end-screen';
+import { shrineEndView } from './shrine-result';
+import { hallCards, hallTabs, type HallInput, type HallTab, type OathCard } from './shrine-hall';
+import '../styles/hall.css';
 
 /**
  * Santuario de los Juramentos (docs/gdd.md §3): the shrine window and its
@@ -80,143 +88,195 @@ export function shrineFocus(view: ShrineView, focus: string | undefined, heralds
   return at < 0 ? undefined : at + 1;
 }
 
+/** The tab a legacy view name opens: the old menu's «main» is the first tab. */
+const tabOf = (view: ShrineView, hasHeralds: boolean): HallTab => (view === 'gauntlets' ? 'gauntlets' : view === 'heralds' && hasHeralds ? 'heralds' : 'reflections');
+
+/**
+ * The hall of oaths (owner, 2026-11-04: "rediseña el santuario"): the trial kinds as large tabs
+ * (progress and best time), the tier as a segmented row, a grid of oath cards beside a large sheet
+ * (rules, record, reward and one ember «Jurar»). Fixed geometry, arrows across the grid, Enter
+ * confirms, Esc or a press outside closes. Pure data comes from shrine-hall.ts.
+ */
 export function shrineWindow(options: ShrineOptions): { element: HTMLElement; dispose(): void } {
-  let view: ShrineView = options.view ?? 'main';
   let tier = options.difficulty;
-  const about = h('div', { className: 'shrine-about' });
-  const lines = (...nodes: (Node | string)[]) => about.replaceChildren(...nodes.map((n) => (typeof n === 'string' ? h('p', { textContent: n }) : n)));
-  const reflections = SHRINE_BOSSES.filter((b) => options.beaten.has(b.boss));
-  /** The best line, with the idle sprite of the species that set it. */
-  const bestLine = (best: TrialBest | null): HTMLElement => {
-    const line = statLine(t('shrine.best'), bestText(best));
-    if (best?.species && options.sheets) line.querySelector('.md-stat-value')?.prepend(portrait(options.sheets, best.species, 1));
-    line.classList.add('shrine-best');
-    return line;
-  };
-  /** The best «En grupo» (an online room's), when there is one. */
-  const groupLine = (kind: 'boss' | 'gauntlet', id: string): HTMLElement[] => {
-    const best = trialBest(options.shrine, kind, id, tier, true);
-    return best ? [statLine(t('shrine.group'), bestText(best))] : [];
-  };
+  let tab: HallTab = tabOf(options.view ?? 'main', options.heralds.length > 0);
+  let focused: string | undefined = options.focus;
+  let cards: OathCard[] = [];
+  const hall = (): HallInput => ({ shrine: options.shrine, beaten: options.beaten, heralds: options.heralds, tier });
 
-  const tierRow = (): ListItem => ({
-    label: t('difficulty.label'),
-    value: t(`difficulty.${tier}`),
-    onAdjust: (delta) => {
-      tier = DIFFICULTIES[(DIFFICULTIES.indexOf(tier) + delta + DIFFICULTIES.length) % DIFFICULTIES.length]!;
-      options.onTier?.(tier);
-      refresh();
-    },
-    onConfirm: () => {
-      tier = DIFFICULTIES[(DIFFICULTIES.indexOf(tier) + 1) % DIFFICULTIES.length]!;
-      options.onTier?.(tier);
-      refresh();
-    },
+  const tabBar = h('div', { className: 'oa-tabs' });
+  tabBar.setAttribute('role', 'tablist');
+  const tierBar = h('div', { className: 'oa-tier' }, [h('span', { className: 'oa-tier-label', textContent: t('difficulty.label') })]);
+  const tierButtons = DIFFICULTIES.map((d) => {
+    const b = h('button', { className: 'oa-tier-btn', type: 'button', textContent: t(`difficulty.${d}`) });
+    b.addEventListener('click', () => {
+      tier = d;
+      options.onTier?.(d);
+      render();
+    });
+    return b;
   });
-  const back = (to: ShrineView | null): ListItem => ({ label: t('menu.back'), onConfirm: () => (to ? go(to) : options.onBack()) });
-  const fight = (kind: TrialRequest['kind'], id: string, stops: readonly BossStop[]) => options.onFight({ kind, id, stops, difficulty: tier });
+  tierBar.append(...tierButtons);
 
-  /** One description per row of the current view (index-aligned with `items()`). */
-  let describeRow: (() => void)[] = [];
+  const stage = h('div', { className: 'hl-stage oa-stage' });
+  const name = h('h2', { className: 'hl-name' });
+  const state = h('div', { className: 'hl-chips' });
+  const rules = h('div', { className: 'hl-rules' });
+  const record = h('div', { className: 'hl-record' });
+  const swear = h('button', { className: 'hl-cta', type: 'button' }, [pixelIconSvg('play', 'px-icon'), h('span', { textContent: t('shrine.swear') })]);
+  // The rules and the record scroll inside their own region; the stage, name, chips and «Jurar» keep fixed rows (nothing sits under the button).
+  const sheetBody = h('div', { className: 'oa-sheet-body' }, [rules, record]);
+  const sheet = h('section', { className: 'hl-sheet oa-sheet' }, [stage, name, state, sheetBody, swear]);
+  const grid = h('div', { className: 'hl-grid oa-grid' });
+  grid.setAttribute('aria-label', t('shrine.title'));
+  const back = h('button', { className: 'hl-back', type: 'button', textContent: t('menu.back') });
+  back.addEventListener('click', () => options.onBack());
+  const foot = h('div', { className: 'hl-foot' }, [back, h('p', { className: 'hl-hint', textContent: options.note ?? t('hub.hint') })]);
 
-  function items(): ListItem[] {
-    if (view === 'main') {
-      const open = GAUNTLETS.filter((g) => gauntletUnlocked(g.id, options.beaten)).length;
-      describeRow = [
-        () => lines(t('shrine.reflections.text'), t('shrine.count').replace('{open}', String(reflections.length)).replace('{total}', String(SHRINE_BOSSES.length))),
-        () => lines(t('shrine.gauntlets.text'), t('shrine.gauntlets.open').replace('{open}', String(open)).replace('{total}', String(GAUNTLETS.length))),
-        () => lines(t('shrine.text')),
-      ];
-      return [
-        { label: t('shrine.reflections'), value: `${reflections.length}/${SHRINE_BOSSES.length}`, disabled: reflections.length === 0 && options.heralds.length === 0, onConfirm: () => go('reflections') },
-        { label: t('shrine.gauntlets'), value: `${open}/${GAUNTLETS.length}`, onConfirm: () => go('gauntlets') },
-        back(null),
-      ];
+  const line = (label: string, value: string | Node): HTMLElement => h('p', { className: 'hl-line' }, [h('span', { className: 'hl-line-label', textContent: label }), typeof value === 'string' ? h('span', { className: 'hl-line-value', textContent: value }) : value]);
+  const chip = (text: string, cls: string): HTMLElement => h('span', { className: `hl-chip ${cls}`, textContent: text });
+
+  const current = (): OathCard | undefined => cards.find((c) => c.id === focused) ?? cards[0];
+
+  const show = (card: OathCard | undefined): void => {
+    if (!card) return;
+    focused = card.id;
+    const sealed = card.state === 'locked';
+    const title = card.kind === 'herald' ? (options.heralds.find((e) => String(e.seed) === card.id)?.name ?? bossName('sima-herald')) : card.kind === 'gauntlet' ? gauntletName(card.id as GauntletId) : bossName(card.id);
+    const glow = card.species ? TYPE_COLORS[SPECIES[card.species].types[0]!].core : null;
+    if (glow) stage.style.setProperty('--hl-glow', glow);
+    else stage.style.removeProperty('--hl-glow');
+    stage.replaceChildren(
+      h('div', { className: 'hl-stage-glow' }),
+      h('div', { className: 'hl-stage-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 4) : pixelIconSvg(card.icon, 'px-icon hl-stage-icon')]),
+      h('div', { className: 'hl-stage-sign' }),
+    );
+    name.textContent = sealed ? t('shrine.sealed.name') : title;
+    state.replaceChildren(chip(t(`shrine.state.${card.state}`), `is-${card.state}`), ...(card.best?.noHit ? [chip(t('shrine.noHit'), 'is-nohit')] : []));
+    const stop = card.stops[0];
+    const rule: (Node | string)[] = [];
+    if (card.kind === 'boss') {
+      rule.push(sealed ? t('shrine.sealed.boss') : t(`shrine.role.${stop!.role}`).replace('{dungeon}', t(dungeonById(stop!.dungeon).lore.nameKey)), t('shrine.reflections.text'));
+    } else if (card.kind === 'gauntlet') {
+      rule.push(sealed ? t('shrine.locked').replace('{count}', String(card.missing)) : t('shrine.gauntlets.text'), t('shrine.carry'));
+    } else rule.push(t('shrine.heralds.text'), t('shrine.herald.seed').replace('{seed}', card.id));
+    rules.replaceChildren(h('h3', { textContent: t('shrine.rules') }), ...rule.map((r) => (typeof r === 'string' ? h('p', { textContent: r }) : r)));
+    if (card.kind === 'gauntlet' && !sealed) {
+      rules.append(h('p', { className: 'hl-order', textContent: `${t('shrine.gauntlet.order')}: ${card.stops.map((s) => bossName(s.boss)).join(' → ')}` }));
     }
-    if (view === 'reflections') {
-      const rows: ListItem[] = SHRINE_BOSSES.map((stop) => {
-        const known = options.beaten.has(stop.boss);
-        return { label: known ? bossName(stop.boss) : '???', value: known ? trialTime(trialBest(options.shrine, 'boss', stop.boss, tier)?.bestMs) : '', disabled: !known, onConfirm: () => fight('boss', stop.boss, [stop]) };
+    const rows: HTMLElement[] = [];
+    if (card.kind === 'herald') rows.push(line(t('shrine.best'), '-'));
+    else if (sealed) rows.push(h('p', { className: 'hl-none', textContent: t('shrine.noRecord') }));
+    else if (!card.best) rows.push(h('p', { className: 'hl-none', textContent: t('shrine.noRecord') }));
+    else {
+      const bestValue = h('span', { className: 'hl-line-value', textContent: bestText(card.best) });
+      rows.push(line(t('shrine.best'), bestValue), line(t('shrine.clears'), String(card.best.clears)));
+    }
+    if (card.group) rows.push(line(t('shrine.group'), bestText(card.group)));
+    if (card.kind === 'gauntlet') rows.push(line(t('shrine.reward'), card.rewardTaken ? t('shrine.reward.taken') : coinText(card.reward ?? 0, (key) => t(key))));
+    else if (card.kind === 'boss' && !sealed) rows.push(line(t('shrine.reward'), t('shrine.reward.none')));
+    record.replaceChildren(h('h3', { textContent: t('shrine.record') }), ...rows);
+    swear.toggleAttribute('data-locked', sealed);
+    swear.setAttribute('aria-disabled', String(sealed));
+    for (const c of cardEls) c.classList.toggle('is-focused', c.dataset.oath === card.id);
+  };
+
+  const fight = (card: OathCard): void => {
+    if (card.state === 'locked') return;
+    options.onFight({ kind: card.kind, id: card.id, stops: card.stops, difficulty: tier });
+  };
+  swear.addEventListener('click', () => {
+    const card = current();
+    if (card) fight(card);
+  });
+
+  let cardEls: HTMLButtonElement[] = [];
+  const buildCards = (): void => {
+    cardEls = cards.map((card) => {
+      const sealed = card.state === 'locked';
+      const label = sealed ? t('shrine.sealed.name') : card.kind === 'herald' ? (options.heralds.find((e) => String(e.seed) === card.id)?.name ?? '') : card.kind === 'gauntlet' ? gauntletName(card.id as GauntletId) : bossName(card.id);
+      const art = h('span', { className: 'hl-card-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 2) : pixelIconSvg(card.icon, 'px-icon hl-card-icon')]);
+      const sub = sealed
+        ? card.kind === 'gauntlet'
+          ? t('shrine.locked').replace('{count}', String(card.missing))
+          : t('shrine.state.locked')
+        : card.best
+          ? trialTime(card.best.bestMs)
+          : card.kind === 'gauntlet' && card.reward !== null
+            ? coinText(card.reward, (key) => t(key))
+            : t(`shrine.state.${card.state}`);
+      const el = h('button', { className: `hl-card is-${card.state}`, type: 'button' }, [art, h('span', { className: 'hl-card-name', textContent: label }), h('span', { className: 'hl-card-sub', textContent: sub }), h('span', { className: `hl-card-state is-${card.state}`, textContent: t(`shrine.state.${card.state}`) })]);
+      el.dataset.oath = card.id;
+      el.setAttribute('aria-label', `${label}, ${t(`shrine.state.${card.state}`)}${card.best ? `, ${trialTime(card.best.bestMs)}` : ''}`);
+      el.addEventListener('mouseenter', () => show(card));
+      el.addEventListener('focus', () => show(card));
+      el.addEventListener('pointerdown', (e) => {
+        // Touch has no hover: the first tap reads the card, the next one swears.
+        if (e.pointerType === 'touch' && focused !== card.id) {
+          show(card);
+          el.dataset.fresh = '1';
+        }
       });
-      describeRow = [
-        () => lines(t(`difficulty.${tier}.hint`)),
-        ...SHRINE_BOSSES.map((stop) => () => {
-          const best = trialBest(options.shrine, 'boss', stop.boss, tier);
-          lines(
-            t(`shrine.role.${stop.role}`).replace('{dungeon}', t(dungeonById(stop.dungeon).lore.nameKey)),
-            bestLine(best),
-            statLine(t('shrine.clears'), String(best?.clears ?? 0)),
-            statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
-            ...groupLine('boss', stop.boss),
-          );
-        }),
-        ...(options.heralds.length > 0 ? [() => lines(t('shrine.heralds.text'))] : []),
-        () => lines(t('shrine.reflections.text')),
-      ];
-      return [
-        tierRow(),
-        ...rows,
-        ...(options.heralds.length > 0 ? [{ label: t('shrine.heralds'), value: String(options.heralds.length), onConfirm: () => go('heralds') }] : []),
-        back('main'),
-      ];
+      el.addEventListener('click', () => {
+        if (el.dataset.fresh) {
+          delete el.dataset.fresh;
+          return;
+        }
+        show(card);
+        fight(card);
+      });
+      return el;
+    });
+    grid.replaceChildren(...cardEls);
+  };
+
+  const tabEls = new Map<HallTab, HTMLButtonElement>();
+  function render(): void {
+    const input = hall();
+    const infos = hallTabs(input);
+    if (!infos.some((i) => i.id === tab)) tab = 'reflections';
+    for (const [i, b] of tierButtons.entries()) {
+      const on = DIFFICULTIES[i] === tier;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
     }
-    if (view === 'heralds') {
-      const met = heraldEntries(options.heralds, MAX_HERALDS);
-      describeRow = [() => lines(t(`difficulty.${tier}.hint`)), ...met.map((e) => () => lines(t('shrine.herald.seed').replace('{seed}', String(e.seed)))), () => lines(t('shrine.heralds.text'))];
-      return [tierRow(), ...met.map((e): ListItem => ({ label: e.name, onConfirm: () => fight('herald', String(e.seed), [heraldStop(e.seed)]) })), back('reflections')];
+    for (const info of infos) {
+      let b = tabEls.get(info.id);
+      if (!b) {
+        b = h('button', { className: 'oa-tab', type: 'button' });
+        b.setAttribute('role', 'tab');
+        b.addEventListener('click', () => {
+          tab = info.id;
+          focused = undefined;
+          render();
+        });
+        tabEls.set(info.id, b);
+        tabBar.append(b);
+      }
+      b.classList.toggle('is-on', info.id === tab);
+      b.setAttribute('aria-selected', String(info.id === tab));
+      b.replaceChildren(
+        pixelIconSvg(info.icon, 'px-icon oa-tab-icon'),
+        h('span', { className: 'oa-tab-text' }, [
+          h('span', { className: 'oa-tab-name', textContent: t(`shrine.${info.id}`) }),
+          h('span', { className: 'oa-tab-meta', textContent: t('shrine.tab.open').replace('{open}', String(info.open)).replace('{total}', String(info.total)) }),
+          h('span', { className: 'oa-tab-meta', textContent: info.bestMs === null ? t('shrine.noRecord') : t('shrine.tab.best').replace('{time}', trialTime(info.bestMs)) }),
+        ]),
+      );
     }
-    describeRow = [
-      () => lines(t(`difficulty.${tier}.hint`)),
-      ...GAUNTLETS.map((g) => () => {
-        const unlocked = gauntletUnlocked(g.id, options.beaten);
-        const best = trialBest(options.shrine, 'gauntlet', g.id, tier);
-        const missing = g.bosses.filter((b) => !options.beaten.has(b));
-        lines(
-          unlocked ? g.bosses.map(bossName).join(' → ') : t('shrine.locked').replace('{count}', String(missing.length)),
-          bestLine(best),
-          statLine(t('shrine.noHit'), best?.noHit ? '✓' : '-'),
-          ...groupLine('gauntlet', g.id),
-          statLine(t('shrine.reward'), best ? t('shrine.reward.taken') : coinText(gauntletReward(g.id, tier), (key) => t(key))),
-          t('shrine.carry'),
-        );
-      }),
-      () => lines(t('shrine.gauntlets.text')),
-    ];
-    return [
-      tierRow(),
-      ...GAUNTLETS.map((g): ListItem => {
-        const unlocked = gauntletUnlocked(g.id, options.beaten);
-        return { label: unlocked ? gauntletName(g.id) : `${gauntletName(g.id)} 🔒`, value: unlocked ? trialTime(trialBest(options.shrine, 'gauntlet', g.id, tier)?.bestMs) : '', disabled: !unlocked, onConfirm: () => fight('gauntlet', g.id, gauntletStops(g.id)) };
-      }),
-      back('main'),
-    ];
+    cards = hallCards(tab, input);
+    buildCards();
+    show(current());
   }
 
-  const describe = (index: number) => describeRow[index]?.();
-  const first = items();
-  const initial = shrineFocus(view, options.focus, options.heralds);
-  const list = cursorList({ items: first, ...(initial !== undefined && !first[initial]?.disabled ? { initial } : {}), onBack: () => (view === 'main' ? options.onBack() : go(view === 'heralds' ? 'reflections' : 'main')), onCursor: describe, label: t('shrine.title'), className: 'shrine-list' });
-  const desc = description(list, { describe, children: [about] });
-  const heading = h('h3', { className: 'dim' });
-
-  function refresh(): void {
-    list.setItems(items());
-    heading.textContent = view === 'main' ? t('shrine.subtitle') : t(`shrine.${view}`);
-    desc.update();
-  }
-
-  function go(next: ShrineView): void {
-    view = next;
-    refresh();
-  }
-
-  refresh();
-  const element = mdWindow({ title: t('shrine.title'), className: 'shrine wide' }, [
-    heading,
-    h('div', { className: 'shrine-body' }, [list.element, desc.element]),
-    ...(options.note ? [h('p', { className: 'dim shrine-note', textContent: options.note })] : []),
-  ]);
-  return { element, dispose: () => list.dispose() };
+  render();
+  const win = mdWindow({ title: t('shrine.title'), className: 'oa-window hl-window' }, [h('div', { className: 'oa-top' }, [tabBar, tierBar]), h('div', { className: 'hl-body' }, [sheet, grid]), foot]);
+  const stopNav = hallNav(win, {
+    controls: () => [...tabEls.values(), ...tierButtons, ...cardEls, swear, back],
+    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => !c.classList.contains('is-locked')) ?? cardEls[0],
+    onBack: options.onBack,
+  });
+  return { element: win, dispose: stopNav };
 }
 
 export interface ShrineResultOptions {
@@ -228,6 +288,7 @@ export interface ShrineResultOptions {
   /** Pokémonedas paid (a gauntlet's first clear on its tier), else 0. */
   coins: number;
   balance: number;
+  sheets?: Promise<SheetStore>;
   /** Absent in an online room (the host starts the next one from the altar). */
   onRetry?(): void;
   onBack(): void;
@@ -240,28 +301,9 @@ export function requestName(request: TrialRequest, heraldName?: string): string 
   return bossName(request.id);
 }
 
-/** The shrine's end screen: the trial, its time, captures and «Sin rasguños», a new best, the coins, then retry or back. */
+/** The shrine's end screen (relic look, shared with every run's end): the outcome and the boss, the record card, the coins, then back (primary) or retry. */
 export function shrineResultScreen(options: ShrineResultOptions, heraldName?: string): HTMLElement {
   const { trial, victory, before } = options;
-  const newBest = victory && (before === null || trial.ms < before.bestMs);
-  const list = cursorList({
-    items: [
-      ...(options.onRetry ? [{ label: t('screen.retry'), onConfirm: options.onRetry }] : []),
-      { label: t(options.onRetry ? 'shrine.back' : 'shrine.room.back'), onConfirm: options.onBack },
-    ],
-    onBack: options.onBack,
-    label: t('shrine.title'),
-    className: 'result-actions',
-  });
-  return mdWindow({ title: t('shrine.title'), className: `result ${victory ? 'victory' : 'defeat'} shrine-result` }, [
-    h('h1', { textContent: t(victory ? 'shrine.won' : 'shrine.lost') }),
-    h('p', { textContent: `${requestName(options.request, heraldName)} · ${t(`difficulty.${options.request.difficulty}`)}` }),
-    statLine(t('shrine.time'), trialTime(trial.ms)),
-    ...(trial.stops.length > 1 ? [statLine(t('shrine.beaten'), `${trial.beaten}/${trial.stops.length}`)] : []),
-    statLine(t('shrine.captures'), String(trial.captures)),
-    ...(victory && trial.noHit ? [statLine(t('shrine.noHit'), '✓')] : []),
-    ...(newBest ? [h('p', { className: 'shrine-new', textContent: t('shrine.newBest') })] : before ? [statLine(t('shrine.best'), trialTime(before.bestMs))] : []),
-    ...(options.coins > 0 ? [statLine(t('shrine.reward'), coinText(options.coins, (key) => t(key))), statLine(t('screen.coins.balance'), coinText(options.balance, (key) => t(key)))] : []),
-    list.element,
-  ]);
+  const view = shrineEndView({ request: options.request, victory, trial, before, coins: options.coins, balance: options.balance, canRetry: options.onRetry !== undefined }, requestName(options.request, heraldName), (key) => t(key), trialTime);
+  return endVeil(endScreen({ view, ...(options.sheets ? { sheets: options.sheets } : {}), onAction: (id) => (id === 'retry' ? options.onRetry?.() : options.onBack()) }));
 }

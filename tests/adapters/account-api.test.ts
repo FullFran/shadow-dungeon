@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { apiBaseUrl, DEFAULT_API_URL, httpAccountApi } from '../../src/adapters/account-api';
+import { setBackoffForTests } from '../../src/adapters/http';
 import { EMPTY_SAVE } from '../../src/app/save';
+
+setBackoffForTests([0, 0]);
 
 interface Seen {
   url: string;
@@ -104,7 +107,7 @@ describe('http account API', () => {
 
   it('maps failures: network, 401, 429, 5xx', async () => {
     expect(await httpAccountApi(BASE, fakeFetch(new TypeError('Failed to fetch')).fetchFn).refresh('T')).toEqual({ ok: false, error: { kind: 'offline' } });
-    const { fetchFn } = fakeFetch([{ status: 401 }, { status: 429 }, { status: 503 }, { status: 400 }]);
+    const { fetchFn } = fakeFetch([{ status: 401 }, { status: 429 }, { status: 503 }, { status: 503 }, { status: 503 }, { status: 400 }]); // a GET is retried twice with backoff (adapters/http.ts)
     const api = httpAccountApi(BASE, fetchFn);
     expect(await api.refresh('T')).toEqual({ ok: false, error: { kind: 'unauthorized' } });
     expect(await api.signUp('a@b.es', 'x')).toEqual({ ok: false, error: { kind: 'rate-limited' } });

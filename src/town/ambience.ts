@@ -32,15 +32,6 @@ export function leafAt(i: number, ms: number, width: number, height: number): { 
   return { x, y, flip: Math.sin(t * 3 + i) > 0 };
 }
 
-/** A bird gliding across the sky band, wings up or down. */
-export function birdAt(i: number, ms: number, width: number, band: number): { x: number; y: number; up: boolean } {
-  const span = width + 60;
-  const speed = 14 + hash01(i * 11 + 1) * 12;
-  const x = ((hash01(i * 11 + 2) * span + (ms / 1000) * speed) % span) - 30;
-  const y = 8 + hash01(i * 11 + 3) * (band * 0.45) + Math.sin(ms / 900 + i) * 2;
-  return { x, y, up: Math.floor(ms / (180 + hash01(i) * 120)) % 2 === 0 };
-}
-
 export interface WanderState extends Walker {
   /** Where it is walking (px), or null while it rests. */
   target: Vec2 | null;

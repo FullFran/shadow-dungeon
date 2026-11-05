@@ -43,3 +43,39 @@ function browserDeps(): ImmersiveDeps {
     lockOrientation: orientation?.lock ? () => orientation.lock!('landscape') : null,
   };
 }
+
+export interface FullscreenDeps {
+  fullscreenElement: unknown;
+  request: (() => Promise<void>) | null;
+  exit: (() => Promise<void>) | null;
+}
+
+function fullscreenDeps(): FullscreenDeps {
+  if (typeof document === 'undefined') return { fullscreenElement: null, request: null, exit: null };
+  const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+  const doc = document as Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => Promise<void> | void };
+  return {
+    fullscreenElement: document.fullscreenElement ?? doc.webkitFullscreenElement ?? null,
+    request: root.requestFullscreen ? () => root.requestFullscreen({ navigationUI: 'hide' }) : root.webkitRequestFullscreen ? async () => void (await root.webkitRequestFullscreen!()) : null,
+    exit: document.exitFullscreen ? () => document.exitFullscreen() : doc.webkitExitFullscreen ? async () => void (await doc.webkitExitFullscreen!()) : null,
+  };
+}
+
+/** Whether this browser can take the page fullscreen at all (an iPhone's Safari cannot): the pause shows its row only then. */
+export const fullscreenSupported = (deps: FullscreenDeps = fullscreenDeps()): boolean => deps.request !== null && deps.exit !== null;
+
+/** Whether the page is fullscreen now. */
+export const isFullscreen = (deps: FullscreenDeps = fullscreenDeps()): boolean => deps.fullscreenElement !== null && deps.fullscreenElement !== undefined;
+
+/** In and out of the browser's fullscreen (the hub button, the play view's button, F11, Alt+Enter); false where it is refused or missing. */
+export async function toggleFullscreen(deps: FullscreenDeps = fullscreenDeps()): Promise<boolean> {
+  const action = isFullscreen(deps) ? deps.exit : deps.request;
+  if (!action) return false;
+  try {
+    await action();
+    return true;
+  } catch {
+    // Refused (no gesture, iframe, a setting): the page stays as it is.
+    return false;
+  }
+}

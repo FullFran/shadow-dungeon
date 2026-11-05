@@ -14,6 +14,10 @@
 export interface ChangelogItem {
   es: string;
   en: string;
+  /** Key of a drawn icon (src/ui/icons/achievements-news-icons.ts) for this row; the section's icon when absent. */
+  icon?: string;
+  /** A screenshot under src/assets/news/ (bundled, src/adapters/bundled-art.ts) (e.g. "news/title-hub.webp"), shown as a small thumbnail. */
+  image?: string;
 }
 
 /** The sections of a release, in the order the screen and the release show them. */
@@ -41,6 +45,89 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.12.0',
+    date: '2026-11-05',
+    sections: {
+      new: [
+        {
+          es: 'Ahora puedes entrar con Google o Discord. Si ya tenías cuenta no pierdes nada: entra con Google o Discord usando el mismo correo y aparecerá tu partida, o sigue con tu correo y contraseña de siempre.',
+          en: 'You can now sign in with Google or Discord. If you already had an account you lose nothing: sign in with Google or Discord using the same email and your game is there, or keep using your usual email and password.',
+          icon: 'shield',
+        },
+        {
+          es: 'Primera partida nueva: eliges entre crear cuenta o jugar como invitado (con lo que gana y pierde cada opción), y después el prólogo, un cuestionario de una pregunta por pantalla y la revelación de tu caminante sobre un altar.',
+          en: 'A new first game: choose between creating an account or playing as a guest (with what each option gives and costs), then the prologue, a one-question-per-screen questionnaire and the reveal of your walker on an altar.',
+          icon: 'sparkle',
+        },
+        {
+          es: 'Si recargas la página en una mazmorra, un desafío, la Sima, el Santuario o el pueblo, vuelves al mismo sitio con la pausa abierta. Una derrota no se deshace recargando.',
+          en: 'If you reload the page in a dungeon, a challenge, the Sima, the Shrine or the town, you come back to the same spot with the pause open. Reloading does not undo a defeat.',
+          icon: 'rise',
+        },
+        {
+          es: 'El menú del pueblo es un mapa de pergamino: sellos en cada servicio con quién lo lleva, y las opciones agrupadas en Tu equipo, Progreso, Social y Sistema.',
+          en: 'The town menu is a parchment map: a seal on each service with who runs it, and the options grouped into Your team, Progress, Social and System.',
+          icon: 'paw',
+        },
+      ],
+      improved: [
+        {
+          es: 'Tu compañero descansa en un altar de piedra tallada, y el perfil y la cuenta muestran su cara.',
+          en: 'Your partner rests on a carved stone altar, and the profile and the account show its face.',
+          icon: 'eclipse',
+        },
+        {
+          es: 'El juego ocupa toda la ventana y los Pokémon se ven más grandes. Al acercarte a algo, un aviso dice qué puedes hacer (Hablar, Leer, Viajar, Comprar...) y con qué tecla.',
+          en: 'The game fills the whole window and Pokémon look bigger. When you get close to something, a hint says what you can do (Talk, Read, Travel, Buy...) and with which key.',
+        },
+        {
+          es: 'HUD de combate más limpio: el centro queda libre, la barra del jefe lleva su nombre y título, y sus ataques se anuncian arriba.',
+          en: 'A cleaner combat HUD: the centre stays clear, the boss bar shows its name and title, and its attacks are announced at the top.',
+        },
+        {
+          es: 'Pausa nueva con el plano de la planta, tu nivel y experiencia, y la opción de pantalla completa (también con F11 o Alt+Enter).',
+          en: 'A new pause with the floor plan, your level and experience, and a fullscreen option (also with F11 or Alt+Enter).',
+        },
+        {
+          es: 'Las victorias y derrotas son una ceremonia sobre la partida congelada, con tus datos en fichas y la diferencia con tu mejor marca.',
+          en: 'Wins and defeats are a ceremony over the frozen game, with your stats on tiles and the difference from your best mark.',
+          icon: 'trophy',
+        },
+        {
+          es: 'Santuario, Tablón, Galería, Logros, Maestro y Amigos rediseñados. En el Tablón ya puedes abandonar una misión.',
+          en: 'Shrine, Board, Gallery, Achievements, Master and Friends redesigned. On the Board you can now abandon a mission.',
+        },
+        {
+          es: 'Para saltar una cinemática hay que mantener el botón pulsado un momento, para no saltarla sin querer.',
+          en: 'To skip a cutscene you now hold the button for a moment, so you do not skip it by accident.',
+        },
+        {
+          es: 'El juego arranca más rápido: solo descarga los sprites que necesita en cada momento.',
+          en: 'The game starts faster: it only downloads the sprites it needs at each moment.',
+          icon: 'download',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Ningún Pokémon sale recortado en ninguna ventana.',
+          en: 'No Pokémon is cropped in any window.',
+        },
+        {
+          es: 'Si falla la conexión o un recurso, el juego lo dice y deja reintentar en vez de quedarse en blanco.',
+          en: 'If the connection or a resource fails, the game says so and lets you retry instead of going blank.',
+          icon: 'wrench',
+        },
+      ],
+      known: [
+        {
+          es: 'Las partidas en línea no se recuperan al recargar la página.',
+          en: 'Online games are not restored when you reload the page.',
+          icon: 'warning',
+        },
+      ],
+    },
+  },
+  {
     version: '0.11.1',
     date: '2026-11-03',
     sections: {
@@ -58,16 +145,36 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
+          es: 'Título renovado: tu compañero en un círculo rúnico, los servicios como iconos a los lados, «Jugar» y «Jugar en línea» abajo, y de fondo el Refugio del Ocaso en ruinas bajo el eclipse, con Mimikyu y Gastly.',
+          en: 'Title redesigned: your partner in a rune circle, the services as icons on both sides, «Play» and «Play online» at the bottom, and behind them Dusk Haven in ruins under the eclipse, with Mimikyu and Gastly.',
+          icon: 'eclipse',
+          image: 'news/title-hub.webp',
+        },
+        {
+          es: 'Logros más visuales: cada categoría tiene su icono y su barra de progreso, y cada logro es una casilla con su icono, su dificultad, su premio y la fecha en que lo conseguiste.',
+          en: 'More visual achievements: each category has its icon and progress bar, and each achievement is a tile with its icon, difficulty, reward and the date you won it.',
+          icon: 'trophy',
+          image: 'news/achievements.webp',
+        },
+        {
+          es: 'Novedades más fáciles de leer: una tarjeta por versión con la última desplegada, secciones con su icono y un titular en negrita en cada nota.',
+          en: 'Easier-to-read news: one card per version with the latest unfolded, sections with their icon and a bold headline on each note.',
+          icon: 'star',
+        },
+        {
           es: 'Tu Sombra tiene su escena antes y después del combate, y al llegar al pueblo por primera vez Gastly te enseña la tienda, el tutor, el tablón y el Santuario, y te deja ante la piedra guía con la Cripta lista.',
           en: 'Your Shadow has its scene before and after the fight, and the first time you reach the town Gastly shows you the shop, the tutor, the board and the shrine, and leaves you at the waystone with the Crypt ready.',
+          icon: 'ghost',
         },
         {
           es: 'Ganar se nota: al caer el guardián cruza la pantalla un gran «VICTORIA», y la pantalla final de una victoria brilla en dorado.',
           en: 'Winning shows: when the guardian falls a large «VICTORY» crosses the screen, and a won run\'s end screen glows gold.',
+          icon: 'trophy',
         },
         {
           es: 'En el título sale «Instalar juego» arriba a la derecha: en el móvil y en el ordenador te dice cómo tenerlo como una aplicación.',
           en: '«Install game» shows in the title\'s top right corner: on phones and computers it tells you how to keep it as an app.',
+          icon: 'download',
         },
         {
           es: 'Si tu navegador permite instalar el juego, en el título sale «Instalar juego» arriba a la derecha.',

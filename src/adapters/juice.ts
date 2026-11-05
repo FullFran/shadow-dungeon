@@ -22,12 +22,13 @@ export const JUICE = {
   numberLifeMs: 800,
   /** Pixels a damage number rises over its life. */
   numberRisePx: 22,
-  flashMs: 900,
+  /** The flash toast (src/adapters/hud.ts) stays this long. */
+  flashMs: 1600,
   /** Peak screen rumble next to (or on) the collapse front; it fades out `COLLAPSE.rumbleTiles` away. */
   rumblePx: 1.5,
 } as const;
 
-export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hold' | 'hurt' | 'heal';
+export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hold' | 'hurt' | 'heal' | 'burn' | 'poison';
 
 export interface FloatingNumber {
   pos: Vec2;
@@ -80,7 +81,8 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
       case 'enemyHit': {
         // A burn or poison tick: a small number, no hitstop.
         if (event.dot || event.minor) {
-          next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: 'normal', big: false, ageMs: 0 }] };
+          // A burn or poison tick wears its status colour (the HUD's status popups); other minor hits stay plain.
+          next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: event.dot ?? 'normal', big: false, ageMs: 0 }] };
           break;
         }
         const heavy = isHeavyHit(event);

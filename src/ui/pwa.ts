@@ -1,17 +1,21 @@
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
-import { bannerVisible, installOffer, isIosSafari, neverShowBanner, type InstallOffer } from '../pwa/install';
+import { bannerVisible, installOffer, isIosSafari, type InstallOffer } from '../pwa/install';
+import { installNotice, updateNotice } from '../pwa/notices';
+import { notices } from './notice';
 import { registerServiceWorker } from '../pwa/register';
 import { cursorList } from './cursor-list';
 import { h, mdWindow } from './window';
 
 /**
  * PWA glue for the pages: keeps the browser's install prompt, offers it from
- * the title menu ("Instalar juego") and a one-time dismissible banner, shows
+ * the title menu ("Instalar juego") and a one-time dismissible system notice, shows
  * the iOS Share -> Add to Home Screen instructions where there is no prompt,
- * and the "Nueva versión disponible — Actualizar" toast when a new service
- * worker waits (index.html CSS hides the toast during a run).
+ * and the "Nueva versión disponible" notice when a new service worker waits.
+ * Notices share one queue and view (src/ui/notice.ts): one at a time, only on the hub.
  */
+const UPDATE_SNOOZE_MS = 10 * 60 * 1000;
+
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -21,7 +25,7 @@ export interface Pwa {
   offer(): InstallOffer;
   /** The title menu entry: the browser prompt, or the iOS instructions. */
   install(parent: HTMLElement): void;
-  /** Appends the invitation banner to `parent` when it is due (once per page, unless "never"). */
+  /** Queues the install notice when it is due (once per page, unless "never") and lets waiting notices show; call it whenever the hub is drawn. */
   banner(parent: HTMLElement): void;
   /** The "Instalar" button in the top right corner of `parent`, while the game can be installed (owner, 2026-11-02). */
   corner(parent: HTMLElement): void;
@@ -47,21 +51,20 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
   window.addEventListener('appinstalled', () => {
     installed = true;
     deferred = null;
-    document.querySelector('.pwa-banner')?.remove();
     document.querySelector('.pwa-corner')?.remove();
     options.onOfferChange();
   });
 
+  /** An update waits for the player: it is a system notice (never a silent reload), put off for a while by "Más tarde". */
+  let applyUpdate: (() => void) | null = null;
+  let snoozedUntil = 0;
+  const offerUpdate = (): void => {
+    if (!applyUpdate || Date.now() < snoozedUntil) return;
+    notices.enqueue(updateNotice(applyUpdate, () => (snoozedUntil = Date.now() + UPDATE_SNOOZE_MS)));
+  };
   registerServiceWorker((apply) => {
-    if (document.querySelector('.pwa-toast')) return;
-    const button = h('button', { type: 'button', className: 'pwa-toast-action', textContent: t('pwa.reload') });
-    button.addEventListener('click', () => {
-      button.disabled = true;
-      apply();
-    });
-    const toast = h('div', { className: 'pwa-toast md-window still' }, [h('span', { textContent: t('pwa.update') }), button]);
-    toast.setAttribute('role', 'status');
-    document.body.append(toast);
+    applyUpdate = apply;
+    offerUpdate();
   });
 
   /** How to install where the browser offers no prompt: iOS Safari's share sheet, or a desktop browser's own menu. */
@@ -90,39 +93,15 @@ export function setupPwa(options: { store: KeyValueStore; onOfferChange(): void 
   }
 
   function banner(parent: HTMLElement): void {
+    offerUpdate();
     const current = offer();
-    if (!bannerVisible(options.store, current, bannerShown)) return;
-    bannerShown = true;
-    const node = h('div', { className: 'pwa-banner' });
-    const close = () => {
-      list.dispose();
-      node.remove();
-    };
-    const list = cursorList({
-      layout: 'horizontal',
-      keyboard: false,
-      items: [
-        current === 'prompt'
-          ? {
-              label: t('pwa.installNow'),
-              onConfirm: () => {
-                close();
-                install(parent);
-              },
-            }
-          : { label: t('pwa.ok'), onConfirm: close },
-        ...(current === 'prompt' ? [{ label: t('pwa.later'), onConfirm: close }] : []),
-        {
-          label: t('pwa.never'),
-          onConfirm: () => {
-            neverShowBanner(options.store);
-            close();
-          },
-        },
-      ],
-    });
-    node.append(mdWindow({ className: 'still' }, [h('p', { textContent: t(current === 'prompt' ? 'pwa.banner' : 'pwa.ios') }), list.element]));
-    parent.append(node);
+    if (bannerVisible(options.store, current, bannerShown)) {
+      bannerShown = true;
+      const notice = installNotice(current, options.store, () => install(parent));
+      if (notice) notices.enqueue(notice);
+    }
+    // The hub is drawn: whatever waited for it (an update that arrived mid-run, the news) may show now.
+    notices.pump();
   }
 
   function corner(parent: HTMLElement): void {

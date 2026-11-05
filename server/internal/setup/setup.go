@@ -90,6 +90,10 @@ var ReportLimit = core.RateLimitRule{Label: "/api/sd/reports", MaxRequests: 5, D
 // path: accepting and the heartbeat fall under the general "/api/" rule.
 var FriendRequestLimit = core.RateLimitRule{Label: "POST /api/sd/friends/requests", MaxRequests: 20, Duration: 600}
 
+// ClerkSessionLimit caps Clerk-to-PocketBase token exchanges per IP: 10 per
+// minute, like the other auth routes. Each sign-in exchanges once.
+var ClerkSessionLimit = core.RateLimitRule{Label: "POST /api/sd/clerk/session", MaxRequests: 10, Duration: 60}
+
 // RateLimitRules follow docs/backend-accounts-plan.md section 5.3. Duration is
 // in seconds. A collection label ("users:create") wins over its wildcard
 // ("*:create"), whatever the order.
@@ -107,6 +111,8 @@ var RateLimitRules = []core.RateLimitRule{
 	ReportLimit,
 	// Friend requests: enough to add a group, not to guess codes.
 	FriendRequestLimit,
+	// Clerk token exchange: one per sign-in.
+	ClerkSessionLimit,
 	{Label: "/api/", MaxRequests: 300, Duration: 10},
 }
 

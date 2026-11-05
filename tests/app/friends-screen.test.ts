@@ -44,7 +44,8 @@ describe('joining a friend', () => {
   });
   it('joins through openLobby, with the room code checks', () => {
     const main = readFileSync(join(ROOT, 'src/app/main.ts'), 'utf8');
-    expect(main.match(/openLobby\(root, code, false, undefined, /g)).toHaveLength(2);
+    // Friends (title and town) and the online window's Join: every typed or offered code goes through openLobby.
+    expect(main.match(/openLobby\(root, code, false, undefined, /g)).toHaveLength(3);
     const screen = readFileSync(join(ROOT, 'src/app/friends-screen.ts'), 'utf8');
     expect(screen).toContain('normalizeRoomCode(friend.room)');
   });

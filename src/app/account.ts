@@ -40,7 +40,7 @@ interface StoredAccount {
 
 export type AccountState = { kind: 'guest' } | { kind: 'signed-in'; email: string };
 /** Player-facing events. */
-export const NOTICES = ['cloud-loaded', 'expired', 'choose', 'resolved', 'restored', 'imported', 'external'] as const;
+export const NOTICES = ['cloud-loaded', 'expired', 'choose', 'resolved', 'restored', 'imported', 'external', 'sync-offline'] as const;
 export type Notice = (typeof NOTICES)[number];
 export const ACCOUNT_ERRORS = ['offline', 'unauthorized', 'rejected', 'rate-limited', 'server', 'too-short', 'invalid-email'] as const satisfies readonly (Exclude<ApiError['kind'], 'conflict'> | 'too-short' | 'invalid-email')[];
 export type AccountError = (typeof ACCOUNT_ERRORS)[number];
@@ -78,6 +78,8 @@ export interface Account {
   online(): void;
   register(email: string, password: string): Promise<AuthOutcome>;
   logIn(email: string, password: string): Promise<AuthOutcome>;
+  /** Signs in with a Clerk session token (adapters/clerk-auth.ts): exchanged for the game session, then the same sync decision as a password login. */
+  logInClerk(clerkToken: string): Promise<AuthOutcome>;
   /** Mails a link to choose a new password: to the signed-in account's email, else to `email`. The session stays until the password changes. */
   requestPasswordReset(email?: string): Promise<AuthOutcome>;
   /** The open choice, if any. */
@@ -168,8 +170,14 @@ export function createAccount(deps: AccountDeps): Account {
     lastStatus = next.status;
     writeSync(deps.store, next);
   };
+  let offlineNoticed = false;
   const setStatus = (status: SyncStatus) => {
     if (!session || sync().owner !== session.userId || lastStatus === status) return;
+    // A save that cannot reach the cloud is said once per outage (the retries are silent); progress stays safe on the device.
+    if (status === 'offline' && !offlineNoticed) {
+      offlineNoticed = true;
+      deps.onNotice('sync-offline');
+    } else if (status === 'synced' || status === 'resolved') offlineNoticed = false;
     setSync({ status });
     deps.onChange();
   };
@@ -302,7 +310,11 @@ export function createAccount(deps: AccountDeps): Account {
   }
 
   async function signedIn(email: string, password: string): Promise<AuthOutcome> {
-    const login = await deps.api.logIn(email, password);
+    return startSession(await deps.api.logIn(email, password));
+  }
+
+  /** The common tail of every login: the cloud save is read, then the decision table runs. */
+  async function startSession(login: Awaited<ReturnType<AccountApi['logIn']>>): Promise<AuthOutcome> {
     if (!login.ok) return { ok: false, error: errorOf(login.error) };
     const remote = await deps.api.getSave(login.value.token, login.value.userId);
     if (!remote.ok) return { ok: false, error: errorOf(remote.error) };
@@ -432,6 +444,9 @@ export function createAccount(deps: AccountDeps): Account {
     },
     logIn(email, password) {
       return signedIn(email.trim(), password);
+    },
+    async logInClerk(clerkToken) {
+      return startSession(await deps.api.clerkSession(clerkToken));
     },
     async requestPasswordReset(email = '') {
       const clean = session?.email ?? email.trim();

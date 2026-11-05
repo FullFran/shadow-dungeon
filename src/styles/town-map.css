@@ -1,0 +1,142 @@
+/* The town menu: an aged parchment map with the options beside it (src/town/town-map-view.ts; .agents/DESIGN.md §4 "Town map menu").
+   One relic window of about 94vw x 88vh (max 1500 x 900) rises from the bottom over the dimmed town. Left 60%: the map, whole, at the
+   largest crisp scale, service pins as wax seals, a place card anchored to the chosen pin. Right 40%: "Seguir" (the one ember) and the
+   options in four groups. Sizes mirror src/town/sheet-model.ts and menu-groups.ts (they decide the layout mode, so nothing scrolls).
+   Colours come from the tokens only. */
+.town-shop.tm-veil { padding: 0; overflow: hidden; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--md-ink) 58%, transparent), color-mix(in srgb, var(--md-ink) 90%, transparent) 78%); animation: relic-veil 160ms ease-out both; }
+html.touch .town-shop.tm-veil { padding: 0; overflow: hidden; align-items: center; }
+.town-shop.tm-veil.is-leaving { pointer-events: none; animation: tm-veil-out 200ms ease-in both; }
+
+.town-map.tm-panel { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; --tm-pad: 18px; --tm-gap: 16px; box-sizing: border-box; width: min(94vw, 1500px); height: min(88vh, 900px); max-height: none; padding: var(--tm-pad); display: grid; grid-template-columns: minmax(0, 1fr) var(--tm-opt-w, clamp(380px, 36vw, 470px)); gap: var(--tm-gap); align-items: stretch;
+  animation: tm-rise 260ms ease-out both; transform-origin: 50% 100%; }
+.is-leaving .town-map.tm-panel { animation: tm-sink 200ms ease-in both; }
+/* Travel from below the window edge: half the window plus the panel's own height puts it fully out of sight (no overshoot). */
+@keyframes tm-rise { from { transform: translateY(calc(50vh + 50%)); } }
+@keyframes tm-sink { to { transform: translateY(calc(50vh + 50%)); } }
+@keyframes tm-veil-out { to { opacity: 0; } }
+@keyframes tm-fade { from { opacity: 0; } }
+@keyframes tm-fade-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .town-map.tm-panel { animation: tm-fade 160ms ease-out both; }
+  .is-leaving .town-map.tm-panel { animation: tm-fade-out 160ms ease-in both; }
+  .town-shop.tm-veil.is-leaving { animation: tm-veil-out 160ms ease-in both; }
+}
+@media (max-height: 520px) { .town-map.tm-panel { --tm-pad: 10px; --tm-gap: 10px; } }
+
+/* ---- the map */
+.tm-map-area { position: relative; min-width: 0; min-height: 0; border-radius: 4px; overflow: visible;
+  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--relic-slab-edge) 75%, var(--md-ink)), var(--md-ink) 96%); box-shadow: inset 0 0 0 2px var(--relic-gold-deep), inset 0 0 28px color-mix(in srgb, var(--md-ink) 85%, transparent); }
+.tm-sheet { position: absolute; }
+.tm-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 6px 0 color-mix(in srgb, var(--md-ink) 60%, transparent)); }
+/* The town's name, real text on the painted ribbon. */
+.tm-title { position: absolute; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 6%; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: normal; letter-spacing: 0.04em; color: var(--relic-blood); text-shadow: 0 1px 0 color-mix(in srgb, var(--md-text) 55%, transparent); pointer-events: none; }
+.tm-here { position: absolute; width: 32px; height: 32px; margin: -16px 0 0 -16px; pointer-events: none; z-index: 1; }
+.tm-here svg { display: block; width: 100%; height: 100%; }
+@media (prefers-reduced-motion: no-preference) { .tm-here { animation: tm-here 1.6s ease-in-out infinite; } }
+@keyframes tm-here { 50% { transform: scale(1.18); } }
+
+/* Pins: a wax seal with the service's icon pressed in. The button is the 44 px hit area; only the seal lifts. */
+.tm-pin { all: unset; position: absolute; z-index: 2; box-sizing: border-box; width: 44px; height: 44px; margin: -22px 0 0 -22px; display: grid; place-items: center; cursor: pointer; }
+.tm-seal { position: relative; width: 40px; height: 40px; filter: drop-shadow(0 3px 0 color-mix(in srgb, var(--md-ink) 55%, transparent)); transition: transform 120ms ease-out, filter 120ms ease-out; }
+.tm-seal > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tm-seal > svg.tm-glyph { inset: 4px; width: 32px; height: 32px; }
+.tm-pin:hover .tm-seal, .tm-pin.is-active .tm-seal { transform: translateY(-4px); filter: drop-shadow(0 0 8px var(--relic-ember)) drop-shadow(0 6px 0 color-mix(in srgb, var(--md-ink) 55%, transparent)); }
+.tm-pin::before { content: ''; position: absolute; inset: 1px; border: 2px solid transparent; border-radius: 50%; transition: border-color 120ms ease-out; }
+.tm-pin.is-active::before, .tm-pin:focus-visible::before { border-color: var(--md-cursor); box-shadow: 0 0 0 2px var(--md-ink); }
+.tm-badge { position: absolute; top: -2px; right: -2px; z-index: 1; width: 11px; height: 11px; background: var(--relic-blood); border: 2px solid var(--md-text); transform: rotate(45deg); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .tm-seal, .tm-pin::before { transition: none; } }
+
+/* The place card: a relic chip with a gilt diamond pointer on its pin (Proximity). */
+.tm-card { position: absolute; z-index: 4; box-sizing: border-box; width: min(276px, calc(100% - 16px)); padding: 10px 12px; pointer-events: none; display: flex; flex-direction: column; gap: 6px;
+  background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom)); border: 2px solid var(--md-border); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 color-mix(in srgb, var(--md-ink) 60%, transparent), 0 0 24px color-mix(in srgb, var(--md-ink) 70%, transparent); animation: tm-card-in 120ms ease-out both; }
+.tm-card[hidden] { display: none; }
+.tm-card::after { content: ''; position: absolute; left: var(--tm-arrow, 50%); width: 12px; height: 12px; background: var(--md-window-bottom); border: 2px solid var(--md-border); transform: translateX(-50%) rotate(45deg); }
+.tm-card[data-side='above']::after { bottom: -8px; border-top: 0; border-left: 0; }
+.tm-card[data-side='below']::after { top: -8px; border-bottom: 0; border-right: 0; background: var(--md-window-top); }
+@keyframes tm-card-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .tm-card { animation: none; } }
+.tm-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tm-chip { flex: none; width: 44px; height: 44px; display: grid; place-items: center; background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 4px; }
+.tm-chip svg.px-icon { width: 32px; height: 32px; }
+.tm-card-name { margin: 0; font-size: 20px; line-height: 1.1; font-weight: normal; color: var(--md-cursor); }
+.tm-card-who { display: block; font-family: var(--md-text-font); font-size: 14px; line-height: 1.2; color: var(--md-text-dim); }
+.tm-card .tm-card-about { margin: 0; font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; color: var(--md-text); }
+.tm-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
+.tm-card-foot kbd { font-family: var(--md-font); font-size: 12px; padding: 1px 6px; color: var(--md-text); background: var(--relic-slab); border: 1px solid var(--relic-gold-deep); border-radius: 3px; }
+.tm-card-new { display: inline-flex; align-items: center; gap: 6px; color: var(--md-text); }
+.tm-card-new::before { content: ''; width: 9px; height: 9px; background: var(--relic-blood); border: 2px solid var(--md-text); transform: rotate(45deg); }
+
+/* ---- the options: Seguir and four group rows at rest; a group's options expand in place under its row (src/town/menu-disclosure.ts).
+   --tm-group-row / --tm-opt-row come from menu-groups.ts disclosureLayout, so the column never scrolls. */
+.tm-options { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.tm-groups { min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+.tm-group { min-width: 0; display: flex; flex-direction: column; }
+.tm-rows { margin: 2px 0 2px 12px; padding: 0 0 0 8px; display: flex; flex-direction: column; gap: 2px; border-left: 2px solid var(--relic-gold-deep); }
+.tm-options .tm-rows[hidden] { display: none; }
+/* The options settle in 140 ms (reduced motion: instantly). */
+.tm-group.is-open > .tm-rows { animation: tm-open 140ms ease-out both; }
+@keyframes tm-open { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .tm-group.is-open > .tm-rows { animation: none; } }
+
+.tm-opt, .tm-primary, .tm-grow { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 10px; cursor: pointer; color: var(--md-text);
+  background: radial-gradient(130% 90% at 50% 0%, color-mix(in srgb, var(--relic-slab-edge) 80%, transparent), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 3px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+.tm-opt { height: var(--tm-opt-row, 56px); }
+.tm-grow { height: var(--tm-group-row, 56px); gap: 12px; padding: 0 12px; }
+.tm-opt:hover, .tm-opt.is-active, .tm-grow:hover, .tm-grow.is-active, .tm-group.is-open > .tm-grow { color: var(--md-cursor); border-color: var(--md-border); }
+.tm-opt:focus-visible, .tm-primary:focus-visible, .tm-grow:focus-visible { outline: none; border-color: var(--md-border); box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-cursor) 55%, transparent), 0 3px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+.tm-icon { position: relative; flex: none; width: 36px; height: 36px; display: grid; place-items: center; }
+.tm-icon svg.px-icon { width: 36px; height: 36px; padding: 0; }
+.tm-opt .tm-icon, .tm-opt .tm-icon svg.px-icon { width: 32px; height: 32px; }
+.tm-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.tm-label { font-size: 19px; line-height: 1.05; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-grow .tm-label { font-size: 21px; }
+.tm-opt .tm-label { font-size: 17px; }
+.tm-about { font-family: var(--md-text-font); font-size: 14px; line-height: 1.2; color: var(--md-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-opt .tm-about { font-size: 13px; }
+.tm-opt:hover .tm-about, .tm-opt.is-active .tm-about, .tm-grow:hover .tm-about, .tm-grow.is-active .tm-about, .tm-group.is-open > .tm-grow .tm-about { color: var(--md-text); }
+.tm-icon .tm-badge { top: -3px; right: -3px; }
+/* How many options sit behind the row. */
+.tm-count { flex: none; min-width: 28px; height: 26px; box-sizing: border-box; padding: 0 6px; display: grid; place-items: center; font-size: 16px; line-height: 1; color: var(--md-text); background: var(--md-ink); border: 2px solid var(--relic-gold-deep); border-radius: 13px; }
+.tm-grow:hover .tm-count, .tm-grow.is-active .tm-count, .tm-group.is-open > .tm-grow .tm-count { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
+
+/* Seguir: the only ember (Von Restorff). */
+.tm-primary { height: 56px; border-color: var(--md-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--relic-blood) 70%, var(--relic-ember-deep)), color-mix(in srgb, var(--relic-blood) 60%, var(--md-ink))); box-shadow: 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent), 0 3px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+.tm-primary .tm-label { font-size: 22px; }
+.tm-primary .tm-about, .tm-primary.is-active .tm-about { color: var(--md-text); }
+.tm-primary:hover, .tm-primary.is-active { color: var(--md-text); filter: brightness(1.12); }
+.tm-primary:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-cursor) 55%, transparent), 0 0 24px color-mix(in srgb, var(--relic-ember) 55%, transparent), 0 3px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+
+/* A short landscape window: the four groups are a row of icon tiles and the open group's options an icon grid below it
+   (label under the icon, the help in the tooltip). */
+.tm-options[data-mode='tiles'] .tm-primary { height: 48px; }
+.tm-options[data-mode='tiles'] .tm-groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tm-options[data-mode='tiles'] .tm-group { display: contents; }
+.tm-options[data-mode='tiles'] .tm-grow { grid-row: 1; height: 56px; flex-direction: column; justify-content: center; gap: 0; padding: 2px; text-align: center; }
+.tm-options[data-mode='tiles'] .tm-grow .tm-icon, .tm-options[data-mode='tiles'] .tm-grow .tm-icon svg.px-icon { width: 32px; height: 32px; }
+.tm-options[data-mode='tiles'] .tm-grow .tm-text { flex: none; align-items: center; width: 100%; }
+.tm-options[data-mode='tiles'] .tm-grow .tm-label { font-size: 11px; line-height: 12px; max-width: 100%; }
+.tm-options[data-mode='tiles'] .tm-about, .tm-options[data-mode='tiles'] .tm-count { display: none; }
+.tm-options[data-mode='tiles'] .tm-rows { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(var(--tm-cols, 3), minmax(0, 1fr)); grid-auto-rows: var(--tm-tile, 72px); gap: 6px; margin: 0; padding: 0; border: 0; }
+.tm-options[data-mode='tiles'] .tm-rows[hidden] { display: none; }
+.tm-options[data-mode='tiles'] .tm-opt { height: auto; flex-direction: column; justify-content: center; gap: 2px; padding: 2px; text-align: center; }
+.tm-options[data-mode='tiles'] .tm-opt .tm-text { flex: none; align-items: center; width: 100%; }
+.tm-options[data-mode='tiles'] .tm-opt .tm-label { font-size: 11px; line-height: 12px; white-space: normal; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: clip; }
+.tm-options[data-mode='tiles'] .tm-primary .tm-label { font-size: 16px; }
+
+/* A short landscape window: the card shrinks so it never hides the map it describes. */
+@media (max-height: 520px) {
+  .tm-card { width: min(224px, calc(100% - 12px)); padding: 6px 8px; gap: 3px; }
+  .tm-card-head { gap: 8px; }
+  .tm-chip { width: 38px; height: 38px; }
+  .tm-card-name { font-size: 16px; }
+  .tm-card-who { font-size: 12px; }
+  .tm-card .tm-card-about { font-size: 13px; line-height: 1.2; }
+  .tm-card-foot { font-size: 11px; }
+  .tm-seal { width: 32px; height: 32px; }
+  .tm-seal > svg.tm-glyph { inset: 4px; width: 24px; height: 24px; }
+  .tm-here { width: 24px; height: 24px; margin: -12px 0 0 -12px; }
+}
+
+/* The touch chrome's own Back chip would sit on the map's corner; Seguir and Esc already close the menu. */
+html.touch #app:has(.tm-veil) ~ .touch-back { display: none; }

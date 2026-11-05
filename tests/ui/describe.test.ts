@@ -132,8 +132,10 @@ describe('every menu with a cursor description uses the box', () => {
     .map((f) => ({ file: f, code: readFileSync(join(dir, f), 'utf8') }));
 
   it('each cursorList that describes its cursor row (onCursor) builds a description box', () => {
-    const describing = sources.filter((s) => /cursorList\(\{[\s\S]*?onCursor/.test(s.code));
-    expect(describing.length).toBeGreaterThanOrEqual(9);
+    // The achievements rail swaps a tile grid (not a description) under the cursor; its tile detail box has a fixed min-height in CSS.
+    const describing = sources.filter((s) => s.file !== 'achievements.ts' && /cursorList\(\{[\s\S]*?onCursor/.test(s.code));
+    // The Pokémon picker, Evolución, Mejoras, Desafíos and the move tutor became card grids with their own sheets (2026-11-03): five describing lists fewer. The Settings window (settings-view.ts) shows each row's help in the row itself: one more. The Santuario and the Tablón became card grids with sheets (2026-11-04): two more.
+    expect(describing.length).toBeGreaterThanOrEqual(1);
     for (const s of describing) expect({ file: s.file, box: /\bdescription\(list,/.test(s.code) }).toEqual({ file: s.file, box: true });
   });
 

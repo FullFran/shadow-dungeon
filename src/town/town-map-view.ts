@@ -1,44 +1,56 @@
 import type { WorldMap } from '../data/world';
-import { isWall } from '../core/tiles';
+import { t } from '../i18n';
+import '../styles/town-map.css';
+import { GROUP_ICONS, SEAL_BACKING, YOU_ARE_HERE } from '../ui/icons/town-map-icons';
+import { PIXEL_ICONS, pixelIconSvg, pixelSvgOf, type PixelIconId } from '../ui/pixel-icons';
 import { h } from '../ui/window';
-import { buildTownGrid } from './map';
+import { disclosureLayout, groupOptions, MENU_GROUPS, type DisclosureLayout, type MenuGlyph } from './menu-groups';
+import { columnStep, createDisclosure, type ColumnFocus, type ColumnKey, type Disclosure } from './menu-disclosure';
+import { cardPin, cartoucheRect, initialFocus, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
+import { paintTownSheet } from './sheet-paint';
 import { stepMarker, type TownMapMarker } from './town-map';
 import type { TownService } from './town-menu';
 
 /**
- * The town's Esc menu drawn as an inked plan (odd/tasks/menu-redesign.md S8,
- * S9: souls tone, original glyphs): the town's walkable ground, one marker per
- * service at its NPC or place, and a column beside it for the services with
- * no place and the exit rows. Arrows, WASD, a stick (the gamepad sends arrow
- * keys) or a tap move the cursor; Enter or a second tap opens; Esc closes.
+ * The town's Esc menu as an aged parchment map with its options beside it (owner, 2026-11-04: "un mapa que se vea completo lo máximo
+ * posible, bien detallado tipo pixel art ... envejecido, roto irregularmente por los alrededores ... al hacer hover por los sitios te
+ * muestra qué hay ahí, y a la derecha todas las opciones ... estructuradas"; .agents/DESIGN.md §4 "Town map menu").
+ * Left: the whole town painted once (src/town/sheet-paint.ts) at the largest crisp scale, service pins as wax seals, a place card
+ * anchored to the chosen pin. Right: "Seguir" (the one ember) and the other options in groups (src/town/menu-groups.ts).
+ * Arrows, WASD or a stick (the gamepad sends arrow keys) move spatially between every pin and option; Enter opens; Esc closes. A mouse
+ * hover shows a pin's card (and nothing shows otherwise, not even on open); on touch the first tap shows it and the second opens. Options open on one tap.
  */
 export interface TownMapEntry {
   id: string;
   label: string;
   about: string;
-  /** The glyph drawn on the marker. */
+  /** The glyph drawn on the pin or the row. */
   glyph: Glyph;
+  /** Who keeps the service (an NPC or a place name): the second line of a pin's card. */
+  who?: string;
+  /** Something new behind it (real unseen content only): a blood pip. */
+  badge?: boolean;
   onConfirm: () => void;
 }
 
-export type Glyph = TownService | 'title' | 'resume' | 'room';
+export type Glyph = MenuGlyph;
 
 export interface TownMapViewOptions {
+  /** The town's name, written on the map's ribbon. */
   heading: string;
   map: WorldMap;
-  /** The markers on the plan, each with its row (same order). */
+  /** The markers on the map, each with its entry (same order). */
   placed: readonly (TownMapMarker & { entry: TownMapEntry })[];
-  /** The column beside the plan: loose services, then the exit rows. */
-  column: readonly TownMapEntry[];
-  /** Where the player stands, in tiles: a "you are here" mark on the plan. */
+  /** The options beside the map (the services no pin opens, the leaving rows), grouped by `groupOptions`. */
+  options: readonly TownMapEntry[];
+  /** "Seguir": closes the menu. */
+  primary: TownMapEntry;
+  /** Where the player stands, in tiles: the "you are here" cross. */
   player?: { x: number; y: number };
   onClose: () => void;
 }
 
-/** View pixels per tile of the plan. */
-const CELL = 12;
-
-/** Original line glyphs, 16x16 viewBox (no art from other games): one per service and exit row. */
+/** Original line glyphs, 16x16 viewBox (no art from other games): the fallback for a glyph with no pixel icon. */
 const GLYPHS: Record<Glyph, string> = {
   shop: 'M3 6h10l-1 8H4zM6 6a2 2 0 0 1 4 0',
   tutor: 'M3 13l7-7 3 3-7 7H3zM10 6l2-2 3 3-2 2',
@@ -62,7 +74,12 @@ const GLYPHS: Record<Glyph, string> = {
   room: 'M2 7l6-5 6 5v7H2zM6 14v-4h4v4',
 };
 
+/**
+ * A service's icon: the colour pixel icon of src/ui/pixel-icons.ts ("iconos custom iguales en cada menú"); `GLYPHS` stays as
+ * the line fallback only for a glyph with no pixel icon.
+ */
 export function glyphSvg(glyph: Glyph): SVGSVGElement {
+  if (glyph in PIXEL_ICONS) return pixelIconSvg(glyph as PixelIconId, 'px-icon glyph');
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');
@@ -73,111 +90,391 @@ export function glyphSvg(glyph: Glyph): SVGSVGElement {
   return svg;
 }
 
-/** The town's ground as an inked plan: walkable tiles filled, an ink line where they meet a wall. */
-function drawPlan(map: WorldMap): HTMLCanvasElement {
-  const grid = buildTownGrid(map);
-  const canvas = h('canvas', { className: 'town-map-plan' }) as HTMLCanvasElement;
-  canvas.width = grid.cols * CELL;
-  canvas.height = grid.rows * CELL;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-  const style = getComputedStyle(document.documentElement);
-  const ground = style.getPropertyValue('--md-map-ground').trim() || '#2a2419';
-  const ink = style.getPropertyValue('--md-map-ink').trim() || '#c9b98f';
-  ctx.fillStyle = ground;
-  for (let y = 0; y < grid.rows; y++) for (let x = 0; x < grid.cols; x++) if (!isWall(grid, x, y)) ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
-  ctx.fillStyle = ink;
-  for (let y = 0; y < grid.rows; y++) {
-    for (let x = 0; x < grid.cols; x++) {
-      if (isWall(grid, x, y)) continue;
-      if (isWall(grid, x, y - 1)) ctx.fillRect(x * CELL, y * CELL, CELL, 1);
-      if (isWall(grid, x, y + 1)) ctx.fillRect(x * CELL, (y + 1) * CELL - 1, CELL, 1);
-      if (isWall(grid, x - 1, y)) ctx.fillRect(x * CELL, y * CELL, 1, CELL);
-      if (isWall(grid, x + 1, y)) ctx.fillRect((x + 1) * CELL - 1, y * CELL, 1, CELL);
-    }
-  }
-  return canvas;
+/** The painted map as an offscreen canvas of art pixels: one `putImageData`, painted once per open and never again. */
+function paintArt(map: WorldMap): HTMLCanvasElement {
+  const pixels = paintTownSheet(map);
+  const art = document.createElement('canvas');
+  art.width = pixels.w;
+  art.height = pixels.h;
+  art.getContext('2d')?.putImageData(new ImageData(new Uint8ClampedArray(pixels.data), pixels.w, pixels.h), 0, 0);
+  return art;
 }
 
+const DIRS: Record<string, { x: number; y: number }> = {
+  ArrowLeft: { x: -1, y: 0 },
+  KeyA: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+  KeyD: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  KeyW: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  KeyS: { x: 0, y: 1 },
+};
+
+const isTouch = (): boolean => document.documentElement.classList.contains('touch') || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+
 export function townMapView(options: TownMapViewOptions): { element: HTMLElement; dispose(): void } {
-  const { map, placed, column } = options;
+  const { map, placed, primary } = options;
   const cols = Math.max(...map.rows.map((r) => r.length));
   const rows = map.rows.length;
-  // Every entry as a marker: the plan's at their tiles, the column's in a line to the right of the plan.
-  const columnX = cols + 3;
-  const step = column.length > 1 ? (rows - 2) / (column.length - 1) : 0;
-  const entries: (TownMapMarker & { entry: TownMapEntry })[] = [
-    ...placed,
-    ...column.map((entry, i) => ({ id: entry.id, service: 'shop' as const, x: columnX, y: 1 + i * step, entry })),
-  ];
-  let index = 0;
-  const caption = h('p', { className: 'town-map-caption' });
-  const buttons = entries.map((m, i) => {
-    const button = h('button', { className: `town-map-mark${i >= placed.length ? ' in-column' : ''}`, type: 'button' }, [glyphSvg(m.entry.glyph), h('span', { className: 'town-map-label', textContent: m.entry.label })]);
-    if (i < placed.length) {
-      button.style.left = `${(m.x / cols) * 100}%`;
-      button.style.top = `${(m.y / rows) * 100}%`;
-    }
-    button.addEventListener('click', () => {
-      if (index === i) m.entry.onConfirm();
-      else select(i);
-    });
-    return button;
-  });
-  function select(i: number): void {
-    index = i;
-    buttons.forEach((b, j) => b.classList.toggle('selected', j === i));
-    // The column scrolls on short screens: keep the chosen row in view.
-    buttons[i]!.scrollIntoView?.({ block: 'nearest' });
-    const entry = entries[i]!.entry;
-    caption.replaceChildren(h('strong', { textContent: entry.label }), document.createTextNode(` · ${entry.about}`));
-  }
-  // "You are here": a plain pulsing mark, never a character sprite.
-  const here = options.player ? [h('span', { className: 'town-map-here', title: '' })] : [];
-  if (options.player && here[0]) {
-    here[0].style.left = `${(options.player.x / cols) * 100}%`;
-    here[0].style.top = `${(options.player.y / rows) * 100}%`;
-  }
-  const plan = h('div', { className: 'town-map-board' }, [drawPlan(map), ...here, ...buttons.slice(0, placed.length)]);
-  // The plan keeps the map's aspect and grows to the room left (every zone, wide or tall: owner "el minimapa debe estar bien en todas las partes del pueblo").
-  plan.style.aspectRatio = `${cols} / ${rows}`;
-  plan.style.width = `min(100%, calc((94vh - 160px) * ${(cols / rows).toFixed(4)}))`;
-  const side = h('div', { className: 'town-map-column' }, buttons.slice(placed.length));
-  // A long column (zones with few places put most services here) splits in two, filled down the first column first.
-  const perColumn = column.length > 9 ? Math.ceil(column.length / 2) : column.length;
-  side.style.gridTemplateRows = `repeat(${perColumn}, auto)`;
-  const element = h('div', { className: 'md-window town-map' }, [h('h2', { className: 'md-window-title', textContent: options.heading }), h('div', { className: 'town-map-body' }, [plan, side]), caption]);
-  select(0);
+  const artW = cols * TILE_ART + 2 * SHEET_MARGIN;
+  const artH = rows * TILE_ART + 2 * SHEET_MARGIN;
+  const artX = (tileX: number): number => SHEET_MARGIN + tileX * TILE_ART;
 
-  const DIRS: Record<string, { x: number; y: number }> = {
-    ArrowLeft: { x: -1, y: 0 },
-    KeyA: { x: -1, y: 0 },
-    ArrowRight: { x: 1, y: 0 },
-    KeyD: { x: 1, y: 0 },
-    ArrowUp: { x: 0, y: -1 },
-    KeyW: { x: 0, y: -1 },
-    ArrowDown: { x: 0, y: 1 },
-    KeyS: { x: 0, y: 1 },
+  // ---- the map: canvas, ribbon text, the cross, the pins and the card
+  const art = paintArt(map);
+  const canvas = h('canvas', { className: 'tm-canvas' }) as HTMLCanvasElement;
+  canvas.setAttribute('aria-hidden', 'true');
+  // The art is blown up by whole pixels (nearest) to the next whole scale; a fractional scale then only shrinks that smoothly by CSS,
+  // so the pixels stay even instead of alternating 3 and 4 wide. A whole scale shows the canvas 1:1, crisp.
+  let shownFactor = 0;
+  const showAt = (scale: number): void => {
+    const factor = Math.max(1, Math.ceil(scale));
+    if (factor !== shownFactor) {
+      shownFactor = factor;
+      canvas.width = art.width * factor;
+      canvas.height = art.height * factor;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(art, 0, 0, canvas.width, canvas.height);
+      }
+    }
+    canvas.style.imageRendering = Number.isInteger(scale) ? 'pixelated' : 'auto';
   };
-  const onKey = (e: KeyboardEvent) => {
-    const dir = DIRS[e.code];
-    if (dir) {
-      e.preventDefault();
-      // Inside the column, up and down walk its rows in order (the plan's geometry does not apply there).
-      if (index >= placed.length && dir.x === 0) {
-        const next = index + dir.y;
-        if (next >= placed.length && next < entries.length) select(next);
+  showAt(1);
+  const title = h('h2', { className: 'tm-title', textContent: options.heading });
+  const here = options.player ? h('span', { className: 'tm-here', title: t('townMenu.here') }, [pixelSvgOf(YOU_ARE_HERE, 'px-icon')]) : null;
+  if (here && options.player) {
+    here.style.left = `${(artX(options.player.x) / artW) * 100}%`;
+    here.style.top = `${(artX(options.player.y) / artH) * 100}%`;
+  }
+  const pins = placed.map((m) => {
+    const seal = h('span', { className: 'tm-seal' }, [pixelSvgOf(SEAL_BACKING, 'px-icon'), glyphSvg(m.entry.glyph)]);
+    seal.lastElementChild?.classList.add('tm-glyph');
+    const pin = h('button', { className: 'tm-pin', type: 'button' }, [seal, ...(m.entry.badge ? [h('span', { className: 'tm-badge' })] : [])]);
+    pin.setAttribute('aria-label', `${m.entry.label}. ${m.entry.who ?? ''} ${m.entry.about}`.replace(/\s+/g, ' ').trim());
+    pin.style.left = `${(artX(m.x) / artW) * 100}%`;
+    pin.style.top = `${(artX(m.y) / artH) * 100}%`;
+    return pin;
+  });
+  const sheet = h('div', { className: 'tm-sheet' }, [canvas, title, ...(here ? [here] : []), ...pins]);
+  const cardChip = h('span', { className: 'tm-chip' });
+  const cardName = h('h3', { className: 'tm-card-name' });
+  const cardWho = h('span', { className: 'tm-card-who' });
+  const cardAbout = h('p', { className: 'tm-card-about' });
+  const cardFoot = h('div', { className: 'tm-card-foot' });
+  const card = h('div', { className: 'tm-card' }, [h('div', { className: 'tm-card-head' }, [cardChip, h('div', {}, [cardName, cardWho])]), cardAbout, cardFoot]);
+  card.hidden = true;
+  card.setAttribute('role', 'status');
+  const area = h('div', { className: 'tm-map-area' }, [sheet, card]);
+  area.setAttribute('role', 'group');
+  area.setAttribute('aria-label', t('townMenu.map.label').replace('{name}', options.heading));
+
+  // ---- the options: "Seguir" first, then the groups (built once; the layout only moves them)
+  const optionButton = (entry: TownMapEntry, className: string): HTMLButtonElement => {
+    const icon = h('span', { className: 'tm-icon' }, [glyphSvg(entry.glyph), ...(entry.badge ? [h('span', { className: 'tm-badge' })] : [])]);
+    const text = h('span', { className: 'tm-text' }, [h('strong', { className: 'tm-label', textContent: entry.label }), h('small', { className: 'tm-about', textContent: entry.about })]);
+    const button = h('button', { className: className, type: 'button', title: entry.about }, [icon, text]);
+    return button;
+  };
+  const primaryButton = optionButton(primary, 'tm-primary');
+  const groups = groupOptions(options.options);
+  const sizes = groups.map((g) => g.options.length);
+  /** A group row at rest: its own pixel icon, title, one line of summary and how many options sit behind it. */
+  const groupButton = (g: (typeof groups)[number], rowsId: string): HTMLButtonElement => {
+    const icon = h('span', { className: 'tm-icon' }, [pixelSvgOf(GROUP_ICONS[g.id], 'px-icon')]);
+    const text = h('span', { className: 'tm-text' }, [h('strong', { className: 'tm-label', textContent: t(g.titleKey) }), h('small', { className: 'tm-about', textContent: t(MENU_GROUPS.find((m) => m.id === g.id)!.summaryKey) })]);
+    const button = h('button', { className: 'tm-grow', type: 'button' }, [icon, text, h('span', { className: 'tm-count', textContent: String(g.options.length) })]);
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', rowsId);
+    return button;
+  };
+  const groupNodes = groups.map((g) => {
+    const rowsEl = h('div', { className: 'tm-rows', id: `tm-rows-${g.id}` }, g.options.map((o) => optionButton(o, 'tm-opt')));
+    rowsEl.setAttribute('role', 'group');
+    rowsEl.setAttribute('aria-label', t(g.titleKey));
+    rowsEl.hidden = true;
+    return h('section', { className: 'tm-group' }, [groupButton(g, rowsEl.id), rowsEl]);
+  });
+  const growButtons = groupNodes.map((n) => n.querySelector<HTMLButtonElement>('.tm-grow')!);
+  const rowsEls = groupNodes.map((n) => n.querySelector<HTMLElement>('.tm-rows')!);
+  const optionEntries = groups.flatMap((g) => g.options);
+  const optionButtons = groupNodes.flatMap((n) => [...n.querySelectorAll<HTMLButtonElement>('.tm-opt')]);
+  const groupsEl = h('div', { className: 'tm-groups' }, groupNodes);
+  const optionsEl = h('nav', { className: 'tm-options' }, [primaryButton, groupsEl]);
+  optionsEl.setAttribute('aria-label', t('townMenu.options.label'));
+
+  // Every focusable thing in one list: pins, "Seguir", the group rows, then every group's options (hidden ones are skipped).
+  const items: HTMLButtonElement[] = [...pins, primaryButton, ...growButtons, ...optionButtons];
+  const rowEntries: TownMapEntry[] = groups.map((g, gi) => ({ id: `group-${g.id}`, label: t(g.titleKey), about: '', glyph: 'resume' as const, onConfirm: () => disclosure.activate(gi, 'toggle') }));
+  const entries: TownMapEntry[] = [...placed.map((m) => m.entry), primary, ...rowEntries, ...optionEntries];
+  const pinCount = pins.length;
+  const primaryIndex = pinCount;
+  const growStart = pinCount + 1;
+  const optionStarts = sizes.map((_, g) => growStart + sizes.length + sizes.slice(0, g).reduce((a, b) => a + b, 0));
+  /** What item `i` is in the column (null: a map pin). */
+  const columnFocusOf = (i: number): ColumnFocus | null => {
+    if (i < pinCount) return null;
+    if (i === primaryIndex) return { kind: 'primary' };
+    if (i < growStart + sizes.length) return { kind: 'group', g: i - growStart };
+    const g = optionStarts.filter((s) => s <= i).length - 1;
+    return { kind: 'option', g, o: i - optionStarts[g]! };
+  };
+  const indexOfFocus = (f: ColumnFocus): number => (f.kind === 'primary' ? primaryIndex : f.kind === 'group' ? growStart + f.g : optionStarts[f.g]! + f.o);
+  const isShown = (b: HTMLElement): boolean => b.getClientRects().length > 0;
+
+  // ---- disclosure: one group open at a time; drawing it is all this does
+  const disclosure: Disclosure = createDisclosure((open) => {
+    groupNodes.forEach((node, g) => {
+      node.classList.toggle('is-open', g === open);
+      rowsEls[g]!.hidden = g !== open;
+      growButtons[g]!.setAttribute('aria-expanded', String(g === open));
+    });
+    optionsEl.dataset.open = open === null ? '' : String(open);
+  });
+
+  const element = h('div', { className: 'md-window town-map tm-panel' }, [area, optionsEl]);
+  element.setAttribute('role', 'dialog');
+  element.setAttribute('aria-label', t('townMenu.heading'));
+
+  // ---- layout: the scale of the map and the mode of the options, from the real room
+  let fit = sheetFit(cols, rows, 1, 1);
+  let offset = { x: 0, y: 0 };
+  function layout(): void {
+    const aw = area.clientWidth;
+    const ah = area.clientHeight;
+    if (aw === 0 || ah === 0) return;
+    fit = sheetFit(cols, rows, aw, ah);
+    showAt(fit.scale);
+    offset = { x: (aw - fit.width) / 2, y: (ah - fit.height) / 2 };
+    Object.assign(sheet.style, { left: `${offset.x}px`, top: `${offset.y}px`, width: `${fit.width}px`, height: `${fit.height}px` });
+    const c = cartoucheRect(artW);
+    Object.assign(title.style, { left: `${(c.x / artW) * 100}%`, top: `${(c.y / artH) * 100}%`, width: `${(c.w / artW) * 100}%`, height: `${(c.h / artH) * 100}%`, fontSize: `${Math.max(11, Math.min(24, Math.round(c.h * fit.scale * 0.5)))}px` });
+    fitTitle();
+    applyOptions(disclosureLayout(sizes, menuGeometry(window.innerWidth, window.innerHeight)));
+    placeCardFor(index);
+  }
+  /** A long name (the Ciénaga's) shrinks until it fits its ribbon whole, never below 8 px, instead of being clipped. */
+  function fitTitle(): void {
+    let size = parseFloat(title.style.fontSize);
+    while (title.scrollWidth > title.clientWidth + 1 && size > 8) {
+      size -= 1;
+      title.style.fontSize = `${size}px`;
+    }
+  }
+  /** The row sizes the window allows (menu-groups.ts disclosureLayout); CSS reads them as variables. */
+  function applyOptions(l: DisclosureLayout): void {
+    optionsEl.dataset.mode = l.mode;
+    optionsEl.style.setProperty('--tm-group-row', `${l.groupRow}px`);
+    optionsEl.style.setProperty('--tm-opt-row', `${l.optionRow}px`);
+    optionsEl.style.setProperty('--tm-cols', String(l.gridCols));
+    optionsEl.style.setProperty('--tm-tile', `${l.optionRow}px`);
+  }
+
+  // ---- selection and the card
+  let index = 0;
+  function fillCard(entry: TownMapEntry): void {
+    cardChip.replaceChildren(glyphSvg(entry.glyph));
+    cardName.textContent = entry.label;
+    cardWho.textContent = entry.who ?? '';
+    cardWho.hidden = !entry.who;
+    cardAbout.textContent = entry.about;
+    cardFoot.replaceChildren(
+      entry.badge ? h('span', { className: 'tm-card-new', textContent: t('townMenu.card.new') }) : h('span'),
+      isTouch() ? h('span', { textContent: t('townMenu.card.tap') }) : h('span', {}, [h('kbd', { textContent: 'Enter' }), document.createTextNode(` ${t('townMenu.card.open')}`)]),
+    );
+  }
+  function placeCardFor(i: number): void {
+    if (cardPin(i, pinCount) === null || card.hidden) return;
+    const m = placed[i]!;
+    const anchor = { x: offset.x + (artX(m.x) / artW) * fit.width, y: offset.y + (artX(m.y) / artH) * fit.height };
+    const spot = placeCard(anchor, { w: card.offsetWidth, h: card.offsetHeight }, { w: area.clientWidth, h: area.clientHeight }, 34);
+    card.style.left = `${spot.x}px`;
+    card.style.top = `${spot.y}px`;
+    card.style.setProperty('--tm-arrow', `${Math.max(14, Math.min(card.offsetWidth - 14, spot.arrowX))}px`);
+    card.dataset.side = spot.side;
+  }
+  /** True while a mouse event drives the selection: hovering must not open or close groups by itself (the disclosure's own rules do). */
+  let pointerDriven = false;
+  /** Keyboard, pad or focus moves open the group they land in (or close it when they land on Seguir or a pin) at once. */
+  function syncDisclosure(i: number): void {
+    const f = columnFocusOf(i);
+    disclosure.focus(f === null || f.kind === 'primary' ? null : f.kind === 'group' ? f.g : f.g);
+  }
+  function select(i: number, focus = true): void {
+    index = i;
+    if (!pointerDriven) syncDisclosure(i);
+    items.forEach((b, j) => b.classList.toggle('is-active', j === i));
+    if (focus && document.activeElement !== items[i]) items[i]!.focus({ preventScroll: true });
+    if (cardPin(i, pinCount) !== null) {
+      fillCard(entries[i]!);
+      card.hidden = false;
+      // Restart the small rise on every new pin.
+      card.style.animation = 'none';
+      void card.offsetWidth;
+      card.style.animation = '';
+      placeCardFor(i);
+    } else card.hidden = true;
+  }
+  function confirm(i: number): void {
+    entries[i]!.onConfirm();
+  }
+  let lastPointerType = 'mouse';
+  let lastX = -1;
+  let lastY = -1;
+  /** Opens group `g` and puts the focus on its first option (Enter or Right on its row). */
+  function enterGroup(g: number): void {
+    disclosure.focus(g);
+    if (sizes[g]! > 0) select(optionStarts[g]!);
+  }
+  // The mouse leaving the column collapses the open group after a short delay; coming back inside it cancels that.
+  optionsEl.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'mouse') disclosure.enter();
+  });
+  optionsEl.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse') disclosure.leave();
+  });
+  items.forEach((button, i) => {
+    // Pressing focuses the button (and selects it) before the click arrives, so "was it already chosen?" is read at the press.
+    let chosenAtPress = false;
+    button.addEventListener('pointerdown', (e) => {
+      chosenAtPress = index === i;
+      lastPointerType = e.pointerType;
+      // The focus a press gives the button must not open or close a group on its own: the click decides (a tap would open and close it).
+      pointerDriven = true;
+      window.setTimeout(() => {
+        pointerDriven = false;
+      }, 500);
+    });
+    const group = columnFocusOf(i)?.kind === 'group' ? (columnFocusOf(i) as { g: number }).g : -1;
+    button.addEventListener('click', (e) => {
+      pointerDriven = false;
+      if (group >= 0) {
+        // A group row: Enter or a pad button (no pointer) opens it and enters it; a mouse click keeps it open; a tap toggles it.
+        if (e.detail === 0) enterGroup(group);
+        else disclosure.activate(group, lastPointerType === 'mouse' ? 'open' : 'toggle');
         return;
       }
-      select(stepMarker(entries, index, dir));
-    } else if (e.code === 'Enter' || e.code === 'Space') {
+      // A pin shows its card first on touch (no hover there): the second tap opens. Options open on one tap; Enter on a focused button always acts.
+      if (i < pinCount && e.detail > 0 && !chosenAtPress) select(i);
+      else confirm(i);
+      chosenAtPress = false;
+    });
+    button.addEventListener('pointerenter', (e) => {
+      if (e.pointerType !== 'mouse' || group >= 0) return;
+      // Hovering Seguir, an option or a pin keeps the open group as it is (the leave delay decides); a pin never closes it at once.
+      disclosure.enter();
+      if (index !== i) {
+        pointerDriven = true;
+        select(i);
+        pointerDriven = false;
+      }
+    });
+    // A group row opens on a real mouse move over it, not on enter: when another group collapses the rows shift under a still
+    // mouse and the browser fires enter/move events with the same coordinates, which must not open whatever slid underneath.
+    if (group >= 0) {
+      button.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const moved = e.clientX !== lastX || e.clientY !== lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        if (!moved || disclosure.open === group) {
+          if (moved) disclosure.enter();
+          return;
+        }
+        pointerDriven = true;
+        disclosure.hover(group);
+        if (index !== i) select(i);
+        pointerDriven = false;
+      });
+    }
+    // The mouse leaving a pin hides its card: the focus goes back to "Seguir" (owner: nothing shows unless a pin is hovered).
+    button.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse' && i < pinCount && index === i) {
+        pointerDriven = true;
+        select(primaryIndex);
+        pointerDriven = false;
+      }
+    });
+    button.addEventListener('focus', () => {
+      if (index !== i) select(i, false);
+    });
+  });
+
+  const onKey = (e: KeyboardEvent): void => {
+    const dir = DIRS[e.code];
+    const here = columnFocusOf(index);
+    // Inside the column the keys follow the disclosure (menu-disclosure.ts columnStep); a pin, or a key the column hands back, moves spatially.
+    const colKey: ColumnKey | null = dir ? (dir.y < 0 ? 'up' : dir.y > 0 ? 'down' : dir.x < 0 ? 'left' : 'right') : e.code === 'Escape' ? 'escape' : null;
+    if (here && colKey) {
+      const move = columnStep(here, colKey, sizes);
+      if (move.pass === 'close') {
+        e.preventDefault();
+        options.onClose();
+        return;
+      }
+      if (move.pass !== 'spatial') {
+        e.preventDefault();
+        if (move.focus) {
+          disclosure.focus(move.open ?? null);
+          select(indexOfFocus(move.focus));
+        }
+        return;
+      }
+    }
+    if (dir) {
       e.preventDefault();
-      entries[index]!.entry.onConfirm();
+      // Spatial: the nearest item within 60 degrees of the direction, measured on screen (pins and rows share one space).
+      // Options of a closed group are not on screen, so they are not stops.
+      const shown = items.map((_, i) => i).filter((i) => isShown(items[i]!));
+      const centres: TownMapMarker[] = shown.map((i) => {
+        const r = items[i]!.getBoundingClientRect();
+        return { id: String(i), service: 'shop' as TownService, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      const next = stepMarker(centres, shown.indexOf(index), dir);
+      if (next >= 0 && shown[next] !== undefined && shown[next] !== index) select(shown[next]!);
+    } else if (e.code === 'Tab') {
+      e.preventDefault();
+      const shown = items.map((_, i) => i).filter((i) => isShown(items[i]!));
+      const at = Math.max(0, shown.indexOf(index));
+      select(shown[(at + (e.shiftKey ? shown.length - 1 : 1)) % shown.length]!);
+    } else if (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter') {
+      // A focused button answers its own Enter (a click); only when focus is elsewhere does the cursor confirm.
+      if (!items.includes(document.activeElement as HTMLButtonElement)) {
+        e.preventDefault();
+        confirm(index);
+      }
     } else if (e.code === 'Escape') {
       e.preventDefault();
       options.onClose();
     }
   };
   window.addEventListener('keydown', onKey);
-  return { element, dispose: () => window.removeEventListener('keydown', onKey) };
+
+  // The first layout needs the element in the page: the observer fires once it is, and again on every resize.
+  let observer: ResizeObserver | null = null;
+  const onResize = (): void => layout();
+  if (typeof ResizeObserver === 'function') {
+    observer = new ResizeObserver(onResize);
+    observer.observe(area);
+  } else window.addEventListener('resize', onResize);
+  applyOptions(disclosureLayout(sizes, menuGeometry(window.innerWidth, window.innerHeight)));
+  // "Seguir" has the focus and no card shows until a pin is hovered or focused.
+  index = initialFocus(pinCount);
+  items.forEach((b, j) => b.classList.toggle('is-active', j === index));
+  requestAnimationFrame(() => {
+    layout();
+    items[index]?.focus({ preventScroll: true });
+  });
+
+  return {
+    element,
+    dispose: () => {
+      disclosure.close();
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+      observer?.disconnect();
+    },
+  };
 }

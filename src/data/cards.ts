@@ -172,3 +172,6 @@ const HERALD_CARD: CardInfo = { nameKey: 'boss.stance.herald' };
 
 /** The card a stance names, if it is a registered spell card or a herald's card. */
 export const cardInfo = (stance: string | null | undefined): CardInfo | undefined => (stance ? (registry.get(stance) ?? (isHeraldCard(stance) ? HERALD_CARD : undefined)) : undefined);
+
+/** Every registered spell card id (the HUD tests iterate them so a card without a caption fails a test). */
+export const registeredCards = (): string[] => [...registry.keys()];

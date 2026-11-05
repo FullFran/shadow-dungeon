@@ -6,23 +6,24 @@ import type { MoveTier } from '../data/tutor';
  * Design tokens of the Mystery Dungeon-inspired UI, the one place colours,
  * the font and sizes are defined. The DOM gets them as CSS custom properties
  * (`applyTokens`, read by the styles in index.html); the canvas HUD imports
- * them directly. Original palette: deep blue windows with a pale border, a
- * gold cursor and the red of the eclipse as the accent.
+ * them directly. The "relic" palette (.agents/DESIGN.md §2, 2026-11-03): dark
+ * stone slabs with an old-gold frame, bone text, an ember-gold cursor and the
+ * red of the eclipse as the accent. Superseded the Mystery Dungeon blue.
  */
 export const PALETTE = {
   /** Page background and the darkest outline. */
-  ink: '#05060d',
+  ink: '#050407',
   /** Window fill gradient, top to bottom. */
-  windowTop: '#2b4b93',
-  windowBottom: '#0f1a45',
+  windowTop: '#1f171d',
+  windowBottom: '#0c090d',
   /** Window border and its inner shade line. */
-  border: '#e9eefc',
-  borderShade: '#6f86c6',
-  text: '#f5f7ff',
-  textDim: '#aab6dc',
-  disabled: '#5e6890',
+  border: '#c9a45a',
+  borderShade: '#5c4526',
+  text: '#efe6d6',
+  textDim: '#b3a690',
+  disabled: '#8f8489',
   /** Cursor ▶ and highlighted values. */
-  cursor: '#ffd447',
+  cursor: '#ffbf5e',
   /** Eclipse red: titles, warnings, the title backdrop. */
   eclipse: '#e8283a',
   eclipseGlow: '#ff6a3d',
@@ -33,7 +34,18 @@ export const PALETTE = {
   stamina: '#ffcf4a',
   xp: '#7fd8ff',
   /** Empty part of a bar. */
-  barBack: '#1a1f3c',
+  barBack: '#1e161c',
+} as const;
+
+/** Hub-only accents (src/app/title-hub-view.ts): the Play glow, badges and the rail slabs. */
+export const RELIC = {
+  ember: '#ff8a3d',
+  emberDeep: '#c2481a',
+  blood: '#9e1b2a',
+  slab: '#140f14',
+  slabEdge: '#2c2128',
+  gold: '#c9a45a',
+  goldDeep: '#7a5f2c',
 } as const;
 
 export const RARITY: Record<Rarity, string> = { common: '#c9d2ee', uncommon: '#5ab0ff', rare: '#ffd447' };
@@ -114,6 +126,7 @@ export function cssVariables(): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const [name, value] of Object.entries(PALETTE)) vars[`--md-${kebab(name)}`] = value;
   for (const [name, value] of Object.entries(RARITY)) vars[`--md-rarity-${name}`] = value;
+  for (const [name, value] of Object.entries(RELIC)) vars[`--relic-${kebab(name)}`] = value;
   vars['--md-font'] = FONT.stack;
   vars['--md-body'] = `${FONT.bodyPx}px`;
   vars['--md-heading'] = `${FONT.headingPx}px`;

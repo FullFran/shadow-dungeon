@@ -1,5 +1,5 @@
 import type { WorldMap } from '../data/world';
-import { NPC_SERVICE, PLACE_SERVICES, TOWN_SERVICES, type TownService } from './town-menu';
+import { NPC_SERVICE, PLACE_SERVICES, serviceAboutKey, serviceLabelKey, TOWN_SERVICES, type TownService } from './town-menu';
 
 /**
  * The town's Esc menu as a map (odd/tasks/menu-redesign.md S8: "que se vea
@@ -68,4 +68,31 @@ export function stepMarker(markers: readonly TownMapMarker[], from: number, dir:
     }
   });
   return best;
+}
+
+/** What a pin's card says (owner, 2026-11-04: hover shows what is there): the service, who keeps it, and what you can do. */
+export interface PlaceCard {
+  /** The pin's id (an NPC id or a place name). */
+  id: string;
+  service: TownService;
+  labelKey: string;
+  aboutKey: string;
+  /** i18n key of the NPC or place that keeps the service. */
+  whoKey: string;
+}
+
+const PLACE_WHO: Record<(typeof PLACES)[number], string> = {
+  waystone: 'townMenu.place.waystone',
+  board: 'town.name.board',
+  shrine: 'world.lore.shrine.name',
+  beacon: 'town.name.beacon',
+};
+
+/** The card of every marker, in the markers' order. */
+export function placeCards(markers: readonly TownMapMarker[], map: WorldMap): PlaceCard[] {
+  return markers.map((m) => {
+    const npc = map.npcs.find((n) => n.id === m.id);
+    const whoKey = npc ? `town.name.${npc.role}` : PLACE_WHO[m.id as (typeof PLACES)[number]];
+    return { id: m.id, service: m.service, labelKey: serviceLabelKey(m.service), aboutKey: serviceAboutKey(m.service), whoKey };
+  });
 }

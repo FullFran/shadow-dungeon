@@ -6,7 +6,7 @@ import { arrivalCue, moveCue, moveWindup, projectileCue, enemyStrikeCue, deathCu
 import { FxDirector, isGroundEruption, moveSpawn, vanishAlpha, type DirectorView } from '../../src/adapters/fx/director';
 import { EFFECT_IDS, loadEffect } from '../../src/adapters/fx/effects';
 import { bakeEffect } from '../../src/adapters/fx/bake';
-import { FxStore, type FxBackend } from '../../src/adapters/fx/store';
+import { FX_MAX_ATTEMPTS, FX_RETRY_MS, FxStore, type FxBackend } from '../../src/adapters/fx/store';
 import { FxSystem, MAX_LIVE, type FxSpawn } from '../../src/adapters/fx/system';
 import type { BakeMessage } from '../../src/adapters/fx/bake.worker';
 import type { PokemonType } from '../../src/data/types';
@@ -341,7 +341,7 @@ describe('art', () => {
 
 describe('store and system', () => {
   function fakeBackend(): FxBackend & { posted: BakeMessage[]; released: unknown[] } {
-    return { posted: [], released: [], onReply: null, post(m) { this.posted.push(m); }, toImage: async () => ({}) as CanvasImageSource, release(i) { this.released.push(i); } };
+    return { posted: [], released: [], onReply: null, onLost: null, post(m) { this.posted.push(m); }, toImage: async () => ({}) as CanvasImageSource, release(i) { this.released.push(i); } };
   }
   const baked = (w: number, h: number) => ({ width: w, height: h, pixels: new Uint8ClampedArray(w * h * 4), frames: [{ x: 0, y: 0, w, h, dx: 0, dy: 0 }], loop: false, bounds: { left: 0, top: 0, right: w, bottom: h } });
   const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -358,14 +358,43 @@ describe('store and system', () => {
     expect(store.decodedBytes).toBe(400);
   });
 
-  it('a failed bake is not retried: the hand-drawn look stays', async () => {
+  it('a failed bake keeps the hand-drawn look and is not asked again before its cooldown', async () => {
     const backend = fakeBackend();
     const store = new FxStore(backend);
+    store.tick(0);
     store.get('a', { effect: 'x', frames: 1 });
     backend.onReply?.({ key: 'a', error: 'boom' });
     await flush();
+    store.tick(FX_RETRY_MS - 1);
     expect(store.get('a', { effect: 'x', frames: 1 })).toBeNull();
     expect(backend.posted).toHaveLength(1);
+  });
+
+  it('a failed bake is retried after a cooldown, at most 3 times (a dropped dev server or network must not cost the effects for good)', async () => {
+    const backend = fakeBackend();
+    const store = new FxStore(backend);
+    let now = 0;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      store.tick(now);
+      store.get('a', { effect: 'x', frames: 1 });
+      backend.onReply?.({ key: 'a', error: 'boom' });
+      await flush();
+      now += FX_RETRY_MS;
+    }
+    expect(backend.posted).toHaveLength(FX_MAX_ATTEMPTS);
+  });
+
+  it('a lost worker releases its pending bakes so they are asked again', async () => {
+    const backend = fakeBackend();
+    const store = new FxStore(backend);
+    store.get('a', { effect: 'x', frames: 1 });
+    expect(backend.posted).toHaveLength(1);
+    backend.onLost?.();
+    store.get('a', { effect: 'x', frames: 1 });
+    expect(backend.posted).toHaveLength(2);
+    backend.onReply?.({ key: 'a', baked: baked(10, 10) });
+    await flush();
+    expect(store.get('a', { effect: 'x', frames: 1 })).not.toBeNull();
   });
 
   it('over the cap it drops the longest unused, never one in use', async () => {

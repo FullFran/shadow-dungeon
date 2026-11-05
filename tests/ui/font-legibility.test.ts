@@ -31,8 +31,9 @@ describe('no heavy Pixelify text', () => {
     expect(reset?.body).toMatch(/font-weight:\s*400/);
   });
 
+  // Bold is fine in Atkinson Hyperlegible (it ships a real bold): the title hub's small labels set that font in the same rule.
   it('nothing asks for a bold weight except the room code (capitals and digits only)', () => {
-    const bold = rules.filter((r) => /font-weight:\s*(bold|bolder|[5-9]00)\b/.test(r.body) && !r.selector.startsWith('@font-face'));
+    const bold = rules.filter((r) => /font-weight:\s*(bold|bolder|[5-9]00)\b/.test(r.body) && !r.selector.startsWith('@font-face') && !/font-family:\s*var\(--md-text-font\)/.test(r.body));
     expect(bold.map((r) => r.selector)).toEqual(['.room-code']);
   });
 

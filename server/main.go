@@ -12,6 +12,7 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
 
+	"github.com/fullfran/mazmorra-sombria/server/internal/clerkauth"
 	"github.com/fullfran/mazmorra-sombria/server/internal/friends/friendsapi"
 	"github.com/fullfran/mazmorra-sombria/server/internal/hooks"
 	"github.com/fullfran/mazmorra-sombria/server/internal/lore"
@@ -28,6 +29,7 @@ import (
 func main() {
 	cfg := setup.FromEnv(setup.Getenv)
 	turn := turnapi.FromEnv(setup.Getenv)
+	clerkVerifier := clerkauth.FromEnv(setup.Getenv, cfg.Origins)
 	os.Args = setup.WithOrigins(os.Args, cfg.Origins)
 
 	app := pocketbase.NewWithConfig(pocketbase.Config{
@@ -36,6 +38,8 @@ func main() {
 
 	// Schema changes live in Go migrations; never generate them from the dashboard.
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
+	// `clerk-import [--apply]`: copy verified password accounts into Clerk before the client signs in through it.
+	app.RootCmd.AddCommand(clerkauth.ImportCommand(app, setup.Getenv))
 
 	hooks.Register(app)
 
@@ -63,6 +67,8 @@ func main() {
 		reportsadmin.Register(e.Router, e.App)
 		// Friends: add by code, see who is online, join their room (accounts only).
 		friendsapi.Register(e.Router)
+		// Clerk sign-in: exchanges a Clerk session token for a PocketBase one; 503 without CLERK_SECRET_KEY.
+		clerkauth.Register(e.Router, clerkVerifier)
 		names := make([]string, 0, len(cfg.Providers))
 		for _, p := range cfg.Providers {
 			names = append(names, p.Name)
@@ -70,7 +76,10 @@ func main() {
 		e.App.Logger().Info("shadow dungeon api configured",
 			"origins", cfg.Origins, "oauth2Providers", names, "rateLimits", cfg.RateLimits,
 			"smtp", cfg.Mail.SMTPEnabled(), "backupCron", cfg.Backups.Cron, "backupsSet", cfg.Backups.Set, "backupS3", cfg.Backups.S3Enabled(), "appURL", cfg.Mail.AppURL,
-			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit, "turn", turn.Configured())
+			"loreVersion", loreIndex.Version, "loreCommit", loreIndex.Source.Commit, "turn", turn.Configured(), "clerk", clerkVerifier != nil)
+		if clerkVerifier == nil {
+			e.App.Logger().Warn("Clerk sign-in stays off (503): set CLERK_SECRET_KEY")
+		}
 		if cfg.Backups.S3Partial() {
 			e.App.Logger().Warn("Off-site backups stay off: set SD_BACKUP_S3_ENDPOINT, SD_BACKUP_S3_BUCKET, SD_BACKUP_S3_ACCESS_KEY and SD_BACKUP_S3_SECRET")
 		}

@@ -140,11 +140,12 @@ export function drawMinimap(
   timeMs: number,
   screen: Pick<Rect, 'width'> = view,
   opened?: { doors: readonly number[]; ageMs: number },
+  tilePx: number = MINIMAP.tilePx,
 ): void {
   const grid = state.arena.tiles;
   if (!grid) return;
-  const px = MINIMAP.tilePx;
-  const frame = minimapRect(screen, grid.cols, grid.rows);
+  const px = tilePx;
+  const frame = minimapRect(screen, grid.cols, grid.rows, px);
   const x0 = frame.x + HUD_BOX.minimapFrame;
   const y0 = frame.y + HUD_BOX.minimapFrame;
   // The same window frame as the HUD, mostly see-through so the floor shows behind the map.

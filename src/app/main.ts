@@ -1,13 +1,14 @@
 import { glyphSvg, type Glyph } from '../town/town-map-view';
 import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
+import { fullscreenSupported, isFullscreen, toggleFullscreen } from '../ui/fullscreen';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
 import { composeHeraldIntro, heraldIntroMode } from '../ui/herald-intro';
 import { drawHeraldScene } from '../adapters/herald-scenes';
 import type { HeraldDef } from '../data/herald';
 import { readBestiary, recordHerald } from '../town/bestiary';
-import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest } from '../town/shrine-records';
+import { beatenBosses, gauntletReward, readShrine, saveTrial, trialBest, type TrialBest } from '../town/shrine-records';
 import type { GauntletId } from '../data/shrine';
 import { requestName, shrineResultScreen, shrineWindow, type ShrineView, type TrialRequest } from './shrine';
 import { loadoutBack, loadoutSpecies, loadoutStart, roomTrialOf, shrineFight, trialRequestOf, viewOf, type ShrineStep } from './shrine-route';
@@ -16,7 +17,7 @@ import type { ItemId } from '../data/items';
 import type { MusicContext } from '../data/music';
 import type { StarterId } from '../data/quiz';
 import { PROLOGUE_MUSIC } from '../data/prologue-music';
-import { loadSheets, type SheetStore } from '../adapters/assets';
+import { prefetchWhenIdle, preloadHub, preloadRun, sheets as sheetStore, type SheetStore } from '../adapters/assets';
 import { createAudio } from '../adapters/audio';
 import { browserStore } from '../adapters/storage';
 import { detectLanguage, getLanguage, setLanguage, t, type Language } from '../i18n';
@@ -28,16 +29,22 @@ import { createSession, type NetSession } from '../net/session';
 import { realScheduler, type Transport } from '../net/transport';
 import { cursorList, setUiSound, type ListItem } from '../ui/cursor-list';
 import { eclipseBackdrop } from '../ui/eclipse';
+import { sceneLayers } from '../ui/scene';
 import { applyTokens, FONT } from '../ui/tokens';
-import { description } from '../ui/describe';
 import { h, mdWindow, statLine } from '../ui/window';
 import { creditsWindow } from './credits';
+import { endModel } from './end-model';
+import { endScreen, endVeil } from './end-screen';
 import { APP_VERSION, buildLabel } from './build-info';
 import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion } from './patch-notes';
-import { accountWindow, setupAccount, type AccountView } from './account-screen';
+import { setupAccount } from './account-screen';
+import { openAccountDrawer } from './account-drawer';
+import { createAuthFlow } from './auth-flow';
+import { clerkFromEnv } from '../adapters/clerk-auth';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
-import { loadoutScreen, type LineGender, type ShinySkins } from './loadout';
+import { loadoutScreen, portrait, typeBadge, type LineGender, type ShinySkins } from './loadout';
+import { CHANGELOG, CHANGELOG_SECTIONS } from '../data/changelog';
 import { openPauseMenu } from './menu';
 import { prologueScreen, type PrologueOptions } from './prologue';
 import { readSimaMemory } from './sima-lore';
@@ -45,15 +52,27 @@ import { hasSeenSimaScene, markSimaSceneSeen, simaEndScene, simaPanels, simaPlea
 import { drawSimaScene, type SimaPanel } from '../adapters/sima-scenes';
 import type { SimaSceneId } from '../data/sima-scenes';
 import { hasSeenPrologue, markPrologueSeen } from './prologue-seen';
-import { galleryGroups, galleryUnlocked, groupSeen, type GalleryScene } from './lore-gallery';
+import { galleryGroups, type GalleryScene } from './lore-gallery';
+import { galleryView } from './gallery-view';
 import { readGallerySeen } from './gallery-seen';
 import { quizScreen } from './quiz-screen';
+import { welcomeScreen } from './welcome-screen';
+import { afterWelcome, bootRoute, clearOnboarding, readOnboarding, writeOnboarding, type OnboardingStep } from './onboarding';
 import { hasProgress, nextAdventureScreen, nextOnlineScreen, nextPlayScreen, townOpen, townTourDue } from './adventure-route';
-import { optionsAboutKey, optionsEntries, TITLE_ENTRIES, TITLE_LABEL, type OptionsEntry, type TitleEntry } from './title-menu';
+import { optionsAboutKey, optionsEntries, TITLE_LABEL, type OptionsEntry } from './title-menu';
+import { hubButtons, recordLine, type HubId } from './title-hub';
+import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
+import { bootSplash } from '../ui/boot-splash';
+import { fatalError, offlineBanner, showToast } from '../ui/status';
+import { subscribeErrors, subscribeReached } from '../adapters/net-error';
+import { sharedConnectivity } from './connectivity';
+import { loadingVeil } from '../ui/spinner';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
-import { CONTROL_KEYS, settingItems, settingRows, settingTabs, type SettingsAccess } from './settings-panel';
-import { openTown, type TownOptions } from '../town/scene';
+import { type SettingsAccess } from './settings-panel';
+import { settingsView } from './settings-view';
+import { openTown, type TownHandle, type TownOptions } from '../town/scene';
+import { clearResume, createResumeWriter, newRunId, readResume, storedOwner, townRecord, writeResume, type ResumeRecord, type RunLaunch } from './run-resume';
 import { pleaReady } from '../town/plea';
 import { hasSeenTour, markTourSeen } from '../town/tour';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
@@ -61,28 +80,36 @@ import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
 import { fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
+import { installDismiss } from '../ui/dismiss';
 import { adminAccess, ticketsWindow } from './tickets-screen';
-import { friendsHeartbeat, friendsWindow, type Heartbeat } from './friends-screen';
+import { friendsHeartbeat, type Heartbeat } from './friends-screen';
+import { friendsWindow } from './friends-window';
+import { onlineWindow } from './online-window';
 import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
-import { controlsWindow } from './gamepad-help';
+import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
-import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type ChallengeLine, type DungeonDef, type DungeonId } from '../data/dungeons';
+import { facePortrait } from '../adapters/portrait';
+import { partnerPlate } from './partner-plate';
+import { lineRoot } from '../data/player-evolutions';
 import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { drawGuardianScene } from '../adapters/guardian-scenes';
 import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
-import type { SpeciesId } from '../data/species';
+import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
-import { unlockEverything } from './dev-unlock';
-import { earnChallengeReward, earnCoins, loadSave, setFemaleAt, wearShinyAt, writeSave } from './save';
+import { unlockEverything, veteranProfile } from './dev-unlock';
+import { earnChallengeReward, earnCoins, loadSave, SAVE_KEY, setFemaleAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
+import { gachaPage } from './gacha-page';
+import { gachaUrl, isGachaPath, leaveUrl } from './gacha-route';
 import { missionBoardWindow } from './board';
 import { achievementsWindow, achievementToast, holdToasts, releaseToasts } from './achievements';
 import { recordPast, recordRun, recordSave } from './progress';
@@ -91,11 +118,12 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
-import { recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { bondLine, recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
 import { sendaTier, sendaTierOpen, type StoryRun } from '../core/story';
 import { shopWindow } from './shop';
-import { buildHint, tutorWindow } from './tutor';
+import { buildHint } from './tutor';
+import { tutorWindow } from './tutor-screen';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
 import { awakenedOf, currentForm, rosterOf } from '../core/collection';
 import { isFemale } from '../core/gender';
@@ -106,7 +134,9 @@ import { buildDiagnostics, createDiagnosticsLog, diagnosticsText, type Diagnosti
 import { isLinkProbe } from '../net/diagnostics';
 import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
+import { notices, setNoticesBlocked } from '../ui/notice';
 import { setupPwa } from '../ui/pwa';
+import { newsNotice } from '../pwa/notices';
 import { endActions, endHeading, hostGoneRoute, materialsEarned, returnPlace, roomGone, victoryLine, townOf, type ReturnPlace } from './after-run';
 import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type EndlessMode } from '../core/endless';
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
@@ -124,9 +154,10 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
  * "Play online" opens a room-code lobby over Trystero (loaded only then).
  */
 applyTokens(document.documentElement);
-/** Redraws the open account window in place (the screen or the town's overlay) and the view it shows; declared before the account, whose start may report a change at once. */
+/** Redraws the open account drawer in place; declared before the account, whose start may report a change at once. */
 let accountRedraw: (() => void) | null = null;
-let accountView: AccountView | null = null;
+/** The account drawer opened from the welcome gate, while it is open: a cloud profile arriving closes it and routes on (onboarding.ts). */
+let onboardingDrawer: { close(): void } | null = null;
 /** One client for the public calls (Sima ranking, public profile); the account keeps its own. */
 const publicApi = httpAccountApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 /** The account's public profile (nickname + species) for the Sima global ranking; written after each sync, only with a valid nickname. */
@@ -155,13 +186,15 @@ const { account, store } = setupAccount({
     if (openTickets && openTickets.email !== signedInEmail()) openTickets.leave();
     if (openFriends && openFriends.email !== signedInEmail()) openFriends.leave();
     friendsBeat?.sync();
-    const app = document.getElementById('app');
-    if (accountView === 'main' && app?.querySelector('.md-window.account') && !app.querySelector('.md-window.account input') && accountRedraw) accountRedraw();
+    accountRedraw?.();
   },
   onReplaced: () => {
     // The picked species must still be in the (possibly new) roster.
     settings = loadSettings(store, settings, rosterOf(loadSave(store)));
     const app = document.getElementById('app');
+    // A walker that arrived with the cloud profile ends the onboarding: the welcome's drawer closes and routes on, any other step re-checks.
+    if (onboardingDrawer) onboardingDrawer.close();
+    else if (app?.querySelector('.ob')) titleScreen(app);
     if (app?.querySelector('.title-logo')) titleScreen(app);
   },
 });
@@ -172,10 +205,14 @@ const gamepads = createGamepads({
     if (app) toast(app, t('gamepad.connected'));
   },
 });
+/** Sign-in for the account drawer: Clerk when the build has a publishable key, else the password endpoints (app/auth-flow.ts). */
+const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, window.location.origin), account });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
+/** The in-game control hint bar (src/ui/play-hints.ts), for the town and the runs: the Settings switch and the pad layout last chosen. */
+const playHints = { enabled: () => settings.showHints, padStyle: savedPadStyle };
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
 const globalRanking = globalRankingSource({ api: publicApi, signedIn: () => account.state().kind === 'signed-in', now: () => Date.now() });
 const globalBoard = (difficulty: Difficulty): string[] =>
@@ -196,9 +233,11 @@ const pwa = setupPwa({
   store,
   onOfferChange: () => {
     const app = document.getElementById('app');
-    if (app?.querySelector('.title-logo')) titleScreen(app);
+    // The title is the hub now (its logo is `.hub-logo`); a window open over it stays.
+    if (app?.querySelector('.title-logo, .hub-logo') && !app.querySelector('.town-shop')) titleScreen(app);
   },
 });
+if (import.meta.env.DEV) void import('./dev-notices').then((dev) => dev.queueDevNotices(window.location.search));
 const unlockAudio = () => audio.unlock();
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
@@ -212,7 +251,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'F1') e.preventDefault();
 });
 setUiSound(() => audio.play('click'));
-let sheets: SheetStore | null = null;
+/** The shared sheet store: sheets load by need (adapters/assets.ts), never all at boot. */
+const sheets: SheetStore = sheetStore;
 let running: RunningGame | null = null;
 /** The shared run or lobby on screen, if any: its notices (room full, host left) only count while it is. */
 let current: NetSession | null = null;
@@ -248,6 +288,26 @@ document.addEventListener('visibilitychange', () => friendsBeat?.sync());
 const diagLog = createDiagnosticsLog(() => performance.now());
 window.addEventListener('error', (e) => diagLog.error(e.error ?? e.message, e.filename, e.lineno));
 window.addEventListener('unhandledrejection', (e) => diagLog.error(e.reason));
+
+/**
+ * The error system (odd/tasks/loading-errors.md): every classified failure of the network or of an asset reaches the
+ * technical report, tells the connectivity monitor (the offline banner) and, for sprites, raises one toast per session.
+ */
+const connectivity = sharedConnectivity();
+const offline = offlineBanner();
+document.body.append(offline.element);
+connectivity.subscribe(offline.set);
+offline.set(connectivity.online());
+let assetToastShown = false;
+subscribeReached(() => connectivity.noteReached());
+subscribeErrors((error, scope) => {
+  connectivity.noteError(error);
+  diagLog.error(`${scope}: ${error.kind}`);
+  if (error.kind === 'asset' && !assetToastShown) {
+    assetToastShown = true;
+    showToast(t('error.toast.assets'));
+  }
+});
 
 /** Copies the technical report, pretty-printed, to the clipboard, and says whether it worked. */
 async function copyReport(root: HTMLElement): Promise<void> {
@@ -456,11 +516,9 @@ function update(changes: Partial<Settings>): void {
   running?.setLock({ lockType: settings.lockType, clickToLock: settings.clickToLock });
 }
 
-/** Sprite sheets, loaded once (the loadout portrait and the run share them). */
-let sheetsLoading: Promise<SheetStore> | null = null;
+/** The sheet store, ready at once: a portrait or a scene asks it for its own sheet and waits only for that one. */
 function sheetsReady(): Promise<SheetStore> {
-  sheetsLoading ??= loadSheets().then((loaded) => (sheets = loaded));
-  return sheetsLoading;
+  return Promise.resolve(sheets);
 }
 
 function notice(): HTMLElement {
@@ -471,16 +529,21 @@ function notice(): HTMLElement {
  * Replaces the page; menu screens sit over the eclipse backdrop, the run does not.
  * Menu screens (title, settings, credits, online, lobby) keep the title music;
  * the result screen plays its stinger instead, and the run sets its own music.
+ * `freeze`: an end-of-run dialog keeps the run's last frame (dimmed by its veil) and never the backdrop (ui/scene.ts).
  */
-function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title'): void {
+function show(root: HTMLElement, children: Node[], backdrop = true, music: MusicContext = 'title', freeze = false): void {
+  const frame = freeze && running ? root.querySelector<HTMLCanvasElement>('canvas.game') : null;
+  const layers = sceneLayers(backdrop ? 'title' : 'game', frame !== null);
   if (running) {
     // Stopping the game leaves its session, unless it is the room's (back to the town together).
     running.stop();
     running = null;
     if (current !== room?.session) current = null;
   }
-  if (backdrop) audio.setMusic(music);
-  root.replaceChildren(...(backdrop ? [eclipseBackdrop()] : []), ...children, notice());
+  if (backdrop || freeze) audio.setMusic(music);
+  frame?.classList.add('is-frozen');
+  root.replaceChildren(...(layers.frozenGame && frame ? [frame] : []), ...(layers.backdrop ? [eclipseBackdrop()] : []), ...children, notice());
+  if (layers.frozenGame) root.querySelector('.notice')?.classList.add('in-game');
 }
 
 /** A one-row menu (Back to menu, Back...). */
@@ -505,42 +568,113 @@ function toast(root: HTMLElement, text: string): void {
 
 const TOAST_MS = 6000;
 
-/** Loading or connecting: a window with the text only. */
+/** Loading or connecting: the spin loader over the dimmed scene, no window and no word (`text` is only its hidden label). */
 function waitScreen(root: HTMLElement, text: string): void {
-  show(root, [mdWindow({ className: 'narrow wait' }, [h('p', { textContent: text })])]);
+  show(root, [loadingVeil(text)]);
 }
 
-function titleScreen(root: HTMLElement, initial = 0): void {
+/**
+ * The title hub (owner, 2026-11-03; odd/tasks/title-hub.md): relic buttons
+ * round the screen, the partner on its altar and one dominant Play. Town
+ * services open as the same windows the town uses, over the scene; full
+ * screens (Pokémon, shrine, credits...) come back here with their button
+ * focused. Supersedes the three-entry title (2026-10-26).
+ */
+function titleScreen(root: HTMLElement, initial?: HubId | number): void {
   leaveNet();
   applyLanguage(settings.language);
+  // A profile with no walker never sees the hub: the welcome gate and the onboarding come first (app/onboarding.ts).
+  if (onboardingGate(root)) return;
   if (patchNotesOnBoot(root)) return;
-  // Three entries only (src/app/title-menu.ts): every service lives in the town and its Esc menu.
-  const action: Record<TitleEntry, () => void> = {
+  const save = loadSave(store);
+  const records = readRecords(store);
+  const back = (id: HubId) => () => titleScreen(root, id);
+  /** A town window over the hub; closing it redraws the hub (coins, language and partner may have changed). */
+  const overlay = (id: HubId, open: (parent: HTMLElement, onClose: () => void, depart: (dungeon: string) => void) => () => void) => {
+    let close = () => {};
+    close = open(root, () => {
+      close();
+      titleScreen(root, id);
+    }, (dungeon) => {
+      close();
+      newAdventure(root, dungeonById(dungeon).id);
+    });
+  };
+  const action: Record<HubId, () => void> = {
     play: () => playScreen(root),
     online: () => onlineEntry(root),
-    options: () => optionsScreen(root),
+    pokemon: () => pokemonScreen(root, back('pokemon')),
+    tutor: () => overlay('tutor', townTutor),
+    evolve: () => overlay('evolve', townEvolve),
+    gacha: () => openGachaPage(root, 'hub'),
+    shop: () => overlay('shop', townShop),
+    board: () => overlay('board', townBoard),
+    challenges: () => overlay('challenges', townChallenges),
+    achievements: () => overlay('achievements', townAchievements),
+    settings: () => overlay('settings', townSettings),
+    controls: () => overlay('controls', townControls),
+    account: () => overlay('account', townAccount),
+    friends: () => overlay('friends', (parent, onClose) => townFriends(root)(parent, onClose, (go) => go())),
+    gallery: () => overlay('gallery', (parent, onClose) => townGallery(root)(parent, onClose, null)),
+    shrine: () => shrineScreen(root, 'title'),
+    news: () => newsScreen(root, back('news')),
+    fullscreen: () => void toggleFullscreen(),
+    prologue: () => prologue(root, back('prologue')),
+    credits: () => creditsScreen(root),
+    report: () => reportScreen(root, back('report')),
+    install: () => pwa.install(root),
+    tickets: () => ticketsScreen(root, back('tickets')),
   };
-  // A dominant Play with a line on where it leads (odd/tasks/menu-redesign.md S11); the other two stay quiet below.
-  const playLine = t(!settings.starterChosen ? 'title.play.first' : townIsOpen() ? 'title.play.town' : 'title.play.path');
-  const label = (entry: TitleEntry) => (entry === 'play' ? h('span', { className: 'title-play' }, [h('span', { className: 'title-play-name', textContent: t(TITLE_LABEL.play) }), h('small', { textContent: playLine })]) : t(TITLE_LABEL[entry]));
-  const list = cursorList({ initial, label: t('app.title'), items: TITLE_ENTRIES.map((entry) => ({ label: label(entry), onConfirm: action[entry], className: `title-row title-row-${entry}` })) });
-  show(root, [
-    h('header', { className: 'title-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
-    mdWindow({ className: 'title-menu' }, [list.element]),
-    h('p', { className: 'hint dual-hint' }, [h('span', { className: 'on-keys', textContent: t('title.hint') }), h('span', { className: 'on-touch', textContent: t('title.hint.touch') })]),
-    h('p', { className: 'build-label', textContent: buildLabel() }),
-  ]);
+  const state = { townOpen: townIsOpen(), starterChosen: settings.starterChosen, newsUnseen: readLastSeenVersion(store) !== APP_VERSION, installable: pwa.offer() !== 'none', ticketAdmin: ticketAdmin.known() };
+  const playLine = t(!settings.starterChosen ? 'title.play.first' : state.townOpen ? 'title.play.town' : 'title.play.path');
+  const species = settings.species;
+  const best = Math.max(0, ...Object.values(records.dungeons).map((d) => d.bestFloor));
+  const latest = CHANGELOG[0];
+  const latestItem = latest ? CHANGELOG_SECTIONS.map((section) => latest.sections[section]?.[0]).find(Boolean) : undefined;
+  const view = titleHub({
+    buttons: hubButtons(state),
+    onPick: (id) => action[id](),
+    partner: settings.starterChosen
+      ? (() => {
+          const plate = partnerPlate(species, bondLine(save, lineRoot(species) as ChallengeLine)?.level ?? null);
+          return {
+            portrait: portrait(sheetsReady(), species, 5, skinOn(), femaleOn()),
+            name: t(plate.nameKey),
+            badges: plate.types.map(typeBadge),
+            ...(plate.passiveKey ? { passive: { name: t(plate.passiveKey), description: t(`${plate.passiveKey}.description`) } } : {}),
+            ...(plate.bond ? { bond: t('hub.partner.bond').replace('{n}', String(plate.bond)) } : {}),
+          };
+        })()
+      : null,
+    profile: {
+      name: settings.nickname || t('hub.wanderer'),
+      portrait: settings.starterChosen ? facePortrait(species, { size: 60, shiny: skinOn(), female: femaleOn(), sheets: sheetsReady() }) : null,
+      line: records.runs > 0 ? recordLine(t, best, records.runs) : t('hub.record.none'),
+    },
+    coins: save.coins,
+    playLine,
+    news: latest && latestItem ? { version: latest.version, line: latestItem[getLanguage() === 'en' ? 'en' : 'es'] } : null,
+    buildLabel: buildLabel(),
+    touch: isTouchUi(),
+    ...(typeof initial === 'string' ? { initial } : {}),
+  });
+  show(root, [view.element]);
   pwa.banner(root);
-  pwa.corner(root);
+  if (!state.ticketAdmin) {
+    void ticketAdmin.check().then((admin) => {
+      if (admin && view.element.isConnected && !root.querySelector('.town-shop')) titleScreen(root, typeof initial === 'string' ? initial : undefined);
+    });
+  }
 }
 
 /** The patch notes are checked once per page load, on the first title reached (never over the prologue, the quiz or a cinematic). */
 let patchNotesChecked = false;
 
 /**
- * Opens "Novedades" instead of the title once after an update to a version
- * this browser has not seen (src/app/patch-notes.ts); a brand-new install only
- * records the version. True when the notes are on screen.
+ * Queues the "Novedades" notice once after an update to a version this
+ * browser has not seen (src/app/patch-notes.ts); a brand-new install only
+ * records the version. The seen flag is written here, as before; the title is
+ * always drawn (false), the notice shows over it when the queue allows.
  */
 function patchNotesOnBoot(root: HTMLElement): boolean {
   if (patchNotesChecked) return false;
@@ -550,8 +684,10 @@ function patchNotesOnBoot(root: HTMLElement): boolean {
   if (due === 'none') return false;
   markVersionSeen(store, APP_VERSION);
   if (due === 'record') return false;
-  newsScreen(root, () => titleScreen(root));
-  return true;
+  // The notes are a system notice over the hub now (queued after an update or install notice); "Ver novedades" opens the screen.
+  const release = CHANGELOG.find((entry) => entry.version === APP_VERSION);
+  if (release) notices.enqueue(newsNotice(release, () => newsScreen(root, () => titleScreen(root))));
+  return false;
 }
 
 /** "Novedades": every release's notes, newest first; `back` leaves it. */
@@ -592,7 +728,7 @@ function optionsScreen(root: HTMLElement, at: OptionsEntry | 'report' | 'control
   const open = menuWindow({
     title: t('title.options'),
     rows: optionRows.map((row) => ({ label: row.label, about: row.about, onConfirm: row.onConfirm, icon: glyphSvg(row.glyph), ...(row.group ? { group: row.group } : {}) })),
-    back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, TITLE_ENTRIES.indexOf('options')) },
+    back: { label: t('menu.back'), about: t('options.about.back'), onConfirm: () => titleScreen(root, 'settings') },
     className: 'options',
     initial: Math.max(0, optionRows.findIndex((row) => row.id === at)),
   });
@@ -618,6 +754,100 @@ function adoptReturningPlayer(): void {
   markPrologueSeen(store);
   update(withReturningPlayer(settings, records.lastSpecies, rosterOf(save)));
 }
+
+/**
+ * First-run onboarding (owner, 2026-11-04): welcome gate (account or guest) -> prologue -> questionnaire -> reveal -> the first run.
+ * Each step writes where it got to (app/onboarding.ts) and comes back here, so a reload continues where the player was.
+ * Returns true when it took the screen; false when the profile has a walker and the hub goes on.
+ * Only titleScreen calls it: every other step routes through titleScreen, which draws the hub on false.
+ */
+function onboardingGate(root: HTMLElement): boolean {
+  adoptReturningPlayer();
+  const stored = readOnboarding(store);
+  const route = bootRoute({
+    starterChosen: settings.starterChosen,
+    hasProgress: hasProgress(loadSave(store), readRecords(store)),
+    signedIn: account.state().kind === 'signed-in',
+    prologueSeen: hasSeenPrologue(store),
+    state: stored,
+  });
+  if (route === 'hub') {
+    if (stored.step !== 'welcome' || stored.picks.length > 0 || stored.starter) clearOnboarding(store);
+    setNoticesBlocked(false);
+    return false;
+  }
+  // System notices (install, update, news) wait until the first-run flow reaches the hub.
+  setNoticesBlocked(true);
+  const go = (step: OnboardingStep, patch: Partial<ReturnType<typeof readOnboarding>> = {}): void => {
+    writeOnboarding(store, { ...readOnboarding(store), ...patch, step });
+    titleScreen(root);
+  };
+  if (route === 'welcome') {
+    welcome(root, () => go(afterWelcome(hasSeenPrologue(store))));
+  } else if (route === 'prologue') {
+    writeOnboarding(store, { ...stored, step: 'prologue' });
+    prologue(root, () => go('quiz'));
+  } else {
+    const seed = stored.seed > 0 ? stored.seed : Math.abs(runSeed()) || 1;
+    writeOnboarding(store, { ...stored, step: route, seed });
+    const view = quizScreen({
+      seed,
+      sheets: sheetsReady(),
+      touch: isTouchUi(),
+      mode: 'onboarding',
+      resume: { picks: stored.picks, starter: stored.starter },
+      newSeed: () => Math.abs(runSeed()) || 1,
+      onProgress: (progress) => writeOnboarding(store, progress),
+      onDone: (starter) => {
+        // An evolved starter plays as its current form.
+        update(withStarter(settings, currentForm(loadSave(store), starter)));
+        markPrologueSeen(store);
+        clearOnboarding(store);
+        playScreen(root);
+      },
+    });
+    show(root, [view.element]);
+  }
+  return true;
+}
+
+/** The welcome gate: sign in (the account drawer), play as a guest, or take up the game this device already holds. */
+function welcome(root: HTMLElement, asGuest: () => void): void {
+  const openAccount = (): void => {
+    const drawer = openAccountDrawer({
+      account,
+      flow: authFlow,
+      parent: document.body,
+      onGuest: asGuest,
+      onClose: () => {
+        accountRedraw = null;
+        onboardingDrawer = null;
+        // Signed in: a cloud walker goes to the hub, else the onboarding goes on. A sync choice still open (the cloud holds a game this device has not taken) waits here.
+        if (account.state().kind === 'signed-in' && !account.pendingChoice()) titleScreen(root);
+      },
+    });
+    accountRedraw = drawer.redraw;
+    onboardingDrawer = drawer;
+  };
+  welcomeOpenAccount = openAccount;
+  const view = welcomeScreen({
+    hasLocalSave: store.get(SAVE_KEY) !== null || account.backups().length > 0,
+    touch: isTouchUi(),
+    onAccount: openAccount,
+    onGuest: asGuest,
+    // A game kept on this device: it counts as chosen and the prologue as seen, as adoptReturningPlayer does for a profile with progress.
+    onDevice: () => {
+      markPrologueSeen(store);
+      update(withReturningPlayer(settings, readRecords(store).lastSpecies, rosterOf(loadSave(store))));
+      clearOnboarding(store);
+      titleScreen(root);
+    },
+  });
+  show(root, [view.element]);
+}
+
+/** Opens the welcome's account drawer (set while the welcome is up; the OAuth return uses it). */
+let welcomeOpenAccount: (() => void) | null = null;
 
 /** The title's "Jugar": the prologue and the quiz the first time (as before), then the town, where every run starts. */
 function playScreen(root: HTMLElement): void {
@@ -866,14 +1096,15 @@ function styleHeraldLines(title: boolean, def: HeraldDef, lines: readonly HTMLEl
   epigraph.style.cssText = 'font-style: italic; opacity: 0.75; font-size: 0.85em';
 }
 
-/** The personality quiz over a black screen; its starter becomes the `species` setting. */
+/** The questionnaire (Settings' retake, or the first-run steps reached through Play): its walker becomes the `species` setting. Not persisted: the onboarding gate has its own. */
 function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
   const onDone = (starter: StarterId) => {
     // An evolved starter plays as its current form.
     update(withStarter(settings, currentForm(loadSave(store), starter)));
     then();
   };
-  show(root, quizScreen({ seed: runSeed(), sheets: sheetsReady(), onDone, onCancel: cancel }), false);
+  const view = quizScreen({ seed: runSeed(), sheets: sheetsReady(), touch: isTouchUi(), mode: settings.starterChosen ? 'retake' : 'onboarding', newSeed: runSeed, onDone, onCancel: cancel });
+  show(root, [view.element]);
 }
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
@@ -911,71 +1142,29 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
 }
 
 function settingsScreen(root: HTMLElement, tab = 0): void {
-  const back = () => optionsScreen(root, 'settings');
+  let current = tab;
   const access: SettingsAccess = {
     get: () => settings,
     update,
     setLanguage: (language) => {
       applyLanguage(language);
-      settingsScreen(root, tab);
+      settingsScreen(root, current);
     },
+    preview: () => audio.play('click'),
   };
-  // Settings in tabs, one sentence under the list for the row the cursor is on (odd/tasks/menu-redesign.md S6).
-  const tabs = settingTabs(settingRows(access));
-  const current = Math.min(tab, tabs.length - 1);
-  const about = h('p', { className: 'settings-about' });
-  const retake = () => quiz(root, () => settingsScreen(root, current), () => settingsScreen(root, current));
-  const nickname = nicknameRow();
-  const accountRow = { label: t('title.account'), onConfirm: () => accountScreen(root, () => settingsScreen(root, current)) };
-  const ids = new Set(tabs[current]!.rows.map((r) => r.id));
-  const abouts = tabs[current]!.rows.map((r) => r.about);
-  // The General tab also holds the profile rows (nickname, account, the personality test again).
-  const extra = current === 0 ? [nickname, accountRow, { label: t('quiz.retake'), onConfirm: retake }] : [];
-  const extraAbout = current === 0 ? [t('setting.nickname.about'), t('setting.account.about'), t('setting.retake.about')] : [];
-  const describe = (i: number) => {
-    about.textContent = [...abouts, ...extraAbout][i] ?? '';
-  };
-  const list = cursorList({ items: [], onBack: back, label: t('title.settings'), onCursor: describe });
-  // The shared description box (ui/describe.ts): it reserves the longest sentence's room, so the window never jumps.
-  const desc = description(list, { describe, children: [about] });
-  const refresh = () => {
-    list.setItems([...settingItems(access, refresh, ids), ...extra, { label: t('menu.back'), onConfirm: back }]);
-    desc.update();
-  };
-  refresh();
-  const go = (next: number) => settingsScreen(root, (next + tabs.length) % tabs.length);
-  const bar = h(
-    'div',
-    { className: 'settings-tabs', role: 'tablist' },
-    tabs.map((tabDef, i) => {
-      const button = h('button', { type: 'button', className: i === current ? 'selected' : '', textContent: tabDef.title });
-      button.addEventListener('click', () => go(i));
-      return button;
-    }),
-  );
-  // Q / E (and the page keys) switch tabs; a gamepad's shoulders send them too where mapped.
-  const onKey = (e: KeyboardEvent) => {
-    // The screen was replaced: this listener goes with it.
-    if (!bar.isConnected) {
-      window.removeEventListener('keydown', onKey);
-      return;
-    }
-    if (e.code === 'KeyQ' || e.code === 'PageUp') {
-      e.preventDefault();
-      go(current - 1);
-    } else if (e.code === 'KeyE' || e.code === 'PageDown') {
-      e.preventDefault();
-      go(current + 1);
-    }
-  };
-  window.addEventListener('keydown', onKey);
-  show(root, [
-    h('h1', { className: 'screen-title', textContent: t('title.settings') }),
-    h('div', { className: 'screen-row' }, [
-      mdWindow({ title: t('title.settings'), className: 'settings' }, [bar, list.element, desc.element, h('p', { className: 'hint dim settings-tabs-hint', textContent: t('settings.tabsHint') })]),
-      mdWindow({ title: t('menu.controls'), className: 'controls' }, [h('ul', { className: 'control-list' }, CONTROL_KEYS.map((key) => h('li', { textContent: t(`menu.controls.${key}`) })))]),
-    ]),
-  ]);
+  const here = () => settingsScreen(root, current);
+  // The shared Settings window (app/settings-view.ts); the profile actions sit in its footer.
+  const view = settingsView({
+    access,
+    tab,
+    onTab: (next) => (current = next),
+    onBack: () => optionsScreen(root, 'settings'),
+    actions: [
+      { label: t('title.account'), icon: 'account', run: () => accountScreen(root, here) },
+      { label: t('quiz.retake'), icon: 'title', run: () => quiz(root, here, here) },
+    ],
+  });
+  show(root, [h('h1', { className: 'screen-title', textContent: t('title.settings') }), h('div', { className: 'screen-row' }, [view.element])]);
 }
 
 /**
@@ -1091,93 +1280,69 @@ function reportScreen(root: HTMLElement, back: () => void): void {
   show(root, [open.element]);
 }
 
-/** The account screen (log in, sign up, log out, delete; cloud sync choices, status and backups), from the title or Settings. */
-function accountScreen(root: HTMLElement, back: () => void, view: AccountView = 'main'): void {
-  accountRedraw = () => accountScreen(root, back);
-  accountView = view;
-  show(root, [accountWindow({ account, refresh: (next) => accountScreen(root, back, next), onBack: back }, view)]);
+/** The account drawer over whatever is on screen (the title, Options, Settings, Friends); `back` runs when it closes. */
+function accountScreen(_root: HTMLElement, back: () => void): void {
+  townAccount(document.body, back);
 }
 
-/** The account window over the town (its Esc menu, solo or in a room): the town, the room and its session stay underneath. */
+/** The account drawer over the town (its Esc menu, solo or in a room) or any screen: the scene, the room and its session stay underneath. */
 function townAccount(parent: HTMLElement, onClose: () => void): () => void {
-  const overlay = h('div', { className: 'town-shop' });
-  let closed = false;
-  const render = (view: AccountView = 'main'): void => {
-    if (closed) return;
-    accountRedraw = () => render('main');
-    accountView = view;
-    overlay.replaceChildren(accountWindow({ account, refresh: render, onBack: onClose }, view));
-  };
-  render();
-  parent.append(overlay);
-  return () => {
-    closed = true;
-    if (overlay.isConnected) {
+  let closeDrawer = (): void => undefined;
+  const drawer = openAccountDrawer({
+    account,
+    flow: authFlow,
+    parent,
+    face: () => (settings.starterChosen ? facePortrait(settings.species, { size: 48, shiny: skinOn(), female: femaleOn(), sheets: sheetsReady() }) : null),
+    onClose: () => {
       accountRedraw = null;
-      accountView = null;
-    }
-    overlay.remove();
-  };
+      onClose();
+    },
+  });
+  closeDrawer = drawer.close;
+  accountRedraw = drawer.redraw;
+  return () => closeDrawer();
 }
 
 /**
- * The gallery over the town (its Esc menu; app/lore-gallery.ts): the groups,
- * then a group's scenes; a seen one plays again over the town (the window
- * waits under it), an unseen one is "???" and does nothing. Nothing is
+ * The gallery over the town (its Esc menu; app/gallery-view.ts): a card per
+ * group beside a sheet of its scenes; a seen one plays again over the town (the
+ * window waits under it), an unseen one is "???" and does nothing. Nothing is
  * written: no seen flag, save, record or story. The pleas replay on the
  * crater's rim through the town (`replayPlea`, alone only).
  */
 function townGallery(root: HTMLElement) {
   return (parent: HTMLElement, onClose: () => void, replayPlea: (() => void) | null): (() => void) => {
     const overlay = h('div', { className: 'town-shop' });
-    const groups = galleryGroups();
-    let open: { element: HTMLElement; dispose(): void } | null = null;
     let closeScene: (() => void) | null = null;
-    const render = (group: number | null, initial = 0): void => {
-      open?.dispose();
-      const seen = readGallerySeen(store, settings.starterChosen);
-      if (group === null) {
-        open = menuWindow({
-          title: t('gallery.title'),
-          intro: t('gallery.intro'),
-          rows: groups.map((g, i) => ({ label: g.title(t), about: t('gallery.group.about').replace('{seen}', String(groupSeen(g, seen))).replace('{total}', String(g.entries.length)), onConfirm: () => render(i) })),
-          back: { label: t('menu.back'), about: t('gallery.back.about'), onConfirm: onClose },
-          className: 'town-menu',
-          initial,
+    const view = galleryView({
+      groups: galleryGroups(),
+      seen: readGallerySeen(store, settings.starterChosen),
+      // The pleas replay on the crater's rim, alone only.
+      canPlay: (entry) => entry.scene.kind !== 'plea' || replayPlea !== null,
+      onPlay: (entry, done) => {
+        const scene = entry.scene;
+        if (scene.kind === 'plea') {
+          replayPlea?.();
+          done();
+          return;
+        }
+        closeScene = galleryCinematic(root, scene, () => {
+          closeScene = null;
+          done();
         });
-      } else {
-        const g = groups[group]!;
-        open = menuWindow({
-          title: g.title(t),
-          rows: g.entries.map((e, i) => {
-            const unlocked = galleryUnlocked(e.scene, seen);
-            const roomPlea = e.scene.kind === 'plea' && !replayPlea;
-            return {
-              label: unlocked ? e.label(t) : t('gallery.locked'),
-              about: !unlocked ? t('gallery.locked.about') : roomPlea ? t('gallery.plea.room') : t('gallery.play.about'),
-              onConfirm: () => {
-                if (!unlocked || roomPlea || closeScene) return;
-                if (e.scene.kind === 'plea') return replayPlea?.();
-                closeScene = galleryCinematic(root, e.scene, () => {
-                  closeScene = null;
-                  render(group, i);
-                });
-              },
-            };
-          }),
-          back: { label: t('menu.back'), about: t('gallery.groups.about'), onConfirm: () => render(null, group) },
-          className: 'town-menu',
-          initial,
-        });
-      }
-      overlay.replaceChildren(open.element);
-    };
-    render(null);
+      },
+      onBack: onClose,
+    });
+    // A click on the veil closes the window.
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) onClose();
+    });
+    overlay.append(view.element);
     parent.append(overlay);
     return () => {
       closeScene?.();
       closeScene = null;
-      open?.dispose();
+      view.dispose();
       overlay.remove();
     };
   };
@@ -1222,6 +1387,61 @@ function galleryCinematic(root: HTMLElement, scene: Exclude<GalleryScene, { kind
   return () => screen.remove();
 }
 
+/** Reload-proof play (app/run-resume.ts): a device-local record, apart from the profile (its key is not in PROFILE_KEYS: it never syncs). */
+const resumeStore = store;
+const resumeWho = () => ({ owner: storedOwner(resumeStore), build: APP_VERSION });
+/** The page threw since it opened: a stored run that crashes the page is dropped instead of crashing it on every reload. */
+let pageCrashed = false;
+window.addEventListener('error', () => {
+  pageCrashed = true;
+});
+
+/** The solo town keeps the walker's map and tile (every 2 s and as the page goes), until the town is left. */
+function keepTownSpot(handle: TownHandle): void {
+  const who = resumeWho();
+  const runId = newRunId();
+  const save = () => {
+    const place = handle.place();
+    const record = place ? townRecord(who, runId, place, Date.now()) : null;
+    if (record) writeResume(resumeStore, record);
+  };
+  const onHide = () => save();
+  const timer = window.setInterval(save, 2000);
+  window.addEventListener('pagehide', onHide);
+  document.addEventListener('visibilitychange', onHide);
+  save();
+  const stop = handle.stop.bind(handle);
+  handle.stop = () => {
+    window.clearInterval(timer);
+    window.removeEventListener('pagehide', onHide);
+    document.removeEventListener('visibilitychange', onHide);
+    stop();
+    // Only this visit's own record: a run that began meanwhile has already replaced it.
+    clearResume(resumeStore, runId);
+  };
+}
+
+/** The title is skipped when a record is waiting: the town at its spot, or the run, both paused behind the menu. True when it took over. */
+function resumeBoot(root: HTMLElement): boolean {
+  const who = resumeWho();
+  const record = readResume(resumeStore, who.owner, who.build);
+  if (!record) return false;
+  applyLanguage(settings.language);
+  if (record.kind === 'town') {
+    townScreen(root, { at: record.at, tile: record.tile, startWindow: 'menu' });
+    return true;
+  }
+  waitScreen(root, t('resume.restoring'));
+  const { launch } = record;
+  const trial = launch.trial ? { ...launch.trial, pick: { ...launch.trial.pick, loadout: [...launch.trial.pick.loadout] } } : undefined;
+  void play(root, undefined, launch.dungeon, launch.seed, trial, record).catch(() => {
+    // A record that cannot start is gone, and the title is where the player lands, as before.
+    clearResume(resumeStore);
+    titleScreen(root);
+  });
+  return true;
+}
+
 /**
  * The hub town (src/town): walk around; its route exit goes on exactly like
  * "Play" (`newAdventure`), Esc goes back to the title. It keeps the title
@@ -1241,7 +1461,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
   const { tour: forceTour, ...place } = at ?? {};
   // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
   const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place });
+  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place }).then(keepTownSpot);
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1288,9 +1508,12 @@ function skins(after?: () => void): { skin: ShinySkins; gender: LineGender } {
   };
 }
 
+/** A species' idle animation for the move tutor's chips (its worn skin and gender). */
+const tutorPortrait = (id: SpeciesId, scale: number): HTMLElement => portrait(sheetsReady(), id, scale, skinOn(id), femaleOn(id));
+
 /** Smeargle's move tutor over the town, like the shop. */
 function townTutor(parent: HTMLElement, onClose: () => void): () => void {
-  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: onClose });
+  const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: onClose });
   const overlay = h('div', { className: 'town-shop' }, [tutor.element]);
   parent.append(overlay);
   return () => {
@@ -1318,28 +1541,28 @@ const settleOnClose = (onClose: () => void) => () => {
 /** The achievements window over the town (its Esc menu). */
 const townAchievements = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, achievementsWindow({ store, onBack: onClose }));
 
-/** The settings over the town (its Esc menu): the same rows as the Settings screen; a language change redraws them in place. */
+/** The settings over the town (its Esc menu): the same window as the Settings screen; a language change redraws it in place. */
 function townSettings(parent: HTMLElement, onClose: () => void): () => void {
   let close = (): void => undefined;
+  let current = 0;
   const open = (): void => {
     close();
-    const list = cursorList({ items: [], onBack: onClose, label: t('title.settings') });
     const access: SettingsAccess = {
       get: () => settings,
       update,
       setLanguage: (language) => {
         applyLanguage(language);
-        refresh();
+        open();
       },
+      preview: () => audio.play('click'),
     };
     // "Reportar un problema" over the town (issue #9); Back returns to these settings.
     const report = (): void => {
       close();
       close = townWindow(parent, reportWindow(reportOptions(open)));
     };
-    const refresh = (): void => list.setItems([...settingItems(access, refresh), nicknameRow(), { label: t('title.report'), onConfirm: report }, { label: t('menu.back'), onConfirm: onClose }]);
-    refresh();
-    close = townWindow(parent, { element: mdWindow({ title: t('title.settings'), className: 'settings' }, [list.element]), dispose: () => list.dispose() });
+    const view = settingsView({ access, tab: current, onTab: (next) => (current = next), onBack: onClose, actions: [{ label: t('title.report'), icon: 'report', run: report }] });
+    close = townWindow(parent, { element: view.element, dispose: view.dispose });
   };
   open();
   return () => close();
@@ -1348,12 +1571,60 @@ function townSettings(parent: HTMLElement, onClose: () => void): () => void {
 /** Mimikyu's gacha stall over the town. */
 const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: settleOnClose(onClose) }));
 
+/**
+ * The gacha as its own page, /gacha (odd/tasks/gacha-page.md; owner, 2026-11-03). The hub's button and Mimikyu's stall
+ * (alone; a room keeps the window above) push the route with the origin in the history state, so the browser's back
+ * button, Esc and "Volver" all return there. A direct visit has no origin: back goes to the title. The route needs a
+ * server that answers /gacha with the app (Vite dev does; GitHub Pages via dist/404.html, see deploy.yml).
+ */
+type GachaOrigin = 'hub' | 'town';
+let gachaOpen: { dispose(): void } | null = null;
+let gachaFrom: GachaOrigin | null = null;
+const gachaOrigin = (): GachaOrigin | null => (window.history.state as { gacha?: GachaOrigin } | null)?.gacha ?? null;
+/** In front of Mimikyu's stall, where the town returns the player to. */
+const STALL_FRONT = { at: 'refugio', tile: { x: 8, y: 8 } } as const;
+
+function showGachaPage(root: HTMLElement): void {
+  leaveNet();
+  applyLanguage(settings.language);
+  gachaOpen?.dispose();
+  gachaFrom = gachaOrigin();
+  const page = gachaPage({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), touch: isTouchUi(), onBack: () => leaveGachaPage(root) });
+  gachaOpen = page;
+  show(root, [page.element], false);
+  audio.setMusic('title');
+}
+
+function openGachaPage(root: HTMLElement, from: GachaOrigin): void {
+  window.history.pushState({ gacha: from }, '', gachaUrl(window.location.pathname));
+  showGachaPage(root);
+}
+
+/** Back and Esc: one step back when the page was pushed (the same step as the browser's back button); a direct visit goes to the title. */
+function leaveGachaPage(root: HTMLElement): void {
+  if (gachaOrigin()) {
+    window.history.back();
+    return;
+  }
+  window.history.replaceState(null, '', leaveUrl(window.location.pathname));
+  exitGachaPage(root, null);
+}
+
+/** Leaves the page for where it was opened from, settling the achievements the pulls earned (app/progress.ts). */
+function exitGachaPage(root: HTMLElement, from: GachaOrigin | null): void {
+  gachaOpen?.dispose();
+  gachaOpen = null;
+  achievementToast(recordSave(store, Date.now()).unlocked);
+  if (from === 'town') townScreen(root, STALL_FRONT);
+  else titleScreen(root, 'gacha');
+}
+
 /** The Lago oracle Phantump's evolutions over the town; evolving the selected species keeps it selected as its new form. */
 function townEvolve(parent: HTMLElement, onClose: () => void, depart: (id: string) => void): () => void {
   let close = (): void => undefined;
   const evolve = () => {
     close();
-    close = townWindow(parent, evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: challenges, onBack: settleOnClose(onClose) }));
+    close = townWindow(parent, evolveWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: challenges, onBack: settleOnClose(onClose) }));
   };
   // Its "Desafíos" row opens the same challenges menu as the waystone; Back returns to Phantump.
   const challenges = () => {
@@ -1632,7 +1903,7 @@ function trialEnd(root: HTMLElement, run: TrialRun, result: GameResult, summary:
   const herald = heraldName(request);
   // An online room goes back to its town (the host reopens it, the guests follow); no retry from here.
   const actions = from === 'room' ? { onBack: () => backToRoom(root) } : { onRetry: () => void playTrial(root, request, from, pick), onBack: () => shrineScreen(root, from, view, request.id) };
-  show(root, [shrineResultScreen({ request, victory, trial, before, coins, balance, ...actions }, herald)], true, victory ? 'victory' : 'defeat');
+  show(root, [shrineResultScreen({ request, victory, trial, before, coins, balance, sheets: sheetsReady(), ...actions }, herald)], false, victory ? 'victory' : 'defeat', true);
 }
 
 /** The upgrade shop from the title menu (its last entry). */
@@ -1642,70 +1913,34 @@ function shopScreen(root: HTMLElement): void {
 }
 
 function creditsScreen(root: HTMLElement): void {
-  show(root, [creditsWindow(single(t('menu.back'), () => optionsScreen(root, 'credits')))]);
+  show(root, [creditsWindow(single(t('menu.back'), () => titleScreen(root, 'credits')))]);
 }
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
 function onlineScreen(root: HTMLElement, from: OnlineFrom = 'title'): void {
-  const back = () => (from === 'town' ? townScreen(root, BEACON_TILE) : titleScreen(root, 1));
-  const prefill = roomCodeFromSearch(window.location.search) ?? '';
-  const code = h('input', { type: 'text', className: 'code-input', placeholder: t('lobby.codePlaceholder'), value: prefill });
-  code.maxLength = 7;
-  code.autocomplete = 'off';
-  code.spellcheck = false;
-  // Soft keyboard: capitals, no autocorrect, a Go key that submits like Enter.
-  code.setAttribute('autocapitalize', 'characters');
-  code.setAttribute('autocorrect', 'off');
-  code.enterKeyHint = 'go';
-  code.setAttribute('aria-label', t('lobby.codePlaceholder'));
-  const error = h('p', { className: 'lobby-error' });
-  const tryJoin = () => {
-    const normalized = normalizeRoomCode(code.value);
-    if (normalized) void openLobby(root, normalized, false, undefined, from);
-    else {
-      error.textContent = t('lobby.invalidCode');
-      code.focus();
-    }
-  };
-  code.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') tryJoin();
+  const open = onlineWindow({
+    prefill: roomCodeFromSearch(window.location.search) ?? '',
+    nickname: settings.nickname,
+    saveNickname: (value) => {
+      const clean = sanitizeNickname(value);
+      if (clean !== settings.nickname) update({ nickname: clean });
+      return clean;
+    },
+    onCreate: () => {
+      open.dispose();
+      void openLobby(root, generateRoomCode(), true, undefined, from);
+    },
+    onJoin: (code) => {
+      open.dispose();
+      void openLobby(root, code, false, undefined, from);
+    },
+    onBack: () => {
+      open.dispose();
+      if (from === 'town') townScreen(root, BEACON_TILE);
+      else titleScreen(root, 1);
+    },
   });
-  const join = () => (normalizeRoomCode(code.value) ? tryJoin() : code.focus());
-  const list = cursorList({
-    initial: prefill ? 1 : 0,
-    onBack: back,
-    label: t('lobby.online'),
-    items: [
-      { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true, undefined, from) },
-      { label: t('lobby.joinCode'), value: code, className: 'join-row', onConfirm: join },
-      nicknameRow(),
-      { label: t('menu.back'), onConfirm: back },
-    ],
-  });
-  show(root, [mdWindow({ title: t('lobby.online'), className: 'online' }, [list.element, error])]);
-}
-
-/** A settings row with a text field for the nickname (Settings and the online screen); saved sanitised on change. */
-function nicknameRow(): ListItem {
-  const input = h('input', { type: 'text', className: 'code-input nickname-input', placeholder: t('nickname.placeholder'), value: settings.nickname });
-  // The room-code field's look, without its capitals: a nickname keeps its case.
-  Object.assign(input.style, { textTransform: 'none', letterSpacing: 'normal' });
-  input.maxLength = 32;
-  input.autocomplete = 'off';
-  input.spellcheck = false;
-  input.enterKeyHint = 'done';
-  input.setAttribute('aria-label', t('settings.nickname'));
-  const save = () => {
-    const clean = sanitizeNickname(input.value);
-    input.value = clean;
-    if (clean !== settings.nickname) update({ nickname: clean });
-  };
-  input.addEventListener('change', save);
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
-  });
-  return { label: t('settings.nickname'), value: input, className: 'join-row nickname-row', onConfirm: () => input.focus() };
+  show(root, [open.element]);
 }
 
 /** A player's name in a room: its nickname, else "Jugador-XYZ" from its peer id. */
@@ -1866,33 +2101,6 @@ interface EndScore {
   board: readonly ScoreEntry[];
 }
 
-/** The Sima del Eclipse column of the end screen: mode, date, seed, floor and time left, rank, and the top of the board. */
-function scoreColumn(score: EndScore): HTMLElement {
-  const { entry } = score;
-  // Across both columns: this run on the left, the top of the board on the right (this run's row highlighted).
-  const top = h(
-    'div',
-    {},
-    score.board.slice(0, 3).map((e, i) => {
-      const row = h('p', { className: i + 1 === score.rank ? '' : 'dim', textContent: scoreLine(e, i + 1, t) });
-      row.style.margin = '0.15rem 0';
-      if (i + 1 === score.rank) row.style.color = 'var(--cursor, #ffd447)';
-      return row;
-    }),
-  );
-  const column = h('div', { className: 'endless-score' }, [
-    h('div', {}, [
-      h('h3', { className: 'dim', textContent: t('endless.score') }),
-      statLine(t('endless.score.mode'), `${t(`endless.mode.${entry.mode}`)} · ${entry.date}`),
-      statLine(t('endless.score.time'), clockText(entry.clockMs)),
-      statLine(t('endless.score.rank'), score.rank === null ? t('endless.score.unranked') : `#${score.rank}`),
-    ]),
-    h('div', {}, [h('h3', { className: 'dim', textContent: t('endless.board.top') }), top]),
-  ]);
-  Object.assign(column.style, { gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))', gap: '0 2.5rem' });
-  return column;
-}
-
 function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary, online: boolean, balance: number, score?: EndScore, materials?: string | null): void {
   // A room run: the room goes back to its town together for another one (`backToRoom`); every other run to the hub (after-run.ts).
   const inRoom = online && room !== null && current === room.session;
@@ -1900,55 +2108,10 @@ function resultScreen(root: HTMLElement, result: GameResult, summary: RunSummary
   const back = townOf({ inRoom }) === 'room' ? () => backToRoom(root) : () => hub(root);
   // Retrying the Sima goes back to its entry card (pick the mode again).
   const retry = () => (dungeonById(summary.dungeon).endless ? enterDungeon(root, summary.dungeon, back) : void play(root, undefined, summary.dungeon));
-  const items: ListItem[] = endActions({ online, tutorialWon: summary.dungeon === TUTORIAL.id && result === 'victory' }).map((action) =>
-    action === 'retry' ? { label: t('screen.retry'), onConfirm: retry } : { label: t(party ? 'lobby.backToTown' : townIsOpen() ? 'screen.town' : 'screen.menu'), onConfirm: back },
-  );
   const held = heldItems(summary.items as ItemId[]);
-  show(root, [
-    mdWindow({ className: `result ${result}` }, [
-      h('h1', { textContent: t(endHeading(result, summary.cutShort).title) }),
-      // Victory names the dungeon's guardian, defeat the player's Pokémon (a run the host cut short says neither).
-      ...(endHeading(result, summary.cutShort).text
-        ? [h('p', { textContent: t(endHeading(result, summary.cutShort).text!).replace('{name}', t(`species.${result === 'victory' ? (guardianOf(dungeonById(summary.dungeon)) ?? 'aegislash') : settings.species}`)) })]
-        : []),
-      // The host cut the run short: why it ended, and what was kept.
-      ...(summary.cutShort ? [h('p', { className: 'dim', textContent: t(`net.cutShort.${summary.cutShort}`) })] : []),
-      // A challenge's own closing line (its trial's lore).
-      ...(victoryLine(dungeonById(summary.dungeon), result) ? [h('p', { className: 'dim', textContent: t(victoryLine(dungeonById(summary.dungeon), result)!) })] : []),
-      // Run summary and Pokémonedas side by side on wide screens (stacked when narrow).
-      h('div', { className: 'result-columns' }, [
-        h('div', {}, [
-          h('h3', { className: 'dim', textContent: t('screen.summary') }),
-          statLine(t('difficulty.label'), t(`difficulty.${summary.difficulty}`)),
-          statLine(t('screen.floorReached'), String(summary.floor)),
-          statLine(t('screen.level'), String(summary.level)),
-          statLine(t('screen.seed'), String(summary.seed)),
-          statLine(t('screen.items'), held.length === 0 ? t('screen.noItems') : held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`).join(', ')),
-          ...(party ? [statLine(t('screen.party'), party.join(', '))] : []),
-          // The Sima: the floor events taken this run.
-          ...(summary.simaEvents?.length
-            ? [h('h3', { className: 'dim', textContent: t('sima.summary.title') }), ...simaEventLines(summary.simaEvents, t).map((line) => simaLine(line))]
-            : []),
-        ]),
-        h('div', { className: 'coin-lines' }, [
-          h('h3', { className: 'dim', textContent: t('screen.coins') }),
-          // The Sima's ×0.5 is its pay rate, not a difficulty: its line says so.
-          ...coinLines(summary.coins, balance, (key) => t(score && key === 'screen.coins.multiplier' ? 'endless.coins.rate' : key)).map((line) => statLine(line.label, line.value)),
-          // A challenge clear: the materials it paid (after-run.ts).
-          ...(materials ? [statLine(t('screen.materials'), materials)] : []),
-        ]),
-        ...(score ? [scoreColumn(score)] : []),
-      ]),
-      cursorList({ items, onBack: back, className: 'result-actions' }).element,
-    ]),
-  ], true, result === 'eclipse' ? 'victory' : result);
-}
-
-/** One line of the Sima's events on the end screen: small and tight, so the actions stay in view. */
-function simaLine(text: string): HTMLElement {
-  const line = h('p', { className: 'dim', textContent: text });
-  Object.assign(line.style, { margin: '0.1rem 0', fontSize: '0.85em', lineHeight: '1.25' });
-  return line;
+  const view = endModel({ result, summary, online, balance, party, playerSpecies: settings.species, townOpen: townIsOpen(), heldNames: held.map((i) => `${i.name}${i.count > 1 ? ` ×${i.count}` : ''}`), ...(score ? { score } : {}), materials }, t);
+  // A dialog over the run's last frame, not over the title's backdrop (ui/scene.ts).
+  show(root, [endVeil(endScreen({ view, sheets: sheetsReady(), onAction: (id) => (id === 'retry' ? retry() : back()) }))], false, result === 'eclipse' ? 'victory' : result, true);
 }
 
 /** Records an endless run's score (floor, time left, mode from its seed, the UTC day) and returns its rank. */
@@ -1965,20 +2128,20 @@ function endlessScore(summary: RunSummary): EndScore {
 }
 
 /** Starts a run: solo, a `?net=local` tab session, or the shared run of a lobby (`join`). */
-async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun): Promise<void> {
-  if (!sheets) {
-    waitScreen(root, t('app.loading'));
-    await sheetsReady();
-  }
+async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devDungeon(), seed?: number, trial?: TrialRun, resume?: Extract<ResumeRecord, { kind: 'run' }>): Promise<void> {
+  // The player and floor 1 first; the rest of the dungeon's pool loads in the background.
+  await preloadRun(dungeonById(dungeon), trial?.pick.species ?? settings.species, skinOn(trial?.pick.species), femaleOn(trial?.pick.species));
   // The HUD draws text in the pixel font on the canvas: it must be ready first.
   await document.fonts?.load(`${FONT.hudPx}px "${FONT.family}"`).catch(() => undefined);
   let shared: Pick<GameOptions, 'net' | 'seed' | 'startFloor' | 'dungeon' | 'testSpawns' | 'difficulty' | 'heraldSeed'> = { seed: seed ?? runSeed(), startFloor: devStartFloor(), dungeon, testSpawns: devSpawns(), difficulty: tierFor(dungeonById(dungeon), sendaTier(dungeonById(dungeon), settings.difficulty, loadSave(store).story)) };
   // `?boss=<seed>`: that herald on a Sima herald floor.
-  const boss = devBoss();
+  const boss = resume ? undefined : devBoss();
   if (boss) shared = { ...shared, dungeon: 'eclipse-chasm', startFloor: boss.floor, heraldSeed: boss.seed };
   // A shrine trial: solo, its own arenas and tier, no dev overrides.
   if (trial) shared = { seed: seed ?? runSeed(), dungeon, difficulty: trial.request.difficulty };
-  if (!join && !trial && netMode()) {
+  // A stored run comes back with its own seed and tier, never today's settings or the dev overrides.
+  if (resume) shared = { seed: resume.launch.seed, dungeon: resume.launch.dungeon, difficulty: resume.launch.difficulty };
+  if (!join && !trial && !resume && netMode()) {
     waitScreen(root, t('net.connecting'));
     join = await connectLocal(root, shared.seed!, shared.startFloor ?? 1, dungeon);
   }
@@ -1990,18 +2153,27 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     shared = { seed: join.seed, startFloor: join.floor, dungeon: dungeonById(join.dungeon).id, difficulty: join.difficulty ?? DEFAULT_DIFFICULTY, net: { session: join.session, role: join.role, localId: join.localId, keepSession: join.online } };
   }
   const online = join?.online ?? false;
+  // A shared run has nowhere to come back to (no rejoin): whatever solo record was left is stale now.
+  if (shared.net) clearResume(resumeStore);
   // A Senda chapter (each peer its own save; the tier is the run's): its cinematic first, alone.
   const story = trial ? null : storyRunOf(loadSave(store), dungeonById(shared.dungeon ?? dungeon), shared.difficulty ?? DEFAULT_DIFFICULTY);
-  if (story && !shared.net && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
+  if (story && !shared.net && !resume && !devStoryDone()) await new Promise<void>((resolve) => storyCinematic(root, story, 'before', resolve));
   // The Sima's mouth (docs/sima-redesign.md §5.1): the first descent on this device, alone, after the villagers' pleas.
   const sima = !trial && dungeonById(shared.dungeon ?? dungeon).endless !== undefined;
-  if (sima && !shared.net && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => {
+  if (sima && !shared.net && !resume && !hasSeenSimaScene(store, 'mouth')) await new Promise<void>((resolve) => {
       if (!simaScene(root, 'mouth', { species: settings.species }, resolve, false)) resolve();
     });
   const canvas = h('canvas', { className: 'game' });
   show(root, [canvas], false);
   root.querySelector('.notice')?.classList.add('in-game');
-  running = startGame(canvas, sheets!, {
+  // Reload-proof play: a solo run keeps its record; a stored one is continued, paused behind the menu.
+  pageCrashed = false;
+  const launch: RunLaunch = resume
+    ? resume.launch
+    : { dungeon: shared.dungeon ?? dungeon, seed: shared.seed!, difficulty: shared.difficulty ?? DEFAULT_DIFFICULTY, ...(trial ? { trial: { request: trial.request, from: trial.from, pick: trial.pick } } : {}) };
+  const keep = shared.net ? null : { writer: createResumeWriter(resumeStore, resumeWho(), launch, newRunId(), 0, Date.now), crashed: () => pageCrashed, ...(resume ? { from: resume.part } : {}) };
+  running = startGame(canvas, sheets, {
+    ...(keep ? { resume: keep } : {}),
     species: trial?.pick.species ?? settings.species,
     // Only moves the species knows reach a run (the tutor's, once bought); its Mejoras go with it.
     loadout: knownLoadout(loadSave(store), trial?.pick.species ?? settings.species, trial?.pick.loadout ?? settings.loadout),
@@ -2013,12 +2185,16 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
     ...(trial ? { trial: trial.request.stops } : {}),
     audio,
+    hints: playHints,
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     gamepad: gamepads,
     // The Esc menu also reports a problem (the form in place of the menu) and copies the technical report (issues #6, #9).
-    openMenu: (actions, held) =>
-      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root) }, held),
+    openMenu: (actions, held, context) =>
+      openPauseMenu(root, { get: () => settings, update, setLanguage: applyLanguage }, { ...actions, openReport: (back) => reportWindow(reportOptions(back)), copyReport: () => void copyReport(root), ...(fullscreenSupported() ? { toggleFullscreen: () => void toggleFullscreen(), isFullscreen } : {}) }, held, {
+        ...context,
+        portrait: (id) => portrait(sheetsReady(), id, 4, skinOn(id), femaleOn(id)),
+      }),
     // Quitting from the Esc menu goes back to the town too (`returnPlace('quit')`): a room's run to the room's town, still in it (ticket SD-RIKZIZ);
     // a solo run to the hub (the title until the town opens: odd/tasks/menu-redesign.md S7).
     onQuit: () =>
@@ -2158,7 +2334,7 @@ function devScreen(root: HTMLElement): boolean {
     },
     evolve: () => {
       devCoins();
-      show(root, [evolveWindow({ store, play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: () => devScreenChallenges(root), onBack: () => titleScreen(root) }).element]);
+      show(root, [evolveWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onEvolved: followEvolution, onChallenges: () => devScreenChallenges(root), onBack: () => titleScreen(root) }).element]);
     },
     // The achievements window and the notice board's missions on their own (back goes to the title).
     achievements: () => achievementsScreen(root),
@@ -2171,7 +2347,7 @@ function devScreen(root: HTMLElement): boolean {
     challenges: () => devScreenChallenges(root),
     // Smeargle's move tutor on its own (back goes to the title).
     tutor: () => {
-      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
+      const tutor = tutorWindow({ store, species: settings.species, cleared: cleared(), portrait: tutorPortrait, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: () => titleScreen(root) });
       show(root, [tutor.element]);
     },
     // `&view=gauntlets` (or reflections, heralds): the Santuario de los Juramentos.
@@ -2197,6 +2373,23 @@ function devScreen(root: HTMLElement): boolean {
     },
     defeat: () =>
       resultScreen(root, 'defeat', { ...summary, floor: 2, level: 3, items: [], coins: { ...coins, escapes: 0, guardian: 0, time: 6, subtotal: 83, share: 0.75, total: 62 } }, false, loadSave(store).coins),
+    // `&result=victory|defeat`: a real run cut after three seconds, to see the end dialog over its frozen last frame.
+    runend: () => {
+      void play(root, undefined, devDungeon());
+      const result = new URLSearchParams(window.location.search).get('result') === 'victory' ? 'victory' : 'defeat';
+      window.setTimeout(() => resultScreen(root, result, summary, false, loadSave(store).coins), 3000);
+    },
+    // `&kind=boss|gauntlet|herald&won=1&ms=83400&before=91000&coins=195&retry=0`: the shrine's result screen on its own.
+    shrineresult: () => {
+      const params = new URLSearchParams(window.location.search);
+      const kind = params.get('kind') ?? 'boss';
+      const request = trialRequestOf(kind === 'gauntlet' ? { kind: 'gauntlet', id: 'guardians', difficulty: 'normal' } : kind === 'herald' ? { kind: 'herald', id: '7', difficulty: 'normal' } : { kind: 'boss', id: 'aegislash', difficulty: 'normal' })!;
+      const before = params.get('before');
+      const won = params.get('won') !== '0';
+      const trial = { stops: request.stops, beaten: won ? request.stops.length : 1, ms: Number(params.get('ms') ?? 83400), captures: 3, noHit: params.get('nohit') === '1' };
+      const actions = params.get('retry') === '0' ? { onBack: () => titleScreen(root) } : { onRetry: () => titleScreen(root), onBack: () => titleScreen(root) };
+      show(root, [shrineResultScreen({ request, victory: won, trial, before: before ? ({ bestMs: Number(before) } as TrialBest) : null, coins: Number(params.get('coins') ?? 0), balance: 640, sheets: sheetsReady(), ...actions })], false, won ? 'victory' : 'defeat', true);
+    },
     // Waits for the sprites so a screenshot shows the silhouettes.
     prologue: () => void sheetsReady().then(() => prologue(root, () => titleScreen(root), Number(new URLSearchParams(window.location.search).get('at')) || 0)),
   };
@@ -2213,13 +2406,79 @@ function devScreen(root: HTMLElement): boolean {
   return true;
 }
 
+/**
+ * First paint of the title: the hub's own sheets (the partner's idle and the backdrop's residents) load first, behind the
+ * boot splash if that takes more than 150 ms; a slow network never holds the title longer than the cap. The rest loads by need.
+ */
+async function bootToTitle(root: HTMLElement): Promise<void> {
+  try {
+    await bootTitle(root);
+  } catch (error) {
+    // The title could not even be drawn: the one place the game stops and says so.
+    diagLog.error(error);
+    root.replaceChildren(fatalError({ onReload: () => window.location.reload(), report: async () => diagnosticsText(await collectDiagnostics()) }));
+  }
+}
+
+async function bootTitle(root: HTMLElement): Promise<void> {
+  const splash = bootSplash(document.body);
+  const cap = new Promise<void>((resolve) => window.setTimeout(resolve, BOOT_CAP_MS));
+  await Promise.race([preloadHub(settings.species, skinOn(), femaleOn(), splash.progress), cap]);
+  await splash.done();
+  titleScreen(root);
+  prefetchWhenIdle();
+}
+
+const BOOT_CAP_MS = 8000;
+
 const root = document.getElementById('app');
 if (root) {
   // Menu click: any button press on the pages (the game canvas has none).
   root.addEventListener('click', (e) => {
     if (e.target instanceof Element && e.target.closest('button')) audio.play('click');
   });
+  // A press that starts and ends on the backdrop closes the open menu like Esc (ui/dismiss.ts).
+  installDismiss();
+  // Back from Google or Discord (`/?sso=1`): Clerk finishes, the game session follows, then the parameter goes.
+  void authFlow.returnFromSso(window.location.search).then((result) => {
+    if (!result) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('sso');
+    window.history.replaceState(null, '', url);
+    toast(root, t(result.ok ? 'account.drawer.signedIn' : `account.error.${result.error}`));
+    // At the welcome gate the drawer carries on from there (it routes on when it closes, or at once with no choice to make).
+    if (result.ok && root.querySelector('.ob-welcome')) {
+      if (account.pendingChoice()) welcomeOpenAccount?.();
+      else titleScreen(root);
+      return;
+    }
+    // The cloud may hold other progress: the drawer is where that choice is made.
+    if (result.ok && account.pendingChoice()) townAccount(document.body, () => undefined);
+  });
   // Development server only: `?unlock=all` opens everything in this browser's local save.
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'all') unlockEverything(store);
-  if (!devScreen(root)) titleScreen(root);
+  // Development server only: `?unlock=veteran` writes an advanced, believable profile (dev-unlock.ts) and the story flags of a long-time
+  // player (prologue, starter, town tour), counts the achievements it proves, then drops the parameter so a reload keeps playing it normally.
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('unlock') === 'veteran') {
+    veteranProfile(store);
+    markPrologueSeen(store);
+    markTourSeen(store);
+    markVersionSeen(store, APP_VERSION);
+    update(withReturningPlayer(settings, 'zorua', rosterOf(loadSave(store))));
+    recordPast(store, Date.now());
+    const url = new URL(window.location.href);
+    url.searchParams.delete('unlock');
+    window.history.replaceState(null, '', url);
+  }
+  // /gacha: the stall's own page. The town must be open (the hub's button is locked until then); the browser's back and forward buttons move between it and the app.
+  const onGachaPath = (): boolean => isGachaPath(window.location.pathname);
+  window.addEventListener('popstate', () => {
+    if (onGachaPath() && townIsOpen()) showGachaPage(root);
+    else if (gachaOpen) exitGachaPage(root, gachaFrom);
+  });
+  if (onGachaPath() && townIsOpen()) showGachaPage(root);
+  else {
+    if (onGachaPath()) window.history.replaceState(null, '', leaveUrl(window.location.pathname));
+    if (!devScreen(root) && !resumeBoot(root)) void bootToTitle(root);
+  }
 }

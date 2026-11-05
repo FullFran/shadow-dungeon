@@ -5,10 +5,11 @@ import type { Rect } from '../core/state';
 import { TILE } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from '../adapters/assets';
+import { CREATURE_SCALE, drawCreatureFrame, withCreatureScale } from '../adapters/creature-scale';
 import { directionRow, frameAtTime } from '../adapters/sprite-anim';
 import { visibleTiles } from '../adapters/view';
 import { emberAt, hash01 } from '../ui/eclipse';
-import { birdAt, fogBank, leafAt } from './ambience';
+import { fogBank, leafAt } from './ambience';
 import { drawPanel, pixelText } from '../ui/canvas';
 import { canvasFont, PALETTE } from '../ui/tokens';
 import { groundAt, isFloorGround, pathPatchCell, type MapShape } from './map';
@@ -16,13 +17,11 @@ import { groundAt, isFloorGround, pathPatchCell, type MapShape } from './map';
 /**
  * Draws the town in view pixels: ground tiles (16 px source at 2x), props
  * and characters sorted by their feet, a red eclipse multiply over the
- * world, the sky band with the eclipse at the top of the view, and embers.
+ * world, and embers.
  * The caller applies the integer pixel scale; this module keeps no state.
  */
-export type TownImages = ReadonlyMap<string, HTMLImageElement>;
+export type TownImages = ReadonlyMap<string, HTMLImageElement | HTMLCanvasElement>;
 
-/** Height of the sky band at the top of the view, in view px (the camera may scroll up under it). */
-export const SKY_BAND = 64;
 const SRC = 16;
 const EMBERS = 36;
 
@@ -36,7 +35,7 @@ export interface TownCharacter {
 }
 
 /** The town's own light, for maps without a look. */
-export const DEFAULT_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'], eclipse: 1 };
+export const DEFAULT_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'] };
 
 export interface TownFrame {
   map: MapShape;
@@ -54,10 +53,13 @@ function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: Tow
   const meta = SPRITES.sprites[c.sprite]?.anims[anim] ?? SPRITES.sprites[c.sprite]?.anims.Idle;
   const image = meta && sheets.get(sheetKey(c.sprite, meta.file));
   const bob = c.floats ? Math.round(Math.sin(timeMs / 400) * 2) - 6 : 0;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.beginPath();
-  ctx.ellipse(Math.round(c.pos.x), Math.round(c.pos.y), c.floats ? 7 : 10, c.floats ? 3 : 4.5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // The shadow grows with the art, around the feet (src/adapters/creature-scale.ts).
+  withCreatureScale(ctx, c.pos, () => {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(Math.round(c.pos.x), Math.round(c.pos.y), c.floats ? 7 : 10, c.floats ? 3 : 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
   if (!meta || !image) {
     ctx.fillStyle = '#ff00ff';
     ctx.fillRect(Math.round(c.pos.x - 6), Math.round(c.pos.y - 16), 12, 16);
@@ -65,18 +67,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: Tow
   }
   const frame = frameAtTime(meta.durations, timeMs, true);
   const row = Math.min(directionRow(c.facing), meta.rows - 1);
-  const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.75 };
-  ctx.drawImage(
-    image,
-    frame * meta.frameWidth,
-    row * meta.frameHeight,
-    meta.frameWidth,
-    meta.frameHeight,
-    Math.round(c.pos.x - anchor.x),
-    Math.round(c.pos.y - anchor.y + bob),
-    meta.frameWidth,
-    meta.frameHeight,
-  );
+  drawCreatureFrame(ctx, image, meta, frame, row, c.pos, 1, bob * CREATURE_SCALE);
 }
 
 /** Run of `=` tiles through (x, y) along one axis. */
@@ -314,67 +305,6 @@ function propVisible(kind: TownPropKind, x: number, y: number, view: Rect): bool
   return x * TILE < view.x + view.width + TILE && (x + spec.width) * TILE > view.x - TILE && y * TILE < view.y + view.height + TILE && (y + spec.height) * TILE > view.y - TILE;
 }
 
-/**
- * The sky band: dark sky, the eclipse with a pulsing corona (bigger than
- * the band where the map looks at it), a far ruined skyline in front of it
- * and a soft fade into the town.
- */
-function sky(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, size = 1): void {
-  const w = view.width;
-  const h = SKY_BAND;
-  const gradient = ctx.createLinearGradient(0, 0, 0, h);
-  gradient.addColorStop(0, '#000000');
-  gradient.addColorStop(0.55, 'rgba(20, 2, 10, 0.97)');
-  gradient.addColorStop(1, 'rgba(40, 4, 14, 0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, w, h);
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(220, 225, 255, ${0.15 + 0.35 * hash01(i + 900) * (0.5 + 0.5 * Math.sin(timeMs / 900 + i))})`;
-    ctx.fillRect(Math.floor(hash01(i + 100) * w), Math.floor(hash01(i + 300) * h * 0.5), 1, 1);
-  }
-  // Slight parallax: the eclipse drifts against the camera.
-  const cx = Math.round(w * 0.68 - view.x * 0.04);
-  const cy = Math.round(22 + (size - 1) * 9);
-  const r = Math.round(11 * size);
-  const pulse = 0.82 + 0.18 * Math.sin(timeMs / 1400);
-  const corona = ctx.createRadialGradient(cx, cy, r * 0.9, cx, cy, r * 3.4);
-  corona.addColorStop(0, `rgba(255, 106, 61, ${0.85 * pulse})`);
-  corona.addColorStop(0.2, `rgba(232, 40, 58, ${0.5 * pulse})`);
-  corona.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = corona;
-  ctx.fillRect(cx - r * 4, 0, r * 8, Math.max(h, cy + r * 3.4));
-  ctx.fillStyle = PALETTE.eclipseGlow;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffd0a0';
-  ctx.beginPath();
-  ctx.arc(cx + 1, cy + 1, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#050003';
-  ctx.beginPath();
-  ctx.arc(cx - 1, cy - 1, r, 0, Math.PI * 2);
-  ctx.fill();
-  // Far ruins on the horizon, rim-lit red, scrolling slower than the town.
-  const shift = Math.floor(view.x * 0.15);
-  ctx.fillStyle = '#0b0410';
-  for (let x = -40; x < w + 40; x += 6) {
-    const seg = Math.floor((x + shift) / 6);
-    const tower = hash01(seg + 50) > 0.85;
-    const tall = tower ? 10 + Math.floor(hash01(seg + 70) * 10) : 2 + Math.floor(hash01(seg + 90) * 5);
-    const left = x - ((x + shift) % 6);
-    ctx.fillStyle = '#0b0410';
-    ctx.fillRect(left, h - 22 - tall, 6, tall + 4);
-    ctx.fillStyle = `rgba(232, 40, 58, ${0.35 * pulse})`;
-    ctx.fillRect(left, h - 22 - tall, 5, 1);
-  }
-  const fade = ctx.createLinearGradient(0, h - 22, 0, h);
-  fade.addColorStop(0, 'rgba(11, 4, 16, 1)');
-  fade.addColorStop(1, 'rgba(11, 4, 16, 0)');
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, h - 22, w, 22);
-}
-
 /** Eclipse light: a red multiply over everything, darker towards the bottom, and a warm glow from above. */
 function tint(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, colours: readonly [string, string]): void {
   const pulse = 0.9 + 0.1 * Math.sin(timeMs / 1400);
@@ -408,22 +338,8 @@ function fog(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, density:
 function leaves(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number): void {
   for (let i = 0; i < 14; i++) {
     const leaf = leafAt(i, timeMs, view.width, view.height);
-    if (leaf.y < SKY_BAND - 10) continue;
     ctx.fillStyle = i % 3 === 0 ? '#8a7a32' : '#b8582e';
     ctx.fillRect(Math.round(leaf.x), Math.round(leaf.y), leaf.flip ? 2 : 1, leaf.flip ? 1 : 2);
-  }
-}
-
-/** Birds gliding across the sky band: two pixels of wing either side of a body. */
-function birds(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number, count: number): void {
-  ctx.fillStyle = '#0b0410';
-  for (let i = 0; i < count; i++) {
-    const b = birdAt(i, timeMs, view.width, SKY_BAND);
-    const x = Math.round(b.x);
-    const y = Math.round(b.y);
-    ctx.fillRect(x, y, 1, 1);
-    ctx.fillRect(x - 2, y + (b.up ? -1 : 1), 2, 1);
-    ctx.fillRect(x + 1, y + (b.up ? -1 : 1), 2, 1);
   }
 }
 
@@ -437,7 +353,7 @@ function embers(ctx: CanvasRenderingContext2D, view: Rect, timeMs: number): void
   ctx.globalAlpha = 1;
 }
 
-/** World, tint, sky and embers, in view pixels (call with the pixel scale applied). */
+/** World, eclipse light (a tint, no sky: the view is top-down) and embers, in view pixels (call with the pixel scale applied). */
 export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages, sheets: SheetStore, frame: TownFrame): void {
   const { map, view, timeMs } = frame;
   const look = frame.look ?? DEFAULT_LOOK;
@@ -460,19 +376,11 @@ export function drawTownWorld(ctx: CanvasRenderingContext2D, images: TownImages,
   ctx.restore();
   tint(ctx, view, timeMs, look.tint);
   if (look.fog) fog(ctx, view, timeMs, look.fog);
-  sky(ctx, view, timeMs, look.eclipse);
-  if (look.birds) birds(ctx, view, timeMs, look.birds);
   if (look.leaves) leaves(ctx, view, timeMs);
   embers(ctx, view, timeMs);
 }
 
 export interface TownOverlay {
-  /** "E / Enter: talk" over the target in range. */
-  prompt: { text: string; pos: Vec2 } | null;
-  /** The dialog box; `portrait`: the speaker's sheet, shown in a framed box over it (Mystery Dungeon style). */
-  dialog: { speaker: string; text: string; done: boolean; portrait?: string } | null;
-  /** The map's name on arrival, fading out. */
-  banner?: { text: string; alpha: number } | null;
   /** Black over everything while changing maps (0..1). */
   fade?: number;
   /** Player names over their heads (world px), the local one dimmer. */
@@ -482,8 +390,8 @@ export interface TownOverlay {
 /** A name in the pixel font with a one-pixel dark outline, centred over a walker's head. */
 function nameLabel(ctx: CanvasRenderingContext2D, view: Rect, label: { text: string; pos: Vec2; dim?: boolean }): void {
   const x = Math.round(label.pos.x - view.x);
-  const y = Math.round(label.pos.y - view.y - 34);
-  if (x < -60 || x > view.width + 60 || y < SKY_BAND - 12 || y > view.height + 10) return;
+  const y = Math.round(label.pos.y - view.y - Math.round(34 * CREATURE_SCALE));
+  if (x < -60 || x > view.width + 60 || y < -12 || y > view.height + 10) return;
   ctx.globalAlpha = label.dim ? 0.6 : 1;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) pixelText(ctx, label.text, x + dx, y + dy, '#0b0410', 'center');
   pixelText(ctx, label.text, x, y, label.dim ? PALETTE.text : '#9fd8ff', 'center');
@@ -505,70 +413,12 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
   return lines;
 }
 
-/** A speaker's portrait over the dialog box: its idle frame, facing you, in a small framed window. */
-function drawPortrait(ctx: CanvasRenderingContext2D, sheets: SheetStore, sprite: string, x: number, y: number, timeMs: number): void {
-  const meta = SPRITES.sprites[sprite]?.anims.Idle;
-  const image = meta && sheets.get(sheetKey(sprite, meta.file));
-  const size = 46;
-  drawPanel(ctx, x, y, size, size);
-  if (!meta || !image) return;
-  const frame = frameAtTime(meta.durations, timeMs, true);
-  // Close up, like a Mystery Dungeon portrait: twice the sheet, the face in the frame.
-  const scale = 2;
-  const dw = meta.frameWidth * scale;
-  const dh = meta.frameHeight * scale;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x + 3, y + 3, size - 6, size - 6);
-  ctx.clip();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(image, frame * meta.frameWidth, 0, meta.frameWidth, meta.frameHeight, Math.round(x + size / 2 - dw / 2), Math.round(y + size / 2 - dh / 2 + 10), dw, dh);
-  ctx.restore();
-}
-
-/** Interaction prompt and the dialog box (Mystery Dungeon window language), in view pixels. */
-export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
+/** Names over walkers, the map banner and the fade, in view pixels. The interact tooltip and the dialogue box are DOM (src/ui/world-tooltip.ts, src/ui/dialogue-box.ts). */
+export function drawTownOverlay(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number): void {
   ctx.font = canvasFont();
   for (const label of overlay.names ?? []) nameLabel(ctx, view, label);
-  if (overlay.prompt && !overlay.dialog) {
-    const width = Math.ceil(ctx.measureText(overlay.prompt.text).width) + 12;
-    const x = Math.round(Math.min(view.width - width - 4, Math.max(4, overlay.prompt.pos.x - view.x - width / 2)));
-    const y = Math.round(Math.max(SKY_BAND - 8, overlay.prompt.pos.y - view.y - 52));
-    drawPanel(ctx, x, y, width, 16, { fill: 0.9 });
-    pixelText(ctx, overlay.prompt.text, x + 6, y + 12, PALETTE.text);
-  }
-  if (overlay.banner && overlay.banner.alpha > 0) {
-    const text = overlay.banner.text;
-    const width = Math.ceil(ctx.measureText(text).width) + 28;
-    const x = Math.round((view.width - width) / 2);
-    drawPanel(ctx, x, SKY_BAND - 4, width, 20, { alpha: overlay.banner.alpha });
-    ctx.globalAlpha = overlay.banner.alpha;
-    pixelText(ctx, text, view.width / 2, SKY_BAND + 10, PALETTE.cursor, 'center');
-    ctx.globalAlpha = 1;
-  }
-  drawDialog(ctx, view, overlay, timeMs, sheets);
   if (overlay.fade && overlay.fade > 0) {
     ctx.fillStyle = `rgba(0, 0, 0, ${overlay.fade})`;
     ctx.fillRect(0, 0, view.width, view.height);
-  }
-}
-
-function drawDialog(ctx: CanvasRenderingContext2D, view: Rect, overlay: TownOverlay, timeMs: number, sheets?: SheetStore): void {
-  const dialog = overlay.dialog;
-  if (!dialog) return;
-  const x = 16;
-  const w = view.width - 32;
-  const h = 70;
-  // Clear of the fan-project notice at the bottom of the page.
-  const y = view.height - h - 24;
-  if (dialog.portrait && sheets) drawPortrait(ctx, sheets, dialog.portrait, x, y - 50, timeMs);
-  drawPanel(ctx, x, y, w, h);
-  pixelText(ctx, dialog.speaker, x + 10, y + 15, PALETTE.cursor);
-  const lines = wrapText(dialog.text, w - 24, (s) => ctx.measureText(s).width);
-  lines.slice(0, 3).forEach((line, i) => pixelText(ctx, line, x + 10, y + 31 + i * 13, PALETTE.text));
-  if (dialog.done && Math.floor(timeMs / 400) % 2 === 0) {
-    // "More" marker: a small down-pointing triangle (the pixel font has no glyph for it).
-    ctx.fillStyle = PALETTE.cursor;
-    for (let row = 0; row < 3; row++) ctx.fillRect(x + w - 16 + row, y + h - 12 + row, 5 - row * 2, 1);
   }
 }

@@ -50,6 +50,13 @@ function fakeBackend() {
       const user = [...users.values()].find((u) => u.email === email && u.password === password);
       return user ? { ok: true, value: issue(user.id) } : fail('unauthorized');
     },
+    async clerkSession(clerkToken) {
+      calls.push('clerkSession');
+      if (down) return fail(down as never);
+      // The fake Clerk token is "clerk:<email>".
+      const user = [...users.values()].find((u) => `clerk:${u.email}` === clerkToken);
+      return user ? { ok: true, value: issue(user.id) } : fail('unauthorized');
+    },
     async refresh(token) {
       calls.push('refresh');
       if (down) return fail(down as never);
@@ -262,6 +269,24 @@ describe('first login on a browser', () => {
     expect(d.account.syncInfo()).toEqual({ status: 'synced', syncedAt: 1_000_000 });
   });
 
+  it('a Clerk session token signs in like a password does: same session, same cloud decision', async () => {
+    const backend = fakeBackend();
+    backend.addUser('ana@example.com', 'password1', cloudOf(withRecords(300, 6)));
+    const d = device(backend);
+    expect(await d.account.logInClerk('clerk:ana@example.com')).toEqual({ ok: true });
+    expect(d.account.state()).toEqual({ kind: 'signed-in', email: 'ana@example.com' });
+    expect(d.account.token()).not.toBeNull();
+    expect(d.account.pendingChoice()).toMatchObject({ kind: 'offer' });
+    expect(backend.calls).toContain('clerkSession');
+    expect(backend.calls).not.toContain('logIn');
+  });
+
+  it('a refused Clerk token leaves the account a guest and says why', async () => {
+    const d = device(fakeBackend());
+    expect(await d.account.logInClerk('clerk:nobody@example.com')).toEqual({ ok: false, error: 'unauthorized' });
+    expect(d.account.state()).toEqual({ kind: 'guest' });
+  });
+
   it('an empty browser is told about the cloud progress and downloads it on "Descargar"', async () => {
     const backend = fakeBackend();
     backend.addUser('ana@example.com', 'password1', cloudOf(withRecords(300, 6, { owned: ['kadabra'], achievements: { 'coop-clear': '2026-10-01' } })));
@@ -456,6 +481,18 @@ describe('a linked browser', () => {
     // The merged profile goes up over the newer revision.
     expect(backend.cloudOf('ana@example.com')).toEqual({ rev: 3, coins: 999 });
     expect(decodeCloud(backend.dataOf('ana@example.com')).profile.records.dungeons['flooded-caves']?.bestFloor).toBe(3);
+  });
+
+  it('tells the player once when the cloud cannot be reached for a save, not on every retry', async () => {
+    const { backend, d } = await linked();
+    backend.setDown('offline');
+    writeSave(d.game, save(130));
+    d.account.flush();
+    await settle();
+    writeSave(d.game, save(131));
+    d.account.flush();
+    await settle();
+    expect(d.notices.filter((n) => n.notice === 'sync-offline')).toHaveLength(1);
   });
 
   it('a reload pushes progress made while offline', async () => {

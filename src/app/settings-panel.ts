@@ -1,9 +1,11 @@
+import { pixelIconSvg, type PixelIconId } from '../ui/pixel-icons';
 import { LOCK_TYPES, type LockType } from '../core/state';
 import { TOUCH_MODES } from '../adapters/touch-mode';
 import { TOUCH_SCALES } from '../ui/touch-layout';
 import { FIGURATION_MODES, TOUCH_OPACITIES } from './settings';
 import { LANGUAGES, t, type Language } from '../i18n';
 import type { ListItem } from '../ui/cursor-list';
+import { sliderSnap, type SliderRange } from '../ui/slider-model';
 import { h } from '../ui/window';
 import type { Settings } from './settings';
 
@@ -22,10 +24,12 @@ export interface SettingsAccess {
   update: UpdateSettings;
   /** Applies a new language to the page (title, `lang`); the caller re-renders. */
   setLanguage(language: Language): void;
+  /** A short sound to hear the effects level when a slider is released. */
+  preview?(): void;
 }
 
 export interface SettingRow {
-  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'figurations' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
+  id: 'language' | 'lockType' | 'clickToLock' | VolumeKey | 'muted' | 'figurations' | 'hints' | 'touchMode' | 'autoAim' | 'haptics' | 'touchSize' | 'touchOpacity' | 'touchLeftHanded';
   label: string;
   value: string;
   /** Volumes: the level 0..1 for the meter. */
@@ -38,6 +42,9 @@ export interface SettingRow {
   /** One sentence on what the option does (odd/tasks/menu-redesign.md S6): `setting.<id>.about`. */
   about: string;
 }
+
+/** Icon of each Settings tab, in tab order: General, Lock on, Sound, Accessibility, Touch (src/ui/pixel-icons.ts). */
+export const SETTING_TAB_ICONS: readonly PixelIconId[] = ['settings', 'lockon', 'sound', 'access', 'touch'];
 
 /** A tab of the Settings screen: a section's rows (the first rows, before any section, are "General"). */
 export interface SettingTab {
@@ -80,7 +87,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     access.update({ language });
     access.setLanguage(language);
   };
-  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded') => () => access.update({ [key]: !access.get()[key] });
+  const toggle = (key: 'clickToLock' | 'muted' | 'autoAim' | 'haptics' | 'touchLeftHanded' | 'showHints') => () => access.update({ [key]: !access.get()[key] });
   const volume = (key: VolumeKey, section?: string): Omit<SettingRow, 'about'> => ({
     id: key,
     label: t(`menu.${key}`),
@@ -114,6 +121,7 @@ export function settingRows(access: SettingsAccess): SettingRow[] {
     { id: 'muted', label: t('menu.mute'), value: onOff(s.muted), disabled: false, adjust: toggle('muted'), confirm: toggle('muted') },
     // Accessibility: the Sima's figuraciones (shapes that are not there, under low lucidity).
     { id: 'figurations', section: t('menu.accessibility'), label: t('menu.figurations'), value: t(`menu.figurations.${s.figurations}`), disabled: false, adjust: figurations, confirm: () => figurations(1) },
+    { id: 'hints', label: t('menu.hints'), value: onOff(s.showHints), disabled: false, adjust: toggle('showHints'), confirm: toggle('showHints') },
     { id: 'touchMode', section: t('touch.section'), label: t('touch.mode'), value: t(`touch.mode.${s.touchMode}`), disabled: false, adjust: touchMode, confirm: () => touchMode(1) },
     { id: 'autoAim', label: t('touch.autoAim'), value: onOff(s.autoAim), disabled: false, adjust: toggle('autoAim'), confirm: toggle('autoAim') },
     { id: 'haptics', label: t('touch.haptics'), value: onOff(s.haptics), disabled: false, adjust: toggle('haptics'), confirm: toggle('haptics') },
@@ -142,10 +150,13 @@ function meter(level: number): HTMLElement {
  */
 export function settingItems(access: SettingsAccess, refresh: () => void, only?: ReadonlySet<SettingRow['id']>): ListItem[] {
   const items: ListItem[] = [];
+  let section = 0;
   for (const row of settingRows(access)) {
     // One tab of the Settings screen (`only`): its rows, without the section headers (the tab names the section).
     if (only && !only.has(row.id)) continue;
-    if (row.section && !only) items.push({ header: true, label: row.section });
+    if (row.section) section += 1;
+    // Section headers carry the tab's icon (odd/tasks/title-hub.md: an icon in every menu).
+    if (row.section && !only) items.push({ header: true, label: h('span', { className: 'menu-row-icon' }, [pixelIconSvg(SETTING_TAB_ICONS[section] ?? 'settings'), h('span', { textContent: row.section })]) });
     const value = row.level === undefined ? row.value : h('span', { className: 'md-volume' }, [meter(row.level), h('span', { textContent: row.value })]);
     items.push({
       label: row.label,
@@ -165,5 +176,70 @@ export function settingItems(access: SettingsAccess, refresh: () => void, only?:
   return items;
 }
 
-/** The in-game key list, shown on the Settings screen. */
-export const CONTROL_KEYS = ['move', 'roll', 'fast', 'heavy', 'boost', 'area', 'lock', 'clickLock', 'minimap', 'pick', 'mute', 'menu', 'netStats', 'gamepad'] as const;
+/** The control each setting is drawn with (src/app/settings-view.ts). */
+export type SettingControlKind = 'slider' | 'switch' | 'segmented' | 'dropdown';
+
+/** Sliders: volumes in 5 % steps; the touch buttons' opacity keeps its three stops. */
+export const SETTING_SLIDERS = {
+  masterVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  musicVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  sfxVolume: { min: 0, max: 1, step: 0.05, big: 0.1 },
+  touchOpacity: { min: Math.min(...TOUCH_OPACITIES), max: 1, step: 0.25 },
+} as const satisfies Partial<Record<SettingRow['id'], SliderRange>>;
+
+const SWITCHES: ReadonlySet<SettingRow['id']> = new Set(['clickToLock', 'muted', 'autoAim', 'haptics', 'touchLeftHanded', 'hints']);
+
+const sizeLabel = (scale: number) => t(`touch.size.${scale < 1 ? 'small' : scale > 1 ? 'large' : 'normal'}`);
+
+/** The options of a choice setting, in display order. */
+export function settingChoices(id: SettingRow['id']): { value: string; label: string }[] {
+  switch (id) {
+    case 'language':
+      return LANGUAGES.map((value) => ({ value, label: t(`language.${value}`) }));
+    case 'lockType':
+      return LOCK_TYPES.map((value) => ({ value, label: t(`lockType.${value}`) }));
+    case 'figurations':
+      return FIGURATION_MODES.map((value) => ({ value, label: t(`menu.figurations.${value}`) }));
+    case 'touchMode':
+      return TOUCH_MODES.map((value) => ({ value, label: t(`touch.mode.${value}`) }));
+    case 'touchSize':
+      return TOUCH_SCALES.map((value) => ({ value: String(value), label: sizeLabel(value) }));
+    default:
+      return [];
+  }
+}
+
+/** Segmented controls hold up to three options; more become the custom dropdown (Hick: a short row stays visible at once). */
+export function settingControlKind(id: SettingRow['id']): SettingControlKind {
+  if (id in SETTING_SLIDERS) return 'slider';
+  if (SWITCHES.has(id)) return 'switch';
+  return settingChoices(id).length <= 3 ? 'segmented' : 'dropdown';
+}
+
+/** The option value a choice setting holds now. */
+export function settingChoice(id: SettingRow['id'], s: Settings): string {
+  return String((s as unknown as Record<string, unknown>)[id]);
+}
+
+/** Writes one control's value through the same update path the cursor list uses; a language also reaches the page. */
+export function applySetting(access: SettingsAccess, id: SettingRow['id'], value: string | number | boolean): void {
+  if (id in SETTING_SLIDERS) {
+    access.update({ [id]: sliderSnap(Number(value), SETTING_SLIDERS[id as keyof typeof SETTING_SLIDERS]) });
+  } else if (id === 'language') {
+    access.update({ language: value as Language });
+    access.setLanguage(value as Language);
+  } else if (id === 'touchSize') {
+    access.update({ touchSize: Number(value) });
+  } else {
+    access.update({ [id]: value });
+  }
+}
+
+/** A section of the Settings window: its rail entry (title and colour icon) and its rows. */
+export interface SettingSection extends SettingTab {
+  icon: PixelIconId;
+}
+
+export function settingSections(rows: readonly SettingRow[]): SettingSection[] {
+  return settingTabs(rows).map((tab, i) => ({ ...tab, icon: SETTING_TAB_ICONS[i] ?? 'settings' }));
+}

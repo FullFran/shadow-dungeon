@@ -1,0 +1,130 @@
+/* The pause menu in the relic look (src/app/pause-view.ts; .agents/DESIGN.md §4 "Pause window"): three fixed columns in one
+   relic window over the dimmed, frozen run (one veil of 52-64% ink: the room, the player and the HUD stay readable behind it): the actions, the floor plan, the run summary. Colours come from the tokens only. */
+.overlay.pause { box-sizing: border-box; padding: 28px 16px 16px; background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--md-ink) 52%, transparent), color-mix(in srgb, var(--md-ink) 64%, transparent) 85%); animation: relic-veil 160ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .overlay.pause { animation: none; } }
+.pz-window { width: min(76rem, calc(100vw - 32px)); max-height: calc(100dvh - 44px); }
+.pz-body { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr) 19rem; gap: 16px; height: min(37rem, calc(100dvh - 7rem)); }
+
+/* ---- actions */
+.pz-actions { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.pz-action { all: unset; box-sizing: border-box; flex: 1 1 0; min-height: 44px; max-height: 68px; display: flex; align-items: center; gap: 12px; padding: 0 12px; cursor: pointer; color: var(--md-text);
+  background: radial-gradient(130% 90% at 50% 0%, color-mix(in srgb, var(--relic-slab-edge) 80%, transparent), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 4px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+.pz-action:hover, .pz-action:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
+.pz-action:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent), 0 4px 0 color-mix(in srgb, var(--md-ink) 60%, transparent); }
+.pz-action-icon { flex: none; width: 32px; height: 32px; display: grid; place-items: center; }
+.pz-action-icon svg.px-icon { width: 32px; height: 32px; }
+.pz-action-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pz-action-label { font-size: 20px; line-height: 1.05; }
+.pz-action-hint { font-family: var(--md-text-font); font-size: 14px; line-height: 1.2; color: var(--md-text-dim); }
+.pz-action:hover .pz-action-hint, .pz-action:focus-visible .pz-action-hint { color: var(--md-text); }
+/* The one ember: Continuar (Von Restorff). */
+.pz-action.is-primary { color: var(--md-text); border-color: var(--md-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--relic-blood) 70%, var(--relic-ember-deep)), color-mix(in srgb, var(--relic-blood) 60%, var(--md-ink)));
+  box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px color-mix(in srgb, var(--relic-ember) 35%, transparent); }
+.pz-action.is-primary .pz-action-hint { color: var(--md-text); }
+.pz-action.is-primary:focus-visible { box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 45%, transparent), 0 0 24px color-mix(in srgb, var(--relic-ember) 55%, transparent); }
+/* Leaving sits at the bottom, apart, as a quiet row like the rest: only one ember per window (Von Restorff). The danger lives in its blood-tinted icon and in the confirm dialog. */
+.pz-action.is-danger { margin-top: auto; }
+.pz-action[aria-pressed='true'] .pz-action-icon { filter: drop-shadow(0 0 3px var(--relic-ember)); }
+.pz-action[aria-disabled='true'] { cursor: default; color: var(--md-disabled); border-color: var(--relic-slab-edge); }
+.pz-action[aria-disabled='true'] .pz-action-icon { opacity: 0.55; }
+.pz-action[aria-disabled='true']:hover { color: var(--md-disabled); border-color: var(--relic-slab-edge); }
+
+/* ---- floor plan */
+.pz-map { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: color-mix(in srgb, var(--md-ink) 70%, var(--relic-slab)); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 24px color-mix(in srgb, var(--md-ink) 80%, transparent); }
+.pz-map-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pz-map-title, .pz-section-title { margin: 0; font-size: 18px; font-weight: normal; color: var(--md-cursor); letter-spacing: 0.04em; }
+.pz-map-floor { font-size: 16px; color: var(--md-text-dim); }
+.pz-map-stage { position: relative; flex: 1 1 0; min-height: 0; display: grid; place-items: center; }
+.pz-map-board { position: absolute; inset: 0; margin: auto; }
+.pz-map-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.pz-marker { position: absolute; display: block; pointer-events: none; }
+.pz-marker svg.px-icon { display: block; width: 100%; height: 100%; }
+.pz-marker-player { filter: drop-shadow(0 0 3px var(--relic-ember)); }
+.pz-marker-partner { filter: drop-shadow(0 0 3px var(--md-xp)); }
+.pz-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.pz-legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); }
+.pz-legend-item svg.px-icon { width: 18px; height: 18px; flex: none; }
+.pz-swatch { flex: none; width: 14px; height: 14px; border: 1px solid var(--md-border-shade); }
+
+/* ---- run summary */
+.pz-card { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.pz-id { display: flex; align-items: flex-end; gap: 12px; }
+/* Sprite fit rule: a fixed box, the partner whole inside it, never cropped. */
+.pz-sprite { flex: none; width: 112px; height: 96px; }
+.pz-id-text { min-width: 0; }
+.pz-species { margin: 0; font-size: 22px; font-weight: normal; color: var(--md-text); }
+.pz-dungeon, .pz-floor { margin: 2px 0 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+.pz-floor { color: var(--md-cursor); }
+.pz-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pz-stat { min-width: 0; display: grid; grid-template-columns: auto; justify-items: start; gap: 0; padding: 4px 8px; background: var(--relic-slab); border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
+.pz-stat svg.px-icon { width: 16px; height: 16px; }
+.pz-stat-label { font-family: var(--md-text-font); font-size: 12px; color: var(--md-text-dim); }
+.pz-stat-value { font-weight: normal; font-size: 17px; color: var(--md-text); white-space: nowrap; }
+.pz-vitals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pz-passive .pz-stat-value { font-size: 15px; color: var(--md-disabled); overflow: hidden; text-overflow: ellipsis; }
+.pz-passive.is-ready .pz-stat-value { color: var(--md-cursor); }
+.pz-level { align-content: start; }
+.pz-xp { display: block; width: 100%; height: 4px; margin-top: 3px; background: var(--relic-slab-edge); border: 1px solid var(--md-border-shade); box-sizing: border-box; }
+.pz-xp-fill { display: block; height: 100%; background: var(--md-cursor); }
+.pz-section { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pz-moves { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.pz-move { min-width: 0; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 2px 8px; background: var(--relic-slab); border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
+.pz-move svg.px-icon { width: 24px; height: 24px; flex: none; }
+.pz-move-text { min-width: 0; display: flex; flex-direction: column; }
+.pz-move-text strong { font-weight: normal; font-size: 16px; line-height: 1.1; color: var(--md-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-move-text small { font-family: var(--md-text-font); font-size: 12px; color: var(--md-text-dim); }
+.pz-move.is-empty strong { color: var(--md-disabled); }
+.pz-items { flex: 1 1 0; min-height: 0; }
+.pz-items-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.pz-chips { flex: 1 1 0; min-height: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
+.pz-item { all: unset; box-sizing: border-box; min-height: 32px; display: inline-flex; align-items: center; padding: 0 10px; cursor: pointer; font-size: 16px; color: var(--md-text); background: var(--relic-slab); border: 1px solid var(--relic-gold-deep); border-radius: 4px; }
+.pz-item.rarity-common { color: var(--md-rarity-common); }
+.pz-item.rarity-uncommon { color: var(--md-rarity-uncommon); }
+.pz-item.rarity-rare { color: var(--md-rarity-rare); }
+.pz-item:hover, .pz-item:focus-visible { border-color: var(--md-border); }
+.pz-item:focus-visible { outline: 2px solid var(--md-cursor); outline-offset: 1px; }
+.pz-detail { margin: 0; min-height: 2.6em; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
+.pz-none { margin: 0; display: flex; align-items: center; gap: 8px; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text-dim); }
+.pz-none svg.px-icon { width: 28px; height: 28px; flex: none; opacity: 0.8; }
+.pz-coop { margin: 0; padding: 6px 10px; font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text); background: var(--relic-slab); border-left: 3px solid var(--md-xp); border-radius: 0 4px 4px 0; }
+
+/* ---- medium and short windows */
+@media (max-width: 1100px) {
+  .pz-body { grid-template-columns: 14rem minmax(0, 1fr) 17rem; gap: 12px; }
+  .pz-action-hint { display: none; }
+}
+@media (max-height: 520px), (max-width: 900px) {
+  .overlay.pause { padding: 24px 8px 8px; }
+  .pz-window { width: calc(100vw - 16px); max-height: calc(100dvh - 32px); padding: 12px 12px 10px; }
+  .pz-body { grid-template-columns: 11.5rem minmax(0, 1fr) 15.5rem; gap: 10px; height: calc(100dvh - 4rem); }
+  .pz-actions { gap: 2px; }
+  .pz-action { min-height: 44px; padding: 0 8px; gap: 8px; }
+  .pz-action-icon, .pz-action-icon svg.px-icon { width: 24px; height: 24px; }
+  .pz-action-label { font-size: 16px; }
+  .pz-action-hint { display: none; }
+  .pz-map { padding: 6px; gap: 4px; }
+  .pz-legend-item { font-size: 12px; }
+  .pz-legend { gap: 2px 10px; }
+  .pz-card { gap: 4px; }
+  .pz-section { gap: 2px; }
+  .pz-section-title { font-size: 14px; }
+  .pz-sprite { width: 68px; height: 58px; }
+  .pz-species { font-size: 18px; line-height: 1.1; }
+  .pz-id { gap: 8px; align-items: center; }
+  .pz-dungeon, .pz-floor { font-size: 13px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pz-stats, .pz-vitals { gap: 4px; }
+  .pz-stat { padding: 2px 6px; min-height: 28px; display: flex; align-items: center; gap: 4px; }
+  .pz-stat-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pz-stat-value { font-size: 15px; }
+  /* Read-only tiles: not touch targets, so they can be compact. */
+  .pz-move { min-height: 34px; padding: 1px 6px; }
+  .pz-move-text strong { font-size: 14px; }
+  .pz-item { min-height: 44px; font-size: 14px; }
+  .pz-detail { display: none; }
+  .pz-none { font-size: 13px; }
+  .pz-coop { font-size: 12px; padding: 4px 8px; }
+}
+html.touch .pz-item { min-height: 44px; }
+/* A dialog opened over the pause (the confirm) must not stack a second dark veil on the frozen game. */
+body:has(.overlay.pause) .rc-veil { background: color-mix(in srgb, var(--md-ink) 22%, transparent); }

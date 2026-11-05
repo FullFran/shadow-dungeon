@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mazmorra Sombría</title>
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#05060d" />
+    <meta name="theme-color" content="#050407" />
     <link rel="icon" type="image/png" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -29,58 +29,38 @@
        * fakes a weight or a slant. Sizes for the results screen sit on the font's 11 px grid (half-steps of 5.5 px on touch).
        */
       h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
-      body { margin: 0; background: var(--md-ink, #05060d); color: var(--md-text, #f5f7ff); font-family: var(--md-font, ui-monospace, monospace); font-size: var(--md-body, 22px); line-height: 1.25; -webkit-font-smoothing: none; font-synthesis: none;
+      body { margin: 0; background: var(--md-ink, #050407); color: var(--md-text, #f5f7ff); font-family: var(--md-font, ui-monospace, monospace); font-size: var(--md-body, 22px); line-height: 1.25; -webkit-font-smoothing: none; font-synthesis: none;
         /* The font's fi/fl ligatures read as other letters. */
         font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0, 'dlig' 0; }
       input, button { font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'clig' 0, 'dlig' 0; }
 
       /* ---- UI components (src/ui): window and cursor list; tokens come from src/ui/tokens.ts ---- */
-      .md-window { position: relative; box-sizing: border-box; padding: 22px 24px 18px; border: 3px solid var(--md-border); border-radius: 12px;
-        background: linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom));
-        box-shadow: 0 0 0 3px var(--md-ink), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade), 0 9px 0 3px rgba(0, 0, 0, 0.4);
+      /* The relic slab (.agents/DESIGN.md §4, 2026-11-03): dark stone, an old-gold hairline frame with a bevel, gilt corner studs
+         and a faint warm light from the top where the eclipse touches it. Every window and overlay of the game uses it. */
+      .md-window { position: relative; box-sizing: border-box; padding: 22px 24px 18px; border: 2px solid var(--md-border); border-radius: 6px;
+        background: radial-gradient(120% 60% at 50% 0%, rgba(255, 138, 61, 0.07), transparent 60%), linear-gradient(180deg, var(--md-window-top), var(--md-window-bottom));
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 0 0 2px rgba(5, 4, 7, 0.85), inset 0 0 0 3px var(--md-border-shade), inset 0 0 40px rgba(0, 0, 0, 0.55), 0 10px 0 2px rgba(0, 0, 0, 0.45), 0 0 40px rgba(0, 0, 0, 0.6);
         animation: md-open var(--md-open-ms, 120ms) ease-out both; transform-origin: 50% 40%; text-align: left; }
+      .md-window::after { content: ''; position: absolute; inset: -6px; pointer-events: none;
+        background: linear-gradient(var(--md-border), var(--md-border)) top left / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) top left / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) top right / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) top right / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) bottom left / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) bottom left / 2px 10px,
+          linear-gradient(var(--md-border), var(--md-border)) bottom right / 10px 2px, linear-gradient(var(--md-border), var(--md-border)) bottom right / 2px 10px;
+        background-repeat: no-repeat; opacity: 0.9; }
       .md-window.still { animation: none; }
-      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 14px; font-size: var(--md-body); color: var(--md-cursor);
-        background: var(--md-window-top); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 3px var(--md-ink); white-space: nowrap; }
+      .md-window-title { position: absolute; top: -0.85em; left: 18px; margin: 0; padding: 2px 16px; font-size: var(--md-body); color: var(--md-cursor); letter-spacing: 0.06em;
+        background: linear-gradient(180deg, #2a2026, var(--md-window-bottom)); border: 2px solid var(--md-border); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.15);
+        text-shadow: 0 0 10px rgba(255, 138, 61, 0.45), 0 2px 0 var(--md-ink); white-space: nowrap; }
       .md-window-body > :first-child { margin-top: 0; }
       .md-window-body > :last-child { margin-bottom: 0; }
       .md-window p { margin: 0.4em 0; }
-      /* ---- The town's Esc menu as an inked plan (src/town/town-map-view.ts; odd/tasks/menu-redesign.md S8, S9): sepia ground,
-         ink edges, original line glyphs on round seals, the cursor's seal in gold. ---- */
-      .town-map { width: min(96vw, 1100px); max-height: 94vh; display: flex; flex-direction: column; gap: 10px; }
-      .town-map-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; min-height: 0; align-items: start; }
-      .town-map-board { position: relative; justify-self: center; align-self: start; width: fit-content; background: #17130d; border: 2px solid var(--md-border-shade); border-radius: 8px; box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8); }
-      /* The plan keeps its aspect within the width and the height left over, so the % positions of the seals stay on their tiles. */
-      .town-map-plan { display: block; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0.95; }
-      .town-map-mark { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--md-text); font: inherit; font-size: 16px; cursor: pointer; }
-      .town-map-mark svg { width: 34px; height: 34px; padding: 6px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.6); }
-      .town-map-mark .town-map-label { padding: 0 6px; border-radius: 6px; background: rgba(5, 6, 13, 0.75); white-space: nowrap; color: var(--md-text-dim); }
-      .town-map-mark.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 212, 71, 0.25), 0 0 14px rgba(255, 212, 71, 0.45); }
-      .town-map-mark.selected .town-map-label { color: var(--md-cursor); }
-      .town-map-column { display: grid; grid-auto-flow: column; gap: 6px 14px; align-content: start; overflow-y: auto; max-height: calc(94vh - 160px); }
-      .town-map-mark.in-column { position: static; transform: none; flex-direction: row; justify-content: flex-start; gap: 8px; }
-      .town-map-mark.in-column svg { width: 28px; height: 28px; padding: 5px; }
-      .town-map-caption { margin: 0; min-height: 2.6em; }
       /* "Instalar" in the title's top right corner while the game can be installed (src/ui/pwa.ts corner). */
       .pwa-corner { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 8; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; cursor: pointer;
-        font: inherit; font-size: 18px; color: var(--md-ink); background: var(--md-cursor); border: 2px solid var(--md-ink); border-radius: 10px; box-shadow: 0 0 0 2px var(--md-cursor), 0 0 18px rgba(255, 212, 71, 0.45), 0 4px 0 rgba(0, 0, 0, 0.45); }
+        font: inherit; font-size: 18px; color: var(--md-ink); background: var(--md-cursor); border: 2px solid var(--md-ink); border-radius: 10px; box-shadow: 0 0 0 2px var(--md-cursor), 0 0 18px rgba(255, 191, 94, 0.45), 0 4px 0 rgba(0, 0, 0, 0.45); }
       .pwa-corner svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       .pwa-corner:hover, .pwa-corner:focus-visible { filter: brightness(1.08); transform: translateY(-1px); }
       html.touch .pwa-corner { font-size: 15px; padding: 5px 10px; }
-      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
-      body:has(.pwa-banner) .pwa-corner { display: none; }
-      /* While the one-time invitation is on screen it already offers the install: the corner steps back. */
-      body:has(.pwa-banner) .pwa-corner { display: none; }
-      /* On the plan only the chosen seal names itself (the caption names it too): close seals never pile their labels up. */
-      .town-map-board .town-map-mark:not(.selected) .town-map-label { display: none; }
-      /* "You are here": a plain pulsing ring and dot, never a character. */
-      .town-map-here { position: absolute; width: 12px; height: 12px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 212, 71, 0.35); pointer-events: none; animation: town-map-here 1.4s ease-out infinite; }
-      @keyframes town-map-here { 0% { box-shadow: 0 0 0 0 rgba(255, 212, 71, 0.6); } 100% { box-shadow: 0 0 0 14px rgba(255, 212, 71, 0); } }
-      @media (prefers-reduced-motion: reduce) { .town-map-here { animation: none; } }
       /* Cinematics: press to advance or Auto (src/app/prologue.ts; odd/tasks/menu-redesign.md S13). */
-      .prologue-auto { position: fixed; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 6; font: inherit; font-size: 16px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
-        color: var(--md-text-dim); background: rgba(5, 6, 13, 0.6); border: 2px solid var(--md-border-shade); }
-      .prologue-auto.is-on { color: var(--md-ink); background: var(--md-cursor); border-color: var(--md-cursor); }
       .prologue-text { position: relative; }
       .prologue-next { position: absolute; right: 0; bottom: -4px; font-size: 14px; color: var(--md-cursor); opacity: 0; }
       .prologue-next.is-visible { opacity: 1; animation: prologue-next 0.9s ease-in-out infinite; }
@@ -147,9 +127,7 @@
       .quick-wheel-about { font-family: var(--md-text-font); font-size: 14px; line-height: 1.3; color: var(--md-text-dim); }
       .quick-wheel-seal { position: absolute; transform: translate(-50%, -50%); padding: 0; border: 0; background: none; cursor: pointer; }
       .quick-wheel-seal svg { width: 56px; height: 56px; padding: 12px; box-sizing: border-box; border-radius: 50%; background: #241d13; border: 2px solid #c9b98f; fill: none; stroke: #e8dcb8; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; transition: transform 80ms ease-out; }
-      .quick-wheel-seal.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); transform: scale(1.15); box-shadow: 0 0 16px rgba(255, 212, 71, 0.5); }
-      .town-map-caption strong { color: var(--md-cursor); font-family: var(--md-font); font-weight: 400; }
-      @media (max-height: 520px) { .town-map.md-window { padding: 16px 14px 10px; gap: 6px; } .town-map-plan { max-height: calc(94vh - 90px); } .town-map-caption { min-height: 0; font-size: 15px; } .town-map-mark { font-size: 12px; } .town-map-mark svg { width: 26px; height: 26px; padding: 4px; } .town-map-column { max-height: 60vh; } .town-map-mark .town-map-label { display: none; } .town-map-mark.selected .town-map-label, .town-map-mark.in-column .town-map-label { display: inline; } }
+      .quick-wheel-seal.selected svg { border-color: var(--md-cursor); stroke: var(--md-cursor); transform: scale(1.15); box-shadow: 0 0 16px rgba(255, 191, 94, 0.5); }
       .md-window .dim { color: var(--md-text-dim); }
       .md-stat { display: flex; justify-content: space-between; gap: 2em; padding: 2px 0; }
       .md-stat-value { color: var(--md-cursor); }
@@ -159,7 +137,7 @@
       .md-list.horizontal { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 18px; }
       .md-item { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 1.6em; padding: 3px 12px 3px 6px; border-radius: 6px; cursor: pointer; color: var(--md-text); }
       .md-item:focus-visible { outline: 3px solid var(--md-cursor); }
-      .md-item.is-active { background: rgba(255, 255, 255, 0.09); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12); }
+      .md-item.is-active { background: linear-gradient(90deg, rgba(255, 138, 61, 0.22), rgba(255, 138, 61, 0.04) 70%, transparent); box-shadow: inset 2px 0 0 var(--md-cursor), inset 0 0 0 1px rgba(201, 164, 90, 0.35); color: #fff6e6; }
       .md-item.is-disabled { color: var(--md-disabled); cursor: default; }
       .md-cursor { flex: none; width: 10px; height: 14px; background: var(--md-cursor); clip-path: polygon(0 0, 100% 50%, 0 100%); visibility: hidden; }
       .md-item.is-active .md-cursor { visibility: visible; animation: md-bob var(--md-bob-ms, 600ms) steps(1) infinite; }
@@ -187,8 +165,13 @@
       /* ---- Screens (src/app) ---- */
       #app { position: relative; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 40px 16px 88px; box-sizing: border-box; }
       canvas.backdrop { position: fixed; left: 0; top: 0; z-index: -1; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
-      canvas.game { max-width: 100vw; max-height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
-      #app:has(canvas.game) { padding: 0; }
+      /* The play view is full-bleed (.agents/DESIGN.md §3, 2026-11-04): src/adapters/fit.ts sizes the canvas in CSS px to the window (or a
+         world pixel more); the page clips that overshoot. Whole-pixel scaling, never stretched: nearest-neighbour. */
+      canvas.game { flex: none; max-width: none; max-height: none; image-rendering: pixelated; image-rendering: crisp-edges; cursor: crosshair; display: block; }
+      #app:has(canvas.game) { padding: 0; gap: 0; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+      html:has(canvas.game), body:has(canvas.game) { height: 100%; overflow: hidden; background: var(--md-ink, #050407); }
+      /* The legal notice stays on the title, hub, credits and end screens; in play it must not sit over the map (it is in Credits and the title). */
+      #app:has(canvas.game) > .notice { display: none; }
       .notice { position: fixed; bottom: 6px; left: 0; right: 0; margin: 0 auto; max-width: 70rem; padding: 0 16px; font-size: 16px; line-height: 1.2; color: var(--md-text-dim); opacity: 0.8; text-align: center; pointer-events: none; text-shadow: 0 2px 0 var(--md-ink); }
       .notice p { margin: 2px 0; }
       .notice.in-game { font-size: 11px; opacity: 0.5; }
@@ -217,6 +200,7 @@
       canvas.portrait { image-rendering: pixelated; image-rendering: crisp-edges; }
       .type-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
       .type-badge { display: inline-block; padding: 0 8px; border-radius: 6px; font-size: 16px; line-height: 1.5; color: #fff; border: 2px solid rgba(0, 0, 0, 0.45); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+      .type-dragon { background: #5b4bc4; }
       .type-ghost { background: #6a55a3; } .type-fairy { background: #d9719c; } .type-dark { background: #5a4636; }
       .type-normal { background: #8d8d66; } .type-poison { background: #93409a; } .type-steel { background: #7d84a0; }
       .type-fire { background: #d8642f; } .type-ground { background: #a8803f; }
@@ -322,14 +306,14 @@
       .victory-band::before { top: 12%; }
       .victory-band::after { bottom: 12%; }
       .victory-band-title { margin: 0; font-family: var(--md-font); font-size: clamp(40px, 9vw, 88px); line-height: 1; letter-spacing: 0.18em; color: var(--md-cursor);
-        text-shadow: 0 0 18px rgba(255, 212, 71, 0.65), 0 0 42px rgba(255, 106, 61, 0.45), 0 4px 0 var(--md-ink); animation: victory-flare 2.4s ease-out both; }
+        text-shadow: 0 0 18px rgba(255, 191, 94, 0.65), 0 0 42px rgba(255, 106, 61, 0.45), 0 4px 0 var(--md-ink); animation: victory-flare 2.4s ease-out both; }
       .victory-band-text { margin: 10px 0 0; font-family: var(--md-text-font); font-size: clamp(16px, 2.4vw, 22px); color: var(--md-text); text-shadow: 0 2px 0 var(--md-ink); }
       @keyframes victory-band { 0% { opacity: 0; } 12% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
       @keyframes victory-flare { 0% { transform: scale(1.25); filter: brightness(2.2); letter-spacing: 0.5em; } 25% { transform: scale(1); filter: brightness(1); letter-spacing: 0.18em; } }
       @media (prefers-reduced-motion: reduce) { .victory-band, .victory-band-title { animation: none; } }
       /* The end screen of a won run: a gold, glowing frame and title, never mistaken for a defeat. */
-      .result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 6px var(--md-cursor), 0 0 34px rgba(255, 212, 71, 0.45), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade); }
-      .result.victory h1 { color: var(--md-cursor); font-size: calc(var(--md-heading) * 1.4); letter-spacing: 0.08em; text-shadow: 0 0 16px rgba(255, 212, 71, 0.6), 0 3px 0 var(--md-ink); }
+      .result.victory { box-shadow: 0 0 0 3px var(--md-ink), 0 0 0 6px var(--md-cursor), 0 0 34px rgba(255, 191, 94, 0.45), inset 0 0 0 3px rgba(5, 6, 13, 0.75), inset 0 0 0 5px var(--md-border-shade); }
+      .result.victory h1 { color: var(--md-cursor); font-size: calc(var(--md-heading) * 1.4); letter-spacing: 0.08em; text-shadow: 0 0 16px rgba(255, 191, 94, 0.6), 0 3px 0 var(--md-ink); }
       .result.defeat h1 { color: var(--md-eclipse); }
       .result h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; }
       .result .md-stat-value { text-align: right; max-width: 16rem; }
@@ -341,7 +325,7 @@
          the notice is the last row of the column, the screen stays centred above it. Runs keep the small fixed .in-game one. */
       #app:not(:has(canvas.game)) { padding-bottom: 12px; }
       /* The first piece of the screen, not a full-screen layer behind it (the eclipse backdrop, the quiz's black): those come first and must not take the margin. */
-      #app:not(:has(canvas.game)) > :is(canvas.backdrop, .quiz-black) + *, #app:not(:has(canvas.game)) > :first-child:not(canvas.backdrop, .quiz-black) { margin-top: auto; }
+      #app:not(:has(canvas.game)) > :is(canvas.backdrop) + *, #app:not(:has(canvas.game)) > :first-child:not(canvas.backdrop) { margin-top: auto; }
       #app > .notice:not(.in-game) { position: static; width: 100%; box-sizing: border-box; margin-top: auto; }
       /* Short windows (1024×640 and the like): tighter lines and the two actions on one row, so the Sima's end screen fits. */
       @media (max-height: 760px) {
@@ -401,7 +385,10 @@
       .shrine-note { margin: 10px 0 0; font-size: 16px; }
       .shrine-result { min-width: 24rem; }
       .shrine-new { color: var(--md-cursor); }
-      .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; }
+      /* Overlays darken the scene behind into a vignette, so the window reads as the only lit thing (DESIGN.md §4). */
+      .town-shop { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; background: radial-gradient(ellipse at 50% 45%, rgba(5, 4, 7, 0.55), rgba(5, 4, 7, 0.9) 75%); animation: relic-veil 160ms ease-out both; }
+      @keyframes relic-veil { from { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .town-shop { animation: none; } }
 
       .item-pick.shared { position: fixed; left: 0; right: 0; bottom: 3rem; display: flex; justify-content: center; pointer-events: none; z-index: 8; }
       .item-pick .pick-panel { max-width: 52rem; pointer-events: auto; }
@@ -425,24 +412,7 @@
       .pick-hint { margin: 10px 0 0; text-align: center; font-size: 16px; }
       @keyframes md-bob-down { 0% { transform: translateY(0); } 50% { transform: translateY(3px); } }
 
-      /* Personality quiz */
-      .quiz-black { position: fixed; inset: 0; background: #000; animation: quiz-fade 2s ease-out both; }
-      .quiz-stage { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px; width: min(680px, 100%); }
-      .quiz-phase { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; animation: quiz-fade 1.4s ease-out both; }
-      .quiz-phase > .md-window { width: 100%; box-sizing: border-box; }
-      .quiz-voice { text-align: center; color: var(--md-text); min-height: 7em; }
-      .quiz-voice p { margin: 0.6em 0; opacity: 0; animation: quiz-fade 1.6s ease-out forwards; }
-      .quiz-voice p:nth-child(2) { animation-delay: 1.4s; }
-      .quiz-voice p:nth-child(3) { animation-delay: 2.8s; }
-      .quiz-voice + .md-window { opacity: 0; animation: quiz-fade 1s ease-out 3.6s forwards; }
-      .quiz-count { color: var(--md-text-dim); margin: 0; }
-      .quiz-question { margin: 0 0 0.8em; }
-      .quiz-result p { text-align: center; }
-      .quiz-result .quiz-species { color: var(--md-cursor); font-size: var(--md-heading); }
-      .quiz-portrait { display: flex; justify-content: center; align-items: flex-end; min-height: 120px; }
       .portrait-missing { width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; font-size: 56px; color: var(--md-text-dim); border: 2px dashed var(--md-border-shade); border-radius: 12px; }
-      @keyframes quiz-fade { from { opacity: 0; } to { opacity: 1; } }
-      @media (prefers-reduced-motion: reduce) { .quiz-black, .quiz-phase, .quiz-voice p, .quiz-voice + .md-window { animation: none; opacity: 1; } }
 
       /* Prologue cinematic */
       .prologue { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
@@ -452,12 +422,6 @@
       .prologue-text.is-voice { bottom: auto; top: 50%; transform: translateY(-50%); color: #f5f7ff; }
       .prologue-text p { margin: 0.25em 0; min-height: 1.45em; }
       .prologue-text .rest { visibility: hidden; }
-      .prologue-skip { position: fixed; right: 20px; bottom: 64px; overflow: hidden; font: inherit; font-size: 16px; color: var(--md-text-dim, #aab6dc); background: rgba(5, 6, 13, 0.7); border: 2px solid var(--md-border-shade, #6f86c6); border-radius: 6px; padding: 4px 14px; cursor: pointer; opacity: 0; transition: opacity 0.8s; }
-      .prologue-skip.is-visible { opacity: 0.85; }
-      .prologue-skip:hover, .prologue-skip:focus-visible { color: var(--md-text, #fff); opacity: 1; outline: none; }
-      .prologue-hold { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--md-cursor, #ffd447); }
-      .prologue-hint { position: fixed; right: 20px; bottom: 40px; margin: 0; font-size: 14px; color: var(--md-text-dim, #aab6dc); opacity: 0; transition: opacity 0.8s; pointer-events: none; }
-      .prologue-hint.is-visible { opacity: 0.6; }
 
       pre.net-stats { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); margin: 0; padding: 8px 12px; background: rgba(15, 26, 69, 0.88); border: 2px solid var(--md-border-shade); border-radius: 8px; font: 16px/1.3 var(--md-font); color: var(--md-text); pointer-events: none; z-index: 5; }
       @media (max-height: 760px) { #app { gap: 14px; padding-top: 20px; } .title-logo { margin-top: 8vh; } }
@@ -468,7 +432,7 @@
       html.touch input { -webkit-user-select: text; user-select: text; }
       html.touch #app { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-top: max(20px, env(safe-area-inset-top)); }
       /* "Atrás" floats over the top of the page wherever it shows (below): its height, and the window title that pokes out above its frame, stay free on every menu. */
-      html.touch #app:not(:has(.title-logo, .prologue, canvas.game, .overlay, .result)) { padding-top: calc(max(8px, env(safe-area-inset-top)) + 72px); }
+      html.touch #app:not(:has(.title-logo, .hub, .prologue, canvas.game, .overlay, .result)) { padding-top: calc(max(8px, env(safe-area-inset-top)) + 72px); }
       html.touch #app:has(canvas.game) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; touch-action: none; padding: 0; }
       html.touch canvas.game { cursor: default; touch-action: none; }
       html.touch .md-item { min-height: 44px; }
@@ -476,8 +440,6 @@
       html.touch .md-arrow { border-top-width: 11px; border-bottom-width: 11px; padding: 0 12px; margin: -10px 0; background-clip: content-box; }
       html.touch .md-arrow:first-child { border-right-width: 13px; }
       html.touch .md-arrow:last-child { border-left-width: 13px; }
-      html.touch .prologue-hint { display: none; }
-      html.touch .prologue-skip { min-height: 44px; min-width: 88px; right: max(20px, env(safe-area-inset-right)); }
       .touch-back, .rotate-hint { display: none; }
       /* Co-op, fainted: move the camera on to the next standing teammate (src/app/spectate.ts). */
       .spectate-next { position: fixed; top: max(64px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 6; min-width: 96px; min-height: 44px; padding: 4px 14px; font: inherit; font-size: 14px; color: var(--md-text); background: var(--md-window-top); border: 2px solid var(--md-border); border-radius: 6px; }
@@ -485,7 +447,7 @@
       html.touch .touch-back { display: block; position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); z-index: 20; min-width: 72px; min-height: 44px; padding: 4px 14px;
         font: inherit; font-size: 18px; color: var(--md-text); background: var(--md-window-bottom); border: 3px solid var(--md-border); border-radius: 9px; box-shadow: 0 0 0 2px var(--md-ink); }
       html.touch .touch-back:active { background: var(--md-window-top); color: var(--md-cursor); }
-      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
+      html.touch #app:has(.title-logo) ~ .touch-back, html.touch #app:has(.hub) ~ .touch-back, html.touch #app:has(.prologue) ~ .touch-back, html.touch #app:has(canvas.game:not(.town)) ~ .touch-back, html.touch #app:has(.overlay) ~ .touch-back,
         html.touch #app:has(.result) ~ .touch-back { display: none; }
       /* The bare town: its own "Menú" button takes the corner (Esc opens the town menu); "Atrás" comes back over its windows. */
       html.touch #app:has(canvas.town):not(:has(.town-shop, .town-exit)) ~ .touch-back { display: none; }
@@ -513,7 +475,7 @@
       html.touch .hint { display: none; }
       /* A hint with both wordings (odd/tasks/menu-redesign.md T3) stays on touch and shows its touch line: touch mode starts with the first touch, after the screen was drawn. */
       .dual-hint .on-touch { display: none; }
-      html.touch .hint.dual-hint, html.touch .prologue-hint.dual-hint { display: block; }
+      html.touch .hint.dual-hint { display: block; }
       html.touch .dual-hint .on-keys { display: none; }
       html.touch .dual-hint .on-touch { display: inline; }
       html.touch .notice:not(.in-game) { position: static; width: 100%; padding: 0; }
@@ -582,14 +544,14 @@
       .touch-insets { position: absolute; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
       .touch-stick { position: absolute; width: 112px; height: 112px; margin: -59px 0 0 -59px; border-radius: 50%; border: 3px solid rgba(245, 247, 255, 0.35); background: rgba(5, 6, 13, 0.3); display: none; pointer-events: none; }
       .touch-stick.is-visible { display: block; }
-      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 212, 71, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
+      .touch-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(255, 191, 94, 0.7); box-shadow: 0 0 0 3px rgba(5, 6, 13, 0.8); }
       .touch-button { position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box; width: 60px; height: 60px; padding: 0; border-radius: 50%; font: inherit; font-size: 14px; line-height: 1; color: var(--md-text);
         background: rgba(15, 26, 69, 0.38); border: 3px solid rgba(245, 247, 255, 0.7); box-shadow: 0 0 0 2px rgba(5, 6, 13, 0.8); -webkit-user-select: none; user-select: none; }
       .touch-button[hidden] { display: none; }
       .touch-button.big { width: 76px; height: 76px; font-size: 16px; }
       .touch-button.small { width: 52px; height: 52px; font-size: 12px; }
       .touch-button { opacity: var(--touch-alpha, 1); }
-      .touch-button.is-pressed { opacity: 1; background: rgba(255, 212, 71, 0.85); color: var(--md-ink); transform: scale(0.94); }
+      .touch-button.is-pressed { opacity: 1; background: rgba(255, 191, 94, 0.85); color: var(--md-ink); transform: scale(0.94); }
       /* Slot buttons (src/adapters/touch-slots.ts): move name, cooldown sweep and seconds, rank pips, charge ring. */
       .touch-button > span { pointer-events: none; }
       .touch-label { position: relative; z-index: 1; display: block; padding: 0 3px; -webkit-hyphens: auto; hyphens: auto; }
@@ -614,13 +576,149 @@
       .touch-lock::before, .touch-lock::after { position: absolute; top: 50%; margin-top: -0.5em; font-size: 10px; opacity: 0.7; }
       .touch-lock::before { content: '◀'; left: -14px; }
       .touch-lock::after { content: '▶'; right: -14px; }
-      /* ---- PWA (src/ui/pwa.ts): install banner and update toast ---- */
-      .pwa-banner { position: fixed; left: 0; right: 0; top: max(10px, env(safe-area-inset-top)); display: flex; justify-content: center; padding: 0 16px; z-index: 15; pointer-events: none; }
-      .pwa-banner .md-window { max-width: 34rem; padding: 12px 16px 10px; pointer-events: auto; font-size: 18px; }
-      .pwa-banner .md-list.horizontal { justify-content: flex-start; gap: 6px 14px; }
-      .pwa-toast { position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 14px; z-index: 25; font-size: 18px; white-space: nowrap; }
-      .pwa-toast-action { font: inherit; min-height: 44px; padding: 2px 14px; color: var(--md-ink); background: var(--md-cursor); border: 0; border-radius: 6px; cursor: pointer; }
-      #app:has(canvas.game:not(.town)) ~ .pwa-toast { display: none; }
+      /* ---- PWA: the install, update and news notices are system notices (src/styles/system-notice.css) ---- */
+
+      /* ---- Title hub (src/app/title-hub-view.ts; .agents/DESIGN.md §3-4; odd/tasks/title-hub.md) ---- */
+      /* Every menu screen fits the viewport too (owner, 2026-11-03: "que no haya scroll"): the page never scrolls, the notice sits in the flow,
+         and long windows scroll inside themselves. Runs (canvas.game) keep their own layout. */
+      html:not(:has(canvas.game)), body:not(:has(canvas.game)) { height: 100%; overflow: hidden; }
+      #app:not(:has(canvas.game)) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; padding-top: max(28px, env(safe-area-inset-top)); padding-bottom: 0; gap: 12px; }
+      #app:not(:has(canvas.game)) > .notice { position: static; margin-top: auto; flex: none; padding: 2px 16px max(4px, env(safe-area-inset-bottom)); font-family: var(--md-text-font); font-size: 12px; line-height: 1.3; opacity: 0.65; }
+      #app > .md-window { max-height: calc(100dvh - 96px); flex: 0 1 auto; min-height: 0; }
+      /* A window taller than the room scrolls its body, never the page (the title tab above the frame stays visible). */
+      #app .md-window:not(.ach-window):not(.town-map) { display: flex; flex-direction: column; }
+      #app .md-window:not(.ach-window):not(.town-map) > .md-window-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--md-border-shade) transparent; }
+      #app .screen-row > .md-window { max-height: calc(100dvh - 140px); }
+      /* Last resort on very short screens: the room itself may scroll rather than hide content. */
+      @media (max-height: 460px) { #app:not(:has(canvas.game)):not(:has(.hub)) { overflow-y: auto; } }
+      #app > .screen-row { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 6px 6px; scrollbar-color: var(--md-border-shade) transparent; }
+      /* The hub fits the viewport exactly, the fan notice included: never a scrollbar (owner, 2026-11-03). */
+      html:has(.hub), body:has(.hub) { height: 100%; overflow: hidden; }
+      #app:has(.hub) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; height: 100vh; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; }
+      #app:has(.hub) > .notice { position: static; flex: none; margin: 0 auto; padding: 2px 16px max(4px, env(safe-area-inset-bottom)); font-family: var(--md-text-font); font-size: 12px; line-height: 1.3; opacity: 0.65; }
+      .hub { position: relative; box-sizing: border-box; flex: 1 1 auto; min-height: 0; overflow: hidden; display: grid; gap: 10px 24px;
+        grid-template-columns: minmax(170px, 1fr) minmax(280px, 2fr) minmax(170px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'top top top' 'left altar right' 'bottom bottom bottom';
+        padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 8px max(24px, env(safe-area-inset-left)); }
+      /* Small hub text reads in Atkinson Hyperlegible (bold, a touch of tracking); titles and buttons stay pixel. */
+      .hub-label, .hub-rail-title, .hub-news-text small, .hub-profile-text small, .hub-logo .title-alt, .hub-play small, .hub-online small { font-family: var(--md-text-font); font-weight: 700; -webkit-font-smoothing: antialiased; }
+      /* Pixel icons own their colours: no inherited stroke or fill from the line-glyph styles around them. */
+      svg.px-icon, svg.px-icon * { stroke: none !important; }
+      svg.px-icon { fill: none; image-rendering: pixelated; shape-rendering: crispEdges; }
+      .quick-wheel-seal svg.px-icon { padding: 3px; }
+      .menu-row-icon svg.px-icon { width: 28px; height: 28px; opacity: 1; }
+      .settings-tabs button { display: inline-flex; align-items: center; gap: 8px; }
+      .settings-tabs button svg.px-icon { width: 24px; height: 24px; }
+      .level-pips { display: inline-flex; gap: 3px; margin-left: 4px; }
+      .level-pips span { width: 9px; height: 9px; transform: rotate(45deg); border: 1px solid var(--relic-gold-deep); background: rgba(0, 0, 0, 0.5); }
+      .level-pips span.is-on { background: var(--md-cursor); border-color: var(--md-cursor); box-shadow: 0 0 6px rgba(255, 191, 94, 0.6); }
+      .px-icon { display: block; width: 32px; height: 32px; image-rendering: pixelated; flex: none; }
+      /* Shared slab look of every hub surface: dark stone, old-gold hairline, a hard drop. */
+      .hub-profile, .hub-chip, .hub-news, .hub-online, .hub-slab, .hub-status { background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 220, 160, 0.08), inset 0 -8px 14px rgba(0, 0, 0, 0.55), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-top { grid-area: top; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 16px; }
+      .hub-profile { justify-self: start; display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 6px; max-width: 100%; }
+      .hub-profile-text { display: flex; flex-direction: column; min-width: 0; }
+      .hub-profile-text strong { font-size: 22px; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .hub-profile-text small { font-size: 13px; color: var(--md-text-dim); white-space: nowrap; }
+      .hub-logo { text-align: center; padding-top: 4px; }
+      .hub-logo h1 { margin: 0; font-size: clamp(36px, 4.6vw, 66px); line-height: 1; letter-spacing: 0.03em; color: #f6ead6;
+        text-shadow: 0 0 18px rgba(255, 106, 61, 0.55), 0 3px 0 #8f1622, 0 6px 0 var(--md-ink); }
+      .hub-logo .title-alt { margin: 8px 0 0; font-size: 13px; letter-spacing: 0.32em; color: var(--md-border); text-transform: uppercase; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub-logo .title-alt::before, .hub-logo .title-alt::after { content: ''; display: inline-block; vertical-align: middle; width: 36px; height: 2px; margin: 0 12px; background: linear-gradient(90deg, transparent, var(--md-border)); }
+      .hub-logo .title-alt::after { background: linear-gradient(90deg, var(--md-border), transparent); }
+      .hub-system { justify-self: end; display: flex; align-items: center; gap: 10px; }
+      .hub-chip { display: flex; align-items: center; gap: 8px; height: 46px; box-sizing: border-box; padding: 0 16px 0 8px; font-size: 22px; color: var(--md-cursor); font-variant-numeric: tabular-nums; }
+      .hub-chip .px-icon { width: 28px; height: 28px; }
+      /* Relic buttons: an icon slab and its label. */
+      .hub-btn { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .hub-slab { position: relative; display: grid; place-items: center; width: 64px; height: 64px; box-sizing: border-box; transition: transform 120ms ease-out, border-color 120ms, box-shadow 120ms; }
+      .hub-slab .px-icon { width: 40px; height: 40px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-label { font-size: 15px; line-height: 1.15; letter-spacing: 0.02em; color: var(--md-text-dim); text-align: center; text-shadow: 0 2px 0 var(--md-ink); white-space: nowrap; }
+      .hub-btn:hover .hub-slab, .hub-btn:focus-visible .hub-slab { border-color: var(--md-border); transform: translateY(-2px);
+        box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.4), 0 0 24px rgba(255, 138, 61, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.55), 0 8px 0 rgba(0, 0, 0, 0.5); }
+      .hub-btn:hover .hub-label, .hub-btn:focus-visible .hub-label { color: var(--md-cursor); }
+      .hub-btn:active .hub-slab { transform: translateY(1px); }
+      .hub-btn.is-locked .hub-slab > .px-icon:first-child { filter: grayscale(0.85) brightness(0.62) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-btn.is-locked .hub-label { color: var(--md-disabled); }
+      .hub-slab .hub-lock { position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.8)); }
+      .hub-badge, .hub-news.has-badge::after { position: absolute; top: -6px; right: -6px; width: 12px; height: 12px; background: var(--md-eclipse); border: 2px solid var(--md-ink); transform: rotate(45deg); box-shadow: 0 0 10px rgba(232, 40, 58, 0.85); }
+      .hub-news.has-badge::after { content: ''; }
+      .hub-system .hub-slab { width: 46px; height: 46px; }
+      .hub-system .hub-slab .px-icon { width: 28px; height: 28px; }
+      .hub-system .hub-label { display: none; }
+      .hub-rail { display: grid; grid-template-columns: repeat(2, auto); gap: 18px 16px; align-content: center; align-self: center; }
+      .hub-rail-left { grid-area: left; justify-self: start; }
+      .hub-rail-right { grid-area: right; justify-self: end; }
+      .hub-rail-title { grid-column: 1 / -1; margin: 0 0 2px; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--md-border); opacity: 0.85; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub-rail-right .hub-rail-title { text-align: right; }
+      .hub-bottom { grid-area: bottom; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 16px; }
+      .hub-news { all: unset; box-sizing: border-box; position: relative; justify-self: start; display: flex; align-items: center; gap: 12px; max-width: 320px; padding: 10px 16px 10px 10px; cursor: pointer;
+        background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-news .px-icon { width: 40px; height: 40px; }
+      .hub-news-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .hub-news-text small { font-size: 13px; letter-spacing: 0.12em; color: var(--md-border); text-transform: uppercase; }
+      .hub-news-text span { font-family: var(--md-text-font); font-size: 15px; line-height: 1.3; color: var(--md-text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .hub-news:hover, .hub-news:focus-visible { border-color: var(--md-border); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.35), 0 6px 0 rgba(0, 0, 0, 0.5); }
+      .hub-cta { display: flex; flex-direction: row; align-items: stretch; gap: 14px; }
+      /* JUGAR: the only lit thing on the screen (Von Restorff): lacquered blood stone, gold frame, ember text and glow. */
+      .hub-play { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 16px; min-width: 300px; padding: 12px 34px 12px 22px; cursor: pointer;
+        background: linear-gradient(180deg, #6e1d18 0%, #3d0f0f 55%, #250808 100%); border: 2px solid #e2b866; border-radius: 6px;
+        box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 210, 150, 0.35), inset 0 -10px 18px rgba(0, 0, 0, 0.45), 0 8px 0 rgba(0, 0, 0, 0.55), 0 0 34px rgba(255, 106, 61, 0.45);
+        animation: hub-play 2.6s ease-in-out infinite; transition: transform 120ms ease-out; }
+      @keyframes hub-play { 50% { box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 rgba(255, 210, 150, 0.35), inset 0 -10px 18px rgba(0, 0, 0, 0.45), 0 8px 0 rgba(0, 0, 0, 0.55), 0 0 54px rgba(255, 106, 61, 0.7); } }
+      .hub-play-icon { width: 44px; height: 44px; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.7)); }
+      .hub-play-text { display: flex; flex-direction: column; gap: 2px; }
+      .hub-play-name { font-size: 44px; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; color: #ffe2b0; text-shadow: 0 0 14px rgba(255, 138, 61, 0.8), 0 3px 0 var(--md-ink); }
+      .hub-play small { font-family: var(--md-text-font); font-size: 15px; color: #e9cfa8; }
+      .hub-play:hover, .hub-play:focus-visible { transform: translateY(-2px); border-color: #ffe2a0; outline: 3px solid rgba(255, 191, 94, 0.55); outline-offset: 3px; }
+      .hub-play:active { transform: translateY(1px); }
+      .hub-online { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 10px 22px 10px 14px; font-size: 22px; color: var(--md-text); cursor: pointer;
+        background: radial-gradient(130% 90% at 50% 0%, #2a1f26, var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 rgba(0, 0, 0, 0.5); }
+      .hub-online .px-icon { width: 40px; height: 40px; }
+      .hub-online-text { display: flex; flex-direction: column; gap: 2px; }
+      .hub-online small { font-size: 14px; color: var(--md-text-dim); }
+      .hub-online:hover, .hub-online:focus-visible { color: var(--md-cursor); border-color: var(--md-border); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.35), 0 5px 0 rgba(0, 0, 0, 0.5); }
+      .hub-links { justify-self: end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; max-width: 360px; }
+      .hub-links .hub-slab { width: 50px; height: 50px; }
+      .hub-links .hub-slab .px-icon { width: 30px; height: 30px; }
+      .hub-links .hub-label { font-size: 13px; }
+      .hub-hint { display: none; position: absolute; left: 0; right: 0; bottom: 46px; margin: 0; text-align: center; font-size: 13px; color: var(--md-text-dim); opacity: 0.7; pointer-events: none; text-shadow: 0 2px 0 var(--md-ink); }
+      .hub > .build-label { position: absolute; right: max(24px, env(safe-area-inset-right)); top: 76px; font-size: 11px; }
+      .hub-status { position: fixed; left: 50%; bottom: 190px; z-index: 6; margin: 0; padding: 10px 18px; max-width: min(90vw, 30rem); transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+        font-family: var(--md-text-font); font-size: 16px; color: var(--md-text); text-align: center; transition: opacity 160ms, transform 160ms; }
+      .hub-status.is-on { opacity: 1; transform: translate(-50%, 0); }
+      /* Medium widths (laptops, split windows): the small links keep one row as icons (their names stay as tooltips and labels for AT). */
+      @media (max-width: 1180px) {
+        .hub-links { flex-wrap: nowrap; gap: 6px; } .hub-links .hub-label { display: none; } .hub-links .hub-slab { width: 44px; height: 44px; } .hub-links .hub-slab .px-icon { width: 28px; height: 28px; }
+        .hub-play { min-width: 0; padding: 10px 24px 10px 16px; } .hub-play-name { font-size: 33px; }
+      }
+      /* Short screens (phones in landscape): the partner block shrinks so it never runs into the logo or the buttons. */
+      @media (max-height: 460px) {
+      }
+      /* Small phones in landscape (667x375): the news card keeps its icon, the links shrink to fit one row. */
+      @media (max-width: 720px) {
+        .hub-news-text { display: none; } .hub-news { padding: 6px; }
+        .hub-links { gap: 4px; } .hub-links .hub-slab { width: 40px; height: 40px; } .hub-links .hub-slab .px-icon { width: 26px; height: 26px; }
+        .hub-play-name { font-size: 26px; } .hub-online span { font-size: 14px; }
+      }
+      @media (prefers-reduced-motion: reduce) { .hub-play { animation: none; } .hub-slab, .hub-play, .hub-status { transition: none; } }
+      /* Shorter screens: smaller logo and altar, rails in three columns. */
+      @media (max-height: 760px) {
+        .hub-rail { gap: 12px 12px; } .hub-slab { width: 56px; height: 56px; } .hub-slab .px-icon { width: 36px; height: 36px; }
+      }
+      @media (max-height: 560px), (max-width: 900px) {
+        .hub { padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 4px max(16px, env(safe-area-inset-left)); gap: 6px 12px; grid-template-columns: auto 1fr auto; }
+        .hub-logo h1 { font-size: 30px; } .hub-logo .title-alt { font-size: 11px; margin-top: 4px; } .hub-logo .title-alt::before, .hub-logo .title-alt::after { width: 18px; margin: 0 6px; }
+        .hub-profile { padding: 4px 10px 4px 4px; gap: 8px; } .hub-profile .face { width: 40px; height: 40px; } .hub-profile-text strong { font-size: 16px; } .hub-profile-text small { display: none; }
+        .hub-chip { height: 38px; font-size: 18px; padding: 0 10px 0 6px; } .hub-system .hub-slab { width: 44px; height: 44px; }
+        .hub-rail { grid-template-columns: repeat(3, auto); gap: 6px 8px; } .hub-rail-title { display: none; }
+        .hub-slab { width: 48px; height: 48px; } .hub-slab .px-icon { width: 30px; height: 30px; } .hub-label { font-size: 12px; }
+        .hub-news { max-width: 210px; padding: 6px 10px 6px 6px; } .hub-news .px-icon { width: 28px; height: 28px; } .hub-news-text span { font-size: 12px; -webkit-line-clamp: 1; } .hub-news-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+        .hub-play { min-width: 0; padding: 6px 20px 6px 12px; gap: 10px; } .hub-play-name { font-size: 30px; } .hub-play-icon { width: 30px; height: 30px; } .hub-play small { font-size: 12px; }
+        .hub-online { font-size: 16px; padding: 4px 12px 4px 8px; gap: 8px; } .hub-online .px-icon { width: 26px; height: 26px; } .hub-online small { display: none; }
+        .hub-cta { gap: 8px; } .hub-links { gap: 6px; max-width: 290px; flex-wrap: nowrap; } .hub-links .hub-slab { width: 44px; height: 44px; } .hub-links .hub-label { display: none; }
+        .hub-hint, .hub > .build-label { display: none; } .hub-status { bottom: 110px; }
+      }
     </style>
   </head>
   <body>

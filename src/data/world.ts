@@ -72,19 +72,15 @@ export interface Wanderer {
   radius: number;
 }
 
-/** Look of a map: ground sheet, eclipse light and ambience. */
+/** Look of a map: ground sheet, eclipse light (a tint: the view is top-down, there is no sky) and ambience. */
 export interface MapLook {
   ground: GroundSheet;
   /** Multiply tint at the top and the bottom of the view (the eclipse light). */
   tint: readonly [string, string];
-  /** Size of the eclipse in the sky band (1 = the town's). */
-  eclipse: number;
   /** Fog banks drifting over the map (0 none .. 1 thick). */
   fog?: number;
   /** Leaves falling from the trees. */
   leaves?: boolean;
-  /** Birds gliding across the sky band. */
-  birds?: number;
 }
 
 export interface WorldMap {
@@ -126,7 +122,7 @@ export function paintRows(cols: number, rows: number, fill: string, strokes: rea
 }
 
 /** The town's own light: the multiply it has always used. */
-const TOWN_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'], eclipse: 1, birds: 2 };
+const TOWN_LOOK: MapLook = { ground: 'light', tint: ['#ffc4b4', '#c47f86'] };
 
 const CRYPT = 'crypt-of-the-sword-king';
 const FOREST = 'misty-forest';
@@ -205,7 +201,7 @@ export const RUINAS: WorldMap = {
   ],
   wanderers: [{ id: 'ruins-pumpkaboo', species: 'pumpkabooSmall', x: 27, y: 13, radius: 3 }],
   waystone: { x: 6, y: 12.5 },
-  look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], eclipse: 1.3, fog: 0.5, leaves: true, birds: 1 },
+  look: { ground: 'dark', tint: ['#f2b2b0', '#9c6a80'], fog: 0.5, leaves: true },
 };
 
 /**
@@ -260,7 +256,7 @@ export const MIRADOR: WorldMap = {
     { id: 'pass-foongus', species: 'foongus', x: 14, y: 16, radius: 2 },
   ],
   waystone: { x: 5, y: 9.5 },
-  look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], eclipse: 2.4, fog: 0.35, leaves: true, birds: 3 },
+  look: { ground: 'dark', tint: ['#ffb4a4', '#8e5a74'], fog: 0.35, leaves: true },
 };
 
 /** Cráter del Eclipse: ash and rock around a pit right under the eclipse; the Sima opens at its rim. */
@@ -300,7 +296,7 @@ export const CRATER: WorldMap = {
   lore: [{ id: 'burnt-statue', nameKey: 'world.lore.crater.name', x: 24, y: 13.5, lines: [{ key: 'world.lore.crater.1' }, { key: 'world.lore.crater.2', after: CRYPT }, { key: 'world.lore.crater.3', after: FOREST }] }],
   wanderers: [],
   waystone: { x: 13, y: 22.5 },
-  look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], eclipse: 3.4, fog: 0.6 },
+  look: { ground: 'ash', tint: ['#ffa898', '#7a3e52'], fog: 0.6 },
 };
 
 /**
@@ -380,7 +376,7 @@ export const LAGO: WorldMap = {
   lore: [{ id: 'idol', nameKey: 'world.lore.idol.name', x: 20, y: 16.5, lines: [{ key: 'world.lore.idol.1' }, { key: 'world.lore.idol.2', after: CRYPT }, { key: 'world.lore.idol.3', after: FOREST }] }],
   wanderers: [{ id: 'lake-spinarak', species: 'spinarak', x: 27, y: 19, radius: 2 }],
   waystone: { x: 4, y: 9.5 },
-  look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], eclipse: 1.1, fog: 0.8, birds: 1 },
+  look: { ground: 'dark', tint: ['#e8b0b8', '#6a5a80'], fog: 0.8 },
 };
 
 const SWAMP = 'toxic-swamp';
@@ -444,7 +440,7 @@ export const CIENAGA: WorldMap = {
     { id: 'mire-venipede', species: 'venipede', x: 30, y: 10, radius: 3 },
   ],
   waystone: { x: 4, y: 9.5 },
-  look: { ground: 'dark', tint: ['#9fb888', '#3e3a58'], eclipse: 1.6, fog: 0.9 },
+  look: { ground: 'dark', tint: ['#9fb888', '#3e3a58'], fog: 0.9 },
 };
 
 export const WORLD: Readonly<Record<WorldMapId, WorldMap>> = { refugio: REFUGIO, ruinas: RUINAS, mirador: MIRADOR, crater: CRATER, lago: LAGO, cienaga: CIENAGA };

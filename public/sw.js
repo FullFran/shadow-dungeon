@@ -17,7 +17,18 @@ var CACHE_PREFIX = 'mazmorra-';
 var SHELL_CACHE = CACHE_PREFIX + 'shell-' + VERSION;
 var RUNTIME_CACHE = CACHE_PREFIX + 'runtime-' + VERSION;
 var SHELL_STATIC = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'fonts/PixelifySans.ttf'];
-var CACHE_FIRST_DIRS = ['assets/', 'sprites/', 'tiles/', 'music/', 'fonts/', 'icons/'];
+var CACHE_FIRST_DIRS = ['assets/', 'sprites/', 'portraits/', 'tiles/', 'music/', 'fonts/', 'icons/'];
+/* Art (sprites, portraits, tiles, music) is big and rarely changes: it lives in its own cache named after a hash of the art
+   files, stamped at build (tools/art-version-plugin.ts), so a deploy that touches only code does not download it again. */
+var ART_VERSION = '__ART_VERSION__'.indexOf('__') === 0 ? 'dev' : '__ART_VERSION__';
+var ART_CACHE = CACHE_PREFIX + 'art-' + ART_VERSION;
+var ART_DIRS = ['sprites/', 'portraits/', 'tiles/', 'music/'];
+
+/** The cache a same-origin game file belongs in: the art cache for art, else this version's runtime cache. */
+function cacheNameFor(path) {
+  for (var i = 0; i < ART_DIRS.length; i++) if (path.indexOf(ART_DIRS[i]) === 0) return ART_CACHE;
+  return RUNTIME_CACHE;
+}
 
 /** Relative URLs to precache: the static shell plus every ./assets/ file the built page references. */
 function shellUrls(html) {
@@ -44,7 +55,7 @@ function strategyFor(request, scope) {
 /** Our caches that belong to another version. */
 function staleCaches(names) {
   return names.filter(function (name) {
-    return name.indexOf(CACHE_PREFIX) === 0 && name !== SHELL_CACHE && name !== RUNTIME_CACHE;
+    return name.indexOf(CACHE_PREFIX) === 0 && name !== SHELL_CACHE && name !== RUNTIME_CACHE && name !== ART_CACHE;
   });
 }
 
@@ -81,14 +92,36 @@ self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 
+// A file the server does not have (yet: a deploy in progress) can come back as the game's index.html with a 200. Cached,
+// that page would stand in for a sprite, a portrait or the stylesheet until the cache is cleared, so only the expected
+// kinds of content are ever stored or served from the cache.
+function isCacheable(path, contentType) {
+  var type = String(contentType || '').toLowerCase();
+  if (!type || type.indexOf('text/html') === 0) return false;
+  if (path.indexOf('assets/') === 0) return /css|javascript|json|wasm|font|image|audio/.test(type);
+  if (path.indexOf('fonts/') === 0) return /font|octet-stream/.test(type);
+  if (path.indexOf('music/') === 0) return /audio|ogg|mpeg|octet-stream/.test(type);
+  return /image|octet-stream/.test(type);
+}
+
+function scopePath(url) {
+  return new URL(url).pathname.slice(new URL(self.registration.scope).pathname.length);
+}
+
 function cacheFirst(request) {
+  var path = scopePath(request.url);
   return caches.match(request).then(function (cached) {
-    if (cached) return cached;
+    if (cached && isCacheable(path, cached.headers.get('content-type'))) return cached;
     return fetch(request).then(function (response) {
-      if (response.ok && response.type === 'basic') {
+      if (response.ok && response.type === 'basic' && isCacheable(path, response.headers.get('content-type'))) {
         var copy = response.clone();
-        caches.open(RUNTIME_CACHE).then(function (cache) {
+        caches.open(cacheNameFor(path)).then(function (cache) {
           return cache.put(request, copy);
+        });
+      } else if (cached) {
+        // A poisoned entry from an earlier visit: drop it so the next request asks the network again.
+        caches.open(cacheNameFor(path)).then(function (cache) {
+          return cache.delete(request);
         });
       }
       return response;

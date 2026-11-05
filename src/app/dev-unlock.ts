@@ -1,5 +1,5 @@
 import type { KeyValueStore } from '../adapters/storage';
-import { CHALLENGES, DUNGEONS, type ChallengeLine } from '../data/dungeons';
+import { CHALLENGES, DUNGEONS, TUTORIAL, type ChallengeLine } from '../data/dungeons';
 import { DIFFICULTIES } from '../data/difficulty';
 import { WORLD } from '../data/world';
 import { lineRoot } from '../data/player-evolutions';
@@ -59,5 +59,35 @@ export function unlockEverything(store: KeyValueStore): void {
   writeSave(store, unlockedSave(loadSave(store)));
   store.set(RECORDS_KEY, JSON.stringify(unlockedRecords(readRecords(store))));
   // town/travel.ts's key: only the town scene imports that module (tests/town/travel.test.ts); the unlock's test reads it back.
+  store.set('mazmorra-sombria.visitedMaps', JSON.stringify(Object.keys(WORLD)));
+}
+
+/**
+ * Development server only (`?unlock=veteran`): an advanced, believable profile for
+ * reviewing the game as a long-time player sees it (owner, 2026-11-03): everything the
+ * town offers is open, every guardian has fallen, the chasm reached floor 37, a few
+ * shiny skins, coins to spend but not infinite. Built on `unlockedSave` so every move,
+ * line and upgrade is there; only the numbers read like real play.
+ */
+export function veteranSave(save: SaveData): SaveData {
+  const open = unlockedSave(save);
+  return { ...open, coins: 18_450, earned: 96_210, shinies: SHINY_LINES.slice(0, 4), shinyWorn: [] };
+}
+
+export function veteranRecords(records: Records): Records {
+  const clearedAt = (floors: number, tiers: number): DungeonRecord => ({
+    bestFloor: floors,
+    cleared: true,
+    tiers: Object.fromEntries(DIFFICULTIES.slice(0, tiers).map((d, i) => [d, { bestFloor: floors, clears: Math.max(1, 6 - i * 2) }])),
+  });
+  const dungeons: Record<string, DungeonRecord> = { [TUTORIAL.id]: clearedAt(3, 1) };
+  for (const d of DUNGEONS) dungeons[d.id] = d.endless ? { bestFloor: 37, tiers: { [DIFFICULTIES[1]!]: { bestFloor: 37, clears: 0 } } } : clearedAt(d.plan.length, 3);
+  for (const d of CHALLENGES) dungeons[d.id] = clearedAt(d.plan.length || 6, 2);
+  return { ...records, runs: 128, victories: 19, bestLevel: 41, lastSpecies: 'zorua', dungeons: { ...records.dungeons, ...dungeons } };
+}
+
+export function veteranProfile(store: KeyValueStore): void {
+  writeSave(store, veteranSave(loadSave(store)));
+  store.set(RECORDS_KEY, JSON.stringify(veteranRecords(readRecords(store))));
   store.set('mazmorra-sombria.visitedMaps', JSON.stringify(Object.keys(WORLD)));
 }

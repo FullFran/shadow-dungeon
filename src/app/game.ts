@@ -1,4 +1,5 @@
 import { pausesOnLeave } from './pause-on-leave';
+import { packMinimap, unpackMinimap, type ResumeWriter, type RunPart } from './run-resume';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
 import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
@@ -54,6 +55,7 @@ import { challengeOfRoad, dungeonById, musicFor, type DungeonId } from '../data/
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
+import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
 import { WISP_BERRY } from '../core/wisp';
@@ -68,7 +70,7 @@ import { tileOf } from '../core/tiles';
 import { distance, length, vec, type Vec2 } from '../core/vec';
 import type { SheetStore } from '../adapters/assets';
 import { floorEntrySounds, type AudioEngine } from '../adapters/audio';
-import { heldItems, type HeldItem } from '../adapters/hud';
+import { heldItems, passiveStatus, type HeldItem } from '../adapters/hud';
 import type { FloorCard } from '../adapters/card';
 import { createMemory, revealAround, type MinimapMemory } from '../adapters/minimap';
 import { emptyLog, eventMessages, itemPickedText, pruneLog, pushMessage, type LogTone, type MessageLog } from '../adapters/message-log';
@@ -80,6 +82,7 @@ import { FxSystem } from '../adapters/fx/system';
 import { createRenderer } from '../adapters/renderer';
 import { cameraView, followCamera, lerpVec } from '../adapters/view';
 import { fitCanvasToWindow } from '../adapters/fit';
+import { BASE_VIEW } from '../adapters/viewport';
 import { isTouchUi } from '../adapters/touch-mode';
 import { holdWakeLock } from '../adapters/wake-lock';
 import { IDLE_TOUCH, mergeInputs, slotCastMode, touchToPlayerInput } from '../adapters/touch';
@@ -97,16 +100,24 @@ import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from '
 import { openMemoryCard } from './memory-card';
 import { FRAGMENT_REACH, fragmentSpot, type StoryRun } from '../core/story';
 import { chapterOf, STORY_LOW_HP, STORY_MID_FLOOR, storyKeys, storyOf, type StoryTrigger } from '../data/story-quests';
-import { simulationPaused, type MenuActions } from './menu';
+import { simulationPaused, type MenuActions, type PauseContext } from './menu';
+import { buildPauseMap, cropPauseMap } from './pause-map';
 import { createNetOverlay } from './net-overlay';
 import { hudScaleFor } from '../ui/hud-layout';
+import { slotCount } from '../adapters/hud';
+import { mountPlayHints } from '../ui/play-hints';
+import { mountLocationPlaque } from '../ui/location-plaque';
+import { dungeonPlace, shrinePlace, simaBandPlace } from '../ui/location-plaque-model';
+import { bossPlaque, cardPlaque, introPlaque } from '../adapters/floor-plaque';
+import { hintBand } from '../ui/play-hints-model';
+import { trackLastDevice } from '../adapters/last-device';
+import { bossStackRect, liftHintBand } from '../ui/hud-layout';
+import type { PadStyle } from './gamepad-help-data';
+import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
 
 /** Endless, shared run: the host sends its clock about this often (and on every floor change). */
 const CLOCK_SEND_MS = 1000;
 
-/** World pixels shown on screen; the canvas is this times an integer scale. */
-export const VIEW_WIDTH = 512;
-export const VIEW_HEIGHT = 320;
 
 /** `eclipse`: the endless dungeon's clock ran out (a score end). */
 export type GameResult = 'defeat' | 'victory' | 'eclipse';
@@ -188,7 +199,7 @@ export interface GameOptions {
   /** The M key. */
   onToggleMute?(): void;
   /** Esc: shows the menu overlay (with the held items listed) and returns a function that removes it. */
-  openMenu?(actions: MenuActions, held: readonly HeldItem[]): () => void;
+  openMenu?(actions: MenuActions, held: readonly HeldItem[], context: PauseContext): () => void;
   /** "Quit to main menu" in the Esc menu. */
   onQuit?(): void;
   onEnd(result: GameResult, summary: RunSummary): void;
@@ -234,6 +245,14 @@ export interface GameOptions {
   simaScenes?: { seen(id: SimaSceneId): boolean; play(id: SimaSceneId, info: SimaSceneInfo, onDone: () => void): (() => void) | null };
   /** The Crypt's tutorial signs this device has seen (app/tutorial.ts); absent: no signs. */
   tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
+  /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
+  hints?: { enabled(): boolean; padStyle?(): PadStyle };
+  /**
+   * Solo only: reload-proof play (app/run-resume.ts). `from` is a stored run to continue: it comes back exactly as it was,
+   * paused with the menu open. `writer` keeps the record (floor changes, every few seconds, on leaving the page) and
+   * clears it when the run ends; `crashed` says whether the page threw since it opened.
+   */
+  resume?: { from?: RunPart; writer: ResumeWriter; crashed(): boolean };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
 }
@@ -294,6 +313,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ],
   });
   (canvas.parentElement ?? document.body).append(touch.element);
+  /** The control hint bar (null without the option: the sim and tests). */
+  const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
+  /** The location plaque (src/ui/location-plaque.ts) names each floor, stratum and boss on arrival; it replaces the canvas floor card and dungeon title. Null in the sim and tests. */
+  const plaque = options.hints ? mountLocationPlaque(canvas.parentElement ?? document.body) : null;
+  let plaqued: { card: FloorCard | null; intro: DungeonIntro | null } = { card: null, intro: null };
+  /** The device used last, for the move slots' key glyphs (the hint bar tracks its own). */
+  const device = trackLastDevice();
   let inputSuspended = false;
   /** Keyboard + mouse, touch and the controller, suspended and disposed together. */
   const input = {
@@ -408,6 +434,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let moving = false;
   let lastInput: PlayerInput | null = null;
   let pixelScale = 1;
+  /** World pixels the camera shows, from the window (resize). */
+  let viewWidth: number = BASE_VIEW.width;
+  let viewHeight: number = BASE_VIEW.height;
+  /** CSS pixels per world pixel (the canvas is this much bigger on screen than the world it shows). */
+  let zoom = 1;
   let hudScale = 1;
   let ended = false;
   /** `onEnd` ran (exactly once per run), and the end screen waiting to run it. */
@@ -419,7 +450,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let closeCinematic: (() => void) | null = null;
   /** Smoothed camera focus; the visible rect it gives is also the lock-on view. */
   let camera = world.player.pos;
-  let view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+  let view = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
+  /**
+   * What the simulation sees of the camera (lock-on only considers enemies inside it): always the 512x320 view the game was
+   * balanced for, so a bigger window shows more of the floor without changing who can be locked or hit.
+   */
+  let lockView = view;
   let closeMenu: (() => void) | null = null;
   /** The held item pick overlay, while open. */
   let closePick: (() => void) | null = null;
@@ -563,7 +599,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let showMinimap = true;
   /** Message log at the bottom left, on the real (pause-aware) clock. */
   let log: MessageLog = emptyLog();
-  const say = (text: string, tone: LogTone) => (log = pushMessage(log, text, tone, realMs));
+  /** Restoring a stored run: the floor's entry lines, voices and sounds stay quiet (nothing new happened). */
+  let quiet = false;
+  const say = (text: string, tone: LogTone) => {
+    if (!quiet) log = pushMessage(log, text, tone, realMs);
+  };
   /**
    * The Senda's spoken lines (odd/tasks/menu-redesign.md S13, owner: "que en el
    * modo un jugador paren el juego hasta que le des"): alone, each line waits in
@@ -574,7 +614,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let storyBox: HTMLElement | null = null;
   const tell = (text: string, tone: LogTone) => {
     say(text, tone);
-    if (net) return;
+    if (net || quiet) return;
     storyLines.push(text);
     if (!storyBox) nextStoryLine();
   };
@@ -667,22 +707,23 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     return bands ? simaBandAt(bands, run.floor) : null;
   };
   function announceFloor(descended: boolean): void {
-    teach({ floorStart: run.floor, events: [] });
+    if (!quiet) teach({ floorStart: run.floor, events: [] });
     const lore = dungeonOf(run).lore;
     const bands = dungeonOf(run).endless?.bands;
     // The floor's own lore line, when the dungeon has one (the Crypt; the Sima's by depth band).
     const floorKey = bands ? bandLoreKey(bands, run.floor) : lore.floorKeys?.[run.floor - 1];
     const floorLore = floorKey ? { lore: t(floorKey) } : {};
-    card = { dungeon: t(lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, ...floorLore };
+    const band = simaBand();
+    const place = trial ? shrinePlace() : band ? simaBandPlace(band) : dungeonPlace(dungeonOf(run));
+    card = { dungeon: t(trial ? place.nameKey : lore.nameKey), floor: run.floor, kind: run.kind, escape: run.escape, shownAtMs: realMs, place, ...floorLore };
     // Floor 1 opens with the dungeon's own title instead of the floor card (Touhou-style stage title).
     if (run.floor === 1) {
-      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, ...floorLore };
+      intro = { name: t(lore.nameKey), subtitle: t(lore.subtitleKey), shownAtMs: realMs, place, ...floorLore };
       card = null;
     }
     // The Sima's first floor of a new depth band: the band's own title card, and the track note again (Touhou style).
-    const band = simaBand();
     if (bands && band && bandStartsAt(bands, run.floor)) {
-      intro = { name: t(band.nameKey), subtitle: t(band.subtitleKey), shownAtMs: realMs, ...floorLore };
+      intro = { name: t(band.nameKey), subtitle: t(band.subtitleKey), shownAtMs: realMs, place, ...floorLore };
       card = null;
       if (playing) nowPlaying = { title: trackNote(playing), shownAtMs: realMs };
     }
@@ -727,7 +768,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro = { name, subtitle: t(subtitle).replace('{floor}', String(run.floor)), shownAtMs: realMs };
       card = null;
     }
-    for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
+    if (!quiet) for (const id of floorEntrySounds(run.kind, descended)) audio?.play(id);
     minimap = world.arena.tiles ? createMemory(world.arena.tiles) : null;
     storyFloor();
   }
@@ -962,6 +1003,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     music();
     say(t('bonfire.back'), 'good');
     if (net?.role === 'host') net.session.sendRetry(run.floor, true);
+    keepRun();
   }
 
   /** Each step: the mid-boss just fell, so its bonfire lights and this peer's state is kept (core/bonfire.ts). */
@@ -1086,6 +1128,109 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Back in the antechamber of a boss floor: its silence again (core/run.ts `floorMusic`).
     music();
     announceFloor(false);
+    keepRun();
+  }
+
+  // Reload-proof play (app/run-resume.ts): a solo run keeps its record, and a stored one comes back paused.
+  const resume = net ? undefined : options.resume;
+  /** How often the record is refreshed while playing, and how soon after a hit (so a killed tab cannot undo a blow). */
+  const KEEP_EVERY_MS = 3000;
+  const KEEP_AFTER_HIT_MS = 500;
+  let sinceKeptMs = 0;
+  let hurtSinceKept = false;
+  /** The state last written, to skip a second write of the same moment (the menu opening, then the page hiding). */
+  let kept: { world: WorldState; run: RunState } | null = null;
+  function capturePart(): RunPart {
+    return {
+      run,
+      world,
+      floorStart,
+      tally,
+      floorStartTally,
+      kills,
+      floorStartKills,
+      floorHit,
+      restartsUsed,
+      simaSpent,
+      floorStartSpent,
+      bossPicks: [...bossPicks],
+      simaLog: [...simaLog],
+      memoriesRead: [...memoriesRead],
+      bossesMourned: [...bossesMourned],
+      lowHpSaid,
+      merchantBerries,
+      merchantSold,
+      shrineTimePaid,
+      eventRewarded,
+      bonfire,
+      bonfireUsed,
+      trial,
+      trialHit,
+      realMs,
+      ...(minimap ? { minimap: packMinimap(minimap.seen) } : {}),
+    };
+  }
+  /** Writes the record now (never in a shared run or after the end). A player who is down leaves none: a reload must not undo the blow. */
+  function keepRun(): void {
+    if (!resume || ended) return;
+    sinceKeptMs = 0;
+    hurtSinceKept = false;
+    if (world.player.hp <= 0) return resume.writer.suspend();
+    if (kept && kept.world === world && kept.run === run) return;
+    kept = { world, run };
+    resume.writer.save(capturePart(), resume.crashed());
+  }
+  /** A stored run back, exactly as it was and paused: the menu is open, "Continuar" plays on. */
+  function restoreRun(p: RunPart): void {
+    quiet = true;
+    run = p.run;
+    world = { ...p.world, lock: configureLock(p.world.lock, lockSettings) };
+    floorStart = { ...p.floorStart, lock: configureLock(p.floorStart.lock, lockSettings) };
+    tally = p.tally;
+    floorStartTally = p.floorStartTally;
+    kills = p.kills;
+    floorStartKills = p.floorStartKills;
+    floorHit = p.floorHit;
+    restartsUsed = p.restartsUsed;
+    simaSpent = p.simaSpent;
+    floorStartSpent = p.floorStartSpent;
+    bossPicks = new Set(p.bossPicks);
+    simaLog.splice(0, simaLog.length, ...p.simaLog);
+    for (const i of p.memoriesRead) memoriesRead.add(i);
+    for (const i of p.bossesMourned) bossesMourned.add(i);
+    lowHpSaid = p.lowHpSaid;
+    merchantBerries = p.merchantBerries;
+    merchantSold = p.merchantSold;
+    shrineTimePaid = p.shrineTimePaid;
+    eventRewarded = p.eventRewarded;
+    bonfire = p.bonfire;
+    bonfireUsed = p.bonfireUsed;
+    trial = p.trial;
+    trialHit = p.trialHit;
+    realMs = p.realMs;
+    lastEvent = world.simaEvent;
+    fxDirector.reset();
+    fxDirector.prepare(world.player.loadout);
+    touch.setHidden('boost', !world.player.loadout[2]);
+    touch.setHidden('area', !world.player.loadout[3]);
+    prev = world;
+    accumulator = 0;
+    camera = world.player.pos;
+    view = cameraView(camera, viewWidth, viewHeight, world.arena);
+    lockView = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
+    music();
+    announceFloor(false);
+    quiet = false;
+    // Nothing new happened: no title cards or music notes over a floor already under way.
+    intro = null;
+    card = null;
+    nowPlaying = null;
+    const seen = minimap ? unpackMinimap(p.minimap, minimap.cols, minimap.rows) : null;
+    if (minimap && seen) minimap.seen.set(seen);
+    say(t('resume.restored'), 'info');
+    // An item pick still on offer stays open under the menu; the menu itself is the pause.
+    offerPick();
+    showMenu();
   }
 
   // Leaving the page (another tab, another window, the browser's help) pauses a solo run (app/pause-on-leave.ts).
@@ -1093,12 +1238,23 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (pausesOnLeave({ shared: Boolean(net), ended, menuOpen: closeMenu !== null })) showMenu();
   };
   const onHidden = () => {
-    if (document.hidden) onLeavePage();
+    if (document.hidden) {
+      onLeavePage();
+      keepRun();
+    }
   };
   window.addEventListener('blur', onLeavePage);
   document.addEventListener('visibilitychange', onHidden);
+  // A reload or a closed tab: the record is current when the page goes (also when the tab was never hidden first).
+  const onPageHide = () => keepRun();
+  window.addEventListener('pagehide', onPageHide);
+  const pausePalette = () => {
+    const band = simaBand();
+    return band ? simaPalette(band) : dungeonOf(run).palette;
+  };
   function showMenu(): void {
     if (closeMenu || ended || !options.openMenu) return;
+    keepRun();
     // Release everything held: menu clicks must not attack, and keys held now must not stick.
     input.setSuspended(true);
     audio?.setDucked(true);
@@ -1108,6 +1264,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         restart: restartFloor,
         ...(net ? {} : { restartsLeft: trial ? 0 : restartsLeft(difficulty, restartsUsed) }),
         quit: () => {
+          // Leaving on purpose abandons the run: it must not come back on the next reload.
+          resume?.writer.end();
           hideMenu();
           // An online room keeps this player: a guest only leaves the run, the host brings the room back (`onQuit`).
           quitSession(net);
@@ -1115,6 +1273,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         },
       },
       heldItems(world.player.items),
+      {
+        info: { species: world.player.species, dungeon: run.dungeon, floor: run.floor, difficulty, elapsedMs: realMs, coins: Math.max(0, coinsInHand()), loadout: world.player.loadout, xp: world.player.xp, passive: passiveStatus(world.player), coop: Boolean(net) },
+        map: { model: cropPauseMap(buildPauseMap(world, minimap, view)), palette: pausePalette() },
+      },
     );
   }
 
@@ -1133,7 +1295,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       else choicePick?.(pickIndexForKey(e.code, 3)!);
       return;
     }
-    if (e.code === 'Escape') {
+    if (e.code === MENU_KEY) {
       e.preventDefault();
       if (closeMenu) hideMenu();
       else showMenu();
@@ -1147,8 +1309,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
       choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
     } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
-    else if (e.code === 'KeyQ' && watching !== null && !closeMenu) watchNext();
-    else if (e.code === 'Tab' && !closeMenu) {
+    else if (e.code === SPECTATE_KEY && watching !== null && !closeMenu) watchNext();
+    else if (e.code === MAP_KEY && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
       e.preventDefault();
       showMinimap = !showMinimap;
@@ -1156,8 +1318,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
 
   function resize(): void {
-    // Desktop: integer scale as before; touch: fills the screen (src/adapters/fit.ts).
-    pixelScale = fitCanvasToWindow(canvas, VIEW_WIDTH, VIEW_HEIGHT, isTouchUi());
+    // The canvas covers the window; the view follows its aspect (src/adapters/viewport.ts).
+    const fit = fitCanvasToWindow(canvas, isTouchUi());
+    pixelScale = fit.pixelScale;
+    viewWidth = fit.viewWidth;
+    viewHeight = fit.viewHeight;
+    zoom = fit.zoom;
     // The HUD scale follows the window on desktop (small panels on big screens), the canvas on touch.
     hudScale = hudScaleFor(window.innerWidth, window.innerHeight, pixelScale, isTouchUi());
   }
@@ -1278,6 +1444,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   function end(result: GameResult, cut?: CutShort): void {
     if (ended) return;
     ended = true;
+    // A finished run never comes back: the record goes now, before the end screen, so a reload on it cannot undo a defeat.
+    resume?.writer.end();
     hidePick();
     if (result === 'victory' && !cut && !trial) showVictoryBand();
     audio?.setMusic(null);
@@ -1357,6 +1525,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     announceFloor(true);
     // The guardian's floor opens with its cinematic (a herald's with its intro); a pick carried down the stairs (shared run) waits for it.
     simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+    keepRun();
   }
 
   /** The shrine trial after a step: the next arena (after a pause naming it), or its end. */
@@ -1392,7 +1561,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (hadInput(padInput)) padInUse = true;
       else if (hadInput(keys)) padInUse = false;
       const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), padInput);
-      const playerInput = net && world.player.hp <= 0 ? idleInput(raw) : raw;
+      const playerInput = { ...(net && world.player.hp <= 0 ? idleInput(raw) : raw), view: lockView };
       if (hadInput(raw)) lastInputAt = realMs;
       moving = length(playerInput.move) > 0;
       lastInput = playerInput;
@@ -1447,7 +1616,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       }
       for (const line of eventMessages(events, (id) => shownAs.get(id) ?? world.enemies.find((e) => e.id === id)?.species ?? null, world.player.species)) say(line.text, line.tone);
       for (const event of events) {
-        if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') lastHurtAt = realMs;
+        if (event.type === 'playerHurt' || event.type === 'disguiseBroken' || event.type === 'collapseHurt') {
+          lastHurtAt = realMs;
+          hurtSinceKept = true;
+        }
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
         if (event.type === 'berryEaten' && event.berryId.includes(WISP_BERRY) && !wispFound) {
           wispFound = true;
@@ -1519,6 +1691,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
+    if (resume && !ended && frameMs > 0) {
+      sinceKeptMs += frameMs;
+      if (world.player.hp <= 0 || sinceKeptMs >= KEEP_EVERY_MS || (hurtSinceKept && sinceKeptMs >= KEEP_AFTER_HIT_MS)) keepRun();
+    }
     fx.store.tick(realMs);
     fx.update(frameMs);
     fxDirector.observe(world, realMs);
@@ -1534,8 +1710,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (watching !== null) spectateButton.textContent = t(isTouchUi() ? 'spectate.next' : 'spectate.nextKey');
     const watched = watching !== null ? world.remotes.find((r) => r.id === watching) : undefined;
     camera = followCamera(camera, watched ? watched.player.pos : lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
-    view = cameraView(camera, VIEW_WIDTH, VIEW_HEIGHT, world.arena);
+    view = cameraView(camera, viewWidth, viewHeight, world.arena);
+    lockView = cameraView(camera, BASE_VIEW.width, BASE_VIEW.height, world.arena);
     if (minimap && world.arena.tiles) revealAround(minimap, world.arena.tiles, world.arena.rooms ?? [], tileOf(world.player.pos), world.fog ? fogRadiusTiles(world.fog) : undefined);
+    device.poll();
     const bar = bossBar(world);
     // A boss spell card (Decidueye, Sableye, Aegislash's phase 2) shows its name once when it starts.
     const cardKey = bar ? (heraldCardName(world, bar.enemyId, bar.stance) ?? spellCardKey(bar.species, bar.stance)) : null;
@@ -1545,7 +1723,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // A card fight's declaration is a dramatic moment: the card's own name big, its Touhou name small above it (adapters/intro-card.ts).
       const herald = heraldCardName(world, bar!.enemyId, bar!.stance);
       const card = cardInfo(cardNow);
-      spell = herald ? { name: herald, shownAtMs: realMs, declare: true } : card ? { name: t(`boss.stance.${cardNow}`), title: t(cardKey), shownAtMs: realMs, declare: true } : { name: t(cardKey), shownAtMs: realMs };
+      spell = {
+        ...(herald ? { name: herald, shownAtMs: realMs, declare: true as const, heraldName: herald } : card ? { name: t(`boss.stance.${cardNow}`), title: t(cardKey), shownAtMs: realMs, declare: true as const } : { name: t(cardKey), shownAtMs: realMs }),
+        stance: cardNow,
+        species: bar!.species,
+      };
     }
     if (!paused && cardNow) lastCard = cardNow;
     // The rumble stops while paused or after the run ends.
@@ -1576,6 +1758,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       view,
       pixelScale,
       hudScale,
+      device: device.current(),
+      padStyle: options.hints?.padStyle?.() ?? 'xbox',
       floor: run.floor,
       exit,
       exitOpen: exit !== null && roomCleared(world),
@@ -1584,7 +1768,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       defeatedAt,
       moving,
       hoverId: hovered && hovered.id !== world.lock.targetId ? hovered.id : null,
-      card,
+      card: plaque ? null : card,
       rumble,
       minimap: showMinimap ? minimap : null,
       log,
@@ -1593,7 +1777,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       palette: band ? simaPalette(band) : dungeonOf(run).palette,
       decor: band ? (band.decor ?? null) : (dungeonOf(run).decor ?? null),
       sima: band ? { floor: run.floor, abyss: band.abyss === true } : null,
-      intro,
+      intro: plaque ? null : intro,
       nowPlaying,
       spell,
       capture,
@@ -1619,15 +1803,48 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       perf.record('enemies', world.enemies.length);
     }
     overlay?.update(realMs);
+    if (plaque && (card !== plaqued.card || intro !== plaqued.intro)) {
+      // A new place title wins over the floor card of the same moment; a boss's name card (no place) is the blood plaque.
+      const titled = intro !== null && intro !== plaqued.intro ? intro : null;
+      const floorCard = card !== null && card !== plaqued.card ? card : null;
+      plaqued = { card, intro };
+      if (titled) plaque.show(titled.place ? introPlaque(titled, run.floor, difficulty) : bossPlaque(titled, run.floor, trial !== null));
+      else if (floorCard) plaque.show(cardPlaque(floorCard, difficulty));
+    }
+    if (hints) {
+      // The bar sits in the free stretch of the bottom edge (src/ui/play-hints-model.ts `hintBand`), in CSS px.
+      const css = (zoom / pixelScale) * hudScale;
+      const space = { width: canvas.width / hudScale, height: canvas.height / hudScale, scale: hudScale };
+      // A boss fight lifts it over the boss bar (src/ui/hud-layout.ts `liftHintBand`): they would share the bottom edge.
+      const slots = slotCount(world.player.loadout);
+      const fight = fightKind(world);
+      const band = liftHintBand(hintBand(space, slots), fight === 'boss' && !isTouchUi() ? bossStackRect(space, slots, false) : null, space);
+      hints.update(
+        {
+          place: 'run',
+          minimap: minimap !== null && world.arena.tiles !== undefined,
+          spectating: watching !== null,
+          fight,
+          suppressed: closeMenu !== null || closePick !== null || closeChoice !== null || closeMemory !== null || closeCinematic !== null || ended,
+          band: { left: band.left * css, right: (space.width - band.right) * css, bottom: band.bottom * css },
+        },
+        realMs,
+      );
+    }
     raf = requestAnimationFrame(frame);
   }
 
   resize();
-  music();
-  lastEvent = world.simaEvent;
-  announceFloor(false);
-  // Development start below floor 1 (`?floor=`): the guardian's cinematic on its floor.
-  simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+  if (resume?.from) restoreRun(resume.from);
+  else {
+    music();
+    lastEvent = world.simaEvent;
+    announceFloor(false);
+    // Development start below floor 1 (`?floor=`): the guardian's cinematic on its floor.
+    simaMoment('entry', () => guardianMoment('pre', () => heraldMoment(offerPick)));
+    // The record exists from the first moment (it replaces the town's), not only after the first few seconds.
+    keepRun();
+  }
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
   return {
@@ -1660,10 +1877,16 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // A room's session outlives its run: the room goes back to the town together.
       if (!net?.keepSession) net?.session.leave();
       overlay?.dispose();
+      hints?.dispose();
+      plaque?.dispose();
+      device.dispose();
       spectateButton.remove();
       sign?.element.remove();
       victoryBand?.remove();
+      // The run is over for this page (quit, end screen, another screen): no record of it stays.
+      resume?.writer.end();
       window.removeEventListener('blur', onLeavePage);
+      window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('keydown', onSignKey, true);
       storyBox?.remove();

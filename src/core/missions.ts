@@ -203,6 +203,12 @@ export function acceptMission(state: MissionState, id: string, nowMs: number): M
   return { ...state, accepted: [...state.accepted, { id, progress: 0 }] };
 }
 
+/** Drops an accepted mission (its progress is lost, nothing is paid or marked claimed); null when it is not accepted. */
+export function abandonMission(state: MissionState, id: string): MissionState | null {
+  if (!state.accepted.some((a) => a.id === id)) return null;
+  return { ...state, accepted: state.accepted.filter((a) => a.id !== id) };
+}
+
 /** The accepted missions after a run (each up to its target). */
 export function advanceMissions(state: MissionState, report: RunReport): MissionState {
   const accepted = state.accepted.map((a) => {

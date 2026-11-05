@@ -51,7 +51,7 @@ describe('settings', () => {
 
   /** A two-move save as it loads since four-slots: boost and area take the species defaults. */
   const pad = (species: SpeciesId, two: readonly MoveId[]): (MoveId | null)[] => [...two, ...SPECIES[species].defaultLoadout.slice(2)];
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: 'normal', figurations: 'on' };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: 'normal', figurations: 'on', showHints: true };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, ...SOUND });
@@ -80,6 +80,7 @@ describe('settings', () => {
       nickname: 'Fran',
       difficulty: 'hard' as const,
       figurations: 'reduced' as const,
+      showHints: false,
     };
     saveSettings(store, settings);
     expect(loadSettings(store, defaultSettings('es'))).toEqual(settings);
@@ -91,6 +92,15 @@ describe('settings', () => {
     expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('nightmare');
     store.set('mazmorra-sombria.settings', JSON.stringify({ difficulty: 'legendary' }));
     expect(loadSettings(store, defaultSettings('es')).difficulty).toBe('normal');
+  });
+
+  it('remembers the control hints switch, on unless it was turned off', () => {
+    const store = memoryStore();
+    store.set('mazmorra-sombria.settings', JSON.stringify({ showHints: false }));
+    expect(loadSettings(store, defaultSettings('es')).showHints).toBe(false);
+    store.set('mazmorra-sombria.settings', JSON.stringify({ showHints: 'no' }));
+    expect(loadSettings(store, defaultSettings('es')).showHints).toBe(true);
+    expect(defaultSettings('es').showHints).toBe(true);
   });
 
   it('keeps a stored nickname only after sanitising it', () => {

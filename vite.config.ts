@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
+import { artVersionPlugin } from './tools/art-version-plugin';
 import { fxFeedbackPlugin } from './tools/fx-feedback-plugin';
 
 /** The single version source: package.json `version` (docs/release.md). */
@@ -30,5 +31,5 @@ export default defineConfig({
   // The effect bake worker loads each effect on demand (src/adapters/fx/bake.worker.ts).
   worker: { format: 'es' },
   // Development server only: the effect gallery's verdicts (tools/fx-gallery.html).
-  plugins: [fxFeedbackPlugin()],
+  plugins: [fxFeedbackPlugin(), artVersionPlugin()],
 });

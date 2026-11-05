@@ -7,7 +7,7 @@ import { unlockedDungeons } from '../../src/core/dungeon-select';
 import { isWall, TILE, tileOf } from '../../src/core/tiles';
 import { buildTownGrid, GROUND_CHARS, groundAt, propSolidTiles, reachableFrom } from '../../src/town/map';
 import { INTERACT_RANGE } from '../../src/town/interact';
-import { arrival, BANNER_MS, bannerAlpha, entranceAt, entranceState, loreLines, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
+import { arrival, entranceAt, entranceState, loreLines, FADE_MS, fadeAlpha, inRect, linkAt, linkEdge, offsetAlong, OPPOSITE } from '../../src/town/overworld';
 
 const MAPS = Object.values(WORLD);
 const ids = Object.keys(WORLD) as WorldMapId[];
@@ -258,11 +258,5 @@ describe('fade and banner', () => {
     expect(fadeAlpha({ phase: 'out', ms: FADE_MS })).toBe(1);
     expect(fadeAlpha({ phase: 'in', ms: FADE_MS / 2 })).toBeCloseTo(0.5);
     expect(fadeAlpha({ phase: 'in', ms: FADE_MS * 3 })).toBe(0);
-  });
-
-  it('shows the map name, then fades it out', () => {
-    expect(bannerAlpha(1000)).toBe(1);
-    expect(bannerAlpha(BANNER_MS - 250)).toBeCloseTo(0.5);
-    expect(bannerAlpha(BANNER_MS)).toBe(0);
   });
 });

@@ -156,6 +156,7 @@ export function observeKeys(inner: KeyValueStore, watched: readonly string[], on
       inner.set(k, value);
       if (watched.includes(k)) onWrite(k);
     },
+    ...(inner.remove ? { remove: (k: string) => inner.remove!(k) } : {}),
   };
 }
 

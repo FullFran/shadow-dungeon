@@ -1,4 +1,5 @@
 import type { Figuration } from './figurations';
+import { drawCreatureFrame, withCreatureScale } from './creature-scale';
 import { drawHerald, heraldScale } from './herald-vfx';
 import { heraldOf } from '../core/herald/brain';
 import { AEGISLASH, ENEMY_BEHAVIOUR, type ArcherDef, type TreantDef } from '../data/enemies';
@@ -31,7 +32,7 @@ import { AIM_DRAG } from './touch';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine, drawGateNotice, drawWaitLine, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
-import { drawCaptureNotice, drawCardDeclaration, drawDungeonIntro, drawNowPlaying, drawSpellBanner, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { drawCaptureNotice, drawDungeonIntro, drawNowPlaying, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor, type CrystalDraw } from './cave-decor';
@@ -40,7 +41,12 @@ import { danmakuSinking, drawCardFight, drawDanmaku } from './danmaku-vfx';
 import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
-import { drawHud } from './hud';
+import { drawFlashToast, slotCount } from './hud';
+import { createCombatHudState, drawBossCaption, drawCombatPanels } from './combat-hud';
+import { createPortraitDrawer } from './hud-portrait';
+import type { LastDevice } from './last-device';
+import type { PadStyle } from '../app/gamepad-help-data';
+import { minimapRect, minimapTilePx } from '../ui/hud-layout';
 import { hudSpace } from '../ui/hud-layout';
 import { drawMessageLog, visibleMessages, type MessageLog } from './message-log';
 import { canvasFont, FONT } from '../ui/tokens';
@@ -65,6 +71,8 @@ import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilte
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
+  /** The world alone, without the screen-space HUD and notices (the move tutor's preview). */
+  bare?: boolean;
   /** Baked effects, once their art is ready; everything keeps its hand-drawn look without them. */
   fx?: FxSystem;
   prev: WorldState;
@@ -74,8 +82,11 @@ export interface RenderFrame {
   juice: JuiceState;
   view: Rect;
   pixelScale: number;
-  /** Integer scale of the screen-space HUD (src/ui/hud-layout.ts); the pixel scale when absent. */
+  /** Scale of the screen-space HUD (src/ui/hud-layout.ts `hudScaleFor`); the pixel scale when absent. */
   hudScale?: number;
+  /** The device the player used last and the pad style, for the move slots' key glyphs. */
+  device?: LastDevice;
+  padStyle?: PadStyle;
   /** Current floor of the run (1-based), for the HUD. */
   floor: number;
   exit: Rect | null;
@@ -169,7 +180,6 @@ const COLORS = {
   /** Wall tops are lighter than the void outside the map and carry a block pattern, so the two never blur together. */
   tileWallTop: '#1a1523',
   tileWallBlock: '#211b2c',
-  mapVoid: '#000000',
   mapRim: '#4b4163',
   tileWallFace: '#433a57',
   tileWallLip: '#5a4f73',
@@ -212,6 +222,8 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   hold: '#c9a8ff',
   hurt: '#ff5a5a',
   heal: '#6ee07a',
+  burn: TYPE_COLORS.fire.core,
+  poison: TYPE_COLORS.poison.glow,
 };
 
 /** The Sima's hunter: Houndour's sheets in the eclipse's shadow. */
@@ -246,29 +258,23 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   let openedNotice: GateNotice | null = null;
   const ctx = canvas.getContext('2d')!;
   const random = Math.random;
+  // The combat HUD's presentation state (chip trails, the boss entrance) and the portrait drawer.
+  const combatHud = createCombatHudState();
+  const portrait = createPortraitDrawer(sheets);
 
   function drawSprite(choice: AnimChoice, pos: Vec2, alpha = 1, scaleBy = 1): void {
     const meta = SPRITES.sprites[choice.sprite]?.anims[choice.anim];
     const image = meta && sheets.get(sheetKey(choice.sprite, meta.file));
     if (!meta || !image) {
+      // On its way (lazy loading, adapters/assets.ts): draw nothing for a frame or two rather than a "missing sheet" mark.
+      if (meta && sheets.pending?.(sheetKey(choice.sprite, meta.file))) return;
       ctx.fillStyle = '#ff00ff';
       ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y - 16), 12, 16);
       return;
     }
-    const anchor = meta.anchor ?? { x: meta.frameWidth / 2, y: meta.frameHeight * 0.75 };
     const row = Math.min(choice.row, meta.rows - 1);
     ctx.globalAlpha = alpha;
-    ctx.drawImage(
-      image,
-      choice.frame * meta.frameWidth,
-      row * meta.frameHeight,
-      meta.frameWidth,
-      meta.frameHeight,
-      Math.round(pos.x - anchor.x * scaleBy),
-      Math.round(pos.y - anchor.y * scaleBy),
-      meta.frameWidth * scaleBy,
-      meta.frameHeight * scaleBy,
-    );
+    drawCreatureFrame(ctx, image, meta, choice.frame, row, pos, scaleBy);
     ctx.globalAlpha = 1;
   }
 
@@ -669,7 +675,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const grid = state.arena.tiles;
       // The Sima draws its eclipse backdrop where the void would be.
       if (!sima) {
-        ctx.fillStyle = COLORS.mapVoid;
+        // Beyond the map (a view larger than a small map shows it): the dungeon's own darkest colour, never the page's.
+        ctx.fillStyle = COLORS.wall;
         ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       }
       tiles(grid, view, state.collapse, timeMs, sima?.abyss === true);
@@ -1594,18 +1601,24 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(x - 12, y + 3, Math.round(24 * Math.max(0, Math.min(1, hp / maxHp))), 3);
   }
 
+  /** Damage numbers: outlined in ink, bigger for heavy hits, coloured by effectiveness ("!" on a super-effective hit), status ticks in their own colour. */
   function numbers(list: readonly FloatingNumber[]): void {
     ctx.textAlign = 'center';
     for (const n of list) {
       const life = n.ageMs / JUICE.numberLifeMs;
+      // Pops in a little larger, then settles while it rises.
+      const pop = 1 + 0.35 * Math.max(0, 1 - n.ageMs / 120);
       ctx.globalAlpha = 1 - life * life;
-      ctx.font = canvasFont(n.big ? 16 : FONT.hudPx, true);
+      const tick = n.style === 'burn' || n.style === 'poison';
+      const size = n.big ? 22 : tick ? FONT.hudPx : 16;
+      ctx.font = canvasFont(Math.round(size * pop), true);
       // Fraction-of-max-HP hazards (collapse, fog chill) are not whole numbers: show them rounded.
-      const text = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
+      const base = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
+      const text = n.style === 'super' ? `${base}!` : base;
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
       ctx.fillStyle = '#000000';
-      ctx.fillText(text, x + 1, y + 1);
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1]] as const) ctx.fillText(text, x + dx, y + dy);
       ctx.fillStyle = NUMBER_COLORS[n.style];
       ctx.fillText(text, x, y);
     }
@@ -1674,9 +1687,14 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push({
         y: pos.y,
         draw: () => {
-          shadow(pos, enemy.radius);
-          if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
-          if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
+          // The creature's shadow and auras grow with its art (src/adapters/creature-scale.ts); the Sima's nest is drawn in code at its own size.
+          const grows = enemy.species !== 'eclipse-nest';
+          const around = (draw: () => void): void => (grows ? withCreatureScale(ctx, pos, draw) : draw());
+          around(() => {
+            shadow(pos, enemy.radius);
+            if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
+            if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
+          });
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
           // Decidueye fading into the fog before it reappears at the edge.
           const kind = ENEMY_BEHAVIOUR[enemy.species]?.kind;
@@ -1695,7 +1713,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           }
           // The player's shadow (the tutorial dungeon's boss) is an original creature drawn in code, never a sheet.
           if (enemy.species === 'shadow-self') {
-            drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs);
+            around(() => drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs));
             return;
           }
           // A Sima elite glows in its trait's colour; the hunter is a shadow in the eclipse's red.
@@ -1706,8 +1724,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           if (frame.silhouettes?.has(enemy.id)) ctx.filter = SILHOUETTE_FILTER;
           drawSprite(enemyAnim(enemy, { timeMs, sinceDefeatMs: enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs, ...(current.echoMimic ? { echoMimic: current.echoMimic } : {}) }), pos, fade, heraldScale(enemy) * (isWound(enemy.species) ? woundScale(worldDifficulty(current)) : 1));
           ctx.filter = 'none';
-          if (enemy.alive && (enemy.leader || enemy.broken)) leaderMarks(enemy, pos, timeMs);
-          if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) gateTargetMark(enemy, pos, current.gate.kind, timeMs);
+          if (enemy.alive && (enemy.leader || enemy.broken)) around(() => leaderMarks(enemy, pos, timeMs));
+          if (enemy.alive && current.gate && !current.gate.done && current.gate.target === enemy.id) around(() => gateTargetMark(enemy, pos, current.gate!.kind, timeMs));
         },
       });
       // Decidueye's stitch: two shadow clones in the far corners, drawn see-through.
@@ -1721,9 +1739,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     drawables.push({
       y: playerPos.y,
       draw: () => {
-        shadow(playerPos, TUNING.player.radius);
-        chargeRing(current.player, playerPos);
-        if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
+        withCreatureScale(ctx, playerPos, () => {
+          shadow(playerPos, TUNING.player.radius);
+          chargeRing(current.player, playerPos);
+          if (current.player.hp <= 0 && current.revive && current.revive.ms > 0) reviveRing(playerPos, current.revive.ms);
+        });
         // Under Illusion (Zorua) the player shimmers, half see-through.
         const veiled = illusionActive(current.player) ? 0.55 + 0.15 * Math.sin(timeMs / 180) : 1;
         drawSprite(playerAnim(current.player, { timeMs, sinceHurtMs: frame.sinceHurtMs, moving: frame.moving }), playerPos, veiled * vanishAlpha(current.player.action));
@@ -1736,13 +1756,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       drawables.push({
         y: pos.y,
         draw: () => {
-          shadow(pos, TUNING.player.radius);
-          chargeRing(remote.player, pos);
+          withCreatureScale(ctx, pos, () => {
+            shadow(pos, TUNING.player.radius);
+            chargeRing(remote.player, pos);
+          });
           // Remote hurt flashes are not sent: no hurt animation, a fainted player keeps the last Faint frame.
           drawSprite(playerAnim(remote.player, { timeMs, sinceHurtMs: Number.POSITIVE_INFINITY, moving }), pos, (remote.player.hp > 0 ? 1 : 0.7) * vanishAlpha(remote.player.action));
-          nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
-          // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
-          if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);
+          withCreatureScale(ctx, pos, () => {
+            nameTag(remote.id, remote.player.hp, remote.player.maxHp, pos, frame.names, remote.player.hp <= 0 && near(current.player.pos, pos) && current.player.hp > 0);
+            // Co-op revive: the ally's progress as its peer reports it (core/revive.ts).
+            if (remote.player.hp <= 0 && remote.revive) reviveRing(pos, remote.revive);
+          });
         },
       });
     }
@@ -1763,17 +1787,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     }
 
     const hovered = current.enemies.find((e) => e.id === frame.hoverId && e.alive);
-    if (hovered) hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius);
+    if (hovered) withCreatureScale(ctx, posOf(hovered.id, hovered.pos), () => hoverMarker(posOf(hovered.id, hovered.pos), hovered.radius));
     const target = current.enemies.find((e) => e.id === current.lock.targetId);
-    if (target) lockMarker(posOf(target.id, target.pos), target.radius, timeMs);
+    if (target) withCreatureScale(ctx, posOf(target.id, target.pos), () => lockMarker(posOf(target.id, target.pos), target.radius, timeMs));
     // Rank effects on enemies: a shadow mark about to burst (pulsing faster), a weakened one's dim ring.
     for (const e of current.enemies) {
       if (!e.alive || !e.dot) continue;
       const at = posOf(e.id, e.pos);
-      fx?.drawLoop(ctx, e.dot.kind === 'burn' ? WORLD_CUES.burn : WORLD_CUES.poison, { x: at.x, y: at.y + 2, placement: 'ground', fitHeight: e.radius * 2.6 }, timeMs);
+      withCreatureScale(ctx, at, () => fx?.drawLoop(ctx, e.dot!.kind === 'burn' ? WORLD_CUES.burn : WORLD_CUES.poison, { x: at.x, y: at.y + 2, placement: 'ground', fitHeight: e.radius * 2.6 }, timeMs));
     }
-    if (current.player.poison) fx?.drawLoop(ctx, WORLD_CUES.poison, { x: playerPos.x, y: playerPos.y + 2, placement: 'ground', fitHeight: 26 }, timeMs);
-    for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs);
+    if (current.player.poison) withCreatureScale(ctx, playerPos, () => fx?.drawLoop(ctx, WORLD_CUES.poison, { x: playerPos.x, y: playerPos.y + 2, placement: 'ground', fitHeight: 26 }, timeMs));
+    for (const e of current.enemies) if (e.alive && (e.mark || e.weakened)) withCreatureScale(ctx, posOf(e.id, e.pos), () => statusMarks(posOf(e.id, e.pos), e.radius, e.mark?.ms ?? null, Boolean(e.weakened), timeMs));
     if (frame.decor === 'forest') forestAir(current, view, timeMs, playerPos);
     if (current.fogWall) fogWallVeil(current.fogWall.line, current.arena.width, timeMs);
     if (frame.touchAim && !target) aimLine(playerPos, frame.touchAim);
@@ -1792,23 +1816,28 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.slowMo;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    // A bare frame (the move tutor's preview) is the world only: no HUD, minimap, log or notices.
+    if (frame.bare) return;
     // The HUD has its own scale: on desktop a big window shows more HUD space, not bigger panels.
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
-    drawHud(ctx, current, juice, hud, frame.floor, frame.coins, frame.touchUi ?? false, frame.shownAs);
-    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined);
-    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height);
+    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
+    drawFlashToast(ctx, current, juice, hud, { touch: frame.touchUi ?? false });
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false));
+    // The message log is the bottom-left corner's (the boss block is clear of it); it dims while a fight is on.
+    if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height, combatHud.combat);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
     if (frame.intro) drawDungeonIntro(ctx, frame.intro, timeMs, hud.width, hud.height);
     if (frame.nowPlaying) {
       // Touch: above the message log, clear of the action buttons in the bottom-right corner.
       const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
-      const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : undefined;
+      const grid = current.arena.tiles;
+      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows, minimapTilePx(frame.touchUi ?? false)) : null;
+      const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : { x: hud.width - 8, y: (underMap ? underMap.y + underMap.height : 24) + 14, align: 'right' as const };
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
-    if (frame.spell?.declare) drawCardDeclaration(ctx, frame.spell, timeMs, hud.width, hud.height);
-    else if (frame.spell) drawSpellBanner(ctx, frame.spell, timeMs, hud.width);
+    if (frame.spell) drawBossCaption(ctx, frame.spell, timeMs, hud, { scale: hudScale, touch: frame.touchUi ?? false }, slotCount(current.player.loadout));
     if (frame.capture) drawCaptureNotice(ctx, frame.capture, timeMs, hud.width, hud.height, t('card.mastered'), t('card.reward').replace('{coins}', String(frame.capture.coins)).replace('{heal}', String(frame.capture.heal)));
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);
     if (current.simaEvent || current.simaPact) drawSimaHud(ctx, current.simaEvent, current.simaPact, hud.width, timeMs, worldDifficulty(current));

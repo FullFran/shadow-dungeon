@@ -1,0 +1,87 @@
+/* The partner's altar on the title hub (src/app/title-hub-view.ts, src/ui/altar-art.ts; .agents/DESIGN.md §4 "Partner altar").
+   One unit: the eclipse corona behind, the partner standing on a carved stone altar (pixel art, a whole-number scale `--k`),
+   embers burning under it, and the nameplate hanging from its front. Fixed geometry per height class; only transform and
+   opacity animate (a slow breath), and none of it moves under prefers-reduced-motion. Colours come from the tokens. */
+.hub-altar { --k: 3; --sh: 236px; --stand: calc(32px * var(--k)); grid-area: altar; align-self: center; justify-self: center; display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.hub-altar-stage { position: relative; width: calc(128px * var(--k)); height: calc(var(--sh) + var(--stand)); flex: none; }
+
+/* The eclipse behind the partner: a dark disc ringed by the corona. */
+.hub-altar-corona { position: absolute; left: 50%; bottom: calc(var(--stand) - 6px); width: calc(var(--sh) * 1.25); height: calc(var(--sh) * 1.25); transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(circle, var(--md-ink) 0 42%, color-mix(in srgb, var(--md-eclipse-glow) 85%, transparent) 45%, color-mix(in srgb, var(--md-eclipse) 48%, transparent) 55%, color-mix(in srgb, var(--md-eclipse) 14%, transparent) 68%, transparent 76%);
+  animation: hub-breath 4.2s ease-in-out infinite; }
+/* Ember light from below: a warm pool on the floor and a soft rise up the altar. */
+.hub-altar-glow { position: absolute; left: 50%; bottom: -14px; width: calc(128px * var(--k) * 1.15); height: calc(54px * var(--k) * 0.9); transform: translateX(-50%); pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--relic-ember) 55%, transparent), color-mix(in srgb, var(--md-eclipse) 20%, transparent) 60%, transparent); animation: hub-breath 4.2s ease-in-out infinite reverse; }
+@keyframes hub-breath { 0%, 100% { opacity: 0.72; transform: translateX(-50%) scale(0.97); } 50% { opacity: 1; transform: translateX(-50%) scale(1.03); } }
+
+.hub-altar-stone { position: absolute; left: 0; bottom: 0; display: block; width: calc(128px * var(--k)); height: calc(54px * var(--k)); image-rendering: pixelated; filter: drop-shadow(0 6px 0 color-mix(in srgb, var(--md-ink) 60%, transparent)); }
+/* The partner stands on the middle of the top face; the box reserves its headroom and never clips it (Sprite fit rule). */
+.hub-altar-sprite { position: absolute; left: 50%; bottom: calc(var(--stand) - 2px); width: 250px; height: 214px; transform: translateX(-50%); z-index: 1; filter: drop-shadow(0 0 12px color-mix(in srgb, var(--relic-ember) 40%, transparent)); }
+.hub-altar-sprite.sprite-box { display: block; }
+.hub-altar-embers { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.hub-altar-embers i { position: absolute; bottom: calc(var(--stand) - 10px); width: 4px; height: 4px; background: var(--md-cursor); opacity: 0; box-shadow: 0 0 6px var(--relic-ember); animation: hub-rise 4.8s ease-out infinite; }
+.hub-altar-embers i:nth-child(1) { left: 20%; animation-delay: 0s; } .hub-altar-embers i:nth-child(2) { left: 34%; animation-delay: 1.9s; width: 3px; height: 3px; }
+.hub-altar-embers i:nth-child(3) { left: 66%; animation-delay: 0.8s; } .hub-altar-embers i:nth-child(4) { left: 80%; animation-delay: 3s; width: 3px; height: 3px; }
+@keyframes hub-rise { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translate(10px, -90px); } }
+.hub-altar.is-empty .hub-altar-corona { opacity: 0.6; }
+
+/* The nameplate: a stone tablet hung from the altar's front, joined to it by a gilt stud. */
+.hub-plate { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; box-sizing: border-box; width: calc(128px * var(--k) * 0.8); min-width: 0; margin-top: 8px; padding: 10px 18px 12px;
+  background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 72%); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--md-ink), inset 0 1px 0 color-mix(in srgb, var(--md-text) 10%, transparent), inset 0 -8px 14px color-mix(in srgb, var(--md-ink) 55%, transparent), 0 6px 0 color-mix(in srgb, var(--md-ink) 55%, transparent); }
+.hub-plate::before { content: ''; position: absolute; top: -9px; left: 50%; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: var(--md-cursor); border: 2px solid var(--md-ink); box-shadow: 0 0 10px color-mix(in srgb, var(--relic-ember) 70%, transparent); }
+.hub-plate-kicker { margin: 0; font-family: var(--md-text-font); font-weight: 700; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--md-border); }
+.hub-plate-name { margin: 0; max-width: 100%; font-size: 38px; line-height: 1; letter-spacing: 0.04em; color: var(--md-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 14px color-mix(in srgb, var(--relic-ember) 45%, transparent), 0 3px 0 var(--md-ink); }
+.hub-plate-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
+.hub-plate-bond { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-family: var(--md-text-font); font-weight: 700; font-size: 14px; line-height: 1.5; color: var(--md-cursor); border: 1px solid var(--relic-gold-deep); border-radius: 4px; background: var(--md-ink); }
+.hub-plate-bond::before { content: ''; width: 7px; height: 7px; transform: rotate(45deg); background: var(--md-cursor); }
+.hub-plate-passive { display: flex; align-items: center; justify-content: center; gap: 8px; max-width: 100%; margin: 0; font-family: var(--md-text-font); font-weight: 700; font-size: 15px; color: var(--md-text-dim); cursor: help; }
+.hub-plate-passive span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub-plate-gem { flex: none; width: 8px; height: 8px; transform: rotate(45deg); background: var(--relic-ember); box-shadow: 0 0 6px color-mix(in srgb, var(--relic-ember) 80%, transparent); }
+/* "Cambiar": a relic button (>= 44 px) with the Pokémon icon. */
+.hub-altar-change { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; width: 100%; max-width: 220px; margin-top: 2px; padding: 0 18px 0 10px; cursor: pointer;
+  font-family: var(--md-text-font); font-weight: 700; font-size: 17px; letter-spacing: 0.04em; color: var(--md-text); -webkit-font-smoothing: antialiased;
+  background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 72%); border: 2px solid var(--relic-gold-deep); border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--md-ink), inset 0 -6px 10px color-mix(in srgb, var(--md-ink) 50%, transparent), 0 4px 0 color-mix(in srgb, var(--md-ink) 55%, transparent); transition: transform 120ms ease-out, border-color 120ms, box-shadow 120ms; }
+.hub-altar-change svg.px-icon { width: 28px; height: 28px; filter: drop-shadow(0 2px 0 color-mix(in srgb, var(--md-ink) 70%, transparent)); }
+.hub-altar-change:hover, .hub-altar-change:focus-visible { color: var(--md-cursor); border-color: var(--md-border); transform: translateY(-2px); box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px color-mix(in srgb, var(--md-cursor) 35%, transparent), 0 6px 0 color-mix(in srgb, var(--md-ink) 55%, transparent); }
+.hub-altar-change:active { transform: translateY(1px); }
+
+/* Laptops (a 14" MacBook Pro window is about 1512x830): the altar drops to 2x below 1000 px of height, so the partner,
+   its altar and the plate keep clear of the logo and of Play (owner, 2026-11-04: "en mi MacBook Pro 14 se ve demasiado grande"). */
+@media (max-height: 999px) and (min-width: 901px) {
+  .hub-altar { --k: 2; --sh: 178px; }
+  .hub-altar-sprite { width: 210px; height: 176px; }
+  .hub-plate { width: 272px; gap: 5px; margin-top: 6px; padding: 8px 16px 10px; }
+  .hub-plate-name { font-size: 30px; }
+}
+/* Medium heights (1366x768, 1280x800): a smaller partner box and plate. */
+@media (max-height: 860px) and (min-width: 901px) {
+  .hub-altar { --sh: 150px; }
+  .hub-altar-sprite { width: 180px; height: 148px; }
+  .hub-plate { width: 256px; gap: 4px; padding: 6px 14px 8px; }
+  .hub-plate-kicker { display: none; }
+  .hub-plate-name { font-size: 28px; }
+}
+/* Short or narrow screens (phones in landscape, 844x390): half-scale altar, the plate is one row. */
+@media (max-height: 560px), (max-width: 900px) {
+  .hub-altar { --k: 1; --sh: 62px; }
+  .hub-altar-sprite { width: 100px; height: 62px; }
+  .hub-plate { width: 210px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name change' 'chips change'; align-items: center; justify-items: start; gap: 2px 8px; margin-top: 2px; padding: 3px 6px 4px 12px; }
+  .hub-plate::before, .hub-plate-passive, .hub-plate-bond { display: none; }
+  .hub-plate-name { grid-area: name; font-size: 20px; text-align: left; }
+  .hub-plate-chips { grid-area: chips; justify-content: flex-start; flex-wrap: nowrap; }
+  .hub-plate-chips .type-badge { font-size: 12px; padding: 0 5px; }
+  .hub-altar-change { grid-area: change; width: 44px; min-width: 44px; padding: 0; margin: 0; }
+  .hub-altar-change span { display: none; }
+}
+@media (max-height: 460px) { .hub-altar-embers { display: none; } }
+@media (prefers-reduced-motion: reduce) { .hub-altar-corona, .hub-altar-glow, .hub-altar-embers i { animation: none; } .hub-altar-embers { display: none; } .hub-altar-change { transition: none; } }
+/* 1280x720 and shorter laptops: the partner box shrinks a little more so the plate keeps clear of Play. */
+@media (max-height: 740px) and (min-width: 901px) {
+  .hub-altar { --sh: 124px; }
+  .hub-altar-sprite { width: 150px; height: 122px; }
+  .hub-plate { width: 240px; gap: 3px; padding: 5px 12px 7px; }
+  .hub-plate-name { font-size: 24px; }
+  .hub-plate-passive { display: none; }
+}

@@ -1,0 +1,59 @@
+/* The location plaque (src/ui/location-plaque.ts; .agents/DESIGN.md §4 "Location plaque"): a carved relic plate at the top centre.
+   Colours come from the --md-* / --relic-* tokens only. It never takes input and sits above the play view, below windows. */
+.lp { position: fixed; z-index: 3; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); width: max-content; max-width: var(--lp-max, min(34rem, calc(100vw - 32px))); pointer-events: none; font-family: var(--md-font); color: var(--md-text);
+  --lp-frame: var(--md-border); --lp-bevel: var(--md-border-shade); --lp-top: var(--md-window-top); --lp-bottom: var(--md-window-bottom); --lp-name: var(--md-text); --lp-glow: transparent; --lp-accent: var(--md-cursor); }
+.lp[hidden] { display: none; }
+
+/* Variants, all from tokens: stone (plain gilt), town (warm ember), boss (blood), sima (the eclipse ring). */
+.lp-town { --lp-top: color-mix(in srgb, var(--md-window-top) 82%, var(--relic-ember)); --lp-bottom: color-mix(in srgb, var(--md-window-bottom) 88%, var(--relic-ember)); --lp-name: var(--md-cursor); --lp-glow: color-mix(in srgb, var(--relic-ember) 32%, transparent); --lp-accent: var(--relic-ember); }
+.lp-boss { --lp-frame: var(--md-eclipse); --lp-bevel: var(--relic-blood); --lp-top: color-mix(in srgb, var(--md-window-top) 72%, var(--relic-blood)); --lp-bottom: color-mix(in srgb, var(--md-window-bottom) 80%, var(--relic-blood)); --lp-name: var(--md-eclipse-glow); --lp-glow: color-mix(in srgb, var(--md-eclipse) 40%, transparent); --lp-accent: var(--md-eclipse); }
+.lp-sima { --lp-frame: var(--relic-ember); --lp-bevel: var(--relic-ember-deep); --lp-top: var(--md-ink); --lp-bottom: color-mix(in srgb, var(--md-ink) 82%, var(--md-eclipse)); --lp-name: var(--md-text); --lp-glow: color-mix(in srgb, var(--md-eclipse-glow) 45%, transparent); --lp-accent: var(--md-eclipse-glow); }
+
+.lp-plate { position: relative; display: flex; align-items: stretch; justify-content: center; filter: drop-shadow(0 4px 0 color-mix(in srgb, var(--md-ink) 65%, transparent)); }
+.lp-body { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 18px 8px 12px; box-sizing: border-box;
+  background: linear-gradient(180deg, var(--lp-top), var(--lp-bottom)); border-top: 2px solid var(--lp-frame); border-bottom: 2px solid var(--lp-frame);
+  box-shadow: inset 0 0 0 2px var(--lp-bevel), inset 0 0 18px var(--lp-glow), 0 -2px 0 var(--md-ink), 0 2px 0 var(--md-ink); }
+
+/* Gilt end-caps: a stepped finial with a lit stud, the right one mirrored. */
+.lp-cap { flex: none; position: relative; width: 20px; background: var(--lp-frame); clip-path: polygon(100% 0, 40% 0, 40% 18%, 0 18%, 0 38%, 22% 38%, 22% 62%, 0 62%, 0 82%, 40% 82%, 40% 100%, 100% 100%); }
+.lp-cap::before { content: ''; position: absolute; left: 7px; top: calc(50% - 5px); width: 10px; height: 10px; background: var(--md-ink); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lp-cap::after { content: ''; position: absolute; left: 10px; top: calc(50% - 2px); width: 4px; height: 4px; background: var(--lp-accent); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lp-cap-r { transform: scaleX(-1); }
+
+.lp-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: var(--lp-frame-size, 44px); height: var(--lp-frame-size, 44px); box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--lp-bevel); border-radius: 4px; box-shadow: 0 0 0 2px var(--md-ink); }
+.lp-icon-art { width: var(--lp-icon-size, 32px); height: var(--lp-icon-size, 32px); image-rendering: pixelated; shape-rendering: crispEdges; }
+
+.lp-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: 3px; }
+.lp-name { font-size: var(--lp-name-size, 22px); line-height: 1.1; letter-spacing: 0.02em; color: var(--lp-name); text-shadow: 0 2px 0 var(--md-ink); overflow-wrap: anywhere; }
+/* Thin divider ornament: a hairline fading out both ways with a lit diamond in the middle. */
+.lp-rule { position: relative; align-self: stretch; height: 5px; background: linear-gradient(90deg, var(--lp-frame), color-mix(in srgb, var(--lp-frame) 20%, transparent)) left center / 100% 1px no-repeat; }
+.lp-rule::after { content: ''; position: absolute; left: 0; top: 0; width: 5px; height: 5px; background: var(--lp-accent); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lp-sub { font-size: var(--lp-sub-size, 16px); line-height: 1.15; color: var(--md-text-dim); }
+.lp-note { display: var(--lp-note-display, block); font-family: var(--md-text-font); font-size: var(--lp-note-size, 14px); line-height: 1.2; color: var(--md-text-dim); max-width: 26rem; }
+
+/* Short landscape windows (phones): a smaller name, the same 32 px icon, and the plaque hugs the top edge. */
+@media (max-height: 520px) {
+  .lp { top: max(6px, env(safe-area-inset-top)); max-width: min(26rem, calc(100vw - 280px)); }
+  .lp-name { font-size: 18px; }
+  .lp-sub { font-size: 14px; }
+  .lp-note { display: none; }
+  .lp-body { padding: 5px 14px 5px 8px; gap: 8px; }
+}
+
+/* Motion: unfurls from the centre in 260 ms, icon then text rise 160 ms staggered, holds, leaves upward in 300 ms.
+   Reason: it marks the change of place without blocking play. Durations come from the model (plaqueTiming) as --lp-*. */
+@keyframes lp-unfurl { from { opacity: 0; transform: scaleX(0); clip-path: inset(-12px 50%); } to { opacity: 1; transform: scaleX(1); clip-path: inset(-12px -12px); } }
+@keyframes lp-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes lp-exit { to { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
+@keyframes lp-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lp-fade-out { to { opacity: 0; } }
+.lp[data-motion='unfurl'] .lp-plate { animation: lp-unfurl var(--lp-unfurl) ease-out both; transform-origin: 50% 50%; }
+.lp[data-motion='unfurl'] .lp-icon { animation: lp-rise var(--lp-rise) ease-out var(--lp-icon-delay) both; }
+.lp[data-motion='unfurl'] .lp-text { animation: lp-rise var(--lp-rise) ease-out var(--lp-text-delay) both; }
+.lp[data-motion='unfurl'].is-out { animation: lp-exit var(--lp-out) ease-in forwards; }
+.lp[data-motion='fade'] .lp-plate { animation: lp-fade var(--lp-in) linear both; }
+.lp[data-motion='fade'].is-out { animation: lp-fade-out var(--lp-out) linear forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .lp[data-motion='unfurl'] .lp-plate, .lp[data-motion='unfurl'] .lp-icon, .lp[data-motion='unfurl'] .lp-text { animation: lp-fade 200ms linear both; }
+  .lp[data-motion='unfurl'].is-out { animation: lp-fade-out 300ms linear forwards; }
+}

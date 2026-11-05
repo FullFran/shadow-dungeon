@@ -115,4 +115,36 @@ describe('service worker', () => {
     expect(strategy(`${SCOPE}music/a.ogg`, 'no-cors', 'GET', true)).toBe('network');
     expect(strategy('https://user.github.io/other-repo/sprites/a.png')).toBe('network');
   });
+
+  it('keeps sprites and portraits in an art cache that survives a new build, and drops it only when the art changes', async () => {
+    const { sandbox, run, stores, deleted } = load('v2');
+    expect(sandbox.ART_CACHE).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('sprites/0778/0000/Idle-Anim.png')).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('portraits/0778.png')).toBe('mazmorra-art-dev');
+    expect((sandbox.cacheNameFor as (p: string) => string)('assets/index-x.js')).toBe('mazmorra-runtime-v2');
+    stores.set('mazmorra-art-dev', { added: [] });
+    stores.set('mazmorra-art-oldhash', { added: [] });
+    stores.set('mazmorra-runtime-v1', { added: [] });
+    await run('activate');
+    expect(deleted.sort()).toEqual(['mazmorra-art-oldhash', 'mazmorra-runtime-v1']);
+  });
+
+  it('serves portraits cache-first like the sprites', () => {
+    const { sandbox } = load();
+    expect(sandbox.strategyFor!({ url: `${SCOPE}portraits/0778.png`, mode: 'cors', method: 'GET', range: false }, SCOPE)).toBe('cache-first');
+  });
+
+  it('never caches or serves an HTML page as art or a bundle file (a deploy in progress answers missing files with index.html)', () => {
+    const { sandbox } = load();
+    const ok = sandbox.isCacheable as (path: string, type: string | null) => boolean;
+    expect(ok('portraits/0104/0000/Normal.png', 'image/png')).toBe(true);
+    expect(ok('sprites/0104/0000/Idle-Anim.png', 'image/png')).toBe(true);
+    expect(ok('music/crypt.ogg', 'audio/ogg')).toBe(true);
+    expect(ok('assets/index-Q1.css', 'text/css; charset=utf-8')).toBe(true);
+    expect(ok('assets/index-AbC123.js', 'text/javascript')).toBe(true);
+    expect(ok('portraits/0104/0000/Normal.png', 'text/html; charset=utf-8')).toBe(false);
+    expect(ok('assets/index-Q1.css', 'text/html')).toBe(false);
+    expect(ok('assets/index-Q1.css', null)).toBe(false);
+  });
 });
+

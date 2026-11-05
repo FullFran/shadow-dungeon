@@ -1,25 +1,14 @@
-import { heraldBarText } from './herald-vfx';
-import { echoName } from './eclipse-echo-view';
 import type { ItemId, Rarity } from '../data/items';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { MOVES, type MoveId } from '../data/moves';
 import { cooldownLeft } from '../core/boosts';
 import { SPECIES } from '../data/species';
-import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
-import { bossBar } from '../core/boss';
-import { cardInfo } from '../data/cards';
-import { cardTimeLeftMs, fightFor, fightOf, inTurn } from '../core/cards';
-import { behaviourFor } from '../core/tricks';
-import { worldDifficulty } from '../core/difficulty';
-import { playerStats } from '../core/items';
-import { levelProgress } from '../core/progression';
 import type { GateState } from '../core/gates';
-import type { EnemyState, PlayerState, Rect, WorldState } from '../core/state';
-import { heraldCard, heraldOf } from '../core/herald/brain';
-import { drawBar, drawPanel, pixelText } from '../ui/canvas';
-import { bossRect, HUD_BOX, slotRect, statusRect, type HudBox } from '../ui/hud-layout';
-import { canvasFont, PALETTE, RARITY, TIER_COLORS, TYPE_COLORS } from '../ui/tokens';
+import type { PlayerState, Rect, WorldState } from '../core/state';
+import { drawPanel, pixelText } from '../ui/canvas';
+import { toastRect, type HudBox } from '../ui/hud-layout';
+import { canvasFont, PALETTE, RARITY, TIER_COLORS } from '../ui/tokens';
 import { MAX_RANK, moveTier } from '../data/tutor';
 import { JUICE, type FlashKind, type JuiceState } from './juice';
 
@@ -60,20 +49,16 @@ export function heldItems(items: readonly ItemId[]): HeldItem[] {
   return out;
 }
 
-function flashText(flash: NonNullable<JuiceState['flash']>, species: string): string {
-  if (flash.kind === 'levelUp') return levelUpText(species, flash.level ?? 1);
+/** The toast's short line: the message log keeps the long ones ("¡Mimikyu subió al nivel 3!"). */
+export function flashText(flash: NonNullable<JuiceState['flash']>): string {
+  if (flash.kind === 'levelUp') return t('hud.toast.levelUp').replace('{level}', String(flash.level ?? 1));
   if (flash.kind === 'item') return t('hud.itemTriggered').replace('{item}', t(`item.${flash.item ?? ''}`));
   if (flash.kind === 'passive') return t('hud.passiveTriggered').replace('{passive}', t(`passive.${flash.passive ?? ''}`));
-  return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.disguiseBroken');
+  return flash.kind === 'perfectDodge' ? t('hud.perfectDodge') : t('hud.toast.disguiseBroken');
 }
 
 /** "12 P": Pokémonedas earned so far this run. */
 export const coinsLabel = (coins: number): string => t('hud.coins').replace('{coins}', String(Math.max(0, Math.floor(coins))));
-
-/** Key hint per slot index, from i18n. */
-const SLOT_KEYS = ['hud.key.fast', 'hud.key.heavy', 'hud.key.boost', 'hud.key.area'];
-
-const PAD = 7;
 
 /**
  * The held-items line of the status window: just the count ("Objetos
@@ -101,35 +86,6 @@ export function passiveStatus(player: Pick<PlayerState, 'species' | 'disguiseBro
           ? [player.flashFire, player.flashFire ? 'hud.passive.boosted' : 'hud.passive.waiting']
           : [true, 'hud.passive.ready'];
   return { text: `${t(`passive.${passive}`)}: ${t(key)}`, ready };
-}
-
-/** The top-left window: floor / level / HP line, HP, stamina and XP bars, passive, held-items count. */
-function statusPanel(ctx: CanvasRenderingContext2D, state: WorldState, floor: number, coins: number | undefined, touch: boolean): void {
-  const { player } = state;
-  const chip = itemsChip(player.items.length, touch);
-  const { x, y, width, height } = statusRect(chip !== null);
-  const inner = width - 2 * PAD;
-  ctx.font = canvasFont();
-  ctx.textAlign = 'left';
-  drawPanel(ctx, x, y, width, height, { alpha: 0.92 });
-
-  const low = player.hp / player.maxHp <= 0.3;
-  pixelText(ctx, hudLine(floor, player.level, player.hp, player.maxHp), x + PAD, y + 15, PALETTE.text);
-  drawBar(ctx, x + PAD, y + 21, inner, 6, barFill(player.hp, player.maxHp), low ? PALETTE.hpLow : PALETTE.hp);
-  drawBar(ctx, x + PAD, y + 31, inner, 3, barFill(player.stamina, TUNING.stamina.max), PALETTE.stamina);
-  drawBar(ctx, x + PAD, y + 38, inner, 2, levelProgress(player.xp).fill, PALETTE.xp);
-
-  const { text: passiveText, ready: intact } = passiveStatus(player);
-  // The passive: a small mask icon, bright while ready.
-  ctx.fillStyle = intact ? PALETTE.cursor : PALETTE.disabled;
-  ctx.fillRect(x + PAD, y + 45, 7, 6);
-  ctx.fillRect(x + PAD + 1, y + 51, 5, 1);
-  ctx.fillStyle = PALETTE.ink;
-  ctx.fillRect(x + PAD + 1, y + 47, 2, 1);
-  ctx.fillRect(x + PAD + 4, y + 47, 2, 1);
-  pixelText(ctx, passiveText, x + PAD + 11, y + 52, intact ? PALETTE.cursor : PALETTE.disabled);
-  if (coins !== undefined) pixelText(ctx, coinsLabel(coins), x + width - PAD, y + 52, PALETTE.cursor, 'right');
-  if (chip) pixelText(ctx, chip, x + PAD, y + 63, PALETTE.textDim);
 }
 
 /** A slot's cooldown for the HUD: seconds left ("3 s", rounded up) and the share still to run; null when ready. */
@@ -169,152 +125,37 @@ export function slotRankPips(player: Pick<PlayerState, 'moveRanks'>, moveId: Mov
   return { pips, colour: TIER_COLORS[moveTier(moveId)], cooldownRight: left - 3 };
 }
 
-/** Draws a pip: a diamond with a dark outline, filled or hollow. */
-function drawPip(ctx: CanvasRenderingContext2D, pip: RankPip, colour: string): void {
-  const r = pip.size / 2;
-  const cx = pip.x + r;
-  const cy = pip.y + r;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - r - 0.5);
-  ctx.lineTo(cx + r + 0.5, cy);
-  ctx.lineTo(cx, cy + r + 0.5);
-  ctx.lineTo(cx - r - 0.5, cy);
-  ctx.closePath();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = PALETTE.ink;
-  ctx.stroke();
-  ctx.fillStyle = pip.filled ? colour : PALETTE.barBack;
-  ctx.fill();
-  if (!pip.filled) {
-    ctx.strokeStyle = PALETTE.disabled;
-    ctx.stroke();
-  }
-}
-
-/** Move slots at the bottom right: key hint, move name (red when unaffordable) and the charge bar. */
-function moveSlots(ctx: CanvasRenderingContext2D, state: WorldState, screen: HudSize, touch: boolean): void {
-  const { player } = state;
-  const count = slotCount(player.loadout);
-  // Touch: under the status window (clear of the action buttons); the chip makes the status window taller.
-  const placement = { touch, chip: itemsChip(player.items.length, touch) !== null };
-  PLAYER_SLOT_LAYOUT.forEach((_, index) => {
-    const moveId = player.loadout[index];
-    if (!moveId) return;
-    const move = MOVES[moveId];
-    const { x, y, width: w } = slotRect(screen, index, count, placement);
-    const busy = player.action?.slotIndex === index;
-    const affordable = player.stamina >= move.staminaCost * playerStats(player).staminaCost;
-    const cooling = slotCooldown(player, moveId);
-    const ranked = slotRankPips(player, moveId, { x, y, width: w });
-    // A boost whose buff is running glows in its type colour.
-    const glowing = player.buff?.moveId === moveId;
-    drawPanel(ctx, x, y, w, 30, { alpha: 0.9, border: busy ? PALETTE.cursor : glowing ? TYPE_COLORS[move.type].core : PALETTE.border });
-    ctx.font = canvasFont();
-    pixelText(ctx, t(SLOT_KEYS[index] ?? ''), x + 6, y + 12, PALETTE.textDim);
-    pixelText(ctx, t(`move.${moveId}`), x + 6, y + 24, cooling ? PALETTE.disabled : affordable ? PALETTE.text : PALETTE.danger);
-    // Mejoras: one diamond per rank, top right, in the move's tier colour.
-    if (ranked) for (const pip of ranked.pips) drawPip(ctx, pip, ranked.colour);
-    if (cooling) {
-      // The cooldown: seconds left top right (left of the rank pips) and a bar that empties as it runs out.
-      pixelText(ctx, cooling.label, ranked ? ranked.cooldownRight : x + w - 6, y + 12, PALETTE.cursor, 'right');
-      drawBar(ctx, x + 4, y + 30 - 4, w - 8, 2, cooling.fill, PALETTE.textDim);
-    }
-    const action = player.action;
-    if (busy && action?.phase === 'charging' && move.charge) {
-      const maxHold = move.charge.at(-1)?.holdMs ?? 1;
-      drawBar(ctx, x + 4, y + 30 - 4, w - 8, 2, barFill(action.chargeMs, maxHold), [PALETTE.textDim, PALETTE.cursor, PALETTE.eclipseGlow][action.chargeLevel] ?? PALETTE.eclipseGlow);
-    }
-  });
-}
-
-/** The share of the card in play's timer still to run (the clock ring), or null. */
-function cardTimerShare(state: WorldState, enemy: EnemyState): number | null {
-  // A herald's card: its own generated timer (its clock is the stance time, core/herald/brain.ts `heraldBar`).
-  const herald = heraldOf(state, enemy);
-  if (herald) {
-    const card = heraldCard(herald, enemy.boss?.stance);
-    return card && enemy.boss ? Math.max(0, Math.min(1, 1 - enemy.boss.stanceMs / card.timerMs)) : null;
-  }
-  const fight = fightFor(state, fightOf(behaviourFor(enemy.species, worldDifficulty(state))));
-  if (!fight || enemy.boss?.card === undefined) return null;
-  const card = fight.cards[enemy.boss.card];
-  const left = cardTimeLeftMs(fight, enemy);
-  return card && left !== null ? Math.max(0, Math.min(1, left / card.timerMs)) : null;
-}
-
 /** Width and height of the HUD space (src/ui/hud-layout.ts). */
 type HudSize = Pick<Rect, 'width' | 'height'>;
 
+/** How the toast fades: in over 120 ms, out over its last 400 ms, so the 1.6 s flash never pops. */
+export function toastAlpha(ageMs: number, lifeMs: number = JUICE.flashMs): number {
+  if (ageMs < 0 || ageMs >= lifeMs) return 0;
+  return Math.min(1, ageMs / 120, (lifeMs - ageMs) / 400);
+}
+
 /**
- * HUD in HUD-space units (the caller has applied the HUD scale): the status
- * window (floor, level, HP, stamina, XP, Disguise, coins this run, held-items count), move slots
- * with the charge level, boss bar and flashes. The minimap and the message
- * log are drawn by their own modules.
+ * The flash toast in HUD-space units (the caller has applied the HUD scale; fix pass 3, owner 2026-11-04: nothing flashes in
+ * the middle of the arena): "perfect dodge", "disguise broken", "level up", an item or a passive acting show as one small
+ * plate under the status block for 1.6 s. The panels (status window, co-op frames, move slots, boss bar) are drawn by
+ * `drawCombatPanels` (src/adapters/combat-hud.ts); the minimap and the message log by their own modules.
  */
-export function drawHud(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, floor: number, coins?: number, touch = false, shownAs?: ReadonlyMap<string, string>): void {
-  const { player } = state;
-  statusPanel(ctx, state, floor, coins, touch);
-  // Touch: the slot buttons show the moves (src/adapters/touch-slots.ts); no slot windows under the thumbs.
-  if (!touch) moveSlots(ctx, state, screen, touch);
-
-  const boss = bossBar(state);
-  if (boss) {
-    const box = bossRect(screen);
-    const { x, width: w } = box;
-    const y = box.y + HUD_BOX.bossNameHeight;
-    // The Sima names a boss as the player remembers it (app/sima-lore.ts): a faceless guardian, someone's shadow.
-    const name = boss.species === 'eclipse-echo' ? echoName(state.echoMimic) : t(`species.${shownAs?.get(boss.enemyId) ?? boss.species}`);
-    ctx.font = canvasFont();
-    // A herald names itself and its card count (adapters/herald-vfx.ts) and wears its theme's colour; every card boss shares the notches and the clock.
-    const herald = heraldBarText(state, boss.enemyId);
-    pixelText(ctx, herald ? herald.label : boss.stance ? `${name} · ${t(`boss.stance.${boss.stance}`)}` : name, screen.width / 2, y - 5, PALETTE.text, 'center');
-    const guarded = boss.stance === 'shield' || cardInfo(boss.stance)?.guard === 'front';
-    drawBar(ctx, x, y, w, 6, barFill(boss.hp, boss.maxHp), herald ? herald.colour : guarded ? '#8fb3ff' : PALETTE.eclipse);
-    // Spell cards read as a souls boss's phases: a notch where each card's segment ends (the ones already passed dim),
-    // the notch of the card in play pulses during "tu turno", and the card's clock is a discreet ring by the name (host).
-    const enemy = state.enemies.find((e) => e.id === boss.enemyId);
-    const turn = enemy !== undefined && inTurn(enemy);
-    if (boss.segments) {
-      const next = boss.segments.find((at) => at < boss.hp - 0.5);
-      for (const at of boss.segments) {
-        const nx = Math.round(x + (w * at) / boss.maxHp);
-        const passed = at >= boss.hp - 0.5;
-        const live = at === next;
-        ctx.globalAlpha = passed ? 0.35 : live && turn ? 0.55 + 0.45 * Math.sin(performance.now() / 90) : 1;
-        ctx.fillStyle = live ? PALETTE.cursor : PALETTE.text;
-        ctx.fillRect(nx, y - 3, 1, 12);
-        ctx.fillRect(nx - 1, y - 3, 3, 1);
-        ctx.fillRect(nx - 1, y + 8, 3, 1);
-      }
-      ctx.globalAlpha = 1;
-    }
-    if (boss.cardLeftMs !== undefined) {
-      const left = enemy ? cardTimerShare(state, enemy) : null;
-      const share = left ?? 0;
-      const r = 4;
-      const cx = x + w + r + 3;
-      const cy = y + 3;
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = PALETTE.textDim;
-      ctx.globalAlpha = 0.35;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = boss.cardLeftMs <= 5000 ? '#ff7a6a' : PALETTE.textDim;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * share);
-      ctx.stroke();
-    }
-  }
-
-  if (juice.flash) {
-    const life = juice.flash.ageMs / JUICE.flashMs;
-    ctx.globalAlpha = 1 - life;
-    ctx.font = canvasFont(22, true);
-    pixelText(ctx, flashText(juice.flash, player.species), screen.width / 2, 104 - 8 * life, FLASH_COLORS[juice.flash.kind], 'center');
-    ctx.globalAlpha = 1;
-  }
+export function drawFlashToast(ctx: CanvasRenderingContext2D, state: WorldState, juice: JuiceState, screen: HudSize, view: { touch: boolean }): void {
+  const flash = juice.flash;
+  if (!flash) return;
+  const alpha = toastAlpha(flash.ageMs);
+  if (alpha <= 0) return;
+  const box = toastRect(screen, { partners: state.remotes.length, touch: view.touch });
+  const text = flashText(flash);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawPanel(ctx, box.x, box.y, box.width, box.height, { alpha: 0.85, fill: 0.8 });
+  ctx.font = canvasFont();
+  const squeeze = Math.min(1, (box.width - 10) / Math.max(1, ctx.measureText(text).width));
+  ctx.translate(box.x + box.width / 2, 0);
+  ctx.scale(squeeze, 1);
+  pixelText(ctx, text, 0, box.y + box.height - 4, FLASH_COLORS[flash.kind], 'center');
+  ctx.restore();
 }
 
 /** The line of the floor's gate (core/gates.ts) while it holds: what keeps the stairs shut. */
