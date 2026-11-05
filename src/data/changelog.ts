@@ -46,7 +46,7 @@ export function compareVersions(a: string, b: string): number {
 export const CHANGELOG: readonly Release[] = [
   {
     version: '0.12.0',
-    date: '2026-11-04',
+    date: '2026-11-05',
     sections: {
       new: [
         {
