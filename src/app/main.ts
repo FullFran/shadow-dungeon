@@ -40,7 +40,7 @@ import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion }
 import { setupAccount } from './account-screen';
 import { openAccountDrawer } from './account-drawer';
 import { createAuthFlow } from './auth-flow';
-import { clerkFromEnv } from '../adapters/clerk-auth';
+import { appBaseUrl, clerkFromEnv } from '../adapters/clerk-auth';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
 import { loadoutScreen, portrait, typeBadge, type LineGender, type ShinySkins } from './loadout';
@@ -206,7 +206,7 @@ const gamepads = createGamepads({
   },
 });
 /** Sign-in for the account drawer: Clerk when the build has a publishable key, else the password endpoints (app/auth-flow.ts). */
-const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, window.location.origin), account });
+const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, appBaseUrl(window.location.href)), account });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });

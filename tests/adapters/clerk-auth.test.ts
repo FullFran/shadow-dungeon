@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clerkErrorKey, createClerkAuth, type ClerkLike } from '../../src/adapters/clerk-auth';
+import { appBaseUrl, clerkErrorKey, createClerkAuth, type ClerkLike } from '../../src/adapters/clerk-auth';
 
 const apiError = (code: string) => ({ clerkError: true, errors: [{ code, message: code, longMessage: code }] });
 
@@ -162,5 +162,14 @@ describe('clerk auth adapter', () => {
   it('a Clerk that cannot load is a network error, never a throw', async () => {
     const flow = createClerkAuth({ load: async () => Promise.reject(new TypeError('Failed to fetch')), origin: 'https://game.test' });
     expect(await flow.signInWithPassword('a@b.es', 'secret123')).toEqual({ ok: false, error: 'network' });
+  });
+});
+
+describe('appBaseUrl', () => {
+  it('keeps the path the game is served under, so the OAuth return lands on the game and not on the site root', () => {
+    expect(appBaseUrl('https://www.fullfran.com/shadow-dungeon/')).toBe('https://www.fullfran.com/shadow-dungeon');
+    expect(appBaseUrl('https://www.fullfran.com/shadow-dungeon/?sso=1')).toBe('https://www.fullfran.com/shadow-dungeon');
+    expect(appBaseUrl('https://www.fullfran.com/shadow-dungeon/gacha')).toBe('https://www.fullfran.com/shadow-dungeon');
+    expect(appBaseUrl('https://sd-pre.fullfran.com/')).toBe('https://sd-pre.fullfran.com');
   });
 });

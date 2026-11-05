@@ -218,6 +218,15 @@ export function browserClerk(publishableKey: string, origin: string): ClerkAuth 
 }
 
 /** Clerk when `VITE_CLERK_PUBLISHABLE_KEY` is set, else the no-op (the password flow). */
+/**
+ * Where the game lives, without the trailing slash: the page's directory, so a build served under a path
+ * (https://www.fullfran.com/shadow-dungeon/, or its /gacha route one segment deeper) gets the OAuth return
+ * there and not on the site's root.
+ */
+export function appBaseUrl(href: string): string {
+  return new URL('./', href).href.replace(/\/$/, '');
+}
+
 export function clerkFromEnv(key: unknown, origin: string): ClerkAuth {
   return typeof key === 'string' && key.trim() ? browserClerk(key.trim(), origin) : noClerk;
 }
