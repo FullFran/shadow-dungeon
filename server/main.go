@@ -29,7 +29,7 @@ import (
 func main() {
 	cfg := setup.FromEnv(setup.Getenv)
 	turn := turnapi.FromEnv(setup.Getenv)
-	clerkVerifier := clerkauth.FromEnv(setup.Getenv)
+	clerkVerifier := clerkauth.FromEnv(setup.Getenv, cfg.Origins)
 	os.Args = setup.WithOrigins(os.Args, cfg.Origins)
 
 	app := pocketbase.NewWithConfig(pocketbase.Config{
@@ -38,6 +38,8 @@ func main() {
 
 	// Schema changes live in Go migrations; never generate them from the dashboard.
 	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{Automigrate: false})
+	// `clerk-import [--apply]`: copy verified password accounts into Clerk before the client signs in through it.
+	app.RootCmd.AddCommand(clerkauth.ImportCommand(app, setup.Getenv))
 
 	hooks.Register(app)
 
