@@ -61,6 +61,6 @@ describe('codes read in the game font', () => {
     const read = (path: string) => readFileSync(join(__dirname, '../..', path), 'utf8');
     expect(read('index.html')).toMatch(/\.room-code, \.town-room-code, \.report-ref, \.tickets-ref, \.code-input \{ font-family: var\(--md-code-font\)/);
     expect(read('src/town/scene.ts')).toContain("className: 'town-room-code'");
-    expect(read('src/app/main.ts')).toMatch(/code\.className = [^;]*code-input|className: '[^']*code-input/);
+    expect(read('src/app/online-window.ts')).toMatch(/className: '[^']*code-input/);
   });
 });

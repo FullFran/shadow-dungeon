@@ -84,6 +84,7 @@ import { installDismiss } from '../ui/dismiss';
 import { adminAccess, ticketsWindow } from './tickets-screen';
 import { friendsHeartbeat, type Heartbeat } from './friends-screen';
 import { friendsWindow } from './friends-window';
+import { onlineWindow } from './online-window';
 import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
@@ -1915,65 +1916,29 @@ function creditsScreen(root: HTMLElement): void {
 
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
 function onlineScreen(root: HTMLElement, from: OnlineFrom = 'title'): void {
-  const back = () => (from === 'town' ? townScreen(root, BEACON_TILE) : titleScreen(root, 1));
-  const prefill = roomCodeFromSearch(window.location.search) ?? '';
-  const code = h('input', { type: 'text', className: 'code-input', placeholder: t('lobby.codePlaceholder'), value: prefill });
-  code.maxLength = 7;
-  code.autocomplete = 'off';
-  code.spellcheck = false;
-  // Soft keyboard: capitals, no autocorrect, a Go key that submits like Enter.
-  code.setAttribute('autocapitalize', 'characters');
-  code.setAttribute('autocorrect', 'off');
-  code.enterKeyHint = 'go';
-  code.setAttribute('aria-label', t('lobby.codePlaceholder'));
-  const error = h('p', { className: 'lobby-error' });
-  const tryJoin = () => {
-    const normalized = normalizeRoomCode(code.value);
-    if (normalized) void openLobby(root, normalized, false, undefined, from);
-    else {
-      error.textContent = t('lobby.invalidCode');
-      code.focus();
-    }
-  };
-  code.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') tryJoin();
+  const open = onlineWindow({
+    prefill: roomCodeFromSearch(window.location.search) ?? '',
+    nickname: settings.nickname,
+    saveNickname: (value) => {
+      const clean = sanitizeNickname(value);
+      if (clean !== settings.nickname) update({ nickname: clean });
+      return clean;
+    },
+    onCreate: () => {
+      open.dispose();
+      void openLobby(root, generateRoomCode(), true, undefined, from);
+    },
+    onJoin: (code) => {
+      open.dispose();
+      void openLobby(root, code, false, undefined, from);
+    },
+    onBack: () => {
+      open.dispose();
+      if (from === 'town') townScreen(root, BEACON_TILE);
+      else titleScreen(root, 1);
+    },
   });
-  const join = () => (normalizeRoomCode(code.value) ? tryJoin() : code.focus());
-  const list = cursorList({
-    initial: prefill ? 1 : 0,
-    onBack: back,
-    label: t('lobby.online'),
-    items: [
-      { label: t('lobby.create'), onConfirm: () => void openLobby(root, generateRoomCode(), true, undefined, from) },
-      { label: t('lobby.joinCode'), value: code, className: 'join-row', onConfirm: join },
-      nicknameRow(),
-      { label: t('menu.back'), onConfirm: back },
-    ],
-  });
-  show(root, [mdWindow({ title: t('lobby.online'), className: 'online' }, [list.element, error])]);
-}
-
-/** A settings row with a text field for the nickname (Settings and the online screen); saved sanitised on change. */
-function nicknameRow(): ListItem {
-  const input = h('input', { type: 'text', className: 'code-input nickname-input', placeholder: t('nickname.placeholder'), value: settings.nickname });
-  // The room-code field's look, without its capitals: a nickname keeps its case.
-  Object.assign(input.style, { textTransform: 'none', letterSpacing: 'normal' });
-  input.maxLength = 32;
-  input.autocomplete = 'off';
-  input.spellcheck = false;
-  input.enterKeyHint = 'done';
-  input.setAttribute('aria-label', t('settings.nickname'));
-  const save = () => {
-    const clean = sanitizeNickname(input.value);
-    input.value = clean;
-    if (clean !== settings.nickname) update({ nickname: clean });
-  };
-  input.addEventListener('change', save);
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
-  });
-  return { label: t('settings.nickname'), value: input, className: 'join-row nickname-row', onConfirm: () => input.focus() };
+  show(root, [open.element]);
 }
 
 /** A player's name in a room: its nickname, else "Jugador-XYZ" from its peer id. */

@@ -125,6 +125,13 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
 - **Friends window** (`src/app/friends-window.ts`): the picker pattern applied to a social list: a sheet (your code, add by
   code) beside a column of cards (avatar tile with a diamond state pip, name, state line, actions). Signed out it is one
   compact card that opens the drawer.
+- **Online window** (`src/app/online-window.ts`, `src/app/online-model.ts`, `src/styles/online.css`; owner 2026-11-05): "Jugar en línea" as a relic
+  window, over the title backdrop or the town. Top: the nickname ("Apodo", one hint line, a 15 rem `rk-input`). Below, two equal relic cards
+  (Hick: two choices): "Crear sala" (room icon, one line, button) and "Unirse con código" (online icon, one line, code field, button, and a
+  reserved inline error line so a message never moves the card). One ember only (Von Restorff): Join when the link carried `?room=`, Create
+  otherwise; that action takes the focus. The code field accepts lower case, spaces and dashes (Postel) and tells "empty" from "invalid".
+  Arrows move spatially (`hubStep`), Enter acts, Esc leaves a field first, then goes back. Short landscape (max-height 560 px) drops the card
+  lines and puts code and Join on one row; under 560 px wide the cards stack. Supersedes the cursor list with inline fields.
 - **Accordion list** (`src/app/tutor-screen.ts`, `src/app/tutor-groups.ts`, `src/styles/tutor.css`): one column of groups
   scrolling inside its own region (styled scrollbar, never the page). Header = real `<button>` with `aria-expanded` and
   `aria-controls`, 48 px tall: chevron, category pixel icon, name, count, how many are at max rank. Body = `role="region"`
@@ -381,3 +388,4 @@ and gamepad reach every control, touch targets ≥ 44 px.
   hold ring (Error prevention), Auto as a relic pill with a slow ember dot, bottom-right stack, quiet at rest (65%) and full for 2 s after any input. Supersedes the
   flat "Saltar" text button, the 3 px hold bar and the separate hint line.
 - 2026-11-04 (fix pass 3, owner: "arreglar todo"; "la barra de vida un poco más arriba y más decorada estilo Dark Souls sombrío"; slots "más grandes para que las teclas quepan"; boss attacks "arriba, un poco más grandes y decorados"): the hint bar is compact in a fight (28 px chips, no labels); flashes become a toast under the status block; the location plaque follows the HUD scale (22/32 to 26/40); the boss bar rises (6% clear below), gains an iron frame with finials and an ember trail; slots grow to ~56 CSS px with the key in a corner cap; the boss announcement moves to the top centre at ~28 CSS px with brackets (hold 1.6 s); the error icon is its own; asset failures report once per session; the pause card shows level, XP and passive. The 12% budget holds (11.9% at 1280x720, 15.2% with an announcement); the announced-event limit rises from 15% to 16% because the bigger announcement is transient (1.8 s). Supersedes the 46 px slots and the strip above the boss bar.
+- 2026-11-05 (owner: "Rediseña también lo de Jugar en línea"): the online screen becomes the Online window (§4): nickname on top, two equal relic cards with a single ember action, inline error. Supersedes the MD cursor list with code and nickname fields.
