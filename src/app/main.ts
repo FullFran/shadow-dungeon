@@ -2439,6 +2439,14 @@ if (root) {
   });
   // A press that starts and ends on the backdrop closes the open menu like Esc (ui/dismiss.ts).
   installDismiss();
+  // Back from linking Google or Discord to a signed-in account (`/?linked=<provider>`): say whether it took, then the parameter goes.
+  void authFlow.returnFromLink(window.location.search).then((back) => {
+    if (!back) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('linked');
+    window.history.replaceState(null, '', url);
+    toast(root, t(back.result.ok ? `account.link.ok.${back.provider}` : `account.error.${back.result.error}`));
+  });
   // Back from Google or Discord (`/?sso=1`): Clerk finishes, the game session follows, then the parameter goes.
   void authFlow.returnFromSso(window.location.search).then((result) => {
     if (!result) return;

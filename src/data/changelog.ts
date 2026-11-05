@@ -50,8 +50,8 @@ export const CHANGELOG: readonly Release[] = [
     sections: {
       new: [
         {
-          es: 'Ahora puedes entrar con Google o Discord. Si ya tenías cuenta no pierdes nada: entra con Google o Discord usando el mismo correo y aparecerá tu partida, o sigue con tu correo y contraseña de siempre.',
-          en: 'You can now sign in with Google or Discord. If you already had an account you lose nothing: sign in with Google or Discord using the same email and your game is there, or keep using your usual email and password.',
+          es: 'Ahora puedes entrar con Google o Discord. Si ya tenías cuenta no pierdes nada: entra con Google o Discord usando el mismo correo y aparecerá tu partida, o sigue con tu correo y contraseña de siempre. Si ya tienes la sesión iniciada, vincula Google o Discord desde Cuenta.',
+          en: 'You can now sign in with Google or Discord. If you already had an account you lose nothing: sign in with Google or Discord using the same email and your game is there, or keep using your usual email and password. If you are already signed in, link Google or Discord from Account.',
           icon: 'shield',
         },
         {

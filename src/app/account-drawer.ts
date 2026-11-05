@@ -6,6 +6,8 @@ import { h } from '../ui/window';
 import type { Account, ChoiceAnswer } from './account';
 import { choiceView, cardText, dateText, reasonText, saveFile, statusText, type ChoiceStep } from './account-screen';
 import { backTarget, focusMove, GUEST_CONS, GUEST_PROS, modeView, outcomeOf, type DrawerMode, type FieldKind, type FlowAction } from './account-drawer-model';
+import type { LinkStatus, OAuthProvider } from '../adapters/clerk-auth';
+import { OAUTH_PROVIDERS } from '../adapters/clerk-auth';
 import type { AuthFlow, FlowResult } from './auth-flow';
 import { backupProfile, parseImport } from './backups';
 import { profileSummary } from './profile';
@@ -44,7 +46,7 @@ export interface AccountDrawer {
 const icon = (id: AccountIconId): SVGSVGElement => pixelSvgOf(ACCOUNT_ICONS[id], 'px-icon');
 
 /** What the player sees apart from the forms. */
-type View = 'main' | 'backups';
+type View = 'main' | 'backups' | 'link';
 
 export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer {
   const { account, flow } = options;
@@ -61,6 +63,18 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   let closed = false;
   let lastKind = account.state().kind;
   const values: Record<FieldKind, string> = { email: '', password: '', code: '' };
+  /** Google and Discord on a signed-in account: null until Clerk answers (or without Clerk). */
+  let links: LinkStatus | null = null;
+  /** The provider waiting for the password (an account signed in before Clerk), and whether Clerk asked for a code. */
+  let linkProvider: OAuthProvider | null = null;
+  let linkCode = false;
+  const loadLinks = (): void => {
+    if (!flow.usesClerk || account.state().kind === 'guest') return;
+    void flow.linkStatus().then((status) => {
+      links = status;
+      if (!closed && !busy && view === 'main') render();
+    });
+  };
 
   const panel = h('aside', { className: 'md-window still acct-drawer' });
   panel.setAttribute('role', 'dialog');
@@ -141,6 +155,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       notice = 'account.drawer.signedIn';
       lastKind = account.state().kind;
       render();
+      loadLinks();
       return;
     }
     if (outcome.mode !== mode) {
@@ -171,6 +186,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   }
 
   const submit = (): void => {
+    if (view === 'link') return void submitLink();
     if (mode === 'sign-in') void run('sign-in', () => flow.signIn(values.email, values.password));
     else if (mode === 'sign-up') void run('sign-up', () => flow.signUp(values.email, values.password));
     else if (mode === 'verify') void run('verify', () => flow.verify(values.code));
@@ -253,6 +269,92 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     ];
   }
 
+  // ---- linking Google or Discord
+  /** One link attempt; on success the page leaves for the provider. */
+  async function doLink(task: () => Promise<FlowResult>): Promise<void> {
+    if (busy) return;
+    busy = true;
+    error = null;
+    notice = null;
+    say.textContent = t('account.busy');
+    panel.querySelectorAll<HTMLButtonElement>('button[data-cta], button[data-provider]').forEach((b) => (b.disabled = true));
+    const result = await task();
+    busy = false;
+    if (closed) return;
+    if (result.ok && result.step === 'code') {
+      linkCode = true;
+      values.code = '';
+      render();
+      panel.querySelector<HTMLInputElement>('input[data-field="code"]')?.focus({ preventScroll: true });
+      return;
+    }
+    if (result.ok) {
+      // Already linked (nothing to leave for): show it.
+      view = 'main';
+      linkProvider = null;
+      loadLinks();
+      render();
+      return;
+    }
+    if (result.error === 'session-needed') {
+      view = 'link';
+      linkCode = false;
+      values.password = '';
+      render();
+      panel.querySelector<HTMLInputElement>('input[data-field="password"]')?.focus({ preventScroll: true });
+      return;
+    }
+    error = `account.error.${result.error}`;
+    render();
+  }
+
+  const startLink = (provider: OAuthProvider): void => {
+    linkProvider = provider;
+    void doLink(() => flow.link(provider));
+  };
+
+  function submitLink(): void {
+    const provider = linkProvider;
+    const state = account.state();
+    if (!provider || state.kind === 'guest') return;
+    if (linkCode) {
+      void doLink(async () => {
+        const verified = await flow.verify(values.code);
+        return verified.ok ? flow.link(provider) : verified;
+      });
+    } else {
+      void doLink(() => flow.link(provider, { email: state.email, password: values.password }));
+    }
+  }
+
+  function linkBlock(): HTMLElement[] {
+    if (!links) return [];
+    const rows = OAUTH_PROVIDERS.map((provider) => {
+      const done = links!.linked.includes(provider);
+      const b = button(t(done ? `account.link.done.${provider}` : `account.link.${provider}`), `rk-wide acct-link-btn${done ? ' is-linked' : ''}`, () => startLink(provider), provider);
+      b.dataset.provider = provider;
+      b.disabled = done || busy;
+      return b;
+    });
+    return [h('div', { className: 'acct-links-block' }, [h('p', { className: 'acct-link-head', textContent: t('account.link.title') }), ...rows])];
+  }
+
+  function linkConfirm(): HTMLElement[] {
+    const provider = linkProvider ?? 'google';
+    const input = linkCode ? field('code', t('account.drawer.code')) : field('password', t('account.password'));
+    const cta = button(busy ? t('account.busy') : t('account.link.cta'), 'rk-wide rk-ember', submitLink);
+    cta.dataset.cta = '1';
+    cta.disabled = busy;
+    const back = link(t('menu.back'), () => ((view = 'main'), (linkProvider = null), (linkCode = false), (error = null), render()));
+    const el = h('form', { className: 'acct-form' }, [input, cta, say, h('div', { className: 'acct-links' }, [back])]);
+    el.noValidate = true;
+    el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitLink();
+    });
+    return [h('div', { className: 'acct-main' }, [h('p', { className: 'acct-why', textContent: t(linkCode ? 'account.link.code' : `account.link.confirm.${provider}`) }), el])];
+  }
+
   // ---- signed in
   async function ask(title: string, body: string, yes: string): Promise<boolean> {
     return confirmDialog({ title, body, confirmLabel: yes });
@@ -322,6 +424,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       h('div', { className: 'acct-main' }, [
         h('div', { className: 'acct-who' }, [options.face?.() ?? h('span', { className: 'acct-avatar' }, [h('span', { textContent: (email[0] ?? '?').toUpperCase() })]), h('div', { className: 'acct-who-text' }, [h('p', { className: 'acct-who-label', textContent: t('account.signedInAs') }), h('p', { className: 'acct-who-mail', textContent: email || t('account.title') })])]),
         h('p', { className: 'acct-sync', textContent: line || t('account.synced') }),
+        ...linkBlock(),
         ...items,
         say,
       ]),
@@ -377,12 +480,12 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   function render(): void {
     const state = account.state();
     const out = state.kind === 'guest';
-    const titleKey = view === 'backups' ? 'sync.backups' : out ? modeView(mode).title : 'account.title';
+    const titleKey = view === 'backups' ? 'sync.backups' : view === 'link' ? 'account.link.title' : out ? modeView(mode).title : 'account.title';
     panel.setAttribute('aria-labelledby', 'acct-title');
     const close_ = h('button', { type: 'button', className: 'acct-close', textContent: '×' });
     close_.setAttribute('aria-label', t('account.drawer.close'));
     close_.addEventListener('click', close);
-    const columns = view === 'backups' ? backups() : out ? signedOut() : signedIn(state.email);
+    const columns = view === 'backups' ? backups() : view === 'link' && !out ? linkConfirm() : out ? signedOut() : signedIn(state.email);
     // The forms carry their own status line; elsewhere the messages sit under the header.
     say.textContent = busy ? t('account.busy') : error || notice ? t(error ?? notice!) : '';
     say.className = `acct-say${error ? ' is-error' : ''}`;
@@ -434,6 +537,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
 
   // ---- open
   render();
+  loadLinks();
   parent.append(veil);
   // Providers first: the quickest way in; a signed-in player lands on the first action.
   queueMicrotask(() => panel.querySelector<HTMLElement>('.acct-provider, input, .acct-main button')?.focus({ preventScroll: true }));
@@ -447,7 +551,9 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       // A guest typing keeps the form; only signing in or out, or a sync choice, rebuilds it.
       if (kind === lastKind && kind === 'guest') return;
       lastKind = kind;
+      links = null;
       render();
+      loadLinks();
     },
   };
 }

@@ -173,3 +173,53 @@ describe('appBaseUrl', () => {
     expect(appBaseUrl('https://sd-pre.fullfran.com/')).toBe('https://sd-pre.fullfran.com');
   });
 });
+
+describe('linking a provider to the Clerk user', () => {
+  type Ext = { provider: string; verification: { status: string; error?: { code: string } | null } };
+  function linkFake(opts: { session?: boolean; accounts?: Ext[]; after?: Ext[] } = {}) {
+    const calls: string[] = [];
+    const navigated: string[] = [];
+    const user = {
+      externalAccounts: opts.accounts ?? [],
+      delete: async () => undefined,
+      createExternalAccount: async (params: Record<string, unknown>) => {
+        calls.push(`create(${params.strategy},${params.redirectUrl})`);
+        return { verification: { externalVerificationRedirectURL: new URL('https://accounts.google.test/o/oauth2?x=1') } };
+      },
+      reload: async () => {
+        calls.push('reload');
+        if (opts.after) user.externalAccounts = opts.after;
+      },
+    };
+    const clerk = { session: opts.session === false ? null : { getToken: async () => 't' }, user, setActive: async () => undefined, signOut: async () => undefined, handleRedirectCallback: async () => undefined } as unknown as ClerkLike;
+    const a = createClerkAuth({ load: async () => clerk, origin: 'https://www.fullfran.com/shadow-dungeon', navigate: (u) => void navigated.push(u) });
+    return { a, calls, navigated };
+  }
+  const verified = (provider: string): Ext => ({ provider, verification: { status: 'verified' } });
+
+  it('reports the session and the verified providers only', async () => {
+    const f = linkFake({ accounts: [verified('google'), { provider: 'discord', verification: { status: 'unverified' } }] });
+    expect(await f.a.linkStatus()).toEqual({ session: true, linked: ['google'] });
+    expect(await linkFake({ session: false, accounts: [verified('google')] }).a.linkStatus()).toEqual({ session: false, linked: [] });
+  });
+
+  it('creates the external account with a return to the game path and goes to the provider', async () => {
+    const f = linkFake();
+    expect(await f.a.link('discord')).toEqual({ ok: true, step: 'done' });
+    expect(f.calls).toEqual(['create(oauth_discord,https://www.fullfran.com/shadow-dungeon/?linked=discord)']);
+    expect(f.navigated).toEqual(['https://accounts.google.test/o/oauth2?x=1']);
+  });
+
+  it('without a Clerk session asks for one instead of creating anything', async () => {
+    const f = linkFake({ session: false });
+    expect(await f.a.link('google')).toEqual({ ok: false, error: 'session-needed' });
+    expect(f.calls).toEqual([]);
+  });
+
+  it('on the return, reloads the user: verified is done, a provider owned by another user is provider-taken', async () => {
+    expect(await linkFake({ after: [verified('google')] }).a.completeLink('google')).toEqual({ ok: true, step: 'done' });
+    const taken = linkFake({ after: [{ provider: 'google', verification: { status: 'unverified', error: { code: 'external_account_exists' } } }] });
+    expect(await taken.a.completeLink('google')).toEqual({ ok: false, error: 'provider-taken' });
+    expect(taken.calls).toEqual(['reload']);
+  });
+});

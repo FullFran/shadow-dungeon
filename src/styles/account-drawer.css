@@ -16,6 +16,11 @@
 .acct-providers { display: flex; flex-direction: column; gap: 10px; }
 .acct-provider { justify-content: flex-start; padding-left: 14px; }
 .acct-pv-short { display: none; }
+.acct-links-block { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--relic-gold-deep); }
+.acct-link-head { margin: 0 !important; font-family: var(--md-text-font); font-size: 13px !important; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--md-text-dim); }
+.acct-link-btn { justify-content: flex-start; padding-left: 14px; }
+.acct-link-btn.is-linked { opacity: 0.75; cursor: default; }
+.acct-link-btn.is-linked::after { content: '\2713'; margin-left: auto; padding-right: 12px; color: var(--md-good); }
 .acct-or { display: flex; align-items: center; gap: 10px; font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); }
 .acct-or::before, .acct-or::after { content: ''; flex: 1; height: 1px; background: var(--relic-gold-deep); }
 .acct-or svg.px-icon { width: 20px; height: 20px; }
