@@ -1,0 +1,95 @@
+/* Phones only (a coarse pointer without hover): the desktop layout stays exactly as designed (.agents/DESIGN.md).
+   Desktop menus fit the window and never scroll (owner, 2026-11-03); a phone is too small for that, so here a window
+   whose content does not fit scrolls under the finger instead of clipping it, and side-by-side columns stack.
+   Every rule lives inside a phone media query (tests/ui/mobile-css-scope.test.ts checks it); tests/e2e/mobile-menus.spec.ts
+   checks every menu on phone viewports. This file is imported last (src/app/main.ts), after every screen's own CSS. */
+
+/* ---- Every phone, upright or sideways ---- */
+@media (hover: none) and (pointer: coarse) and (max-width: 600px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  /* First run: the welcome scrolls (its logo and both cards were cut off above and below). */
+  html .ob { overflow-y: auto; justify-content: safe center; overscroll-behavior: contain; }
+
+  /* Relic windows: the body scrolls when its content does not fit (desktop clips it: nothing scrolls there). */
+  html :is(.ach-window, .hl-window, .lm-window, .st-window, .sp-window, .es-window, .gv-window, .tu-window) > .md-window-body,
+  html #app .rs-window > .md-window-body {
+    overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior: contain;
+  }
+  html :is(.es-sheet, .sp-sheet, .tu-sheet, .st-rail) { overflow-y: auto; overscroll-behavior: contain; }
+  /* Achievements: the tiles are taller than the room left under the header on a phone: the grid grows, the window scrolls. */
+  html .ach-body { flex: none; grid-template-rows: auto; }
+  html .ach-grid { flex: none; overflow: visible; }
+  html .ach-window .md-item { min-width: 44px; }
+
+  /* Any menu page taller than the phone scrolls (titles that poke above their window included). */
+  html #app:not(:has(canvas.game)) { overflow-y: auto; overscroll-behavior: contain; justify-content: safe center; }
+  /* The page scrolls rather than squeezing its windows until their buttons spill over the fan notice. */
+  html #app:not(:has(canvas.game)) > :not(.hub, .ob, .notice) { flex-shrink: 0; }
+
+  /* A window's title tab never runs past the window (long names end in an ellipsis). */
+  html .md-window > .md-window-title { max-width: calc(100% - 32px); box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Co-op room card over the town: low enough for its title tab. */
+  /* (src/town/scene.ts places it with inline styles.) */
+  html .town-room { top: max(28px, env(safe-area-inset-top)) !important; max-width: 60vw !important; }
+
+  /* An open window over the town or the account drawer: the rotate hint and the floating "Atrás" stand aside
+     (the window has its own Volver / close button). */
+  html #app:has(canvas.game):has(.town-shop, .tm-veil, .town-room, .md-window) ~ .rotate-hint { display: none; }
+  html body:has(.drawer-veil) > .touch-back { display: none; }
+
+  /* Fingertip-sized controls (about 44 px) for the buttons that were drawn for a mouse. */
+  html :is(.md-window, .ob) :is(button, [role="button"]):not(.md-item, .hub-btn) { min-height: 44px; min-width: 44px; }
+
+  /* The fan notice stays on every menu, in less room. */
+  html #app > .notice.notice { font-size: 10px; line-height: 1.2; }
+}
+
+/* ---- Phones held upright: the layouts that do not fit 320-412 px reflow ---- */
+@media (hover: none) and (pointer: coarse) and (max-width: 600px) {
+  /* Upright, the columns stack and the inner boxes grow to their content: side by side, the side column and grid cards
+     land off the right edge at 320-412 px (tests/e2e/mobile-menus.spec.ts proved it). */
+  html :is(.ach-body, .hl-body, .lm-body, .st-body, .es-body, .tu-body, .sp-body, .rs-stage) { display: flex; flex-direction: column; flex: none; min-height: auto; }
+  html :is(.ach-body, .hl-body, .lm-body, .st-body, .es-body, .tu-body, .sp-body, .rs-stage) > * { flex: none; min-height: auto; max-height: none; }
+  html :is(.ach-grid, .hl-grid, .oa-grid, .es-grid, .lm-grid, .st-rows, .tu-groups, .sp-sheet, .rs-board, .rs-cards) { overflow: visible; height: auto; max-height: none; contain: none; }
+
+  /* Upright, windows grow to their content and the page is the one box that scrolls. */
+  html #app > .md-window, html #app .screen-row > .md-window, html #app > .screen-row { max-height: none; }
+
+  /* Title hub: its three columns do not fit 320-412 px (rails over the altar, system buttons off the edge), so upright it is
+     one column that scrolls. Logo, then profile and system, the altar, Play, then both rails. */
+  html .hub { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: 'top' 'altar' 'bottom' 'left' 'right';
+    align-content: start; gap: 12px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+  html .hub-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+  html .hub-logo { order: -1; flex: 1 0 100%; }
+  html .hub-system { flex-wrap: wrap; justify-content: flex-end; }
+  html .hub-altar { --k: 2; --sh: 170px; }
+  html .hub-rail, html .hub-rail-left, html .hub-rail-right { justify-self: stretch; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); justify-items: center; gap: 10px 6px; }
+  html .hub-rail-title { display: block; text-align: left; }
+  html .hub-bottom { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'cta cta' 'news links'; align-items: center; gap: 10px; }
+  html .hub-cta { grid-area: cta; justify-self: stretch; }
+  html .hub-news { grid-area: news; }
+  html .hub-links { grid-area: links; justify-self: end; flex-wrap: wrap; max-width: none; }
+
+  /* Town menu: the map on top, the options under it; the window scrolls when the open group is long. */
+  html .town-map.tm-panel { width: calc(100vw - 16px); height: auto; max-height: calc(100dvh - 16px); grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 40dvh) auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+
+  /* Tutor: the Pokémon strip gets its own row under Volver and the balance; Shrine: the tabs wrap above the tiers. */
+  html .tu-top { flex-wrap: wrap; height: auto; row-gap: 4px; }
+  html .tu-species { order: 9; flex: none; box-sizing: border-box; width: 100%; min-width: 0; height: 48px; }
+  html .oa-top { flex-wrap: wrap; row-gap: 6px; }
+  html .oa-tabs { flex: none; }
+
+  /* Settings: the row's description goes under the buttons instead of between them. */
+  html .st-foot, html .st-actions { flex-wrap: wrap; }
+  html .st-foot > .st-about { order: 9; flex: 1 0 100%; text-align: left; }
+
+  /* End of a run: the figures in two columns under the walker, the two actions one above the other. */
+  html #app .rs-window.result { --rs-art-h: 120px; width: 100%; min-height: 0; padding: 14px 12px 10px; }
+  html .rs-hero { min-height: calc(var(--rs-art-h) + 44px); }
+  html .rs-art { height: var(--rs-art-h); }
+  html .rs-board.has-cards { display: flex; flex-direction: column; }
+  html .rs-tiles, html .rs-board.has-cards > .rs-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html .rs-actions.md-list { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; width: 100%; }
+  html .rs-foot { position: sticky; bottom: 0; padding-top: 6px; background: var(--md-window-bottom); }
+}
