@@ -29,6 +29,8 @@ describe('playViewport: the play view fills the window', () => {
     for (const dpr of [1, 2, 3]) {
       for (const [w, h] of WINDOWS) {
         const name = `${w}x${h} dpr ${dpr}${touch ? ' touch' : ''}`;
+        // A phone held upright keeps the landscape view, letterboxed (below).
+        if (touch && h > w) continue;
         it(`${name}: covers the window to its last pixel, never stretched`, () => {
           const v = playViewport(w, h, dpr, touch);
           // No letterbox: the canvas covers the window and overshoots by less than one world pixel.
@@ -58,16 +60,33 @@ describe('playViewport: the play view fills the window', () => {
     expect(playViewport(1280, 720, 1, false)).toMatchObject({ zoom: 2, viewWidth: 640, viewHeight: 360 });
   });
 
-  it('touch scales by the short side so the view is 320 world pixels across the short side both ways round', () => {
+  it('touch scales by the short side so the view is 320 world pixels tall in landscape', () => {
     const land = playViewport(844, 390, 3, true);
-    const port = playViewport(390, 844, 3, true);
     expect(land.viewHeight).toBe(320);
-    expect(port.viewWidth).toBe(320);
     expect(land.viewWidth).toBeGreaterThan(640);
-    expect(port.viewHeight).toBeGreaterThan(640);
     // The backing store follows the device pixel ratio up to the cap.
     expect(land.pixelScale).toBe(Math.round(land.zoom * MAX_DPR));
     expect(playViewport(844, 390, 1, true).pixelScale).toBe(Math.round(land.zoom));
+  });
+
+  // Owner, 2026-11-06: "si tienen el móvil en vertical debería quedarse la pantalla chiquita horizontal como estaba antes"
+  // ("el pueblo me refiero y las mazmorras"): upright, the town and the dungeons show the landscape view, scaled down to the width.
+  it('a phone held upright shows the landscape view scaled to its width, letterboxed, never stretched', () => {
+    for (const [w, h] of [[390, 844], [360, 800], [412, 915], [320, 640], [320, 480]] as const) {
+      for (const dpr of [1, 2, 3]) {
+        const port = playViewport(w, h, dpr, true);
+        const land = playViewport(h, w, dpr, true);
+        // The same world area the phone shows when turned sideways: wider than tall.
+        expect([port.viewWidth, port.viewHeight]).toEqual([land.viewWidth, land.viewHeight]);
+        expect(port.viewWidth).toBeGreaterThan(port.viewHeight);
+        // Fills the width exactly; the height is a band inside the screen.
+        expect(port.cssWidth).toBeCloseTo(w, 9);
+        expect(port.cssHeight).toBeLessThan(h);
+        expect(port.cssWidth / port.viewWidth).toBeCloseTo(port.zoom, 9);
+        expect(port.cssHeight / port.viewHeight).toBeCloseTo(port.zoom, 9);
+        expect(Number.isInteger(port.pixelScale) && port.pixelScale >= 1).toBe(true);
+      }
+    }
   });
 
   it('a small window never drops under one world pixel per CSS pixel', () => {
