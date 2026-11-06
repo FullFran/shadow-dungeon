@@ -36,6 +36,8 @@
      (the window has its own Volver / close button). */
   html #app:has(canvas.game):has(.town-shop, .tm-veil, .town-room, .md-window) ~ .rotate-hint { display: none; }
   html body:has(.drawer-veil) > .touch-back { display: none; }
+  /* The welcome is the first screen: nothing to go back to (the touch UI is on from the start on a phone). */
+  html #app:has(.ob-welcome) ~ .touch-back { display: none; }
 
   /* Fingertip-sized controls (about 44 px) for the buttons that were drawn for a mouse. */
   html :is(.md-window, .ob) :is(button, [role="button"]):not(.md-item, .hub-btn) { min-height: 44px; min-width: 44px; }

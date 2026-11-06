@@ -51,6 +51,8 @@ async function expectUsable(page: import('@playwright/test').Page, name: string)
 test('welcome (first run)', async ({ page }) => {
   await page.goto('/');
   await settle(page);
+  // The first screen has nothing to go back to: no floating "Atrás" over the logo.
+  await expect(page.locator('.touch-back')).toBeHidden();
   await expectUsable(page, 'welcome');
 });
 
