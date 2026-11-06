@@ -45,6 +45,34 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.12.1',
+    date: '2026-11-06',
+    sections: {
+      improved: [
+        {
+          es: 'Con el móvil en vertical, el pueblo y las mazmorras se ven como antes: la pantalla horizontal en pequeño, a lo ancho.',
+          en: 'With the phone held upright, the town and the dungeons look as before: the landscape screen, small, across the width.',
+          icon: 'eclipse',
+        },
+        {
+          es: 'En el móvil los controles táctiles están activos desde la primera pantalla y los botones son más grandes, fáciles de pulsar con el dedo.',
+          en: 'On a phone the touch controls are on from the first screen and the buttons are bigger, easy to tap with a finger.',
+          icon: 'sparkle',
+        },
+      ],
+      fixed: [
+        {
+          es: 'En el móvil ningún menú esconde botones: si algo no cabe, la ventana se desplaza con el dedo (bienvenida, portada, ajustes, tienda, tutor, santuario, logros, menú del pueblo y final de partida).',
+          en: 'On a phone no menu hides its buttons: if something does not fit, the window scrolls with your finger (welcome, title, settings, shop, tutor, shrine, achievements, town menu and the end of a run).',
+        },
+        {
+          es: 'En ordenador todo sigue exactamente igual.',
+          en: 'On a computer everything stays exactly the same.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.12.0',
     date: '2026-11-05',
     sections: {
