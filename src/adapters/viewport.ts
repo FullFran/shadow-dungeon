@@ -6,7 +6,8 @@ export const MAX_DPR = 2;
 /**
  * The play view (town, dungeons, Sima, shrine fights, solo and co-op): the
  * canvas covers the whole window and the logical view follows its aspect, so
- * a wide window shows more tiles instead of black bars. Pure math; the DOM
+ * a wide window shows more tiles instead of black bars. A phone held upright
+ * is the exception: it shows its landscape view, scaled to the width. Pure math; the DOM
  * side is `fitCanvasToWindow` (src/adapters/fit.ts).
  *
  * Crispness: the world is never stretched. A world pixel is `zoom` CSS pixels
@@ -43,6 +44,13 @@ export function playViewport(windowWidth: number, windowHeight: number, dpr: num
   const w = Math.max(1, windowWidth);
   const h = Math.max(1, windowHeight);
   const ratio = Math.min(MAX_DPR, Math.max(1, dpr || 1));
+  // A phone held upright keeps the small landscape screen (owner, 2026-11-06): the view it shows turned sideways,
+  // scaled down to the width and letterboxed (the page centres it), instead of a tall portrait view.
+  if (touch && h > w) {
+    const land = playViewport(h, w, dpr, true);
+    const zoom = w / land.viewWidth;
+    return { viewWidth: land.viewWidth, viewHeight: land.viewHeight, pixelScale: Math.max(1, Math.round(zoom * ratio)), zoom, cssWidth: w, cssHeight: land.viewHeight * zoom };
+  }
   const zoom = touch ? Math.max(1, Math.min(w, h) / TOUCH_SHORT_SIDE) : pixelScaleFor(w, h, BASE_VIEW.width, BASE_VIEW.height);
   // Desktop: one backing pixel per CSS pixel (unchanged); touch: the device pixel ratio, rounded to a whole scale.
   const pixelScale = touch ? Math.max(1, Math.round(zoom * ratio)) : zoom;

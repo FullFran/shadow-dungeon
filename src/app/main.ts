@@ -142,6 +142,7 @@ import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type End
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
+import '../styles/mobile.css';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
