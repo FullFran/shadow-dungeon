@@ -120,3 +120,30 @@
 .rc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .rc-chips .es-chip { flex: 0 0 auto; padding: 0 10px; height: 32px; font-size: 15px; }
 .rc-chips .es-chip svg.px-icon { width: 22px; height: 22px; }
+
+/* Phones on their side: straight in #app (the screen, not the town's veil) the window takes the whole phone; the 96 px the
+   desktop keeps for the old chrome (index.html #app > .md-window) goes. */
+@media (max-height: 560px) {
+  html.touch #app > .es-window { height: 100%; max-height: none; }
+  /* The sheet's stage takes what the name, the needs and the action leave; the action is a 44 px target. */
+  html.touch .es-sheet .es-stage { flex: 1 1 0; height: auto; min-height: 0; }
+  html.touch .es-primary { height: 44px; }
+  html.touch .ev-needs { grid-template-columns: auto auto; justify-content: space-between; }
+  html.touch .ev-need-count { white-space: nowrap; }
+  /* Pages of two rows of cards that fit the grid whole (two cards and the gap, inside the grid's own padding). */
+  html.touch .es-grid { padding: 2px 4px 2px 2px; grid-auto-rows: 96px; }
+  html.touch .es-card { height: 96px; }
+  html.touch .es-card-art { height: 50px; }
+  /* The foot is one row of 44 px buttons: Volver, the pages, then the extras (their labels may take two lines). */
+  html.touch .es-foot { gap: 6px; }
+  html.touch .es-foot .es-back { min-height: 44px; padding: 0 12px; display: grid; place-items: center; font-size: 15px; line-height: 1.05; text-align: center; white-space: normal; }
+  html.touch .es-pages { gap: 4px; }
+  html.touch .es-pages .pg-btn { width: 44px; }
+  html.touch .es-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
+  html.touch .ev-foot-aux { flex: 1 1 0; min-width: 0; justify-content: flex-end; gap: 6px; }
+  html.touch .ev-foot-aux .es-back { flex: 0 1 auto; min-width: 0; }
+}
+@media (max-height: 340px) {
+  html.touch .ev-form { width: 38px; height: 50px; }
+  html.touch .ev-stage .ev-chain { padding-bottom: 2px; }
+}
