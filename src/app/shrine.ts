@@ -9,6 +9,7 @@ import type { BestiaryEntry } from '../town/bestiary';
 import { trialBest, type ShrineRecords, type TrialBest } from '../town/shrine-records';
 import { cursorList } from '../ui/cursor-list';
 import { hallNav } from '../ui/hall-nav';
+import { attachPager } from '../ui/pager';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { TYPE_COLORS } from '../ui/tokens';
 import { h, mdWindow, statLine } from '../ui/window';
@@ -131,7 +132,10 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   grid.setAttribute('aria-label', t('shrine.title'));
   const back = h('button', { className: 'hl-back', type: 'button', textContent: t('menu.back') });
   back.addEventListener('click', () => options.onBack());
-  const foot = h('div', { className: 'hl-foot' }, [back, h('p', { className: 'hl-hint', textContent: options.note ?? t('hub.hint') })]);
+  // Phones: the cards that do not fit become pages, their buttons beside Volver (src/ui/pager.ts).
+  const pageNav = h('span', { className: 'oa-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
+  const foot = h('div', { className: 'hl-foot' }, [back, pageNav, h('p', { className: 'hl-hint', textContent: options.note ?? t('hub.hint') })]);
 
   const line = (label: string, value: string | Node): HTMLElement => h('p', { className: 'hl-line' }, [h('span', { className: 'hl-line-label', textContent: label }), typeof value === 'string' ? h('span', { className: 'hl-line-value', textContent: value }) : value]);
   const chip = (text: string, cls: string): HTMLElement => h('span', { className: `hl-chip ${cls}`, textContent: text });
@@ -232,6 +236,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
       return el;
     });
     grid.replaceChildren(...cardEls);
+    pager.reset();
   };
 
   const tabEls = new Map<HallTab, HTMLButtonElement>();
@@ -276,11 +281,24 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   render();
   const win = mdWindow({ title: t('shrine.title'), className: 'oa-window hl-window' }, [h('div', { className: 'oa-top' }, [tabBar, tierBar]), h('div', { className: 'hl-body' }, [sheet, grid]), foot]);
   const stopNav = hallNav(win, {
-    controls: () => [...tabEls.values(), ...tierButtons, ...cardEls, swear, back],
-    start: () => cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => !c.classList.contains('is-locked')) ?? cardEls[0],
+    controls: () => {
+      const shown = new Set(pager.visible());
+      return [...tabEls.values(), ...tierButtons, ...cardEls.filter((c) => shown.has(c)), ...(pageNav.hidden ? [] : [...pageNav.querySelectorAll('button')].filter((b) => !b.disabled)), swear, back];
+    },
+    start: () => {
+      const card = cardEls.find((c) => c.dataset.oath === focused) ?? cardEls.find((c) => !c.classList.contains('is-locked')) ?? cardEls[0];
+      if (card) pager.reveal(card);
+      return card;
+    },
     onBack: options.onBack,
   });
-  return { element: win, dispose: stopNav };
+  return {
+    element: win,
+    dispose: () => {
+      stopNav();
+      pager.dispose();
+    },
+  };
 }
 
 export interface ShrineResultOptions {

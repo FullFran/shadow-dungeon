@@ -30,3 +30,16 @@ html.rotate-blocked body { overflow: hidden; }
 .rotate-gate-text { margin: 0; max-width: 20rem; font-family: var(--md-text-font); font-size: 17px; line-height: 1.4; color: var(--md-text); }
 @keyframes rotate-gate-tip { 0%, 30% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
 @media (prefers-reduced-motion: reduce) { .rotate-gate-icon .px-icon { animation: none; } }
+
+/* The shrine on a phone on its side (odd/tasks/mobile-pass.md T6): its cards that do not fit are pages, with the page buttons
+   beside Volver in the foot (src/ui/pager.ts); nothing inside the window scrolls. */
+.oa-pages { display: contents; }
+.oa-pages[hidden] { display: none; }
+@media (max-height: 560px) {
+  html.touch .oa-window .oa-pages.pg-nav { display: flex; flex: none; margin-right: auto; padding-left: 8px; }
+  html.touch .oa-window .oa-pages.pg-nav[hidden] { display: none; }
+  html.touch .oa-window .oa-pages .pg-btn { width: 52px; }
+  html.touch .oa-window .hl-foot { justify-content: flex-start; }
+  /* The window takes the room the bare #app no longer keeps (hall.css sizes it for a taller screen), clear of its title tab. */
+  html.touch body #app > .oa-window { height: calc(100dvh - 20px); padding-top: 28px; }
+}
