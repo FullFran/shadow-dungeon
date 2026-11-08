@@ -126,3 +126,30 @@ html.touch .st-keys { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .st-tab, .sl-thumb, .st-track, .st-knob, .st-opt, .st-input, .st-btn { transition: none; }
 }
+
+/* ---------- Phones in landscape (touch, short): the sections become a strip of tabs above the rows, the rows page ---------- */
+@media (max-height: 640px) {
+  html.touch #app:has(> .screen-row > .st-window) { padding: max(14px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap: 0; justify-content: center; }
+  html.touch #app > .screen-row:has(.st-window) { flex: 1 1 0; align-self: stretch; display: flex; flex-direction: column; min-height: 0; }
+  html.touch .st-window, html.touch .screen-row > .st-window { height: auto; flex: 1 1 0; min-height: 0; width: 100%; max-width: none; padding: 14px 12px 8px; }
+  html.touch .st-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px; }
+  html.touch .st-rail { flex-direction: row; gap: 4px; padding: 3px; justify-content: space-between; }
+  html.touch .st-tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; min-height: 46px; padding: 2px 4px; font-size: 14px; line-height: 1.05; white-space: normal; text-align: center; }
+  html.touch .st-tab svg.px-icon { width: 22px; height: 22px; }
+  html.touch .st-tab span { overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  html.touch .st-label { white-space: normal; overflow: visible; text-overflow: clip; font-size: 17px; line-height: 1.1; }
+  html.touch .st-input { min-height: 44px; }
+  html.touch .st-row { min-height: 0; gap: 0; padding: 0 2px; }
+  html.touch .st-label { margin-bottom: 1px; }
+  html.touch .st-about { display: none; }
+  html.touch .st-foot { flex-wrap: nowrap; justify-content: space-between; }
+  html.touch .st-pages { flex: none; }
+  html.touch .st-pages .pg-nav { gap: 6px; }
+  html.touch .st-pages .pg-btn { width: 44px; }
+  html.touch .st-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
+}
+@media (max-height: 640px) and (max-width: 680px) {
+  html.touch .st-btn { padding: 0 8px; font-size: 15px; gap: 6px; }
+  html.touch .st-btn svg.px-icon { width: 18px; height: 18px; }
+  html.touch .st-tab { font-size: 13px; }
+}

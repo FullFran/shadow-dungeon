@@ -1,6 +1,8 @@
 import { t } from '../i18n';
+import { isCompactTouch, remeasureSoon } from '../ui/compact-touch';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { ACCOUNT_ICONS, type AccountIconId } from '../ui/icons/account-icons';
+import { attachPager, type Pager } from '../ui/pager';
 import { pixelSvgOf } from '../ui/pixel-icons';
 import { h } from '../ui/window';
 import type { Account, ChoiceAnswer } from './account';
@@ -43,6 +45,25 @@ export interface AccountDrawer {
 
 const icon = (id: AccountIconId): SVGSVGElement => pixelSvgOf(ACCOUNT_ICONS[id], 'px-icon');
 
+/** Boxes that only group the cards of a view: on a phone the cards page one by one, so the boxes open up. */
+const GROUPS = '.ad-main, .ad-side, .ad-danger, .ad-backups, .ad-choice';
+
+/**
+ * The cards of a view, in reading order, with the grouping boxes opened. The guest block becomes two cards: what the choice
+ * means (title, sentence, what an account adds and what a guest gives up) and the way to take it (the button and its tools).
+ */
+function pageItems(box: Element): HTMLElement[] {
+  return [...box.children].flatMap((child): HTMLElement[] => {
+    if (!(child instanceof HTMLElement)) return [];
+    if (child.matches('.ad-guest')) {
+      const [title, sub, facts, ...actions] = [...child.children];
+      const head = h('div', { className: 'ad-card ad-guest-head' }, [title, sub, facts].filter((el): el is Element => !!el));
+      return [head, h('div', { className: 'ad-card ad-guest-actions' }, actions)];
+    }
+    return child.matches(GROUPS) ? pageItems(child) : [child];
+  });
+}
+
 /** What the player sees apart from the forms. */
 type View = 'main' | 'backups';
 
@@ -59,6 +80,8 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   let error: string | null = null;
   let notice: string | null = null;
   let closed = false;
+  /** On a short touch screen the cards of the view page instead of scrolling (rebuilt with every render). */
+  let pager: Pager | null = null;
   let lastKind = account.state().kind;
   const values: Record<FieldKind, string> = { email: '', password: '', code: '' };
 
@@ -74,6 +97,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   function close(): void {
     if (closed) return;
     closed = true;
+    pager?.dispose();
     window.removeEventListener('keydown', onKey, true);
     veil.remove();
     previous?.focus?.({ preventScroll: true });
@@ -386,14 +410,30 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     // The forms carry their own status line; elsewhere the messages sit under the header.
     say.textContent = busy ? t('account.busy') : error || notice ? t(error ?? notice!) : '';
     say.className = `ad-say${error ? ' is-error' : ''}`;
-    panel.replaceChildren(h('header', { className: 'ad-head' }, [h('h2', { id: 'ad-title', className: 'ad-title', textContent: t(titleKey) }), close_]), h('div', { className: `ad-cols${columns.length > 1 ? '' : ' is-single'}` }, columns));
+    // The backups list can run long on a phone: its way back stays in the header, not at the end of the pages.
+    const compact = isCompactTouch();
+    const leave = compact && view === 'backups' ? h('button', { type: 'button', className: 'rk-btn ad-back', textContent: t('menu.back') }) : null;
+    leave?.addEventListener('click', () => ((view = 'main'), (error = null), render()));
+    panel.replaceChildren(h('header', { className: 'ad-head' }, [...(leave ? [leave] : []), h('h2', { id: 'ad-title', className: 'ad-title', textContent: t(titleKey) }), close_]), h('div', { className: `ad-cols${columns.length > 1 ? '' : ' is-single'}` }, columns));
     if (!panel.contains(say)) panel.querySelector('.ad-main')?.prepend(say);
+    pager?.dispose();
+    pager = null;
+    if (compact) {
+      const cols = panel.querySelector<HTMLElement>('.ad-cols')!;
+      cols.classList.add('is-paged');
+      cols.replaceChildren(...pageItems(cols));
+      const nav = h('div', { className: 'ad-pages' });
+      panel.append(nav);
+      pager = attachPager(cols, { nav, enabled: isCompactTouch });
+      remeasureSoon(pager);
+    }
     // A rebuilt panel loses the focus: give it back to the first control.
     if (!panel.contains(document.activeElement)) panel.querySelector<HTMLElement>('.ad-provider, input, .ad-main button')?.focus({ preventScroll: true });
   }
 
   // ---- keys
-  const focusables = (): HTMLElement[] => [...panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([hidden])')];
+  // A control on another page, or the page buttons while there is only one page, cannot take the focus.
+  const focusables = (): HTMLElement[] => [...panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([hidden])')].filter((el) => !el.closest('.pg-off, [hidden]'));
 
   function onKey(e: KeyboardEvent): void {
     if (closed) return;

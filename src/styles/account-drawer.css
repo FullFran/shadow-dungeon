@@ -93,3 +93,46 @@
 }
 @media (max-width: 520px) { .ad-drawer.md-window { width: 100%; border-radius: 0; } }
 @media (prefers-reduced-motion: reduce) { .drawer-veil, .ad-drawer.md-window { animation: none; } }
+
+/* ---------- Short touch screens: the cards of the drawer page two by two instead of scrolling ---------- */
+@media (max-height: 640px) {
+  html.touch .ad-drawer.md-window { width: min(41rem, 100%); padding: 8px 12px max(6px, env(safe-area-inset-bottom)); gap: 6px; }
+  html.touch .ad-head { gap: 8px; min-height: 44px; }
+  html.touch .ad-title { flex: 1 1 auto; min-width: 0; font-size: 24px; }
+  html.touch .ad-back { flex: none; min-height: 44px; padding: 0 12px; font-size: 18px; }
+  html.touch .ad-cols.is-paged { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: min-content; align-content: start; align-items: start; gap: 6px 10px; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+  html.touch .ad-cols.is-paged > * { grid-column: 1 / -1; min-width: 0; margin: 0; }
+  html.touch .ad-cols.is-paged > .rk-btn, html.touch .ad-cols.is-paged > .ad-backup { grid-column: auto; }
+  html.touch .ad-cols.is-paged > .ad-file { display: none; }
+  html.touch .ad-cols.is-paged .ad-or { display: none; }
+  html.touch .ad-cols.is-paged .ad-why { display: block; font-size: 14px !important; }
+  html.touch .ad-cols.is-paged .ad-why.is-entry { display: none; }
+  html.touch .ad-cols.is-paged .ad-providers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  html.touch .ad-cols.is-paged .ad-pv-long { display: none; }
+  html.touch .ad-cols.is-paged .ad-pv-short { display: inline; }
+  html.touch .ad-cols.is-paged .ad-provider { justify-content: center; padding: 0 8px; }
+  /* The form: two fields side by side (one field and Send side by side), then the links. */
+  html.touch .ad-cols.is-paged .ad-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 8px; }
+  html.touch .ad-cols.is-paged .ad-form > .ad-say, html.touch .ad-cols.is-paged .ad-form > .ad-links { grid-column: 1 / -1; }
+  html.touch .ad-cols.is-paged .ad-form > .rk-wide { grid-column: 1 / -1; }
+  html.touch .ad-cols.is-paged .ad-form > .rk-input:first-child:nth-last-child(4) { grid-column: 1; }
+  html.touch .ad-cols.is-paged .ad-form > .rk-input:first-child:nth-last-child(4) + .rk-wide { grid-column: 2; }
+  html.touch .ad-cols.is-paged .ad-say { min-height: 0; }
+  html.touch .ad-cols.is-paged .ad-say:empty { display: none; }
+  html.touch .ad-cols.is-paged .ad-links, html.touch .ad-cols.is-paged .ad-tools { gap: 0 4px; margin-top: 0; }
+  html.touch .ad-cols.is-paged .ad-guest-title h3 { font-size: 20px; }
+  html.touch .ad-cols.is-paged .ad-guest-sub { display: block; }
+  html.touch .ad-cols.is-paged .ad-guest-head, html.touch .ad-cols.is-paged .ad-guest-actions { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; }
+  html.touch .ad-cols.is-paged .ad-facts-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  html.touch .ad-cols.is-paged .ad-facts { grid-column: auto; padding: 0; background: none; border: 0; }
+  html.touch .ad-cols.is-paged .ad-facts li { font-size: 13px; line-height: 1.25; }
+  html.touch .ad-cols.is-paged .ad-who-label { display: block; }
+  html.touch .ad-cols.is-paged .ad-note { font-size: 13px !important; }
+  html.touch .ad-cols.is-paged .ad-backup { padding: 6px 10px; gap: 2px; }
+  html.touch .ad-cols.is-paged .ad-backup-when { font-size: 16px; }
+  html.touch .ad-cols.is-paged .rk-btn { font-size: 19px; }
+  html.touch .ad-pages:not([hidden]) { flex: none; display: flex; justify-content: center; }
+  html.touch .ad-pages .pg-nav { gap: 6px; }
+  html.touch .ad-pages .pg-btn { width: 56px; }
+  html.touch .ad-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
+}

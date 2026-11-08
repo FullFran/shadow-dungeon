@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CREDITS_SECTIONS, TEAM, creditedArtists, splitSprites } from '../../src/app/credits';
+import { CREDITS_SECTIONS, TEAM, creditedArtists, splitSentences, splitSprites } from '../../src/app/credits';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
 const md = readFileSync('CREDITS.md', 'utf8');
@@ -43,5 +43,21 @@ describe('credited sprites survive the cards', () => {
     const expected = rows.reduce((sum, line) => sum + (line.split('|')[3] ?? '').split(/\),/).length, 0);
     const got = creditedArtists(md).reduce((sum, a) => sum + splitSprites(a.sprites).length, 0);
     expect(got).toBe(expected);
+  });
+});
+
+describe('credits text that pages on a phone', () => {
+  it('splits a paragraph into sentences without losing a character', () => {
+    expect(splitSentences('Uno dos. Tres cuatro! ¿Cinco? Seis')).toEqual(['Uno dos.', 'Tres cuatro!', '¿Cinco?', 'Seis']);
+    expect(splitSentences('Solo una frase sin punto final')).toEqual(['Solo una frase sin punto final']);
+  });
+
+  it('does not cut at a dot inside a version, a domain or a name', () => {
+    expect(splitSentences('Licencia CC BY-NC 4.0 (uso no comercial). Otra frase en patch.gg, de Inc., y más.')).toEqual(['Licencia CC BY-NC 4.0 (uso no comercial).', 'Otra frase en patch.gg, de Inc., y más.']);
+  });
+
+  it('rejoins every credits paragraph of both languages to its original text', () => {
+    const keys = ['credits.sprites', 'credits.font', 'credits.fontText', 'credits.music', 'credits.audio', 'credits.effects', 'credits.tiles', 'credits.data', 'credits.code', 'notice.fanProject'];
+    for (const language of LANGUAGES) for (const key of keys) expect(splitSentences(catalog(language)[key]!).join(' '), `${language} ${key}`).toBe(catalog(language)[key]);
   });
 });

@@ -205,12 +205,12 @@ html.touch .ach-tile, html.touch .ach-rail .md-item { min-height: 44px; }
 .news-body { display: flex; flex-direction: column; gap: 14px; padding: 2px 14px 14px; }
 .news-body[hidden] { display: none; }
 .news-group { --sec: var(--md-cursor); display: flex; flex-direction: column; gap: 8px; }
-.news-group.sec-new { --sec: #ffbf5e; }
-.news-group.sec-improved { --sec: #5fd0e8; }
-.news-group.sec-fixed { --sec: #7fe08a; }
-.news-group.sec-multiplayer { --sec: #c9b0ff; }
-.news-group.sec-balance { --sec: #ece3d3; }
-.news-group.sec-known { --sec: #ff8a7a; }
+.news-group.sec-new, .news-row.sec-new { --sec: #ffbf5e; }
+.news-group.sec-improved, .news-row.sec-improved { --sec: #5fd0e8; }
+.news-group.sec-fixed, .news-row.sec-fixed { --sec: #7fe08a; }
+.news-group.sec-multiplayer, .news-row.sec-multiplayer { --sec: #c9b0ff; }
+.news-group.sec-balance, .news-row.sec-balance { --sec: #ece3d3; }
+.news-group.sec-known, .news-row.sec-known { --sec: #ff8a7a; }
 .news-badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 3px 14px 3px 6px; color: var(--sec); font-size: 22px; line-height: 1.1; background: rgba(5, 4, 7, 0.6); border: 2px solid var(--sec); border-radius: 4px; }
 .news-badge .px-icon { width: 24px; height: 24px; }
 .news-rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -275,4 +275,36 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 @media (max-height: 520px) {
   .ach-cat-name { display: none; }
   .ach-rail { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }
+}
+
+/* ---------- Notes on short touch screens: one release at a time, its notes paged, no scrolling ---------- */
+.news-window.is-compact .news-row { --sec: var(--md-cursor); }
+@media (max-height: 640px) {
+  html.touch #app:has(> .news-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app > .news-window.is-compact { flex: 1 1 0; width: 100%; max-width: 54rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
+  html.touch .news-window.is-compact > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; padding: 0; }
+  .news-cur { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 30px; }
+  .news-cur .news-version { font-size: 24px; color: var(--md-cursor); }
+  .news-page { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .news-page .news-row { grid-template-columns: 28px minmax(0, 1fr) auto; gap: 2px 10px; padding: 6px 10px; font-size: 15px; line-height: 1.3; }
+  .news-page .news-row.is-cont { padding-top: 2px; padding-bottom: 6px; }
+  .news-page .news-row.is-cont .news-row-icon { height: 1px; }
+  .news-note { min-width: 0; }
+  .news-note > .news-row-text { display: inline; }
+  .news-tag { display: inline-block; margin-right: 8px; font-family: var(--md-text-font); font-size: 13px; font-weight: 700; line-height: 1.2; letter-spacing: 0.04em; text-transform: uppercase; color: var(--sec); }
+  .news-page .news-row-text { font-size: 15px; line-height: 1.3; }
+  .news-shot { display: block; width: 88px; aspect-ratio: 16 / 10; object-fit: cover; align-self: start; border: 2px solid var(--relic-gold-deep); border-radius: 4px; background: var(--md-ink); }
+  .news-nav { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .news-pages { flex: none; display: flex; justify-content: center; }
+  .news-pages .pg-nav { gap: 6px; }
+  .news-pages .pg-btn { width: 44px; }
+  .news-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
+  .news-step { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; height: 44px; padding: 0 10px; cursor: pointer; background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); font-family: var(--md-text-font); font-size: 15px; font-weight: 700; color: var(--md-text); }
+  .news-step:focus-visible { border-color: var(--md-cursor); outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+  .news-step:disabled { opacity: 0.35; cursor: default; }
+  .news-step-arrow { display: block; width: 14px; height: 18px; background: var(--md-cursor); clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+  .news-step-arrow.is-newer { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+}
+@media (max-height: 640px) and (max-width: 700px) {
+  html.touch #app:has(> .news-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 }

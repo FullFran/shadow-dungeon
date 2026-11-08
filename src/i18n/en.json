@@ -3840,6 +3840,8 @@
   "news.collapse": "Collapse",
   "news.items.one": "{n} change",
   "news.items": "{n} changes",
+  "news.older": "Older version",
+  "news.newer": "Newer version",
   "news.latest": "Latest",
   "news.image.zoom": "Enlarge the screenshot",
   "news.image.shrink": "Shrink the screenshot",

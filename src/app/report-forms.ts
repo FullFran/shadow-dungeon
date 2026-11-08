@@ -174,3 +174,6 @@ export function validateReport(type: ReportType, answers: Readonly<Record<string
   }
   return { ok: true };
 }
+
+/** Columns of a phone's choice grid: up to five choices on one row, more on two rows of at most five (nine types, "not stated" plus eight places). */
+export const choiceColumns = (count: number): number => (count <= 5 ? Math.max(1, count) : Math.min(5, Math.ceil(count / 2)));

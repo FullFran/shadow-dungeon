@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { LAST_SEEN_VERSION_KEY, markVersionSeen, patchNotesDue, readLastSeenVersion, releaseSections, sectionTitleKey, splitHeadline } from '../../src/app/patch-notes';
+import { LAST_SEEN_VERSION_KEY, markVersionSeen, patchNotesDue, phoneNotes, readLastSeenVersion, releaseSections, sectionTitleKey, splitHeadline } from '../../src/app/patch-notes';
 import { OPTIONS_ENTRIES } from '../../src/app/title-menu';
 import { CHANGELOG, CHANGELOG_SECTIONS } from '../../src/data/changelog';
 import { catalog, LANGUAGES } from '../../src/i18n';
@@ -112,5 +112,40 @@ describe('splitHeadline', () => {
   });
   it('names the new news texts in both languages', () => {
     for (const language of LANGUAGES) for (const key of ['news.expand', 'news.collapse', 'news.items', 'news.latest']) expect(catalog(language)[key], key).toBeTruthy();
+  });
+});
+
+describe('the notes on a phone (one page of notes at a time, nothing scrolls)', () => {
+  const language = (l: 'es' | 'en') => l;
+
+  it('lists every note of a release, section by section, in the fixed order', () => {
+    for (const release of CHANGELOG) {
+      const notes = phoneNotes(release, 'es');
+      expect(notes.length, release.version).toBe(releaseSections(release).reduce((sum, [, items]) => sum + items.length, 0));
+      const order = notes.map((n) => CHANGELOG_SECTIONS.indexOf(n.section));
+      expect(order, release.version).toEqual([...order].sort((a, b) => a - b));
+    }
+  });
+
+  it('cuts a long note into pieces of at most 120 characters at sentence ends and commas, losing nothing', () => {
+    for (const l of LANGUAGES) {
+      for (const release of CHANGELOG) {
+        for (const note of phoneNotes(release, language(l))) {
+          expect(note.pieces.join(' '), `${release.version} ${l}`).toBe(note.text);
+          // A piece longer than the limit is one stretch with no sentence end, comma, semicolon or colon to cut at.
+          for (const piece of note.pieces) if (piece.length > 120) expect(/[.!?,;:]\s/.test(piece), piece).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('keeps a short note in one piece', () => {
+    const note = phoneNotes({ version: '9.9.9', date: '2026-11-08', sections: { new: [{ es: 'Algo nuevo: corto.', en: 'Something new: short.' }] } }, 'es')[0]!;
+    expect(note.pieces).toEqual(['Algo nuevo: corto.']);
+    expect(note.section).toBe('new');
+  });
+
+  it('names the stepping buttons in both languages', () => {
+    for (const l of LANGUAGES) for (const key of ['news.older', 'news.newer']) expect(catalog(l)[key], `${l} ${key}`).toBeTruthy();
   });
 });
