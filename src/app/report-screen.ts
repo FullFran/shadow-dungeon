@@ -2,11 +2,13 @@ import '../styles/report-dismiss.css';
 import { REPORT_CATEGORIES, type ReportPayload, type ReportResult } from '../adapters/report-api';
 import type { KeyValueStore } from '../adapters/storage';
 import { t } from '../i18n';
-import { dropdown, type Dropdown } from '../ui/dropdown';
+import { isCompactTouch, remeasureSoon } from '../ui/compact-touch';
+import { dropdown, type DropdownItem } from '../ui/dropdown';
 import { FORM_ICONS, REPORT_ICONS } from '../ui/icons/report-icons';
+import { attachPager } from '../ui/pager';
 import { pixelSvgOf } from '../ui/pixel-icons';
 import { h } from '../ui/window';
-import { composeReport, emptyAnswers, fieldAnswer, optionKey, REPORT_FORMS, REPORT_LIMITS, REPORT_TYPES, validateReport, type FieldSpec, type ReportType } from './report-forms';
+import { choiceColumns, composeReport, emptyAnswers, fieldAnswer, optionKey, REPORT_FORMS, REPORT_LIMITS, REPORT_TYPES, validateReport, type FieldSpec, type ReportType } from './report-forms';
 
 /**
  * "Reportar un problema" (issue #9): a short form a player fills in under a
@@ -172,6 +174,56 @@ export interface ReportWindowOptions {
 /** Shows a field's characters used once it nears its limit. */
 const COUNT_FROM = 0.8;
 
+/** What the form needs of a choice control: the game's dropdown, or on a short touch screen a grid of buttons. */
+interface Picker {
+  element: HTMLElement;
+  close(): void;
+  dispose(): void;
+}
+
+/**
+ * The choices as a grid of radio buttons, for a short touch screen where a dropdown's list (up to nine options of 44 px) would
+ * not fit and would have to scroll. Arrows move the choice like any radio group.
+ */
+function choiceGrid(config: { label: string; labelledBy: string; value: string; items: readonly DropdownItem[]; onChange(value: string): void }): Picker {
+  let value = config.value;
+  const group = h('div', { className: 'rp-choices' });
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-labelledby', config.labelledBy);
+  // Two rows at most: as many columns as it takes, up to five.
+  group.style.gridTemplateColumns = `repeat(${choiceColumns(config.items.length)}, minmax(0, 1fr))`;
+  const buttons = config.items.map((item) => {
+    const button = h('button', { type: 'button', className: 'rp-choice' }, [h('span', { textContent: item.label })]);
+    button.setAttribute('role', 'radio');
+    button.addEventListener('click', () => {
+      value = item.value;
+      config.onChange(value);
+      paint();
+    });
+    return button;
+  });
+  function paint(): void {
+    const at = Math.max(0, config.items.findIndex((item) => item.value === value));
+    buttons.forEach((button, i) => {
+      button.setAttribute('aria-checked', String(i === at));
+      button.tabIndex = i === at ? 0 : -1;
+    });
+  }
+  group.addEventListener('keydown', (e) => {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const at = buttons.findIndex((button) => button === document.activeElement);
+    const next = buttons[Math.min(buttons.length - 1, Math.max(0, at + step))];
+    next?.focus({ preventScroll: true });
+    next?.click();
+  });
+  group.append(...buttons);
+  paint();
+  return { element: group, close: () => undefined, dispose: () => undefined };
+}
+
 interface FieldView {
   spec: FieldSpec;
   control: HTMLElement;
@@ -194,11 +246,11 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   status.setAttribute('aria-live', 'polite');
   const title = h('h2', { className: 'md-window-title', textContent: t('report.title') });
   const body = h('div', { className: 'md-window-body' });
-  const element = h('section', { className: 'md-window shop report-window' }, [title, body]);
+  const element = h('section', { className: isCompactTouch() ? 'md-window shop report-window is-compact' : 'md-window shop report-window' }, [title, body]);
   let busy = false;
   let disposed = false;
   let views = new Map<string, FieldView>();
-  let dropdowns: Dropdown[] = [];
+  let dropdowns: Picker[] = [];
 
   const answerKey = (id: string) => `${draft.type}.${id}`;
 
@@ -208,22 +260,25 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   const paintAbout = () => {
     about.textContent = t(`report.type.${draft.type}.about`);
   };
-  const typePicker = dropdown({
-    label: t('report.type.label'),
-    labelledBy: 'rp-type-label',
-    value: draft.type,
-    items: REPORT_TYPES.map((type) => ({ value: type, label: t(`report.type.${type}`), hint: t(`report.type.${type}.about`), icon: () => pixelSvgOf(REPORT_ICONS[REPORT_FORMS[type].icon]!, 'px-icon rp-icon') })),
-    onChange: (value) => {
-      draft.type = value as ReportType;
-      keep();
-      paintAbout();
-      status.textContent = '';
-      renderFields();
-    },
-  });
+  // A short touch screen pages the form step by step instead of scrolling it, and picks from button grids instead of dropdown lists.
+  const compact = isCompactTouch();
+  const typeItems: DropdownItem[] = REPORT_TYPES.map((type) => ({ value: type, label: t(`report.type.${type}`), hint: t(`report.type.${type}.about`), icon: () => pixelSvgOf(REPORT_ICONS[REPORT_FORMS[type].icon]!, 'px-icon rp-icon') }));
+  const onType = (value: string): void => {
+    draft.type = value as ReportType;
+    keep();
+    paintAbout();
+    status.textContent = '';
+    renderFields();
+  };
+  const typePicker: Picker & { element: HTMLElement } = compact
+    ? choiceGrid({ label: t('report.type.label'), labelledBy: 'rp-type-label', value: draft.type, items: typeItems, onChange: onType })
+    : dropdown({ label: t('report.type.label'), labelledBy: 'rp-type-label', value: draft.type, items: typeItems, onChange: onType });
 
   // --- the fields of the chosen type
   const fields = h('div', { className: 'rp-fields' });
+  const pageNav = h('div', { className: 'rp-pages' });
+  const pager = compact ? attachPager(fields, { nav: pageNav, enabled: isCompactTouch }) : null;
+  const typeField = h('div', { className: 'rp-field rp-type' }, [typeLabel, typePicker.element, about]);
 
   function textField(spec: FieldSpec, id: string): { control: HTMLTextAreaElement; extra: HTMLElement } {
     const box = h('textarea', { className: 'rp-input', id, value: fieldAnswer(draft.answers, draft.type, spec.id) });
@@ -247,18 +302,18 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     return { control: box, extra: count };
   }
 
-  function selectField(spec: FieldSpec, labelId: string): { control: HTMLElement; picker: Dropdown } {
-    const picker = dropdown({
+  function selectField(spec: FieldSpec, labelId: string): { control: HTMLElement; picker: Picker } {
+    const config = {
       label: t(`report.field.${draft.type}.${spec.id}`),
       labelledBy: labelId,
       value: fieldAnswer(draft.answers, draft.type, spec.id),
-      placeholder: t('report.answer.none'),
       items: [{ value: '', label: t('report.answer.none') }, ...spec.options!.map((o) => ({ value: o, label: t(optionKey(spec.set!, o)) }))],
-      onChange: (value) => {
+      onChange: (value: string) => {
         draft.answers[answerKey(spec.id)] = value;
         keep();
       },
-    });
+    };
+    const picker = compact ? choiceGrid(config) : dropdown({ ...config, placeholder: t('report.answer.none') });
     return { control: picker.element, picker };
   }
 
@@ -267,8 +322,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     dropdowns = [];
     views = new Map();
     const form = REPORT_FORMS[draft.type];
-    fields.replaceChildren(
-      ...form.fields.map((spec) => {
+    const nodes = form.fields.map((spec) => {
         const base = `rp-${draft.type}-${spec.id}`;
         const name = t(`report.field.${draft.type}.${spec.id}`);
         const labelNodes = [h('span', { textContent: name }), spec.required ? h('span', { className: 'rp-req', textContent: t('report.required') }) : null];
@@ -296,8 +350,15 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
         };
         views.set(spec.id, view);
         return h('div', { className: 'rp-field' + (spec.kind === 'text' && !spec.half ? ' is-wide' : '') }, [label, control, 'extra' in built ? built.extra : null, error]);
-      }),
-    );
+    });
+    // The form's steps: the type, each field, then the technical-info switch; the footer holds the page buttons.
+    if (compact) {
+      // The type grid stays where it is (the focus stays on the button just chosen); the steps after it are replaced.
+      if (fields.firstElementChild !== typeField) fields.prepend(typeField);
+      while (fields.children.length > 1) fields.lastElementChild?.remove();
+      fields.append(...nodes, techStep);
+    } else fields.replaceChildren(...nodes);
+    pager?.reset();
   }
 
   // --- the technical-info switch
@@ -310,6 +371,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   ]);
   techRow.setAttribute('role', 'switch');
   const tech = h('p', { className: 'report-tech' });
+  const techStep = h('div', { className: 'rp-field rp-tech' }, [techRow]);
   const paintTech = () => {
     techRow.setAttribute('aria-checked', String(draft.attachTech));
     techState.textContent = t(draft.attachTech ? 'report.on' : 'report.off');
@@ -357,8 +419,10 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     if (!checked.ok) {
       const view = views.get(checked.field);
       view?.invalid(true, t(checked.reason === 'required' ? 'report.error.required' : 'report.error.too-long'));
-      view?.control.focus();
-      view?.control.closest('.rp-field')?.scrollIntoView?.({ block: 'nearest' });
+      const step = view?.control.closest<HTMLElement>('.rp-field');
+      if (step) pager?.reveal(step);
+      view?.control.focus({ preventScroll: true });
+      step?.scrollIntoView?.({ block: 'nearest' });
       return;
     }
     busy = true;
@@ -381,9 +445,14 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   function form(): void {
     paintAbout();
     renderFields();
+    if (compact) {
+      // One step per page, the page buttons beside Send and Back: nothing scrolls.
+      body.replaceChildren(fields, h('div', { className: 'rp-footer' }, [status, h('div', { className: 'rp-actions' }, [pageNav, backButton, sendButton])]));
+      return;
+    }
     // The fields scroll; the status line and the buttons stay in view.
     body.replaceChildren(
-      h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-intro', textContent: t('report.intro') }), h('div', { className: 'rp-field' }, [typeLabel, typePicker.element, about]), fields, techRow, tech]),
+      h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-intro', textContent: t('report.intro') }), typeField, fields, techRow, tech]),
       h('div', { className: 'rp-footer' }, [status, h('div', { className: 'rp-actions' }, [sendButton, backButton])]),
     );
   }
@@ -413,6 +482,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   window.addEventListener('keydown', onKey);
 
   form();
+  if (pager) remeasureSoon(pager);
   // Start on the type picker: a keyboard player opens it with Enter or the arrows.
   requestAnimationFrame(() => {
     if (!disposed && element.isConnected && !document.activeElement?.closest?.('.report-window')) typePicker.element.focus({ preventScroll: true });
@@ -423,6 +493,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
       disposed = true;
       window.removeEventListener('keydown', onKey);
       typePicker.dispose();
+      pager?.dispose();
       for (const d of dropdowns) d.dispose();
       dropdowns = [];
     },

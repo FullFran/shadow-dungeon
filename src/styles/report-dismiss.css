@@ -153,3 +153,45 @@
 @media (prefers-reduced-motion: reduce) {
   .dd, .dd-caret, .dd-popup, .rp-input, .rp-track, .rp-knob, .rp-btn, .rp-switch { transition: none; animation: none; }
 }
+
+/* ---------- Report on short touch screens: the form pages step by step (type, each field, technical info), nothing scrolls ---------- */
+.rp-pages { flex: none; }
+.rp-choices { display: grid; gap: 6px; }
+.rp-choice { all: unset; box-sizing: border-box; display: grid; place-items: center; min-height: 44px; padding: 2px 3px; cursor: pointer; text-align: center; font-family: var(--md-text-font); font-size: 14px; line-height: 1.15; color: var(--md-text); background: var(--md-ink); border: 2px solid var(--rp-edge); border-radius: 6px; overflow-wrap: break-word; }
+.rp-choice:hover { border-color: var(--md-border); }
+.rp-choice[aria-checked='true'] { color: var(--md-ink); font-weight: 700; background: linear-gradient(180deg, var(--md-cursor), var(--relic-ember)); border-color: var(--relic-ember-deep); }
+.rp-choice:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+@media (max-height: 640px) {
+  html.touch #app:has(.report-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  /* Over the town or a run the window is bounded by the screen too, so its steps page there as well. */
+  html.touch .report-window.is-compact { max-height: calc(100dvh - 24px); }
+  html.touch #app > .report-window.is-compact { flex: 1 1 0; width: 100%; max-width: 46rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
+  html.touch .report-window.is-compact > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; max-height: none; overflow: hidden; padding: 0; }
+  .report-window.is-compact .rp-fields { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; margin: 0; }
+  .report-window.is-compact .rp-field { flex: none; gap: 4px; }
+  .report-window.is-compact .rp-label { font-size: 19px; }
+  .report-window.is-compact .rp-input { padding: 6px 10px; font-size: 16px; line-height: 1.3; }
+  /* A long box never pushes its page past the window; the text inside scrolls like any native box. */
+  .report-window.is-compact textarea.rp-input { min-height: 44px; max-height: calc(100dvh - 252px); resize: none; }
+  .report-window.is-compact .rp-about, .report-window.is-compact .report-intro, .report-window.is-compact .report-tech { display: none; }
+  .report-window.is-compact .rp-switch { margin: 0; min-height: 52px; }
+  .report-window.is-compact .rp-footer { flex: none; margin: 0; padding-top: 4px; }
+  .report-window.is-compact .report-status { margin: 0 0 4px; min-height: 0; font-size: 14px; }
+  .report-window.is-compact .report-status:empty { display: none; }
+  .report-window.is-compact .rp-actions { margin: 0; gap: 8px; flex-direction: row; align-items: center; }
+  .report-window.is-compact .rp-pages { margin-right: auto; }
+  .report-window.is-compact .rp-pages .pg-nav { gap: 6px; }
+  .report-window.is-compact .rp-pages .pg-btn { width: 44px; }
+  .report-window.is-compact .rp-pages .pg-count { min-width: 2.4rem; font-size: 17px; }
+  .report-window.is-compact .rp-btn { min-height: 44px; padding: 4px 16px; font-size: 19px; }
+  .report-window.is-compact .rp-secondary { width: auto; }
+}
+@media (max-height: 640px) and (max-width: 700px) {
+  html.touch #app:has(.report-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+}
+@media (max-width: 700px) {
+  .report-window.is-compact .rp-choice { font-size: 13px; padding: 2px; }
+}
+@media (max-height: 380px) {
+  .report-window.is-compact .rp-choice { min-height: 38px; }
+}

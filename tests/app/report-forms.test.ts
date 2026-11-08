@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { REPORT_CATEGORIES } from '../../src/adapters/report-api';
-import { composeReport, fieldAnswer, missingRequired, optionKey, REPORT_FORMS, REPORT_TYPES, validateReport, type FieldSpec } from '../../src/app/report-forms';
+import { choiceColumns, composeReport, fieldAnswer, missingRequired, optionKey, REPORT_FORMS, REPORT_TYPES, validateReport, type FieldSpec } from '../../src/app/report-forms';
 import { REPORT_LIMITS } from '../../src/app/report-screen';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
@@ -147,4 +147,16 @@ describe('form text', () => {
       for (const key of ['report.required', 'report.error.required', 'report.type.label', 'report.back', 'report.answer.none', 'report.attachTech.about.short']) expect(tr[key], key).toBeTruthy();
     });
   }
+});
+
+describe('choice grids on a phone (a dropdown list would have to scroll)', () => {
+  it('lays up to five choices on one row and more on two rows of at most five', () => {
+    expect([1, 2, 3, 4, 5].map(choiceColumns)).toEqual([1, 2, 3, 4, 5]);
+    expect([6, 7, 8, 9, 10].map(choiceColumns)).toEqual([3, 4, 4, 5, 5]);
+  });
+
+  it('fits every choice of every report form on at most two rows', () => {
+    const sizes = [REPORT_TYPES.length, ...REPORT_TYPES.flatMap((type) => REPORT_FORMS[type].fields.filter((f) => f.kind === 'select').map((f) => f.options!.length + 1))];
+    for (const n of sizes) expect(Math.ceil(n / choiceColumns(n)), `${n} choices`).toBeLessThanOrEqual(2);
+  });
 });

@@ -134,6 +134,7 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
 /* ---------- Gamepad controls on short touch screens: tabs and styles on top, the legend pages, no drawing ---------- */
 @media (max-height: 640px) {
   html.touch #app:has(.controls-window) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch .controls-window { max-height: calc(100dvh - 24px); }
   html.touch #app > .controls-window { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
   html.touch .controls-window > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; padding: 0; }
   html.touch .controls-window .pc-bar { flex: none; margin: 0; gap: 6px 10px; flex-wrap: nowrap; }
