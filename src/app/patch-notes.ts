@@ -210,7 +210,7 @@ export function patchNotesWindow(footer: HTMLElement): HTMLElement {
 
 /** A note's first piece with its headline bold; a continuation is plain text. */
 function pieceText(note: PhoneNote, index: number): HTMLElement {
-  if (index > 0) return h('p', { className: 'news-row-text', textContent: note.pieces[index] });
+  if (index > 0) return h('p', { className: 'news-row-text', textContent: note.pieces[index] ?? '' });
   const first = note.pieces[0] ?? '';
   const { head } = splitHeadline(note.text);
   const cut = head.length < first.length ? head.length : first.length;
