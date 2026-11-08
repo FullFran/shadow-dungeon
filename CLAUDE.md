@@ -12,9 +12,10 @@ New content must be woven into everything that already exists. A feature is not 
 
 ## Preproduction
 
-- Environment: https://sd-pre.fullfran.com, behind Cloudflare Access (owner and Álvaro's emails only; a plain curl gets the Access login redirect, not the API). Its own empty database, separate from production (`sd-api.fullfran.com`): test accounts are fine there. No Google/Discord/Twitch login and no email there.
-- Deploy branch: `preprod` on FullFran/shadow-dungeon. The server polls it every 2 minutes and builds the game (`npm run build` with `VITE_API_URL=https://sd-pre.fullfran.com`) and `server/`; `/api/` and `/_/` go to the backend, the rest to the game. A failed build keeps the previous version.
+- Environment: https://sd-pre.fullfran.com, behind Cloudflare Access (owner and Álvaro's emails only; a plain curl gets the Access login redirect, not the API). Its own empty database, separate from production (`sd-api.fullfran.com`): test accounts are fine there; it never holds production accounts or saves. Sign-in is Clerk (development instance: Google, Discord, email and password); mail goes out through production's Resend account. When the Access session expires, API calls are redirected to the Access login and fail as CORS errors (the game shows "Sin conexión"): reload the page to log in again.
+- Deploy branch: `preprod` on FullFran/shadow-dungeon. The server polls it every 2 minutes and builds the game (`npm run build` with `VITE_API_URL=https://sd-pre.fullfran.com` and the Clerk publishable key) and `server/`; `/api/` and `/_/` go to the backend, the rest to the game. A failed build keeps the previous version.
 - Flow: work branch → `npm run deploy:preprod -- --yes` (deploy gate, then fast-forwards `preprod` to the branch) → test on sd-pre → merge to `main` when it is good.
+- Class names must never start with `ad-`: ad blockers hide them (tests/ui/adblock-safe-classes.test.ts).
 - Pushing to `preprod` publishes to a shared environment: ask the user before running the deploy, every time. No SSH or server logs; test the API locally (`server/`, `go run . serve`) or with an Access service token.
 
 ## Conventions

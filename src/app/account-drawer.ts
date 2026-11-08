@@ -8,6 +8,8 @@ import { h } from '../ui/window';
 import type { Account, ChoiceAnswer } from './account';
 import { choiceView, cardText, dateText, reasonText, saveFile, statusText, type ChoiceStep } from './account-screen';
 import { backTarget, focusMove, GUEST_CONS, GUEST_PROS, modeView, outcomeOf, type DrawerMode, type FieldKind, type FlowAction } from './account-drawer-model';
+import type { LinkStatus, OAuthProvider } from '../adapters/clerk-auth';
+import { OAUTH_PROVIDERS } from '../adapters/clerk-auth';
 import type { AuthFlow, FlowResult } from './auth-flow';
 import { backupProfile, parseImport } from './backups';
 import { profileSummary } from './profile';
@@ -46,7 +48,7 @@ export interface AccountDrawer {
 const icon = (id: AccountIconId): SVGSVGElement => pixelSvgOf(ACCOUNT_ICONS[id], 'px-icon');
 
 /** Boxes that only group the cards of a view: on a phone the cards page one by one, so the boxes open up. */
-const GROUPS = '.ad-main, .ad-side, .ad-danger, .ad-backups, .ad-choice';
+const GROUPS = '.acct-main, .acct-side, .acct-danger, .acct-backups, .acct-choice';
 
 /**
  * The cards of a view, in reading order, with the grouping boxes opened. The guest block becomes two cards: what the choice
@@ -55,17 +57,17 @@ const GROUPS = '.ad-main, .ad-side, .ad-danger, .ad-backups, .ad-choice';
 function pageItems(box: Element): HTMLElement[] {
   return [...box.children].flatMap((child): HTMLElement[] => {
     if (!(child instanceof HTMLElement)) return [];
-    if (child.matches('.ad-guest')) {
+    if (child.matches('.acct-guest')) {
       const [title, sub, facts, ...actions] = [...child.children];
-      const head = h('div', { className: 'ad-card ad-guest-head' }, [title, sub, facts].filter((el): el is Element => !!el));
-      return [head, h('div', { className: 'ad-card ad-guest-actions' }, actions)];
+      const head = h('div', { className: 'acct-card acct-guest-head' }, [title, sub, facts].filter((el): el is Element => !!el));
+      return [head, h('div', { className: 'acct-card acct-guest-actions' }, actions)];
     }
     return child.matches(GROUPS) ? pageItems(child) : [child];
   });
 }
 
 /** What the player sees apart from the forms. */
-type View = 'main' | 'backups';
+type View = 'main' | 'backups' | 'link';
 
 export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer {
   const { account, flow } = options;
@@ -84,13 +86,25 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   let pager: Pager | null = null;
   let lastKind = account.state().kind;
   const values: Record<FieldKind, string> = { email: '', password: '', code: '' };
+  /** Google and Discord on a signed-in account: null until Clerk answers (or without Clerk). */
+  let links: LinkStatus | null = null;
+  /** The provider waiting for the password (an account signed in before Clerk), and whether Clerk asked for a code. */
+  let linkProvider: OAuthProvider | null = null;
+  let linkCode = false;
+  const loadLinks = (): void => {
+    if (!flow.usesClerk || account.state().kind === 'guest') return;
+    void flow.linkStatus().then((status) => {
+      links = status;
+      if (!closed && !busy && view === 'main') render();
+    });
+  };
 
-  const panel = h('aside', { className: 'md-window still ad-drawer' });
+  const panel = h('aside', { className: 'md-window still acct-drawer' });
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   const veil = h('div', { className: 'drawer-veil' }, [panel]);
 
-  const say = h('p', { className: 'ad-say' });
+  const say = h('p', { className: 'acct-say' });
   say.setAttribute('role', 'status');
   say.setAttribute('aria-live', 'polite');
 
@@ -165,6 +179,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       notice = 'account.drawer.signedIn';
       lastKind = account.state().kind;
       render();
+      loadLinks();
       return;
     }
     if (outcome.mode !== mode) {
@@ -195,6 +210,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   }
 
   const submit = (): void => {
+    if (view === 'link') return void submitLink();
     if (mode === 'sign-in') void run('sign-in', () => flow.signIn(values.email, values.password));
     else if (mode === 'sign-up') void run('sign-up', () => flow.signUp(values.email, values.password));
     else if (mode === 'verify') void run('verify', () => flow.verify(values.code));
@@ -215,30 +231,30 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   // ---- signed out
   function guestBlock(): HTMLElement {
     const list = (head: string, keys: readonly string[], kind: string) =>
-      h('div', { className: `ad-facts ${kind}` }, [h('h4', { className: 'ad-facts-head', textContent: head }), h('ul', {}, keys.map((k) => h('li', { textContent: t(k) })))]);
-    return h('section', { className: 'ad-guest' }, [
-      h('div', { className: 'ad-guest-title' }, [icon('guest'), h('h3', { textContent: t('account.drawer.guest.title') })]),
-      h('p', { className: 'ad-guest-sub', textContent: t('account.drawer.guest.sub') }),
-      h('div', { className: 'ad-facts-pair' }, [list(t('account.drawer.guest.pros'), GUEST_PROS, 'is-pro'), list(t('account.drawer.guest.cons'), GUEST_CONS, 'is-con')]),
+      h('div', { className: `acct-facts ${kind}` }, [h('h4', { className: 'acct-facts-head', textContent: head }), h('ul', {}, keys.map((k) => h('li', { textContent: t(k) })))]);
+    return h('section', { className: 'acct-guest' }, [
+      h('div', { className: 'acct-guest-title' }, [icon('guest'), h('h3', { textContent: t('account.drawer.guest.title') })]),
+      h('p', { className: 'acct-guest-sub', textContent: t('account.drawer.guest.sub') }),
+      h('div', { className: 'acct-facts-pair' }, [list(t('account.drawer.guest.pros'), GUEST_PROS, 'is-pro'), list(t('account.drawer.guest.cons'), GUEST_CONS, 'is-con')]),
       button(t('account.drawer.guest.cta'), 'rk-wide', () => {
         close();
         options.onGuest?.();
       }),
-      h('div', { className: 'ad-tools' }, [link(t('sync.backups'), () => ((view = 'backups'), render())), link(t('sync.wipe'), () => void wipe())]),
+      h('div', { className: 'acct-tools' }, [link(t('sync.backups'), () => ((view = 'backups'), render())), link(t('sync.wipe'), () => void wipe())]),
     ]);
   }
 
   function providers(): HTMLElement {
     const provider = (id: 'google' | 'discord') => {
-      const b = button(t(`account.drawer.${id}`), 'rk-wide ad-provider', () => void startOauth(id), id);
+      const b = button(t(`account.drawer.${id}`), 'rk-wide acct-provider', () => void startOauth(id), id);
       b.dataset.provider = id;
       // Where the drawer is short the two sit side by side and only the brand name shows (the full label stays the accessible name).
       b.setAttribute('aria-label', t(`account.drawer.${id}`));
-      b.querySelector('span')?.classList.add('ad-pv-long');
-      b.append(h('span', { className: 'ad-pv-short', textContent: id === 'google' ? 'Google' : 'Discord' }));
+      b.querySelector('span')?.classList.add('acct-pv-long');
+      b.append(h('span', { className: 'acct-pv-short', textContent: id === 'google' ? 'Google' : 'Discord' }));
       return b;
     };
-    return h('div', { className: 'ad-providers' }, [provider('google'), provider('discord'), h('div', { className: 'ad-or' }, [icon('mail'), h('span', { textContent: t('account.drawer.or') })])]);
+    return h('div', { className: 'acct-providers' }, [provider('google'), provider('discord'), h('div', { className: 'acct-or' }, [icon('mail'), h('span', { textContent: t('account.drawer.or') })])]);
   }
 
   function form(): HTMLElement {
@@ -255,7 +271,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     } else {
       links.push(link(t('menu.back'), () => goMode(backTarget(mode, origin))));
     }
-    const el = h('form', { className: 'ad-form' }, [...inputs, cta, say, h('div', { className: 'ad-links' }, links)]);
+    const el = h('form', { className: 'acct-form' }, [...inputs, cta, say, h('div', { className: 'acct-links' }, links)]);
     el.noValidate = true;
     el.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -268,13 +284,99 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     const spec = modeView(mode);
     const entry = mode === 'sign-in' || mode === 'sign-up';
     return [
-      h('div', { className: 'ad-main' }, [
-        h('p', { className: `ad-why${entry ? ' is-entry' : ''}`, textContent: t(spec.why) }),
+      h('div', { className: 'acct-main' }, [
+        h('p', { className: `acct-why${entry ? ' is-entry' : ''}`, textContent: t(spec.why) }),
         ...(entry && flow.usesClerk ? [providers()] : []),
         form(),
       ]),
       guestBlock(),
     ];
+  }
+
+  // ---- linking Google or Discord
+  /** One link attempt; on success the page leaves for the provider. */
+  async function doLink(task: () => Promise<FlowResult>): Promise<void> {
+    if (busy) return;
+    busy = true;
+    error = null;
+    notice = null;
+    say.textContent = t('account.busy');
+    panel.querySelectorAll<HTMLButtonElement>('button[data-cta], button[data-provider]').forEach((b) => (b.disabled = true));
+    const result = await task();
+    busy = false;
+    if (closed) return;
+    if (result.ok && result.step === 'code') {
+      linkCode = true;
+      values.code = '';
+      render();
+      panel.querySelector<HTMLInputElement>('input[data-field="code"]')?.focus({ preventScroll: true });
+      return;
+    }
+    if (result.ok) {
+      // Already linked (nothing to leave for): show it.
+      view = 'main';
+      linkProvider = null;
+      loadLinks();
+      render();
+      return;
+    }
+    if (result.error === 'session-needed') {
+      view = 'link';
+      linkCode = false;
+      values.password = '';
+      render();
+      panel.querySelector<HTMLInputElement>('input[data-field="password"]')?.focus({ preventScroll: true });
+      return;
+    }
+    error = `account.error.${result.error}`;
+    render();
+  }
+
+  const startLink = (provider: OAuthProvider): void => {
+    linkProvider = provider;
+    void doLink(() => flow.link(provider));
+  };
+
+  function submitLink(): void {
+    const provider = linkProvider;
+    const state = account.state();
+    if (!provider || state.kind === 'guest') return;
+    if (linkCode) {
+      void doLink(async () => {
+        const verified = await flow.verify(values.code);
+        return verified.ok ? flow.link(provider) : verified;
+      });
+    } else {
+      void doLink(() => flow.link(provider, { email: state.email, password: values.password }));
+    }
+  }
+
+  function linkBlock(): HTMLElement[] {
+    if (!links) return [];
+    const rows = OAUTH_PROVIDERS.map((provider) => {
+      const done = links!.linked.includes(provider);
+      const b = button(t(done ? `account.link.done.${provider}` : `account.link.${provider}`), `rk-wide acct-link-btn${done ? ' is-linked' : ''}`, () => startLink(provider), provider);
+      b.dataset.provider = provider;
+      b.disabled = done || busy;
+      return b;
+    });
+    return [h('div', { className: 'acct-links-block' }, [h('p', { className: 'acct-link-head', textContent: t('account.link.title') }), ...rows])];
+  }
+
+  function linkConfirm(): HTMLElement[] {
+    const provider = linkProvider ?? 'google';
+    const input = linkCode ? field('code', t('account.drawer.code')) : field('password', t('account.password'));
+    const cta = button(busy ? t('account.busy') : t('account.link.cta'), 'rk-wide rk-ember', submitLink);
+    cta.dataset.cta = '1';
+    cta.disabled = busy;
+    const back = link(t('menu.back'), () => ((view = 'main'), (linkProvider = null), (linkCode = false), (error = null), render()));
+    const el = h('form', { className: 'acct-form' }, [input, cta, say, h('div', { className: 'acct-links' }, [back])]);
+    el.noValidate = true;
+    el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submitLink();
+    });
+    return [h('div', { className: 'acct-main' }, [h('p', { className: 'acct-why', textContent: t(linkCode ? 'account.link.code' : `account.link.confirm.${provider}`) }), el])];
   }
 
   // ---- signed in
@@ -316,9 +418,9 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       };
       const { body, items } = choiceView(choice, answer, step);
       return [
-        h('div', { className: 'ad-main' }, [
-          h('p', { className: 'ad-who-mail', textContent: email }),
-          h('div', { className: 'ad-choice' }, body),
+        h('div', { className: 'acct-main' }, [
+          h('p', { className: 'acct-who-mail', textContent: email }),
+          h('div', { className: 'acct-choice' }, body),
           ...items.map((item) => {
             const b = button(typeof item.label === 'string' ? item.label : '', `rk-wide${item.className === 'danger' ? ' rk-danger' : ''}`, () => item.onConfirm?.());
             return b;
@@ -343,15 +445,16 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       }),
     );
     return [
-      h('div', { className: 'ad-main' }, [
-        h('div', { className: 'ad-who' }, [options.face?.() ?? h('span', { className: 'ad-avatar' }, [h('span', { textContent: (email[0] ?? '?').toUpperCase() })]), h('div', { className: 'ad-who-text' }, [h('p', { className: 'ad-who-label', textContent: t('account.signedInAs') }), h('p', { className: 'ad-who-mail', textContent: email || t('account.title') })])]),
-        h('p', { className: 'ad-sync', textContent: line || t('account.synced') }),
+      h('div', { className: 'acct-main' }, [
+        h('div', { className: 'acct-who' }, [options.face?.() ?? h('span', { className: 'acct-avatar' }, [h('span', { textContent: (email[0] ?? '?').toUpperCase() })]), h('div', { className: 'acct-who-text' }, [h('p', { className: 'acct-who-label', textContent: t('account.signedInAs') }), h('p', { className: 'acct-who-mail', textContent: email || t('account.title') })])]),
+        h('p', { className: 'acct-sync', textContent: line || t('account.synced') }),
+        ...linkBlock(),
         ...items,
         say,
       ]),
-      h('div', { className: 'ad-side' }, [
-        h('div', { className: 'ad-danger' }, [button(t('account.delete'), 'rk-wide rk-danger', () => void removeAccount()), button(t('sync.wipe'), 'rk-wide rk-danger', () => void wipe())]),
-        h('p', { className: 'ad-note', textContent: t('account.privacy') }),
+      h('div', { className: 'acct-side' }, [
+        h('div', { className: 'acct-danger' }, [button(t('account.delete'), 'rk-wide rk-danger', () => void removeAccount()), button(t('sync.wipe'), 'rk-wide rk-danger', () => void wipe())]),
+        h('p', { className: 'acct-note', textContent: t('account.privacy') }),
       ]),
     ];
   }
@@ -359,7 +462,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   // ---- backups
   function backups(): HTMLElement[] {
     const list = account.backups();
-    const picker = h('input', { type: 'file', className: 'ad-file' });
+    const picker = h('input', { type: 'file', className: 'acct-file' });
     picker.accept = 'application/json,.json';
     picker.hidden = true;
     picker.addEventListener('change', () => {
@@ -377,22 +480,22 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       });
     });
     const rows = list.map((b) => {
-      const row = button('', 'rk-wide ad-backup', () => {
+      const row = button('', 'rk-wide acct-backup', () => {
         account.restore(b.id);
         render();
       });
-      row.replaceChildren(h('span', { className: 'ad-backup-when', textContent: `${dateText(b.at)} · ${reasonText(b)}` }), h('span', { className: 'ad-backup-sum', textContent: cardText(profileSummary(backupProfile(b)))[0]! }));
+      row.replaceChildren(h('span', { className: 'acct-backup-when', textContent: `${dateText(b.at)} · ${reasonText(b)}` }), h('span', { className: 'acct-backup-sum', textContent: cardText(profileSummary(backupProfile(b)))[0]! }));
       return row;
     });
     return [
-      h('div', { className: 'ad-main' }, [
-        h('p', { className: 'ad-why', textContent: list.length ? t('sync.backup.intro') : t('sync.backup.none') }),
-        h('div', { className: 'ad-backups' }, rows),
+      h('div', { className: 'acct-main' }, [
+        h('p', { className: 'acct-why', textContent: list.length ? t('sync.backup.intro') : t('sync.backup.none') }),
+        h('div', { className: 'acct-backups' }, rows),
         picker,
         button(t('sync.backup.export'), 'rk-wide', () => saveFile(account.exportText())),
         button(t('sync.backup.import'), 'rk-wide', () => picker.click()),
         button(t('menu.back'), 'rk-wide', () => ((view = 'main'), (error = null), render())),
-        h('p', { className: 'ad-note', textContent: t('sync.backup.note') }),
+        h('p', { className: 'acct-note', textContent: t('sync.backup.note') }),
       ]),
     ];
   }
@@ -401,39 +504,38 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
   function render(): void {
     const state = account.state();
     const out = state.kind === 'guest';
-    const titleKey = view === 'backups' ? 'sync.backups' : out ? modeView(mode).title : 'account.title';
-    panel.setAttribute('aria-labelledby', 'ad-title');
-    const close_ = h('button', { type: 'button', className: 'ad-close', textContent: '×' });
+    const titleKey = view === 'backups' ? 'sync.backups' : view === 'link' ? 'account.link.title' : out ? modeView(mode).title : 'account.title';
+    panel.setAttribute('aria-labelledby', 'acct-title');
+    const close_ = h('button', { type: 'button', className: 'acct-close', textContent: '×' });
     close_.setAttribute('aria-label', t('account.drawer.close'));
     close_.addEventListener('click', close);
-    const columns = view === 'backups' ? backups() : out ? signedOut() : signedIn(state.email);
+    const columns = view === 'backups' ? backups() : view === 'link' && !out ? linkConfirm() : out ? signedOut() : signedIn(state.email);
     // The forms carry their own status line; elsewhere the messages sit under the header.
     say.textContent = busy ? t('account.busy') : error || notice ? t(error ?? notice!) : '';
-    say.className = `ad-say${error ? ' is-error' : ''}`;
+    say.className = `acct-say${error ? ' is-error' : ''}`;
     // The backups list can run long on a phone: its way back stays in the header, not at the end of the pages.
     const compact = isCompactTouch();
-    const leave = compact && view === 'backups' ? h('button', { type: 'button', className: 'rk-btn ad-back', textContent: t('menu.back') }) : null;
+    const leave = compact && view === 'backups' ? h('button', { type: 'button', className: 'rk-btn acct-back', textContent: t('menu.back') }) : null;
     leave?.addEventListener('click', () => ((view = 'main'), (error = null), render()));
-    panel.replaceChildren(h('header', { className: 'ad-head' }, [...(leave ? [leave] : []), h('h2', { id: 'ad-title', className: 'ad-title', textContent: t(titleKey) }), close_]), h('div', { className: `ad-cols${columns.length > 1 ? '' : ' is-single'}` }, columns));
-    if (!panel.contains(say)) panel.querySelector('.ad-main')?.prepend(say);
+    panel.replaceChildren(h('header', { className: 'acct-head' }, [...(leave ? [leave] : []), h('h2', { id: 'acct-title', className: 'acct-title', textContent: t(titleKey) }), close_]), h('div', { className: `acct-cols${columns.length > 1 ? '' : ' is-single'}` }, columns));
+    if (!panel.contains(say)) panel.querySelector('.acct-main')?.prepend(say);
     pager?.dispose();
     pager = null;
     if (compact) {
-      const cols = panel.querySelector<HTMLElement>('.ad-cols')!;
+      const cols = panel.querySelector<HTMLElement>('.acct-cols')!;
       cols.classList.add('is-paged');
       cols.replaceChildren(...pageItems(cols));
-      const nav = h('div', { className: 'ad-pages' });
+      const nav = h('div', { className: 'acct-pages' });
       panel.append(nav);
       pager = attachPager(cols, { nav, enabled: isCompactTouch });
       remeasureSoon(pager);
     }
     // A rebuilt panel loses the focus: give it back to the first control.
-    if (!panel.contains(document.activeElement)) panel.querySelector<HTMLElement>('.ad-provider, input, .ad-main button')?.focus({ preventScroll: true });
+    if (!panel.contains(document.activeElement)) panel.querySelector<HTMLElement>('.acct-provider, input, .acct-main button')?.focus({ preventScroll: true });
   }
 
   // ---- keys
-  // A control on another page, or the page buttons while there is only one page, cannot take the focus.
-  const focusables = (): HTMLElement[] => [...panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([hidden])')].filter((el) => !el.closest('.pg-off, [hidden]'));
+  const focusables = (): HTMLElement[] => [...panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([hidden])')];
 
   function onKey(e: KeyboardEvent): void {
     if (closed) return;
@@ -474,9 +576,10 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
 
   // ---- open
   render();
+  loadLinks();
   parent.append(veil);
   // Providers first: the quickest way in; a signed-in player lands on the first action.
-  queueMicrotask(() => panel.querySelector<HTMLElement>('.ad-provider, input, .ad-main button')?.focus({ preventScroll: true }));
+  queueMicrotask(() => panel.querySelector<HTMLElement>('.acct-provider, input, .acct-main button')?.focus({ preventScroll: true }));
 
   return {
     element: veil,
@@ -487,7 +590,9 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
       // A guest typing keeps the form; only signing in or out, or a sync choice, rebuilds it.
       if (kind === lastKind && kind === 'guest') return;
       lastKind = kind;
+      links = null;
       render();
+      loadLinks();
     },
   };
 }

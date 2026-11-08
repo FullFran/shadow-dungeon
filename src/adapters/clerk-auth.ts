@@ -6,11 +6,17 @@
  * `clerkSession`). Every call answers a result instead of throwing, and a
  * Clerk error becomes one of a few i18n-ready keys (`account.error.<key>`).
  */
-export type ClerkErrorKey = 'wrong-credentials' | 'password-short' | 'password-pwned' | 'email-taken' | 'code-wrong' | 'code-expired' | 'invalid-email' | 'rate-limited' | 'network' | 'unknown';
+export type ClerkErrorKey = 'wrong-credentials' | 'password-short' | 'password-pwned' | 'email-taken' | 'code-wrong' | 'code-expired' | 'invalid-email' | 'rate-limited' | 'network' | 'session-needed' | 'provider-taken' | 'unknown';
 /** `code`: Clerk emailed a code the player must type before the session exists. */
 export type ClerkStep = 'done' | 'code';
 export type ClerkResult = { ok: true; step: ClerkStep } | { ok: false; error: ClerkErrorKey };
 export type OAuthProvider = 'google' | 'discord';
+export const OAUTH_PROVIDERS: readonly OAuthProvider[] = ['google', 'discord'];
+/** Whether Clerk holds a session on this device, and which providers its user already has linked. */
+export interface LinkStatus {
+  session: boolean;
+  linked: OAuthProvider[];
+}
 
 export interface ClerkAuth {
   /** False when the build has no publishable key: the password flow stays. */
@@ -25,6 +31,11 @@ export interface ClerkAuth {
   oauth(provider: OAuthProvider): Promise<ClerkResult>;
   /** Finishes the OAuth return (`?sso=1`). */
   completeRedirect(): Promise<ClerkResult>;
+  linkStatus(): Promise<LinkStatus>;
+  /** Adds a provider to the signed-in Clerk user: leaves the page for the provider; resolves only on failure. */
+  link(provider: OAuthProvider): Promise<ClerkResult>;
+  /** On the return from `link` (`?linked=<provider>`): whether the provider is now on the user. */
+  completeLink(provider: OAuthProvider): Promise<ClerkResult>;
   signOut(): Promise<void>;
   /** Best effort: removes the Clerk user (the game account is deleted separately). */
   deleteUser(): Promise<void>;
@@ -50,6 +61,8 @@ const CODES: Record<string, ClerkErrorKey> = {
   form_param_nil: 'invalid-email',
   too_many_requests: 'rate-limited',
   network_error: 'network',
+  external_account_exists: 'provider-taken',
+  identification_exists: 'provider-taken',
 };
 
 /** Maps a thrown Clerk error (API response error, runtime error or a fetch failure) to a key. */
@@ -69,8 +82,25 @@ export interface ClerkLike {
   setActive(params: { session: string | null }): Promise<unknown>;
   signOut(): Promise<unknown>;
   handleRedirectCallback(params: Dict, navigate?: (to: string) => Promise<unknown>): Promise<unknown>;
-  user?: { delete(): Promise<unknown> } | null;
+  user?: ClerkUserLike | null;
 }
+
+interface ClerkExternalAccountLike {
+  provider?: string;
+  verification?: { status?: string | null; strategy?: string; error?: { code?: string } | null } | null;
+}
+
+export interface ClerkUserLike {
+  delete(): Promise<unknown>;
+  externalAccounts?: ClerkExternalAccountLike[];
+  createExternalAccount?(params: Dict): Promise<{ verification?: { externalVerificationRedirectURL?: URL | string | null } | null }>;
+  reload?(): Promise<unknown>;
+}
+
+/** The user's external account for a provider (Clerk names it `google`, or `oauth_google` on the verification). */
+const accountOf = (user: ClerkUserLike | null | undefined, provider: OAuthProvider): ClerkExternalAccountLike | undefined =>
+  user?.externalAccounts?.find((a) => a.provider === provider || a.provider === `oauth_${provider}` || a.verification?.strategy === `oauth_${provider}`);
+const isLinked = (user: ClerkUserLike | null | undefined, provider: OAuthProvider): boolean => accountOf(user, provider)?.verification?.status === 'verified';
 
 type Call = (args?: Dict) => Promise<Dict>;
 const call = (resource: Dict, name: string): Call => {
@@ -81,9 +111,10 @@ const call = (resource: Dict, name: string): Call => {
 
 type Pending = 'sign-up' | 'sign-in' | 'reset' | null;
 
-export function createClerkAuth(options: { load(): Promise<ClerkLike>; origin: string }): ClerkAuth {
+export function createClerkAuth(options: { load(): Promise<ClerkLike>; origin: string; navigate?: (url: string) => void }): ClerkAuth {
   let pending: Pending = null;
   const callback = `${options.origin}/?sso=1`;
+  const navigate = options.navigate ?? ((url: string) => window.location.assign(url));
 
   /** Runs `task` with a loaded Clerk; any failure becomes an error result. */
   async function guarded(task: (clerk: ClerkLike, signIn: Dict, signUp: Dict) => Promise<ClerkResult>): Promise<ClerkResult> {
@@ -166,6 +197,33 @@ export function createClerkAuth(options: { load(): Promise<ClerkLike>; origin: s
         await clerk.handleRedirectCallback({ signInFallbackRedirectUrl: callback, signUpFallbackRedirectUrl: callback, signInForceRedirectUrl: callback, signUpForceRedirectUrl: callback }, async () => undefined);
         return clerk.session ? { ok: true, step: 'done' } : { ok: false, error: 'unknown' };
       }),
+    async linkStatus() {
+      try {
+        const clerk = await options.load();
+        const user = clerk.session ? clerk.user : null;
+        return { session: Boolean(user), linked: OAUTH_PROVIDERS.filter((p) => isLinked(user, p)) };
+      } catch {
+        return { session: false, linked: [] };
+      }
+    },
+    link: (provider) =>
+      guarded(async (clerk) => {
+        const user = clerk.session ? clerk.user : null;
+        if (!user?.createExternalAccount) return { ok: false, error: 'session-needed' };
+        if (isLinked(user, provider)) return { ok: true, step: 'done' };
+        const created = await user.createExternalAccount({ strategy: `oauth_${provider}`, redirectUrl: `${options.origin}/?linked=${provider}` });
+        const to = created.verification?.externalVerificationRedirectURL;
+        if (!to) return { ok: false, error: 'unknown' };
+        navigate(typeof to === 'string' ? to : to.href);
+        return { ok: true, step: 'done' };
+      }),
+    completeLink: (provider) =>
+      guarded(async (clerk) => {
+        await clerk.user?.reload?.();
+        if (isLinked(clerk.user, provider)) return { ok: true, step: 'done' };
+        const code = accountOf(clerk.user, provider)?.verification?.error?.code;
+        return { ok: false, error: code ? (CODES[code] ?? 'unknown') : 'unknown' };
+      }),
     async signOut() {
       try {
         const clerk = await options.load();
@@ -196,7 +254,7 @@ export function createClerkAuth(options: { load(): Promise<ClerkLike>; origin: s
 /** Clerk is not configured: every call says so and nothing is loaded. */
 export const noClerk: ClerkAuth = (() => {
   const off = async (): Promise<ClerkResult> => ({ ok: false, error: 'unknown' });
-  return { available: false, signInWithPassword: off, signUp: off, verifyEmailCode: off, requestPasswordReset: off, resetPassword: off, oauth: off, completeRedirect: off, signOut: async () => {}, deleteUser: async () => {}, getSessionToken: async () => null };
+  return { available: false, signInWithPassword: off, signUp: off, verifyEmailCode: off, requestPasswordReset: off, resetPassword: off, oauth: off, completeRedirect: off, linkStatus: async () => ({ session: false, linked: [] }), link: off, completeLink: off, signOut: async () => {}, deleteUser: async () => {}, getSessionToken: async () => null };
 })();
 
 /** The real thing: `@clerk/clerk-js` is imported on the first call only. */
@@ -218,6 +276,15 @@ export function browserClerk(publishableKey: string, origin: string): ClerkAuth 
 }
 
 /** Clerk when `VITE_CLERK_PUBLISHABLE_KEY` is set, else the no-op (the password flow). */
+/**
+ * Where the game lives, without the trailing slash: the page's directory, so a build served under a path
+ * (https://www.fullfran.com/shadow-dungeon/, or its /gacha route one segment deeper) gets the OAuth return
+ * there and not on the site's root.
+ */
+export function appBaseUrl(href: string): string {
+  return new URL('./', href).href.replace(/\/$/, '');
+}
+
 export function clerkFromEnv(key: unknown, origin: string): ClerkAuth {
   return typeof key === 'string' && key.trim() ? browserClerk(key.trim(), origin) : noClerk;
 }

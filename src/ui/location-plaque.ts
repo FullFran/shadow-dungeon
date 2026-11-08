@@ -1,4 +1,5 @@
 import { PLACE_ICONS } from './icons/place-icons';
+import { primaryPointerIsFinger } from '../adapters/touch-mode';
 import { hudScaleFor } from './hud-layout';
 import { plaqueMaxWidth, plaqueMetrics, plaqueTiming, type Plaque, type PlaqueTiming } from './location-plaque-model';
 import { PIXEL_ICONS, pixelSvgOf, type PixelIcon } from './pixel-icons';
@@ -39,12 +40,14 @@ const msVars = (timing: PlaqueTiming): Record<string, string> => ({
   '--lp-out': `${timing.outMs}ms`,
 });
 
-/** Short landscape windows (phones) keep the small plaque of the stylesheet; desktop sizes follow the HUD scale rule. */
+/** Short landscape windows and upright phones keep the small plaque of the stylesheet; desktop sizes follow the HUD scale rule. */
 const SHORT_WINDOW = 520;
 
 function applySize(root: HTMLElement): void {
   const names = ['--lp-name-size', '--lp-sub-size', '--lp-note-size', '--lp-icon-size', '--lp-frame-size', '--lp-max', '--lp-note-display'];
-  if (window.innerHeight <= SHORT_WINDOW) {
+  // A phone held upright shows the play view as a small landscape band (src/adapters/viewport.ts): the small plaque too.
+  const uprightPhone = window.innerHeight > window.innerWidth && primaryPointerIsFinger(window.matchMedia?.bind(window));
+  if (window.innerHeight <= SHORT_WINDOW || uprightPhone) {
     for (const name of names) root.style.removeProperty(name);
     return;
   }

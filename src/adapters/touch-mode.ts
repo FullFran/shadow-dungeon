@@ -1,6 +1,8 @@
 /**
  * Touch mode (settings: Auto / On / Off). Auto switches the touch UI on after
- * the first touch on the page (`pointerType === 'touch'`). The DOM side only
+ * the first touch on the page (`pointerType === 'touch'`), or from the start on
+ * a device whose main pointer is a finger (a phone: coarse, no hover), so the
+ * first screen a phone shows already has fingertip-sized targets. The DOM side only
  * sets `html.touch`; the CSS and the touch controls follow that class, so a
  * desktop that is never touched looks and plays exactly as before.
  */
@@ -22,6 +24,11 @@ function apply(): void {
   for (const listener of listeners) listener(on);
 }
 
+/** A phone or tablet: the main pointer is coarse and cannot hover. A touchscreen laptop (mouse first) is not. */
+export function primaryPointerIsFinger(matchMedia: ((query: string) => { matches: boolean }) | undefined): boolean {
+  return !!matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 /** Whether the touch UI is on right now. */
 export function isTouchUi(): boolean {
   return touchActive(mode, sawTouch);
@@ -39,6 +46,7 @@ export function setTouchMode(next: TouchMode): void {
   if (typeof window === 'undefined') return;
   if (!installed) {
     installed = true;
+    if (primaryPointerIsFinger(window.matchMedia?.bind(window))) sawTouch = true;
     window.addEventListener(
       'pointerdown',
       (e) => {

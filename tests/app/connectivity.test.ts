@@ -22,6 +22,20 @@ function env(initial = true) {
 }
 
 describe('connectivity', () => {
+  it('a request that reached the server clears an offline its failure set, while the browser never went offline', () => {
+    const { c } = env();
+    const seen: boolean[] = [];
+    let runs = 0;
+    c.subscribe((online) => seen.push(online));
+    c.noteError(appError('offline'));
+    c.retryWhenBack(() => (runs += 1));
+    expect(c.online()).toBe(false);
+    c.noteReached();
+    expect(c.online()).toBe(true);
+    expect(seen).toEqual([false, true]);
+    expect(runs).toBe(1);
+  });
+
   it('follows the browser going offline and back, telling subscribers', () => {
     const { c, go } = env();
     const seen: boolean[] = [];

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { ClerkAuth, ClerkResult } from '../../src/adapters/clerk-auth';
+import type { ClerkAuth, ClerkResult, LinkStatus } from '../../src/adapters/clerk-auth';
 import { createAuthFlow, type FlowAccount } from '../../src/app/auth-flow';
 
 const DONE: ClerkResult = { ok: true, step: 'done' };
 
 /** A Clerk stand-in: each method answers from `answers` and every call is logged. */
-function fakeClerk(answers: Partial<Record<keyof ClerkAuth, ClerkResult>> = {}, token: string | null = 'jwt-1') {
+function fakeClerk(answers: Partial<Record<keyof ClerkAuth, ClerkResult>> = {}, token: string | null = 'jwt-1', status: LinkStatus = { session: true, linked: [] }) {
   const log: string[] = [];
   const answer = (name: keyof ClerkAuth) => async (...args: unknown[]) => {
     log.push(`${name}(${args.join(',')})`);
@@ -20,6 +20,9 @@ function fakeClerk(answers: Partial<Record<keyof ClerkAuth, ClerkResult>> = {}, 
     resetPassword: answer('resetPassword') as ClerkAuth['resetPassword'],
     oauth: answer('oauth') as ClerkAuth['oauth'],
     completeRedirect: answer('completeRedirect') as ClerkAuth['completeRedirect'],
+    linkStatus: async () => status,
+    link: answer('link') as ClerkAuth['link'],
+    completeLink: answer('completeLink') as ClerkAuth['completeLink'],
     signOut: async () => void log.push('signOut'),
     deleteUser: async () => void log.push('deleteUser'),
     getSessionToken: async () => token,
@@ -159,5 +162,50 @@ describe('auth flow without Clerk (the password fallback)', () => {
 
   it('the SSO return does nothing', async () => {
     expect(await createAuthFlow({ clerk: noClerk(), account: fakeAccount().account }).returnFromSso('?sso=1')).toBeNull();
+  });
+});
+
+describe('linking Google or Discord to a signed-in account', () => {
+  it('with a Clerk session, links straight away and never touches the game session', async () => {
+    const c = fakeClerk();
+    const a = fakeAccount();
+    const flow = createAuthFlow({ clerk: c.clerk, account: a.account });
+    expect(await flow.link('google')).toEqual({ ok: true, step: 'done' });
+    expect(c.log).toEqual(['link(google)']);
+    expect(a.log).toEqual([]);
+  });
+
+  it('an account signed in before Clerk is asked for its password, which opens the Clerk session on the same email before linking', async () => {
+    const c = fakeClerk({}, 'jwt-1', { session: false, linked: [] });
+    const a = fakeAccount();
+    const flow = createAuthFlow({ clerk: c.clerk, account: a.account });
+    expect(await flow.link('discord')).toEqual({ ok: false, error: 'session-needed' });
+    expect(c.log).toEqual([]);
+    expect(await flow.link('discord', { email: ' Ana@Example.com', password: 'secret123' })).toEqual({ ok: true, step: 'done' });
+    expect(c.log).toEqual(['signInWithPassword(ana@example.com,secret123)', 'link(discord)']);
+    expect(a.log).toEqual(['logInClerk(jwt-1)']);
+  });
+
+  it('a wrong password or a code step stops before linking', async () => {
+    const wrong = fakeClerk({ signInWithPassword: { ok: false, error: 'wrong-credentials' } }, 'jwt-1', { session: false, linked: [] });
+    expect(await createAuthFlow({ clerk: wrong.clerk, account: fakeAccount().account }).link('google', { email: 'a@b.es', password: 'x' })).toEqual({ ok: false, error: 'wrong-credentials' });
+    expect(wrong.log).not.toContain('link(google)');
+    const code = fakeClerk({ signInWithPassword: { ok: true, step: 'code' } }, 'jwt-1', { session: false, linked: [] });
+    expect(await createAuthFlow({ clerk: code.clerk, account: fakeAccount().account }).link('google', { email: 'a@b.es', password: 'x' })).toEqual({ ok: true, step: 'code' });
+    expect(code.log).not.toContain('link(google)');
+  });
+
+  it('a provider already linked is done without leaving the page', async () => {
+    const c = fakeClerk({}, 'jwt-1', { session: true, linked: ['google'] });
+    expect(await createAuthFlow({ clerk: c.clerk, account: fakeAccount().account }).link('google')).toEqual({ ok: true, step: 'done' });
+    expect(c.log).toEqual([]);
+  });
+
+  it('finishes the return only for ?linked=google or discord, and passes a provider taken by another account through', async () => {
+    const c = fakeClerk({ completeLink: { ok: false, error: 'provider-taken' } });
+    const flow = createAuthFlow({ clerk: c.clerk, account: fakeAccount().account });
+    expect(await flow.returnFromLink('?sso=1')).toBeNull();
+    expect(await flow.returnFromLink('?linked=twitter')).toBeNull();
+    expect(await flow.returnFromLink('?linked=discord')).toEqual({ provider: 'discord', result: { ok: false, error: 'provider-taken' } });
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { request, DEFAULT_BACKOFF_MS } from '../../src/adapters/http';
-import { reportError, subscribeErrors } from '../../src/adapters/net-error';
+import { reportError, subscribeErrors, subscribeReached } from '../../src/adapters/net-error';
 
 const json = (status: number, body: unknown = {}) => new Response(JSON.stringify(body), { status });
 
@@ -24,6 +24,16 @@ afterEach(() => {
 });
 
 describe('request', () => {
+  it('tells the listeners the server answered, refusals included, but not a call that never got a response', async () => {
+    const seen: string[] = [];
+    const off = subscribeReached((scope) => seen.push(scope));
+    await request(script(json(200)).fetchFn, '/a', {}, { scope: 'ranking', sleep });
+    await request(script(json(404)).fetchFn, '/b', {}, { scope: 'friends', sleep });
+    await request(script(new TypeError('Failed to fetch')).fetchFn, '/c', {}, { scope: 'presence', sleep, backoffMs: [] });
+    off();
+    expect(seen).toEqual(['ranking', 'friends']);
+  });
+
   it('answers the response of a good call', async () => {
     const { fetchFn } = script(json(200, { a: 1 }));
     const result = await request(fetchFn, 'https://x/y', { method: 'GET' }, { sleep });

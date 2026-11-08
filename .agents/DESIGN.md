@@ -95,7 +95,7 @@ Breakpoints: `html.touch` and `max-height: 520px` compress rails to icon-only co
   40 px compact) and the signed-in account drawer (48 px). Not used where the scene needs the creature (pause summary, dialogue, end
   screens keep their `sprite-box`). Friends and co-op frames do not carry a species yet (the server's friends list has no avatar field):
   pending.
-- **Side drawer** (`.drawer-veil` + `.ad-drawer`, `src/app/account-drawer.ts`): the quick-entry pattern for short forms and
+- **Side drawer** (`.drawer-veil` + `.acct-drawer`, `src/app/account-drawer.ts`): the quick-entry pattern for short forms and
   account state (owner, 2026-11-04). A full-height relic slab (400 px, 100% under 520 px) slides in from the right over a
   darkened scene; click outside and Esc close it (`ui/dismiss.ts`), focus is trapped, arrows/Tab move through the controls,
   Enter acts. Order top to bottom: why in one line, providers, divider, form, the one ember call to action, the guest

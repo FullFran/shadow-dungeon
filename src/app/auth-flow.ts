@@ -1,4 +1,4 @@
-import type { ClerkAuth, ClerkErrorKey, ClerkResult, OAuthProvider } from '../adapters/clerk-auth';
+import { OAUTH_PROVIDERS, type ClerkAuth, type ClerkErrorKey, type ClerkResult, type LinkStatus, type OAuthProvider } from '../adapters/clerk-auth';
 import { MIN_PASSWORD, type Account, type AccountError, type AuthOutcome } from './account';
 
 /**
@@ -24,6 +24,17 @@ export interface AuthFlow {
   oauth(provider: OAuthProvider): Promise<FlowResult>;
   /** On load: finishes an OAuth return when the query says `sso=1`; null when this load is not one. */
   returnFromSso(search: string): Promise<FlowResult | null>;
+  /** Which providers this account has linked, and whether Clerk has a session here; null without Clerk. */
+  linkStatus(): Promise<LinkStatus | null>;
+  /**
+   * Adds Google or Discord to the signed-in account (it leaves the page for the provider). An account signed in
+   * before Clerk has no Clerk session: its password (`confirm`) opens one first, on the same email, so the provider
+   * lands on this account and never on a new one. `session-needed` asks the drawer for that password; a `code`
+   * step asks for the emailed code (`verify`), then `link` again.
+   */
+  link(provider: OAuthProvider, confirm?: { email: string; password: string }): Promise<FlowResult>;
+  /** On load: finishes the return from `link` (`?linked=<provider>`); null when this load is not one. */
+  returnFromLink(search: string): Promise<{ provider: OAuthProvider; result: FlowResult } | null>;
   logOut(): Promise<void>;
   deleteAccount(): Promise<{ ok: true } | { ok: false; error: FlowError }>;
 }
@@ -58,14 +69,16 @@ export function createAuthFlow(deps: { clerk: ClerkAuth; account: FlowAccount })
     return result.step === 'code' ? { ok: true, step: 'code' } : exchange();
   };
 
+  async function signIn(rawEmail: string, password: string): Promise<FlowResult> {
+    const email = normalizeEmail(rawEmail);
+    if (!email) return fail('invalid-email');
+    if (!password) return fail('wrong-credentials');
+    return clerk.available ? afterClerk(await clerk.signInWithPassword(email, password)) : fromOutcome(await account.logIn(email, password));
+  }
+
   return {
     usesClerk: clerk.available,
-    async signIn(rawEmail, password) {
-      const email = normalizeEmail(rawEmail);
-      if (!email) return fail('invalid-email');
-      if (!password) return fail('wrong-credentials');
-      return clerk.available ? afterClerk(await clerk.signInWithPassword(email, password)) : fromOutcome(await account.logIn(email, password));
-    },
+    signIn,
     async signUp(rawEmail, password) {
       const email = normalizeEmail(rawEmail);
       if (!email) return fail('invalid-email');
@@ -98,6 +111,27 @@ export function createAuthFlow(deps: { clerk: ClerkAuth; account: FlowAccount })
     async returnFromSso(search) {
       if (!clerk.available || new URLSearchParams(search).get('sso') !== '1') return null;
       return afterClerk(await clerk.completeRedirect());
+    },
+    async linkStatus() {
+      return clerk.available ? clerk.linkStatus() : null;
+    },
+    async link(provider, confirm) {
+      if (!clerk.available) return fail('unknown');
+      const status = await clerk.linkStatus();
+      if (status.linked.includes(provider)) return DONE;
+      if (!status.session) {
+        if (!confirm) return fail('session-needed');
+        const signed = await signIn(confirm.email, confirm.password);
+        if (!signed.ok || signed.step !== 'done') return signed;
+      }
+      const result = await clerk.link(provider);
+      return result.ok ? DONE : fail(result.error);
+    },
+    async returnFromLink(search) {
+      const provider = OAUTH_PROVIDERS.find((p) => p === new URLSearchParams(search).get('linked'));
+      if (!clerk.available || !provider) return null;
+      const result = await clerk.completeLink(provider);
+      return { provider, result: result.ok ? DONE : fail(result.error) };
     },
     async logOut() {
       account.logOut();

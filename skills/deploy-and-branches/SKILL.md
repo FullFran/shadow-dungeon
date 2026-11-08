@@ -14,11 +14,11 @@ Load before merging or pushing `main` or `preprod`, cutting a release, deploying
 ## Hard Rules
 
 - Pushing `main` or `preprod` deploys by itself. Do it only on the owner's explicit request, never as a side effect.
-- Branch flow: feature branch from `main` → merge into `preprod` → check https://sd-pre.fullfran.com → merge `preprod` into `main`. After anything lands on `main` directly (hotfix, release), fast-forward `preprod` to `main`.
+- Branch flow: feature branch from `main` → merge into `preprod` → check https://sd-pre.fullfran.com → merge `preprod` into `main`. After anything lands on `main` directly (hotfix, release), bring it into `preprod` (fast-forward when `preprod` has nothing of its own, else ask the owner).
 - Run the deploy gate green before merging into `main`: `npm run typecheck`, `npx vitest run --testTimeout=30000`, `npm run build`, `npm run prove`.
 - Prod `sd-api` never deploys itself. A change touching both the client and `server/`: deploy `sd-api` by hand FIRST, then merge to `main` (the client on Pages would call an old API otherwise).
 - `sd-api` by hand: always `docker compose -p sd-api`; rsync without `--delete`; before a data migration stop it and tar `sd-api_pb_data` into `/home/fran/backups/`.
-- Never touch `/etc/deploy-agent`, `/var/lib/deploy-agent`, the `sd-pre-*` containers, `secrets/*.sops.env`, `~/grant-sudo.sh`, `dokploy-traefik`, or Access/DNS outside the infra repo's tofu. Never copy prod credentials into sd-pre.
+- Never touch `/etc/deploy-agent`, `/var/lib/deploy-agent`, the `sd-pre-*` containers, `secrets/*.sops.env`, `~/grant-sudo.sh`, `dokploy-traefik`, or Access/DNS outside the infra repo's tofu. sd-pre credentials are the infra session's job.
 - Server code must run read-only except `/pb_data` and `/tmp`, within 512 MiB (sd-pre limits).
 
 ## Decision Gates
@@ -28,12 +28,13 @@ Load before merging or pushing `main` or `preprod`, cutting a release, deploying
 | Client only | `preprod` → check sd-pre → merge to `main` (Pages deploys) |
 | `server/` only | `preprod` → check sd-pre → merge to `main` → deploy `sd-api` by hand |
 | Client + `server/` | `preprod` → check sd-pre → deploy `sd-api` by hand → merge to `main` |
-| OAuth, email, TURN co-op | sd-pre cannot test them yet: say so, test in prod after deploy |
+| TURN co-op, sign-up mail | test on sd-pre (same TURN and Resend as prod; mail links point to pre) |
+| Sign-in | sd-pre runs Clerk (dev instance, on `preprod` only); prod keeps its current login until the Clerk cutover |
 | Release | follow `docs/release.md` (version, `src/data/changelog.ts`, gate, GitHub Release) |
 
 ## Execution Steps
 
-1. `git fetch`; confirm `preprod` is an ancestor of `main` (`git merge-base --is-ancestor origin/preprod origin/main`) or that the gap is intended.
+1. `git fetch`; compare `origin/main` and `origin/preprod`. `preprod` may be ahead with a collaborator's work under test: never fast-forward or reset it over that work, and follow the `preprod` branch's own `CLAUDE.md` (`npm run deploy:preprod`, ask the owner before every preprod deploy).
 2. Merge the feature branch into `preprod`, push, and wait about 2 min: deploy-agent builds both services; a failed build keeps the old version. The title shows `v<version> · <commit>`.
 3. Ask the owner to check sd-pre (Cloudflare Access, email code).
 4. Pick the row above; run the gate; merge to `main`; watch `gh run list -R FullFran/shadow-dungeon --workflow deploy.yml`.

@@ -1,4 +1,4 @@
-import { browserOnline, fromFetchFailure, fromStatus, reportError, type AppError } from './net-error';
+import { browserOnline, fromFetchFailure, fromStatus, reportError, reportReached, type AppError } from './net-error';
 
 /**
  * One way to call the network (odd/tasks/loading-errors.md): a timeout for
@@ -51,6 +51,7 @@ export async function request(fetchFn: FetchFn, url: string, init: RequestInit, 
     await sleep(wait);
     result = await attempt(fetchFn, url, init, timeoutMs, online);
   }
+  if (result.ok || result.response) reportReached(scope);
   // A plain refusal (400, 404...) is the server answering about the request, not a failure to show.
   if (!result.ok && !(result.response && result.error.kind === 'unexpected')) reportError(result.error, scope);
   return result;

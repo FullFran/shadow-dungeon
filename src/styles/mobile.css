@@ -51,3 +51,12 @@ html.rotate-blocked body { overflow: hidden; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html.touch, html.touch body { height: 100%; overflow: hidden; }
 html.touch #app { box-sizing: border-box; min-height: 0; height: 100vh; height: 100dvh; overflow: hidden; }
+
+/* Carried over from the preprod phone sheet (Fran, 2026-11-06), without its scrolling: the floating "Atrás" stands aside
+   over the account drawer and over the welcome (the first screen: nothing to go back to), and the co-op room card sits low
+   enough for its title tab (src/town/scene.ts places it with inline styles). */
+html.touch body:has(.drawer-veil) > .touch-back { display: none; }
+html.touch #app:has(.ob-welcome) ~ .touch-back { display: none; }
+@media (max-height: 640px) {
+  html.touch .town-room { top: max(28px, env(safe-area-inset-top)) !important; max-width: 60vw !important; }
+}

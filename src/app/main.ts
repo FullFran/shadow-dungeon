@@ -40,7 +40,7 @@ import { markVersionSeen, patchNotesDue, patchNotesWindow, readLastSeenVersion }
 import { setupAccount } from './account-screen';
 import { openAccountDrawer } from './account-drawer';
 import { createAuthFlow } from './auth-flow';
-import { clerkFromEnv } from '../adapters/clerk-auth';
+import { appBaseUrl, clerkFromEnv } from '../adapters/clerk-auth';
 import { startGame, type GameOptions, type GameResult, type RunningGame, type RunSummary } from './game';
 import { heldItems } from './item-pick';
 import { loadoutScreen, portrait, typeBadge, type LineGender, type ShinySkins } from './loadout';
@@ -65,7 +65,7 @@ import { titleHub } from './title-hub-view';
 import { menuWindow } from '../ui/menu-window';
 import { bootSplash } from '../ui/boot-splash';
 import { fatalError, offlineBanner, showToast } from '../ui/status';
-import { subscribeErrors } from '../adapters/net-error';
+import { subscribeErrors, subscribeReached } from '../adapters/net-error';
 import { sharedConnectivity } from './connectivity';
 import { loadingVeil } from '../ui/spinner';
 import { defaultSettings, loadSettings, saveSettings, touchPrefsOf, withReturningPlayer, withSpecies, withStarter, type Settings } from './settings';
@@ -143,6 +143,7 @@ import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type End
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
+import '../styles/mobile.css';
 
 /**
  * Page flow: title screen (Play, Play online, Settings, Credits) over the
@@ -207,7 +208,7 @@ const gamepads = createGamepads({
   },
 });
 /** Sign-in for the account drawer: Clerk when the build has a publishable key, else the password endpoints (app/auth-flow.ts). */
-const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, window.location.origin), account });
+const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY, appBaseUrl(window.location.href)), account });
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
@@ -301,6 +302,7 @@ document.body.append(offline.element);
 connectivity.subscribe(offline.set);
 offline.set(connectivity.online());
 let assetToastShown = false;
+subscribeReached(() => connectivity.noteReached());
 subscribeErrors((error, scope) => {
   connectivity.noteError(error);
   diagLog.error(`${scope}: ${error.kind}`);
@@ -2441,6 +2443,14 @@ if (root) {
   });
   // A press that starts and ends on the backdrop closes the open menu like Esc (ui/dismiss.ts).
   installDismiss();
+  // Back from linking Google or Discord to a signed-in account (`/?linked=<provider>`): say whether it took, then the parameter goes.
+  void authFlow.returnFromLink(window.location.search).then((back) => {
+    if (!back) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('linked');
+    window.history.replaceState(null, '', url);
+    toast(root, t(back.result.ok ? `account.link.ok.${back.provider}` : `account.error.${back.result.error}`));
+  });
   // Back from Google or Discord (`/?sso=1`): Clerk finishes, the game session follows, then the parameter goes.
   void authFlow.returnFromSso(window.location.search).then((result) => {
     if (!result) return;
