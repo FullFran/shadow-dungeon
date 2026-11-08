@@ -5,14 +5,17 @@
 // Exits 1 when anything does not fit.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
+// The project's Playwright when its browser is downloaded, else the global install (its browser already on disk).
 let chromium;
+const globalPw = () => require(execSync('npm root -g').toString().trim() + '/playwright').chromium;
 try {
   ({ chromium } = require('playwright'));
+  if (!existsSync(chromium.executablePath())) chromium = globalPw();
 } catch {
-  ({ chromium } = require(execSync('npm root -g').toString().trim() + '/playwright'));
+  chromium = globalPw();
 }
 const args = process.argv.slice(2);
 const flag = (name, fallback) => args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? fallback;
@@ -197,10 +200,21 @@ const AUDIT = () => {
       if (ox > 3 && oy > 3 && getComputedStyle(a).position !== 'fixed' && getComputedStyle(b).position !== 'fixed') overlap.push(`${(a.textContent || label(a)).trim().slice(0, 12)} x ${(b.textContent || label(b)).trim().slice(0, 12)}`);
     }
   }
+  // A screen with no visible way back: an open window (not the hub, not a run) whose own back or close control is hidden
+  // while the floating "Atrás" is hidden too.
+  const noWayBack = [];
+  const BACK = /^(▶\s*)?(Volver|Atrás|Back|Cerrar|Close|×|Salir)\b/i;
+  const open = [...document.querySelectorAll('.town-shop .md-window, #app > .md-window, .hub-sheet, .drawer-veil .md-window')].filter(shown);
+  const touchBack = document.querySelector('.touch-back');
+  const floating = touchBack && shown(touchBack);
+  for (const win of open) {
+    const back = [...win.querySelectorAll('button, [role=button], .md-item')].some((b) => shown(b) && !b.closest('.pg-off, [hidden]') && (BACK.test(b.textContent.trim()) || BACK.test(b.getAttribute('aria-label') || '')));
+    if (!back && !floating) noWayBack.push(label(win));
+  }
   // #app clips on phones instead of scrolling: content taller than it counts as page overflow.
   const app = document.getElementById('app');
   const appOver = app ? Math.max(app.scrollHeight - app.clientHeight, app.scrollWidth - app.clientWidth) : 0;
-  return { page: Math.max(doc.scrollWidth - vw, doc.scrollHeight - vh, appOver), scrollers: [...new Set(scrollers)].slice(0, 6), outside: [...new Set(outside)].slice(0, 6), cut: [...new Set(cut)].slice(0, 6), overlap: [...new Set(overlap)].slice(0, 4) };
+  return { page: Math.max(doc.scrollWidth - vw, doc.scrollHeight - vh, appOver), scrollers: [...new Set(scrollers)].slice(0, 6), outside: [...new Set(outside)].slice(0, 6), cut: [...new Set(cut)].slice(0, 6), overlap: [...new Set(overlap)].slice(0, 4), noWayBack };
 };
 
 const browser = await chromium.launch();
@@ -227,10 +241,10 @@ try {
         await wait(settle);
         for (const step of steps) await step(page);
         const audit = await page.evaluate(AUDIT);
-        const fails = audit.page > 1 || audit.scrollers.length || audit.outside.length || audit.cut.length || audit.overlap.length;
+        const fails = audit.page > 1 || audit.scrollers.length || audit.outside.length || audit.cut.length || audit.overlap.length || audit.noWayBack.length;
         if (fails) bad += 1;
         results.push({ name, size: `${w}x${h}`, ...audit });
-        if (fails) console.log(`${name.padEnd(16)} ${w}x${h} page ${audit.page} scrollers ${JSON.stringify(audit.scrollers)} outside ${JSON.stringify(audit.outside)} cut ${JSON.stringify(audit.cut)} overlap ${JSON.stringify(audit.overlap)}`);
+        if (fails) console.log(`${name.padEnd(16)} ${w}x${h} page ${audit.page} scrollers ${JSON.stringify(audit.scrollers)} outside ${JSON.stringify(audit.outside)} cut ${JSON.stringify(audit.cut)} overlap ${JSON.stringify(audit.overlap)}${audit.noWayBack.length ? ` NO WAY BACK ${JSON.stringify(audit.noWayBack)}` : ''}`);
         if (shots && (fails || process.env.FIT_ALL_SHOTS)) await page.screenshot({ path: `${shots}/${name}-${w}x${h}.png` });
       } catch (e) {
         console.log(`${name.padEnd(16)} ${w}x${h} ERROR ${String(e).slice(0, 120)}`);

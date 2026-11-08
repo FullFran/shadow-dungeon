@@ -157,6 +157,10 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
   html.touch .controls-window .pc-pages .pg-nav { gap: 6px; }
   html.touch .controls-window .pc-pages .pg-btn { width: 44px; }
   html.touch .controls-window .pc-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
+  /* Over the hub or the town the floating "Atrás" never shows: the window keeps its own Volver, as a slim row at its foot. */
+  html.touch .town-shop .controls-window .md-menu { display: block; flex: none; margin: 0; }
+  html.touch .town-shop .controls-window .md-list { display: flex; }
+  html.touch .town-shop .controls-window .md-item { min-height: 44px; }
 }
 @media (max-height: 640px) and (max-width: 700px) {
   html.touch #app:has(> .controls-window) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }

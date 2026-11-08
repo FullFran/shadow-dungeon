@@ -208,3 +208,19 @@
 @media (max-height: 560px) {
   html.touch #app > .hl-window { height: calc(100dvh - 20px); }
 }
+
+/* The shortest phones (iPhone SE 1 at 320 px, any phone with the browser's bars): slimmer slots, a narrower sheet that keeps
+   the condition, the bar and Aceptar (the count and the reward line go: the card shows the pay), cards that give their
+   title the width so two lines hold the longest dungeon name. */
+@media (max-height: 380px) {
+  html.touch .bd-slot { min-height: 36px; } html.touch .bd-saldo { min-height: 36px; }
+  html.touch .bd-window .hl-body { grid-template-columns: 10.5rem minmax(0, 1fr); gap: 6px; }
+  html.touch .bd-sheet { gap: 3px; padding: 4px 6px; }
+  html.touch .bd-sheet .hl-rules p { font-size: 12px; line-height: 1.2; }
+  html.touch .bd-sheet .hl-record h3, html.touch .bd-sheet .hl-count, html.touch .bd-sheet .hl-record .hl-line { display: none; }
+  html.touch .bd-sheet .hl-cta { height: 40px; font-size: 15px; }
+  html.touch .bd-card { gap: 4px; padding: 2px 6px 2px 2px; }
+  html.touch .bd-card-art { width: 26px; height: 26px; } html.touch .bd-card-icon { width: 22px; height: 22px; }
+  html.touch .bd-card-title { font-size: 12px; line-height: 1.05; } html.touch .bd-card-text { gap: 1px; } html.touch .bd-card-sub { font-size: 10px; }
+  html.touch .bd-window .hl-back { min-height: 40px; }
+}
