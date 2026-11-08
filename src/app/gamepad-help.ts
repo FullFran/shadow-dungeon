@@ -1,6 +1,8 @@
 import { t } from '../i18n';
+import { isCompactTouch } from '../ui/compact-touch';
 import { cursorList } from '../ui/cursor-list';
 import { CREDITS_CONTROLS_ICONS } from '../ui/icons/credits-controls-icons';
+import { attachPager, type Pager } from '../ui/pager';
 import { pixelSvgOf } from '../ui/pixel-icons';
 import { h, mdWindow } from '../ui/window';
 import { GAMEPAD_HELP, buttonName, type HelpContext, type HelpRow, type PadStyle } from './gamepad-help-data';
@@ -50,7 +52,10 @@ function remember(style: PadStyle): void {
 
 /** The legend: one row per action with its glyph chips, the same rows the callouts draw. */
 function legend(context: HelpContext, style: PadStyle): HTMLElement {
-  return h('ul', { className: 'pc-legend' }, GAMEPAD_HELP[context].map((row) => h('li', {}, [h('span', { className: 'pc-keys' }, row.buttons.map((button) => glyphSvg(button, style))), h('span', { className: 'pc-action', textContent: t(`controls.${row.action}`) })])));
+  const list = h('ul', { className: 'pc-legend', id: 'pc-legend' });
+  list.setAttribute('aria-labelledby', 'pc-legend-title');
+  list.append(...GAMEPAD_HELP[context].map((row) => h('li', {}, [h('span', { className: 'pc-keys' }, row.buttons.map((button) => glyphSvg(button, style))), h('span', { className: 'pc-action', textContent: t(`controls.${row.action}`) })])));
+  return list;
 }
 
 /** Arrows move inside a group of buttons (and select, like a tab bar), Up/Down jump between groups; Enter and Space stay with the focused button. */
@@ -77,7 +82,8 @@ function barKeys(bar: HTMLElement, groups: () => HTMLElement[][]): void {
     e.stopPropagation();
     if (next && next !== target) {
       next.focus();
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') next.click();
+      // An arrow on a tab or a style also picks it; on a page button it only moves the focus.
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !next.classList.contains('pg-btn')) next.click();
     }
   });
 }
@@ -116,8 +122,13 @@ export function controlsWindow(onBack: () => void): { element: HTMLElement; disp
   const styleGroup = h('div', { className: 'pc-styles' }, styles);
   styleGroup.setAttribute('role', 'group');
   styleGroup.setAttribute('aria-label', t('controls.styleLabel'));
-  const bar = h('div', { className: 'pc-bar' }, [tabList, styleGroup]);
-  barKeys(bar, () => [tabs, styles]);
+  // A short touch screen keeps only the tabs up top; the pad style sits beside the page buttons and the note is the legend's last card.
+  const compact = isCompactTouch();
+  const bar = h('div', { className: 'pc-bar' }, compact ? [tabList] : [tabList, styleGroup]);
+  // On a short touch screen the legend pages beside the note instead of scrolling; the page buttons are one more group for the keys.
+  const foot = h('div', { className: 'pc-foot' });
+  let pager: Pager | null = null;
+  const pageButtons = (): HTMLElement[] => [...foot.querySelectorAll<HTMLElement>('.pg-btn:not(:disabled)')].filter((button) => !button.closest('[hidden]'));
 
   function render(): void {
     tabs.forEach((button, i) => {
@@ -127,10 +138,17 @@ export function controlsWindow(onBack: () => void): { element: HTMLElement; disp
     });
     styles.forEach((button, i) => button.setAttribute('aria-pressed', String(STYLES[i]!.id === style)));
     stage.setAttribute('aria-labelledby', `pc-tab-${context}`);
-    stage.replaceChildren(h('div', { className: 'pc-pad' }, [padSvg(context, style)]), h('h3', { className: 'pc-legend-title', textContent: t('controls.legend') }), legend(context, style));
+    const rows = legend(context, style);
+    if (compact) rows.append(h('li', { className: 'pc-note-card' }, [h('span', { className: 'pc-note', textContent: t('controls.note') })]));
+    stage.replaceChildren(h('div', { className: 'pc-pad' }, [padSvg(context, style)]), h('h3', { className: 'pc-legend-title', id: 'pc-legend-title', textContent: t('controls.legend') }), rows);
+    pager?.dispose();
+    const pages = h('div', { className: 'pc-pages' });
+    foot.replaceChildren(compact ? styleGroup : h('p', { className: 'pc-note', textContent: t('controls.note') }), pages);
+    pager = attachPager(rows, { nav: pages, enabled: isCompactTouch });
   }
   render();
 
-  const element = mdWindow({ title: t('title.controls'), className: 'shop controls-window' }, [bar, stage, h('p', { className: 'pc-note', textContent: t('controls.note') }), list.element]);
-  return { element, dispose: () => list.dispose() };
+  const element = mdWindow({ title: t('title.controls'), className: 'shop controls-window' }, [bar, stage, foot, list.element]);
+  barKeys(element, () => [tabs, styles, pageButtons()]);
+  return { element, dispose: () => (pager?.dispose(), list.dispose()) };
 }
