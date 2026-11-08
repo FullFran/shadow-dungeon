@@ -6,6 +6,7 @@ import { isCompactTouch } from '../ui/compact-touch';
 import { attachPager } from '../ui/pager';
 import { CREDITS_CONTROLS_ICONS } from '../ui/icons/credits-controls-icons';
 import { pixelSvgOf } from '../ui/pixel-icons';
+import { splitSentences } from '../ui/text-chunks';
 import { h, mdWindow } from '../ui/window';
 import '../styles/credits-controls.css';
 
@@ -83,10 +84,7 @@ export function splitSprites(text: string): string[] {
   return text.split(/,\s*(?![^()]*\))/).filter((entry) => entry.length > 0);
 }
 
-/** A paragraph as its sentences (rejoined with single spaces it is the original), so a phone can page a long paragraph instead of scrolling it. */
-export function splitSentences(text: string): string[] {
-  return text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡"(])/).filter((sentence) => sentence.length > 0);
-}
+export { splitSentences };
 
 const isUrl =(text: string) => /^https?:\/\//.test(text);
 const SPRITE_LICENCE = { label: 'CC BY-NC 4.0', url: 'https://creativecommons.org/licenses/by-nc/4.0/' };

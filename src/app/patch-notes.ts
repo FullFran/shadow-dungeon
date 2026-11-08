@@ -3,8 +3,11 @@ import type { KeyValueStore } from '../adapters/storage';
 import { CHANGELOG, CHANGELOG_SECTIONS, compareVersions, type ChangelogItem, type ChangelogSection, type Release } from '../data/changelog';
 import { getLanguage, t } from '../i18n';
 import '../styles/achievements-news.css';
+import { isCompactTouch } from '../ui/compact-touch';
 import { ACH_NEWS_ICONS, NEWS_SECTION_ICONS } from '../ui/icons/achievements-news-icons';
+import { attachPager } from '../ui/pager';
 import { pixelSvgOf } from '../ui/pixel-icons';
+import { packSentences } from '../ui/text-chunks';
 import { h, mdWindow } from '../ui/window';
 import { formatDay } from './achievements';
 
@@ -57,6 +60,22 @@ export function releaseSections(release: Release): [ChangelogSection, readonly C
     const items = release.sections[section] ?? [];
     return items.length > 0 ? [[section, items] as [ChangelogSection, readonly ChangelogItem[]]] : [];
   });
+}
+
+/** The longest piece of a note on one phone page; a note longer than this turns over to the next page at a sentence end. */
+const PIECE_MAX = 120;
+
+/** A note of a release as the phone shows it: where it belongs and its text in pieces that each fit a page. */
+export interface PhoneNote {
+  section: ChangelogSection;
+  item: ChangelogItem;
+  text: string;
+  pieces: string[];
+}
+
+/** Every note of a release, section by section in the fixed order, cut into page-sized pieces. */
+export function phoneNotes(release: Release, language: 'es' | 'en'): PhoneNote[] {
+  return releaseSections(release).flatMap(([section, items]) => items.map((item) => ({ section, item, text: item[language], pieces: packSentences(item[language], PIECE_MAX) })));
 }
 
 /** The longest headline: a first sentence longer than this is cut at its last comma (or word) before it. */
@@ -153,6 +172,7 @@ function releaseCard(release: Release, index: number, language: 'es' | 'en'): { 
  */
 export function patchNotesWindow(footer: HTMLElement): HTMLElement {
   const language = getLanguage();
+  if (isCompactTouch()) return phonePatchNotes(footer, language);
   const cards = CHANGELOG.map((release, index) => releaseCard(release, index, language));
   const scroll = h('div', { className: 'news-scroll' }, cards.map((c) => c.card));
   const element = mdWindow({ title: t('news.title'), className: 'news-window' }, [scroll, footer]);
@@ -185,5 +205,100 @@ export function patchNotesWindow(footer: HTMLElement): HTMLElement {
   setTimeout(() => {
     if (element.isConnected) cards[0]?.head.focus({ preventScroll: true });
   }, 0);
+  return element;
+}
+
+/** A note's first piece with its headline bold; a continuation is plain text. */
+function pieceText(note: PhoneNote, index: number): HTMLElement {
+  if (index > 0) return h('p', { className: 'news-row-text', textContent: note.pieces[index] });
+  const first = note.pieces[0] ?? '';
+  const { head } = splitHeadline(note.text);
+  const cut = head.length < first.length ? head.length : first.length;
+  return h('p', { className: 'news-row-text' }, [h('strong', { textContent: first.slice(0, cut) }), first.slice(cut)]);
+}
+
+/** The rows of one note on a phone: the first carries the icon and the section's name, each piece after it is a row of its own. */
+function phoneRows(note: PhoneNote): HTMLElement[] {
+  return note.pieces.map((_, index) => {
+    const row = h('li', { className: `news-row sec-${note.section}${index > 0 ? ' is-cont' : ''}` }, [
+      index === 0 ? icon(note.item.icon ?? NEWS_SECTION_ICONS[note.section], 'news-row-icon') : h('span', { className: 'news-row-icon' }),
+      h('div', { className: 'news-note' }, [index === 0 ? h('span', { className: 'news-tag', textContent: t(sectionTitleKey(note.section)) }) : null, pieceText(note, index)]),
+    ]);
+    row.setAttribute('role', 'listitem');
+    if (index === 0 && note.item.image) {
+      const { head } = splitHeadline(note.text);
+      row.append(h('img', { className: 'news-shot', src: newsImageUrl(note.item.image), alt: head, loading: 'lazy', decoding: 'async' }));
+    }
+    return row;
+  });
+}
+
+/**
+ * The notes on a short touch screen (no scrolling): the release's title above, its notes paged (long notes sentence by sentence)
+ * and, at the foot, the page buttons between two buttons that step to the older and the newer release.
+ * The way back is the screen's own "Atrás" button. Left and Right turn the page, PageUp and PageDown change release.
+ */
+function phonePatchNotes(footer: HTMLElement, language: 'es' | 'en'): HTMLElement {
+  let index = 0;
+  const heading = h('div', { className: 'news-cur' });
+  const host = h('div', { className: 'news-page' });
+  host.setAttribute('role', 'list');
+  const pages = h('div', { className: 'news-pages' });
+  const pager = attachPager(host, { nav: pages, enabled: isCompactTouch });
+  const stepper = (side: 'older' | 'newer'): { button: HTMLButtonElement; caption: HTMLElement } => {
+    const caption = h('span', { className: 'news-step-ver' });
+    const arrow = h('span', { className: `pg-arrow news-step-arrow is-${side}` });
+    const button = h('button', { type: 'button', className: `news-step is-${side}` }, side === 'older' ? [arrow, caption] : [caption, arrow]);
+    button.setAttribute('aria-label', t(`news.${side}`));
+    return { button, caption };
+  };
+  const older = stepper('older');
+  const newer = stepper('newer');
+  const nav = h('div', { className: 'news-nav' }, [older.button, pages, newer.button]);
+
+  function paint(): void {
+    const release = CHANGELOG[index]!;
+    heading.replaceChildren(
+      h('span', { className: 'news-version', textContent: `v${release.version}` }),
+      h('span', { className: 'news-chip', textContent: formatDay(release.date, language) }),
+      ...(index === 0 ? [h('span', { className: 'news-chip is-latest', textContent: t('news.latest') })] : []),
+    );
+    host.replaceChildren(...phoneNotes(release, language).flatMap(phoneRows));
+    const past = CHANGELOG[index + 1];
+    const next = CHANGELOG[index - 1];
+    older.button.disabled = !past;
+    older.caption.textContent = past ? `v${past.version}` : '';
+    newer.button.disabled = !next;
+    newer.caption.textContent = next ? `v${next.version}` : '';
+    pager.reset();
+  }
+  const step = (delta: number): void => {
+    const to = Math.min(CHANGELOG.length - 1, Math.max(0, index + delta));
+    if (to === index) return;
+    index = to;
+    paint();
+  };
+  older.button.addEventListener('click', () => step(1));
+  newer.button.addEventListener('click', () => step(-1));
+
+  const element = mdWindow({ title: t('news.title'), className: 'news-window is-compact' }, [heading, host, nav, footer]);
+  let attached = false;
+  const onKey = (e: KeyboardEvent): void => {
+    if (!element.isConnected) {
+      if (attached) window.removeEventListener('keydown', onKey, true);
+      return;
+    }
+    attached = true;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.defaultPrevented) return;
+    if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
+      e.preventDefault();
+      pager.go(pager.page() + (e.code === 'ArrowRight' ? 1 : -1));
+    } else if (e.code === 'PageUp' || e.code === 'PageDown') {
+      e.preventDefault();
+      step(e.code === 'PageDown' ? 1 : -1);
+    }
+  };
+  window.addEventListener('keydown', onKey, true);
+  paint();
   return element;
 }

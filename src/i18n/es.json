@@ -3840,6 +3840,8 @@
   "news.collapse": "Plegar",
   "news.items.one": "{n} novedad",
   "news.items": "{n} novedades",
+  "news.older": "Versión anterior",
+  "news.newer": "Versión más reciente",
   "news.latest": "Última",
   "news.image.zoom": "Ampliar la captura",
   "news.image.shrink": "Reducir la captura",
