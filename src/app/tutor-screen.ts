@@ -19,6 +19,7 @@ import { buildHint, cardBlock, confirmCopy, nextRankText, paidText, spendAfterCo
 import { defaultOpen, horizontal, moveGroups, navItems, navMove, type MoveGroup, type NavItem } from './tutor-groups';
 import type { SlotKind } from '../data/slots';
 import { hubStep } from './title-hub';
+import { attachPager, isPhone } from '../ui/pager';
 import '../styles/tutor.css';
 
 /**
@@ -78,6 +79,8 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   let asking = false;
   /** What the preview shows now, so a refresh of the same move does not restart it. */
   let previewKey = '';
+  /** The species and slots the phone list shows, so a refresh of the same view keeps its page. */
+  let listKey = '';
   const cleared = (): string[] => [...(options.cleared ?? [])];
   const wallet = () => ({ ...save, cleared: cleared() });
   const roster = (): SpeciesId[] => {
@@ -170,6 +173,11 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   // List: one accordion per slot, a calm row per move (name, rank pips, one quiet price or state).
   const list = h('div', { className: 'tu-list' });
   list.setAttribute('aria-label', t('tutor.title'));
+  // Phones: the slot headers become a row of tabs and the open slot's moves turn into pages (src/ui/pager.ts), never a scrolling list.
+  const tabs = h('div', { className: 'tu-tabs' });
+  tabs.hidden = true;
+  const column = h('div', { className: 'tu-col' }, [tabs, list]);
+  const pager = attachPager(list);
   const headers = new Map<SlotKind, HTMLButtonElement>();
   const bodies = new Map<SlotKind, HTMLElement>();
   const groupEls = new Map<SlotKind, HTMLElement>();
@@ -234,6 +242,13 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   };
   function toggle(slot: SlotKind, force?: boolean): void {
     if (!open) return;
+    if (isPhone()) {
+      // One slot at a time: its moves are the pages.
+      if (open.has(slot) && open.size === 1 && force !== true) return;
+      open = new Set([slot]);
+      refresh();
+      return;
+    }
     const want = force ?? !open.has(slot);
     if (want) open.add(slot);
     else open.delete(slot);
@@ -244,6 +259,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   const elOf = (item: NavItem): HTMLElement | null => (item.kind === 'header' ? (headers.get(item.slot) ?? null) : (list.querySelector<HTMLElement>(`[data-move="${item.move}"]`) ?? null));
   const focusItem = (item: NavItem | undefined): void => {
     const el = item ? elOf(item) : null;
+    if (el && list.contains(el)) pager.reveal(el);
     el?.focus({ preventScroll: true });
     el?.scrollIntoView({ block: 'nearest' });
   };
@@ -281,10 +297,14 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
 
   function refresh(): void {
     const active = document.activeElement;
-    const keep = active instanceof HTMLElement && list.contains(active) ? (active.dataset.move ?? active.id) : null;
+    const keep = active instanceof HTMLElement && (list.contains(active) || tabs.contains(active)) ? (active.dataset.move ?? active.id) : null;
+    const phone = isPhone();
+    const page = pager.page();
+    const sameView = phone && listKey === `${species}:${[...(open ?? [])].join()}`;
     cards = tutorCards(wallet(), species, 'all');
     groups = moveGroups(cards);
     open ??= defaultOpen(groups, focused);
+    if (phone && open.size !== 1) open = new Set([[...open][0] ?? groups[0]?.slot].filter((x): x is SlotKind => !!x));
     balance.replaceChildren(pixelIconSvg('coin', 'px-icon'), h('span', { textContent: coinText(save.coins, t) }));
     for (const [id, chip] of chips) {
       chip.classList.toggle('is-current', id === species);
@@ -295,13 +315,30 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     headers.clear();
     bodies.clear();
     groupEls.clear();
-    list.replaceChildren(...groups.map(groupEl));
-    if (cards.length === 0) list.append(h('p', { className: 'tu-empty', textContent: t('tutor.empty') }));
+    const sections = groups.map(groupEl);
     syncOpen();
+    tabs.hidden = !phone;
+    if (phone) {
+      const slot = [...open][0];
+      tabs.replaceChildren(...groups.map((g) => headers.get(g.slot)!));
+      list.replaceChildren(...(slot ? [...(bodies.get(slot)?.querySelectorAll('.tu-row') ?? [])] : []));
+      listKey = `${species}:${[...open].join()}`;
+    } else {
+      tabs.replaceChildren();
+      list.replaceChildren(...sections);
+      listKey = '';
+    }
+    if (cards.length === 0) list.append(h('p', { className: 'tu-empty', textContent: t('tutor.empty') }));
+    pager.refresh();
+    if (sameView) pager.go(page);
     const target = cards.find((c) => c.move === focused) ?? cards.find((c) => open?.has(c.slot)) ?? cards[0] ?? null;
     focused = target?.move ?? null;
     showSheet(target);
-    if (keep) (list.querySelector<HTMLElement>(`[data-move="${keep}"]`) ?? list.querySelector<HTMLElement>(`#${keep}`))?.focus({ preventScroll: true });
+    if (keep) {
+      const target = list.querySelector<HTMLElement>(`[data-move="${keep}"]`) ?? document.getElementById(keep);
+      if (target && list.contains(target)) pager.reveal(target);
+      target?.focus({ preventScroll: true });
+    }
     const chip = chips.get(species);
     if (chip) strip.scrollLeft = Math.max(0, chip.offsetLeft - strip.offsetLeft - (strip.clientWidth - chip.offsetWidth) / 2);
   }
@@ -320,7 +357,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   const buildLine = h('p', { className: 'tu-hint tu-build' });
   const element = mdWindow({ title: t('tutor.title'), className: 'tu-window' }, [
     h('div', { className: 'tu-top' }, [back, prev, strip, next, balance]),
-    h('div', { className: 'tu-body' }, [list, sheet]),
+    h('div', { className: 'tu-body' }, [column, sheet]),
     h('div', { className: 'tu-foot' }, [buildLine, h('p', { className: 'tu-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'tutor.hint.keys') })]),
   ]);
 
@@ -344,7 +381,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     if (!dir) return;
     e.preventDefault();
     const active = document.activeElement;
-    const at = list.contains(active) ? itemAt(active) : -1;
+    const at = list.contains(active) || tabs.contains(active) ? itemAt(active) : -1;
     const all = items();
     if (at >= 0) {
       const item = all[at]!;
@@ -385,6 +422,10 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     } else to?.focus();
   };
   window.addEventListener('keydown', onKey);
+  // Turning the phone (or resizing a window) between the two layouts rebuilds the list for the new one.
+  const phoneQuery = window.matchMedia?.('(max-height: 560px)');
+  const onLayout = (): void => refresh();
+  phoneQuery?.addEventListener?.('change', onLayout);
 
   refresh();
   queueMicrotask(() => list.querySelector<HTMLElement>(`[data-move="${focused}"]`)?.focus({ preventScroll: true }));
@@ -392,6 +433,8 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
     element,
     dispose: () => {
       window.removeEventListener('keydown', onKey);
+      phoneQuery?.removeEventListener?.('change', onLayout);
+      pager.dispose();
       preview?.dispose();
     },
   };

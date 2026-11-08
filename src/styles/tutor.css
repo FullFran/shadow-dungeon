@@ -25,6 +25,10 @@
 /* Body: the list beside the sheet. */
 .tu-body { display: grid; grid-template-columns: minmax(0, 1fr) 25rem; gap: 20px; min-height: 0; flex: 1; }
 
+/* Desktop: the column is only a wrapper (the tabs belong to phones, below). */
+.tu-col { display: contents; }
+.tu-tabs { display: none; }
+
 /* The list: one column, one accordion per slot, scrolling inside (never the page). */
 .tu-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px 8px 2px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
 .tu-list::-webkit-scrollbar { width: 8px; }
@@ -135,4 +139,38 @@
   .tu-window .tu-note { height: 1.3em; -webkit-line-clamp: 1; font-size: 12px; }
   .tu-act { height: 36px; font-size: 16px; gap: 6px; } .tu-act svg.px-icon { width: 20px; height: 20px; }
   .tu-foot { display: none; }
+}
+
+/* Phones on their side (odd/tasks/mobile-pass.md T6): one Pokémon at a time in the top strip (the arrows step through them),
+   the slots as tabs, the open slot's moves as pages of 44 px rows; nothing scrolls. */
+@media (max-height: 560px) {
+  html.touch .tu-step { width: 44px; height: 44px; font-size: 20px; }
+  html.touch .tu-back { height: 44px; padding: 0 14px; }
+  html.touch .tu-top { height: 44px; }
+  html.touch .tu-species { overflow: hidden; justify-content: center; }
+  html.touch .tu-chip:not(.is-current) { display: none; }
+  html.touch .tu-chip { width: auto; max-width: 100%; height: 44px; padding-right: 14px; }
+  html.touch .tu-chip-name { overflow: visible; text-overflow: clip; font-size: 18px; }
+  html.touch .tu-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; }
+  html.touch .tu-tabs { flex: none; display: flex; gap: 4px; }
+  html.touch .tu-tabs .tu-group-head { flex: 1 1 auto; min-width: min-content; min-height: 44px; justify-content: center; gap: 5px; padding: 0 6px; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 6px; }
+  html.touch .tu-tabs .tu-group-head[aria-expanded='true'] { border-color: var(--md-cursor); }
+  html.touch .tu-tabs .tu-group-head[aria-expanded='true'] .tu-group-name { color: var(--md-cursor); }
+  html.touch .tu-tabs .tu-chevron, html.touch .tu-tabs .tu-group-count, html.touch .tu-tabs .tu-group-max { display: none; }
+  html.touch .tu-tabs .tu-group-name { flex: none; overflow: visible; text-overflow: clip; font-size: 16px; }
+  html.touch .tu-sheet-head { flex-wrap: wrap; row-gap: 2px; }
+  html.touch .tu-name { flex: 1 1 auto; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.05; }
+  html.touch .tu-badges .tu-pips { display: none; }
+  html.touch .tu-list { flex: 1; gap: 4px; padding: 0; }
+  html.touch .tu-row { background: var(--relic-slab); border-color: var(--relic-slab-edge); }
+  html.touch .tu-row.is-focused { border-color: var(--md-border); }
+  html.touch .tu-row-name { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.05; }
+}
+@media (max-height: 560px) and (max-width: 720px) {
+  /* Narrow: only the open tab keeps its name (its icon and the aria label tell the others apart). */
+  html.touch .tu-body { grid-template-columns: minmax(0, 1fr) 16rem; gap: 8px; }
+  html.touch .tu-tabs .tu-group-head { flex: 0 0 44px; min-width: 0; padding: 0; }
+  html.touch .tu-tabs .tu-group-head[aria-expanded='true'] { flex: 1 1 auto; padding: 0 8px; }
+  html.touch .tu-tabs .tu-group-head[aria-expanded='false'] .tu-group-name { display: none; }
+  html.touch .tu-stat-label { font-size: 11px; letter-spacing: -0.02em; }
 }
