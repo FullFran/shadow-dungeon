@@ -2,6 +2,8 @@ import creditsMarkdown from '../../CREDITS.md?raw';
 import { MUSIC_TRACKS } from '../data/music';
 import { buildLabel } from './build-info';
 import { t } from '../i18n';
+import { isCompactTouch } from '../ui/compact-touch';
+import { attachPager } from '../ui/pager';
 import { CREDITS_CONTROLS_ICONS } from '../ui/icons/credits-controls-icons';
 import { pixelSvgOf } from '../ui/pixel-icons';
 import { h, mdWindow } from '../ui/window';
@@ -81,7 +83,12 @@ export function splitSprites(text: string): string[] {
   return text.split(/,\s*(?![^()]*\))/).filter((entry) => entry.length > 0);
 }
 
-const isUrl = (text: string) => /^https?:\/\//.test(text);
+/** A paragraph as its sentences (rejoined with single spaces it is the original), so a phone can page a long paragraph instead of scrolling it. */
+export function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡"(])/).filter((sentence) => sentence.length > 0);
+}
+
+const isUrl =(text: string) => /^https?:\/\//.test(text);
 const SPRITE_LICENCE = { label: 'CC BY-NC 4.0', url: 'https://creativecommons.org/licenses/by-nc/4.0/' };
 const SPRITE_SOURCE = 'https://github.com/PMDCollab/SpriteCollab';
 
@@ -130,7 +137,7 @@ function walkKeys(scroll: HTMLElement): void {
   scroll.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     const target = e.target as HTMLElement;
-    const items = [...scroll.querySelectorAll<HTMLElement>('.cc-nav')].filter((el) => el.offsetParent !== null);
+    const items = [...scroll.querySelectorAll<HTMLElement>('.cc-nav, .pg-btn:not(:disabled)')].filter((el) => el.offsetParent !== null);
     const at = items.indexOf(target);
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key as 'ArrowDown'];
     if (step || e.key === 'Home' || e.key === 'End') {
@@ -144,7 +151,8 @@ function walkKeys(scroll: HTMLElement): void {
 
 /** The credits window; `footer` holds the way back (Esc is its "back"). */
 export function creditsWindow(footer: HTMLElement): HTMLElement {
-  const artists = creditedArtists(creditsMarkdown).map(artistCard);
+  if (isCompactTouch()) return compactCreditsWindow(footer);
+  const artists = creditedArtists(creditsMarkdown).map((artist, index) => artistCard(artist, index));
   const [team, sprites, fonts, tiles, music, libraries, legal] = CREDITS_SECTIONS as readonly [CreditsSection, CreditsSection, CreditsSection, CreditsSection, CreditsSection, CreditsSection, CreditsSection];
   const tracks = Object.values(MUSIC_TRACKS).filter((track) => !track.variantOf);
   const scroll = h('div', { className: 'cc-scroll' }, [
@@ -169,4 +177,123 @@ export function creditsWindow(footer: HTMLElement): HTMLElement {
   scroll.setAttribute('aria-label', t('credits.scrollLabel'));
   walkKeys(scroll);
   return mdWindow({ title: t('credits.title'), className: 'wide credits-screen' }, [scroll, footer]);
+}
+
+/** An artist as one button of the phone's list: the name and how many sprites; the contact and the species open on their own page. */
+function artistButton(artist: CreditedArtist, openList: () => void): HTMLElement {
+  const count = splitSprites(artist.sprites).length;
+  const el = h('button', { type: 'button', className: 'cc-card cc-artist-btn cc-nav' }, [
+    h('span', { className: 'cc-name', textContent: artist.name }),
+    h('span', { className: 'cc-chip', textContent: count === 1 ? t('credits.spriteOne') : t('credits.spriteCount').replace('{n}', String(count)) }),
+  ]);
+  el.setAttribute('aria-haspopup', 'true');
+  el.addEventListener('click', openList);
+  return el;
+}
+
+/** A paragraph as one page item per sentence. */
+const paragraphs = (text: string, className = 'cc-wide'): HTMLElement[] => splitSentences(text).map((sentence) => h('p', { className, textContent: sentence }));
+
+/**
+ * The credits on a short touch screen (no scrolling): a strip of one icon button per section, the section's items paged below
+ * (long paragraphs sentence by sentence, an artist's species on a page of their own) and the page buttons at the foot.
+ * The way back is the screen's own "Atrás" button, as everywhere on touch.
+ */
+function compactCreditsWindow(footer: HTMLElement): HTMLElement {
+  const artists = creditedArtists(creditsMarkdown);
+  const tracks = Object.values(MUSIC_TRACKS).filter((track) => !track.variantOf);
+  const items = (id: CreditsSection['id']): HTMLElement[] => {
+    switch (id) {
+      case 'team':
+        return TEAM.map(teamCard);
+      case 'sprites':
+        return [
+          ...paragraphs(t('credits.sprites')),
+          h('p', { className: 'cc-chips cc-wide' }, [chip(`${t('credits.licence')}: ${SPRITE_LICENCE.label}`, SPRITE_LICENCE.url), chip('PMDCollab SpriteCollab', SPRITE_SOURCE)]),
+          ...artists.map((artist) => artistButton(artist, () => openSpecies(artist))),
+        ];
+      case 'fonts':
+        return [...paragraphs(t('credits.font')), ...paragraphs(t('credits.fontText'))];
+      case 'tiles':
+        return paragraphs(t('credits.tiles'));
+      case 'music':
+        return [...paragraphs(t('credits.music')), ...tracks.map((track) => h('li', { className: 'cc-track-item' }, [chip(track.license), link(track.sourceUrl, track.attribution, 'cc-track cc-nav')])), ...paragraphs(t('credits.audio'))];
+      case 'libraries':
+        return [...paragraphs(t('credits.effects')), ...paragraphs(t('credits.data')), ...paragraphs(t('credits.code'))];
+      case 'legal':
+        return [...paragraphs(t('notice.fanProject')), h('p', { className: 'cc-version cc-wide', textContent: `${t('credits.version')}: ${buildLabel()}` })];
+    }
+  };
+
+  let current = 0;
+  /** The artist whose species fill the page, or null on a section's own page. */
+  let detail: { artist: CreditedArtist; species: string[] } | null = null;
+  /** The page of the section's list the player left to read the species, to come back to it. */
+  let returnPage = 0;
+
+  const tabs = CREDITS_SECTIONS.map((section, index) => {
+    const tab = h('button', { type: 'button', className: 'cc-tab cc-nav' }, [icon(section.icon, 'cc-icon')]);
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-label', t(section.titleKey));
+    tab.addEventListener('click', () => open(index));
+    return tab;
+  });
+  const tabList = h('div', { className: 'cc-tabs' }, tabs);
+  tabList.setAttribute('role', 'tablist');
+  tabList.setAttribute('aria-label', t('credits.scrollLabel'));
+  const heading = h('h3', { className: 'cc-cur' });
+  const back = h('button', { type: 'button', className: 'cc-back cc-nav', textContent: t('menu.back') });
+  const bar = h('div', { className: 'cc-bar' });
+  const page = h('div', { className: 'cc-page' });
+  const pages = h('div', { className: 'cc-pages' });
+  const pager = attachPager(page, { nav: pages, enabled: isCompactTouch });
+  const body = h('div', { className: 'cc-compact' }, [bar, page, pages]);
+  page.setAttribute('role', 'region');
+
+  function paint(): void {
+    const section = CREDITS_SECTIONS[current]!;
+    page.classList.toggle('is-species', detail !== null);
+    if (detail) {
+      heading.textContent = detail.artist.name;
+      bar.replaceChildren(back, heading);
+      page.setAttribute('aria-label', `${detail.artist.name}: ${t('credits.showSprites')}`);
+      const { contact } = detail.artist;
+      page.replaceChildren(
+        ...(contact ? [isUrl(contact) ? link(contact, contact.replace(/^https?:\/\//, '').replace(/\/$/, ''), 'cc-contact cc-nav cc-contact-link') : h('span', { className: 'cc-contact', textContent: contact })] : []),
+        ...detail.species.map((entry) => h('span', { className: 'cc-species-chip', textContent: entry })),
+      );
+    } else {
+      heading.textContent = t(section.titleKey);
+      bar.replaceChildren(tabList, heading);
+      page.setAttribute('aria-label', t(section.titleKey));
+      page.replaceChildren(...items(section.id));
+    }
+    tabs.forEach((tab, index) => {
+      tab.setAttribute('aria-selected', String(index === current));
+      tab.classList.toggle('is-current', index === current);
+    });
+  }
+  function open(index: number): void {
+    current = index;
+    detail = null;
+    paint();
+    pager.reset();
+  }
+  function openSpecies(artist: CreditedArtist): void {
+    returnPage = pager.page();
+    detail = { artist, species: splitSprites(artist.sprites) };
+    paint();
+    pager.reset();
+    back.focus({ preventScroll: true });
+  }
+  back.addEventListener('click', () => {
+    detail = null;
+    paint();
+    pager.refresh();
+    pager.go(returnPage);
+    tabs[current]?.focus({ preventScroll: true });
+  });
+  paint();
+  walkKeys(body);
+  return mdWindow({ title: t('credits.title'), className: 'wide credits-screen is-compact' }, [body, footer]);
 }

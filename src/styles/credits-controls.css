@@ -133,8 +133,8 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
 
 /* ---------- Gamepad controls on short touch screens: tabs and styles on top, the legend pages, no drawing ---------- */
 @media (max-height: 640px) {
-  html.touch #app:has(.controls-window) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) 0 max(96px, env(safe-area-inset-left)); gap: 6px; }
-  html.touch .controls-window { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
+  html.touch #app:has(.controls-window) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app > .controls-window { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
   html.touch .controls-window > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; padding: 0; }
   html.touch .controls-window .pc-bar { flex: none; margin: 0; gap: 6px 10px; flex-wrap: nowrap; }
   html.touch .controls-window .pc-tab, html.touch .controls-window .pc-style { min-height: 44px; padding: 2px 10px; font-size: 15px; gap: 6px; }
@@ -161,4 +161,53 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
   html.touch #app:has(.controls-window) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
   html.touch .controls-window .pc-tab, html.touch .controls-window .pc-style { padding: 2px 8px; font-size: 14px; }
   html.touch .controls-window .pc-icon { width: 20px; height: 20px; }
+}
+
+/* ---------- Credits on short touch screens: section tabs, one page of items at a time ---------- */
+@media (max-height: 640px) {
+  html.touch #app:has(.credits-screen.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app > .credits-screen.is-compact { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
+  html.touch .credits-screen.is-compact > .md-window-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 0; }
+  html.touch .credits-screen.is-compact .md-list { display: none; }
+  /* The fan notice under the window says what the "Aviso legal" page says: the room goes to the credits. */
+  html.touch #app:has(.credits-screen.is-compact) > .notice { display: none; }
+  .cc-compact { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; font-family: var(--md-text-font); }
+  .cc-bar { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; }
+  .cc-tabs { flex: none; display: flex; gap: 4px; }
+  .cc-tab { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; background: var(--relic-slab); border: 2px solid var(--md-border-shade); border-radius: 4px; }
+  .cc-tab.is-current { border-color: var(--md-border); background: linear-gradient(180deg, rgba(255, 138, 61, 0.16), rgba(255, 138, 61, 0.04)); box-shadow: inset 0 -3px 0 var(--relic-ember); }
+  .cc-tab:focus-visible, .cc-back:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+  .cc-tab .cc-icon { width: 28px; height: 28px; }
+  .cc-cur { margin: 0; flex: 1 1 auto; min-width: 0; font-family: var(--md-font); font-size: 17px; font-weight: 400; line-height: 1.1; color: var(--md-cursor); letter-spacing: 0.02em; overflow-wrap: anywhere; }
+  .cc-back { all: unset; box-sizing: border-box; flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; cursor: pointer; font-family: var(--md-font); font-size: 17px; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--rp-edge); border-radius: 6px; }
+  .cc-page { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: min-content; align-content: start; gap: 6px 10px; }
+  .cc-page > .cc-wide { grid-column: 1 / -1; }
+  .cc-page > p { margin: 0; font-size: 15px; line-height: 1.3; color: var(--md-text); }
+  .cc-page > p.cc-chips { gap: 6px; }
+  .cc-page > .cc-card { margin: 0; padding: 6px 10px; }
+  .cc-page .cc-member { grid-column: 1 / -1; padding: 6px 10px; gap: 10px; }
+  .cc-page .cc-member-text { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+  .cc-page .cc-member-text > .cc-name, .cc-page .cc-member-text > .cc-role { grid-column: 1; }
+  .cc-page .cc-member-text > .cc-github { grid-column: 2; grid-row: 1 / span 2; }
+  .cc-page .cc-icon-role { width: 40px; height: 40px; }
+  .cc-page .cc-name { font-size: 19px; }
+  .cc-page .cc-artist-btn { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 6px 10px; cursor: pointer; background: var(--relic-slab); border: 2px solid var(--relic-slab-edge); border-radius: 4px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); }
+  .cc-page .cc-artist-btn:hover { border-color: var(--md-border); }
+  .cc-page .cc-artist-btn:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+  .cc-page .cc-artist-btn .cc-name { min-width: 0; font-size: 18px; }
+  .cc-page .cc-artist-btn .cc-chip { margin: 0; }
+  .cc-page .cc-track-item { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
+  .cc-page .cc-nav { min-height: 44px; display: inline-flex; align-items: center; }
+  .cc-page a.cc-chip { min-height: 44px; padding: 0 10px; display: inline-flex; align-items: center; }
+  .cc-page .cc-contact { flex: 1 0 100%; display: flex; align-items: center; min-height: 44px; font-size: 15px; }
+  .cc-page a.cc-github { min-height: 44px; }
+  .cc-page.is-species { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+  .cc-species-chip { display: inline-block; padding: 4px 10px; font-size: 15px; line-height: 1.3; color: var(--md-text); background: var(--md-window-bottom); border: 2px solid var(--md-border-shade); border-radius: 4px; }
+  .cc-pages { flex: none; display: flex; justify-content: center; }
+  .cc-pages .pg-nav { gap: 6px; }
+  .cc-pages .pg-btn { width: 56px; }
+}
+@media (max-height: 640px) and (max-width: 700px) {
+  html.touch #app:has(.credits-screen.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  .cc-cur { font-size: 15px; }
 }
