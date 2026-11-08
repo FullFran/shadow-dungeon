@@ -114,7 +114,7 @@ export interface HudRects {
 }
 
 /** Touch: the Pause button (src/ui/touch-layout.ts) holds the top-left corner, so the status window starts after it. */
-const TOUCH_STATUS_X = 68;
+export const TOUCH_STATUS_X = 68;
 
 /** The status window: top left (touch: right of the Pause button). Its size never changes. */
 export function statusRect(space: Pick<HudSpace, 'height'>, touch = false): HudBox {

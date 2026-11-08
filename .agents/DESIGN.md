@@ -405,3 +405,10 @@ and gamepad reach every control, touch targets ≥ 44 px.
 - 2026-11-08 (owner: "los jefes que salga la silueta en negro y mejor diseñado"): a sealed shrine boss shows its real sprite as a black silhouette with a 1 px ember rim
   and a soft ember glow, a seal at its foot, "???" in dim text, on a solid slab with an ember floor glow (no dashed border); its sheet uses the ember light, never the
   boss's type colour. Supersedes the seal icon on a dashed slab (§1: Pokémon live in the scene as silhouettes).
+- 2026-11-08 (owner: "que no haya scroll en ningún menú móvil ... todo lo del juego en cualquier móvil"): on touch screens up to 700 px tall the end screens page their
+  summary instead of scrolling: every figure, the items strip, each card and the Pokémonedas row is a part of the board, a `src/ui/pager.ts` pager packs whole rows into
+  pages, its arrows sit in the head's top-right corner (the actions never move; the gilt rule narrows beside them), four figures make two rows of two under 680 px, and
+  the window no longer scrolls. The pause menu on touch is one page at a time: a rail of four tabs (Menú, Plano, Partida, Objetos) at the left, the page beside it (two
+  columns of actions, the floor plan, the run card, the held items with a pager); desktop keeps its three columns. In a run Pause and Map stack in the top-left corner
+  (for both hands, as wide as the room before the HUD's status window allows, never under 44 px), so nothing covers the minimap, and the round thumb buttons keep their
+  boxes (not only their circles) clear of each other. Supersedes Map in the top-right corner and the mirrored Pause of the left-handed layout.

@@ -36,6 +36,15 @@ export function pauseEntries(actions: MenuActions): PauseEntry[] {
   return ['resume', 'restart', 'settings', ...(actions.toggleFullscreen ? (['fullscreen'] as const) : []), ...(actions.openReport ? (['report'] as const) : []), ...(actions.copyReport ? (['copyReport'] as const) : []), 'quit'];
 }
 
+/** The pages of the menu on a phone (it shows one at a time, the others are a tap away on a rail); desktop shows all four side by side. */
+export const PAUSE_TABS = ['actions', 'map', 'run', 'items'] as const;
+export type PauseTab = (typeof PAUSE_TABS)[number];
+
+/** The page `delta` steps from `tab`, looping. */
+export function nextTab(tab: PauseTab, delta: number): PauseTab {
+  return PAUSE_TABS[(PAUSE_TABS.indexOf(tab) + delta + PAUSE_TABS.length) % PAUSE_TABS.length]!;
+}
+
 /** The restart row label: plain when unlimited, with the uses left otherwise ("none left" at 0). */
 export function restartLabel(restartsLeft: number | null | undefined, tr: (key: string) => string): string {
   if (restartsLeft === null || restartsLeft === undefined) return tr('pause.restart');

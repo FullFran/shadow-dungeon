@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { hudRects, hudScaleFor, hudSpace, TOUCH_STATUS_X } from '../../src/ui/hud-layout';
+import { playViewport } from '../../src/adapters/viewport';
 import { combatLayout, hitButton, NO_INSETS, TOUCH_SCALES, type ButtonPlace, type TouchLayout } from '../../src/ui/touch-layout';
 
 const COMBAT = ['pause', 'map', 'lock', 'roll', 'boost', 'area', 'heavy', 'fast'];
@@ -17,6 +19,10 @@ const gapBetween = (a: ButtonPlace, b: ButtonPlace): number => {
   const dy = Math.abs(a.y - b.y) - (a.height + b.height) / 2;
   return Math.max(dx, dy);
 };
+
+/** The boxes of two buttons apart on one axis (what the browser's audit measures: round buttons count as their square). */
+const boxGap = (a: ButtonPlace, b: ButtonPlace): number => Math.max(Math.abs(a.x - b.x) - (a.width + b.width) / 2, Math.abs(a.y - b.y) - (a.height + b.height) / 2);
+const PHONES: [number, number][] = [[932, 430], [896, 414], [844, 390], [812, 375], [740, 360], [667, 375], [568, 320], [844, 340], [667, 320]];
 
 const every = (fn: (layout: TouchLayout, viewport: { width: number; height: number }) => void) => {
   for (const viewport of VIEWPORTS)
@@ -59,6 +65,46 @@ describe('combat touch layout', () => {
     });
   });
 
+  it('keeps every button box clear of every other (round buttons included) on every phone, at every scale and hand', () => {
+    for (const [width, height] of PHONES)
+      for (const scale of TOUCH_SCALES)
+        for (const leftHanded of [false, true]) {
+          const all = Object.values(combatLayout({ width, height }, NO_INSETS, COMBAT, { scale, leftHanded }).buttons);
+          for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(boxGap(all[i]!, all[j]!), `${width}x${height} x${scale} ${leftHanded ? 'left' : 'right'}: ${all[i]!.id}/${all[j]!.id}`).toBeGreaterThanOrEqual(4);
+          for (const b of all) {
+            expect(b.x - b.width / 2).toBeGreaterThanOrEqual(0);
+            expect(b.x + b.width / 2).toBeLessThanOrEqual(width);
+            expect(b.y - b.height / 2).toBeGreaterThanOrEqual(0);
+            expect(b.y + b.height / 2).toBeLessThanOrEqual(height);
+          }
+        }
+  });
+
+  it('Pause and Map stack in the top-left corner, clear of the status window, chips, partners and minimap of the canvas HUD (right hand)', () => {
+    for (const [width, height] of PHONES)
+      for (const scale of TOUCH_SCALES)
+        for (const leftHanded of [false]) {
+          const { buttons } = combatLayout({ width, height }, NO_INSETS, COMBAT, { scale, leftHanded });
+          const fit = playViewport(width, height, 3, true);
+          const hud = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(width, height, fit.pixelScale, true));
+          const css = fit.zoom;
+          const rects = hudRects({ ...hud }, { chip: true, slots: 4, partners: 3, minimap: { cols: 60, rows: 40 }, touch: true });
+          const panels = [rects.status, rects.chips, ...rects.partners, rects.minimap!];
+          for (const id of ['pause', 'map']) {
+            const b = buttons[id]!;
+            expect(b.width, id).toBeGreaterThanOrEqual(44);
+            expect(b.height, id).toBeGreaterThanOrEqual(44);
+            expect(b.x, `${id} on the left`).toBeLessThan(width / 2);
+            for (const p of panels) {
+              const hit = b.x - b.width / 2 < (p.x + p.width) * css && (p.x * css) < b.x + b.width / 2 && b.y - b.height / 2 < (p.y + p.height) * css && p.y * css < b.y + b.height / 2;
+              expect(hit, `${width}x${height} x${scale} ${id} over the HUD`).toBe(false);
+            }
+          }
+          expect(buttons.map!.y).toBeGreaterThan(buttons.pause!.y);
+          expect(TOUCH_STATUS_X).toBe(68);
+        }
+  });
+
   it('puts the action buttons in the thumb corner and the menu / map in the top corners', () => {
     const { buttons, stickZone } = combatLayout({ width: 844, height: 390 }, NO_INSETS, COMBAT);
     for (const id of ['fast', 'heavy', 'roll', 'boost', 'area', 'lock']) {
@@ -69,9 +115,10 @@ describe('combat touch layout', () => {
     expect(buttons.fast!.x).toBeGreaterThan(buttons.heavy!.x);
     expect(buttons.roll!.y).toBeLessThan(buttons.fast!.y);
     expect(buttons.pause!.y).toBeLessThan(80);
-    expect(buttons.map!.y).toBeLessThan(80);
+    expect(buttons.map!.y).toBeLessThan(130);
     expect(buttons.pause!.x).toBeLessThan(844 / 2);
-    expect(buttons.map!.x).toBeGreaterThan(844 / 2);
+    expect(buttons.map!.x).toBeLessThan(844 / 2);
+    expect(buttons.map!.y).toBeGreaterThan(buttons.pause!.y);
     // The joystick takes the left half.
     expect(stickZone).toEqual({ x: 0, y: 0, width: 422, height: 390 });
   });
@@ -79,7 +126,9 @@ describe('combat touch layout', () => {
   it('mirrors for the left hand', () => {
     const right = combatLayout({ width: 844, height: 390 }, NO_INSETS, COMBAT);
     const left = combatLayout({ width: 844, height: 390 }, NO_INSETS, COMBAT, { leftHanded: true });
-    for (const id of COMBAT) {
+    // Pause stays top-left (the canvas HUD's status window is there, not mirrored); the thumb cluster takes the other side.
+    expect(left.buttons.pause).toEqual(right.buttons.pause);
+    for (const id of COMBAT.filter((i) => i !== 'pause' && i !== 'map')) {
       expect(left.buttons[id]!.x).toBeCloseTo(844 - right.buttons[id]!.x);
       expect(left.buttons[id]!.y).toBeCloseTo(right.buttons[id]!.y);
     }

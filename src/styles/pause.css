@@ -128,3 +128,51 @@
 html.touch .pz-item { min-height: 44px; }
 /* A dialog opened over the pause (the confirm) must not stack a second dark veil on the frozen game. */
 body:has(.overlay.pause) .rc-veil { background: color-mix(in srgb, var(--md-ink) 22%, transparent); }
+
+/* ---- one page at a time on a phone (owner 2026-11-08: no scroll in any mobile menu). A rail of four tabs at the left, the page
+   beside it; desktop never sees the rail and keeps the three columns. The coop note and the items keep their desktop order. */
+.pz-tabs { display: none; }
+.pz-run { display: contents; }
+.pz-run > .pz-coop { order: 2; }
+.pz-items { order: 1; }
+@media (max-height: 700px) {
+  html.touch .overlay.pause { padding: 20px 8px 6px; }
+  html.touch .pz-window { width: calc(100vw - 16px); max-height: calc(100dvh - 26px); padding: 8px 10px; overflow: visible; }
+  html.touch .pz-body { display: grid; grid-template-columns: 104px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 8px; height: calc(100dvh - 50px); }
+  html.touch .pz-tabs { display: flex; flex-direction: column; gap: 6px; grid-column: 1; grid-row: 1; min-height: 0; }
+  html.touch .pz-tab { all: unset; box-sizing: border-box; flex: 1 1 0; min-height: 44px; max-height: 64px; display: grid; place-items: center; padding: 0 6px; text-align: center; cursor: pointer; font-size: 16px; line-height: 1.1; color: var(--md-text-dim);
+    background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+  html.touch .pz-tab[aria-selected='true'] { color: var(--md-cursor); border-color: var(--md-border); background: radial-gradient(130% 90% at 50% 0%, color-mix(in srgb, var(--relic-slab-edge) 80%, transparent), var(--relic-slab) 70%); }
+  html.touch .pz-tab:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+  html.touch .pz-body > :is(.pz-actions, .pz-map), html.touch .pz-card > :is(.pz-run, .pz-items) { grid-column: 2; grid-row: 1; min-height: 0; }
+  html.touch .pz-card { display: contents; }
+  html.touch .pz-body[data-tab='actions'] > :is(.pz-map, .pz-card), html.touch .pz-body[data-tab='map'] > :is(.pz-actions, .pz-card), html.touch .pz-body[data-tab='run'] > :is(.pz-actions, .pz-map),
+  html.touch .pz-body[data-tab='items'] > :is(.pz-actions, .pz-map) { display: none; }
+  html.touch .pz-body[data-tab='run'] .pz-items, html.touch .pz-body[data-tab='items'] .pz-run { display: none; }
+
+  /* Menu page: two columns of actions, every label whole (it may wrap onto a second line). */
+  html.touch .pz-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(44px, 64px); gap: 6px; align-content: start; }
+  html.touch .pz-action { flex: none; max-height: none; min-width: 0; height: auto; }
+  html.touch .pz-action.is-danger { margin-top: 0; }
+  html.touch .pz-action-text { flex: 1; }
+  html.touch .pz-action-label { font-size: clamp(15px, 3vh, 20px); white-space: normal; overflow-wrap: anywhere; }
+
+  /* Run page: who and where on the left, the moves on the right, every line whole. */
+  html.touch .pz-run { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-auto-rows: min-content; gap: 6px 10px; align-content: start; }
+  html.touch .pz-run > :is(.pz-id, .pz-stats, .pz-vitals) { grid-column: 1; }
+  html.touch .pz-run > .pz-section { grid-column: 2; grid-row: 1 / span 3; }
+  html.touch .pz-run > .pz-coop { grid-column: 1 / -1; order: 0; }
+  html.touch .pz-dungeon, html.touch .pz-floor { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; }
+  html.touch .pz-vitals { grid-template-columns: minmax(0, 1fr); }
+  html.touch .pz-passive .pz-stat-value { overflow: visible; text-overflow: clip; white-space: normal; }
+  html.touch .pz-moves { grid-template-columns: minmax(0, 1fr); }
+  html.touch .pz-move { min-height: 38px; }
+  html.touch .pz-move-text strong { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  /* Items page: the chips fill the page, a pager under them when they do not fit. */
+  html.touch .pz-items { display: flex; flex-direction: column; gap: 6px; }
+  html.touch .pz-items-body { gap: 6px; }
+  html.touch .pz-chips { overflow: hidden; }
+  html.touch .pz-item { max-width: 100%; white-space: normal; }
+  html.touch .pz-items-body > .pg-nav { align-self: center; }
+}

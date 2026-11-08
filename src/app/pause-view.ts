@@ -7,8 +7,9 @@ import { TUTOR_ICONS } from '../ui/icons/tutor-icons';
 import { pixelIconSvg, pixelSvgOf } from '../ui/pixel-icons';
 import type { TilePalette } from '../data/dungeons';
 import { legendOf, mapColor, paintPauseMap, planScale, type MapMarker, type PauseMapModel } from './pause-map';
+import { attachPager } from '../ui/pager';
 import { h, mdWindow } from '../ui/window';
-import { pauseActions, type MenuActions, type PauseAction, type PauseEntry, type PauseSummary } from './pause-model';
+import { nextTab, PAUSE_TABS, pauseActions, type PauseTab, type MenuActions, type PauseAction, type PauseEntry, type PauseSummary } from './pause-model';
 import '../styles/sprite-fit.css';
 import '../styles/pause.css';
 
@@ -140,12 +141,16 @@ export function pauseView(options: PauseViewOptions): PauseView {
     chip.addEventListener('mouseenter', show);
     return chip;
   });
+  const chipBox = h('div', { className: 'pz-chips' }, itemChips);
+  // Phones: the chips that do not fit become pages (src/ui/pager.ts; idle on desktop), their buttons under the chips.
+  const chipPages = attachPager(chipBox);
   const items =
     summary.items.length === 0
       ? h('p', { className: 'pz-none' }, [pixelIconSvg('seal', 'px-icon'), h('span', { textContent: t('pause.itemsEmpty') })])
-      : h('div', { className: 'pz-items-body' }, [h('div', { className: 'pz-chips' }, itemChips), detail]);
+      : h('div', { className: 'pz-items-body' }, [chipBox, chipPages.nav, detail]);
   const mapPanel = floorPlan(options.map ?? null, summary.floorLine);
   const card = h('aside', { className: 'pz-card' }, [
+    h('div', { className: 'pz-run' }, [
     h('div', { className: 'pz-id' }, [
       sprite,
       h('div', { className: 'pz-id-text' }, [h('h3', { className: 'pz-species', textContent: summary.speciesName }), Object.assign(h('p', { className: 'pz-dungeon', textContent: summary.dungeonName }), { title: summary.dungeonName }), h('p', { className: 'pz-floor', textContent: summary.floorLine })]),
@@ -167,15 +172,37 @@ export function pauseView(options: PauseViewOptions): PauseView {
       ]),
     ]),
     h('section', { className: 'pz-section' }, [h('h4', { className: 'pz-section-title', textContent: t('pause.moves') }), h('ul', { className: 'pz-moves' }, moveTiles)]),
-    h('section', { className: 'pz-section pz-items' }, [h('h4', { className: 'pz-section-title', textContent: t('pause.items') }), items]),
     summary.coop ? h('p', { className: 'pz-coop', textContent: t('pause.coop') }) : null,
+    ]),
+    h('section', { className: 'pz-section pz-items' }, [h('h4', { className: 'pz-section-title', textContent: t('pause.items') }), items]),
   ]);
   card.setAttribute('aria-label', t('pause.summary'));
 
-  const win = mdWindow({ title: t('pause.title'), className: 'pz-window', still: options.still === true }, [h('div', { className: 'pz-body' }, [menu, mapPanel.element, card])]);
+  // Phones show one page at a time, picked on a rail at the left (CSS hides the rail and shows every page on desktop).
+  let tab: PauseTab = 'actions';
+  const body = h('div', { className: 'pz-body' }, [menu, mapPanel.element, card]);
+  const tabButtons = PAUSE_TABS.map((id) => {
+    const button = h('button', { type: 'button', className: 'pz-tab', textContent: t(`pause.tab.${id}`) });
+    button.dataset.tab = id;
+    button.setAttribute('role', 'tab');
+    button.addEventListener('click', () => show(id));
+    return button;
+  });
+  const rail = h('div', { className: 'pz-tabs' }, tabButtons);
+  rail.setAttribute('role', 'tablist');
+  function show(next: PauseTab): void {
+    tab = next;
+    body.dataset.tab = next;
+    for (const button of tabButtons) button.setAttribute('aria-selected', String(button.dataset.tab === next));
+    chipPages.refresh();
+  }
+  body.prepend(rail);
+  show(tab);
+  const win = mdWindow({ title: t('pause.title'), className: 'pz-window', still: options.still === true }, [body]);
 
   // ---- keys
-  const chips = (): HTMLElement[] => itemChips;
+  const shown = (set: HTMLElement[]): HTMLElement[] => set.filter((el) => el.getClientRects().length > 0);
+  const chips = (): HTMLElement[] => shown(itemChips);
   function focus(id: PauseEntry = 'resume'): void {
     (rows.find((row) => row.dataset.action === id) ?? rows[0])?.focus({ preventScroll: true });
   }
@@ -191,7 +218,13 @@ export function pauseView(options: PauseViewOptions): PauseView {
     const step = (set: HTMLElement[], from: number, delta: number) => set[(from + delta + set.length) % set.length]?.focus({ preventScroll: true });
     const down = e.key === 'ArrowDown' || e.code === 'KeyS';
     const up = e.key === 'ArrowUp' || e.code === 'KeyW';
-    if (down || up) {
+    // On the phone's rail (a pad or a keyboard on a phone) up and down turn the page.
+    const onRail = !!target && tabButtons.includes(target as HTMLButtonElement);
+    if (onRail && (down || up)) {
+      stop();
+      show(nextTab(tab, down ? 1 : -1));
+      tabButtons[PAUSE_TABS.indexOf(tab)]?.focus({ preventScroll: true });
+    } else if (down || up) {
       stop();
       if (inItems) step(chips(), chips().indexOf(target!), down ? 1 : -1);
       else step(rows, at < 0 ? 0 : at, down ? 1 : -1);
@@ -215,7 +248,7 @@ export function pauseView(options: PauseViewOptions): PauseView {
       stop();
       target.click();
     } else if (e.key === 'Tab') {
-      const order = [...rows, ...chips()];
+      const order = shown([...tabButtons, ...rows, ...chips()]);
       const i = target ? order.indexOf(target) : -1;
       stop();
       step(order, i < 0 ? 0 : i, e.shiftKey ? -1 : 1);

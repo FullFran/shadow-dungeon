@@ -3,11 +3,15 @@
  * the left half is the floating joystick; the right thumb has one big main
  * attack (Fast) in the corner, Heavy and Roll hugging it (left and above),
  * Boost on the diagonal between them, and Area and the small Lock on an outer
- * arc; Pause and Map sit in the top corners, away from both thumbs. Sizes
+ * arc (each clear of the others as a box, not only as a circle); Pause and Map
+ * stack in the top-left corner for both hands (the canvas HUD's minimap holds the
+ * top-right one, its status window starts right after them). Sizes
  * follow a scale setting (never under 44 px), positions respect the safe-area
  * insets, and a left-handed layout is the exact mirror. A lone main button
  * (the town's Talk) takes Fast's spot. src/ui/touch-controls.ts applies it.
  */
+
+import { TOUCH_STATUS_X } from './hud-layout';
 
 export interface Insets {
   top: number;
@@ -90,21 +94,30 @@ export function combatLayout(viewport: { width: number; height: number }, insets
     const size = sized(SIZE[id], scale);
     const angle = (ARC[id] * Math.PI) / 180;
     let r = main / 2 + gap + size / 2;
-    const clear = (x: number, y: number) => ring.every((o) => Math.hypot(o.x - x, o.y - y) >= o.width / 2 + size / 2 + gap);
+    // Clear as boxes (what a browser measures), which is stricter than as circles on the diagonals.
+    const clear = (x: number, y: number) => ring.every((o) => Math.max(Math.abs(o.x - x) - (o.width + size) / 2, Math.abs(o.y - y) - (o.height + size) / 2) >= gap);
     while (!clear(cx + r * Math.cos(angle), cy + r * Math.sin(angle))) r += 1;
     const place = { id, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), width: size, height: size, round: true };
     ring.push(place);
     placed.push(place);
   }
 
-  const cornerW = sized(CORNER.width, scale);
+  // Pause over Map in the top-left corner, as wide as the room before the canvas HUD's status window allows (never under 44 px).
+  const zoom = Math.max(1, Math.min(W, H) / 320);
+  const insetLeft = insets.left;
+  const cornerW = Math.max(MIN, Math.min(sized(CORNER.width, scale), Math.floor(TOUCH_STATUS_X * zoom - insetLeft - MARGIN - 4)));
   const cornerH = sized(CORNER.height, scale);
   const top = safe.top + MARGIN + cornerH / 2;
-  if (ids.includes('pause')) placed.push({ id: 'pause', x: safe.left + MARGIN + cornerW / 2, y: top, width: cornerW, height: cornerH, round: false });
-  if (ids.includes('map')) placed.push({ id: 'map', x: W - safe.right - MARGIN - cornerW / 2, y: top, width: cornerW, height: cornerH, round: false });
+  const corner: ButtonPlace[] = [];
+  if (ids.includes('pause')) corner.push({ id: 'pause', x: 0, y: top, width: cornerW, height: cornerH, round: false });
+  // Right hand: Map under Pause. Left hand: the thumb cluster takes the left side, so Map goes to the other top corner.
+  if (ids.includes('map') && !mirror) corner.push({ id: 'map', x: 0, y: top + (corner.length > 0 ? cornerH + 8 : 0), width: cornerW, height: cornerH, round: false });
+  if (ids.includes('map') && mirror) placed.push({ id: 'map', x: safe.left + MARGIN + sized(CORNER.width, scale) / 2, y: top, width: sized(CORNER.width, scale), height: cornerH, round: false });
 
   const buttons: Record<string, ButtonPlace> = {};
   for (const p of placed) buttons[p.id] = mirror ? { ...p, x: W - p.x } : p;
+  // Not mirrored: the corner stays where the HUD leaves room for it.
+  for (const p of corner) buttons[p.id] = { ...p, x: insetLeft + MARGIN + cornerW / 2 };
   const half = W / 2;
   return { buttons, stickZone: { x: mirror ? half : 0, y: 0, width: half, height: H } };
 }

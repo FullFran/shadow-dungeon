@@ -97,7 +97,7 @@ const SCREENS = [
   ['shrine', 'screen=shrine', 1500],
   ['item-pick', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500],
   ['run', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, key('Digit1')],
-  ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, key('Digit1'), click('.touch-pause')],
+  ['pause', 'screen=run&dungeon=crypt-of-the-sword-king&floor=2&seed=7', 3500, key('Digit1'), key('Escape')],
   ['victory', 'screen=victory', 1500],
   ['defeat', 'screen=defeat', 1500],
   ['runend', 'screen=runend', 1500],
