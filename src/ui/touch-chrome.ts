@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { h } from './window';
+import '../styles/mobile.css';
 
 /**
  * Page-level touch chrome, shown only with `html.touch` (index.html CSS):

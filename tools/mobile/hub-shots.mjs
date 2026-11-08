@@ -34,7 +34,13 @@ const AUDIT = `(() => {
     if (!r.width) continue;
     if (r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.top < -1 || r.left < -1) clipped.push((el.textContent || el.className).trim().slice(0, 20));
   }
-  return { page: [doc.scrollWidth - innerWidth, doc.scrollHeight - innerHeight], scrollers: scrollers.slice(0, 8), outside: clipped.slice(0, 8) };
+  // Text cut by a clamp, an ellipsis or a box too small for it (owner: "los nombres se cortan").
+  const cut = [];
+  for (const el of document.querySelectorAll('#app .hl-card-name, #app .bd-card-title, #app .bd-slot-title, #app .hl-name, #app .hl-card-sub, #app .hl-rules p, #app .hl-record p, #app .bd-card')) {
+    if (!el.getClientRects().length) continue;
+    if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) cut.push(el.textContent.trim().slice(0, 28));
+  }
+  return { page: [doc.scrollWidth - innerWidth, doc.scrollHeight - innerHeight], scrollers: scrollers.slice(0, 8), outside: clipped.slice(0, 8), cut: cut.slice(0, 8) };
 })()`;
 
 const browser = await chromium.launch();
@@ -61,7 +67,7 @@ try {
       const audit = await page.evaluate(AUDIT);
       await page.screenshot({ path: `${dir}/${hub}-${w}x${h}.png` });
       await context.close();
-      console.log(`${hub.padEnd(12)} ${w}x${h} page ${audit.page.join(',')} scrollers ${JSON.stringify(audit.scrollers)} outside ${JSON.stringify(audit.outside)}`);
+      console.log(`${hub.padEnd(12)} ${w}x${h} page ${audit.page.join(',')} scrollers ${JSON.stringify(audit.scrollers)} outside ${JSON.stringify(audit.outside)} cut ${JSON.stringify(audit.cut)}`);
     }
   }
 } finally {

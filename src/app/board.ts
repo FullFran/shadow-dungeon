@@ -45,7 +45,7 @@ export function missionBoardWindow(options: BoardOptions): { element: HTMLElemen
   const saldo = h('div', { className: 'bd-saldo' });
   const slots = h('div', { className: 'bd-slots' });
   slots.setAttribute('aria-label', t('mission.slots'));
-  const grid = h('div', { className: 'hl-grid bd-grid' });
+  const grid = h('div', { className: 'bd-grid' });
   grid.setAttribute('aria-label', t('mission.title'));
 
   const stage = h('div', { className: 'hl-stage bd-stage' });
@@ -54,7 +54,7 @@ export function missionBoardWindow(options: BoardOptions): { element: HTMLElemen
   const info = h('div', { className: 'hl-rules' });
   const progress = h('div', { className: 'hl-record' });
   const cta = h('button', { className: 'hl-cta', type: 'button' });
-  const sheet = h('section', { className: 'hl-sheet' }, [stage, name, chips, info, progress, cta]);
+  const sheet = h('section', { className: 'hl-sheet bd-sheet' }, [stage, name, chips, info, progress, cta]);
   const back = h('button', { className: 'hl-back', type: 'button', textContent: t('menu.back') });
   const logros = h('button', { className: 'hl-back', type: 'button', textContent: t('title.achievements') });
   back.addEventListener('click', () => options.onBack());
@@ -166,12 +166,14 @@ export function missionBoardWindow(options: BoardOptions): { element: HTMLElemen
     slots.replaceChildren(...slotEls);
     cardEls = cards.map((card) => {
       const coin = pixelIconSvg('coin', 'px-icon hl-coin');
-      const el = h('button', { className: `hl-card bd-card is-${card.status}${card.ready ? ' is-ready' : ''}${card.weekly ? ' is-weekly' : ''}`, type: 'button' }, [
-        h('span', { className: 'hl-card-art' }, [pixelIconSvg(card.icon, 'px-icon hl-card-icon')]),
-        h('span', { className: 'hl-card-name', textContent: card.title }),
-        h('span', { className: 'hl-card-sub' }, [coin, `${card.coins}`, h('em', { textContent: tr(`difficulty.${card.tier}`) })]),
-        card.status === 'accepted' ? bar(card.share, card.title) : card.ready ? h('span', { className: 'hl-card-state is-ready', textContent: tr('mission.ready') }) : card.status === 'claimed' ? h('span', { className: 'hl-card-state', textContent: tr('mission.status.claimed') }) : null,
-        card.weekly ? pixelIconSvg('star', 'px-icon bd-star') : null,
+      // A row card (owner 2026-11-08: "los nombres se cortan"): the icon left, the whole title on up to two lines, the pay and tier under it.
+      const state = card.status === 'accepted' ? bar(card.share, card.title) : card.ready ? h('span', { className: 'hl-card-state is-ready', textContent: tr('mission.ready') }) : card.status === 'claimed' ? h('span', { className: 'hl-card-state', textContent: tr('mission.status.claimed') }) : null;
+      const el = h('button', { className: `bd-card is-${card.status}${card.ready ? ' is-ready' : ''}${card.weekly ? ' is-weekly' : ''}`, type: 'button' }, [
+        h('span', { className: 'bd-card-art' }, [pixelIconSvg(card.icon, 'px-icon bd-card-icon'), card.weekly ? pixelIconSvg('star', 'px-icon bd-star') : null]),
+        h('span', { className: 'bd-card-text' }, [
+          h('span', { className: 'bd-card-title', textContent: card.title }),
+          h('span', { className: 'bd-card-sub' }, [coin, h('b', { textContent: `${card.coins}` }), h('em', { textContent: tr(`difficulty.${card.tier}`) }), state]),
+        ]),
       ]);
       el.dataset.mission = card.id;
       el.setAttribute('aria-label', `${card.title}, ${card.requester}, ${tr(`difficulty.${card.tier}`)}, ${card.reward}`);
