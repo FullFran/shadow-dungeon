@@ -4,6 +4,7 @@ import { confirmDialog } from '../ui/confirm-dialog';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { friendsErrorKind } from '../adapters/friends-api';
 import { kindForScreen } from '../adapters/net-error';
+import { attachPager, type Pager } from '../ui/pager';
 import { spinLoader } from '../ui/spinner';
 import { errorCard } from '../ui/status';
 import { sharedConnectivity } from './connectivity';
@@ -60,6 +61,8 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
   let data: FriendsOverview | null = null;
   let disposed = false;
   let cancelAuto: () => void = () => undefined;
+  /** Phones: the cards that do not fit become pages, their buttons in the foot beside Volver (src/ui/pager.ts). */
+  let pager: Pager | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
   const say = (key: string) => {
     // Loading is the spin loader (no word); anything else is a message line.
@@ -230,6 +233,8 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
   function render(): void {
     const focusedKey = (document.activeElement as HTMLElement | null)?.dataset?.key;
     const typing = document.activeElement === input;
+    pager?.dispose();
+    pager = null;
     if (gateFor(options.token()) === 'account') {
       body.replaceChildren(signedOut());
       body.querySelector<HTMLElement>('[data-key="account"]')?.focus({ preventScroll: true });
@@ -237,8 +242,11 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
     }
     body.replaceChildren(
       signedIn(data ? friendsView(data, options.myRoom()) : null),
-      h('div', { className: 'fr-foot' }, [button(t('menu.back'), 'rk-quiet', options.onBack, 'back'), h('p', { className: 'fr-hint', textContent: t('hub.hint') })]),
+      h('div', { className: 'fr-foot' }, [button(t('menu.back'), 'rk-quiet', options.onBack, 'back'), h('span', { className: 'fr-pages' }), h('p', { className: 'fr-hint', textContent: t('hub.hint') })]),
     );
+    const cardsList = body.querySelector<HTMLElement>('.fr-list');
+    const pages = body.querySelector<HTMLElement>('.fr-pages');
+    if (cardsList && pages) pager = attachPager(cardsList, { nav: pages });
     if (typing) input.focus();
     else (focusedKey ? body.querySelector<HTMLElement>(`[data-key="${CSS.escape(focusedKey)}"]`) : null)?.focus({ preventScroll: true });
   }
@@ -287,7 +295,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
     const dir = KEYS[e.code];
     if (!dir || (target instanceof HTMLInputElement && (dir === 'left' || dir === 'right'))) return;
     e.preventDefault();
-    const controls = [...body.querySelectorAll<HTMLElement>('button:not(:disabled), input')];
+    const controls = [...body.querySelectorAll<HTMLElement>('button:not(:disabled), input')].filter((el) => !el.closest('.pg-off'));
     const at = target ? controls.indexOf(target) : -1;
     if (at < 0) {
       controls[0]?.focus({ preventScroll: true });
@@ -317,6 +325,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
       cancelAuto();
       window.removeEventListener('keydown', onKey, true);
       if (poll !== null) clearInterval(poll);
+      pager?.dispose();
     },
   };
 }

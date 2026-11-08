@@ -38,6 +38,8 @@
 .fr-actions .rk-btn { font-size: 16px; padding: 0 12px; }
 .fr-status { flex: none; min-height: 1.4em; margin: 0 !important; font-family: var(--md-text-font); font-size: 14px !important; color: var(--md-cursor); }
 .fr-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fr-pages { display: contents; }
+.fr-pages[hidden] { display: none; }
 .fr-hint { margin: 0 !important; font-family: var(--md-text-font); font-size: 13px !important; color: var(--md-text-dim); }
 .fr-gate { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 4px 4px; }
 .fr-gate-icon { width: 64px; height: 64px; }
@@ -62,4 +64,26 @@
   .fr-side { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
   .fr-code-card { border-bottom: 0; padding-bottom: 0; }
   .fr-add { flex: 1; min-width: 9rem; }
+}
+
+/* Phones on their side (odd/tasks/mobile-pass.md T6): the window never scrolls. Signed in, the cards that do not fit become pages
+   whose buttons sit beside Volver; signed out, the account card lies down (icon, words, the two buttons). */
+@media (max-height: 560px) {
+  html.touch .fr-window { height: calc(100dvh - 20px); padding: 16px 16px 8px; }
+  html.touch .fr-window:has(.fr-gate) { width: min(40rem, 100%); height: auto; }
+  html.touch .fr-split { grid-template-columns: 14.5rem minmax(0, 1fr); }
+  html.touch .fr-input { font-size: 16px; letter-spacing: 0.04em; }
+  html.touch .fr-pages.pg-nav { display: flex; flex: none; margin-right: auto; padding-left: 8px; }
+  html.touch .fr-pages.pg-nav[hidden] { display: none; }
+  html.touch .fr-pages .pg-btn { width: 52px; }
+  html.touch .fr-foot { justify-content: flex-start; }
+  html.touch .fr-gate { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(0, 1fr); grid-template-areas: 'icon title title' 'icon body body' 'icon cta back'; align-items: center; justify-items: stretch; gap: 6px 14px; text-align: left; padding: 4px; }
+  html.touch .fr-gate-icon { grid-area: icon; width: 56px; height: 56px; align-self: center; }
+  html.touch .fr-gate-title { grid-area: title; font-size: 22px; align-self: end; }
+  html.touch .fr-gate-body { grid-area: body; margin: 0 !important; align-self: start; }
+  html.touch .fr-gate > .rk-btn:nth-of-type(1) { grid-area: cta; }
+  html.touch .fr-gate > .rk-btn:nth-of-type(2) { grid-area: back; }
+  html.touch .fr-gate > .rk-btn { font-size: 18px; }
+  html.touch .fr-status:empty { display: none; }
+  html.touch .fr-list { gap: 6px; }
 }
