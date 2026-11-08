@@ -26,7 +26,7 @@ Screenshots: `node tools/mobile/hub-shots.mjs --sizes=844x390,1440x900` (Playwri
 - T3 inline: S4. Sealed boss cards and sheet show the boss's black silhouette (the real sprite, brightness 0, ember rim) with "???"; the model keeps the species for the silhouette. RED: tests/app/shrine-hall.test.ts.
 - T4 inline: S1. On touch in portrait a full-screen blocking notice (rotating phone pixel icon, "Gira el dispositivo") covers every screen; a run pauses under it. RED: tests/ui/orientation-gate.test.ts.
 - T5: S2 hub on phones: at most ~12 visible controls (Pokémon and World groups open as sheets, secondary actions under one "More" button). RED: tests/app/title-hub.test.ts.
-- T6: S2 windows on phones without scroll: lists and grids page instead of scrolling; the shrine fits. Gate: hub-shots audit reports no scrollers at 844x390 and 740x360.
+- T6 (done): S2 windows on phones without scroll: lists and grids page instead of scrolling (shared `src/ui/pager.ts`, pure core `pager-model.ts`, RED: tests/ui/pager.test.ts); picker, tutor, achievements, gallery, friends, shrine and online fit. Gate: `HUB_URL='...?unlock=all' node tools/mobile/hub-shots.mjs --only=pokemon,tutor,achievements,gallery,friends,shrine,online --sizes=844x390,740x360,667x375,1440x900` reports no scrollers, nothing outside, nothing cut on any phone size.
 
 ## Parity checklist
 
@@ -34,6 +34,7 @@ Screenshots: `node tools/mobile/hub-shots.mjs --sizes=844x390,1440x900` (Playwri
 - [ ] T2: every mission kind (floor, clear, defeat, species), daily and weekly, es/en
 - [ ] T3: every shrine boss (`SHRINE_BOSSES`), every tier
 - [ ] T4: title, every window, town, run, shrine, Sima, co-op
+- [x] T6 windows (evidence: hub-shots audit clean at 844x390, 740x360, 667x375): Pokémon picker, Maestro, Logros, Galería, Amigos (signed in and out), Santuario, En línea. Still to do for the other windows (evolve, gacha, shop, board, challenges, settings): not in the T6 scope given by the owner on 2026-11-08, pending.
 - [ ] T5/T6: every hub entry still reachable on touch; keyboard and pad unchanged on desktop
 - [ ] i18n es/en for new strings; DESIGN.md decision log; GDD if gameplay-facing
 
