@@ -116,6 +116,42 @@
   .sh-effect { height: 38px; padding-top: 2px; } .sh-effect-label { font-size: 11px; } .sh-effect-line { font-size: 20px; } .sh-effect-max { font-size: 16px; }
 }
 
+/* Mejoras on a phone in landscape (owner, 2026-11-08: no scroll in any mobile menu): the window takes the whole height under its title tab, the sheet
+   shrinks to what fits, and Volver sits in a 44 px foot row. Scoped to .sh-window so Evolución and the challenges keep their own rules. */
+@media (max-height: 660px) {
+  html.touch #app:has(.sh-window) { padding-top: max(26px, env(safe-area-inset-top)); padding-bottom: 4px; gap: 0; }
+  html.touch #app:has(.sh-window) > .notice { display: none; }
+  html.touch .sh-window, html.touch #app > .sh-window { height: calc(100dvh - 38px); max-height: calc(100dvh - 38px); }
+  html.touch .sh-window .es-body { grid-template-columns: 14.5rem minmax(0, 1fr); gap: 8px; }
+  html.touch .sh-window .sh-effect { height: auto; min-height: 38px; padding-top: 2px; }
+  html.touch .sh-window .sh-effect-label { line-height: 1.25; }
+  html.touch .sh-window .es-text { display: none; }
+  html.touch .sh-window .es-sheet { justify-content: center; }
+  html.touch .sh-window .es-foot { gap: 8px; }
+  html.touch .sh-window .es-back { min-height: 44px; display: inline-flex; align-items: center; }
+  html.touch .sh-window .es-name { font-size: 20px; line-height: 1.1; }
+  html.touch .sh-window .es-primary { height: 44px; }
+  html.touch .sh-window .sh-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-rows: 0; align-content: stretch; padding: 2px; overflow: hidden; }
+  html.touch .sh-window .sh-grid .es-card { height: auto; min-height: 0; justify-content: center; }
+}
+@media (max-height: 560px) and (max-width: 680px) {
+  html.touch .sh-window .es-body { grid-template-columns: 12.5rem minmax(0, 1fr); gap: 6px; }
+  html.touch .sh-window .sh-grid { gap: 4px; }
+  html.touch .sh-window .sh-grid .es-card { padding: 4px 1px 2px; }
+  html.touch .sh-window .sh-grid .es-card-name { font-size: 13px; }
+  html.touch .sh-window .es-gems { gap: 3px; }
+}
+@media (max-height: 380px) {
+  html.touch .sh-window .es-stage { height: 52px; } html.touch .sh-window .es-stage-glow { height: 56px; }
+  html.touch .sh-window .sh-stage-icon svg.sh-icon-big { width: 40px; height: 40px; } html.touch .sh-window .sh-stage-icon { margin-bottom: 4px; }
+  html.touch .sh-window .es-name { font-size: 18px; }
+  html.touch .sh-window .es-primary { height: 36px; font-size: 15px; }
+  html.touch .sh-window .sh-effect { min-height: 34px; }
+  html.touch .sh-window .sh-effect-line { font-size: 17px; }
+  html.touch .sh-window .sh-card-art { height: 26px; } html.touch .sh-window .sh-card svg.sh-icon { width: 26px; height: 26px; }
+  html.touch .sh-window .es-back { min-height: 36px; padding: 0 14px; }
+}
+
 /* The cost chips of the shared confirmation (evolve.ts, shop.ts). */
 .rc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .rc-chips .es-chip { flex: 0 0 auto; padding: 0 10px; height: 32px; font-size: 15px; }
