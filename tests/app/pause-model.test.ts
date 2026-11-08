@@ -6,7 +6,7 @@ import { PLAYER_SLOT_LAYOUT } from '../../src/data/slots';
 import { PLAYABLE_SPECIES } from '../../src/data/species';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { pauseEntries, type MenuActions, type PauseEntry } from '../../src/app/menu';
-import { formatRunTime, pauseActions, pauseSummary, type PauseRunInfo } from '../../src/app/pause-model';
+import { formatRunTime, nextTab, PAUSE_TABS, pauseActions, pauseSummary, type PauseRunInfo } from '../../src/app/pause-model';
 import { PAUSE_ICONS } from '../../src/ui/icons/pause-icons';
 import { passiveStatus } from '../../src/adapters/hud';
 import { PROGRESSION } from '../../src/data/progression';
@@ -178,6 +178,22 @@ describe('pause summary: level, XP and passive', () => {
 
   it('every language names the level, the experience and the passive', () => {
     for (const language of LANGUAGES) for (const key of ['pause.stat.level', 'pause.stat.xp', 'pause.stat.passive', 'pause.xpMax']) expect(catalog(language)[key], `${language} ${key}`).toBeTruthy();
+  });
+
+  it('phones show one page of the menu at a time: four pages in order, a label in every language, short enough for the rail', () => {
+    expect(PAUSE_TABS).toEqual(['actions', 'map', 'run', 'items']);
+    for (const language of LANGUAGES)
+      for (const tab of PAUSE_TABS) {
+        const label = catalog(language)[`pause.tab.${tab}`];
+        expect(label, `${language} ${tab}`).toBeTruthy();
+        expect(label!.length, `${language} ${tab}`).toBeLessThanOrEqual(9);
+      }
+  });
+
+  it('turns pages in a loop', () => {
+    expect(nextTab('actions', 1)).toBe('map');
+    expect(nextTab('items', 1)).toBe('actions');
+    expect(nextTab('actions', -1)).toBe('items');
   });
 
   it('every playable species gets its passive line in the summary', () => {
