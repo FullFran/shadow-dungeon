@@ -28,6 +28,7 @@
 /* Sheet */
 .gv-sheet { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 12px 14px 12px; box-sizing: border-box; overflow: hidden;
   background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6); }
+.gv-sheet-top { display: contents; }
 .gv-sheet-head { flex: none; display: flex; align-items: center; gap: 12px; }
 .gv-sheet-head .gv-vignette { width: 72px; height: 72px; }
 .gv-sheet-head .gv-vignette .px-icon { width: 52px; height: 52px; }
@@ -55,6 +56,8 @@
 .gv-back { all: unset; box-sizing: border-box; min-height: 44px; display: inline-flex; align-items: center; padding: 0 22px; cursor: pointer; font-size: 22px; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
 .gv-back:hover, .gv-back:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
 .gv-back:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45); }
+.gv-pages { display: contents; }
+.gv-pages[hidden] { display: none; }
 .gv-hint { margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
 @media (prefers-reduced-motion: no-preference) { .gv-card { transition: border-color 120ms ease-out, box-shadow 120ms ease-out; } }
 
@@ -74,4 +77,33 @@
   .gv-sheet-hint { font-size: 12px; padding: 4px 8px; } .gv-sheet-hint .px-icon { width: 18px; height: 18px; }
   .gv-row-title { font-size: 15px; } .gv-play { font-size: 15px; min-height: 44px; }
   .gv-hint { display: none; } .gv-back { font-size: 16px; padding: 0 16px; }
+}
+
+/* Phones on their side (odd/tasks/mobile-pass.md T6): taller cards whose whole title shows (two lines), and the page buttons sit in the foot beside Volver, so the cards get the height. */
+@media (max-height: 560px) {
+  html.touch .gv-grid { grid-auto-rows: 100px; padding: 2px; }
+  html.touch .gv-card { height: 100px; gap: 3px; padding: 5px 4px 5px; justify-content: center; }
+  html.touch .gv-vignette { height: 40px; } html.touch .gv-vignette .px-icon { width: 28px; height: 28px; }
+  html.touch .gv-card-title { font-size: 15px; line-height: 1.05; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 2.1em; }
+  html.touch .gv-card-count { font-size: 12px; }
+  /* A sealed group has nothing to play: its hint is all the sheet needs. */
+  html.touch .gv-sheet:has(.gv-sheet-hint) .gv-rows { display: none; }
+  /* A scene with one button reads on one line (title, button); a chapter with Antes and Después keeps the title above. */
+  html.touch .gv-sheet { gap: 4px; padding: 5px 8px; }
+  html.touch .gv-sheet-head .gv-vignette { width: 34px; height: 34px; } html.touch .gv-sheet-head .gv-vignette .px-icon { width: 24px; height: 24px; }
+  html.touch .gv-rows { gap: 3px; padding-right: 0; }
+  html.touch .gv-row { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+  html.touch .gv-row:has(.gv-play + .gv-play) { display: grid; gap: 0; }
+  html.touch .gv-row:has(.gv-play + .gv-play) .gv-row-title { font-size: 14px; line-height: 1.05; }
+  html.touch .gv-row-title { flex: 1 1 0; min-width: 0; }
+  html.touch .gv-row-plays { flex: none; }
+  html.touch .gv-row-plays .gv-play { flex: none; min-width: 5.5rem; }
+  html.touch .gv-row:has(.gv-play + .gv-play) .gv-row-plays { display: flex; }
+  html.touch .gv-row:has(.gv-play + .gv-play) .gv-play { flex: 1; }
+  html.touch .gv-foot { justify-content: flex-start; }
+  html.touch .gv-pages { margin-left: 0; }
+  html.touch .gv-pages.pg-nav { display: flex; flex: none; margin-right: auto; padding-left: 8px; }
+  html.touch .gv-pages.pg-nav[hidden] { display: none; }
+  html.touch .gv-pages .pg-btn { width: 52px; }
+  html.touch .gv-pages-rows.pg-nav { margin-left: auto; margin-right: 0; padding: 0; }
 }

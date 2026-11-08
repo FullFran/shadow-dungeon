@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { GALLERY_ICONS } from '../ui/icons/gallery-icons';
 import { pixelIconSvg, pixelSvgOf } from '../ui/pixel-icons';
 import { PALETTE, RELIC, TYPE_COLORS } from '../ui/tokens';
+import { attachPager } from '../ui/pager';
 import { h, mdWindow } from '../ui/window';
 import { galleryUnlocked, groupSeen, type GalleryEntry, type GalleryGroup, type GallerySeen } from './lore-gallery';
 import { hubStep, type HubDirection } from './title-hub';
@@ -172,13 +173,24 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
     return el;
   });
 
-  const sheet = h('section', { className: 'gv-sheet' });
+  // The sheet keeps its list: a group's scenes that do not fit a phone become pages of their own (src/ui/pager.ts).
+  const sheetTop = h('div', { className: 'gv-sheet-top' });
+  const rowsList = h('ul', { className: 'gv-rows' });
+  const sheet = h('section', { className: 'gv-sheet' }, [sheetTop, rowsList]);
+  const rowsNav = h('span', { className: 'gv-pages gv-pages-rows' });
+  const rowsPager = attachPager(rowsList, { nav: rowsNav });
   const grid = h('div', { className: 'gv-grid' }, cards);
   grid.setAttribute('aria-label', t('gallery.pick'));
+  // Phones: the cards that do not fit become pages; their buttons share the foot with Volver (src/ui/pager.ts).
+  const pageNav = h('span', { className: 'gv-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
   const back = h('button', { className: 'gv-back', type: 'button', textContent: t('menu.back') });
   back.addEventListener('click', () => options.onBack());
 
-  const plays = (): HTMLButtonElement[] => [...sheet.querySelectorAll<HTMLButtonElement>('.gv-play:not([aria-disabled="true"])')];
+  const plays = (): HTMLButtonElement[] => [
+    ...[...sheet.querySelectorAll<HTMLButtonElement>('.gv-play:not([aria-disabled="true"])')].filter((b) => !b.closest('.pg-off')),
+    ...(rowsPager.nav.hidden ? [] : [...rowsPager.nav.querySelectorAll('button')].filter((b) => !b.disabled)),
+  ];
   const firstPlay = () => plays()[0];
 
   const play = (entry: GalleryEntry, button: HTMLElement) => {
@@ -203,10 +215,7 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
         h('p', { className: 'gv-sheet-count', textContent: card.locked ? t('gallery.sealed') : fill(t('gallery.count'), { seen: String(card.seen), total: String(card.total) }) }),
       ]),
     ]);
-    const list = h(
-      'ul',
-      { className: 'gv-rows' },
-      rows.map((row) => {
+    const items = rows.map((row) => {
         const open = row.scenes.some((s) => s.unlocked);
         const buttons = row.scenes.map((s) => {
           if (!s.unlocked) return h('span', { className: 'gv-play is-locked', textContent: s.label }, [pixelIconSvg('lock', 'px-icon')]);
@@ -220,10 +229,11 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
           return b;
         });
         return h('li', { className: `gv-row${open ? '' : ' is-locked'}` }, [h('span', { className: 'gv-row-title', textContent: row.title }), h('span', { className: 'gv-row-plays' }, buttons)]);
-      }),
-    );
+    });
     const note = card.locked ? h('p', { className: 'gv-sheet-hint' }, [pixelIconSvg('lock', 'px-icon'), h('span', { textContent: card.hint ?? '' })]) : null;
-    sheet.replaceChildren(head, ...(note ? [note] : []), list);
+    sheetTop.replaceChildren(head, ...(note ? [note] : []));
+    rowsList.replaceChildren(...items);
+    rowsPager.reset();
     tint(sheet, card.id);
   }
 
@@ -233,12 +243,13 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
       bar(progress.fraction, 'gv-bar'),
     ]),
     h('div', { className: 'gv-body' }, [grid, sheet]),
-    h('div', { className: 'gv-foot' }, [back, h('p', { className: 'gv-hint', textContent: t('gallery.hint.keys') })]),
+    h('div', { className: 'gv-foot' }, [back, pageNav, rowsNav, h('p', { className: 'gv-hint', textContent: t('gallery.hint.keys') })]),
   ]);
 
   const columns = (): number => {
-    const top = cards[0]?.offsetTop ?? 0;
-    return Math.max(1, cards.filter((c) => c.offsetTop === top).length);
+    const shown = pager.visible();
+    const top = shown[0]?.offsetTop ?? 0;
+    return Math.max(1, shown.filter((c) => c.offsetTop === top).length);
   };
 
   const onKey = (e: KeyboardEvent): void => {
@@ -266,19 +277,19 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
     const at = active ? cards.indexOf(active as HTMLButtonElement) : -1;
     if (at >= 0) {
       const next = gridMove(at, cards.length, columns(), dir);
-      if (next !== at) cards[next]!.focus();
+      if (next !== at) pager.focusItem(cards[next]!);
       else if (dir === 'right') (firstPlay() ?? cards[at])!.focus();
       else if (dir === 'down') back.focus();
       return;
     }
     if (active === back) {
-      if (dir === 'up') cards[focused]!.focus();
+      if (dir === 'up') pager.focusItem(cards[focused]!);
       return;
     }
     const list = plays();
     const here = active ? list.indexOf(active as HTMLButtonElement) : -1;
     if (here < 0) {
-      cards[focused]!.focus();
+      pager.focusItem(cards[focused]!);
       return;
     }
     const points = list.map((el, i) => {
@@ -286,17 +297,23 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
       return { id: String(i), x: r.left + r.width / 2, y: r.top + r.height / 2 };
     });
     const next = hubStep(points, String(here), dir);
-    if (next === String(here) && dir === 'left') cards[focused]!.focus();
+    if (next === String(here) && dir === 'left') pager.focusItem(cards[focused]!);
     else list[Number(next)]?.focus();
   };
   window.addEventListener('keydown', onKey, true);
 
   show(focused);
-  queueMicrotask(() => cards[focused]?.focus({ preventScroll: true }));
+  queueMicrotask(() => {
+    pager.refresh();
+    const card = cards[focused];
+    if (card) pager.focusItem(card);
+  });
   return {
     element: win,
     dispose() {
       window.removeEventListener('keydown', onKey, true);
+      pager.dispose();
+      rowsPager.dispose();
     },
   };
 }
