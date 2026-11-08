@@ -1,3 +1,4 @@
+import { resolveAnimSheet } from './anim-sheet';
 import type { Figuration } from './figurations';
 import { drawCreatureFrame, withCreatureScale } from './creature-scale';
 import { drawHerald, heraldScale } from './herald-vfx';
@@ -263,18 +264,20 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   const portrait = createPortraitDrawer(sheets);
 
   function drawSprite(choice: AnimChoice, pos: Vec2, alpha = 1, scaleBy = 1): void {
-    const meta = SPRITES.sprites[choice.sprite]?.anims[choice.anim];
-    const image = meta && sheets.get(sheetKey(choice.sprite, meta.file));
-    if (!meta || !image) {
-      // On its way (lazy loading, adapters/assets.ts): draw nothing for a frame or two rather than a "missing sheet" mark.
-      if (meta && sheets.pending?.(sheetKey(choice.sprite, meta.file))) return;
-      ctx.fillStyle = '#ff00ff';
-      ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y - 16), 12, 16);
+    // A sheet on its way (lazy loading, adapters/assets.ts) draws the Idle sheet meanwhile, or nothing; never a "missing sheet" mark.
+    const sheet = resolveAnimSheet(sheets, choice.sprite, choice.anim);
+    if (sheet.kind !== 'sheet') {
+      if (sheet.kind === 'missing') {
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillRect(Math.round(pos.x - 6), Math.round(pos.y - 16), 12, 16);
+      }
       return;
     }
+    const { meta, image } = sheet;
     const row = Math.min(choice.row, meta.rows - 1);
+    const frame = sheet.anim === choice.anim ? choice.frame : choice.frame % meta.frameCount;
     ctx.globalAlpha = alpha;
-    drawCreatureFrame(ctx, image, meta, choice.frame, row, pos, scaleBy);
+    drawCreatureFrame(ctx, image, meta, frame, row, pos, scaleBy);
     ctx.globalAlpha = 1;
   }
 

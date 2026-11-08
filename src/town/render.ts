@@ -5,6 +5,7 @@ import type { Rect } from '../core/state';
 import { TILE } from '../core/tiles';
 import type { Vec2 } from '../core/vec';
 import { sheetKey, type SheetStore } from '../adapters/assets';
+import { resolveAnimSheet } from '../adapters/anim-sheet';
 import { CREATURE_SCALE, drawCreatureFrame, withCreatureScale } from '../adapters/creature-scale';
 import { directionRow, frameAtTime } from '../adapters/sprite-anim';
 import { visibleTiles } from '../adapters/view';
@@ -49,9 +50,8 @@ export interface TownFrame {
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: TownCharacter, timeMs: number): void {
-  const anim = c.moving ? 'Walk' : 'Idle';
-  const meta = SPRITES.sprites[c.sprite]?.anims[anim] ?? SPRITES.sprites[c.sprite]?.anims.Idle;
-  const image = meta && sheets.get(sheetKey(c.sprite, meta.file));
+  // The Walk sheet loads on the first step: until it is here the Idle sheet stands in (src/adapters/anim-sheet.ts).
+  const sheet = resolveAnimSheet(sheets, c.sprite, c.moving ? 'Walk' : 'Idle');
   const bob = c.floats ? Math.round(Math.sin(timeMs / 400) * 2) - 6 : 0;
   // The shadow grows with the art, around the feet (src/adapters/creature-scale.ts).
   withCreatureScale(ctx, c.pos, () => {
@@ -60,11 +60,14 @@ function drawCharacter(ctx: CanvasRenderingContext2D, sheets: SheetStore, c: Tow
     ctx.ellipse(Math.round(c.pos.x), Math.round(c.pos.y), c.floats ? 7 : 10, c.floats ? 3 : 4.5, 0, 0, Math.PI * 2);
     ctx.fill();
   });
-  if (!meta || !image) {
-    ctx.fillStyle = '#ff00ff';
-    ctx.fillRect(Math.round(c.pos.x - 6), Math.round(c.pos.y - 16), 12, 16);
+  if (sheet.kind !== 'sheet') {
+    if (sheet.kind === 'missing') {
+      ctx.fillStyle = '#ff00ff';
+      ctx.fillRect(Math.round(c.pos.x - 6), Math.round(c.pos.y - 16), 12, 16);
+    }
     return;
   }
+  const { meta, image } = sheet;
   const frame = frameAtTime(meta.durations, timeMs, true);
   const row = Math.min(directionRow(c.facing), meta.rows - 1);
   drawCreatureFrame(ctx, image, meta, frame, row, c.pos, 1, bob * CREATURE_SCALE);

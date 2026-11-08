@@ -28,6 +28,11 @@ export function hubKeys(species: SpeciesId, shiny: boolean, female: boolean): st
   return animSheet(partner, 'Idle');
 }
 
+/** What the partner needs next after the hub (the town walk): its Walk sheet, loaded in the background. */
+export function hubWarmKeys(species: SpeciesId, shiny: boolean, female: boolean): string[] {
+  return animSheet(lookKey(SPRITE_KEYS[SPECIES[species].sprite], shiny, female), 'Walk');
+}
+
 /**
  * What a run of `dungeon` needs. `now`: the player in every animation and the
  * species that can appear on floor 1 (and their escorts). `later`: the rest of

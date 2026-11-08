@@ -3,7 +3,7 @@ import { PALETTE } from '../ui/tokens';
 import { createAssetLoader, type AssetState, type Priority } from './asset-loader';
 import { sheetKey } from './asset-keys';
 import { appError, reportError } from './net-error';
-import { hubKeys, idlePrefetchKeys, runKeys } from './sprite-sets';
+import { hubKeys, hubWarmKeys, idlePrefetchKeys, runKeys } from './sprite-sets';
 import type { DungeonDef } from '../data/dungeons';
 import type { SpeciesId } from '../data/species';
 
@@ -138,7 +138,11 @@ export interface PreloadOptions {
 export const preload = (keys: Iterable<string>, options: PreloadOptions = {}): Promise<void> => loader.preload(keys, options);
 
 /** The sheets the hub paints for this partner. */
-export const preloadHub = (species: SpeciesId, shiny: boolean, female: boolean, onProgress?: PreloadOptions['onProgress']): Promise<void> => preload(hubKeys(species, shiny, female), { ...(onProgress ? { onProgress } : {}) });
+export function preloadHub(species: SpeciesId, shiny: boolean, female: boolean, onProgress?: PreloadOptions['onProgress']): Promise<void> {
+  // The partner's other sheets (Walk first) warm in the background: the town's first steps find them here.
+  void preload(hubWarmKeys(species, shiny, female), { priority: 'low' });
+  return preload(hubKeys(species, shiny, female), { ...(onProgress ? { onProgress } : {}) });
+}
 
 /** A run: the player and floor 1 now (with progress for the splash), the rest of the pool in the background. */
 export async function preloadRun(dungeon: DungeonDef, species: SpeciesId, shiny: boolean, female: boolean, onProgress?: PreloadOptions['onProgress']): Promise<void> {
