@@ -8,3 +8,17 @@ html.touch body:has(#app > .oa-window) .touch-back { display: none; }
 html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot)) {
   padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
 }
+
+/* Landscape only (src/ui/orientation-gate.ts): a touch screen held upright is covered whole by the notice, above every
+   window, dialog and toast. The pixel phone tips over on a slow loop to show the motion asked for; static under reduced motion. */
+.rotate-gate { display: none; }
+html.rotate-blocked .rotate-gate { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: max(24px, env(safe-area-inset-top)) 28px max(24px, env(safe-area-inset-bottom)); text-align: center; touch-action: none;
+  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--relic-ember) 14%, var(--md-ink)), var(--md-ink) 70%); }
+html.rotate-blocked body { overflow: hidden; }
+.rotate-gate-icon { display: grid; place-items: center; width: 112px; height: 112px; border: 2px solid var(--relic-gold-deep); border-radius: 8px; background: var(--relic-slab); box-shadow: 0 0 0 2px var(--md-ink), 0 0 28px color-mix(in srgb, var(--relic-ember) 30%, transparent); }
+.rotate-gate-icon .px-icon { width: 80px; height: 80px; animation: rotate-gate-tip 2.4s ease-in-out infinite; }
+.rotate-gate-title { margin: 0; font-size: 30px; line-height: 1.1; color: var(--md-cursor); text-shadow: 0 3px 0 var(--md-ink); }
+.rotate-gate-text { margin: 0; max-width: 20rem; font-family: var(--md-text-font); font-size: 17px; line-height: 1.4; color: var(--md-text); }
+@keyframes rotate-gate-tip { 0%, 30% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { .rotate-gate-icon .px-icon { animation: none; } }

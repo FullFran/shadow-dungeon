@@ -12,7 +12,7 @@ export interface PixelIcon {
 /** Icons of hub actions that are not town services. */
 export const HUB_ICON_IDS = ['play', 'news', 'fullscreen', 'prologue', 'credits', 'report', 'install', 'tickets', 'coin', 'lock'] as const;
 
-export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'error' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror';
+export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'error' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror' | 'rotate';
 
 export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
   pokemon: {
@@ -832,6 +832,27 @@ export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
       '...kkddddddkk...',
       '.....kkkkkk.....',
       '................',
+      '................',
+    ],
+  },
+  rotate: {
+    palette: { k: '#140c11', g: '#9a8f80', b: '#2a3550', w: '#ece3d3', e: '#ff8a3d' },
+    rows: [
+      '................',
+      '..kkkkkkk.......',
+      '..kgggggk.eee...',
+      '..kgbbbgk....e..',
+      '..kgbbbgk.....e.',
+      '..kgbbbgk.....e.',
+      '..kgbbbgk....eee',
+      '..kgbbbgk.....e.',
+      '..kgbbbgk.......',
+      '..kgbbbgk.......',
+      '..kgbbbgk.......',
+      '..kgbbbgk.......',
+      '..kgggggk.......',
+      '..kggwggk.......',
+      '..kkkkkkk.......',
       '................',
     ],
   },

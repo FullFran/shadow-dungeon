@@ -134,6 +134,7 @@ import { buildDiagnostics, createDiagnosticsLog, diagnosticsText, type Diagnosti
 import { isLinkProbe } from '../net/diagnostics';
 import { PROTOCOL_VERSION } from '../net/version';
 import { installTouchChrome } from '../ui/touch-chrome';
+import { installOrientationGate } from '../ui/orientation-gate';
 import { notices, setNoticesBlocked } from '../ui/notice';
 import { setupPwa } from '../ui/pwa';
 import { newsNotice } from '../pwa/notices';
@@ -228,6 +229,7 @@ const audio = createAudio(settings);
 setTouchMode(settings.touchMode);
 setTouchPrefs(touchPrefsOf(settings));
 const touchChrome = installTouchChrome();
+const orientationGate = installOrientationGate();
 // PWA: service worker (builds only), "Instalar juego" on the title and a one-time banner.
 const pwa = setupPwa({
   store,
@@ -502,6 +504,7 @@ function applyLanguage(language: Language): void {
   document.documentElement.lang = language;
   document.title = t('app.title');
   touchChrome.refresh();
+  orientationGate.refresh();
 }
 
 function update(changes: Partial<Settings>): void {

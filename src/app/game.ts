@@ -1,4 +1,5 @@
 import { pausesOnLeave } from './pause-on-leave';
+import { ROTATE_EVENT } from '../ui/orientation-gate';
 import { packMinimap, unpackMinimap, type ResumeWriter, type RunPart } from './run-resume';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
@@ -1244,6 +1245,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   };
   window.addEventListener('blur', onLeavePage);
+  // A phone turned to portrait covers the game with the rotate notice (ui/orientation-gate.ts): a solo run waits under it.
+  window.addEventListener(ROTATE_EVENT, onLeavePage);
   document.addEventListener('visibilitychange', onHidden);
   // A reload or a closed tab: the record is current when the page goes (also when the tab was never hidden first).
   const onPageHide = () => keepRun();
@@ -1886,6 +1889,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // The run is over for this page (quit, end screen, another screen): no record of it stays.
       resume?.writer.end();
       window.removeEventListener('blur', onLeavePage);
+      window.removeEventListener(ROTATE_EVENT, onLeavePage);
       window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onHidden);
       window.removeEventListener('keydown', onSignKey, true);

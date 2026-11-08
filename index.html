@@ -440,7 +440,7 @@
       html.touch .md-arrow { border-top-width: 11px; border-bottom-width: 11px; padding: 0 12px; margin: -10px 0; background-clip: content-box; }
       html.touch .md-arrow:first-child { border-right-width: 13px; }
       html.touch .md-arrow:last-child { border-left-width: 13px; }
-      .touch-back, .rotate-hint { display: none; }
+      .touch-back { display: none; }
       /* Co-op, fainted: move the camera on to the next standing teammate (src/app/spectate.ts). */
       .spectate-next { position: fixed; top: max(64px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 6; min-width: 96px; min-height: 44px; padding: 4px 14px; font: inherit; font-size: 14px; color: var(--md-text); background: var(--md-window-top); border: 2px solid var(--md-border); border-radius: 6px; }
       .spectate-next[hidden] { display: none; }
@@ -462,14 +462,6 @@
         html.touch .result { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; }
         html.touch .result-actions { position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px; background: var(--md-window-bottom); }
         html.touch .settings .md-value, html.touch .pause-settings .md-value { min-width: 0; max-width: 100%; margin-left: auto; white-space: normal; text-align: right; }
-      }
-      @media (orientation: portrait) {
-        /* Menus work in portrait: the rotate hint shows only where there is a game to play (a run, the town). */
-        html.touch .rotate-hint { display: none; }
-        html.touch #app:has(canvas.game) ~ .rotate-hint { display: block; position: fixed; left: 0; right: 0; bottom: max(36px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 22rem; padding: 6px 12px; z-index: 30; text-align: center; font-size: 16px;
-          color: var(--md-cursor); background: rgba(5, 6, 13, 0.85); border: 2px solid var(--md-border-shade); border-radius: 8px; pointer-events: none; }
-        /* In a run the canvas sits in the middle: the hint goes in the empty band above it, clear of the buttons. */
-        html.touch #app:has(canvas.game) ~ .rotate-hint { bottom: auto; top: 22%; }
       }
       html.touch #app { justify-content: safe center; }
       html.touch .hint { display: none; }

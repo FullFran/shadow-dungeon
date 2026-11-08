@@ -20,7 +20,7 @@ export type PathKind = 'window' | 'control' | 'game' | 'backdrop' | 'other';
 
 const CONTROL_TAGS = new Set(['button', 'a', 'input', 'textarea', 'select', 'label', 'summary']);
 /** Classes of things that are not the backdrop although they sit on it. */
-const CONTROL_CLASSES = ['dd-popup', 'dd-option', 'notice', 'achievement-toast', 'toast', 'touch-back', 'touch-chrome', 'rotate-hint'];
+const CONTROL_CLASSES = ['dd-popup', 'dd-option', 'notice', 'achievement-toast', 'toast', 'touch-back', 'touch-chrome', 'rotate-gate'];
 /** Roots whose bare surface is a backdrop. */
 const BACKDROP_CLASSES = ['town-shop', 'overlay', 'drawer-veil'];
 
