@@ -11,7 +11,8 @@
  * (the town's Talk) takes Fast's spot. src/ui/touch-controls.ts applies it.
  */
 
-import { TOUCH_STATUS_X } from './hud-layout';
+import { hudRects, hudScaleFor, hudSpace, TOUCH_STATUS_X } from './hud-layout';
+import { playViewport } from '../adapters/viewport';
 
 export interface Insets {
   top: number;
@@ -105,14 +106,31 @@ export function combatLayout(viewport: { width: number; height: number }, insets
   // Pause over Map in the top-left corner, as wide as the room before the canvas HUD's status window allows (never under 44 px).
   const zoom = Math.max(1, Math.min(W, H) / 320);
   const insetLeft = insets.left;
-  const cornerW = Math.max(MIN, Math.min(sized(CORNER.width, scale), Math.floor(TOUCH_STATUS_X * zoom - insetLeft - MARGIN - 4)));
+  const roomBefore = Math.floor(TOUCH_STATUS_X * zoom - insetLeft - MARGIN - 4);
+  const cornerW = roomBefore >= MIN ? Math.min(sized(CORNER.width, scale), roomBefore) : H > W ? MIN : sized(CORNER.width, scale);
   const cornerH = sized(CORNER.height, scale);
-  const top = safe.top + MARGIN + cornerH / 2;
   const corner: ButtonPlace[] = [];
-  if (ids.includes('pause')) corner.push({ id: 'pause', x: 0, y: top, width: cornerW, height: cornerH, round: false });
+  // A notch on the left (an iPhone in landscape) can leave less than a button's width before the status window: then Pause
+  // and Map stand under the HUD's left column (status, chips, partners) instead of over it.
+  // Portrait is covered by the rotate notice (src/ui/orientation-gate.ts): only landscape moves the corner.
+  const fitsBefore = H > W || insetLeft + MARGIN + MIN + 4 <= TOUCH_STATUS_X * zoom;
+  let top = safe.top + MARGIN + cornerH / 2;
+  if (!fitsBefore) {
+    const fit = playViewport(W, H, 3, true);
+    const hud = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(W, H, fit.pixelScale, true));
+    const rects = hudRects({ ...hud }, { chip: true, slots: 4, partners: 3, minimap: { cols: 60, rows: 40 }, touch: true });
+    const bottom = Math.max(...[rects.status, rects.chips, ...rects.partners].map((p) => p.y + p.height)) * fit.zoom;
+    top = bottom + MARGIN + cornerH / 2;
+  }
+  // Left hand with a notch on the left: the thumb cluster holds the left side under the HUD, so Pause joins Map in the other top corner.
+  const pauseAcross = mirror && !fitsBefore;
+  const acrossW = sized(CORNER.width, scale);
+  const acrossTop = safe.top + MARGIN + cornerH / 2;
+  if (ids.includes('pause') && pauseAcross) placed.push({ id: 'pause', x: safe.left + MARGIN + acrossW / 2, y: acrossTop, width: acrossW, height: cornerH, round: false });
+  else if (ids.includes('pause')) corner.push({ id: 'pause', x: 0, y: top, width: cornerW, height: cornerH, round: false });
   // Right hand: Map under Pause. Left hand: the thumb cluster takes the left side, so Map goes to the other top corner.
   if (ids.includes('map') && !mirror) corner.push({ id: 'map', x: 0, y: top + (corner.length > 0 ? cornerH + 8 : 0), width: cornerW, height: cornerH, round: false });
-  if (ids.includes('map') && mirror) placed.push({ id: 'map', x: safe.left + MARGIN + sized(CORNER.width, scale) / 2, y: top, width: sized(CORNER.width, scale), height: cornerH, round: false });
+  if (ids.includes('map') && mirror) placed.push({ id: 'map', x: safe.left + MARGIN + acrossW / 2, y: pauseAcross ? acrossTop + cornerH + 8 : acrossTop, width: acrossW, height: cornerH, round: false });
 
   const buttons: Record<string, ButtonPlace> = {};
   for (const p of placed) buttons[p.id] = mirror ? { ...p, x: W - p.x } : p;

@@ -83,8 +83,10 @@ describe('combat touch layout', () => {
   it('Pause and Map stack in the top-left corner, clear of the status window, chips, partners and minimap of the canvas HUD (right hand)', () => {
     for (const [width, height] of PHONES)
       for (const scale of TOUCH_SCALES)
+        // No notch, and an iPhone's notch on the left in landscape (47-59 px of safe area): the HUD does not move for it.
+        for (const insets of [NO_INSETS, { top: 0, right: 0, bottom: 21, left: 47 }, { top: 0, right: 0, bottom: 21, left: 59 }])
         for (const leftHanded of [false]) {
-          const { buttons } = combatLayout({ width, height }, NO_INSETS, COMBAT, { scale, leftHanded });
+          const { buttons } = combatLayout({ width, height }, insets, COMBAT, { scale, leftHanded });
           const fit = playViewport(width, height, 3, true);
           const hud = hudSpace(fit.viewWidth * fit.pixelScale, fit.viewHeight * fit.pixelScale, hudScaleFor(width, height, fit.pixelScale, true));
           const css = fit.zoom;
@@ -97,7 +99,7 @@ describe('combat touch layout', () => {
             expect(b.x, `${id} on the left`).toBeLessThan(width / 2);
             for (const p of panels) {
               const hit = b.x - b.width / 2 < (p.x + p.width) * css && (p.x * css) < b.x + b.width / 2 && b.y - b.height / 2 < (p.y + p.height) * css && p.y * css < b.y + b.height / 2;
-              expect(hit, `${width}x${height} x${scale} ${id} over the HUD`).toBe(false);
+              expect(hit, `${width}x${height} x${scale} inset ${insets.left} ${id} over the HUD`).toBe(false);
             }
           }
           expect(buttons.map!.y).toBeGreaterThan(buttons.pause!.y);
