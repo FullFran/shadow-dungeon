@@ -18,6 +18,7 @@ import type { ChallengeLine } from '../data/dungeons';
 import { portrait } from './loadout';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
+import { attachPager } from '../ui/pager';
 import '../styles/evolve-shop.css';
 
 /**
@@ -170,6 +171,10 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
   const challenges = options.onChallenges ? h('button', { className: 'es-back ev-aux', type: 'button', textContent: t('challenges.title') }) : null;
   const grid = h('div', { className: 'es-grid ev-grid' });
   grid.setAttribute('aria-label', t('evolve.title'));
+  // Phones: the cards that do not fit become pages, their buttons in the foot (src/ui/pager.ts; idle on desktop).
+  const pageNav = h('span', { className: 'es-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
+  const pageButtons = (): HTMLElement[] => (pageNav.hidden ? [] : [...pageNav.querySelectorAll<HTMLElement>('button')]);
 
   /** The line's bond with you (its Senda's chapters closed): its newest line, and Phantump's word once the third is closed. */
   const bondText = (row: EvolveRow): string => {
@@ -322,6 +327,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
     const rows = evolveRows(save);
     cards = rows.map(cardOf);
     grid.replaceChildren(...(cards.length > 0 ? cards : [h('p', { className: 'es-text', textContent: t('evolve.none.text') })]));
+    pager.refresh();
     show(rows.some((r) => r.species === focused) ? focused! : (rows[0]?.species ?? 'mimikyu'));
   }
 
@@ -340,17 +346,23 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
   const element = mdWindow({ title: t('evolve.title'), className: 'es-window ev-window' }, [
     h('p', { className: 'dim es-context', textContent: t('evolve.text') }),
     h('div', { className: 'es-body' }, [sheet, grid]),
-    h('div', { className: 'es-foot' }, [back, h('span', { className: 'ev-foot-aux' }, [shiny, challenges]), h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'evolve.hint') })]),
+    h('div', { className: 'es-foot' }, [back, pageNav, h('span', { className: 'ev-foot-aux' }, [shiny, challenges]), h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'evolve.hint') })]),
   ]);
 
   const stopKeys = gridNav({
     win: element,
-    controls: () => [...cards, primary, ...(shiny.hidden ? [] : [shiny]), ...(challenges ? [challenges] : []), back],
+    controls: () => [...pager.visible(), primary, ...(shiny.hidden ? [] : [shiny]), ...(challenges ? [challenges] : []), back, ...pageButtons()],
     fallback: () => cards.find((c) => c.dataset.species === focused) ?? cards[0],
     onBack: options.onBack,
   });
 
   render();
   queueMicrotask(() => cards.find((c) => c.dataset.species === focused)?.focus({ preventScroll: true }));
-  return { element, dispose: stopKeys };
+  return {
+    element,
+    dispose: () => {
+      stopKeys();
+      pager.dispose();
+    },
+  };
 }

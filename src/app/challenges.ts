@@ -14,6 +14,7 @@ import { TYPE_COLORS } from '../ui/tokens';
 import { h, mdWindow } from '../ui/window';
 import { portrait } from './loadout';
 import { gridNav } from './window-nav';
+import { attachPager } from '../ui/pager';
 import '../styles/evolve-shop.css';
 import '../styles/challenges.css';
 
@@ -153,6 +154,10 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
   const primary = h('button', { className: 'es-primary', type: 'button' });
   const grid = h('div', { className: 'es-grid ch-grid' });
   grid.setAttribute('aria-label', t('challenges.title'));
+  // Phones: the cards that do not fit become pages, their buttons in the foot (src/ui/pager.ts; idle on desktop).
+  const pageNav = h('span', { className: 'es-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
+  const pageButtons = (): HTMLElement[] => (pageNav.hidden ? [] : [...pageNav.querySelectorAll<HTMLElement>('button')]);
 
   const cards = rows.map((row) => {
     const state = cardOf(row);
@@ -177,6 +182,7 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
     return card;
   });
   grid.replaceChildren(...cards);
+  pager.refresh();
 
   function show(row: ChallengeRow): void {
     focused = row;
@@ -220,11 +226,17 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
   const element = mdWindow({ title: t('challenges.title'), className: 'es-window ch-window' }, [
     h('p', { className: 'dim es-context', textContent: t('challenges.text') }),
     h('div', { className: 'es-body' }, [sheet, grid]),
-    h('div', { className: 'es-foot' }, [back, h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'hub.hint') })]),
+    h('div', { className: 'es-foot' }, [back, pageNav, h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'hub.hint') })]),
   ]);
 
-  const stopKeys = gridNav({ win: element, controls: () => [...cards, primary, back], fallback: () => cards.find((c) => c.dataset.dungeon === focused.dungeon.id) ?? cards[0], onBack: options.onBack });
+  const stopKeys = gridNav({ win: element, controls: () => [...pager.visible(), primary, back, ...pageButtons()], fallback: () => cards.find((c) => c.dataset.dungeon === focused.dungeon.id) ?? cards[0], onBack: options.onBack });
   show(focused);
   queueMicrotask(() => cards[0]?.focus({ preventScroll: true }));
-  return { element, dispose: stopKeys };
+  return {
+    element,
+    dispose: () => {
+      stopKeys();
+      pager.dispose();
+    },
+  };
 }
