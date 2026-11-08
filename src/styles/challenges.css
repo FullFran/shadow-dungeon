@@ -41,7 +41,7 @@
 .ch-sheet .es-primary { margin-top: auto; }
 
 /* A short or narrow screen: icon-only chapter rows, the hook and the info line fold away. */
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .ch-grid { grid-auto-rows: 100px; }
   .ch-card { gap: 1px; }
   .ch-card .es-card-art { height: 56px; }

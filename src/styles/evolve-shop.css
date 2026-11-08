@@ -89,7 +89,7 @@
 .sh-effect-next { color: var(--md-cursor); text-shadow: 0 0 10px rgba(255, 191, 94, 0.45); }
 .sh-effect-max { color: var(--md-cursor); font-size: 22px; }
 
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .es-window { height: calc(100dvh - 24px); }
   .es-window > .md-window-body { gap: 6px; }
   .es-window .es-context, .es-window .es-hint, .es-window .es-text, .es-gems-row .es-level { display: none; }
@@ -134,7 +134,7 @@
   html.touch .sh-window .sh-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); grid-auto-rows: 0; align-content: stretch; padding: 2px; overflow: hidden; }
   html.touch .sh-window .sh-grid .es-card { height: auto; min-height: 0; justify-content: center; }
 }
-@media (max-height: 560px) and (max-width: 680px) {
+@media (max-height: 640px) and (max-width: 680px) {
   html.touch .sh-window .es-body { grid-template-columns: 12.5rem minmax(0, 1fr); gap: 6px; }
   html.touch .sh-window .sh-grid { gap: 4px; }
   html.touch .sh-window .sh-grid .es-card { padding: 4px 1px 2px; }
@@ -159,7 +159,7 @@
 
 /* Phones on their side: straight in #app (the screen, not the town's veil) the window takes the whole phone; the 96 px the
    desktop keeps for the old chrome (index.html #app > .md-window) goes. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch #app > .es-window { height: 100%; max-height: none; }
   /* The sheet's stage takes what the name, the needs and the action leave; the action is a 44 px target. */
   html.touch .es-sheet .es-stage { flex: 1 1 0; height: auto; min-height: 0; }

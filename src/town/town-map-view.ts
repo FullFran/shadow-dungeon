@@ -257,13 +257,12 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     sizePins(geometry.compact);
     placeCardFor(index);
   }
-  /** A short window has a small map: its pins shrink until the closest two clear each other (sheet-model.ts pinSizes); full size elsewhere. */
-  function sizePins(compact: boolean): void {
+  /** A small map (a phone, a short tablet) has its pins shrink until the closest two clear each other (sheet-model.ts pinSizes); a map
+   * with the room keeps them full size, since its closest two are already further apart than a pin. */
+  function sizePins(_compact: boolean): void {
     let closest = Number.POSITIVE_INFINITY;
-    if (compact) {
-      const at = placed.map((m) => ({ x: (artX(m.x) / artW) * fit.width, y: (artX(m.y) / artH) * fit.height }));
-      for (let i = 0; i < at.length; i++) for (let j = i + 1; j < at.length; j++) closest = Math.min(closest, Math.hypot(at[i]!.x - at[j]!.x, at[i]!.y - at[j]!.y));
-    }
+    const at = placed.map((m) => ({ x: (artX(m.x) / artW) * fit.width, y: (artX(m.y) / artH) * fit.height }));
+    for (let i = 0; i < at.length; i++) for (let j = i + 1; j < at.length; j++) closest = Math.min(closest, Math.hypot(at[i]!.x - at[j]!.x, at[i]!.y - at[j]!.y));
     const size = pinSizes(closest);
     element.style.setProperty('--tm-pin', `${size.hit}px`);
     element.style.setProperty('--tm-seal', `${size.seal}px`);

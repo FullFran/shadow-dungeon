@@ -44,7 +44,7 @@
 .sp-back { all: unset; box-sizing: border-box; padding: 6px 20px; cursor: pointer; font-size: 22px; color: var(--md-text); background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
 .sp-back:hover, .sp-back:focus-visible { color: var(--md-cursor); border-color: var(--md-border); }
 .sp-hint { margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .sp-window { height: calc(100dvh - 24px); }
   .sp-body { grid-template-columns: 13rem minmax(0, 1fr); gap: 10px; }
   .sp-stage { height: 92px; } .sp-stage-sprite { width: 130px; height: 88px; } .sp-stage-glow { width: 150px; height: 120px; } .sp-stage-sign { width: 110px; height: 22px; margin-left: -55px; bottom: 0; }

@@ -143,7 +143,7 @@
 .bd-sheet > .hl-record { flex: none; }
 .bd-sheet > .hl-cta { margin-top: auto; }
 
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .hl-window { height: calc(100dvh - 44px); }
   .hl-window.md-window { padding: 16px 12px 8px; max-width: calc(100vw - 24px); }
   .bd-stage { display: none; }
@@ -188,7 +188,7 @@
   .bd-card { overflow: hidden; }
 }
 /* The narrowest phones (about 740 px across): the title shrinks so two lines still hold the longest dungeon name. */
-@media (max-width: 780px) and (max-height: 560px) {
+@media (max-width: 780px) and (max-height: 640px) {
   .bd-card { gap: 6px; padding: 2px 6px 2px 2px; }
   .bd-card-art { width: 32px; height: 32px; } .bd-card-icon { width: 26px; height: 26px; }
   .bd-card-title { font-size: 12px; }
@@ -196,7 +196,7 @@
 }
 
 /* Laptop heights (about 700-800 px): a shorter stage so the rules and the record of the sheet fit without scrolling. */
-@media (max-height: 800px) and (min-height: 561px) and (min-width: 901px) {
+@media (max-height: 800px) and (min-height: 641px) and (min-width: 901px) {
   .oa-sheet { gap: 4px; padding: 8px 14px 10px; }
   .oa-sheet > .hl-stage { height: 104px; } .oa-sheet .hl-stage-art { width: 160px; height: 92px; } .oa-sheet .hl-stage-glow { width: 150px; height: 80px; bottom: 10px; }
   .oa-sheet .hl-stage-sign { width: 110px; height: 20px; margin-left: -55px; } .oa-sheet .hl-stage-icon { width: 64px; height: 64px; margin: -40px 0 0 -32px; }
@@ -205,7 +205,7 @@
 }
 
 /* Phones on their side: #app keeps only 20 px of padding here (mobile.css), so the board window takes the rest of the screen. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch #app > .hl-window { height: calc(100dvh - 20px); }
 }
 

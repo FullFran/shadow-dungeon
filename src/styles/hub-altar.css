@@ -64,7 +64,7 @@
   .hub-plate-name { font-size: 28px; }
 }
 /* Short or narrow screens (phones in landscape, 844x390): half-scale altar, the plate is one row. */
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .hub-altar { --k: 1; --sh: 62px; }
   .hub-altar-sprite { width: 100px; height: 62px; }
   .hub-plate { width: 210px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name change' 'chips change'; align-items: center; justify-items: start; gap: 2px 8px; margin-top: 2px; padding: 3px 6px 4px 12px; }

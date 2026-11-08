@@ -423,7 +423,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   };
   window.addEventListener('keydown', onKey);
   // Turning the phone (or resizing a window) between the two layouts rebuilds the list for the new one.
-  const phoneQuery = window.matchMedia?.('(max-height: 560px)');
+  const phoneQuery = window.matchMedia?.('(max-height: 640px)');
   const onLayout = (): void => refresh();
   phoneQuery?.addEventListener?.('change', onLayout);
 

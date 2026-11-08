@@ -97,7 +97,7 @@
 html.touch .st-keys { display: none; }
 
 /* ---------- Short screens (phones in landscape, small windows) ---------- */
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .st-window, .screen-row > .st-window { height: calc(100dvh - 16px); }
   .st-window > .md-window-body { gap: 6px; }
   .st-body { grid-template-columns: 11.5rem minmax(0, 1fr); gap: 10px; }

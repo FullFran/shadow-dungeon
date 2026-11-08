@@ -41,7 +41,7 @@
 .sys-notice button:disabled { cursor: default; opacity: 0.6; }
 
 /* Short windows (844x390): the same card, tighter, so card and buttons fit under the top margin. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   .sys-notice-veil { padding-top: 10px; }
   .sys-notice { gap: 8px; padding: 12px 20px 6px; }
   .sys-notice-title { font-size: 28px; }

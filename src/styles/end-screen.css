@@ -187,7 +187,7 @@ canvas.game.is-frozen { pointer-events: none; cursor: default; }
   .rs-stage { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.5fr); gap: 14px; }
 }
 /* Short landscape (844x390): sprite left, tiles in three columns, a smaller title, no extra hint. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   .rs-veil { padding: 6px; }
   #app .rs-window.result { --rs-art-h: 104px; width: min(1100px, 98vw); max-height: calc(100dvh - 12px); padding: 8px 14px 8px; }
   #app .rs-window > .md-window-body { gap: 6px; }

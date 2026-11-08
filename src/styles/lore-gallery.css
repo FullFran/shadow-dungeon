@@ -62,7 +62,7 @@
 @media (prefers-reduced-motion: no-preference) { .gv-card { transition: border-color 120ms ease-out, box-shadow 120ms ease-out; } }
 
 /* Phones and short screens (844x390): narrower sheet, compact cards. */
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .gv-window { height: calc(100dvh - 24px); }
   .gv-window > .md-window-body { gap: 6px; }
   .gv-progress-label { font-size: 16px; } .gv-bar { height: 10px; }
@@ -80,7 +80,7 @@
 }
 
 /* Phones on their side (odd/tasks/mobile-pass.md T6): taller cards whose whole title shows (two lines), and the page buttons sit in the foot beside Volver, so the cards get the height. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch .gv-grid { grid-auto-rows: 100px; padding: 2px; }
   html.touch .gv-card { height: 100px; gap: 3px; padding: 5px 4px 5px; justify-content: center; }
   html.touch .gv-vignette { height: 40px; } html.touch .gv-vignette .px-icon { width: 28px; height: 28px; }

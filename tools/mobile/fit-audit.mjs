@@ -203,7 +203,7 @@ const AUDIT = () => {
   // A screen with no visible way back: an open window (not the hub, not a run) whose own back or close control is hidden
   // while the floating "Atrás" is hidden too.
   const noWayBack = [];
-  const BACK = /^(▶\s*)?(Volver|Atrás|Back|Cerrar|Close|×|Salir)\b/i;
+  const BACK = /^(▶\s*)?(Volver|Atrás|Back|Cerrar|Close|×|Salir|Seguir|Continue)(?![a-záéíóúñ])/;
   const open = [...document.querySelectorAll('.town-shop .md-window, #app > .md-window, .hub-sheet, .drawer-veil .md-window')].filter(shown);
   const touchBack = document.querySelector('.touch-back');
   const floating = touchBack && shown(touchBack);

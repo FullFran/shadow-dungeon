@@ -94,7 +94,7 @@
 .ach-window .ach-hint { margin: 0; color: var(--md-text-dim); font-family: var(--md-text-font); font-size: 13px; }
 
 /* Short screens (phones on their side): the rail becomes a strip of icons with a bar each, everything else tightens. */
-@media (max-height: 520px) {
+@media (max-height: 640px) {
   .ach-window { padding: 14px 14px 8px; max-height: calc(100dvh - 12px); }
   .ach-window > .md-window-body { gap: 6px; }
   .ach-head { padding: 3px 10px; gap: 0 10px; }
@@ -139,7 +139,7 @@ html.touch .ach-tile, html.touch .ach-rail .md-item { min-height: 44px; }
 
 /* Phones on their side (odd/tasks/mobile-pass.md T6): no scrolling. Header, family strip, title with the page buttons, the focused
    achievement in words and two rows of compact tiles; what does not fit turns into pages (src/ui/pager.ts). */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch .ach-window { padding: 14px 12px 6px; max-height: calc(100dvh - 12px); }
   /* The overall progress becomes a narrow card beside everything else, so it costs width, which a phone on its side has, not height. */
   html.touch .ach-window > .md-window-body { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 8px; }
@@ -172,7 +172,7 @@ html.touch .ach-tile, html.touch .ach-rail .md-item { min-height: 44px; }
      "fit" and the last one is cut once the window settles. On a phone the window opens at full size. */
   html.touch .ach-window { --md-open-ms: 0ms; }
 }
-@media (max-height: 560px) and (max-width: 620px) {
+@media (max-height: 640px) and (max-width: 620px) {
   /* 568 px across: the progress card and the title row give a little so the name, the count and the pages never meet. */
   html.touch .ach-window > .md-window-body { grid-template-columns: 4.4rem minmax(0, 1fr); column-gap: 6px; }
   html.touch .ach-panel-name, html.touch .ach-panel-count { font-size: 15px; }
@@ -228,7 +228,7 @@ html.touch .ach-tile, html.touch .ach-rail .md-item { min-height: 44px; }
   .news-row { grid-template-columns: 28px minmax(0, 1fr); }
   .news-thumb { grid-column: 2; width: 100%; max-width: 15rem; }
 }
-@media (max-height: 520px) {
+@media (max-height: 640px) {
   .news-window { padding: 14px 14px 8px; max-height: calc(100dvh - 12px); }
   .news-scroll { max-height: calc(100dvh - 262px); gap: 6px; }
   .news-head { min-height: 44px; padding: 4px 10px; }
@@ -253,7 +253,7 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 .ach-tile-name { height: 2.4em; }
 .ach-detail { height: 84px; min-height: 0; overflow: hidden; }
 .ach-detail-text > * { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-@media (max-height: 520px) { .ach-window { height: calc(100dvh - 24px); } .ach-detail { height: 64px; } .ach-grid { grid-auto-rows: 100px; } .ach-tile { height: 100px; } .ach-tile-name { height: 2.4em; -webkit-line-clamp: 2; } }
+@media (max-height: 640px) { .ach-window { height: calc(100dvh - 24px); } .ach-detail { height: 64px; } .ach-grid { grid-auto-rows: 100px; } .ach-tile { height: 100px; } .ach-tile-name { height: 2.4em; -webkit-line-clamp: 2; } }
 
 /* Owner 2026-11-04: nothing may be hidden. Category names wrap instead of ending in an ellipsis, the detail lives
    inside the panel above the grid (compact, its own row), and the grid fades at the bottom edge to say it scrolls
@@ -265,14 +265,14 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 .ach-window .ach-panel .ach-detail-desc { font-size: 15px; }
 .ach-grid { scroll-snap-type: y proximity; scroll-padding-top: 4px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 28px; }
 .ach-tile { scroll-snap-align: start; }
-@media (max-height: 520px) {
+@media (max-height: 640px) {
   .ach-panel > .ach-detail { min-height: 0; height: 52px; padding: 4px 10px; }
   .ach-window .ach-panel .ach-detail-desc { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ach-window .ach-panel .ach-detail-meta { display: none; }
 }
 .ach-rail { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); padding-bottom: 24px; scroll-snap-type: y proximity; }
 .ach-rail .md-item { scroll-snap-align: start; }
-@media (max-height: 520px) {
+@media (max-height: 640px) {
   .ach-cat-name { display: none; }
   .ach-rail { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }
 }

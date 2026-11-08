@@ -122,7 +122,7 @@
   .tu-row-name { font-size: 18px; }
 }
 
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .tu-window { height: calc(100dvh - 24px); }
   .tu-window > .md-window-body { gap: 6px; }
   .tu-top { height: 38px; gap: 4px; }
@@ -143,7 +143,7 @@
 
 /* Phones on their side (odd/tasks/mobile-pass.md T6): one Pokémon at a time in the top strip (the arrows step through them),
    the slots as tabs, the open slot's moves as pages of 44 px rows; nothing scrolls. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch .tu-step { width: 44px; height: 44px; font-size: 20px; }
   html.touch .tu-back { height: 44px; padding: 0 14px; }
   html.touch .tu-top { height: 44px; }
@@ -178,7 +178,7 @@
 @media (max-height: 340px) {
   html.touch .tu-act { height: 40px; }
 }
-@media (max-height: 560px) and (max-width: 720px) {
+@media (max-height: 640px) and (max-width: 720px) {
   /* Narrow: only the open tab keeps its name (its icon and the aria label tell the others apart). */
   html.touch .tu-body { grid-template-columns: minmax(0, 1fr) 16rem; gap: 8px; }
   html.touch .tu-tabs .tu-group-head { flex: 0 0 44px; min-width: 0; padding: 0; }

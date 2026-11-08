@@ -11,7 +11,7 @@ html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, 
 
 /* Phone windows that sit straight in #app (picker, shrine, online) and carry their own Volver: the room kept for "Atrás" at the
    top and the legal line at the foot goes to the window, which is all a short screen has (it stays on the title, hub and credits). */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)), html.touch body #app:has(> :is(.md-window, .screen-row) :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); gap: 0; justify-content: center; }
   html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) > .notice, html.touch body #app:has(> :is(.md-window, .screen-row) :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) > .notice { display: none; }
   html.touch body:has(#app > :is(.sp-window, .oa-window, .ol-window)) .touch-back, html.touch body:has(#app > :is(.md-window, .screen-row) :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) .touch-back { display: none; }
@@ -35,7 +35,7 @@ html.rotate-blocked body { overflow: hidden; }
    beside Volver in the foot (src/ui/pager.ts); nothing inside the window scrolls. */
 .oa-pages { display: contents; }
 .oa-pages[hidden] { display: none; }
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch .oa-window .oa-pages.pg-nav { display: flex; flex: none; margin-right: auto; padding-left: 8px; }
   html.touch .oa-window .oa-pages.pg-nav[hidden] { display: none; }
   html.touch .oa-window .oa-pages .pg-btn { width: 52px; }

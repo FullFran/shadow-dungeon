@@ -11,7 +11,7 @@ import '../styles/pager.css';
  */
 
 /** A touch screen short enough to be a phone held on its side. */
-export const isPhone = (): boolean => document.documentElement.classList.contains('touch') && !!window.matchMedia?.('(max-height: 560px)').matches;
+export const isPhone = (): boolean => document.documentElement.classList.contains('touch') && !!window.matchMedia?.('(max-height: 640px)').matches;
 
 export interface PagerOptions {
   /** Where the page controls go; by default right after the host. */

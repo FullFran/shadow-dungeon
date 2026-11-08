@@ -202,7 +202,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
   });
   const sheet = h('section', { className: 'lm-sheet' }, [preview.element, h('div', { className: 'lm-sheet-head' }, [sName, sBadges]), sStats, sDesc, sNote, act]);
   // Small screens: the sheet's stage is a strip, so a press on it opens the preview enlarged (move-preview-zoom.ts).
-  const compactMedia = typeof matchMedia === 'function' ? matchMedia('(max-height: 560px), (max-width: 900px)') : null;
+  const compactMedia = typeof matchMedia === 'function' ? matchMedia('(max-height: 640px), (max-width: 900px)') : null;
   const zoomable = (): boolean => compactMedia?.matches === true && focused !== null;
   const syncZoom = (): void => {
     const on = zoomable();

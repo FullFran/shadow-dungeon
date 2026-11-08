@@ -177,7 +177,7 @@ html:has(.ob), body:has(.ob) { height: 100%; overflow: hidden; }
 
 /* Phones on their side: the screen is the whole of #app (touch.css keeps 80 px above it for the floating Atrás, and the quiz carries its own
    Volver), so the content is not pushed down and clipped at the top. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch body #app:has(.ob) { padding: 0; gap: 0; }
   html.touch body:has(#app .ob) .touch-back { display: none; }
 }

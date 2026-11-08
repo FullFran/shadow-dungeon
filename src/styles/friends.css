@@ -45,7 +45,7 @@
 .fr-gate-icon { width: 64px; height: 64px; }
 .fr-gate-title { margin: 0; font-size: 26px; font-weight: 400; color: var(--md-text); }
 .fr-gate-body { margin: 0 0 6px !important; font-family: var(--md-text-font); color: var(--md-text-dim); }
-@media (max-height: 560px), (max-width: 700px) {
+@media (max-height: 640px), (max-width: 700px) {
   .fr-window { height: calc(100dvh - 24px); }
   .fr-window:has(.fr-gate) { height: auto; }
   .fr-split { grid-template-columns: 12.5rem minmax(0, 1fr); gap: 10px; }
@@ -68,7 +68,7 @@
 
 /* Phones on their side (odd/tasks/mobile-pass.md T6): the window never scrolls. Signed in, the cards that do not fit become pages
    whose buttons sit beside Volver; signed out, the account card lies down (icon, words, the two buttons). */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   html.touch .fr-window { height: calc(100dvh - 20px); padding: 16px 16px 8px; }
   html.touch .fr-window:has(.fr-gate) { width: min(40rem, 100%); height: auto; }
   html.touch .fr-split { grid-template-columns: 14.5rem minmax(0, 1fr); }

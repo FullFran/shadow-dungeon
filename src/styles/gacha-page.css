@@ -5,7 +5,7 @@ html:has(.gp), body:has(.gp) { height: 100%; overflow: hidden; }
 #app:has(.gp):not(:has(canvas.game)) { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; height: 100vh; height: 100dvh; min-height: 0; padding: 0; overflow: hidden; }
 /* On touch the app keeps 80 px above bare menu screens (index.html); the page fills the whole screen instead. */
 html.touch body #app:has(.gp):not(:has(canvas.game)) { padding-top: 0; }
-@media (max-height: 560px) { html.touch #app:has(.gp) > .notice { display: none; } }
+@media (max-height: 640px) { html.touch #app:has(.gp) > .notice { display: none; } }
 /* The narrowest phones: the pity rows keep their words and drop the bar, the pull buttons shrink to fit two across the dock. */
 /* The 320 px tall shapes: the odds panel loses its heading (its rows say what they are) and the dock starts under the header. */
 /* The page has its own Volver: the floating Atrás would sit on it and on the first card of a ten-pull. */
@@ -22,7 +22,7 @@ html.touch body:has(.gp) .touch-back { display: none; }
   html.touch .gp-dock { justify-content: flex-start; gap: 8px; }
   html.touch .gp-odds .gp-panel-head { display: none; }
 }
-@media (max-height: 560px) and (max-width: 680px) {
+@media (max-height: 640px) and (max-width: 680px) {
   html.touch .gp-pity-row { grid-template-columns: 5.2rem minmax(0, 1fr); }
   html.touch .gp-pity-row .gp-meter { display: none; }
   html.touch .gp-pity-text { grid-column: 2; font-size: 11px; white-space: nowrap; }
@@ -211,7 +211,7 @@ html.touch body:has(.gp) .touch-back { display: none; }
 }
 
 /* Short and narrow screens (844x390 and the like): the same page, compressed; the odds stay beside the pull buttons. */
-@media (max-height: 560px), (max-width: 900px) {
+@media (max-height: 640px), (max-width: 900px) {
   .gp { --gp-gutter: 12px; }
   .gp-top { padding-top: 8px; gap: 8px; }
   .gp-title h1 { font-size: 22px; letter-spacing: 0.04em; }

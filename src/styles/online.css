@@ -21,7 +21,7 @@
 .ol-error { min-height: 1.35em; margin: 0 !important; font-family: var(--md-text-font); font-size: 14px !important; line-height: 1.35 !important; color: var(--md-danger); }
 .ol-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ol-foot-hint { margin: 0 !important; font-size: 14px !important; }
-@media (max-height: 560px), (max-width: 700px) {
+@media (max-height: 640px), (max-width: 700px) {
   .ol-body { gap: 10px; }
   .ol-nick-row { grid-template-columns: minmax(0, 1fr) 12rem; padding-bottom: 10px; }
   .ol-hint, .ol-foot-hint { display: none; }
@@ -31,7 +31,7 @@
   .ol-card-body { font-size: 14px !important; }
 }
 /* Short landscape: no descriptions, code and Join on one line, so Back stays on screen. */
-@media (max-height: 560px) {
+@media (max-height: 640px) {
   .ol-card-body { display: none; }
   .ol-card-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
   .ol-card-controls > :only-child, .ol-error { grid-column: 1 / -1; }
