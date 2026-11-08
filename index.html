@@ -543,6 +543,17 @@
         html.touch .dungeons .md-item { min-height: 44px; padding: 0 8px; font-size: 16px; line-height: 1.1; }
         html.touch .dungeon-about, html.touch .dungeon-about .md-desc, html.touch .dungeon-about p { font-size: 14px; line-height: 1.25; margin: 0; }
         html.touch .dungeon-about .dungeon-legend { display: none; }
+        /* Mimikyu's stall window (online town, ?screen=gacha): the Tirar and Volver rows, the rule and the rates down the left, the reveal down the right. */
+        html.touch body #app:has(.stall) { justify-content: flex-start; padding: max(18px, env(safe-area-inset-top)) 12px 0 max(88px, env(safe-area-inset-left)); gap: 0; }
+        html.touch #app:has(.stall) > .notice { display: none; }
+        html.touch body #app:not(:has(canvas.game)) > .stall { margin: 0 auto; }
+        html.touch #app > .stall { width: min(40rem, 100%); max-height: none; padding: 18px 12px 8px; }
+        html.touch .stall .md-window-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; grid-template-areas: 'list effect' 'text effect' 'balance effect'; gap: 0 14px; overflow: visible; }
+        html.touch .stall .md-window-body > p:first-child, html.touch .stall .md-desc, html.touch .stall .md-desc p { font-size: 13px; line-height: 1.25; margin: 0 0 4px; }
+        html.touch .stall .shop-balance { margin: 0; }
+        html.touch .stall .md-stat { font-size: 13px; padding: 0; gap: 1em; line-height: 1.3; }
+        html.touch .stall canvas.portrait { height: 64px !important; width: auto !important; }
+        html.touch .stall .portrait-frame { padding: 4px 0 2px; margin-bottom: 2px; }
         /* The Sima's entry: its rules in two columns of text, the three modes in one row under them. */
         html.touch .endless-entry .md-window-body { column-count: 2; column-gap: 16px; }
         html.touch .endless-entry .md-window-body > p { break-inside: avoid; font-size: 13px; }
