@@ -57,6 +57,19 @@ export function endLayout(view: EndView): EndLayout {
   return { tiles: figures.slice(0, MAX_TILES), more: figures.slice(MAX_TILES), details, reward, cards, seal: view.seal ?? null };
 }
 
+export type EndSection = 'tiles' | 'details' | 'rewards' | 'cards';
+
+/**
+ * The sections of the board grouped into pages, for a phone that cannot show them all at once (the pager turns them over
+ * instead of a scrollbar): the figures, details and rewards first, the Sima's score and events after.
+ */
+export function endPages(layout: EndLayout): EndSection[][] {
+  const first: EndSection[] = ['tiles'];
+  if (layout.details.length > 0) first.push('details');
+  if (layout.reward) first.push('rewards');
+  return layout.cards.length > 0 ? [first, ['cards']] : [first];
+}
+
 /**
  * How many of the twelve grid columns each tile spans so the grid has no holes: rows of three (four columns each), a row of
  * two (six each), a lone tile full width; four tiles make one row of four.

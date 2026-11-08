@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endLayout, MAX_TILES, endIconOf, tileSpans } from '../../src/app/end-layout';
+import { endLayout, endPages, MAX_TILES, endIconOf, tileSpans } from '../../src/app/end-layout';
 import { endModel, type EndInput, type EndView } from '../../src/app/end-model';
 import { resultModel, shrineEndView, type ResultInput } from '../../src/app/shrine-result';
 import type { RunSummary } from '../../src/app/game';
@@ -134,5 +134,34 @@ describe('tile spans', () => {
     }
     expect(tileSpans(5)).toEqual([4, 4, 4, 6, 6]);
     expect(tileSpans(4)).toEqual([3, 3, 3, 3]);
+  });
+});
+
+describe('end pages for a phone (owner, 2026-11-08: no scroll in any mobile menu)', () => {
+  const tr = (key: string): string => catalog('es')[key] ?? key;
+  const input = (d: (typeof ALL)[number]): EndInput => ({
+    result: 'defeat',
+    summary: summary(d.id, d.endless ? { simaEvents: [{ floor: 3, kind: 'crystal', outcome: 'taken' }] as never } : {}),
+    online: false,
+    balance: 100,
+    party: null,
+    playerSpecies: PLAYABLE_SPECIES[0]!,
+    townOpen: true,
+    heldNames: [],
+    ...(d.endless ? { score } : {}),
+  });
+
+  it('puts the figures, details and rewards on one page and the Sima cards on a second', () => {
+    for (const d of ALL) {
+      const l = endLayout(endModel(input(d), tr));
+      const pages = endPages(l);
+      if (d.endless) expect(pages, d.id).toEqual([['tiles', 'details', 'rewards'], ['cards']]);
+      else expect(pages, d.id).toEqual([['tiles', 'details', 'rewards']]);
+    }
+  });
+
+  it('leaves out the sections a layout does not have', () => {
+    const l = endLayout(endModel(input(ALL[0]!), tr));
+    expect(endPages({ ...l, details: [], reward: null })).toEqual([['tiles']]);
   });
 });

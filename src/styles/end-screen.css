@@ -108,11 +108,11 @@ canvas.game.is-frozen { pointer-events: none; cursor: default; }
 .rs-stage.has-cards { grid-template-columns: minmax(0, 0.55fr) minmax(0, 2fr); }
 /* With cards (the Sima) the board is a grid: figures on the left, the score and events beside them (scrolling inside), the rewards below. */
 .rs-board.has-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: start; grid-template-areas: 'tiles cards' 'details cards' 'rewards rewards'; }
-.rs-board.has-cards > .rs-tiles { grid-area: tiles; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; max-height: none; }
-.rs-board.has-cards > .rs-tiles > .rs-tile { grid-column: span 1 !important; }
-.rs-board.has-cards > .rs-details { grid-area: details; grid-template-columns: minmax(0, 1fr); align-self: start; }
-.rs-board.has-cards > .rs-cards { grid-area: cards; contain: size; min-height: 0; align-self: stretch; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
-.rs-board.has-cards > .rs-rewards { grid-area: rewards; }
+.rs-board.has-cards .rs-tiles { grid-area: tiles; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; max-height: none; }
+.rs-board.has-cards .rs-tiles > .rs-tile { grid-column: span 1 !important; }
+.rs-board.has-cards .rs-details { grid-area: details; grid-template-columns: minmax(0, 1fr); align-self: start; }
+.rs-board.has-cards .rs-cards { grid-area: cards; contain: size; min-height: 0; align-self: stretch; overflow-y: auto; overscroll-behavior: contain; padding: 2px 4px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--md-border-shade) transparent; }
+.rs-board.has-cards .rs-rewards { grid-area: rewards; }
 /* The Sima's score and events: cards under the figures; when they do not fit, the board scrolls inside (the only place that may). */
 .rs-cards { flex: none; display: flex; flex-direction: column; gap: 10px; }
 .rs-card { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; }
@@ -227,5 +227,39 @@ canvas.game.is-frozen { pointer-events: none; cursor: default; }
   .rs-btn { gap: 8px; } .rs-btn-icon { width: 20px; height: 20px; }
   .rs-foot { gap: 0; }
 }
+
+/* The Sima's board is two pages (end-screen.ts): on desktop they dissolve into the one grid. On a phone, when both do not fit, the pager turns them
+   over (owner, 2026-11-08: no scroll in any mobile menu): figures, details and rewards first, the score and events second; the creature steps aside
+   (its new-best seal stays in the corner) and the flavour line goes. */
+.rs-page { display: contents; }
+@media (max-height: 660px) {
+  html.touch #app .rs-window.result.has-cards { --rs-art-h: 0px; padding-top: 6px; padding-bottom: 4px; overflow: visible; height: calc(100dvh - 12px); }
+  html.touch .rs-window.has-cards .rs-rule, html.touch .rs-window.has-cards .rs-sub, html.touch .rs-window.has-cards .rs-head .rs-note { display: none; }
+  html.touch #app .rs-window.has-cards .rs-title { font-size: 22px; }
+  html.touch .rs-window.has-cards .rs-hero { position: absolute; top: 0; right: 0; z-index: 5; width: auto; min-height: 0; }
+  html.touch .rs-window.has-cards .rs-hero > :not(.rs-seal) { display: none; }
+  html.touch .rs-window.has-cards .rs-seal { position: static; max-width: none; }
+  html.touch #app .rs-window.has-cards > .md-window-body { position: relative; }
+  html.touch .rs-pagenav { position: absolute; top: 0; left: 0; z-index: 5; gap: 6px; }
+  html.touch .rs-pagenav .pg-btn { width: 44px; }
+  html.touch .rs-pagenav .pg-count { min-width: 2.6rem; font-size: 16px; }
+  html.touch .rs-stage.has-cards { grid-template-columns: minmax(0, 1fr); }
+  html.touch .rs-board.has-cards { display: flex; flex-direction: column; justify-content: flex-start; padding: 0; }
+  html.touch .rs-board.has-cards > .rs-page { display: grid; gap: 6px; align-content: start; flex: none; }
+  html.touch .rs-board.has-cards .rs-page > *, html.touch .rs-board.has-cards .rs-cards > * { grid-area: auto; }
+  html.touch .rs-board.has-cards .rs-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: auto; }
+  html.touch .rs-board.has-cards .rs-tiles > .rs-tile { grid-column: span 1 !important; }
+  html.touch .rs-board.has-cards .rs-page-1 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.touch .rs-board.has-cards .rs-cards { display: contents; }
+  html.touch .rs-window.has-cards .rs-head { min-height: 36px; justify-content: center; }
+  html.touch .rs-pagenav .pg-btn { height: 36px; }
+  html.touch .rs-window.has-cards .rs-reward-body { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  html.touch .rs-window.has-cards .rs-reward-main { flex-direction: row; align-items: center; gap: 14px; }
+  html.touch .rs-window.has-cards .rs-chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.touch .rs-window.has-cards .rs-chip { white-space: nowrap; }
+  html.touch .rs-card .rs-note { line-height: 1.2; }
+  html.touch .rs-card > .rs-section-title { display: block; font-size: 11px; }
+}
+
 
 #app:has(.rs-veil) > .notice { display: none; }

@@ -2,11 +2,12 @@ import type { SheetStore } from '../adapters/assets';
 import { trackLastDevice, type LastDevice } from '../adapters/last-device';
 import { keyLabel } from '../adapters/bindings';
 import { cursorList } from '../ui/cursor-list';
+import { attachPager } from '../ui/pager';
 import { PAUSE_ICONS } from '../ui/icons/pause-icons';
 import { pixelSvgOf, type PixelIcon } from '../ui/pixel-icons';
 import { h, mdWindow, type Child } from '../ui/window';
 import { countAt, countParts, endTimeline, isLive, type EndTimeline } from './end-choreography';
-import { endIconOf, endLayout, tileSpans, type EndRewards } from './end-layout';
+import { endIconOf, endLayout, endPages, tileSpans, type EndRewards, type EndSection } from './end-layout';
 import type { EndActionId, EndCard, EndLine, EndView } from './end-model';
 import { glyphSvg } from './gamepad-pad';
 import { initialStyle } from './gamepad-help';
@@ -199,12 +200,22 @@ export function endScreen(options: EndScreenOptions): HTMLElement {
   const details = detailsCount > 0 ? h('div', { className: 'rs-details' }, layout.details.map((line) => detailEl(line, timeline.tileAt[all.length - 1] ?? 0))) : null;
   const rewards = layout.reward ? rewardsEl(layout.reward, timeline.rewardsAt ?? 0, counter) : null;
   const cards = layout.cards.length > 0 ? h('div', { className: 'rs-cards' }, layout.cards.map((c) => cardEl(c, timeline.rewardsAt ?? timeline.tileAt[0] ?? 0))) : null;
-  const board = h('div', { className: `rs-board${cards ? ' has-cards' : ''}` }, [tiles, details, cards, rewards] as Child[]);
+  const sections: Record<EndSection, Child> = { tiles, details, rewards, cards };
+  // The Sima's board has two pages (figures and rewards, then its score and events): on desktop they dissolve into one grid, on a phone
+  // that cannot show both the pager turns them over instead of a scrollbar (owner, 2026-11-08).
+  const pages = endPages(layout);
+  const board = h(
+    'div',
+    { className: `rs-board${cards ? ' has-cards' : ''}` },
+    pages.length > 1 ? pages.map((page, i) => h('div', { className: `rs-page rs-page-${i}` }, page.map((id) => sections[id]))) : ([tiles, details, cards, rewards] as Child[]),
+  );
+  const pageNav = h('div', { className: 'rs-pagenav' });
+  const pager = pages.length > 1 ? attachPager(board, { nav: pageNav, enabled: () => document.documentElement.classList.contains('touch') && !!window.matchMedia?.('(max-height: 660px)').matches }) : null;
 
   const foot = h('footer', { className: 'rs-foot' }, [list.element]);
   foot.style.setProperty('--at', `${timeline.actionsAt}ms`);
 
-  const windowEl = mdWindow({ className: `result rs-window ${view.outcome}${layout.seal ? ' has-seal' : ''}${cards ? ' has-cards' : ''}${reduced ? ' is-still' : ''}` }, [head, h('div', { className: `rs-stage${cards ? ' has-cards' : ''}` }, [hero, board]), foot]);
+  const windowEl = mdWindow({ className: `result rs-window ${view.outcome}${layout.seal ? ' has-seal' : ''}${cards ? ' has-cards' : ''}${reduced ? ' is-still' : ''}` }, [head, ...(pager ? [pageNav] : []), h('div', { className: `rs-stage${cards ? ' has-cards' : ''}` }, [hero, board]), foot]);
   windowEl.style.setProperty('--rs-count', `${timeline.countMs}ms`);
   if (!reduced) windowEl.classList.add('is-waiting');
 
@@ -267,6 +278,19 @@ export function endScreen(options: EndScreenOptions): HTMLElement {
     frame = requestAnimationFrame(tick);
     // Back-stop for a hidden tab (no frames): the buttons still go live on time.
     timer = window.setTimeout(goLive, timeline.actionsAt);
+  }
+  if (pager) {
+    // Page Down and Page Up turn the pages (the two actions keep the arrows); the pager goes with the window.
+    const onPageKey = (e: KeyboardEvent): void => {
+      if (!windowEl.isConnected) {
+        document.removeEventListener('keydown', onPageKey);
+        pager.dispose();
+        return;
+      }
+      if (e.code === 'PageDown') pager.go(pager.page() + 1);
+      else if (e.code === 'PageUp') pager.go(pager.page() - 1);
+    };
+    document.addEventListener('keydown', onPageKey);
   }
   return windowEl;
 }
