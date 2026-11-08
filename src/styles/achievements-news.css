@@ -166,6 +166,19 @@ html.touch .ach-tile, html.touch .ach-rail .md-item { min-height: 44px; }
   html.touch .ach-tile-name { grid-column: 2; grid-row: 1; font-size: 13px; line-height: 1.1; -webkit-line-clamp: 2; align-self: center; }
   html.touch .ach-tile-chips { grid-column: 1 / -1; grid-row: 2; margin-top: 0; justify-content: flex-start; }
   html.touch .ach-tile-lock { right: -6px; bottom: -4px; width: 14px; height: 14px; }
+  /* Straight in #app (the screen, not the town's veil) the window takes the whole phone; index.html keeps 96 px for the old chrome. */
+  html.touch #app > .ach-window { height: 100%; max-height: none; }
+  /* The pager measures the tiles with getBoundingClientRect, which a window still scaling in (md-open) shrinks: three rows
+     "fit" and the last one is cut once the window settles. On a phone the window opens at full size. */
+  html.touch .ach-window { --md-open-ms: 0ms; }
+}
+@media (max-height: 560px) and (max-width: 620px) {
+  /* 568 px across: the progress card and the title row give a little so the name, the count and the pages never meet. */
+  html.touch .ach-window > .md-window-body { grid-template-columns: 4.4rem minmax(0, 1fr); column-gap: 6px; }
+  html.touch .ach-panel-name, html.touch .ach-panel-count { font-size: 15px; }
+  html.touch .ach-panel-title .ach-back { padding: 0 10px; font-size: 16px; }
+  html.touch .ach-pages.pg-nav { gap: 4px; }
+  html.touch .ach-pages .pg-count { min-width: 2.2rem; font-size: 17px; }
 }
 
 /* ---------- News ---------- */
