@@ -4083,5 +4083,8 @@
   "boot.tip.6": "A move Master charges little and teaches much.",
   "boot.tip.7": "Your partner sees what you no longer can.",
   "boot.tip.8": "Even the longest night ends in embers.",
-  "account.notice.sync-offline": "Could not save to the cloud. It will retry."
+  "account.notice.sync-offline": "Could not save to the cloud. It will retry.",
+  "pager.prev": "Previous page",
+  "pager.next": "Next page",
+  "pager.page": "Page {n} of {total}"
 }

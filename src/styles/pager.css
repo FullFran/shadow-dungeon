@@ -1,0 +1,12 @@
+/* Phone pager (src/ui/pager.ts): one page of items, relic buttons and "2/5" instead of a scrollbar. */
+.pg-host { overflow: hidden !important; }
+.pg-off { display: none !important; }
+.pg-nav { flex: none; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.pg-nav[hidden] { display: none; }
+.pg-count { min-width: 3.4rem; text-align: center; color: var(--md-text); font-size: 20px; font-variant-numeric: tabular-nums; }
+.pg-btn { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 56px; height: 44px; cursor: pointer;
+  background: var(--relic-slab); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink); }
+.pg-btn:focus-visible { border-color: var(--md-cursor); outline: 3px solid var(--md-cursor); outline-offset: 2px; }
+.pg-btn:disabled { opacity: 0.35; cursor: default; }
+.pg-arrow { display: block; width: 14px; height: 18px; background: var(--md-cursor); clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+.pg-next .pg-arrow { clip-path: polygon(0 0, 100% 50%, 0 100%); }
