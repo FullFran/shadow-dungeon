@@ -530,7 +530,7 @@
       }
       /* Dungeon select on a phone (owner, 2026-11-08: no scroll in any mobile menu): the list becomes two columns of 44 px rows (column-major, so
          up and down still walk the list in order) over a one-line description, in the room right of the floating "Atrás". */
-      @media (max-height: 560px) {
+      @media (max-height: 660px) {
         html.touch body #app:has(.dungeons) { justify-content: flex-start; padding: max(10px, env(safe-area-inset-top)) 12px 0 max(88px, env(safe-area-inset-left)); gap: 0; }
         html.touch #app:has(.dungeons) > .notice { display: none; }
         html.touch #app:has(.dungeons) > .screen-title { display: none; }
@@ -543,6 +543,11 @@
         html.touch .dungeons .md-item { min-height: 44px; padding: 0 8px; font-size: 16px; line-height: 1.1; }
         html.touch .dungeon-about, html.touch .dungeon-about .md-desc, html.touch .dungeon-about p { font-size: 14px; line-height: 1.25; margin: 0; }
         html.touch .dungeon-about .dungeon-legend { display: none; }
+        /* The Sima's entry: its rules in two columns of text, the three modes in one row under them. */
+        html.touch .endless-entry .md-window-body { column-count: 2; column-gap: 16px; }
+        html.touch .endless-entry .md-window-body > p { break-inside: avoid; font-size: 13px; }
+        html.touch #app:has(.endless-entry) .dungeons .md-list { grid-template-rows: auto; grid-auto-flow: column; }
+        html.touch #app:has(.endless-entry) .dungeons .md-item { flex-wrap: wrap; row-gap: 0; align-content: center; }
       }
       /* ---- Touch controls (src/ui/touch-controls.ts): floating joystick in one half; buttons placed inline by src/ui/touch-layout.ts ---- */
       .touch-layer { display: none; }
