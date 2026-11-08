@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD } from '../../src/data/world';
-import { cartoucheRect, compassRect, menuGeometry, menuTiming, placeCard, seedOf, SHEET_MIN_FILL, sheetFit, SHEET_MARGIN, TILE_ART, tornMask } from '../../src/town/sheet-model';
+import { cartoucheRect, compassRect, menuGeometry, menuTiming, pinSizes, placeCard, seedOf, SHEET_MIN_FILL, sheetFit, SHEET_MARGIN, TILE_ART, tornMask } from '../../src/town/sheet-model';
 
 // Owner, 2026-11-04: the town menu is a map that shows the whole town, large, with a torn parchment edge, rising from the bottom.
 const VIEWPORTS = [
@@ -178,5 +178,25 @@ describe('ornament rectangles', () => {
       expect(r.y + r.h).toBeLessThanOrEqual(artH);
     }
     expect(c.y + c.h <= k.y || c.x + c.w <= k.x).toBe(true);
+  });
+});
+
+describe('pinSizes on a short window', () => {
+  it('keeps the full pin where the map has room', () => {
+    expect(pinSizes(120)).toEqual({ hit: 44, seal: 40 });
+    expect(pinSizes(46)).toEqual({ hit: 44, seal: 40 });
+  });
+
+  it('shrinks the pins until the closest two no longer overlap', () => {
+    for (const gap of [35, 26, 19]) {
+      const { hit, seal } = pinSizes(gap);
+      expect(hit).toBeLessThan(gap);
+      expect(seal).toBeLessThanOrEqual(hit);
+    }
+  });
+
+  it('never shrinks a pin below a readable seal', () => {
+    expect(pinSizes(2)).toEqual({ hit: 16, seal: 14 });
+    expect(pinSizes(Number.POSITIVE_INFINITY)).toEqual({ hit: 44, seal: 40 });
   });
 });
