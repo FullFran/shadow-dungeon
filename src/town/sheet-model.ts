@@ -204,3 +204,13 @@ export const initialFocus = (pinCount: number): number => pinCount;
 
 /** The pin whose place card shows for the focused item: only a pin, never "Seguir", an option or nothing (-1). */
 export const cardPin = (index: number, pinCount: number): number | null => (index >= 0 && index < pinCount ? index : null);
+
+/**
+ * Pin sizes on a short window (a phone on its side), CSS px: the hit box and the wax seal. The map there is small, so the pins would
+ * overlap; each shrinks until the closest two clear each other (2 px apart), down to 16/14. Every service is also a row in the options
+ * column, so a small pin is a shortcut, never the only way to reach one. Full size (44/40) wherever the map has the room.
+ */
+export function pinSizes(closestGap: number): { hit: number; seal: number } {
+  const hit = Math.max(16, Math.min(44, Math.floor(closestGap) - 2));
+  return { hit, seal: Math.min(40, Math.max(14, hit - 2)) };
+}

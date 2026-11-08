@@ -203,3 +203,8 @@
   .oa-sheet > .hl-name { font-size: 24px; } .oa-sheet > .hl-chips { min-height: 22px; }
   .oa-sheet-body { gap: 4px; }
 }
+
+/* Phones on their side: #app keeps only 20 px of padding here (mobile.css), so the board window takes the rest of the screen. */
+@media (max-height: 560px) {
+  html.touch #app > .hl-window { height: calc(100dvh - 20px); }
+}

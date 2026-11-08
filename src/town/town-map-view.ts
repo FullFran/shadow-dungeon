@@ -6,7 +6,7 @@ import { PIXEL_ICONS, pixelIconSvg, pixelSvgOf, type PixelIconId } from '../ui/p
 import { h } from '../ui/window';
 import { disclosureLayout, groupOptions, MENU_GROUPS, type DisclosureLayout, type MenuGlyph } from './menu-groups';
 import { columnStep, createDisclosure, type ColumnFocus, type ColumnKey, type Disclosure } from './menu-disclosure';
-import { cardPin, cartoucheRect, initialFocus, menuGeometry, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
+import { cardPin, cartoucheRect, initialFocus, menuGeometry, pinSizes, placeCard, sheetFit, SHEET_MARGIN, TILE_ART } from './sheet-model';
 import { paintTownSheet } from './sheet-paint';
 import { stepMarker, type TownMapMarker } from './town-map';
 import type { TownService } from './town-menu';
@@ -252,8 +252,21 @@ export function townMapView(options: TownMapViewOptions): { element: HTMLElement
     const c = cartoucheRect(artW);
     Object.assign(title.style, { left: `${(c.x / artW) * 100}%`, top: `${(c.y / artH) * 100}%`, width: `${(c.w / artW) * 100}%`, height: `${(c.h / artH) * 100}%`, fontSize: `${Math.max(11, Math.min(24, Math.round(c.h * fit.scale * 0.5)))}px` });
     fitTitle();
-    applyOptions(disclosureLayout(sizes, menuGeometry(window.innerWidth, window.innerHeight)));
+    const geometry = menuGeometry(window.innerWidth, window.innerHeight);
+    applyOptions(disclosureLayout(sizes, geometry));
+    sizePins(geometry.compact);
     placeCardFor(index);
+  }
+  /** A short window has a small map: its pins shrink until the closest two clear each other (sheet-model.ts pinSizes); full size elsewhere. */
+  function sizePins(compact: boolean): void {
+    let closest = Number.POSITIVE_INFINITY;
+    if (compact) {
+      const at = placed.map((m) => ({ x: (artX(m.x) / artW) * fit.width, y: (artX(m.y) / artH) * fit.height }));
+      for (let i = 0; i < at.length; i++) for (let j = i + 1; j < at.length; j++) closest = Math.min(closest, Math.hypot(at[i]!.x - at[j]!.x, at[i]!.y - at[j]!.y));
+    }
+    const size = pinSizes(closest);
+    element.style.setProperty('--tm-pin', `${size.hit}px`);
+    element.style.setProperty('--tm-seal', `${size.seal}px`);
   }
   /** A long name (the Ciénaga's) shrinks until it fits its ribbon whole, never below 8 px, instead of being clipped. */
   function fitTitle(): void {
