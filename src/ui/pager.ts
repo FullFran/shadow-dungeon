@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { clampPage, fitGrid, pageCount, pageOf, pageRange } from './pager-model';
+import { clampPage, packRows, pageIndexOf } from './pager-model';
 import { h } from './window';
 import '../styles/pager.css';
 
@@ -7,7 +7,7 @@ import '../styles/pager.css';
  * Phone paging (odd/tasks/mobile-pass.md T6; owner 2026-11-08: "en móvil debe verse todo sin hacer scroll").
  * A grid or list whose items do not fit its box shows one page of them, with relic buttons and "2/5" below
  * instead of a scrollbar. Only on a phone (touch and a short screen); on desktop the host keeps its own layout.
- * The host must be a box of fixed size (flex: 1, min-height: 0) whose children are the items, all alike in size.
+ * The host must be a box of fixed size (flex: 1, min-height: 0) whose children are the items; rows of items may differ in height.
  */
 
 /** A touch screen short enough to be a phone held on its side. */
@@ -25,7 +25,7 @@ export interface Pager {
   readonly nav: HTMLElement;
   page(): number;
   pages(): number;
-  /** Items shown per page (all of them while the pager is idle). */
+  /** Items on the first page (all of them while the pager is idle). */
   perPage(): number;
   /** Items changed or the box resized: measure again, keep the page of the first shown item. */
   refresh(): void;
@@ -60,13 +60,15 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
   const enabled = options.enabled ?? isPhone;
 
   let page = 0;
-  let per = Number.POSITIVE_INFINITY;
+  /** Index of the item that opens each page; null while the pager is idle (everything shows). */
+  let starts: number[] | null = null;
   let count = 1;
   const items = (): HTMLElement[] => [...host.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
 
   const apply = (): void => {
     const all = items();
-    const [from, to] = pageRange(page, per, all.length);
+    const from = starts?.[page] ?? 0;
+    const to = starts?.[page + 1] ?? all.length;
     all.forEach((el, i) => el.classList.toggle('pg-off', i < from || i >= to));
     label.textContent = `${page + 1}/${count}`;
     const words = t('pager.page').replace('{n}', String(page + 1)).replace('{total}', String(count));
@@ -81,31 +83,39 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
   const refresh = (): void => {
     const all = items();
     const firstShown = Math.max(0, all.findIndex((el) => !el.classList.contains('pg-off')));
-    const keep = Number.isFinite(per) ? firstShown : 0;
+    const keep = starts ? firstShown : 0;
     all.forEach((el) => el.classList.remove('pg-off'));
     host.classList.toggle('pg-host', enabled());
     nav.hidden = true;
-    per = Number.POSITIVE_INFINITY;
+    starts = null;
     count = 1;
     page = 0;
     if (!enabled() || all.length < 2) return void options.onPage?.(0, 1);
     const overflows = (): boolean => host.scrollHeight > host.clientHeight + 1;
     if (!overflows()) return void options.onPage?.(0, 1);
     nav.hidden = false; // the controls take their room first, then the box is measured
-    const first = all[0]!.getBoundingClientRect();
     const style = getComputedStyle(host);
     const gap = Number.parseFloat(style.rowGap) || 0;
     const pad = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
-    const cols = Math.max(1, all.filter((el) => Math.abs(el.getBoundingClientRect().top - first.top) < 2).length);
-    const fit = fitGrid({ width: first.width, height: host.clientHeight - pad, itemWidth: first.width, itemHeight: first.height, gap });
-    per = fit.rows * cols;
-    count = pageCount(all.length, per);
-    page = clampPage(pageOf(keep, per), count);
+    // Rows: items that share a top. A page takes whole rows while the next one still fits the box.
+    const rows: { first: number; height: number }[] = [];
+    let rowTop = Number.NaN;
+    all.forEach((el, i) => {
+      const r = el.getBoundingClientRect();
+      if (rows.length === 0 || Math.abs(r.top - rowTop) > 2) {
+        rows.push({ first: i, height: r.height });
+        rowTop = r.top;
+      } else rows[rows.length - 1]!.height = Math.max(rows[rows.length - 1]!.height, r.height);
+    });
+    const opens = packRows(rows.map((r) => r.height), host.clientHeight - pad, gap);
+    starts = opens.map((row) => rows[row]!.first);
+    count = starts.length;
+    page = clampPage(pageIndexOf(keep, starts), count);
     apply();
   };
 
   const go = (target: number): void => {
-    if (!Number.isFinite(per)) return;
+    if (!starts) return;
     page = clampPage(target, count);
     apply();
   };
@@ -128,13 +138,13 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
 
   const reveal = (item: Element | number): void => {
     const index = typeof item === 'number' ? item : items().indexOf(item as HTMLElement);
-    if (index >= 0 && Number.isFinite(per)) go(pageOf(index, per));
+    if (index >= 0 && starts) go(pageIndexOf(index, starts));
   };
   return {
     nav,
     page: () => page,
     pages: () => count,
-    perPage: () => per,
+    perPage: () => (starts ? (starts[1] ?? items().length) : items().length),
     refresh,
     reset: () => { page = 0; refresh(); },
     go,

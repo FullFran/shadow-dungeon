@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampPage, fitGrid, needsPaging, pageCount, pageOf, pageRange } from '../../src/ui/pager-model';
+import { clampPage, fitGrid, needsPaging, packRows, pageCount, pageIndexOf, pageOf, pageRange } from '../../src/ui/pager-model';
 
 describe('fitGrid', () => {
   it('counts the columns and rows that fit, gaps included', () => {
@@ -45,5 +45,30 @@ describe('pages', () => {
   it('pages only when the items overflow', () => {
     expect(needsPaging(6, 6)).toBe(false);
     expect(needsPaging(7, 6)).toBe(true);
+  });
+});
+
+describe('packRows (rows of different heights)', () => {
+  it('starts a new page when the next row no longer fits, gaps counted', () => {
+    expect(packRows([50, 50, 50, 50], 110, 10)).toEqual([0, 2]);
+    expect(packRows([50, 50, 50, 50], 109, 10)).toEqual([0, 1, 2, 3]);
+  });
+  it('packs tall and short rows by their real heights', () => {
+    expect(packRows([30, 60, 30, 60], 100, 10)).toEqual([0, 2]);
+    expect(packRows([20, 20, 30, 60], 100, 10)).toEqual([0, 3]);
+  });
+  it('gives a row taller than the box a page of its own', () => {
+    expect(packRows([200, 50], 100, 10)).toEqual([0, 1]);
+  });
+  it('is one page when everything fits or there is nothing', () => {
+    expect(packRows([20, 20], 100, 10)).toEqual([0]);
+    expect(packRows([], 100, 10)).toEqual([0]);
+  });
+  it('finds the page of an item from the page starts', () => {
+    expect(pageIndexOf(0, [0, 3, 6])).toBe(0);
+    expect(pageIndexOf(2, [0, 3, 6])).toBe(0);
+    expect(pageIndexOf(3, [0, 3, 6])).toBe(1);
+    expect(pageIndexOf(99, [0, 3, 6])).toBe(2);
+    expect(pageIndexOf(-1, [0, 3, 6])).toBe(0);
   });
 });

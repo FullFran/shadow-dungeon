@@ -23,3 +23,31 @@ export function pageRange(page: number, perPage: number, total: number): [number
 }
 
 export const needsPaging = (total: number, perPage: number): boolean => total > perPage;
+
+export const pageIndexOf = (index: number, starts: readonly number[]): number => {
+  let page = 0;
+  starts.forEach((start, i) => {
+    if (index >= start) page = i;
+  });
+  return page;
+};
+
+/**
+ * Pages of rows whose heights differ: the index of the row that opens each page, filling each page while the next row
+ * (and its gap) still fits `available`. A row taller than the box gets a page to itself.
+ */
+export function packRows(heights: readonly number[], available: number, gap: number): number[] {
+  const starts = [0];
+  let used = 0;
+  heights.forEach((height, i) => {
+    if (i === 0) {
+      used = height;
+    } else if (used + gap + height <= available) {
+      used += gap + height;
+    } else {
+      starts.push(i);
+      used = height;
+    }
+  });
+  return starts;
+}
