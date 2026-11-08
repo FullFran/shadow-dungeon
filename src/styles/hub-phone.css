@@ -109,3 +109,13 @@
   html.touch .hub-altar { --sh: 76px; }
   html.touch .hub-altar-sprite { width: 110px; height: 94px; }
 }
+
+/* The shortest screens: the group sheets' tiles slim to 64 px so both rows show (iPhone SE 1, phones with the browser's bars). */
+@media (max-height: 380px) {
+  html.touch .hub-sheet { gap: 6px; padding: 8px 12px 8px; }
+  html.touch .hub-sheet-head h2 { font-size: 20px; } html.touch .hub-sheet-icon { width: 26px; height: 26px; }
+  html.touch .hub-sheet-grid { gap: 6px; }
+  html.touch .hub-tile, html.touch .hub-sheet-grid.is-wide .hub-tile { min-height: 64px; padding: 4px; gap: 3px; }
+  html.touch .hub-tile-icon > .px-icon:first-child { width: 28px; height: 28px; }
+  html.touch .hub-tile-label { font-size: 13px; }
+}
