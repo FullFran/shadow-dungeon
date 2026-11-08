@@ -9,6 +9,7 @@ import '../styles/achievements-news.css';
 import { cursorList } from '../ui/cursor-list';
 import { ACHIEVEMENT_FAMILY_ICONS, ACH_NEWS_ICONS } from '../ui/icons/achievements-news-icons';
 import { pixelIconSvg, pixelSvgOf } from '../ui/pixel-icons';
+import { attachPager, isPhone } from '../ui/pager';
 import { h, mdWindow } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave } from './save';
@@ -318,6 +319,9 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
   const panelTitle = h('div', { className: 'ach-panel-title' });
   const grid = h('div', { className: 'ach-grid', role: 'group' });
   grid.setAttribute('aria-label', tr('ach.tiles'));
+  // Phones: tiles that do not fit become pages, their controls sharing the family's title row (src/ui/pager.ts).
+  const pageNav = h('span', { className: 'ach-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
   const detail = h('div', { className: 'ach-detail' });
   detail.setAttribute('role', 'status');
   detail.setAttribute('aria-live', 'polite');
@@ -357,6 +361,7 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
   const focusTile = (index: number): void => {
     select(index);
     const button = buttons[selected];
+    if (button) pager.reveal(button);
     button?.focus({ preventScroll: true });
     button?.scrollIntoView?.({ block: 'nearest' });
   };
@@ -385,6 +390,9 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
     return button;
   };
 
+  const back = h('button', { type: 'button', className: 'ach-back', textContent: tr('ach.back') });
+  back.addEventListener('click', () => options.onBack());
+
   const showFamily = (index: number): void => {
     const family = ACHIEVEMENT_FAMILIES[index];
     if (!family) return;
@@ -395,10 +403,14 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
     grid.scrollTop = 0;
     panelTitle.style.setProperty('--fam', FAMILY_COLORS[family]);
     panelTitle.replaceChildren(
+      // On a phone there is no foot (it would cost a row): Volver leads the family's title row.
+      ...(isPhone() ? [back] : []),
       icon(ACHIEVEMENT_FAMILY_ICONS[family], 'ach-panel-icon'),
       h('span', { className: 'ach-panel-name', textContent: tr(`achievement.family.${family}`) }),
       h('span', { className: 'ach-panel-count', textContent: `${p.done}/${p.total}` }),
+      pageNav,
     );
+    pager.reset();
     select(0);
   };
 
@@ -424,9 +436,10 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
 
   // The grid takes the arrows while a tile has focus; the capture phase runs before the rail's own key handler.
   const columns = (): number => {
-    const first = buttons[0];
+    const shown = pager.visible();
+    const first = shown[0];
     if (!first) return 1;
-    return Math.max(1, buttons.filter((b) => b.offsetTop === first.offsetTop).length);
+    return Math.max(1, shown.filter((b) => b.offsetTop === first.offsetTop).length);
   };
   let attached = false;
   const onKey = (e: KeyboardEvent): void => {
@@ -464,19 +477,18 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
     if (!(e.relatedTarget instanceof Node) || !grid.contains(e.relatedTarget)) zone = 'rail';
   });
 
-  const back = h('button', { type: 'button', className: 'ach-back', textContent: tr('ach.back') });
-  back.addEventListener('click', () => options.onBack());
   const hint = h('p', { className: 'ach-hint', textContent: tr(document.documentElement.classList.contains('touch') ? 'ach.hint.touch' : 'ach.hint') });
 
   const element = mdWindow({ title: tr('achievement.title'), className: 'achievements ach-window' }, [
     head,
     // The detail sits above the grid inside the panel, so it never covers a row of tiles.
     h('div', { className: 'ach-body' }, [list.element, h('div', { className: 'ach-panel' }, [panelTitle, detail, grid])]),
-    h('div', { className: 'ach-foot' }, [back, hint]),
+    h('div', { className: 'ach-foot' }, [...(isPhone() ? [] : [back]), hint]),
   ]);
 
   function dispose(): void {
     window.removeEventListener('keydown', onKey, true);
+    pager.dispose();
     list.dispose();
   }
   return { element, dispose };

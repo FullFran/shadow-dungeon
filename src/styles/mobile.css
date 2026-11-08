@@ -3,9 +3,9 @@
 
 /* A window that carries its own way back (Volver) does not need the floating "Atrás": the button goes, and with it the
    96 px gutters kept clear for it on both sides, so the window gets the whole width of the phone. */
-html.touch body:has(.town-shop :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot)) .touch-back,
+html.touch body:has(.town-shop :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) .touch-back,
 html.touch body:has(#app > .oa-window) .touch-back { display: none; }
-html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot)) {
+html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) {
   padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
 }
 
