@@ -46,3 +46,7 @@ Screenshots: `node tools/mobile/hub-shots.mjs --sizes=844x390,1440x900` (Playwri
 1. direction     → .agents/DESIGN.md §1 (silhouettes), §3 (touch + short landscape compresses rails), §4 picker pattern and Town map menu grouped disclosure, §8 2026-11-04; new phone layout, board rows, sealed silhouettes and rotate notice logged in §8 in the same change
 2. gates         → design-gates contrast for .hub-tile-label, .hub-sheet-note, .rotate-gate-text, .bd-card-title on relic slab; hardcodes lint on src/styles/hub-phone.css, mobile.css, hall.css; tools/mobile/hub-shots.mjs audit (no scrollers, nothing outside, nothing cut) at 844x390, 740x360, 667x375, 1440x900
 ```
+
+## Queued (owner, 2026-11-08, mid-pass)
+
+- S6: "quiero también la posibilidad de que al haber evolucionado un pokemon tener la posibilidad de elegir la preevolución o la evolución para jugar". Own feature doc (odd/tasks/form-choice.md) once the mobile no-scroll gate is green.

@@ -12,9 +12,9 @@ html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, 
 /* Phone windows that sit straight in #app (picker, shrine, online) and carry their own Volver: the room kept for "Atrás" at the
    top and the legal line at the foot goes to the window, which is all a short screen has (it stays on the title, hub and credits). */
 @media (max-height: 560px) {
-  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); gap: 0; justify-content: center; }
-  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) > .notice { display: none; }
-  html.touch body:has(#app > :is(.sp-window, .oa-window, .ol-window)) .touch-back { display: none; }
+  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)), html.touch body #app:has(> * :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); gap: 0; justify-content: center; }
+  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) > .notice, html.touch body #app:has(> * :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) > .notice { display: none; }
+  html.touch body:has(#app > :is(.sp-window, .oa-window, .ol-window)) .touch-back, html.touch body:has(#app > * :is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, .st-back, .tu-back, .pz-back, .ol-foot, .fr-foot, .ach-back)) .touch-back { display: none; }
 }
 
 /* Landscape only (src/ui/orientation-gate.ts): a touch screen held upright is covered whole by the notice, above every
@@ -43,3 +43,11 @@ html.rotate-blocked body { overflow: hidden; }
   /* The window takes the room the bare #app no longer keeps (hall.css sizes it for a taller screen), clear of its title tab. */
   html.touch body #app > .oa-window { height: calc(100dvh - 20px); padding-top: 28px; }
 }
+
+/* Every phone, every browser (owner 2026-11-08: "que no haya scroll en ningún menú móvil ... en cualquier móvil, sistema
+   operativo, navegador"). iOS Safari inflates text in landscape unless told not to; 100vh is taller than what Safari and
+   Chrome show while their bars are up, so the page is exactly the visible height (dvh, with the vh fallback first) and
+   never scrolls: each screen fits inside it (tools/mobile/fit-audit.mjs proves it at 14 phone shapes). */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html.touch, html.touch body { height: 100%; overflow: hidden; }
+html.touch #app { box-sizing: border-box; min-height: 0; height: 100vh; height: 100dvh; overflow: hidden; }

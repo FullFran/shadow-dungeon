@@ -92,7 +92,10 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
     page = 0;
     if (!enabled() || all.length < 2) return void options.onPage?.(0, 1);
     const overflows = (): boolean => host.scrollHeight > host.clientHeight + 1;
-    if (!overflows()) return void options.onPage?.(0, 1);
+    if (!overflows()) {
+      if (checks === 0) settle();
+      return void options.onPage?.(0, 1);
+    }
     nav.hidden = false; // the controls take their room first, then the box is measured
     const style = getComputedStyle(host);
     const gap = Number.parseFloat(style.rowGap) || 0;
@@ -112,6 +115,7 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
     count = starts.length;
     page = clampPage(pageIndexOf(keep, starts), count);
     apply();
+    if (checks === 0) settle();
   };
 
   const go = (target: number): void => {
@@ -135,6 +139,21 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
 
   const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => refresh()) : null;
   observer?.observe(host);
+  // A measure taken before the pixel font or the rows around the box settled can leave a page that does not fit: check it
+  // again on the next frame (a few times at most) and once the fonts are ready.
+  let checks = 0;
+  const verify = (): void => {
+    if (!host.isConnected || !enabled() || checks > 3) return;
+    if (host.scrollHeight > host.clientHeight + 1) {
+      checks += 1;
+      refresh();
+    }
+  };
+  const settle = (): void => {
+    checks = 0;
+    requestAnimationFrame(() => requestAnimationFrame(verify));
+  };
+  if (typeof document !== 'undefined') void document.fonts?.ready.then(() => host.isConnected && refresh());
 
   const reveal = (item: Element | number): void => {
     const index = typeof item === 'number' ? item : items().indexOf(item as HTMLElement);

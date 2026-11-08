@@ -79,3 +79,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .hub-sheet-veil { animation: none; } }
+
+/* The shortest screens (iPhone SE 1 at 320 px, any phone with the browser's bars showing): the group slabs lie down
+   (icon beside the name, no peek), the primary actions slim to 52 px and the altar shrinks, so nothing meets. */
+@media (max-height: 380px) {
+  html.touch .hub-group:not(.hub-group-more) { flex-direction: row; width: auto; min-width: 128px; min-height: 56px; padding: 6px 12px 6px 8px; gap: 8px; }
+  html.touch .hub-group:not(.hub-group-more) .hub-group-icon { width: 36px; height: 36px; }
+  html.touch .hub-group:not(.hub-group-more) .hub-group-icon > .px-icon { width: 34px; height: 34px; }
+  html.touch .hub-group-peek { display: none; }
+  html.touch .hub-group-name { font-size: 16px; }
+  html.touch .hub-play, html.touch .hub-online { min-height: 52px; }
+  html.touch .hub-play-name { font-size: 24px; } html.touch .hub-play small { display: none; }
+  html.touch .hub-logo h1 { font-size: 22px; } html.touch .hub-logo .title-alt { display: none; }
+  html.touch .hub-altar { --sh: 48px; } html.touch .hub-altar-sprite { width: 80px; height: 48px; }
+  html.touch #app:has(.hub) > .notice { font-size: 9px; line-height: 1.2; }
+}

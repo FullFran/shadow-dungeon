@@ -169,3 +169,41 @@
   .lm-back { height: 32px; padding: 0 12px; font-size: 15px; } .lm-start { height: 34px; min-width: 7rem; padding: 0 12px; font-size: 15px; } .lm-start svg.px-icon { width: 18px; height: 18px; }
   .lm-window .lm-keys { display: none; }
 }
+
+/* The list column: the move cards and, on phones, their page buttons under them (src/ui/pager.ts); nothing scrolls. */
+.lm-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; min-width: 0; }
+.lm-list > .lm-grid { flex: 1 1 0; }
+.lm-pages[hidden] { display: none; }
+@media (max-height: 560px) {
+  html.touch .lm-window .lm-grid { overflow: hidden; }
+  html.touch .lm-pages.pg-nav { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  html.touch .lm-pages .pg-btn { width: 56px; min-width: 44px; height: 40px; min-height: 40px; padding: 0; }
+  html.touch .lm-pages .pg-count { font-size: 15px; }
+}
+/* The smallest phones (iPhone SE 1, 568x320): one column of whole move names, a narrower sheet, and a setup row that fits
+   (the shiny switch keeps only its track, the start button its icon and a short label). */
+@media (max-height: 560px) and (max-width: 680px) {
+  html.touch .lm-body { grid-template-columns: minmax(0, 1fr) 13rem; gap: 6px; }
+  html.touch .lm-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: 40px; gap: 4px; }
+  html.touch .lm-card { height: 40px; } html.touch .lm-card-name { font-size: 14px; }
+  html.touch .lm-sheet .tu-preview { min-height: 60px; } html.touch .lm-name { font-size: 16px; }
+  html.touch .lm-setup { gap: 6px; } html.touch .lm-switch-label { display: none; }
+  html.touch .lm-actions { gap: 6px; }
+  html.touch .lm-start { min-width: 0; padding: 0 10px; font-size: 13px; letter-spacing: 0.04em; } html.touch .lm-back { padding: 0 10px; font-size: 14px; }
+}
+@media (max-height: 560px) and (max-width: 680px) {
+  html.touch .lm-window .lm-context { display: none; }
+  html.touch .lm-setup { display: flex; align-items: center; justify-content: space-between; }
+  html.touch .lm-setup-main:empty { display: none; }
+  html.touch .lm-slot-move { font-size: 12px; text-overflow: clip; }
+}
+@media (max-height: 560px) and (max-width: 680px) {
+  html.touch .lm-pages .pg-btn { width: 48px; height: 36px; min-height: 36px; }
+}
+/* Phones: the body takes exactly the room left (its row may shrink below the sheet's content), so the move cards page
+   instead of pushing the setup row out of the window. */
+@media (max-height: 560px) {
+  html.touch .lm-body { grid-template-rows: minmax(0, 1fr); }
+  html.touch .lm-sheet { min-height: 0; overflow: hidden; }
+  html.touch .lm-window .lm-context { margin: 0; font-size: 13px; line-height: 1.2; }
+}

@@ -1,4 +1,5 @@
 import type { SheetStore } from '../adapters/assets';
+import { attachPager } from '../ui/pager';
 import { isTouchUi } from '../adapters/touch-mode';
 import { hasFemaleArt } from '../core/gender';
 import { DIFFICULTIES, type Difficulty } from '../data/difficulty';
@@ -147,6 +148,10 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
 
   // Grid.
   const grid = h('div', { className: 'lm-grid' });
+  // Phones: the move cards that do not fit become pages, their buttons under the list (src/ui/pager.ts; idle on desktop).
+  const pageNav = h('span', { className: 'lm-pages' });
+  const pager = attachPager(grid, { nav: pageNav });
+  const pageButtons = (): HTMLElement[] => (pageNav.hidden ? [] : [...pageNav.querySelectorAll<HTMLElement>('button')]);
   grid.setAttribute('aria-label', t('loadout.moves'));
   const cardFor = (id: MoveId, slot: number): HTMLButtonElement => {
     const move = MOVES[id];
@@ -179,6 +184,8 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     const tile = tiles[selected];
     const choices = tile?.choices ?? [];
     grid.replaceChildren(...choices.map((id) => cardFor(id, selected)), ...(choices.length === 0 ? [h('p', { className: 'lm-empty', textContent: t('loadout.noMoves') })] : []));
+    pager.reset();
+    pager.refresh();
   };
 
   // Sheet.
@@ -276,7 +283,8 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     drawSlots();
     drawGrid();
     showSheet(id);
-    if (keep) grid.querySelector<HTMLElement>(`[data-move="${id}"]`)?.focus({ preventScroll: true });
+    const card = keep ? grid.querySelector<HTMLElement>(`[data-move="${id}"]`) : null;
+    if (card) pager.focusItem(card);
   }
 
   function chooseSlot(slot: number): void {
@@ -373,7 +381,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     ...(options.context ? [h('p', { className: 'dim lm-context', textContent: options.context })] : []),
     head,
     slotRow,
-    h('div', { className: 'lm-body' }, [grid, sheet]),
+    h('div', { className: 'lm-body' }, [h('div', { className: 'lm-list' }, [grid, pageNav]), sheet]),
     setup,
     h('p', { className: 'lm-keys', textContent: t('loadout.keys') }),
   ]);
@@ -381,6 +389,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
   const onKey = (e: KeyboardEvent): void => {
     if (!win.isConnected) {
       window.removeEventListener('keydown', onKey);
+      pager.dispose();
       return;
     }
     if (e.key === 'Escape') {
@@ -396,7 +405,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     const dir = KEYS[e.code];
     if (!dir) return;
     e.preventDefault();
-    const controls: HTMLElement[] = [...slotButtons.filter((_, i) => tiles[i]!.choices.length > 0), ...grid.querySelectorAll<HTMLButtonElement>('.lm-card'), act, ...setupControls, back, start].filter((el) => !el.hidden);
+    const controls: HTMLElement[] = [...slotButtons.filter((_, i) => tiles[i]!.choices.length > 0), ...pager.visible().filter((el) => el.classList.contains('lm-card')), act, ...setupControls, ...pageButtons(), back, start].filter((el) => !el.hidden);
     const at = controls.indexOf(document.activeElement as HTMLElement);
     if (at < 0) {
       start.focus();
