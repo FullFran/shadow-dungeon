@@ -50,3 +50,10 @@ Screenshots: `node tools/mobile/hub-shots.mjs --sizes=844x390,1440x900` (Playwri
 ## Queued (owner, 2026-11-08, mid-pass)
 
 - S6: "quiero también la posibilidad de que al haber evolucionado un pokemon tener la posibilidad de elegir la preevolución o la evolución para jugar". Own feature doc (odd/tasks/form-choice.md) once the mobile no-scroll gate is green.
+
+## T7: end screens, pause and run controls without scroll (owner, 2026-11-08, "ningún menú móvil ... cualquier móvil")
+
+- End screens (`victory`, `defeat`, `runend`, `shrineresult`, the Sima's `eclipse`): the board pages instead of scrolling on touch up to 700 px tall (RED: tests/app/end-layout.test.ts `boardParts`, `phoneTileSpans`); the portrait and short-landscape `.result { overflow-y: auto }` rules in index.html are gone.
+- Pause: four tabs on a rail on touch up to 700 px tall (RED: tests/app/pause-model.test.ts `PAUSE_TABS`, `nextTab`); the held items page with the pager.
+- Run controls (RED: tests/ui/touch-layout.test.ts): Pause and Map stack top-left clear of the HUD, round buttons clear as boxes.
+- Parity checklist: [x] every outcome of the shared end screen (victory, defeat, cut, eclipse, shrine boss/gauntlet/herald, co-op party line) goes through `endScreen`; [x] es/en tab labels (`pause.tab.*`); [x] DESIGN.md §8 entry; [x] left-handed layout keeps Pause top-left, Map mirrored; pending: Pause/Map under a notch's safe-area inset can still meet the HUD's status window by the inset's width (the HUD does not read insets); pending: the audit's `pause` step clicks `.touch-pause` with a DOM click, which the controls (pointer events) ignore, so it never opens the pause (verified with Escape instead).
