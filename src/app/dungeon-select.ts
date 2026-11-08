@@ -35,7 +35,7 @@ export function dungeonSelectScreen(options: DungeonSelectOptions): HTMLElement[
   const choices = [...dungeonChoices(options.cleared), ...(options.onChallenges ? [null] : [])];
   const subtitle = h('p', { className: 'dim' });
   const best = h('p');
-  const legend = h('p', { className: 'dim' });
+  const legend = h('p', { className: 'dim dungeon-legend' });
   const describe = (index: number) => {
     const choice = choices[index];
     if (choice === null) {
