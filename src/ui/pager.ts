@@ -103,12 +103,14 @@ export function attachPager(host: HTMLElement, options: PagerOptions = {}): Page
     // Rows: items that share a top. A page takes whole rows while the next one still fits the box.
     const rows: { first: number; height: number }[] = [];
     let rowTop = Number.NaN;
+    // Layout sizes, not the painted box: a window still scaling in (md-open) would report shrunken rows and let one too many in.
     all.forEach((el, i) => {
-      const r = el.getBoundingClientRect();
-      if (rows.length === 0 || Math.abs(r.top - rowTop) > 2) {
-        rows.push({ first: i, height: r.height });
-        rowTop = r.top;
-      } else rows[rows.length - 1]!.height = Math.max(rows[rows.length - 1]!.height, r.height);
+      const top = el.offsetTop;
+      const height = el.offsetHeight;
+      if (rows.length === 0 || Math.abs(top - rowTop) > 2) {
+        rows.push({ first: i, height });
+        rowTop = top;
+      } else rows[rows.length - 1]!.height = Math.max(rows[rows.length - 1]!.height, height);
     });
     const opens = packRows(rows.map((r) => r.height), host.clientHeight - pad, gap);
     starts = opens.map((row) => rows[row]!.first);
