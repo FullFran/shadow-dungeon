@@ -2,6 +2,8 @@ import { t } from '../i18n';
 import { sanitizeNickname, NICKNAME_MAX } from '../net/nickname';
 import { dropdown, type Dropdown } from '../ui/dropdown';
 import { pixelIconSvg, type PixelIconId } from '../ui/pixel-icons';
+import { isCompactTouch } from '../ui/compact-touch';
+import { attachPager } from '../ui/pager';
 import { slider } from '../ui/slider';
 import { h, mdWindow } from '../ui/window';
 import { SETTING_SLIDERS, applySetting, settingChoice, settingChoices, settingControlKind, settingRows, settingSections, type SettingRow, type SettingsAccess } from './settings-panel';
@@ -50,6 +52,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   let dropdowns: Dropdown[] = [];
   let navs: HTMLElement[] = [];
   let aboutOf = new Map<HTMLElement, string>();
+  let rendered = -1;
 
   const sectionsNow = () => settingSections(settingRows(access));
   const sections = sectionsNow();
@@ -64,7 +67,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   });
   const rail = h('nav', { className: 'st-rail' }, tabs);
   rail.setAttribute('role', 'tablist');
-  rail.setAttribute('aria-orientation', 'vertical');
+  rail.setAttribute('aria-orientation', isCompactTouch() ? 'horizontal' : 'vertical');
   rail.setAttribute('aria-label', t('settings.sections'));
 
   // ---- panel
@@ -83,8 +86,11 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
     return button;
   });
   const footButtons = [back, ...extras];
-  const foot = h('div', { className: 'st-foot' }, [h('div', { className: 'st-actions' }, footButtons), about, h('p', { className: 'st-keys', textContent: t('settings.hint') })]);
+  // A phone pages the rows of a section instead of scrolling them; the page buttons sit in the footer beside the actions.
+  const pageNav = h('div', { className: 'st-pages' });
+  const foot = h('div', { className: 'st-foot' }, [h('div', { className: 'st-actions' }, footButtons), pageNav, about, h('p', { className: 'st-keys', textContent: t('settings.hint') })]);
 
+  const pager = attachPager(rowsBox, { nav: pageNav, enabled: isCompactTouch });
   const win = mdWindow({ title: t('title.settings'), className: 'st-window' }, [h('div', { className: 'st-body' }, [rail, panel]), foot]);
 
   // ---- rows
@@ -239,6 +245,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   }
 
   function renderPanel(): void {
+    const page = pager.page();
     const active = document.activeElement as HTMLElement | null;
     const keep = active && panel.contains(active) ? (active.closest('[data-row]') as HTMLElement | null)?.dataset.row : undefined;
     for (const box of dropdowns) box.dispose();
@@ -251,7 +258,13 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
     // The profile lives in General, beside the language.
     if (current === 0) rows.push(nicknameRow());
     rowsBox.replaceChildren(...rows);
-    navs.push(...footButtons);
+    // Same section after a change: stay on the page the player was on; a new section opens on its first page.
+    if (rendered === current) {
+      pager.refresh();
+      pager.go(page);
+    } else pager.reset();
+    rendered = current;
+    navs.push(...pageNav.querySelectorAll<HTMLElement>('button'), ...footButtons);
     tabs.forEach((tab, i) => {
       tab.classList.toggle('is-current', i === current);
       tab.setAttribute('aria-selected', String(i === current));
@@ -266,6 +279,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   function focusRow(id: string): void {
     const row = rowsBox.querySelector<HTMLElement>(`[data-row="${id}"]`);
     const target = row ? focusOf(row) : null;
+    if (row) pager.reveal(row);
     if (target && !(target as HTMLButtonElement).disabled) target.focus({ preventScroll: true });
     else navs[0]?.focus({ preventScroll: true });
   }
@@ -286,7 +300,8 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
 
   // ---- keyboard and gamepad
   const move = (list: readonly HTMLElement[], from: number, delta: number): HTMLElement | undefined => list[Math.min(list.length - 1, Math.max(0, from + delta))];
-  const enabled = () => navs.filter((el) => !(el as HTMLButtonElement).disabled && el.getAttribute('aria-disabled') !== 'true');
+  // A row on another page, or the page buttons while there is one page, cannot take the focus.
+  const enabled = () => navs.filter((el) => !(el as HTMLButtonElement).disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('.pg-off, [hidden]'));
 
   const onKey = (e: KeyboardEvent): void => {
     if (!win.isConnected) {
@@ -369,6 +384,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   return {
     element: win,
     dispose() {
+      pager.dispose();
       window.removeEventListener('keydown', onKey, true);
       for (const box of dropdowns) box.dispose();
       dropdowns = [];
