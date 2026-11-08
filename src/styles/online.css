@@ -45,6 +45,10 @@
   html.touch .ol-icon { width: 30px; height: 30px; }
   html.touch .ol-card-title { font-size: 18px; }
   html.touch .ol-error { min-height: 1.1em; font-size: 12px !important; line-height: 1.1 !important; }
+  /* index.html keeps 96 px of an #app > .md-window for the old chrome; on a phone #app only keeps 20 px of padding. */
+  html.touch #app > .ol-window { max-height: calc(100dvh - 20px); }
+  /* index.html sizes the code box at 6.5em, wider than the room beside Unirse; it takes the cell. */
+  html.touch .ol-card-controls input.ol-code { width: 100%; min-width: 0; padding: 0 8px; }
 }
 @media (max-width: 560px) {
   .ol-cards { grid-template-columns: minmax(0, 1fr); gap: 10px; }
