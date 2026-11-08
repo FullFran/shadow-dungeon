@@ -143,12 +143,13 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
     focused = card.id;
     const sealed = card.state === 'locked';
     const title = card.kind === 'herald' ? (options.heralds.find((e) => String(e.seed) === card.id)?.name ?? bossName('sima-herald')) : card.kind === 'gauntlet' ? gauntletName(card.id as GauntletId) : bossName(card.id);
-    const glow = card.species ? TYPE_COLORS[SPECIES[card.species].types[0]!].core : null;
+    // A sealed boss gives nothing away: its silhouette stands in the shrine's ember light, not its type's colour.
+    const glow = card.species && !card.silhouette ? TYPE_COLORS[SPECIES[card.species].types[0]!].core : null;
     if (glow) stage.style.setProperty('--hl-glow', glow);
     else stage.style.removeProperty('--hl-glow');
     stage.replaceChildren(
       h('div', { className: 'hl-stage-glow' }),
-      h('div', { className: 'hl-stage-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 4) : pixelIconSvg(card.icon, 'px-icon hl-stage-icon')]),
+      h('div', { className: `hl-stage-art sprite-box${card.silhouette ? ' is-silhouette' : ''}` }, [card.species && options.sheets ? portrait(options.sheets, card.species, 4) : pixelIconSvg(card.icon, 'px-icon hl-stage-icon')]),
       h('div', { className: 'hl-stage-sign' }),
     );
     name.textContent = sealed ? t('shrine.sealed.name') : title;
@@ -195,7 +196,10 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
     cardEls = cards.map((card) => {
       const sealed = card.state === 'locked';
       const label = sealed ? t('shrine.sealed.name') : card.kind === 'herald' ? (options.heralds.find((e) => String(e.seed) === card.id)?.name ?? '') : card.kind === 'gauntlet' ? gauntletName(card.id as GauntletId) : bossName(card.id);
-      const art = h('span', { className: 'hl-card-art sprite-box' }, [card.species && options.sheets ? portrait(options.sheets, card.species, 2) : pixelIconSvg(card.icon, 'px-icon hl-card-icon')]);
+      const art = h('span', { className: `hl-card-art sprite-box${card.silhouette ? ' is-silhouette' : ''}` }, [
+        card.species && options.sheets ? portrait(options.sheets, card.species, 2) : pixelIconSvg(card.icon, 'px-icon hl-card-icon'),
+        ...(card.silhouette ? [pixelIconSvg('seal', 'px-icon hl-card-seal')] : []),
+      ]);
       const sub = sealed
         ? card.kind === 'gauntlet'
           ? t('shrine.locked').replace('{count}', String(card.missing))

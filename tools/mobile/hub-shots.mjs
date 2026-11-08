@@ -48,6 +48,12 @@ try {
       await page.addInitScript((s) => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1'); localStorage.clear(); localStorage.setItem('mazmorra-sombria.prologueSeen', '1'); localStorage.setItem('mazmorra-sombria.settings', s); localStorage.setItem('mazmorra-sombria.lastSeenVersion', '999.0.0'); }, JSON.stringify(settings));
       await page.goto(URL);
       await wait(1800);
+      // HUB_PREP: JS run once the save exists (e.g. trim the records), then a reload so the hub reads it.
+      if (process.env.HUB_PREP) {
+        await page.evaluate(process.env.HUB_PREP);
+        await page.reload();
+        await wait(1800);
+      }
       if (hub !== 'title') {
         await page.evaluate(`(() => { const b = document.querySelector('[data-hub="${hub}"]'); b && b.click(); return !!b; })()`);
         await wait(1400);

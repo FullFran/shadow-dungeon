@@ -9,7 +9,7 @@ import type { PixelIconId } from '../ui/pixel-icons';
 /**
  * The hall of oaths as data for its view (owner, 2026-11-04: "rediseña el santuario"), pure:
  * the trial kinds as tabs (progress and best time on the tier) and every guardian, gauntlet
- * and herald as a card with its state. A boss not yet beaten is a sealed slab: no name, no sprite.
+ * and herald as a card with its state. A boss not yet beaten is a sealed slab: no name, its sprite as a black silhouette.
  */
 export type HallTab = 'reflections' | 'gauntlets' | 'heralds';
 export type OathState = 'sworn' | 'beaten' | 'open' | 'locked';
@@ -28,8 +28,10 @@ export interface OathCard {
   state: OathState;
   /** Sworn: a record on this tier. Beaten: a boss that fell, no record on the tier. Open: a gauntlet or herald you may fight, never won on the tier. Locked: sealed. */
   icon: PixelIconId;
-  /** The boss shown (null while sealed, for a gauntlet or a herald). */
+  /** The boss shown (null for a gauntlet or a herald); a sealed boss keeps it for its silhouette. */
   species: SpeciesId | null;
+  /** Draw `species` as a black silhouette, unnamed (a boss not beaten yet; owner 2026-11-08). */
+  silhouette: boolean;
   stops: readonly BossStop[];
   best: TrialBest | null;
   group: TrialBest | null;
@@ -59,7 +61,8 @@ export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
         kind: 'boss',
         state,
         icon: state === 'locked' ? 'seal' : 'reflexes',
-        species: state === 'locked' ? null : stop.boss,
+        species: stop.boss,
+        silhouette: state === 'locked',
         stops: [stop],
         best,
         group: trialBest(shrine, 'boss', stop.boss, tier, true),
@@ -79,6 +82,7 @@ export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
         state,
         icon: state === 'locked' ? 'seal' : 'challenges',
         species: null,
+        silhouette: false,
         stops: gauntletStops(g.id),
         best,
         group: trialBest(shrine, 'gauntlet', g.id, tier, true),
@@ -89,7 +93,7 @@ export function hallCards(tab: HallTab, input: HallInput): OathCard[] {
     });
   }
   return metHeralds(input.heralds).map(
-    (e): OathCard => ({ id: String(e.seed), kind: 'herald', state: 'open', icon: 'mirror', species: null, stops: [heraldStop(e.seed)], best: null, group: null, reward: null, rewardTaken: false, missing: 0 }),
+    (e): OathCard => ({ id: String(e.seed), kind: 'herald', state: 'open', icon: 'mirror', species: null, silhouette: false, stops: [heraldStop(e.seed)], best: null, group: null, reward: null, rewardTaken: false, missing: 0 }),
   );
 }
 

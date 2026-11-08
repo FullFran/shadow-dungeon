@@ -65,6 +65,15 @@
 .hl-hint { margin: 0; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); }
 
 /* Hall of oaths */
+/* A sealed boss (owner 2026-11-08): its real sprite as a black silhouette, rimmed by the shrine's ember light, a seal
+   at its foot. The card reads as a presence behind a veil, not an empty slot: solid frame, ember floor glow, no dashes. */
+.sprite-box.is-silhouette { position: relative; }
+.sprite-box.is-silhouette > canvas { filter: brightness(0) drop-shadow(0 0 1px color-mix(in srgb, var(--relic-ember) 85%, transparent)) drop-shadow(0 0 6px color-mix(in srgb, var(--relic-ember) 35%, transparent)); }
+.hl-card-seal { position: absolute; right: 8px; bottom: 0; width: 22px; height: 22px; opacity: 0.9; }
+.hl-card.is-locked:has(.is-silhouette) { border-style: solid; border-color: var(--relic-slab-edge);
+  background: radial-gradient(70% 45% at 50% 62%, color-mix(in srgb, var(--relic-ember) 16%, transparent), transparent 70%), var(--relic-slab); }
+.hl-card.is-locked:has(.is-silhouette) .hl-card-name { color: var(--md-text-dim); letter-spacing: 0.2em; }
+.hl-card.is-locked:has(.is-silhouette):hover, .hl-card.is-locked:has(.is-silhouette).is-focused { border-color: var(--relic-gold-deep); }
 .oa-window { height: min(46rem, calc(100dvh - 64px)); }
 /* Sheet = column of fixed rows (stage, name, chips, button) and one scrolling region (rules + record) between them. */
 .oa-sheet > .hl-name, .oa-sheet > .hl-chips, .oa-sheet > .hl-cta { flex: none; }

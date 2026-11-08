@@ -12,12 +12,14 @@ const allBeaten = new Set<string>(SHRINE_BOSSES.map((b) => b.boss));
 const input = (over: Partial<HallInput> = {}): HallInput => ({ shrine: EMPTY_SHRINE, beaten: allBeaten, heralds: [], tier: 'normal', ...over });
 
 describe('hall of oaths cards', () => {
-  it('gives every shrine boss a card, sealed and unnamed while it is not beaten', () => {
+  // Owner 2026-11-08: "los jefes que salga la silueta en negro": a sealed boss keeps its species so the view can draw its black silhouette.
+  it('gives every shrine boss a card, sealed and shown as its silhouette while it is not beaten', () => {
     const cards = hallCards('reflections', input({ beaten: new Set() }));
     expect(cards.map((c) => c.id)).toEqual(SHRINE_BOSSES.map((b) => b.boss));
     for (const card of cards) {
       expect(card.state).toBe('locked');
-      expect(card.species).toBeNull();
+      expect(card.species).toBe(card.id);
+      expect(card.silhouette).toBe(true);
       expect(card.icon).toBe('seal');
       expect(card.stops).toHaveLength(1);
     }
