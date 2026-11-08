@@ -229,3 +229,27 @@ canvas.game.is-frozen { pointer-events: none; cursor: default; }
 }
 
 #app:has(.rs-veil) > .notice { display: none; }
+
+/* The phone's page buttons sit in the head's top-right corner, so the board keeps the whole stage. */
+.rs-head { position: relative; }
+.rs-pages { position: absolute; top: 0; right: 0; z-index: 2; }
+.rs-head:has(> .rs-pages:not([hidden])) .rs-rule { width: min(620px, 52%); }
+
+/* A phone (src/ui/pager.ts: touch and short): nothing scrolls, the window and its board clip, the board's parts become pages. */
+html.touch .rs-window.result { overflow: hidden; }
+.rs-board.is-paged { display: grid; grid-template-areas: none; grid-template-rows: none; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: center; gap: 6px; overflow: hidden; padding: 0; }
+.rs-board.is-paged > .rs-tile { grid-column: var(--span-wide, span 4) !important; }
+@media (max-width: 680px) { .rs-board.is-paged > .rs-tile { grid-column: var(--span-narrow, span 4) !important; } }
+.rs-board.is-paged > :is(.rs-details, .rs-rewards, .rs-card) { grid-column: 1 / -1; }
+.rs-board.is-paged > .rs-details { grid-template-columns: minmax(0, 1fr); }
+.rs-pages .pg-btn { width: 48px; height: 44px; }
+.rs-pages { gap: 6px; }
+.rs-pages .pg-count { font-size: 16px; min-width: 2.4rem; }
+/* The shortest phones (568x320, 667x320 with the browser's bars): a slimmer head gives the board room for a second row. */
+@media (max-height: 380px) {
+  .rs-pages .pg-btn { height: 38px; }
+  #app .rs-window .rs-title, #app .rs-window.has-cards .rs-title { font-size: 24px; }
+  .rs-head { gap: 2px; }
+  .rs-sub, .rs-window.has-cards .rs-sub { font-size: 11px; line-height: 1.15; }
+  .rs-head .rs-note { font-size: 11px; line-height: 1.15; }
+}

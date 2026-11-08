@@ -2,11 +2,12 @@ import type { SheetStore } from '../adapters/assets';
 import { trackLastDevice, type LastDevice } from '../adapters/last-device';
 import { keyLabel } from '../adapters/bindings';
 import { cursorList } from '../ui/cursor-list';
+import { attachPager } from '../ui/pager';
 import { PAUSE_ICONS } from '../ui/icons/pause-icons';
 import { pixelSvgOf, type PixelIcon } from '../ui/pixel-icons';
 import { h, mdWindow, type Child } from '../ui/window';
 import { countAt, countParts, endTimeline, isLive, type EndTimeline } from './end-choreography';
-import { endIconOf, endLayout, tileSpans, type EndRewards } from './end-layout';
+import { boardParts, endIconOf, endLayout, phoneTileSpans, tileSpans, type EndRewards } from './end-layout';
 import type { EndActionId, EndCard, EndLine, EndView } from './end-model';
 import { glyphSvg } from './gamepad-pad';
 import { initialStyle } from './gamepad-help';
@@ -39,7 +40,7 @@ function lineIcon(line: EndLine, className: string): Node | null {
   return line.icon ? icon(endIconOf(line.icon), className) : null;
 }
 
-function tileEl(line: EndLine, at: number, span: number): HTMLElement {
+function tileEl(line: EndLine, at: number, span: number, narrow = span): HTMLElement {
   const value = h('span', { className: `rs-tile-value${line.value === '✓' ? ' is-mark' : ''}${line.value.length > 7 ? ' is-long' : ''}`, textContent: line.value });
   const delta = line.delta ? h('span', { className: `rs-delta is-${line.delta.tone}`, textContent: line.delta.text }) : null;
   if (delta && line.delta) {
@@ -52,6 +53,8 @@ function tileEl(line: EndLine, at: number, span: number): HTMLElement {
   ]);
   tile.style.setProperty('--at', `${at}ms`);
   tile.style.gridColumn = `span ${span}`;
+  tile.style.setProperty('--span-wide', `span ${span}`);
+  tile.style.setProperty('--span-narrow', `span ${narrow}`);
   return tile;
 }
 
@@ -127,6 +130,12 @@ function glyphs(device: LastDevice, style: PadStyle, keys: string[], pad: string
   return h('span', { className: 'rs-glyphs' }, parts);
 }
 
+/**
+ * Touch screens up to 700 px tall page the board instead of scrolling it: phones (<= 560), and the small tablets (1024x600)
+ * whose summary is still taller than the window. Desktop (mouse) keeps its own layout.
+ */
+const paging = (): boolean => document.documentElement.classList.contains('touch') && !!window.matchMedia?.('(max-height: 700px)').matches;
+
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function currentDevice(): LastDevice {
@@ -198,8 +207,23 @@ export function endScreen(options: EndScreenOptions): HTMLElement {
   tiles.style.setProperty('--rows', String(all.length === 4 ? 1 : Math.max(1, Math.ceil(all.length / 3))));
   const details = detailsCount > 0 ? h('div', { className: 'rs-details' }, layout.details.map((line) => detailEl(line, timeline.tileAt[all.length - 1] ?? 0))) : null;
   const rewards = layout.reward ? rewardsEl(layout.reward, timeline.rewardsAt ?? 0, counter) : null;
-  const cards = layout.cards.length > 0 ? h('div', { className: 'rs-cards' }, layout.cards.map((c) => cardEl(c, timeline.rewardsAt ?? timeline.tileAt[0] ?? 0))) : null;
-  const board = h('div', { className: `rs-board${cards ? ' has-cards' : ''}` }, [tiles, details, cards, rewards] as Child[]);
+  const cardAt = timeline.rewardsAt ?? timeline.tileAt[0] ?? 0;
+  const cards = layout.cards.length > 0 ? h('div', { className: 'rs-cards' }, layout.cards.map((c) => cardEl(c, cardAt))) : null;
+  // A phone: every card is a part of the board, which pages its parts instead of scrolling (nav under it, actions stay put).
+  const phone = paging();
+  const lone = phoneTileSpans(all.length);
+  const parts: Record<string, Child> = {
+    tiles,
+    details,
+    cards,
+    rewards,
+    ...Object.fromEntries(all.map((line, i) => [`tile:${i}`, tileEl(line, timeline.tileAt[i] ?? 0, spans[i] ?? 2, lone[i] ?? 4)])),
+    ...Object.fromEntries(layout.cards.map((c) => [`card:${c.id}`, cardEl(c, cardAt)])),
+  };
+  const board = h('div', { className: `rs-board${cards ? ' has-cards' : ''}${phone ? ' is-paged' : ''}` }, boardParts(layout, phone).map((id) => parts[id] ?? null));
+  const pageNav = h('div', { className: 'rs-pages' });
+  attachPager(board, { nav: pageNav, enabled: paging, onPage: (_page, count) => void (pageNav.hidden = count < 2) });
+  head.append(pageNav);
 
   const foot = h('footer', { className: 'rs-foot' }, [list.element]);
   foot.style.setProperty('--at', `${timeline.actionsAt}ms`);

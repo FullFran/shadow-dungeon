@@ -458,9 +458,7 @@
         /* Settings rows wrap: the value drops under its label instead of overlapping it. */
         html.touch .settings .md-item, html.touch .pause-settings .md-item { flex-wrap: wrap; row-gap: 2px; }
         html.touch .settings .md-label, html.touch .pause-settings .md-label { white-space: normal; flex: 1 1 9rem; min-width: 0; }
-        /* End screens in portrait: the summary scrolls inside the window, the two actions stay pinned at its foot. */
-        html.touch .result { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; }
-        html.touch .result-actions { position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px; background: var(--md-window-bottom); }
+        /* End screens never scroll on a phone (owner 2026-11-08): src/styles/end-screen.css pages the summary, the actions stay put. */
         html.touch .settings .md-value, html.touch .pause-settings .md-value { min-width: 0; max-width: 100%; margin-left: auto; white-space: normal; text-align: right; }
       }
       html.touch #app { justify-content: safe center; }
@@ -524,9 +522,6 @@
         html.touch .result .md-stat { padding: 0; font-size: 16.5px; line-height: 1.3; gap: 1em; }
         html.touch .result-actions { flex-direction: row; gap: 12px; margin-top: 8px; }
         html.touch .result-actions .md-item { flex: 1; }
-        /* The Sima's longer end screen scrolls inside its window, with the two actions pinned at the bottom (never off screen). */
-        html.touch .result { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
-        html.touch .result-actions { position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px; background: var(--md-window-bottom); }
       }
       /* ---- Touch controls (src/ui/touch-controls.ts): floating joystick in one half; buttons placed inline by src/ui/touch-layout.ts ---- */
       .touch-layer { display: none; }

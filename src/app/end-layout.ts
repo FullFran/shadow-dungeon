@@ -58,6 +58,23 @@ export function endLayout(view: EndView): EndLayout {
 }
 
 /**
+ * The children of the board, in order. Desktop keeps the figures in one grid and the Sima's cards in one scrolling box; a
+ * phone gets every figure and every card as a part of its own (the board is the pager's host there: nothing scrolls, the
+ * rows that do not fit become pages).
+ */
+export function boardParts(layout: EndLayout, phone: boolean): string[] {
+  const figures = layout.tiles.length + layout.more.length;
+  const tiles = phone ? Array.from({ length: figures }, (_, i) => `tile:${i}`) : ['tiles'];
+  const cards = phone ? layout.cards.map((c) => `card:${c.id}`) : layout.cards.length > 0 ? ['cards'] : [];
+  return [...tiles, ...(layout.details.length > 0 ? ['details'] : []), ...cards, ...(layout.reward ? ['rewards'] : [])];
+}
+
+/** The spans of a phone's tiles in the twelve columns: rows of three, but four tiles make two rows of two (a tile must hold its label). */
+export function phoneTileSpans(count: number): number[] {
+  return count === 4 ? [6, 6, 6, 6] : tileSpans(count);
+}
+
+/**
  * How many of the twelve grid columns each tile spans so the grid has no holes: rows of three (four columns each), a row of
  * two (six each), a lone tile full width; four tiles make one row of four.
  */

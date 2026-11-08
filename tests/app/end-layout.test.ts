@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endLayout, MAX_TILES, endIconOf, tileSpans } from '../../src/app/end-layout';
+import { boardParts, endLayout, phoneTileSpans, MAX_TILES, endIconOf, tileSpans } from '../../src/app/end-layout';
 import { endModel, type EndInput, type EndView } from '../../src/app/end-model';
 import { resultModel, shrineEndView, type ResultInput } from '../../src/app/shrine-result';
 import type { RunSummary } from '../../src/app/game';
@@ -134,5 +134,44 @@ describe('tile spans', () => {
     }
     expect(tileSpans(5)).toEqual([4, 4, 4, 6, 6]);
     expect(tileSpans(4)).toEqual([3, 3, 3, 3]);
+  });
+});
+
+describe('end layout: the board of a phone is a flat list of pages-to-be', () => {
+  const view = (sima: boolean): EndView =>
+    endModel(
+      {
+        result: 'victory',
+        summary: summary(sima ? 'eclipse-chasm' : 'crypt-of-the-sword-king', sima ? { simaEvents: [{ floor: 3, kind: 'crystal', outcome: 'taken' }] as never } : {}),
+        online: true,
+        balance: 100,
+        party: ['A', 'B'],
+        playerSpecies: PLAYABLE_SPECIES[0]!,
+        townOpen: true,
+        heldNames: ['Orb'],
+        ...(sima ? { score } : {}),
+      },
+      trFor('es'),
+    );
+
+  it('keeps the desktop order: tiles, details, the cards as one box, rewards', () => {
+    expect(boardParts(endLayout(view(true)), false)).toEqual(['tiles', 'details', 'cards', 'rewards']);
+    expect(boardParts(endLayout(view(false)), false)).toEqual(['tiles', 'details', 'rewards']);
+  });
+
+  it('on a phone each card is its own part, so the pager can put it on a page of its own', () => {
+    const layout = endLayout(view(true));
+    expect(layout.cards.length).toBeGreaterThan(1);
+    const figures = layout.tiles.length + layout.more.length;
+    expect(boardParts(layout, true)).toEqual([...Array.from({ length: figures }, (_, i) => `tile:${i}`), 'details', ...layout.cards.map((c) => `card:${c.id}`), 'rewards']);
+  });
+
+  it('on a phone no tile is narrower than a quarter of the board: four tiles make two rows of two, never a row of four', () => {
+    for (let n = 1; n <= 12; n++) {
+      const spans = phoneTileSpans(n);
+      expect(spans).toHaveLength(n);
+      for (const span of spans) expect(span, `${n} tiles`).toBeGreaterThanOrEqual(4);
+      expect(spans.reduce((a, b) => a + b, 0) % 12, `${n} tiles fill whole rows`).toBe(0);
+    }
   });
 });
