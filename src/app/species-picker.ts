@@ -3,6 +3,7 @@ import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../data/species';
 import { t } from '../i18n';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import { TYPE_COLORS } from '../ui/tokens';
+import { attachPager } from '../ui/pager';
 import { h, mdWindow } from '../ui/window';
 import { hubStep } from './title-hub';
 import '../styles/species-picker.css';
@@ -99,13 +100,16 @@ export function speciesPicker(options: SpeciesPickerOptions): HTMLElement[] {
 
   const grid = h('div', { className: 'sp-grid' }, cards);
   grid.setAttribute('aria-label', t('loadout.pick'));
+  // Phones: the cards that do not fit turn into pages (src/ui/pager.ts) instead of a scrolling grid.
+  const column = h('div', { className: 'sp-col' }, [grid]);
+  const pager = attachPager(grid);
   const back = h('button', { className: 'sp-back', type: 'button', textContent: t('menu.back') });
   back.addEventListener('click', () => options.onBack());
 
   const sheet = h('section', { className: 'sp-sheet' }, [stage, name, types, stats, passive, choose]);
   const win = mdWindow({ title: t('loadout.pick'), className: 'sp-window' }, [
     ...(options.context ? [h('p', { className: 'dim sp-context', textContent: options.context })] : []),
-    h('div', { className: 'sp-body' }, [sheet, grid]),
+    h('div', { className: 'sp-body' }, [sheet, column]),
     h('div', { className: 'sp-foot' }, [back, h('p', { className: 'sp-hint', textContent: t('hub.hint') })]),
   ]);
 
@@ -123,10 +127,12 @@ export function speciesPicker(options: SpeciesPickerOptions): HTMLElement[] {
     const dir = KEYS[e.code];
     if (!dir) return;
     e.preventDefault();
-    const controls = [...cards, choose, back];
+    const shown = new Set(pager.visible());
+    const controls = [...cards.filter((c) => shown.has(c)), ...(pager.nav.hidden ? [] : [...pager.nav.querySelectorAll('button')].filter((b) => !b.disabled)), choose, back];
     const at = controls.indexOf(document.activeElement as HTMLButtonElement);
     if (at < 0) {
-      cards.find((c) => c.dataset.species === focused)?.focus();
+      const card = cards.find((c) => c.dataset.species === focused);
+      if (card) pager.focusItem(card);
       return;
     }
     const points = controls.map((el, i) => {
@@ -138,6 +144,10 @@ export function speciesPicker(options: SpeciesPickerOptions): HTMLElement[] {
   window.addEventListener('keydown', onKey);
 
   show(focused);
-  queueMicrotask(() => cards.find((c) => c.dataset.species === focused)?.focus({ preventScroll: true }));
+  queueMicrotask(() => {
+    pager.refresh();
+    const card = cards.find((c) => c.dataset.species === focused);
+    if (card) pager.focusItem(card);
+  });
   return [win];
 }

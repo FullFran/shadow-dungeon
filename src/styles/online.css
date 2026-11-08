@@ -36,6 +36,15 @@
   .ol-card-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
   .ol-card-controls > :only-child, .ol-error { grid-column: 1 / -1; }
   .ol-code { font-size: 18px; }
+  /* Phones on their side (odd/tasks/mobile-pass.md T6): the window is all the screen has, so every gap shrinks and Volver stays in view. */
+  html.touch .ol-window { max-height: calc(100dvh - 20px); padding: 16px 16px 8px; }
+  html.touch .ol-body { gap: 6px; }
+  html.touch .ol-nick-row { padding-bottom: 6px; }
+  html.touch .ol-card { gap: 4px; padding: 8px 10px; }
+  html.touch .ol-card-controls { gap: 4px; }
+  html.touch .ol-icon { width: 30px; height: 30px; }
+  html.touch .ol-card-title { font-size: 18px; }
+  html.touch .ol-error { min-height: 1.1em; font-size: 12px !important; line-height: 1.1 !important; }
 }
 @media (max-width: 560px) {
   .ol-cards { grid-template-columns: minmax(0, 1fr); gap: 10px; }

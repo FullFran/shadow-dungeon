@@ -9,6 +9,14 @@ html.touch .town-shop:has(:is(.hl-back, .es-back, .gv-back, .lm-back, .sp-back, 
   padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
 }
 
+/* Phone windows that sit straight in #app (picker, shrine, online) and carry their own Volver: the room kept for "Atrás" at the
+   top and the legal line at the foot goes to the window, which is all a short screen has (it stays on the title, hub and credits). */
+@media (max-height: 560px) {
+  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) { padding-top: max(14px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); gap: 0; justify-content: center; }
+  html.touch body #app:has(> :is(.sp-window, .oa-window, .ol-window)) > .notice { display: none; }
+  html.touch body:has(#app > :is(.sp-window, .oa-window, .ol-window)) .touch-back { display: none; }
+}
+
 /* Landscape only (src/ui/orientation-gate.ts): a touch screen held upright is covered whole by the notice, above every
    window, dialog and toast. The pixel phone tips over on a slow loop to show the motion asked for; static under reduced motion. */
 .rotate-gate { display: none; }

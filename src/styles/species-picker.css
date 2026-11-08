@@ -28,6 +28,7 @@
   background: linear-gradient(180deg, #6e1d18, #2a0909); border: 2px solid #e2b866; border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 0 18px rgba(255, 106, 61, 0.35); }
 .sp-choose svg.px-icon { width: 26px; height: 26px; }
 .sp-choose:hover, .sp-choose:focus-visible { border-color: #ffe2a0; box-shadow: 0 0 0 2px var(--md-ink), 0 0 0 4px rgba(255, 191, 94, 0.45), 0 0 26px rgba(255, 106, 61, 0.55); }
+.sp-col { display: contents; }
 .sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); grid-auto-rows: 176px; gap: 10px; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 6px 4px 2px; scrollbar-color: var(--md-border-shade) transparent; }
 .sp-card { all: unset; box-sizing: border-box; position: relative; height: 176px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; cursor: pointer; text-align: center;
   background: radial-gradient(120% 80% at 50% 0%, #241b22, var(--relic-slab) 70%); border: 2px solid var(--relic-slab-edge); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 5px 0 rgba(0, 0, 0, 0.45); }
@@ -50,5 +51,17 @@
   .sp-name { font-size: 22px; } .sp-stats, .sp-hint { display: none; } .sp-passive-text { -webkit-line-clamp: 2; font-size: 13px; } .sp-passive-name { font-size: 16px; }
   .sp-choose { height: 38px; font-size: 16px; }
   .sp-grid { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); grid-auto-rows: 100px; gap: 6px; } .sp-card { height: 100px; padding: 4px; gap: 2px; } .sp-card-art { height: 56px; } .sp-card-name { font-size: 16px; } .sp-card-types { display: none; } .sp-card-picked { font-size: 9px; }
+  /* Phones: Volver sits under the sheet and the page controls at the foot of the cards, so the cards get the height. */
+  .sp-window > .md-window-body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 10px; row-gap: 6px; }
+  .sp-context { grid-column: 1 / -1; grid-row: 1; } .sp-body { display: contents; }
+  .sp-sheet { grid-column: 1; grid-row: 2; } .sp-col { grid-column: 2; grid-row: 2 / span 2; } .sp-foot { grid-column: 1; grid-row: 3; }
+  /* A card tap already picks, so the sheet drops its button and shows the whole picture. */
+  .sp-choose { display: none; } .sp-sheet { justify-content: center; gap: 6px; }
+  .sp-back { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+  .sp-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; } .sp-col .sp-grid { flex: 1; }
   .sp-passive, .sp-foot .sp-hint { display: none; } .sp-sheet { gap: 4px; padding: 6px 8px; justify-content: space-between; } .sp-window > .md-window-body { gap: 6px; } .sp-back { font-size: 16px; padding: 3px 14px; }
+}
+/* The shortest phones (667x375): two rows of cards still fit beside the sheet and above the page buttons. */
+@media (max-height: 380px) and (max-width: 900px) {
+  .sp-grid { grid-auto-rows: 84px; } .sp-card { height: 84px; } .sp-card-art { height: 48px; }
 }
