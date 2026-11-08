@@ -389,3 +389,19 @@ and gamepad reach every control, touch targets ≥ 44 px.
   flat "Saltar" text button, the 3 px hold bar and the separate hint line.
 - 2026-11-04 (fix pass 3, owner: "arreglar todo"; "la barra de vida un poco más arriba y más decorada estilo Dark Souls sombrío"; slots "más grandes para que las teclas quepan"; boss attacks "arriba, un poco más grandes y decorados"): the hint bar is compact in a fight (28 px chips, no labels); flashes become a toast under the status block; the location plaque follows the HUD scale (22/32 to 26/40); the boss bar rises (6% clear below), gains an iron frame with finials and an ember trail; slots grow to ~56 CSS px with the key in a corner cap; the boss announcement moves to the top centre at ~28 CSS px with brackets (hold 1.6 s); the error icon is its own; asset failures report once per session; the pause card shows level, XP and passive. The 12% budget holds (11.9% at 1280x720, 15.2% with an announcement); the announced-event limit rises from 15% to 16% because the bigger announcement is transient (1.8 s). Supersedes the 46 px slots and the strip above the boss bar.
 - 2026-11-05 (owner: "Rediseña también lo de Jugar en línea"): the online screen becomes the Online window (§4): nickname on top, two equal relic cards with a single ember action, inline error. Supersedes the MD cursor list with code and nickname fields.
+- 2026-11-08 (owner: "para móvil hay que hacer que solo se pueda jugar en horizontal ... poner un aviso"): a touch screen held in portrait is covered by a full-screen
+  rotate notice on every screen (`src/ui/orientation-gate.ts`, `src/styles/mobile.css`): a 112 px relic slab with an original pixel phone (`rotate` icon) that tips over
+  on a 2.4 s loop (static under reduced motion), "Gira el dispositivo" in cursor gold and one line of body text; a solo run pauses under it. Supersedes the small
+  rotate hint that showed only over a canvas and let menus run in portrait.
+- 2026-11-08 (owner: "en móvil hay demasiado botón ... se ve todo demasiado pequeño y sobrecargado ... debe verse todo sin hacer scroll"): on a short touch screen
+  (`html.touch`, max-height 560 px) the title hub keeps six controls at rest (Más, Tu Pokémon, El mundo, Cambiar, JUGAR, En línea). The two rails become group slabs
+  (148x148, 124x132 under 760 px wide: 52 px icon, name, a peek of four mini icons) and the system row, links and news card fold into Más; each opens a relic sheet of
+  large tiles (3 across, 5 for Más; >= 84 px tall; locked tiles explain themselves in the sheet), Esc/Volver/tap outside closes it (`compactHub` in
+  `src/app/title-hub.ts`, `src/styles/hub-phone.css`). Windows that carry their own Volver drop the floating "Atrás" and its 96 px side gutters on phones. Desktop
+  hub unchanged. Supersedes the compressed three-column rails and icon-only links on phones of 2026-11-03.
+- 2026-11-08 (owner: "el tablón no se ve fácilmente, hay que hacer scroll y los nombres se cortan"): mission cards are rows in two columns (64 px icon well, the whole
+  title on up to two lines, pay in cursor gold, tier and state on one line); the sheet's stage drops to 104 px and nothing in it scrolls; on phones the sheet hides
+  the title and chips the card already shows and keeps the full condition. Supersedes the 176 px icon cards with a two-line clamp.
+- 2026-11-08 (owner: "los jefes que salga la silueta en negro y mejor diseñado"): a sealed shrine boss shows its real sprite as a black silhouette with a 1 px ember rim
+  and a soft ember glow, a seal at its foot, "???" in dim text, on a solid slab with an ember floor glow (no dashed border); its sheet uses the ember light, never the
+  boss's type colour. Supersedes the seal icon on a dashed slab (§1: Pokémon live in the scene as silhouettes).
