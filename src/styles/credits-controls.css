@@ -133,7 +133,7 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
 
 /* ---------- Gamepad controls on short touch screens: tabs and styles on top, the legend pages, no drawing ---------- */
 @media (max-height: 640px) {
-  html.touch #app:has(.controls-window) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app:has(> .controls-window) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
   html.touch .controls-window { max-height: calc(100dvh - 24px); }
   html.touch #app > .controls-window { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
   html.touch .controls-window > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; padding: 0; }
@@ -159,19 +159,19 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
   html.touch .controls-window .pc-pages .pg-count { min-width: 2.6rem; font-size: 17px; }
 }
 @media (max-height: 640px) and (max-width: 700px) {
-  html.touch #app:has(.controls-window) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  html.touch #app:has(> .controls-window) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
   html.touch .controls-window .pc-tab, html.touch .controls-window .pc-style { padding: 2px 8px; font-size: 14px; }
   html.touch .controls-window .pc-icon { width: 20px; height: 20px; }
 }
 
 /* ---------- Credits on short touch screens: section tabs, one page of items at a time ---------- */
 @media (max-height: 640px) {
-  html.touch #app:has(.credits-screen.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app:has(> .credits-screen.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
   html.touch #app > .credits-screen.is-compact { flex: 1 1 0; width: 100%; max-width: 52rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
   html.touch .credits-screen.is-compact > .md-window-body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 0; }
   html.touch .credits-screen.is-compact .md-list { display: none; }
   /* The fan notice under the window says what the "Aviso legal" page says: the room goes to the credits. */
-  html.touch #app:has(.credits-screen.is-compact) > .notice { display: none; }
+  html.touch #app:has(> .credits-screen.is-compact) > .notice { display: none; }
   .cc-compact { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; font-family: var(--md-text-font); }
   .cc-bar { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px; }
   .cc-tabs { flex: none; display: flex; gap: 4px; }
@@ -209,6 +209,6 @@ a.cc-chip { color: var(--md-cursor); border-color: var(--relic-gold-deep); }
   .cc-pages .pg-btn { width: 56px; }
 }
 @media (max-height: 640px) and (max-width: 700px) {
-  html.touch #app:has(.credits-screen.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  html.touch #app:has(> .credits-screen.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
   .cc-cur { font-size: 15px; }
 }

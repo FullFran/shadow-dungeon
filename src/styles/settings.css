@@ -129,7 +129,7 @@ html.touch .st-keys { display: none; }
 
 /* ---------- Phones in landscape (touch, short): the sections become a strip of tabs above the rows, the rows page ---------- */
 @media (max-height: 640px) {
-  html.touch #app:has(.st-window) { padding: max(14px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap: 0; justify-content: center; }
+  html.touch #app:has(> .screen-row > .st-window) { padding: max(14px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap: 0; justify-content: center; }
   html.touch #app > .screen-row:has(.st-window) { flex: 1 1 0; align-self: stretch; display: flex; flex-direction: column; min-height: 0; }
   html.touch .st-window, html.touch .screen-row > .st-window { height: auto; flex: 1 1 0; min-height: 0; width: 100%; max-width: none; padding: 14px 12px 8px; }
   html.touch .st-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px; }

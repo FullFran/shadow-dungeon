@@ -267,7 +267,7 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
 /* ---------- Notes on short touch screens: one release at a time, its notes paged, no scrolling ---------- */
 .news-window.is-compact .news-row { --sec: var(--md-cursor); }
 @media (max-height: 640px) {
-  html.touch #app:has(.news-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app:has(> .news-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
   html.touch #app > .news-window.is-compact { flex: 1 1 0; width: 100%; max-width: 54rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
   html.touch .news-window.is-compact > .md-window-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; padding: 0; }
   .news-cur { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 30px; }
@@ -293,5 +293,5 @@ html.touch .news-scroll { max-height: calc(100dvh - 222px); }
   .news-step-arrow.is-newer { clip-path: polygon(0 0, 100% 50%, 0 100%); }
 }
 @media (max-height: 640px) and (max-width: 700px) {
-  html.touch #app:has(.news-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  html.touch #app:has(> .news-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 }

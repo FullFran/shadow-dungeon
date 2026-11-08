@@ -162,7 +162,7 @@
 .rp-choice[aria-checked='true'] { color: var(--md-ink); font-weight: 700; background: linear-gradient(180deg, var(--md-cursor), var(--relic-ember)); border-color: var(--relic-ember-deep); }
 .rp-choice:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
 @media (max-height: 640px) {
-  html.touch #app:has(.report-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
+  html.touch #app:has(> .report-window.is-compact) { padding: max(24px, env(safe-area-inset-top)) max(96px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(96px, env(safe-area-inset-left)); gap: 6px; }
   /* Over the town or a run the window is bounded by the screen too, so its steps page there as well. */
   html.touch .report-window.is-compact { max-height: calc(100dvh - 24px); }
   html.touch #app > .report-window.is-compact { flex: 1 1 0; width: 100%; max-width: 46rem; max-height: none; min-height: 0; padding: 18px 14px 8px; }
@@ -187,7 +187,7 @@
   .report-window.is-compact .rp-secondary { width: auto; }
 }
 @media (max-height: 640px) and (max-width: 700px) {
-  html.touch #app:has(.report-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  html.touch #app:has(> .report-window.is-compact) { padding-left: max(100px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
 }
 @media (max-width: 700px) {
   .report-window.is-compact .rp-choice { font-size: 13px; padding: 2px; }
