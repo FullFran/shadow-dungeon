@@ -116,6 +116,12 @@ const AUDIT = () => {
     const s = getComputedStyle(el);
     return s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.05;
   };
+  // Only controls the player can reach: not under a window or veil drawn over them (hit-test a point inside each).
+  const reachable = (e) => {
+    const r = e.getBoundingClientRect();
+    const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 4, r.top + 4], [r.right - 4, r.bottom - 4]];
+    return pts.some(([x, y]) => { const top = document.elementFromPoint(x, y); return top && (top === e || e.contains(top) || top.contains(e)); });
+  };
   const scrollers = [];
   for (const el of document.querySelectorAll('body *')) {
     const s = getComputedStyle(el);
@@ -132,6 +138,8 @@ const AUDIT = () => {
     if (r.width < 2 || r.height < 2) continue;
     // A control on a pager's hidden page does not count; one cut by any box that clips it does.
     if (el.closest('.pg-off, [hidden]')) continue;
+    // Under a window drawn over it (the hub behind an open service): not the screen being checked.
+    if (r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw && !reachable(el)) continue;
     let clippedBy = '';
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
       const s = getComputedStyle(p);
@@ -154,6 +162,8 @@ const AUDIT = () => {
     const clamps = s.textOverflow === 'ellipsis' || /\d/.test(s.webkitLineClamp || '');
     if (!clamps) continue;
     if (!el.textContent.trim()) continue;
+    const box = el.closest('button, [role=button]') ?? el;
+    if (!reachable(box) && !el.closest('.md-window, .hub-sheet, [role=dialog]')) continue;
     if (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2) cut.push(el.textContent.trim().slice(0, 22));
   }
   // Text that spills out of the control holding it (a title taller than its card).
@@ -168,12 +178,6 @@ const AUDIT = () => {
   }
   // Two controls drawn over each other (a row that ran out of room).
   const overlap = [];
-  // Only controls the player can reach: not under a window or veil drawn over them (hit-test a point inside each).
-  const reachable = (e) => {
-    const r = e.getBoundingClientRect();
-    const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 4, r.top + 4], [r.right - 4, r.bottom - 4]];
-    return pts.some(([x, y]) => { const top = document.elementFromPoint(x, y); return top && (top === e || e.contains(top) || top.contains(e)); });
-  };
   const ctrls = [...document.querySelectorAll('button, [role=button], input, .md-item')].filter((e) => shown(e) && !e.closest('[hidden], .pg-off') && reachable(e));
   for (let i = 0; i < ctrls.length; i++) {
     for (let j = i + 1; j < ctrls.length; j++) {
@@ -184,6 +188,12 @@ const AUDIT = () => {
       const q = b.getBoundingClientRect();
       const ox = Math.min(r.right, q.right) - Math.max(r.left, q.left);
       const oy = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
+      // Round buttons (touch attack pads) overlap only if their circles do, not their boxes.
+      const round = (e, b) => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= b.width / 2 - 1;
+      if (round(a, r) && round(b, q)) {
+        const d = Math.hypot(r.left + r.width / 2 - (q.left + q.width / 2), r.top + r.height / 2 - (q.top + q.height / 2));
+        if (d >= r.width / 2 + q.width / 2 - 3) continue;
+      }
       if (ox > 3 && oy > 3 && getComputedStyle(a).position !== 'fixed' && getComputedStyle(b).position !== 'fixed') overlap.push(`${(a.textContent || label(a)).trim().slice(0, 12)} x ${(b.textContent || label(b)).trim().slice(0, 12)}`);
     }
   }
