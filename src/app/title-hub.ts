@@ -126,3 +126,33 @@ export function hubStep(points: readonly { id: string; x: number; y: number }[],
 export function recordLine(t: (key: string) => string, floor: number, runs: number): string {
   return t(runs === 1 ? 'hub.record.one' : 'hub.record').replace('{floor}', String(floor)).replace('{runs}', String(runs));
 }
+
+export type HubGroupId = 'partner' | 'world' | 'more';
+
+export interface HubGroup {
+  id: HubGroupId;
+  labelKey: string;
+  icon: PixelIconId;
+  buttons: HubButton[];
+  badge: boolean;
+}
+
+const GROUPS: readonly { id: HubGroupId; labelKey: string; icon: PixelIconId; zones: readonly HubZone[] }[] = [
+  { id: 'partner', labelKey: 'hub.rail.partner', icon: 'pokemon', zones: ['left'] },
+  { id: 'world', labelKey: 'hub.rail.world', icon: 'travel', zones: ['right'] },
+  { id: 'more', labelKey: 'hub.more', icon: 'settings', zones: ['system', 'links'] },
+];
+
+/**
+ * The hub on a phone (owner 2026-11-08: "demasiado botón ... pequeño y sobrecargado"): Play and online stay at rest, the
+ * two rails and the small system and link buttons fold into three group buttons that open a sheet of large tiles.
+ * Nothing is dropped; a group is badged when a button inside it is.
+ */
+export function compactHub(buttons: readonly HubButton[]): { rest: HubButton[]; groups: HubGroup[] } {
+  const rest = buttons.filter((b) => b.zone === 'play' || b.zone === 'online');
+  const groups = GROUPS.map(({ id, labelKey, icon, zones }): HubGroup => {
+    const inside = buttons.filter((b) => zones.includes(b.zone));
+    return { id, labelKey, icon, buttons: inside, badge: inside.some((b) => b.badge) };
+  });
+  return { rest, groups };
+}

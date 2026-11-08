@@ -17,7 +17,7 @@ const dir = flag('dir', '/tmp/hub');
 const only = flag('only', '');
 const sizes = flag('sizes', '844x390,740x360,1440x900').split(',').map((s) => s.split('x').map(Number));
 mkdirSync(dir, { recursive: true });
-const HUBS = ['title', 'pokemon', 'tutor', 'evolve', 'gacha', 'shop', 'board', 'challenges', 'achievements', 'gallery', 'friends', 'shrine', 'settings', 'online', 'play'].filter((n) => !only || only.split(',').includes(n));
+const HUBS = ['title', 'pokemon', 'tutor', 'evolve', 'gacha', 'shop', 'board', 'challenges', 'achievements', 'gallery', 'friends', 'shrine', 'settings', 'online', 'play', 'group-partner', 'group-world', 'group-more'].filter((n) => !only || only.split(',').includes(n));
 
 // Any element whose content is taller than its box and that scrolls (the "hidden scroll" the owner rejects).
 const AUDIT = `(() => {

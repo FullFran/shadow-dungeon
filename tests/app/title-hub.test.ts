@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hubButtons, hubStep, recordLine, TOWN_GATED, type HubState } from '../../src/app/title-hub';
+import { compactHub, hubButtons, hubStep, recordLine, TOWN_GATED, type HubState } from '../../src/app/title-hub';
 import { PIXEL_ICONS } from '../../src/ui/pixel-icons';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
@@ -81,5 +81,40 @@ describe('the profile record line', () => {
     expect(recordLine(es, 37, 129)).toBe('Mejor planta 37 · 129 expediciones');
     expect(recordLine(en, 3, 1)).toBe('Best floor 3 · 1 expedition');
     expect(recordLine(en, 37, 129)).toBe('Best floor 37 · 129 expeditions');
+  });
+});
+
+// Owner 2026-11-08: "en móvil hay demasiado botón ... se ve todo demasiado pequeño y sobrecargado". On a phone the hub keeps
+// a handful of controls at rest; every other button lives in one of three group sheets (Tu Pokémon, El mundo, Más).
+describe('phone hub', () => {
+  const everyState: HubState[] = [base, { ...base, townOpen: false }, { ...base, installable: true, ticketAdmin: true, newsUnseen: true }];
+
+  it('keeps at most eight controls at rest (Hick): play, online and the three group buttons', () => {
+    for (const state of everyState) {
+      const hub = compactHub(hubButtons(state));
+      expect(hub.rest.map((b) => b.id).sort()).toEqual(['online', 'play']);
+      expect(hub.groups.map((g) => g.id)).toEqual(['partner', 'world', 'more']);
+      expect(hub.rest.length + hub.groups.length).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it('puts every other button in exactly one group, the rails in their own group', () => {
+    for (const state of everyState) {
+      const buttons = hubButtons(state);
+      const hub = compactHub(buttons);
+      const grouped = hub.groups.flatMap((g) => g.buttons.map((b) => b.id));
+      expect(new Set(grouped).size).toBe(grouped.length);
+      expect([...grouped, ...hub.rest.map((b) => b.id)].sort()).toEqual(buttons.map((b) => b.id).sort());
+      expect(hub.groups[0]!.buttons.map((b) => b.id)).toEqual(buttons.filter((b) => b.zone === 'left').map((b) => b.id));
+      expect(hub.groups[1]!.buttons.map((b) => b.id)).toEqual(buttons.filter((b) => b.zone === 'right').map((b) => b.id));
+    }
+  });
+
+  it('a group shows a badge only when something inside it has one, and names itself in every language', () => {
+    expect(compactHub(hubButtons(base)).groups.every((g) => !g.badge)).toBe(true);
+    const more = compactHub(hubButtons({ ...base, newsUnseen: true })).groups.find((g) => g.id === 'more')!;
+    expect(more.badge).toBe(true);
+    for (const lang of LANGUAGES) for (const g of compactHub(hubButtons(base)).groups) expect(catalog(lang)[g.labelKey], `${lang} ${g.labelKey}`).toBeTruthy();
+    for (const g of compactHub(hubButtons(base)).groups) expect(PIXEL_ICONS[g.icon], g.id).toBeTruthy();
   });
 });

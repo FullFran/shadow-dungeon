@@ -3,7 +3,8 @@ import { h } from '../ui/window';
 import { buildAltar } from '../ui/altar-art';
 import { pixelIconSvg } from '../ui/pixel-icons';
 import '../styles/hub-altar.css';
-import { hubStep, type HubButton, type HubDirection, type HubId } from './title-hub';
+import '../styles/hub-phone.css';
+import { compactHub, hubStep, type HubButton, type HubDirection, type HubGroup, type HubId } from './title-hub';
 
 /**
  * The title hub on screen (odd/tasks/title-hub.md T4; .agents/DESIGN.md §3):
@@ -103,8 +104,98 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
       })()
     : null;
 
+  // Phones (owner 2026-11-08: "demasiado botón ... pequeño y sobrecargado"): the rails, the system row and the links fold
+  // into three group buttons (src/styles/hub-phone.css shows them only on a short touch screen); each opens a sheet of tiles.
+  const groups = compactHub(options.buttons).groups;
+  let closeSheet: (() => void) | null = null;
+
+  const openSheet = (g: HubGroup, opener: HTMLElement): void => {
+    closeSheet?.();
+    const note = h('p', { className: 'hub-sheet-note' });
+    note.setAttribute('role', 'status');
+    const tiles = g.buttons.map((b) => {
+      const label = t(b.labelKey);
+      const tile = h('button', { className: `hub-tile${b.locked ? ' is-locked' : ''}${b.badge ? ' has-badge' : ''}`, type: 'button' }, [
+        h('span', { className: 'hub-tile-icon' }, [pixelIconSvg(b.icon), ...(b.locked ? [pixelIconSvg('lock', 'px-icon hub-lock')] : []), ...(b.badge ? [h('span', { className: 'hub-badge' })] : [])]),
+        h('span', { className: 'hub-tile-label', textContent: label }),
+      ]);
+      tile.dataset.tile = b.id;
+      tile.setAttribute('aria-label', b.locked ? `${label}. ${t(b.lockKey ?? 'hub.locked.town')}` : label);
+      tile.addEventListener('click', () => {
+        if (b.locked) {
+          note.textContent = t(b.lockKey ?? 'hub.locked.town');
+          return;
+        }
+        close();
+        options.onPick(b.id);
+      });
+      return tile;
+    });
+    const back = h('button', { className: 'hl-back hub-sheet-back', type: 'button', textContent: t('menu.back') });
+    const panel = h('section', { className: 'hub-sheet md-window' }, [
+      h('header', { className: 'hub-sheet-head' }, [pixelIconSvg(g.icon, 'px-icon hub-sheet-icon'), h('h2', { textContent: t(g.labelKey) }), back]),
+      h('div', { className: `hub-sheet-grid is-${g.buttons.length > 6 ? 'wide' : 'narrow'}` }, tiles),
+      note,
+    ]);
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', t(g.labelKey));
+    const veil = h('div', { className: 'hub-sheet-veil' }, [panel]);
+    const onSheetKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        close();
+        return;
+      }
+      const dir = KEYS[e.code];
+      if (!dir) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const list: HTMLElement[] = [...tiles, back];
+      const current = list.indexOf(document.activeElement as HTMLElement);
+      if (current < 0) return void tiles[0]?.focus();
+      const points = list.map((el, i) => {
+        const r = el.getBoundingClientRect();
+        return { id: String(i), x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      list[Number(hubStep(points, String(current), dir))]?.focus();
+    };
+    function close(): void {
+      window.removeEventListener('keydown', onSheetKey, true);
+      veil.remove();
+      closeSheet = null;
+      if (opener.isConnected) opener.focus({ preventScroll: true });
+    }
+    back.addEventListener('click', close);
+    veil.addEventListener('click', (e) => {
+      if (e.target === veil) close();
+    });
+    window.addEventListener('keydown', onSheetKey, true);
+    closeSheet = close;
+    element.append(veil);
+    (tiles.find((tile) => !tile.classList.contains('is-locked')) ?? tiles[0] ?? back).focus({ preventScroll: true });
+  };
+
+  const groupButton = (g: HubGroup): HTMLButtonElement => {
+    const label = t(g.labelKey);
+    const el = h('button', { className: `hub-group hub-group-${g.id}${g.badge ? ' has-badge' : ''}`, type: 'button' }, [
+      h('span', { className: 'hub-group-icon' }, [pixelIconSvg(g.icon), ...(g.badge ? [h('span', { className: 'hub-badge' })] : [])]),
+      h('span', { className: 'hub-group-text' }, [
+        h('span', { className: 'hub-group-name', textContent: label }),
+        h('span', { className: 'hub-group-peek' }, g.buttons.slice(0, 4).map((b) => pixelIconSvg(b.icon, 'px-icon hub-group-mini'))),
+      ]),
+    ]);
+    el.dataset.hub = `group-${g.id}`;
+    el.setAttribute('aria-label', label);
+    el.setAttribute('aria-haspopup', 'dialog');
+    el.addEventListener('click', () => openSheet(g, el));
+    return el;
+  };
+  const groupOf = (id: HubGroup['id']): HTMLButtonElement[] => groups.filter((g) => g.id === id).map(groupButton);
+
   const rail = (z: 'left' | 'right', heading: string) => {
-    const nav = h('nav', { className: `hub-rail hub-rail-${z}` }, [h('p', { className: 'hub-rail-title', textContent: heading }), ...zone(z).map((b) => relic(b, 'rail'))]);
+    const nav = h('nav', { className: `hub-rail hub-rail-${z}` }, [h('p', { className: 'hub-rail-title', textContent: heading }), ...zone(z).map((b) => relic(b, 'rail')), ...groupOf(z === 'left' ? 'partner' : 'world')]);
     nav.setAttribute('aria-label', heading);
     return nav;
   };
@@ -164,7 +255,7 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
     h('header', { className: 'hub-top' }, [
       profile,
       h('div', { className: 'hub-logo' }, [h('h1', { textContent: t('app.title') }), h('p', { className: 'title-alt', textContent: t('title.alt') })]),
-      h('div', { className: 'hub-system' }, [coinChip, ...zone('system').map((b) => relic(b, 'system'))]),
+      h('div', { className: 'hub-system' }, [coinChip, ...zone('system').map((b) => relic(b, 'system')), ...groupOf('more')]),
     ]),
     rail('left', t('hub.rail.partner')),
     partner,
@@ -188,7 +279,7 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
       window.removeEventListener('keydown', onKey);
       return;
     }
-    if (document.querySelector('.town-shop')) return;
+    if (document.querySelector('.town-shop') || closeSheet) return;
     const dir = KEYS[e.code];
     if (!dir) return;
     const list = controls();
@@ -218,6 +309,7 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
     element,
     focus,
     dispose() {
+      closeSheet?.();
       window.removeEventListener('keydown', onKey);
       window.clearTimeout(statusTimer);
     },

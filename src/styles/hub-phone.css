@@ -1,0 +1,81 @@
+/* The title hub on a phone (odd/tasks/mobile-pass.md T5; owner 2026-11-08: "demasiado botón ... pequeño y sobrecargado").
+   A short touch screen keeps six controls at rest: Más (top right), the two group slabs (Tu Pokémon left, El mundo right),
+   the partner's Cambiar, JUGAR and En línea. The rails, the system row, the links and the news card fold into the group
+   sheets (src/app/title-hub-view.ts openSheet). Desktop and tall touch screens keep the full hub: the group buttons hide. */
+
+.hub-group { display: none; }
+.hub-sheet-veil { position: fixed; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--md-ink) 55%, transparent), color-mix(in srgb, var(--md-ink) 92%, transparent) 75%); animation: relic-veil 160ms ease-out both; }
+
+@media (max-height: 560px) {
+  html.touch .hub { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px 12px; }
+  /* At rest: no rails, no system row, no links, no news. */
+  html.touch .hub-rail > .hub-btn, html.touch .hub-rail-title, html.touch .hub-system > .hub-btn, html.touch .hub-links, html.touch .hub-news, html.touch .hub-bottom > div:first-child:not(.hub-cta) { display: none; }
+  html.touch .hub-rail { display: flex; align-items: center; }
+  html.touch .hub-rail-left { justify-self: start; } html.touch .hub-rail-right { justify-self: end; }
+  html.touch .hub-bottom { grid-template-columns: 1fr; justify-items: center; }
+
+  /* Group slab: a tall relic tile, icon over name over a peek of what is inside. */
+  html.touch .hub-group { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    width: 148px; min-height: 148px; padding: 12px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 8px;
+    box-shadow: 0 0 0 2px var(--md-ink), inset 0 -10px 16px color-mix(in srgb, var(--md-ink) 55%, transparent), 0 6px 0 color-mix(in srgb, var(--md-ink) 50%, transparent); }
+  html.touch .hub-group-icon { position: relative; display: grid; place-items: center; width: 56px; height: 56px; }
+  html.touch .hub-group-icon > .px-icon { width: 52px; height: 52px; filter: drop-shadow(0 2px 0 color-mix(in srgb, var(--md-ink) 70%, transparent)); }
+  html.touch .hub-group-text { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  html.touch .hub-group-name { font-size: 20px; line-height: 1; color: var(--md-text); text-align: center; text-shadow: 0 2px 0 var(--md-ink); }
+  html.touch .hub-group-peek { display: flex; gap: 4px; opacity: 0.75; }
+  html.touch .hub-group-mini { width: 18px; height: 18px; }
+  html.touch .hub-group:active { transform: translateY(1px); }
+  html.touch .hub-group:focus-visible { border-color: var(--md-cursor); outline: none; }
+  /* Más: one square relic button beside the coins, the coin chip's height. */
+  html.touch .hub-group-more { width: 46px; min-height: 46px; height: 46px; padding: 0; gap: 0; border-radius: 6px; }
+  html.touch .hub-group-more .hub-group-icon, html.touch .hub-group-more .hub-group-icon > .px-icon { width: 28px; height: 28px; }
+  html.touch .hub-group-more .hub-group-text { display: none; }
+
+  /* Bigger, calmer primary actions now that they stand alone. */
+  html.touch .hub-cta { gap: 12px; }
+  html.touch .hub-play { min-height: 64px; padding: 6px 26px 6px 14px; }
+  html.touch .hub-play-name { font-size: 32px; }
+  html.touch .hub-online { min-height: 64px; padding: 4px 16px 4px 10px; }
+
+  /* The sheet: a relic window of large tiles, three (or five for Más) across, never scrolling. */
+  html.touch .hub-sheet { display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; width: min(40rem, 100%); height: auto; min-height: 0; max-height: 100%; flex: none; padding: 12px 14px 10px; }
+  .hub-sheet-head { display: flex; align-items: center; gap: 10px; }
+  .hub-sheet-head h2 { flex: 1; margin: 0; font-size: 24px; line-height: 1; color: var(--md-cursor); text-shadow: 0 2px 0 var(--md-ink); }
+  .hub-sheet-icon { width: 32px; height: 32px; }
+  .hub-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .hub-sheet-grid.is-wide { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .hub-tile { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 92px; padding: 8px 4px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    background: radial-gradient(130% 90% at 50% 0%, var(--relic-slab-edge), var(--relic-slab) 70%); border: 2px solid var(--relic-gold-deep); border-radius: 6px; box-shadow: 0 0 0 2px var(--md-ink), 0 4px 0 color-mix(in srgb, var(--md-ink) 50%, transparent); }
+  .hub-sheet-grid.is-wide .hub-tile { min-height: 84px; }
+  .hub-tile-icon { position: relative; display: grid; place-items: center; }
+  .hub-tile-icon > .px-icon:first-child { width: 40px; height: 40px; filter: drop-shadow(0 2px 0 color-mix(in srgb, var(--md-ink) 70%, transparent)); }
+  .hub-tile-icon .hub-lock { position: absolute; right: -10px; bottom: -8px; width: 22px; height: 22px; }
+  .hub-tile-label { font-family: var(--md-text-font); font-weight: 700; font-size: 15px; line-height: 1.15; color: var(--md-text); text-align: center; overflow-wrap: anywhere; }
+  .hub-tile.is-locked .hub-tile-icon > .px-icon:first-child { filter: grayscale(0.85) brightness(0.62); }
+  .hub-tile.is-locked .hub-tile-label { color: var(--md-disabled); }
+  .hub-tile:active { transform: translateY(1px); }
+  .hub-tile:focus-visible { border-color: var(--md-cursor); outline: none; }
+  .hub-sheet-note { min-height: 1.3em; margin: 0; font-family: var(--md-text-font); font-size: 14px; color: var(--md-cursor); text-align: center; }
+  .hub-sheet-note:empty { display: none; }
+  .hub-sheet-back { flex: none; }
+}
+
+/* Small phones (about 667 px across): the group slabs narrow, nothing else changes. */
+@media (max-height: 560px) and (max-width: 760px) {
+  html.touch .hub-group:not(.hub-group-more) { width: 124px; min-height: 132px; }
+  html.touch .hub-group-name { font-size: 17px; }
+  html.touch .hub-play-name { font-size: 28px; }
+  /* The logo stays on one line and the fan notice on two, so the partner's plate never meets JUGAR. */
+  html.touch .hub-logo h1 { font-size: 24px; white-space: nowrap; }
+  html.touch .hub-logo .title-alt { display: none; }
+  html.touch #app:has(.hub) > .notice { font-size: 10px; }
+}
+/* Every phone: the plate drops its kicker line (the altar already says whose it is). */
+@media (max-height: 560px) {
+  html.touch .hub-plate-kicker { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) { .hub-sheet-veil { animation: none; } }
