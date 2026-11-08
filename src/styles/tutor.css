@@ -165,6 +165,18 @@
   html.touch .tu-row { background: var(--relic-slab); border-color: var(--relic-slab-edge); }
   html.touch .tu-row.is-focused { border-color: var(--md-border); }
   html.touch .tu-row-name { overflow: visible; text-overflow: clip; white-space: normal; line-height: 1.05; }
+  /* The sheet gives its height to the text and the action first; the live preview takes what is left. */
+  html.touch .tu-preview { min-height: 0; }
+  html.touch .tu-window .tu-note { height: auto; display: block; overflow: visible; -webkit-line-clamp: unset; line-height: 1.15; }
+  html.touch .tu-act { height: 44px; }
+  /* Straight in #app (the screen, not the town's veil) the window takes the whole phone: the 96 px kept for the old chrome goes. */
+  html.touch #app > .tu-window { height: 100%; max-height: none; }
+}
+@media (max-height: 400px) {
+  html.touch .tu-preview { display: none; }
+}
+@media (max-height: 340px) {
+  html.touch .tu-act { height: 40px; }
 }
 @media (max-height: 560px) and (max-width: 720px) {
   /* Narrow: only the open tab keeps its name (its icon and the aria label tell the others apart). */
