@@ -99,6 +99,7 @@ import type { NetSession } from '../net/session';
 import { t } from '../i18n';
 import { displayName } from '../net/nickname';
 import type { RosterEntry } from '../net/protocol';
+import { PRESS_GRACE_MS, PRESS_NEXT_GRACE_MS, pressGuard } from './press-guard';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { openMemoryCard } from './memory-card';
 import { FRAGMENT_REACH, fragmentSpot, type StoryRun } from '../core/story';
@@ -488,8 +489,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     e.preventDefault();
     e.stopImmediatePropagation();
     if (e.repeat) return;
-    if (storyBox) nextStoryLine();
-    else dismissSign();
+    if (storyBox) {
+      // A press already in progress (the attack key held when the line appeared) must not dismiss it unread.
+      if (storyGuard.accept(performance.now())) nextStoryLine();
+    } else dismissSign();
   };
   if (signWaits) window.addEventListener('keydown', onSignKey, true);
   function tickSign(): void {
@@ -617,6 +620,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
    */
   const storyLines: string[] = [];
   let storyBox: HTMLElement | null = null;
+  /** Issue #53: a line that appears mid-fight (a boss's last words) ignores the attack clicks still coming; a deliberate press or tap after the grace goes on. */
+  const storyGuard = pressGuard();
   const tell = (text: string, tone: LogTone) => {
     say(text, tone);
     if (net || quiet) return;
@@ -624,16 +629,18 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!storyBox) nextStoryLine();
   };
   function nextStoryLine(): void {
+    const answered = storyBox !== null;
     storyBox?.remove();
     storyBox = null;
     const text = storyLines.shift();
     if (text === undefined) return;
+    storyGuard.arm(performance.now(), answered ? PRESS_NEXT_GRACE_MS : PRESS_GRACE_MS);
     const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
     storyBox = h('div', { className: 'story-box', role: 'status' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
     storyBox.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      nextStoryLine();
+      if (storyGuard.accept(performance.now())) nextStoryLine();
     });
     overlayParent.append(storyBox);
   }
@@ -1079,6 +1086,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     offerPick();
   }
 
+  const pickGuard = pressGuard();
+
   function hidePick(): void {
     if (!closePick) return;
     closePick();
@@ -1107,7 +1116,12 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!run.offer || run.offer.length === 0 || ended) return;
     // Solo: menu clicks must not attack and held keys must not stick (the game pauses meanwhile).
     if (!net) input.setSuspended(true);
-    closePick = openItemPick(overlayParent, pickCards(run.offer, world.player.items), Boolean(net), choose);
+    pickGuard.arm(performance.now());
+    // The boss's reward opens as it falls: a click still meant for the boss must not pick a card unseen (issue #53).
+    closePick = openItemPick(overlayParent, pickCards(run.offer, world.player.items), Boolean(net), (index) => {
+      if (!net && !pickGuard.accept(performance.now())) return;
+      choose(index);
+    });
   }
 
   function restartFloor(): void {
@@ -1568,7 +1582,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         autoAim: options.touch?.autoAim() ?? true,
       };
       // The controller plays only while nothing is open: a shared run keeps going under a pick, where it acts as keys.
-      options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory);
+      options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory && !(signWaits && (sign !== null || storyBox !== null)));
       const padInput = touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext);
       if (hadInput(padInput)) padInUse = true;
       else if (hadInput(keys)) padInUse = false;
