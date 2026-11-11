@@ -45,6 +45,56 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.13.0',
+    date: '2026-11-11',
+    sections: {
+      new: [
+        {
+          es: 'En el móvil el juego se juega en horizontal: si lo sujetas en vertical, un aviso a pantalla completa te pide girarlo.',
+          en: 'On a phone the game is played in landscape: if you hold it upright, a full-screen notice asks you to turn it.',
+          icon: 'eclipse',
+        },
+        {
+          es: 'En el Santuario, los jefes que aún no has vencido aparecen como siluetas negras con un borde de brasa.',
+          en: 'In the Shrine, the bosses you have not beaten yet show as black silhouettes rimmed in ember light.',
+          icon: 'ghost',
+        },
+      ],
+      improved: [
+        {
+          es: 'En el móvil casi nada necesita desplazarse con el dedo: las ventanas que no caben se pasan por páginas, con botones o deslizando (ajustes por pestañas, tienda, tutor, logros, galería, amigos, Santuario, Sima, gacha, evolución, desafíos, tablón, informes, créditos, pausa y pantallas finales).',
+          en: 'On a phone almost nothing needs scrolling: windows that do not fit turn into pages, with buttons or a swipe (settings as tabs, shop, tutor, achievements, gallery, friends, Shrine, Sima, gacha, evolution, challenges, board, reports, credits, pause and end screens).',
+          icon: 'sparkle',
+        },
+        {
+          es: 'En el móvil el menú del pueblo agrupa sus botones en tres hojas y deja más sitio al mapa.',
+          en: 'On a phone the town menu folds its buttons into three sheets and leaves more room for the map.',
+          icon: 'paw',
+        },
+        {
+          es: 'Las misiones del tablón se ven en filas con el título completo.',
+          en: 'Board missions show as rows with their whole title.',
+          icon: 'trophy',
+        },
+        {
+          es: 'Los controles táctiles de la partida ya no se pisan entre sí ni con el minimapa.',
+          en: 'The in-run touch controls no longer overlap each other or the minimap.',
+        },
+      ],
+      fixed: [
+        {
+          es: 'Al jugar como invitado en una sala online, un charco de veneno o un proyectil de un anillo te golpeaba una y otra vez y te bajaba la vida de golpe. Ahora cada uno golpea una sola vez, como jugando solo.',
+          en: 'Playing as a guest in an online room, a poison puddle or one projectile of a ring hit you over and over and drained your HP in a burst. Now each one hits once, as in solo.',
+          icon: 'shield',
+        },
+        {
+          es: 'Un Pokémon ya no aparece un instante como un cuadrado magenta al empezar a andar.',
+          en: 'A Pokémon no longer shows as a magenta square for a moment when it starts walking.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.12.1',
     date: '2026-11-06',
     sections: {
