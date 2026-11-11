@@ -125,7 +125,7 @@ import { shopWindow } from './shop';
 import { buildHint } from './tutor';
 import { tutorWindow } from './tutor-screen';
 import { buildTag, knownLoadout, knownMoves, runRanks } from '../core/tutor';
-import { awakenedOf, currentForm, rosterOf } from '../core/collection';
+import { awakenedOf, currentForm, selectableOf } from '../core/collection';
 import { isFemale } from '../core/gender';
 import { hasShiny, wearsShiny } from '../core/shiny';
 import { coinLines } from './coin-lines';
@@ -192,7 +192,7 @@ const { account, store } = setupAccount({
   },
   onReplaced: () => {
     // The picked species must still be in the (possibly new) roster.
-    settings = loadSettings(store, settings, rosterOf(loadSave(store)));
+    settings = loadSettings(store, settings, selectableOf(loadSave(store)));
     const app = document.getElementById('app');
     // A walker that arrived with the cloud profile ends the onboarding: the welcome's drawer closes and routes on, any other step re-checks.
     if (onboardingDrawer) onboardingDrawer.close();
@@ -212,7 +212,7 @@ const authFlow = createAuthFlow({ clerk: clerkFromEnv(import.meta.env.VITE_CLERK
 const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
-let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
+let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), selectableOf(loadSave(store)));
 /** The in-game control hint bar (src/ui/play-hints.ts), for the town and the runs: the Settings switch and the pad layout last chosen. */
 const playHints = { enabled: () => settings.showHints, padStyle: savedPadStyle };
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
@@ -756,7 +756,7 @@ function adoptReturningPlayer(): void {
   const records = readRecords(store);
   if (!hasProgress(save, records)) return;
   markPrologueSeen(store);
-  update(withReturningPlayer(settings, records.lastSpecies, rosterOf(save)));
+  update(withReturningPlayer(settings, records.lastSpecies, selectableOf(save)));
 }
 
 /**
@@ -842,7 +842,7 @@ function welcome(root: HTMLElement, asGuest: () => void): void {
     // A game kept on this device: it counts as chosen and the prologue as seen, as adoptReturningPlayer does for a profile with progress.
     onDevice: () => {
       markPrologueSeen(store);
-      update(withReturningPlayer(settings, readRecords(store).lastSpecies, rosterOf(loadSave(store))));
+      update(withReturningPlayer(settings, readRecords(store).lastSpecies, selectableOf(loadSave(store))));
       clearOnboarding(store);
       titleScreen(root);
     },
@@ -1122,7 +1122,7 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
       stage,
       species: settings.species,
       loadout: settings.loadout,
-      roster: rosterOf(save).filter((id) => !line || lineOf(id) === line),
+      roster: selectableOf(save).filter((id) => !line || lineOf(id) === line),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       ...skins(),
@@ -1761,7 +1761,7 @@ function shrineStep(root: HTMLElement, from: ShrineFrom, step: ShrineStep): void
       stage,
       species: settings.species,
       loadout: settings.loadout,
-      roster: rosterOf(loadSave(store)),
+      roster: selectableOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       ...skins(() => r?.session.repick(settings.species, settings.loadout, skinOn(), femaleOn())),
@@ -1805,7 +1805,7 @@ function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void,
       stage,
       species: settings.species,
       loadout: settings.loadout,
-      roster: rosterOf(loadSave(store)),
+      roster: selectableOf(loadSave(store)),
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       ...skins(repick),
@@ -1838,7 +1838,7 @@ function roomShrineGuest(root: HTMLElement, stage: 'menu' | 'species' | 'moves' 
         stage,
         species: settings.species,
         loadout: settings.loadout,
-        roster: rosterOf(loadSave(store)),
+        roster: selectableOf(loadSave(store)),
         sheets: sheetsReady(),
         ...tutorView(settings.species),
         ...skins(),
@@ -2476,7 +2476,7 @@ if (root) {
     markPrologueSeen(store);
     markTourSeen(store);
     markVersionSeen(store, APP_VERSION);
-    update(withReturningPlayer(settings, 'zorua', rosterOf(loadSave(store))));
+    update(withReturningPlayer(settings, 'zorua', selectableOf(loadSave(store))));
     recordPast(store, Date.now());
     const url = new URL(window.location.href);
     url.searchParams.delete('unlock');

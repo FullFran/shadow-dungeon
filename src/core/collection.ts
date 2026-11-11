@@ -1,4 +1,4 @@
-import { lineRoot, type MaterialTier } from '../data/player-evolutions';
+import { lineForms, lineRoot, type MaterialTier } from '../data/player-evolutions';
 import { isPlayable, isStarter, STARTER_SPECIES, type SpeciesId } from '../data/species';
 
 /**
@@ -40,6 +40,14 @@ export function rosterOf(collection: Pick<Collection, 'owned'>): SpeciesId[] {
   const starters = STARTER_SPECIES.map((s) => owned.find((id) => lineRoot(id) === s) ?? s);
   return [...new Set([...starters, ...owned.filter((id) => !isStarter(lineRoot(id)))])];
 }
+
+/**
+ * Everyone a player can pick: each roster entry with the earlier forms of
+ * its line before it (owner decision 2026-11-11: evolving never takes a form
+ * away). `rosterOf` stays one current form per line: evolving and the evolve
+ * window read it.
+ */
+export const selectableOf = (collection: Pick<Collection, 'owned'>): SpeciesId[] => [...new Set(rosterOf(collection).flatMap(lineForms))];
 
 /** The form a player has of `species`' line (its current form; `species` itself when none is in the roster). */
 export const currentForm = (collection: Pick<Collection, 'owned'>, species: SpeciesId): SpeciesId =>

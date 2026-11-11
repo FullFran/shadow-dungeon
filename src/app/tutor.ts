@@ -203,7 +203,8 @@ export function tutorPurchase(store: KeyValueStore, species: SpeciesId, row: Pic
   const save = loadSave(store);
   const wallet = row.kind === 'move' ? buyMove({ ...save, cleared }, species, row.move) : rankUp(save, species, row.move);
   if (!wallet) return null;
-  const { cleared: _cleared, ...bought } = wallet;
+  // Buying never changes the collection: `owned` stays the save's.
+  const { cleared: _cleared, owned: _owned, ...bought } = wallet;
   const next: SaveData = { ...save, ...bought };
   writeSave(store, next);
   return loadSave(store);

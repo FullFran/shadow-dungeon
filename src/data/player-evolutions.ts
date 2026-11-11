@@ -82,6 +82,17 @@ export function lineRoot(species: SpeciesId): SpeciesId {
   return current;
 }
 
+/** Every form of `species`' line from its root up to `species` itself, in order (just `species` outside a line). */
+export function lineForms(species: SpeciesId): SpeciesId[] {
+  const forms = [species];
+  for (let i = 0; i < PLAYER_EVOLUTIONS.length; i++) {
+    const into = PLAYER_EVOLUTIONS.find((e) => e.to === forms[0]);
+    if (!into) break;
+    forms.unshift(into.from);
+  }
+  return forms;
+}
+
 /**
  * The hard ceiling of a stage bonus (HP and damage alike): solo, and lower
  * in a party (more than one player), where every evolved player adds up.
