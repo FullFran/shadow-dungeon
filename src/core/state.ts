@@ -611,6 +611,12 @@ export interface WorldState {
   player: PlayerState;
   enemies: readonly EnemyState[];
   projectiles: readonly ProjectileState[];
+  /**
+   * Guest: ids of host enemy shots already spent on its own player. The host
+   * keeps sending them until they expire, so `applyHostSnapshot` leaves them
+   * out instead of rebuilding them with a clean hit record (#48, #49).
+   */
+  spentShots?: readonly string[];
   /** Oran Berries still on this floor (a guest's list follows the host's snapshots). */
   berries: readonly Berry[];
   lock: LockState;
