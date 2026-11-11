@@ -15,6 +15,7 @@ import { atHeraldCard } from '../core/herald/brain';
 import type { HeraldDef } from '../data/herald';
 import { echoTitle } from '../core/eclipse-escalation';
 import { echoMimic } from '../core/eclipse-echo';
+import { speakerFace } from '../adapters/portrait';
 import { echoLine, echoName } from '../adapters/eclipse-echo-view';
 import { heraldCardName, heraldHere, heraldIntro } from './herald-run';
 import { acceptPact, declinePact, eatBought, merchantItem, nearSimaEvent, pactEffects, rewardsItems, spendCoins, type SimaEventState, type SimaRecord } from '../core/sima-events';
@@ -106,6 +107,7 @@ import { PRESS_GRACE_MS, PRESS_NEXT_GRACE_MS, pressGuard } from './press-guard';
 import { openItemPick, pickCards, pickIndexForKey, pickPausesSimulation } from './item-pick';
 import { openMemoryCard } from './memory-card';
 import { FRAGMENT_REACH, fragmentSpot, type StoryRun } from '../core/story';
+import { lineFace, type PlayerLook } from '../data/dialogue-speakers';
 import { chapterOf, STORY_LOW_HP, STORY_MID_FLOOR, storyKeys, storyOf, type StoryTrigger } from '../data/story-quests';
 import { simulationPaused, type MenuActions, type PauseContext } from './menu';
 import { buildPauseMap, cropPauseMap } from './pause-map';
@@ -628,25 +630,33 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
    * a dialog box with the run paused until a press; in a shared run (never
    * paused) they go to the log as before. Either way the log keeps them.
    */
-  const storyLines: string[] = [];
+  const storyLines: { text: string; face: ReturnType<typeof lineFace> }[] = [];
   let storyBox: HTMLElement | null = null;
   /** Issue #53: a line that appears mid-fight (a boss's last words) ignores the attack clicks still coming; a deliberate press or tap after the grace goes on. */
   const storyGuard = pressGuard();
-  const tell = (text: string, tone: LogTone) => {
+  /** The player's look, for its portrait beside its own lines (issue #47). */
+  const myLook = (): PlayerLook => ({ species: world.player.species, ...(options.shiny ? { shiny: true } : {}), ...(options.female ? { female: true } : {}) });
+  const tell = (text: string, tone: LogTone, face: ReturnType<typeof lineFace> = null) => {
     say(text, tone);
     if (net || quiet) return;
-    storyLines.push(text);
+    storyLines.push({ text, face });
     if (!storyBox) nextStoryLine();
   };
   function nextStoryLine(): void {
     const answered = storyBox !== null;
     storyBox?.remove();
     storyBox = null;
-    const text = storyLines.shift();
-    if (text === undefined) return;
+    const next = storyLines.shift();
+    if (next === undefined) return;
+    const { text, face } = next;
     storyGuard.arm(performance.now(), answered ? PRESS_NEXT_GRACE_MS : PRESS_GRACE_MS);
     const device = hintDevice();
-    storyBox = h('div', { className: 'story-box', role: 'status' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
+    // The speaker's Mystery Dungeon portrait (issue #47), loaded now; none, or a file that fails, leaves no frame.
+    const frame = h('span', { className: 'story-box-face' });
+    const img = face ? speakerFace(face.sprite, face.emotion, () => frame.remove()) : null;
+    if (img) frame.append(img);
+    const body = h('div', { className: 'story-box-body' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
+    storyBox = h('div', { className: 'story-box', role: 'status' }, img ? [frame, body] : [body]);
     storyBox.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -664,7 +674,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** The Pokémon's own words in the log: «Mimikyu: …». */
   const voice = (trigger: StoryTrigger) => {
     if (!story) return;
-    tell(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level');
+    tell(t('story.voice').replace('{species}', t(`species.${world.player.species}`)).replace('{text}', t(storyKeys.voice(story.run.line, story.run.chapter, trigger))), 'level', lineFace(null, trigger, myLook()));
   };
   /** A Senda's floor: the voice, the fragment it hides, its boss's epithet and first words. */
   const storyFloor = () => {
@@ -688,7 +698,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const foe = world.enemies.find((e) => e.boss);
     if (!boss || !foe) return;
     intro = { name: t(`species.${foe.species}`), subtitle: t(storyKeys.bossTitle(line, chapter, boss.floor)), shownAtMs: realMs };
-    for (let i = 0; i < boss.pre; i++) tell(t(storyKeys.bossPre(line, chapter, boss.floor, i)), 'warn');
+    for (let i = 0; i < boss.pre; i++) {
+      const text = t(storyKeys.bossPre(line, chapter, boss.floor, i));
+      tell(text, 'warn', lineFace(text, 'bossPre', myLook()));
+    }
   };
   /** After a step: a boss of the chapter fell (its last words), the low-HP line, a fragment picked up. */
   const watchStory = (events: readonly GameEvent[]) => {
@@ -697,7 +710,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const boss = story.chapter.bosses.find((b) => b.floor === run.floor);
     if (boss && !bossesMourned.has(boss.floor) && events.some((e) => e.type === 'enemyDefeated' && prev.enemies.some((x) => x.id === e.enemyId && x.boss))) {
       bossesMourned.add(boss.floor);
-      for (let i = 0; i < boss.post; i++) tell(t(storyKeys.bossPost(line, chapter, boss.floor, i)), 'good');
+      for (let i = 0; i < boss.post; i++) {
+        const text = t(storyKeys.bossPost(line, chapter, boss.floor, i));
+        tell(text, 'good', lineFace(text, 'bossPost', myLook()));
+      }
     }
     if (!lowHpSaid && world.player.hp > 0 && world.player.hp < world.player.maxHp * STORY_LOW_HP) {
       lowHpSaid = true;

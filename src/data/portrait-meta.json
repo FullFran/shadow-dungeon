@@ -1,52 +1,786 @@
 {
   "source": "53074f14d6947daf17af7e21db709497169a0e76",
-  "files": [
-    "0063/0000",
-    "0063/0000/0001",
-    "0064/0000",
-    "0064/0000/0001",
-    "0065/0000",
-    "0065/0000/0001",
-    "0104/0000",
-    "0104/0000/0001",
-    "0105/0000",
-    "0105/0000/0001",
-    "0393/0000",
-    "0393/0000/0001",
-    "0394/0000",
-    "0394/0000/0001",
-    "0395/0000",
-    "0395/0000/0001",
-    "0403/0000",
-    "0403/0000/0000/0002",
-    "0403/0000/0001",
-    "0403/0000/0001/0002",
-    "0404/0000",
-    "0404/0000/0000/0002",
-    "0404/0000/0001",
-    "0404/0000/0001/0002",
-    "0405/0000",
-    "0405/0000/0000/0002",
-    "0405/0000/0001",
-    "0405/0000/0001/0002",
-    "0570/0000",
-    "0570/0000/0001",
-    "0571/0000",
-    "0571/0000/0001",
-    "0607/0000",
-    "0607/0000/0001",
-    "0608/0000",
-    "0608/0000/0001",
-    "0609/0000",
-    "0609/0000/0001",
-    "0610/0000",
-    "0610/0000/0001",
-    "0611/0000",
-    "0611/0000/0001",
-    "0612/0000",
-    "0612/0000/0001",
-    "0778/0000",
-    "0778/0000/0001",
-    "0778/0001/0001"
-  ]
+  "files": {
+    "0063/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0063/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0064/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0064/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0065/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0065/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0092/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0093/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0096/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Determined",
+      "Pain"
+    ],
+    "0097/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0104/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0104/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0105/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0105/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0115/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0122/0000": [
+      "Normal"
+    ],
+    "0149/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0163/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0167/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0229/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0235/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0261/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0262/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0285/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0310/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0352/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0354/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0359/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0373/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0393/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0393/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0394/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0394/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0395/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0395/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0403/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0403/0000/0000/0002": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0403/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0403/0000/0001/0002": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0404/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0404/0000/0000/0002": [
+      "Normal"
+    ],
+    "0404/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0404/0000/0001/0002": [
+      "Normal"
+    ],
+    "0405/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0405/0000/0000/0002": [
+      "Normal",
+      "Happy",
+      "Determined"
+    ],
+    "0405/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0405/0000/0001/0002": [
+      "Normal",
+      "Happy",
+      "Determined"
+    ],
+    "0426/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Determined",
+      "Pain"
+    ],
+    "0429/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0453/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0461/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0477/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0478/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0517/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0518/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0543/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0570/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0570/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0571/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0571/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0590/0000": [
+      "Normal"
+    ],
+    "0607/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0607/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0608/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0608/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0609/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0609/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0610/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0610/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0611/0000": [
+      "Normal"
+    ],
+    "0611/0000/0001": [
+      "Normal"
+    ],
+    "0612/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Determined",
+      "Pain"
+    ],
+    "0612/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Determined",
+      "Pain"
+    ],
+    "0625/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0681/0000": [
+      "Normal"
+    ],
+    "0681/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0690/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0708/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0710/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0724/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0778/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0778/0000/0001": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0778/0001/0001": [
+      "Normal",
+      "Pain"
+    ],
+    "0781/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ],
+    "0793/0000": [
+      "Normal",
+      "Happy",
+      "Sad",
+      "Angry",
+      "Surprised",
+      "Worried",
+      "Determined",
+      "Pain"
+    ]
+  }
 }

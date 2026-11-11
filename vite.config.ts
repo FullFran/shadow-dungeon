@@ -24,12 +24,22 @@ export function buildDefines(env: Record<string, string | undefined>, git: () =>
 
 const gitHead = () => execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
 
+/**
+ * Whether the build may inline an asset as a data URL: never a portrait (issue #47). Each is under Vite's 4 KB limit,
+ * so all of them would ride inside index.js and load at start; as files, one loads when a dialogue line shows it.
+ * Anything else keeps Vite's default (undefined).
+ */
+export function inlineAsset(file: string): false | undefined {
+  return /[\\/]assets[\\/]portraits[\\/]/.test(file) ? false : undefined;
+}
+
 export default defineConfig({
   // Relative base so the build can be served from any sub-path (e.g. GitHub Pages).
   base: './',
   define: buildDefines(process.env, gitHead),
   // The effect bake worker loads each effect on demand (src/adapters/fx/bake.worker.ts).
   worker: { format: 'es' },
+  build: { assetsInlineLimit: inlineAsset },
   // Development server only: the effect gallery's verdicts (tools/fx-gallery.html).
   plugins: [fxFeedbackPlugin(), artVersionPlugin()],
 });

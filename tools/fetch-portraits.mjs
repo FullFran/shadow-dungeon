@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Downloads the "Normal" face portraits of every playable species (base, shiny and female looks) from PMDCollab
-// SpriteCollab (CC BY-NC 4.0, the source of the sprites) into src/assets/portraits/<sprite key>/Normal.png, mirroring
-// public/sprites. Writes src/data/portrait-meta.json (the pinned source commit and the keys that exist upstream)
-// and the "## Portraits" section of CREDITS.md. A look without art of its own is simply left out: the game falls
-// back to the base portrait of the form (src/data/portraits.ts), and says so in the manifest-driven test.
+// Downloads the Mystery Dungeon portraits (odd/tasks/pmd-portraits.md) from PMDCollab SpriteCollab (CC BY-NC 4.0, the
+// source of the sprites) into src/assets/portraits/<sprite key>/<Emotion>.png, mirroring public/sprites: every playable
+// look (base, shiny and female) and every species that speaks in a dialogue (SPEAKERS), each with the 8 core emotions
+// it has upstream. Writes src/data/portrait-meta.json (the pinned source commit and, per key, the emotions that exist)
+// and the "## Portraits" section of CREDITS.md. A look or emotion without art of its own is simply left out: the game
+// falls back to Normal and to the base portrait of the form (src/data/portraits.ts), and the manifest-driven tests say so.
 //
 //   node tools/fetch-portraits.mjs                 (pinned commit of src/data/portrait-meta.json)
 //   node tools/fetch-portraits.mjs --update        (move the pin to SpriteCollab's current master)
@@ -25,6 +26,19 @@ const REPO = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab';
 
 // Keep in step with PLAYABLE_SPECIES (src/data/species.ts); tests/data/portraits.test.ts fails when one is missing.
 const PLAYABLE = new Set(['mimikyu', 'zorua', 'litwick', 'cubone', 'abra', 'kadabra', 'alakazam', 'piplup', 'prinplup', 'empoleon', 'shinx', 'luxio', 'luxray', 'axew', 'fraxure', 'haxorus', 'zoroark', 'lampent', 'chandelure', 'marowak']);
+
+// Every other species that speaks (sprite-meta species names): town residents and services, the Sima plea, the tour,
+// the guardians and the Senda characters. tests/data/dialogue-speakers.test.ts fails when a speaker has no portrait.
+const SPEAKERS = new Set([
+  'gastly', 'phantump', 'poochyena', 'croagunk', 'foongus', 'hoothoot', 'shroomish', 'skrelp', 'smeargle', 'spinarak', 'venipede',
+  'aegislash', 'decidueye', 'dhelmise', 'nihilego',
+  'drowzee', 'hypno', 'musharna', 'munna', 'mr-mime', 'weavile', 'froslass', 'manectric', 'absol', 'bisharp', 'salamence', 'dragonite',
+  'kangaskhan', 'dusknoir', 'banette', 'mismagius', 'houndoom', 'haunter', 'drifblim', 'kecleon', 'mightyena',
+]);
+// Keys that are not sprite keys but hold a speaker's art: Pumpkaboo's sizes have no portraits, its base form does.
+const EXTRA = { '0710/0000': 'pumpkaboo' };
+
+const EMOTIONS = ['Normal', 'Happy', 'Sad', 'Angry', 'Surprised', 'Worried', 'Determined', 'Pain'];
 
 async function fetchBuffer(url) {
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -54,39 +68,46 @@ async function main() {
   }
   const base = `${REPO}/${source}`;
   const sprites = JSON.parse(await readFile(SPRITE_META, 'utf8')).sprites;
-  const keys = Object.entries(sprites)
-    .filter(([, meta]) => PLAYABLE.has(meta.species.replace(/-.*/, '')) && !(meta.species === 'mimikyu' && meta.form === 'busted'))
-    .map(([key]) => key)
-    .sort();
+  const isPlayable = (meta) => PLAYABLE.has(meta.species.replace(/-.*/, '')) && !(meta.species === 'mimikyu' && meta.form === 'busted');
+  // A speaker's base look (no shiny, no female); a playable species gets every look.
+  const isSpeakerBase = (key, meta) => SPEAKERS.has(meta.species) && key.split('/').length === 2;
+  const species = { ...Object.fromEntries(Object.entries(sprites).map(([key, meta]) => [key, meta.species])), ...EXTRA };
+  const keys = [
+    ...Object.entries(sprites)
+      .filter(([key, meta]) => isPlayable(meta) || isSpeakerBase(key, meta))
+      .map(([key]) => key),
+    ...Object.keys(EXTRA),
+  ].sort();
 
   const names = parseCreditNames((await fetchBuffer(`${base}/credit_names.txt`))?.toString('utf8') ?? '');
-  const found = [];
+  const found = {};
   const missing = [];
   const perArtist = new Map(); // display name -> { contact, looks: Set }
   for (const key of keys) {
-    const png = await fetchBuffer(`${base}/portrait/${remote(key)}/Normal.png`);
-    if (!png) {
+    const pngs = await Promise.all(EMOTIONS.map((emotion) => fetchBuffer(`${base}/portrait/${remote(key)}/${emotion}.png`)));
+    const have = EMOTIONS.filter((_, i) => pngs[i]);
+    if (have.length === 0) {
       missing.push(key);
       continue;
     }
     await mkdir(join(OUT, ...key.split('/')), { recursive: true });
-    await writeFile(join(OUT, ...key.split('/'), 'Normal.png'), png);
-    found.push(key);
+    for (const [i, emotion] of EMOTIONS.entries()) if (pngs[i]) await writeFile(join(OUT, ...key.split('/'), `${emotion}.png`), pngs[i]);
+    found[key] = have;
     const credits = (await fetchBuffer(`${base}/portrait/${remote(key)}/credits.txt`))?.toString('utf8') ?? '';
     for (const credit of parseCredits(credits)) {
-      // Only the lines that cover the Normal emotion: the one drawn here.
-      if (!credit.anims.includes('Normal')) continue;
+      // Only the lines that cover an emotion drawn here.
+      if (!credit.anims.some((anim) => have.includes(anim))) continue;
       const { name, contact } = resolveAuthor(names, credit.author);
       const entry = perArtist.get(name) ?? { contact, looks: new Set() };
       const [, , shiny, female] = key.split('/');
-      entry.looks.add(`${sprites[key].species}${female ? ' female' : ''}${shiny === '0001' ? ' shiny' : ''} (${remote(key)})`);
+      entry.looks.add(`${species[key]}${female ? ' female' : ''}${shiny === '0001' ? ' shiny' : ''} (${remote(key)})`);
       perArtist.set(name, entry);
     }
-    console.log(`${key} -> ${remote(key)}`);
+    console.log(`${key} -> ${remote(key)}: ${have.join(' ')}`);
   }
   await writeFile(OUT_META, `${JSON.stringify({ source, files: found }, null, 2)}\n`);
   await writeCredits(perArtist, source);
-  console.log(`${found.length} portraits from ${source}; no art of their own (base portrait used): ${missing.join(', ') || 'none'}`);
+  console.log(`${Object.keys(found).length} portraits from ${source}; no art of their own (base portrait used): ${missing.join(', ') || 'none'}`);
 }
 
 async function writeCredits(perArtist, source) {
@@ -96,9 +117,9 @@ async function writeCredits(perArtist, source) {
   const section = [
     '## Portraits',
     '',
-    'The face portraits (profile plate, account drawer) come from [PMDCollab SpriteCollab](https://github.com/PMDCollab/SpriteCollab)',
+    'The portraits (dialogue boxes, cinematics, profile plate, account drawer) come from [PMDCollab SpriteCollab](https://github.com/PMDCollab/SpriteCollab)',
     `at commit \`${source}\`, under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (non-commercial use, with attribution).`,
-    'Every author whose credits cover the Normal portrait is listed, current and former.',
+    'Every author whose credits cover an emotion shipped here is listed, current and former.',
     '',
     '_Generated by `node tools/fetch-portraits.mjs`; do not edit by hand._',
     '',

@@ -1,5 +1,5 @@
 import { portraitAssetUrl } from './bundled-art';
-import { portraitFor } from '../data/portraits';
+import { portraitFor, type PortraitEmotion } from '../data/portraits';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { lookKey, SPRITE_KEYS, SPRITES } from '../data/sprites';
 import '../styles/face-portrait.css';
@@ -11,6 +11,25 @@ import { frameAtTime } from './sprite-anim';
 /** The URL the browser loads a portrait from (one place, so a sprite loader can later route it). */
 /** A bundled portrait (src/data/bundled-art.ts); an empty URL makes the img fail, so the head crop takes over. */
 export const portraitUrl = (file: string): string => portraitAssetUrl(file) ?? '';
+
+/**
+ * A speaker's Mystery Dungeon portrait for a dialogue line (issue #47): the image of that look in that emotion (Normal
+ * when it has none), or null when the look has no portrait at all, so the view shows no frame. The file loads only now,
+ * when the line is shown: nothing is fetched up front. `onFail` runs if it fails to load (the view hides the frame).
+ */
+export function speakerFace(spriteKey: string, emotion: PortraitEmotion, onFail: () => void): HTMLImageElement | null {
+  const found = portraitFor(spriteKey, emotion);
+  const url = found ? portraitUrl(found.file) : '';
+  if (!url) return null;
+  const img = document.createElement('img');
+  img.className = 'speaker-face';
+  img.alt = '';
+  img.decoding = 'async';
+  img.draggable = false;
+  img.addEventListener('error', onFail, { once: true });
+  img.src = url;
+  return img;
+}
 
 export interface FaceOptions {
   /** Outer side of the frame in CSS px. */

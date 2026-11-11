@@ -46,3 +46,32 @@ describe('the Senda «before» cinematic, every attempt', () => {
     expect(cinematic).not.toMatch(/seen|Seen/);
   });
 });
+
+describe('the speaker of a Senda cinematic panel (issue #47)', () => {
+  it("an unnamed quote shows the line's Pokémon in the form the panel shows, a named one that character, narration none", async () => {
+    const { storyFace } = await import('../../src/app/story');
+    const { SPRITE_KEYS } = await import('../../src/data/sprites');
+    const lines: Record<string, string> = { a: '«Bajo contigo.»', b: 'Drowzee: «Huelo una pesadilla.»', c: 'Abra duerme casi todo el día.' };
+    const panel = (key: string, form?: 'kadabra') => ({ line: 'abra' as const, lines: [key], ...(form ? { figure: { anim: 'Idle' as const, form } } : {}) });
+    expect(storyFace(panel('a'), (k) => lines[k]!)).toEqual({ sprite: SPRITE_KEYS.abra, emotion: 'Normal' });
+    expect(storyFace(panel('a', 'kadabra'), (k) => lines[k]!)).toEqual({ sprite: SPRITE_KEYS.kadabra, emotion: 'Normal' });
+    expect(storyFace(panel('b'), (k) => lines[k]!)).toEqual({ sprite: SPRITE_KEYS.drowzee, emotion: 'Normal' });
+    expect(storyFace(panel('c'), (k) => lines[k]!)).toBeNull();
+  });
+
+  it('every Senda panel that a character speaks resolves to a portrait', async () => {
+    const { storyFace } = await import('../../src/app/story');
+    const { portraitFor } = await import('../../src/data/portraits');
+    let faces = 0;
+    for (const quest of QUESTS)
+      for (const chapter of CHAPTERS)
+        for (const phase of ['before', 'after'] as const)
+          for (const panel of storyPanels({ line: quest!.line, chapter }, phase, text)) {
+            const who = storyFace(panel, text);
+            if (!who) continue;
+            faces++;
+            expect(portraitFor(who.sprite, who.emotion), panel.id).not.toBeNull();
+          }
+    expect(faces).toBeGreaterThan(30);
+  });
+});

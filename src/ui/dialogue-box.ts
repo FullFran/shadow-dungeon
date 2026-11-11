@@ -1,21 +1,18 @@
-import type { SheetStore } from '../adapters/assets';
-import { sheetKey } from '../adapters/assets';
-import { frameAtTime } from '../adapters/sprite-anim';
+import { speakerFace } from '../adapters/portrait';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { glyphSvg } from '../app/gamepad-pad';
-import { SPRITES } from '../data/sprites';
+import type { PortraitEmotion } from '../data/portraits';
 import { t } from '../i18n';
 import type { DialogueView } from '../town/dialog';
 import { interactGlyphs, type HintDevice } from './play-hints-model';
-import { opaqueBounds, type Bounds } from './sprite-bounds';
 import '../styles/credits-controls.css';
 import '../styles/dialogue-box.css';
 import './sprite-fit';
 
 /**
  * The in-game dialogue box (.agents/DESIGN.md §4 "Dialogue box"), replacing the canvas box of the town (owner,
- * 2026-11-04: "rediseña también los diálogos"): a relic slab at the bottom edge with the speaker's portrait in a
- * sprite-fit box (never clipped), a name plate, the page in Atkinson Hyperlegible, a typewriter reveal the model drives
+ * 2026-11-04: "rediseña también los diálogos"): a relic slab at the bottom edge with the speaker's Mystery Dungeon
+ * portrait (issue #47; none, and no frame, for a speaker without one), a name plate, the page in Atkinson Hyperlegible, a typewriter reveal the model drives
  * (src/town/dialog.ts: a press completes the page, instant under reduced motion), a page counter when there are
  * several pages and a continue glyph of the device in use. The content and flows are unchanged: the scene opens the same
  * dialogues and advances them with the same keys; a click or tap on the slab advances too.
@@ -23,8 +20,10 @@ import './sprite-fit';
 export interface DialogueBoxState {
   speaker: string;
   view: DialogueView;
-  /** Sprite key of the speaker's sheet; none for signs and statues. */
+  /** Sprite key of the speaker's look, for its portrait; none for signs and statues. */
   portrait?: string;
+  /** The speaker's face on this line (Normal by default). */
+  emotion?: PortraitEmotion;
 }
 
 export interface DialogueBox {
@@ -34,7 +33,6 @@ export interface DialogueBox {
 }
 
 export interface DialogueBoxOptions {
-  sheets: SheetStore;
   device(): HintDevice;
   padStyle?(): PadStyle;
   /** A click or tap on the box (the same as the confirm key). */
@@ -49,8 +47,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, ch
 };
 
 export function mountDialogueBox(parent: HTMLElement, options: DialogueBoxOptions): DialogueBox {
-  const canvas = el('canvas', 'db-canvas');
-  const portrait = el('div', 'sprite-box db-portrait', [canvas]);
+  const portrait = el('div', 'db-portrait');
   const name = el('div', 'db-name');
   const shown = el('span', 'db-shown');
   const rest = el('span', 'db-rest');
@@ -82,30 +79,24 @@ export function mountDialogueBox(parent: HTMLElement, options: DialogueBoxOption
   root.addEventListener('click', press);
 
   let speaker = '';
-  let sprite: string | undefined;
+  let face = '';
   let device = '';
   let fullText = '';
   let done: boolean | null = null;
-  let crop: Bounds | null = null;
-  let cropFor = '';
   let visible = false;
 
-  const drawPortrait = (timeMs: number): void => {
-    const meta = sprite ? SPRITES.sprites[sprite]?.anims.Idle : undefined;
-    const image = sprite && meta ? options.sheets.get(sheetKey(sprite, meta.file)) : undefined;
-    if (!sprite || !meta || !image) return;
-    if (!crop || cropFor !== sprite) {
-      crop = opaqueBounds(image, meta.frameCount, meta.frameWidth, meta.frameHeight);
-      cropFor = sprite;
-      canvas.width = crop.w;
-      canvas.height = crop.h;
-    }
-    const c = canvas.getContext('2d');
-    if (!c) return;
-    const frame = frameAtTime(meta.durations, timeMs, true);
-    c.imageSmoothingEnabled = false;
-    c.clearRect(0, 0, canvas.width, canvas.height);
-    c.drawImage(image, frame * meta.frameWidth + crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+  /** The portrait of a look in an emotion, loaded now; a look without one (or a file that fails) leaves no frame. */
+  const showFace = (sprite: string | undefined, emotion: PortraitEmotion): void => {
+    const hide = (): void => {
+      portrait.replaceChildren();
+      portrait.hidden = true;
+      root.classList.remove('has-portrait');
+    };
+    const img = sprite ? speakerFace(sprite, emotion, hide) : null;
+    if (!img) return hide();
+    portrait.replaceChildren(img);
+    portrait.hidden = false;
+    root.classList.add('has-portrait');
   };
 
   const setGlyphs = (style: PadStyle, kind: HintDevice): void => {
@@ -115,12 +106,13 @@ export function mountDialogueBox(parent: HTMLElement, options: DialogueBoxOption
   };
 
   return {
-    update(state, timeMs) {
+    update(state) {
       if (!state) {
         if (visible) {
           visible = false;
           root.hidden = true;
           speaker = '';
+          face = '';
           fullText = '';
           done = null;
         }
@@ -131,16 +123,17 @@ export function mountDialogueBox(parent: HTMLElement, options: DialogueBoxOption
         root.hidden = false;
       }
       const { view } = state;
-      if (state.speaker !== speaker || state.portrait !== sprite) {
+      const emotion = state.emotion ?? 'Normal';
+      const look = `${state.portrait ?? ''}|${emotion}`;
+      if (state.speaker !== speaker) {
         speaker = state.speaker;
-        sprite = state.portrait;
-        crop = null;
         name.textContent = speaker;
-        root.classList.toggle('has-portrait', sprite !== undefined);
-        portrait.hidden = sprite === undefined;
         root.setAttribute('aria-label', `${t('dialogue.region')}: ${speaker}`);
       }
-      if (sprite) drawPortrait(timeMs);
+      if (look !== face) {
+        face = look;
+        showFace(state.portrait, emotion);
+      }
       if (view.full !== fullText) {
         fullText = view.full;
         reader.textContent = view.full;

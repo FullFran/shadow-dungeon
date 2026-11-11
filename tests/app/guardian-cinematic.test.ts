@@ -133,3 +133,20 @@ describe('Tu Sombra cinematic', () => {
     });
   }
 });
+
+describe('the guardian speaks its panels with its portrait (issue #47)', () => {
+  it('its words carry its face, its name card none; Tu Sombra has no face', async () => {
+    const { guardianFace } = await import('../../src/app/guardian-cinematic');
+    const { portraitFor } = await import('../../src/data/portraits');
+    for (const species of ['aegislash', 'decidueye', 'dhelmise', 'nihilego'] as const) {
+      const full = [...cinematicPanels(species, 'pre', 'full'), ...cinematicPanels(species, 'post', 'full')];
+      for (const panel of full) {
+        const who = guardianFace(species, panel);
+        if (panel.scene === 'reveal') expect(who, panel.id).toBeNull();
+        else expect(who && portraitFor(who.sprite, who.emotion), `${species} ${panel.id}`).not.toBeNull();
+      }
+      for (const panel of cinematicPanels(species, 'pre', 'short')) expect(guardianFace(species, panel)).toBeNull();
+    }
+    expect(guardianFace('shadow-self', cinematicPanels('shadow-self', 'pre', 'full')[0]!)).toBeNull();
+  });
+});
