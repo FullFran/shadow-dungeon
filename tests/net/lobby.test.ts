@@ -283,4 +283,35 @@ describe('lobby', () => {
     expect(again.started).toEqual({ seed: 14, floor: 2, localId: 'p2' });
     expect(again.session.held()).toBe(false);
   });
+
+  it('a held rejoin survives a late peer-leave for the old link and is let in at the next floor (#3, #51)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    // The host's transport holds back the leave for 'a' (Trystero may report the old link gone only after the rejoin).
+    const link = hub.connect('h');
+    const late: string[] = [];
+    let leaveHandler: (peer: string) => void = () => {};
+    link.onPeerLeave((p) => (p === 'a' ? late.push(p) : leaveHandler(p)));
+    const transport = { ...link, onPeerLeave: (h: (peer: string) => void) => void (leaveHandler = h) };
+    const hostSession = createSession({ transport, scheduler });
+    const host = { roster: [] as readonly RosterEntry[] };
+    hostSession.onRoster((roster) => (host.roster = roster));
+    hostSession.host(14, 1, 'mimikyu', { lobby: true });
+    const first = peer(hub, 'a', scheduler);
+    first.session.join('mimikyu', LOADOUT);
+    hostSession.begin();
+    stepFloor(hostSession, 1);
+    first.session.leave();
+    expect(host.roster.map((r) => r.peer)).toEqual(['h']);
+    const again = peer(hub, 'a', scheduler);
+    again.session.join('mimikyu', LOADOUT);
+    expect(again.session.held()).toBe(true);
+    // The old link's leave arrives now, after the new hello.
+    expect(late).toEqual(['a']);
+    for (const p of late.splice(0)) leaveHandler(p);
+    hostSession.sendFloor(2);
+    expect(again.started).toEqual({ seed: 14, floor: 2, localId: 'p2' });
+    expect(again.session.held()).toBe(false);
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
+  });
 });
