@@ -61,3 +61,19 @@ describe('credits text that pages on a phone', () => {
     for (const language of LANGUAGES) for (const key of keys) expect(splitSentences(catalog(language)[key]!).join(' '), `${language} ${key}`).toBe(catalog(language)[key]);
   });
 });
+
+describe('portrait credits (issue #47 S8)', () => {
+  it('the screen credits PMDCollab for sprites and portraits in every language, and lists the portrait artists of CREDITS.md', () => {
+    for (const lang of LANGUAGES) {
+      const text = (catalog(lang) as Record<string, string>)['credits.sprites']!;
+      expect(text, lang).toContain('PMDCollab SpriteCollab');
+      expect(text, lang).toMatch(/retratos|portraits/);
+    }
+    const portraits = md.slice(md.indexOf('## Portraits'));
+    const section = portraits.slice(0, portraits.indexOf('\n## ') > 0 ? portraits.indexOf('\n## ') : undefined);
+    const listed = creditedArtists(section);
+    expect(listed.length).toBeGreaterThan(20);
+    const all = creditedArtists(md).map((a) => `${a.name}|${a.sprites}`);
+    for (const artist of listed) expect(all, artist.name).toContain(`${artist.name}|${artist.sprites}`);
+  });
+});

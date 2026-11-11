@@ -1,6 +1,6 @@
 import type { PortraitEmotion } from './portraits';
-import type { SpeciesId } from './species';
-import { SPRITES } from './sprites';
+import { SPECIES, type SpeciesId } from './species';
+import { lookKey, SPRITE_KEYS, SPRITES, type BaseSpriteKey } from './sprites';
 
 /**
  * Who says a dialogue line, and with which face (issue #47, odd/tasks/pmd-portraits.md S4-S6, S9). Pure: the views
@@ -20,8 +20,6 @@ export type Speaker = { kind: 'self' } | { kind: 'species'; sprite: string };
 export interface SpokenLine {
   speaker: Speaker;
   emotion: PortraitEmotion;
-  /** What the box shows: only the quote when the whole line is the speaker's words (the name plate says who), else the line. */
-  text: string;
 }
 
 /** Dialogue sources (src/town/dialogue-sources.ts) with no speaker: signs and statues, the shrine, the beacon, the board, the lobby. */
@@ -96,7 +94,7 @@ export function spokenLine(text: string, moment: DialogueMoment): SpokenLine | n
   if (!speech) return null;
   const sprite = speech.name ? speakerSprite(speech.name) : null;
   const speaker: Speaker = sprite ? { kind: 'species', sprite } : { kind: 'self' };
-  return { speaker, emotion: momentEmotion(moment, speaker.kind === 'self'), text: speech.whole ? speech.quote : text.trim() };
+  return { speaker, emotion: momentEmotion(moment, speaker.kind === 'self') };
 }
 
 /** A guardian's cinematic panels that it speaks, and its face in each: its warning, its challenge, its fall, what it saw below. */
@@ -108,4 +106,30 @@ export function guardianLine(species: SpeciesId, panelId: string): { sprite: str
   const emotion = GUARDIAN_PANELS[panelId];
   const sprite = speakerSprite(species);
   return emotion && sprite ? { sprite, emotion } : null;
+}
+
+/** The player's Pokémon as it looks (the run's species, its shiny skin, its female look). */
+export interface PlayerLook {
+  species: SpeciesId;
+  shiny?: boolean;
+  female?: boolean;
+}
+
+/** The sprite key whose portrait a speaker shows: the player's own look for itself (also when named), the base look of anyone else. */
+export function speakerLook(speaker: Speaker, me: PlayerLook): string {
+  const mine = SPRITE_KEYS[SPECIES[me.species].sprite] as BaseSpriteKey;
+  if (speaker.kind === 'self' || speaker.sprite === mine) return lookKey(mine, me.shiny ?? false, me.female ?? false);
+  return speaker.sprite;
+}
+
+/**
+ * The face beside a line said in a run (S5): `text` null is the inner voice (always the player); otherwise the line's
+ * speaker, the player as it looks when the line names it, and the moment's emotion as that speaker feels it.
+ */
+export function lineFace(text: string | null, moment: DialogueMoment, me: PlayerLook): { sprite: string; emotion: PortraitEmotion } | null {
+  const speaker = text === null ? ({ kind: 'self' } as const) : spokenLine(text, moment)?.speaker;
+  if (!speaker) return null;
+  const sprite = speakerLook(speaker, me);
+  const self = sprite === speakerLook({ kind: 'self' }, me);
+  return { sprite, emotion: momentEmotion(moment, self) };
 }

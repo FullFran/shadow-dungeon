@@ -1,5 +1,7 @@
 import type { KeyValueStore } from '../adapters/storage';
+import { guardianLine } from '../data/dialogue-speakers';
 import { GUARDIAN_CINEMATICS, type CinematicPhase, type GuardianScene } from '../data/guardian-cinematics';
+import type { PortraitEmotion } from '../data/portraits';
 import type { CinematicPanel } from '../data/prologue';
 import type { SpeciesId } from '../data/species';
 
@@ -76,3 +78,8 @@ export function cinematicPanels(species: SpeciesId, phase: CinematicPhase, mode:
 
 /** How long the shared-run name card stays over the game. */
 export const CARD_MS = 2600;
+
+/** The guardian's portrait beside the words it says on a panel (issue #47); its name card and Tu Sombra show none. */
+export function guardianFace(species: SpeciesId, panel: Pick<CinematicPanel, 'id'>): { sprite: string; emotion: PortraitEmotion } | null {
+  return guardianLine(species, panel.id);
+}

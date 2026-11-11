@@ -1,5 +1,6 @@
 import { awakeningsOf, MATERIAL_TIERS, type MaterialTier } from '../data/player-evolutions';
 import type { SheetStore } from '../adapters/assets';
+import { lineFace } from '../data/dialogue-speakers';
 import type { SpeciesId } from '../data/species';
 import { awakenedOf, rosterOf } from '../core/collection';
 import { hasShiny, wearsShiny } from '../core/shiny';
@@ -19,6 +20,7 @@ import { portrait } from './loadout';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
 import { attachPager } from '../ui/pager';
+import { speakerFace } from '../adapters/portrait';
 import '../styles/evolve-shop.css';
 
 /**
@@ -306,7 +308,11 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
             ...row.materials.map((m) => need(pixelSvgOf(EVOLVE_SHOP_ICONS[`essence-${m.tier}`]!, 'px-icon'), t('evolve.essence').replace('{tier}', t(`difficulty.${m.tier}`)), m.have, m.need)),
           ]),
     );
-    note.textContent = done?.text ?? bondText(row);
+    // The bond line in the line's own words, with its happy face beside it (issue #47); none once a step was just taken.
+    const bond = done ? '' : bondText(row);
+    const said = bond ? lineFace(null, 'bond', { species: row.species }) : null;
+    const face = said ? speakerFace(said.sprite, said.emotion, () => face?.remove()) : null;
+    note.replaceChildren(...(face ? [face] : []), done?.text ?? bond);
     note.classList.toggle('is-done', Boolean(done));
     primary.classList.toggle('is-blocked', block.kind !== 'ready');
     primary.setAttribute('aria-disabled', String(block.kind !== 'ready'));

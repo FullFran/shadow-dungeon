@@ -2,6 +2,8 @@ import type { KeyValueStore } from '../adapters/storage';
 import { chaptersCleared, closeChapter, storyRunFor, type StoryRun } from '../core/story';
 import type { Difficulty } from '../data/difficulty';
 import type { ChallengeLine, DungeonDef } from '../data/dungeons';
+import { speakerLook, spokenLine } from '../data/dialogue-speakers';
+import type { PortraitEmotion } from '../data/portraits';
 import type { CinematicPanel, Shot } from '../data/prologue';
 import { chapterOf, storyKeys, storyOf, type ChapterNumber, type StoryFigure, type StoryScene } from '../data/story-quests';
 import { loadSave, writeSave, type SaveData } from './save';
@@ -50,6 +52,17 @@ export function storyPanels(story: StoryRun, phase: StoryPhase, text: (key: stri
       camera: CAMERAS[i % CAMERAS.length]!,
     };
   });
+}
+
+/**
+ * Who says a Senda panel's words, for their portrait (issue #47): the line's own Pokémon in the form the panel shows
+ * for an unnamed quote, the named character otherwise; null for narration (data/dialogue-speakers.ts).
+ */
+export function storyFace(panel: Pick<StoryPanel, 'line' | 'lines' | 'figure'>, text: (key: string) => string): { sprite: string; emotion: PortraitEmotion } | null {
+  const key = panel.lines[0];
+  const said = key ? spokenLine(text(key), 'line') : null;
+  if (!said) return null;
+  return { sprite: speakerLook(said.speaker, { species: panel.figure?.form ?? panel.line }), emotion: said.emotion };
 }
 
 /**

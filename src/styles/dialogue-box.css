@@ -7,10 +7,10 @@
   box-shadow: inset 0 0 0 2px var(--md-border-shade), 0 6px 0 rgba(0, 0, 0, 0.5); color: var(--md-text); font-family: var(--md-text-font); }
 .db[hidden] { display: none; }
 .db:not(.has-portrait) { grid-template-columns: 1fr; }
-/* Sprite fit rule: a fixed box, the Pokémon whole inside it, standing on its bottom edge. */
-.db-portrait { width: 112px; height: 112px; flex: none; background: var(--relic-slab); border: 2px solid var(--md-border-shade); border-radius: 4px; box-shadow: inset 0 0 0 2px var(--md-ink); }
+/* The speaker's Mystery Dungeon portrait (40x40 art, issue #47) at twice its size, crisp, in a framed window. */
+.db-portrait { width: 80px; height: 80px; padding: 4px; flex: none; background: var(--relic-slab); border: 2px solid var(--md-border-shade); border-radius: 4px; box-shadow: inset 0 0 0 2px var(--md-ink); }
 .db-portrait[hidden] { display: none; }
-.db-portrait > canvas { inset: 6px; width: calc(100% - 12px) !important; height: calc(100% - 12px) !important; }
+.db-portrait > .speaker-face { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .db-body { position: relative; display: grid; gap: 6px; min-width: 0; }
 /* The name plate sits on the slab's top edge like a plaque. */
 .db-name { position: absolute; left: -6px; top: -44px; max-width: 100%; padding: 4px 16px 5px; box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--md-border); border-radius: 4px;
@@ -43,7 +43,7 @@
 }
 @media (max-height: 520px) {
   .db { bottom: max(8px, env(safe-area-inset-bottom)); gap: 12px; padding: 18px 16px 8px 12px; }
-  .db-portrait { width: 80px; height: 80px; }
+  .db-portrait { width: 60px; height: 60px; padding: 3px; }
   .db-name { top: -38px; font-size: 18px; }
   .db-text { min-height: calc(2 * 1.45em); font-size: 18px; line-height: 1.45; }
   .db-foot { min-height: 44px; }

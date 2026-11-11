@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { GUARDIAN_CINEMATICS } from '../../src/data/guardian-cinematics';
-import { guardianLine, momentEmotion, NARRATED, parseSpeech, SPEAKERLESS_SOURCES, speakerSprite, spokenLine, type DialogueMoment } from '../../src/data/dialogue-speakers';
+import { guardianLine, lineFace, momentEmotion, speakerLook, NARRATED, parseSpeech, SPEAKERLESS_SOURCES, speakerSprite, spokenLine, type DialogueMoment } from '../../src/data/dialogue-speakers';
 import { portraitFor, PORTRAIT_EMOTIONS } from '../../src/data/portraits';
 import { PROLOGUE } from '../../src/data/prologue';
 import { simaSceneKeys } from '../../src/data/sima-scenes';
 import { SPECIES } from '../../src/data/species';
-import { SPRITE_KEYS } from '../../src/data/sprites';
+import { lookKey, SPRITE_KEYS } from '../../src/data/sprites';
 import { CHAPTERS, chapterOf, STORY_QUESTS, storyKeys, STORY_TRIGGERS, type StoryQuest } from '../../src/data/story-quests';
 import en from '../../src/i18n/en.json';
 import es from '../../src/i18n/es.json';
@@ -50,11 +50,34 @@ describe('who says a line', () => {
     expect(speakerSprite('La última dice')).toBeNull();
   });
 
-  it('a line with a speaker shows only the quote when it is all the line says, the whole line otherwise', () => {
-    expect(spokenLine('Dusknoir: «Sube.»', 'bossPost')).toEqual({ speaker: { kind: 'species', sprite: SPRITE_KEYS.dusknoir }, emotion: 'Pain', text: 'Sube.' });
-    expect(spokenLine('«Bajo contigo.»', 'line')).toEqual({ speaker: { kind: 'self' }, emotion: 'Normal', text: 'Bajo contigo.' });
-    expect(spokenLine('La niebla se disipa. Abra: «Era mi favorito.»', 'bossPost')!.text).toBe('La niebla se disipa. Abra: «Era mi favorito.»');
+  it('a line names its speaker and face; a lead-in that names no species is the line itself; prose is nobody', () => {
+    expect(spokenLine('Dusknoir: «Sube.»', 'bossPost')).toEqual({ speaker: { kind: 'species', sprite: SPRITE_KEYS.dusknoir }, emotion: 'Pain' });
+    expect(spokenLine('«Bajo contigo.»', 'line')).toEqual({ speaker: { kind: 'self' }, emotion: 'Normal' });
+    expect(spokenLine('Desde dentro del trapo: «Hoy no.»', 'bossPost')).toEqual({ speaker: { kind: 'self' }, emotion: 'Normal' });
     expect(spokenLine('Un trapo amarillo.', 'line')).toBeNull();
+  });
+});
+
+describe("the player's own look (S5: its species, shiny and female look)", () => {
+  const me = { species: 'shinx' as const, shiny: true, female: true };
+  it('self, or a named speaker of the same species, is the player as it looks; anyone else is their base look', () => {
+    const mine = lookKey(SPRITE_KEYS.shinx, true, true);
+    expect(speakerLook({ kind: 'self' }, me)).toBe(mine);
+    expect(speakerLook({ kind: 'species', sprite: SPRITE_KEYS.shinx }, me)).toBe(mine);
+    expect(speakerLook({ kind: 'species', sprite: SPRITE_KEYS.luxio }, me)).toBe(SPRITE_KEYS.luxio);
+    expect(portraitFor(mine)).not.toBeNull();
+  });
+});
+
+describe('in-dungeon lines (S5): the face beside a voice or boss line', () => {
+  const me = { species: 'kadabra' as const, shiny: true };
+  it("the inner voice is the player's own look in the moment's emotion", () => {
+    expect(lineFace(null, 'lowHp', me)).toEqual({ sprite: lookKey(SPRITE_KEYS.kadabra, true), emotion: 'Pain' });
+  });
+  it('a boss line is its speaker (the player when it names the player), narration none', () => {
+    expect(lineFace('Hypno: «¿Te acuerdas?»', 'bossPre', me)).toEqual({ sprite: SPRITE_KEYS.hypno, emotion: 'Determined' });
+    expect(lineFace('Kadabra: «Vámonos.»', 'bossPost', me)).toEqual({ sprite: lookKey(SPRITE_KEYS.kadabra, true), emotion: 'Normal' });
+    expect(lineFace('El péndulo se para.', 'bossPost', me)).toBeNull();
   });
 });
 

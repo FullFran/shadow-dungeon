@@ -111,6 +111,12 @@
       .story-box-text { margin: 0; font-family: var(--md-text-font); font-size: 19px; line-height: 1.45; color: var(--md-text); }
       .story-box-next { margin: 6px 0 0; text-align: right; font-family: var(--md-text-font); font-size: 13px; color: var(--md-text-dim); animation: tutorial-sign-blink 1.4s ease-in-out infinite; }
       .story-box-next kbd { display: inline-block; margin: 0 2px; padding: 0 6px; border-radius: 4px; font-family: var(--md-font); font-size: 12px; color: var(--md-text); background: rgba(5, 6, 13, 0.45); border: 1px solid var(--md-border-shade); }
+      /* The speaker's Mystery Dungeon portrait beside a story line (issue #47): 40x40 art at twice its size; smaller on a phone held sideways. */
+      .story-box:has(.story-box-face) { display: flex; align-items: center; gap: 14px; }
+      .story-box-body { flex: 1; min-width: 0; }
+      .story-box-face { flex: none; width: 80px; height: 80px; padding: 3px; box-sizing: border-box; background: var(--relic-slab); border: 2px solid var(--md-border-shade); border-radius: 4px; box-shadow: inset 0 0 0 2px var(--md-ink); }
+      .story-box-face > .speaker-face { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+      @media (max-height: 520px) { .story-box-face { width: 56px; height: 56px; } }
       @keyframes story-box-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
       @media (prefers-reduced-motion: reduce) { .story-box, .story-box-next { animation: none; } }
       /* Settings in tabs (src/app/main.ts settingsScreen; odd/tasks/menu-redesign.md S6): the tab bar over the list, the cursor's sentence under it. */

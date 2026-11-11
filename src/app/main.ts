@@ -101,7 +101,7 @@ import { needsDungeonSelect, unlockedDungeons } from '../core/dungeon-select';
 import { dungeonSelectScreen } from './dungeon-select';
 import { GUARDIAN_CINEMATICS, type CinematicPhase } from '../data/guardian-cinematics';
 import { drawGuardianScene } from '../adapters/guardian-scenes';
-import { cinematicMode, cinematicPanels, hasSeen, markSeen } from './guardian-cinematic';
+import { cinematicMode, cinematicPanels, guardianFace, hasSeen, markSeen } from './guardian-cinematic';
 import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
@@ -118,7 +118,7 @@ import { evolveWindow } from './evolve';
 import { challengeMisfits, openChallenges } from '../core/challenge';
 import { lineOf } from '../core/evolution';
 import { challengesWindow } from './challenges';
-import { bondLine, recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
+import { bondLine, recordStoryScene, recordStory, STORY_SKIP_AFTER_MS, storyFace, storyPanels, storyRunOf, type StoryPanel, type StoryPhase } from './story';
 import { drawStoryScene } from '../adapters/story-scenes';
 import { sendaTier, sendaTierOpen, type StoryRun } from '../core/story';
 import { shopWindow } from './shop';
@@ -991,6 +991,7 @@ function guardianCinematic(root: HTMLElement, request: { species: SpeciesId; pha
     sheets: () => sheets,
     panels,
     draw: (ctx, panel, time, camera, alpha) => drawGuardianScene(ctx, cinematic, panel, time, camera, alpha),
+    face: (panel) => guardianFace(request.species, panel),
     label: t(`species.${request.species}`),
     onDone: () => {
       if (mode === 'full') markSeen(store, request.species, request.phase);
@@ -1054,6 +1055,7 @@ function storyCinematic(root: HTMLElement, story: StoryRun, phase: StoryPhase, o
     sheets: () => sheets,
     panels,
     draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha),
+    face: (panel) => storyFace(panel as StoryPanel, t),
     label: t(`story.${story.line}.${story.chapter}.title`),
     skipAfterMs: STORY_SKIP_AFTER_MS,
     onDone,
@@ -1370,10 +1372,20 @@ function galleryCinematic(root: HTMLElement, scene: Exclude<GalleryScene, { kind
       }
       case 'guardian': {
         const cinematic = GUARDIAN_CINEMATICS[scene.species]!;
-        return { label: t(`species.${scene.species}`), panels: cinematicPanels(scene.species, scene.phase, 'full'), draw: (ctx, panel, time, camera, alpha) => drawGuardianScene(ctx, cinematic, panel, time, camera, alpha) };
+        return {
+          label: t(`species.${scene.species}`),
+          panels: cinematicPanels(scene.species, scene.phase, 'full'),
+          draw: (ctx, panel, time, camera, alpha) => drawGuardianScene(ctx, cinematic, panel, time, camera, alpha),
+          face: (panel) => guardianFace(scene.species, panel),
+        };
       }
       case 'story':
-        return { label: t(`story.${scene.line}.${scene.chapter}.title`), panels: storyPanels({ line: scene.line, chapter: scene.chapter }, scene.phase, t), draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha) };
+        return {
+          label: t(`story.${scene.line}.${scene.chapter}.title`),
+          panels: storyPanels({ line: scene.line, chapter: scene.chapter }, scene.phase, t),
+          draw: (ctx, panel, time, camera, alpha) => drawStoryScene(ctx, panel as StoryPanel, time, camera, alpha),
+          face: (panel) => storyFace(panel as StoryPanel, t),
+        };
     }
   })();
   const screen = prologueScreen({

@@ -1,6 +1,9 @@
 import type { SheetStore } from '../adapters/assets';
+import { speakerFace } from '../adapters/portrait';
 import { drawPrologue, STAGE, type SceneTime } from '../adapters/prologue-scenes';
+import type { PortraitEmotion } from '../data/portraits';
 import { PROLOGUE, type CinematicPanel, type PrologueScene, type Shot } from '../data/prologue';
+import '../styles/prologue-face.css';
 import { t } from '../i18n';
 import { mountCinematicControls } from '../ui/cinematic-controls';
 import { cameraAt, holdAtMs, holdProgress, panelAlpha, panelAt, revealedChars, revealEndMs, SKIP, skipAvailable, stageScale, startOf } from '../ui/cinematic';
@@ -41,6 +44,8 @@ export interface PrologueOptions {
   label?: string;
   /** Reads a narration key (default: the i18n `t`); the Sima's scenes fill in the floor reached. */
   text?(key: string): string;
+  /** Who speaks a panel's words, for their Mystery Dungeon portrait beside the text (issue #47); null or absent: narration, no frame. */
+  face?(panel: CinematicPanel): { sprite: string; emotion: PortraitEmotion } | null;
   /** Styles the narration lines when a panel starts (a herald's title card: its name big, in its colour). */
   styleLines?(panel: CinematicPanel, lines: readonly HTMLElement[]): void;
 }
@@ -80,7 +85,9 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   canvas.height = STAGE.h;
   // Two lines of narration, or as many as the longest panel needs (a herald's title card has three).
   const lines = Array.from({ length: Math.max(2, ...(options.panels ?? []).map((p) => p.lines.length)) }, () => h('p'));
-  const text = h('div', { className: 'prologue-text' }, lines);
+  const face = h('span', { className: 'prologue-face' });
+  face.hidden = true;
+  const text = h('div', { className: 'prologue-text' }, [face, ...lines]);
   text.setAttribute('aria-live', 'polite');
   const stage = h('div', { className: 'prologue-stage' }, [canvas, text]);
   // Press to advance or Auto (odd/tasks/menu-redesign.md S13): the pill shows and toggles the mode; ▼ marks a panel waiting for a press.
@@ -165,6 +172,20 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
   element.addEventListener('pointerup', letGo);
   element.addEventListener('pointercancel', letGo);
 
+  /** The speaker's portrait, loaded when its panel starts; none (or a file that fails) leaves no frame. */
+  const showFace = (who: { sprite: string; emotion: PortraitEmotion } | null): void => {
+    const hide = (): void => {
+      face.replaceChildren();
+      face.hidden = true;
+      text.classList.remove('has-face');
+    };
+    const img = who ? speakerFace(who.sprite, who.emotion, hide) : null;
+    if (!img) return hide();
+    face.replaceChildren(img);
+    face.hidden = false;
+    text.classList.add('has-face');
+  };
+
   const renderText = (index: number, localMs: number, alpha: number) => {
     const panel = panels[index]!;
     const strings = panel.lines.map((key) => [...(options.text ?? t)(key)]);
@@ -173,6 +194,7 @@ export function prologueScreen(options: PrologueOptions): HTMLElement {
     if (index !== shownPanel) {
       shownPanel = index;
       text.classList.toggle('is-voice', panel.scene === 'voice');
+      showFace(options.face?.(panel) ?? null);
       options.styleLines?.(panel, lines);
     }
     if (key !== shownText) {

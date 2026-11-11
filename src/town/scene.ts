@@ -340,7 +340,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const speak = (lines: readonly string[]): DialogState => openDialog(lines, typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
   /** The one tooltip over the target `interact` would pick, and the dialogue box (DESIGN.md §4). */
   const tooltip = mountWorldTooltip(canvas.parentElement ?? document.body, { device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onActivate: () => !exitWindow && interact() });
-  const dialogueBox = mountDialogueBox(canvas.parentElement ?? document.body, { sheets, device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onAdvance: () => !exitWindow && interact() });
+  const dialogueBox = mountDialogueBox(canvas.parentElement ?? document.body, { device: () => device.current(), padStyle: options.hints?.padStyle ?? (() => 'xbox' as const), onAdvance: () => !exitWindow && interact() });
   /** The control hint bar along the bottom edge (null without the option). */
   const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
 
