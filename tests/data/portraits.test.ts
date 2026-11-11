@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { hasFemaleArt } from '../../src/core/gender';
 import { portraitFor, PORTRAIT_EMOTIONS, PORTRAIT_MANIFEST } from '../../src/data/portraits';
@@ -94,5 +94,23 @@ describe('bundled art (sd-pre serves assets/ but not the raw public portraits/ a
             const url = newsImageUrl(item.image);
             expect(url, item.image).toMatch(/assets\/news\//);
           }
+  });
+});
+
+describe('portrait weight (issue #47 S7: lazy, never all at run start)', () => {
+  it('the bundle holds only their URLs (each file loads when a line shows it), and all of them stay under 1.5 MB', () => {
+    const art = readFileSync(new URL('../../src/adapters/bundled-art.ts', import.meta.url), 'utf8');
+    expect(art).toMatch(/import\.meta\.glob<string>\('\.\.\/assets\/portraits\/\*\*\/\*\.png', \{ eager: true, query: '\?url', import: 'default' \}\)/);
+    let bytes = 0;
+    for (const [key, emotions] of Object.entries(PORTRAIT_MANIFEST.files)) for (const emotion of emotions) bytes += statSync(`${ROOT}${key}/${emotion}.png`).size;
+    expect(bytes).toBeLessThan(1.5 * 1024 * 1024);
+  });
+
+  it('the build never inlines a portrait into the script (Vite inlines files under 4 KB by default: 611 of them were in index.js)', async () => {
+    const { inlineAsset } = await import('../../vite.config');
+    expect(inlineAsset('/repo/src/assets/portraits/0778/0000/Happy.png')).toBe(false);
+    expect(inlineAsset('C:\\repo\\src\\assets\\portraits\\0778\\0000\\Happy.png')).toBe(false);
+    // Everything else keeps Vite's default.
+    expect(inlineAsset('/repo/src/assets/news/title-hub.webp')).toBeUndefined();
   });
 });
