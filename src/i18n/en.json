@@ -360,6 +360,8 @@
   "spectate.next": "Switch",
   "spectate.watching": "Watching {name}",
   "spectate.nextKey": "Switch (Q)",
+  "spectate.reviveHint": "A teammate revives you by staying beside you for 3 s",
+  "spectate.nextFloor": "You come back on the next floor",
   "net.waitFloor": "A run is under way: you will join when the next floor starts.",
   "net.cutShort.hostLeft": "The host left: you keep what you earned, with a defeat's cut.",
   "net.cutShort.hostLost": "The connection to the host was lost: you keep what you earned, with a defeat's cut.",

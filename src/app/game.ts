@@ -39,6 +39,8 @@ import { ROOMS } from '../data/rooms';
 import { ENDLESS } from '../data/endless';
 import { bonfireFloor, bonfireLights, bonfireReturn, bonfireSnapshot, bonfireSpot, respawnsLeft } from '../core/bonfire';
 import { nextSpectate, spectateTarget, type Watchable } from './spectate';
+import { defeatTellsGuests, faintedHintKey, wipeAction } from './wipe';
+import { reviveAvailable } from '../core/revive';
 import { hadInput, isActive, keepReady, partyAgreed, waitingFor, type GatherMember } from '../core/gather';
 import { runUpgrades, scaleCoins } from '../core/endless';
 import { restartsLeft, worldDifficulty } from '../core/difficulty';
@@ -551,6 +553,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let card: FloorCard | null = null;
   /** Floor events (sima-events.ts): the shrine's or merchant's choice on screen and its pick handler. */
   let closeChoice: (() => void) | null = null;
+  /** The open choice is the bonfire question after a wipe (./wipe.ts). */
+  let bonfireAsked = false;
   let choicePick: ((index: number) => void) | null = null;
   /** The player walked away from (or used) the shrine or merchant: it opens again only after leaving its reach. */
   let choiceDismissed = false;
@@ -802,6 +806,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!closeChoice) return;
     closeChoice();
     closeChoice = null;
+    bonfireAsked = false;
     choicePick = null;
     choiceDismissed = true;
     leaveOpen = false;
@@ -951,7 +956,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** Each step after a full wipe with a bonfire behind: solo and the host choose (asked again if dismissed); a guest waits for the host's word. */
   function onWipe(): void {
     wiped = true;
-    if (net?.role === 'guest' || closeChoice || ended) return;
+    // A stale choice (a "¿Bajar?" left open, a Sima merchant) must not hide the bonfire question: guests wait on it (#50).
+    const action = wipeAction(net?.role ?? 'solo', ended, closeChoice ? (bonfireAsked ? 'bonfire' : 'other') : null);
+    if (action === 'none') return;
+    if (action === 'replace') hideChoice();
     const left = respawnsLeft(difficulty, bonfireUsed);
     const texts = dungeonOf(run).endless ? 'bonfire.sima' : 'bonfire';
     showChoice(t('bonfire.title'), t(net ? 'bonfire.hintShared' : 'leave.hint'), [
@@ -964,6 +972,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       net?.session.sendRetry(run.floor, false);
       end('defeat');
     });
+    bonfireAsked = true;
   }
 
   /** Everyone back at the bonfire: this peer's own snapshot (or, without one, the bonfire floor anew); the host tells the guests. */
@@ -1648,7 +1657,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       if (retry?.go) respawn(retry.floor);
       else if (retry) end('defeat');
       else if (progress.outcome === 'defeat' && bonfireOpen()) onWipe();
-      else if (progress.outcome) end(progress.outcome);
+      else if (progress.outcome) {
+        // A host defeated with no bonfire to go back to still tells the guests, who may count one of their own (#50).
+        if (net && defeatTellsGuests(net.role, progress.outcome)) net.session.sendRetry(run.floor, false);
+        end(progress.outcome);
+      }
       else if (progress.entered) {
         enterFloor(progress);
         if (net) net.session.sendFloor(netFloor());
@@ -1799,6 +1812,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           ? figurationsAt({ mode: options.figurations(), clockMs: run.clockMs, timeMs: realMs, view, player: world.player.pos, sprites: [...LOST_SHAPES, SPRITE_KEYS[SPECIES[world.player.species].sprite]], salt: run.floor })
           : [],
       spectating: watched && net ? t('spectate.watching').replace('{name}', rosterNames(net.session.roster()).get(watched.id) ?? t(`species.${watched.player.species}`)) : null,
+      // Whether a teammate can still bring this fainted player back on this floor, or only the next floor will (#50).
+      spectateHint: watched && net ? t(faintedHintKey(reviveAvailable(world))) : null,
     });
     if (perf) {
       perf.record('render', performance.now() - drawAt);
