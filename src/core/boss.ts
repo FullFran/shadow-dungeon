@@ -99,7 +99,7 @@ export interface BossBar {
   cardLeftMs?: number;
 }
 
-const showsBar = (enemy: EnemyState): boolean => {
+export const showsBar = (enemy: EnemyState): boolean => {
   const def = ENEMY_BEHAVIOUR[enemy.species];
   return enemy.boss !== undefined || (def !== undefined && 'bar' in def && def.bar === true);
 };
