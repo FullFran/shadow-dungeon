@@ -110,6 +110,15 @@ export const DOTS: Record<DotKind, { share: number; ticks: number; everyMs: numb
   poison: { share: 0.5, ticks: 5, everyMs: 800 },
 };
 
+/** Types a status never sticks to, as in the main series: Fire is never burned, Poison and Steel are never poisoned (issue #61). */
+export const DOT_IMMUNE_TYPES: Record<DotKind, readonly PokemonType[]> = {
+  burn: ['fire'],
+  poison: ['poison', 'steel'],
+};
+
+/** Whether a Pokémon of `types` shrugs off `kind` (the hit still lands; the status does not stick). */
+export const immuneToDot = (kind: DotKind, types: readonly PokemonType[]): boolean => types.some((t) => DOT_IMMUNE_TYPES[kind].includes(t));
+
 /** One charge level, reached after holding the button for `holdMs`. Level 0 is a tap. */
 export interface ChargeLevel {
   holdMs: number;

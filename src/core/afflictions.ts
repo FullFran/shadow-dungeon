@@ -1,4 +1,4 @@
-import { DOTS, DRAIN_BUDGET, type DotKind, type MoveDef } from '../data/moves';
+import { DOTS, DRAIN_BUDGET, immuneToDot, type DotKind, type MoveDef } from '../data/moves';
 import { onBossDamaged } from './boss';
 import { cardHpFloor } from './cards';
 import type { EnemyState, GameEvent, HitEffects, PlayerState, WorldState } from './state';
@@ -62,8 +62,9 @@ export function payHpCost(player: PlayerState, move: MoveDef): PlayerState {
   return { ...player, hp: Math.max(1, player.hp - player.maxHp * move.hpCost) };
 }
 
-/** The enemy now carries `kind` from a hit of `damage` (it replaces a running one). */
+/** The enemy now carries `kind` from a hit of `damage` (it replaces a running one); an immune type keeps what it had (data/moves.ts `DOT_IMMUNE_TYPES`). */
 export function applyDot(enemy: EnemyState, kind: DotKind, damage: number): EnemyState {
+  if (immuneToDot(kind, enemy.types)) return enemy;
   const def = DOTS[kind];
   const perTick = Math.max(1, Math.round((damage * def.share) / def.ticks));
   return { ...enemy, dot: { kind, damage: perTick, ticksLeft: def.ticks, nextMs: def.everyMs } };
