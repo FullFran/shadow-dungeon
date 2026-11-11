@@ -60,4 +60,10 @@ export const KEYBOARD_ONLY_KEY_HINTS: Readonly<Record<string, string>> = {
   'evolve.shiny.text': `${ORPHAN} (the shiny row draws evolve.shiny.row)`,
   'news.hint': `${ORPHAN} (the news screen draws no key hint)`,
   'onb.reveal.hint': `${ORPHAN} (the reveal step draws buttons only)`,
+  // The keyboard and mouse rebinding panel (app/key-bindings-panel.ts, issue #62) is about keys by nature: no touch or pad wording.
+  'bind.key.Space': 'a key name shown in the keyboard rebinding panel (issue #62)',
+  'bind.listening': 'the keyboard rebinding panel waiting for a key (issue #62)',
+  'bind.refused.reserved': 'the keyboard rebinding panel refusing a reserved key (issue #62)',
+  'bind.refused.fixed': 'the keyboard rebinding panel refusing a key that cannot move (issue #62)',
+  'bind.note': 'the note at the top of the keyboard rebinding panel (issue #62)',
 };
