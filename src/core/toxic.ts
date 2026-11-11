@@ -1,3 +1,4 @@
+import { immuneToDot } from '../data/moves';
 import { TOXIC } from '../data/swamp';
 import type { Floor } from './dungeon';
 import { isInvulnerable } from './player';
@@ -68,11 +69,12 @@ const cured = (player: PlayerState): PlayerState => {
   return rest;
 };
 
-/** One step: wading (not rolling) poisons or refreshes the poison; a poisoned player is bitten on the interval (never below 1 HP). */
+/** One step: wading (not rolling) poisons or refreshes the poison, unless the player's type is immune to it; a poisoned player is bitten on the interval (never below 1 HP). */
 export function updateToxic(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
   let player = state.player;
   let poison = player.poison;
-  if (state.pools && player.hp > 0 && !isInvulnerable(player) && inPool(state.pools, player.pos)) {
+  // A Poison or Steel player wades through unharmed (data/moves.ts `DOT_IMMUNE_TYPES`).
+  if (state.pools && player.hp > 0 && !isInvulnerable(player) && !immuneToDot('poison', player.types) && inPool(state.pools, player.pos)) {
     if (!poison) events.push({ type: 'poisoned' });
     // Refreshed while wading: a full duration once this step is over.
     poison = { remainingMs: TOXIC.poison.durationMs + dtMs, tickMs: poison?.tickMs ?? TOXIC.poison.tickMs };

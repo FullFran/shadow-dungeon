@@ -2,7 +2,7 @@ import { UNKILLABLE } from '../data/sima';
 import { cardHolds, cardHpFloor } from './cards';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
 import { ITEM_EFFECTS } from '../data/items';
-import { MOVES, type MoveBonus, type MoveDef } from '../data/moves';
+import { MOVES, immuneToDot, type MoveBonus, type MoveDef } from '../data/moves';
 import { TUNING } from '../data/tuning';
 import { blocksHit, onBossDamaged, rotateToward } from './boss';
 import { computeDamage, hitEffectiveness } from './damage';
@@ -233,7 +233,8 @@ function strikeEnemy(
     ...(hit.minor ? { minor: true as const } : {}),
   });
   // A burning or poisoning move leaves its damage over time on a survivor (a ranked chance rolls for it).
-  let dotTakes = Boolean(hit.effects?.dot && reacted.alive);
+  // A Fire type is never burned, a Poison or Steel type never poisoned (data/moves.ts `DOT_IMMUNE_TYPES`): no roll, no claim.
+  let dotTakes = Boolean(hit.effects?.dot && reacted.alive && !immuneToDot(hit.effects.dot, enemy.types));
   if (dotTakes && hit.effects?.dotChance !== undefined && hit.effects.dotChance < 1) {
     const roll = nextRandom(state.rng);
     state = { ...state, rng: roll.state };
