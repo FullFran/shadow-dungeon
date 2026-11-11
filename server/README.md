@@ -385,7 +385,7 @@ Clerk is the identity provider (email + password, Google, Discord); PocketBase s
 | `502` | Clerk's API could not be reached |
 | `503` | `CLERK_SECRET_KEY` is unset |
 
-**Which account.** The token is verified against the instance JWKS with the official Go SDK (`github.com/clerk/clerk-sdk-go/v2`), then the user is read from the Clerk Backend API. Then: a `users` record whose `clerk_id` is that Clerk user id wins; else the record with the same email (case-insensitive) is linked (`clerk_id` set, marked verified); else an account is created (email, random password, verified). Clerk-created accounts get no password the player knows; password reset by email still works.
+**Which account.** The token is verified against the instance JWKS with the official Go SDK (`github.com/clerk/clerk-sdk-go/v2`), then the user is read from the Clerk Backend API. Then: a `users` record whose `clerk_id` is that Clerk user id wins; else the record with the same email (case-insensitive) is linked (`clerk_id` set, marked verified; if it was not verified yet, its password is replaced by a random one and its open sessions end, because open sign-up lets anyone register an address they do not own); else an account is created (email, random password, verified). Clerk-created accounts get no password the player knows; password reset by email still works.
 
 **Origin check.** The token's `azp` claim must be one of `SD_ALLOWED_ORIGINS` (case and a trailing slash ignored); a token without `azp` is left to the signature, as Clerk advises.
 

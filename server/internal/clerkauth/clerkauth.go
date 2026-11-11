@@ -84,7 +84,8 @@ func bearer(header string) (string, bool) {
 }
 
 // resolve finds the account of a Clerk user: by clerk_id, else by the verified
-// email (linking it), else a new one.
+// email (linking it), else a new one. Linking an account that was never
+// verified replaces its password and signs its sessions out.
 func resolve(app core.App, clerkID, email string) (*core.Record, error) {
 	user, err := app.FindFirstRecordByData("users", "clerk_id", clerkID)
 	if err == nil {
@@ -98,6 +99,12 @@ func resolve(app core.App, clerkID, email string) (*core.Record, error) {
 	if err == nil {
 		if linked := user.GetString("clerk_id"); linked != "" && linked != clerkID {
 			return nil, apis.NewApiError(http.StatusConflict, "That email belongs to an account linked to another Clerk user.", nil)
+		}
+		if !user.Verified() {
+			// Sign-up is open and unverified: whoever set this password never
+			// proved they own the address, so it may not be the Clerk user. Keep
+			// the account and its save, drop the password and every open session.
+			user.SetRandomPassword()
 		}
 		user.Set("clerk_id", clerkID)
 		user.SetVerified(true)

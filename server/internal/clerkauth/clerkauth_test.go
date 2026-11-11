@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/pocketbase/pocketbase/apis"
@@ -199,14 +200,61 @@ func TestAnswers503WhenClerkIsNotConfigured(t *testing.T) {
 	}
 }
 
-func TestPasswordSignInKeepsWorkingForLinkedAccounts(t *testing.T) {
+func TestPasswordSignInKeepsWorkingForLinkedVerifiedAccounts(t *testing.T) {
 	app, mux := newMux(t, fakeVerifier{"good": {UserID: "user_1", Email: "carol@example.com", EmailVerified: true}})
-	seedUser(t, app, "carol@example.com", "")
+	carol := seedUser(t, app, "carol@example.com", "")
+	carol.SetVerified(true)
+	if err := app.Save(carol); err != nil {
+		t.Fatal(err)
+	}
+	tokenKey := carol.TokenKey()
+
 	decode(t, exchange(mux, "Bearer good"))
 
 	u, err := app.FindAuthRecordByEmail("users", "carol@example.com")
 	if err != nil || !u.ValidatePassword("a-long-password") {
 		t.Fatalf("password sign-in broke: %v", err)
+	}
+	if u.TokenKey() != tokenKey {
+		t.Fatal("linking a verified account must not sign its devices out")
+	}
+}
+
+// Sign-up is open and unverified, so anyone can register somebody else's
+// address with a password of their own before the real owner arrives.
+func TestLinkingAnUnverifiedAccountDropsItsPasswordAndSessions(t *testing.T) {
+	app, mux := newMux(t, fakeVerifier{"good": {UserID: "user_1", Email: "carol@example.com", EmailVerified: true}})
+	squatter := seedUser(t, app, "carol@example.com", "")
+	oldToken, err := squatter.NewAuthToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := decode(t, exchange(mux, "Bearer good"))
+
+	if out.Record["id"] != squatter.Id {
+		t.Fatalf("linked %v, want %v: the account and its save must be kept", out.Record["id"], squatter.Id)
+	}
+	u, err := app.FindRecordById("users", squatter.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.ValidatePassword("a-long-password") {
+		t.Fatal("the password set before the email was proven must stop working")
+	}
+	login := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/collections/users/auth-with-password",
+		strings.NewReader(`{"identity":"carol@example.com","password":"a-long-password"}`))
+	req.Header.Set("Content-Type", "application/json")
+	mux.ServeHTTP(login, req)
+	if login.Code != http.StatusBadRequest {
+		t.Fatalf("password sign-in answered %d, want 400: %s", login.Code, login.Body.String())
+	}
+	if _, err := app.FindAuthRecordByToken(oldToken, core.TokenTypeAuth); err == nil {
+		t.Fatal("a session opened before the link must stop working")
+	}
+	if _, err := app.FindAuthRecordByToken(out.Token, core.TokenTypeAuth); err != nil {
+		t.Fatalf("the session of the Clerk sign-in must work: %v", err)
 	}
 }
 
