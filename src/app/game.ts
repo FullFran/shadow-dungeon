@@ -56,6 +56,8 @@ import { challengeOfRoad, dungeonById, musicFor, type DungeonId } from '../data/
 import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
+import { bossMoment } from '../core/boss-moment';
+import { bossNotice, takePhaseTip, type BossNotice } from '../ui/boss-notice';
 import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
@@ -248,6 +250,8 @@ export interface GameOptions {
   tutorial?: { seen(hint: TutorialHint): boolean; mark(hint: TutorialHint): void };
   /** The in-game control hint bar (src/ui/play-hints.ts): the settings switch, read live, and the pad layout the hints draw. */
   hints?: { enabled(): boolean; padStyle?(): PadStyle };
+  /** The one-time tip on the first boss phase change: whether it was shown on this device, and the mark once it is (Settings `bossPhaseTipSeen`). Absent: no tip. */
+  bossTip?: { seen(): boolean; mark(): void };
   /**
    * Solo only: reload-proof play (app/run-resume.ts). `from` is a stored run to continue: it comes back exactly as it was,
    * paused with the menu open. `writer` keeps the record (floor changes, every few seconds, on leaving the page) and
@@ -526,6 +530,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let playing: MusicContext | null = null;
   /** The boss spell card on screen, and the last card seen (host and guest alike read it from the boss state). */
   let spell: SpellBanner | null = null;
+  /** The big notice of a boss phase change or final defeat, while it shows (every peer reads the moment from its own world). */
+  let moment: BossNotice | null = null;
   /** "¡Técnica dominada!": the last card this player captured, while its notice shows. */
   let capture: CaptureNotice | null = null;
   let lastCard: string | null = null;
@@ -1602,6 +1608,14 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         audio?.play('bossDefeated');
         music();
       }
+      // A boss changes phase or falls: a large centred notice (about 3 s), a cue, and the first time a one-line tip on what a phase change means.
+      const turning = bossMoment(before, world);
+      if (turning) {
+        const tip = turning.kind === 'phase' && takePhaseTip(options.bossTip);
+        moment = bossNotice(turning, { showTip: tip, shownAtMs: realMs });
+        if (turning.kind === 'phase') audio?.play('cardDeclare');
+        say(`${moment.heading} ${moment.name}`, turning.kind === 'phase' ? 'warn' : 'good');
+      }
       // Captured spell cards (guardians' and heralds' alike, core/cards.ts `updateCapture`) are counted from the step's events.
       // A trial's time does not run while the party waits behind its arena's fog (core/shrine.ts `trialStepMs`).
       tally = tallyStep(tally, before, world, trial ? trialStepMs(before, FIXED_DT_MS) : FIXED_DT_MS);
@@ -1783,6 +1797,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       intro: plaque ? null : intro,
       nowPlaying,
       spell,
+      moment,
       capture,
       clock: run.clockMs !== undefined ? { ms: run.clockMs, lowMs, bonus: clockBonus } : null,
       touchUi: isTouchUi(),

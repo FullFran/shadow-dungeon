@@ -711,7 +711,7 @@ function bracket(ctx: Ctx, x: number, y: number, h: number, dir: 1 | -1): void {
  * A boss event announced at the top centre, on the line a quarter down the screen (never over the arena's middle; the telegraph
  * on the floor is the information): the move's name (~28 CSS px, ember-red with an ink outline) between two gilt brackets with
  * a drawn rule under it, then one line, the sign with its seal icon and the telegraph cue with its icon. Enters in 160 ms, holds
- * 1.6 s, leaves in 240 ms; under reduced motion it only fades.
+ * 2.6 s, leaves in 240 ms; under reduced motion it only fades.
  */
 export function drawBossCaption(ctx: Ctx, spell: SpellBanner, nowMs: number, screen: HudDims, view: Pick<CombatView, 'scale' | 'touch'>, slots = 4): void {
   const age = nowMs - spell.shownAtMs;
