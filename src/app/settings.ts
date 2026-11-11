@@ -148,9 +148,10 @@ export function withReturningPlayer(settings: Settings, lastSpecies: string | nu
  * field maps to `lockType` when that is missing (`hold` stays hold, else toggle).
  * The loadout must fit the stored species; otherwise that species' default.
  * Each remembered loadout (`loadouts`) is kept only while it fits its species.
- * The species must be in `roster` (the starters and the owned gacha species,
- * core/collection.ts `rosterOf`); otherwise its line's form in the roster
- * (it evolved), else the fallback's.
+ * The species must be in `roster` (everyone the player can pick,
+ * core/collection.ts `selectableOf`: earlier forms of an evolved line
+ * included); otherwise its line's furthest form in the roster, else the
+ * fallback's.
  */
 export function loadSettings(store: KeyValueStore, fallback: Settings, roster: readonly SpeciesId[] = STARTER_SPECIES): Settings {
   let raw: unknown;
@@ -165,8 +166,8 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
   const legacy = (raw as { lockMode?: unknown }).lockMode === 'hold' ? 'hold' : 'toggle';
   const lockType = LOCK_TYPES.find((l) => l === stored.lockType) ?? (stored.lockType === undefined && 'lockMode' in raw ? legacy : fallback.lockType);
   const clickToLock = typeof stored.clickToLock === 'boolean' ? stored.clickToLock : fallback.clickToLock;
-  // A form the player no longer has (it evolved meanwhile) gives way to its line's current form.
-  const sameLine = isPlayable(stored.species) ? roster.find((id) => lineRoot(id) === lineRoot(stored.species as SpeciesId)) : undefined;
+  // A form the player cannot pick gives way to its line's furthest form there (the roster lists earlier forms first).
+  const sameLine = lastPlayedForm(typeof stored.species === 'string' ? stored.species : null, roster) ?? undefined;
   const species = isPlayable(stored.species) && roster.includes(stored.species) ? stored.species : (sameLine ?? fallback.species);
   // A save from before four-slots holds two moves: the new slots take the species defaults.
   const loadout = fittingLoadout(species, stored.loadout) ?? padLoadout(SPECIES[species], species === fallback.species ? fallback.loadout : SPECIES[species].defaultLoadout);

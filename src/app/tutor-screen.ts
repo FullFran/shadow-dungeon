@@ -1,4 +1,5 @@
 import { rosterOf } from '../core/collection';
+import { lineRoot } from '../data/player-evolutions';
 import { MOVES, type MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import { MAX_RANK } from '../data/tutor';
@@ -85,7 +86,9 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   const wallet = () => ({ ...save, cleared: cleared() });
   const roster = (): SpeciesId[] => {
     const all = rosterOf(save);
-    return all.includes(species) ? all : [species, ...all];
+    if (all.includes(species)) return all;
+    // An earlier form of an evolved line takes its line's chip: they share the same moves bought and ranks (core/tutor.ts `progressForm`).
+    return all.some((id) => lineRoot(id) === lineRoot(species)) ? all.map((id) => (lineRoot(id) === lineRoot(species) ? species : id)) : [species, ...all];
   };
 
   // Top: back, Pokémon chips and balance.

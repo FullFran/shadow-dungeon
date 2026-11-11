@@ -2,7 +2,8 @@ import { MOVES, type MoveDef, type MoveId } from '../data/moves';
 import { isPlayable, originalKit, SPECIES, type SpeciesId } from '../data/species';
 import { MAX_RANK, movePrice, moveTier, RANK_COSTS_BY_TIER, RANK_EFFECT, tutorOffer, unlockOf } from '../data/tutor';
 import type { DungeonId } from '../data/dungeons';
-import { awakenedMoves } from '../data/player-evolutions';
+import { awakenedMoves, lineForms } from '../data/player-evolutions';
+import { currentForm } from './collection';
 
 /**
  * The move tutor, pure (odd/tasks/movepools.md T3): which moves a species
@@ -29,6 +30,20 @@ export interface TutorWallet {
   cleared?: Iterable<string>;
   /** Awakening steps (Mimikyu's): each makes one move known (data/player-evolutions.ts `PLAYER_AWAKENINGS`). */
   awakened?: Readonly<Partial<Record<SpeciesId, number>>>;
+  /** Gacha and evolved forms (core/collection.ts): an earlier form shares its line's progress (`progressForm`). */
+  owned?: readonly SpeciesId[];
+}
+
+/**
+ * The species whose bought moves and ranks `species` uses: an earlier form
+ * of a line that has evolved shares its current form's (owner decision
+ * 2026-11-11); anything else keeps its own. Its own stage moves stay out:
+ * `knownMoves` filters by the species' movepool.
+ */
+export function progressForm(wallet: Pick<TutorWallet, 'owned'>, species: SpeciesId): SpeciesId {
+  if (!wallet.owned) return species;
+  const current = currentForm({ owned: wallet.owned }, species);
+  return lineForms(current).includes(species) ? current : species;
 }
 
 /** The dungeon still to clear before the tutor teaches `move` to `species`, or null when it is open. */
@@ -39,9 +54,9 @@ export function tutorLock(wallet: Pick<TutorWallet, 'cleared'>, _species: Specie
 }
 
 /** Every move `species` can equip now: its original kit, what it bought and what its awakening made known, in movepool order. */
-export function knownMoves(wallet: Pick<TutorWallet, 'learned' | 'awakened'>, species: SpeciesId): MoveId[] {
+export function knownMoves(wallet: Pick<TutorWallet, 'learned' | 'awakened' | 'owned'>, species: SpeciesId): MoveId[] {
   const kit = originalKit(species);
-  const bought = isPlayable(species) ? (wallet.learned?.[species] ?? []) : [];
+  const bought = isPlayable(species) ? (wallet.learned?.[progressForm(wallet, species)] ?? []) : [];
   const awake = awakenedMoves(species, wallet.awakened?.[species] ?? 0);
   return SPECIES[species].movepool.filter((m) => kit.includes(m) || bought.includes(m) || awake.includes(m));
 }
@@ -57,13 +72,14 @@ export function tutorPrice(species: SpeciesId, move: MoveId): number | null {
 export function buyMove(wallet: TutorWallet, species: SpeciesId, move: MoveId): TutorWallet | null {
   const price = tutorPrice(species, move);
   if (price === null || price === 0 || knownMoves(wallet, species).includes(move) || wallet.coins < price || tutorLock(wallet, species, move)) return null;
-  const learned = { ...wallet.learned, [species]: [...(wallet.learned?.[species] ?? []), move] };
+  const key = progressForm(wallet, species);
+  const learned = { ...wallet.learned, [key]: [...(wallet.learned?.[key] ?? []), move] };
   return { ...wallet, coins: wallet.coins - price, learned };
 }
 
 /** The rank of a move (0 = none). */
-export function moveRank(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId, move: MoveId): number {
-  const rank = isPlayable(species) ? (wallet.ranks?.[species]?.[move] ?? 0) : 0;
+export function moveRank(wallet: Pick<TutorWallet, 'ranks' | 'owned'>, species: SpeciesId, move: MoveId): number {
+  const rank = isPlayable(species) ? (wallet.ranks?.[progressForm(wallet, species)]?.[move] ?? 0) : 0;
   return Math.min(MAX_RANK, Math.max(0, Math.floor(rank)));
 }
 
@@ -71,7 +87,7 @@ export function moveRank(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId,
 export const rankCostsOf = (move: MoveId): readonly number[] => RANK_COSTS_BY_TIER[moveTier(move)];
 
 /** Cost of the next rank of `move`, or null when it is maxed or not known (any known move can be ranked: odd/tasks/move-progression.md). */
-export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned' | 'awakened'>, species: SpeciesId, move: MoveId): number | null {
+export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned' | 'awakened' | 'owned'>, species: SpeciesId, move: MoveId): number | null {
   if (!isPlayable(species) || !knownMoves(wallet, species).includes(move)) return null;
   return rankCostsOf(move)[moveRank(wallet, species, move)] ?? null;
 }
@@ -80,13 +96,14 @@ export function rankCost(wallet: Pick<TutorWallet, 'ranks' | 'learned' | 'awaken
 export function rankUp(wallet: TutorWallet, species: SpeciesId, move: MoveId): TutorWallet | null {
   const cost = rankCost(wallet, species, move);
   if (cost === null || wallet.coins < cost) return null;
-  const ranks = { ...wallet.ranks, [species]: { ...wallet.ranks?.[species], [move]: moveRank(wallet, species, move) + 1 } };
+  const key = progressForm(wallet, species);
+  const ranks = { ...wallet.ranks, [key]: { ...wallet.ranks?.[key], [move]: moveRank(wallet, species, move) + 1 } };
   return { ...wallet, coins: wallet.coins - cost, ranks };
 }
 
 /** The ranks a run of `species` takes (absent when there are none, so a plain run's state is unchanged). */
-export function runRanks(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId): MoveRanks | undefined {
-  const ranks = isPlayable(species) ? wallet.ranks?.[species] : undefined;
+export function runRanks(wallet: Pick<TutorWallet, 'ranks' | 'owned'>, species: SpeciesId): MoveRanks | undefined {
+  const ranks = isPlayable(species) ? wallet.ranks?.[progressForm(wallet, species)] : undefined;
   return ranks && Object.keys(ranks).length > 0 ? ranks : undefined;
 }
 
@@ -94,7 +111,7 @@ export function runRanks(wallet: Pick<TutorWallet, 'ranks'>, species: SpeciesId)
  * The loadout a run may use: each slot keeps its move only if the species
  * knows it (a stale or edited setting), else takes the species default.
  */
-export function knownLoadout(wallet: Pick<TutorWallet, 'learned' | 'awakened'>, species: SpeciesId, loadout: readonly (MoveId | null)[]): (MoveId | null)[] {
+export function knownLoadout(wallet: Pick<TutorWallet, 'learned' | 'awakened' | 'owned'>, species: SpeciesId, loadout: readonly (MoveId | null)[]): (MoveId | null)[] {
   const known = knownMoves(wallet, species);
   return loadout.map((m, i) => (m === null || known.includes(m) ? m : (SPECIES[species].defaultLoadout[i] ?? null)));
 }
