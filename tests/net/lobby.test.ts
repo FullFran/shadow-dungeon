@@ -314,4 +314,30 @@ describe('lobby', () => {
     expect(again.session.held()).toBe(false);
     expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
   });
+
+  it('a guest held after leaveRun whose held hello is lost on the host is let in at the next floor (#3, #51)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    // The host's transport lets the test report a (stale) peer-leave for 'a', which drops its held hello on the host.
+    const link = hub.connect('h');
+    let leaveHandler: (peer: string) => void = () => {};
+    link.onPeerLeave((p) => leaveHandler(p));
+    const transport = { ...link, onPeerLeave: (h: (peer: string) => void) => void (leaveHandler = h) };
+    const hostSession = createSession({ transport, scheduler });
+    const host = { roster: [] as readonly RosterEntry[] };
+    hostSession.onRoster((roster) => (host.roster = roster));
+    hostSession.host(17, 1, 'mimikyu', { lobby: true });
+    const a = peer(hub, 'a', scheduler);
+    a.session.join('mimikyu', LOADOUT);
+    hostSession.begin();
+    stepFloor(hostSession, 1);
+    a.started = null;
+    a.session.leaveRun();
+    expect(a.session.held()).toBe(true);
+    leaveHandler('a');
+    hostSession.sendFloor(2);
+    expect(host.roster.map((r) => r.peer)).toEqual(['h', 'a']);
+    expect(a.started).toEqual({ seed: 17, floor: 2, localId: 'p2' });
+    expect(a.session.held()).toBe(false);
+  });
 });
