@@ -1,12 +1,12 @@
-import { INTERACT_KEY_CODES, LOCK_KEYS, MAP_KEY, MENU_KEY, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES, SPECTATE_KEY, keyLabel } from '../adapters/bindings';
+import { INTERACT_KEY_CODES, inputLabel, primaryOf, type BindAction } from '../adapters/bindings';
 import { GAMEPAD_HELP, buttonName, type PadStyle } from '../app/gamepad-help-data';
 import type { FightKind } from './combat-hud-model';
 import { HUD_BOX, type HudDims, hudRects } from './hud-layout';
 
 /**
  * What the in-game hint bar shows (.agents/DESIGN.md §4 "Hint bar"): the actions available right now with the
- * glyph of the device in use. Pure. Keyboard glyphs come from the same binding table the input code reads
- * (src/adapters/bindings.ts) and the pad glyphs from the controller help table (app/gamepad-help-data.ts), so a
+ * glyph of the device in use. Pure. Keyboard glyphs come from the player's binding table the input code reads
+ * (src/adapters/bindings.ts, rebindable since issue #62) and the pad glyphs from the controller help table (app/gamepad-help-data.ts), so a
  * label can never differ from the key or button that does the thing. Touch shows nothing: its buttons are on screen.
  */
 export type HintDevice = 'keyboard' | 'gamepad' | 'touch';
@@ -48,30 +48,31 @@ const LABELS: Record<HintId, string> = {
   next: 'spectate.next',
 };
 
-const keys = (codes: readonly string[]): HintGlyph[] => codes.map((id) => ({ kind: 'key', id, label: keyLabel(id) }));
+const keys = (codes: readonly string[]): HintGlyph[] => codes.map((id) => ({ kind: 'key', id, label: inputLabel(id, undefined, true) }));
 const pad = (buttons: readonly string[], style: PadStyle): HintGlyph[] => buttons.map((id) => ({ kind: 'pad', id, label: buttonName(id, style) }));
 const row = (context: 'combat' | 'menus', action: string): readonly string[] => GAMEPAD_HELP[context].find((r) => r.action === action)?.buttons ?? [];
 
-/** The first of each side's keys, up-left-down-right (WASD). */
-const MOVE_FIRST = [MOVE_KEY_CODES.up[0], MOVE_KEY_CODES.left[0], MOVE_KEY_CODES.down[0], MOVE_KEY_CODES.right[0]];
+/** The first input of each action, skipping actions bound to nothing. */
+const firstOf = (...actions: BindAction[]): string[] => actions.map((a) => primaryOf(a)).filter((input): input is string => input !== null);
 
 function keyboardGlyphs(id: HintId): readonly string[] {
   switch (id) {
     case 'move':
-      return MOVE_FIRST;
+      // Up-left-down-right: WASD with the defaults.
+      return firstOf('up', 'left', 'down', 'right');
     case 'attack':
-      return SLOT_KEY_CODES.map((slot) => slot[0]!);
+      return firstOf('fast', 'heavy', 'boost', 'area');
     case 'roll':
-      return [ROLL_KEY];
+      return firstOf('roll');
     case 'lock':
-      return [LOCK_KEYS[0]!];
+      return firstOf('lock');
     case 'map':
     case 'wheel':
-      return [MAP_KEY];
+      return firstOf('map');
     case 'menu':
-      return [MENU_KEY];
+      return firstOf('menu');
     case 'next':
-      return [SPECTATE_KEY];
+      return firstOf('spectate');
   }
 }
 
@@ -158,7 +159,7 @@ export function hintBand(space: HudDims, slots: number): HintBand {
 export function interactGlyphs(device: HintDevice, style: PadStyle): HintGlyph[] {
   if (device === 'touch') return [];
   if (device === 'gamepad') return pad(row('menus', 'confirm'), style);
-  return keys(INTERACT_KEY_CODES.slice(0, 1));
+  return keys([primaryOf('interact') ?? INTERACT_KEY_CODES[1]!]);
 }
 
 export interface HintSizes {

@@ -46,7 +46,7 @@ import { DUNGEON_LORE } from '../data/dungeon-lore';
 import { boardLines, clearedDungeons, readRecords } from './records';
 import { beatenBosses, readShrine, shrineBoardLine } from './shrine-records';
 import { leaderboardLines, readBoard as readScores } from './leaderboard';
-import { INTERACT_KEY_CODES } from '../adapters/bindings';
+import { townActionOf, type TownAction } from '../adapters/bindings';
 import { mountPlayHints } from '../ui/play-hints';
 import { mountLocationPlaque } from '../ui/location-plaque';
 import { plaqueOf, townPlace } from '../ui/location-plaque-model';
@@ -185,18 +185,16 @@ export interface TownOptions {
   globalBoard?: (difficulty: Difficulty) => string[];
 }
 
-const MOVE_KEYS: Record<string, Vec2> = {
-  KeyW: { x: 0, y: -1 },
-  ArrowUp: { x: 0, y: -1 },
-  KeyS: { x: 0, y: 1 },
-  ArrowDown: { x: 0, y: 1 },
-  KeyA: { x: -1, y: 0 },
-  ArrowLeft: { x: -1, y: 0 },
-  KeyD: { x: 1, y: 0 },
-  ArrowRight: { x: 1, y: 0 },
-};
+const DIRECTIONS: Partial<Record<TownAction, Vec2>> = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
 
-const INTERACT_KEYS = new Set(INTERACT_KEY_CODES);
+/**
+ * Held keys are kept by code, the pad's synthetic ones as `pad:<code>`: those read the default bindings, so the pad
+ * walks with its arrows whatever the keyboard is bound to (issue #62).
+ */
+const PAD_PREFIX = 'pad:';
+const heldKey = (e: KeyboardEvent): string => (e.isTrusted ? e.code : `${PAD_PREFIX}${e.code}`);
+const heldAction = (key: string): TownAction | null => (key.startsWith(PAD_PREFIX) ? townActionOf(key.slice(PAD_PREFIX.length), undefined, false) : townActionOf(key));
+
 
 const npcSprite = (species: TownNpc['species']): string => SPRITE_KEYS[species];
 
@@ -476,7 +474,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     let x = 0;
     let y = 0;
     for (const key of held) {
-      const dir = MOVE_KEYS[key];
+      const action = heldAction(key);
+      const dir = action ? DIRECTIONS[action] : undefined;
       if (dir) {
         x += dir.x;
         y += dir.y;
@@ -789,19 +788,21 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   const onKeyDown = (e: KeyboardEvent) => {
     // A window's cursor list already handled this key (its Esc must not also leave the town).
     if (exitWindow || closeShop || e.defaultPrevented) return;
-    // Shift is the run key while held (released in onKeyUp like the move keys).
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') held.add(e.code);
-    if (MOVE_KEYS[e.code]) {
+    // The player's bindings (issue #62); the pad's synthetic keys read the defaults.
+    const action = townActionOf(e.code, undefined, e.isTrusted);
+    // The run key (Shift) counts while held (released in onKeyUp like the move keys).
+    if (action === 'run') held.add(heldKey(e));
+    if (action && DIRECTIONS[action]) {
       e.preventDefault();
-      if (!dialog) held.add(e.code);
-    } else if (INTERACT_KEYS.has(e.code)) {
+      if (!dialog) held.add(heldKey(e));
+    } else if (action === 'interact') {
       e.preventDefault();
       if (!e.repeat) interact();
-    } else if (e.code === 'Tab') {
+    } else if (action === 'map') {
       // The quick wheel (odd/tasks/menu-redesign.md S8): held open while Tab is down.
       e.preventDefault();
       if (!e.repeat) openWheel();
-    } else if (e.code === 'Escape') {
+    } else if (action === 'menu') {
       // Taken here: the menu opened now must not read this same Esc as its own "back".
       e.preventDefault();
       // Esc skips the villagers' pleas, or the welcome tour, whole.
@@ -969,7 +970,10 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     dialog = null;
     openShopWindow(openTownMenu);
   }
-  const onKeyUp = (e: KeyboardEvent) => held.delete(e.code);
+  const onKeyUp = (e: KeyboardEvent) => {
+    held.delete(e.code);
+    held.delete(`${PAD_PREFIX}${e.code}`);
+  };
   const onBlur = () => held.clear();
 
   /** NPCs turn towards the player when it comes near. */
@@ -1047,8 +1051,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     if (tour?.phase === 'done') endTour();
     const moving = move.x !== 0 || move.y !== 0 || (tour?.playerMoving ?? false);
     // Shift held, or the joystick pushed to its edge, runs (odd/tasks/menu-redesign.md: "opcion de correr").
-    const keysMove = [...held].some((code) => MOVE_KEYS[code]);
-    const running = held.has('ShiftLeft') || held.has('ShiftRight') || (!keysMove && Math.hypot(move.x, move.y) > 0.95);
+    const keysMove = [...held].some((key) => DIRECTIONS[heldAction(key) ?? 'map']);
+    const running = [...held].some((key) => heldAction(key) === 'run') || (!keysMove && Math.hypot(move.x, move.y) > 0.95);
     walker = stepWalker(walker, move, dt, arena, running ? RUN_FACTOR : 1);
     if (dialog) dialog = { ...dialog, state: tickDialog(dialog.state, dt) };
     for (const w of map.wanderers) {

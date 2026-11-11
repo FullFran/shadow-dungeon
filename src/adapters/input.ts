@@ -1,13 +1,13 @@
 import type { PlayerInput, Rect } from '../core/state';
 import type { Vec2 } from '../core/vec';
-import { LOCK_KEYS, MOVE_KEY_CODES, ROLL_KEY, SLOT_KEY_CODES } from './bindings';
+import { BIND_ACTIONS, SLOT_KEY_CODES, activeBindings, codesOf, inputOf, mouseButtonsOf, normalizeInput, type BindAction, type Bindings } from './bindings';
 import { screenToWorld } from './view';
 
 export { SLOT_KEY_CODES };
 
 /**
- * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"):
- * WASD or the arrow keys move, Space roll (along the held direction; with
+ * Keyboard and mouse -> PlayerInput (docs/gdd.md §4 "Controles"), through the player's bindings
+ * (src/adapters/bindings.ts, rebindable in Settings since issue #62). The defaults: WASD or the arrow keys move, Space roll (along the held direction; with
  * none, at the lock, else at the cursor while the mouse is live, else the facing), LMB or Q fast slot, RMB or E heavy slot (hold to
  * charge), R or 1 boost slot, F or 2 area slot (keys only: they go along the
  * facing or at the lock), Shift or middle mouse lock on (per lock type), LMB on an enemy locks it
@@ -24,7 +24,7 @@ export interface RawInput {
   buttons: ReadonlySet<number>;
   /** Cursor in canvas pixels. */
   mouse: Vec2;
-  /** Space pressed since the last simulation step (edge). */
+  /** The roll input (Space by default) pressed since the last simulation step (edge). */
   rollPressed: boolean;
   /** Wheel deltaY in pixels since the last simulation step. */
   wheel: number;
@@ -36,30 +36,25 @@ export interface RawInput {
   pointerLive?: boolean;
 }
 
-/** -1, 0 or 1 along one axis; WASD and the arrows together (same side counts once, opposite sides cancel). */
-const axis = (keys: ReadonlySet<string>, negative: readonly string[], positive: readonly string[]) =>
-  (positive.some((code) => keys.has(code)) ? 1 : 0) - (negative.some((code) => keys.has(code)) ? 1 : 0);
+/** -1, 0 or 1 along one axis; both bindings of a side together (same side counts once, opposite sides cancel). */
+const axis = (held: (action: BindAction) => boolean, negative: BindAction, positive: BindAction) => (held(positive) ? 1 : 0) - (held(negative) ? 1 : 0);
 
-/** Direction keys by axis side, as in the town (src/adapters/bindings.ts). */
-const LEFT = MOVE_KEY_CODES.left;
-const RIGHT = MOVE_KEY_CODES.right;
-const UP = MOVE_KEY_CODES.up;
-const DOWN = MOVE_KEY_CODES.down;
-const MOVE_KEYS = new Set<string>([...LEFT, ...RIGHT, ...UP, ...DOWN]);
+/** The four slots' actions, in slot order (fast, heavy, boost, area). */
+const SLOT_ACTIONS = ['fast', 'heavy', 'boost', 'area'] as const;
 
-/** Mouse button of each slot (left fast, right heavy); boost and area have none (middle is the lock). */
-const SLOT_BUTTONS: readonly (number | undefined)[] = [0, 2];
-
-export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number): PlayerInput {
+export function toPlayerInput(raw: RawInput, view: Rect, pixelScale: number, table: Bindings = activeBindings()): PlayerInput {
   const { keys, buttons } = raw;
+  const byMouse = (action: BindAction) => mouseButtonsOf(action, table).some((b) => buttons.has(b));
+  const held = (action: BindAction) => byMouse(action) || codesOf(action, table).some((code) => keys.has(code));
   return {
-    move: { x: axis(keys, LEFT, RIGHT), y: axis(keys, UP, DOWN) },
+    move: { x: axis(held, 'left', 'right'), y: axis(held, 'up', 'down') },
     aim: screenToWorld(raw.mouse, view, pixelScale),
     aimPointer: raw.pointerLive ?? false,
     roll: raw.rollPressed,
-    slots: SLOT_KEY_CODES.map((codes, i) => (SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])) || codes.some((code) => keys.has(code))),
-    slotMouse: SLOT_KEY_CODES.map((_, i) => SLOT_BUTTONS[i] !== undefined && buttons.has(SLOT_BUTTONS[i])),
-    lock: LOCK_KEYS.some((code) => keys.has(code)) || buttons.has(1),
+    slots: SLOT_ACTIONS.map(held),
+    slotMouse: SLOT_ACTIONS.map(byMouse),
+    lock: held('lock'),
+    // Click-to-lock is the left button itself, whatever it is bound to.
     click: buttons.has(0),
     wheel: raw.wheel,
     view,
@@ -73,7 +68,12 @@ export function wheelPixels(deltaY: number, deltaMode: number, pageHeight = 600)
   return deltaY;
 }
 
-const GAME_KEYS = new Set([...MOVE_KEYS, ...SLOT_KEY_CODES.flat(), ROLL_KEY, ...LOCK_KEYS]);
+/** The actions this device reads in a run. */
+const PLAY_ACTIONS = BIND_ACTIONS.filter((a) => a !== 'interact' && a !== 'run' && a !== 'spectate' && a !== 'map' && a !== 'menu' && a !== 'mute');
+const MOVE_ACTIONS = ['up', 'down', 'left', 'right'] as const;
+const isGameKey = (code: string) => PLAY_ACTIONS.some((a) => codesOf(a).includes(code));
+const isMoveKey = (code: string) => MOVE_ACTIONS.some((a) => codesOf(a).includes(code));
+const isRoll = (input: string) => activeBindings().roll.includes(normalizeInput(input));
 
 export interface InputDevice {
   /** Raw state for the next simulation step; edges (roll, wheel) are consumed. */
@@ -105,11 +105,11 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
     wheel = 0;
   };
   const onKeyDown = (e: KeyboardEvent) => {
-    if (suspended || !GAME_KEYS.has(e.code)) return;
+    if (suspended || !isGameKey(e.code)) return;
     e.preventDefault();
-    if (e.code === ROLL_KEY && !e.repeat) rollPressed = true;
+    if (isRoll(e.code) && !e.repeat) rollPressed = true;
     // Walking with the keys again: the cursor resting where it was is no longer the aim.
-    if (MOVE_KEYS.has(e.code) && !e.repeat) pointerLive = false;
+    if (isMoveKey(e.code) && !e.repeat) pointerLive = false;
     keys.add(e.code);
   };
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
@@ -123,10 +123,16 @@ export function attachInput(canvas: HTMLCanvasElement): InputDevice {
     onMouseMove(e);
     if (suspended) return;
     buttons.add(e.button);
+    // A mouse button bound to the roll rolls on its press, like the key.
+    if (isRoll(inputOf(e.button))) rollPressed = true;
     // Also stops middle-button autoscroll.
     e.preventDefault();
   };
-  const onMouseUp = (e: MouseEvent) => buttons.delete(e.button);
+  const onMouseUp = (e: MouseEvent) => {
+    buttons.delete(e.button);
+    // The side buttons (3, 4) would go back and forward in the browser history.
+    if (e.button === 3 || e.button === 4) e.preventDefault();
+  };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     if (suspended) return;

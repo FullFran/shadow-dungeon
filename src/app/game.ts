@@ -4,7 +4,7 @@ import { ROTATE_EVENT } from '../ui/orientation-gate';
 import { packMinimap, unpackMinimap, type ResumeWriter, type RunPart } from './run-resume';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
 import { h } from '../ui/window';
-import { TUTORIAL_HINTS, hintKey, hintsFor, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
+import { TUTORIAL_HINTS, hintsFor, signText, tutorialApplies, type TutorialDevice, type TutorialHint, type TutorialMoment } from './tutorial';
 import { figurationsAt, type FigurationMode } from '../adapters/figurations';
 import { SIMA_SHADOWS } from '../data/sima-story';
 import { withHerald } from '../core/herald/floor';
@@ -121,7 +121,7 @@ import { trackLastDevice } from '../adapters/last-device';
 import { wordingKey } from '../ui/device-wording';
 import { bossStackRect, liftHintBand } from '../ui/hud-layout';
 import type { PadStyle } from './gamepad-help-data';
-import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
+import { boundTo, fillBindings, type BindAction } from '../adapters/bindings';
 
 /** Endless, shared run: the host sends its clock about this often (and on every floor change). */
 const CLOCK_SEND_MS = 1000;
@@ -513,7 +513,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const hint = signQueue.shift()!;
     options.tutorial.mark(hint);
     const device = hintDevice();
-    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)), signWaits ? t(`tutorial.continue.${device}`) : undefined);
+    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, signText(hint, device), signWaits ? t(`tutorial.continue.${device}`) : undefined);
     if (signWaits) {
       element.classList.add('is-waiting');
       element.addEventListener('pointerdown', (e) => {
@@ -1319,6 +1319,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
+    // The player's bindings (issue #62); the pad's synthetic keys read the defaults.
+    const is = (action: BindAction) => boundTo(action, e.code, undefined, e.isTrusted);
     // A memory fragment's card: Esc puts it away (Enter is its own button).
     if (closeMemory && !closeMenu && e.code === 'Escape') {
       e.preventDefault();
@@ -1332,7 +1334,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       else choicePick?.(pickIndexForKey(e.code, 3)!);
       return;
     }
-    if (e.code === MENU_KEY) {
+    if (is('menu')) {
       e.preventDefault();
       if (closeMenu) hideMenu();
       else showMenu();
@@ -1345,9 +1347,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay.toggle();
     } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
       choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
-    } else if (e.code === 'KeyM' && !closeMenu) options.onToggleMute?.();
-    else if (e.code === SPECTATE_KEY && watching !== null && !closeMenu) watchNext();
-    else if (e.code === MAP_KEY && !closeMenu) {
+    } else if (is('mute') && !closeMenu) options.onToggleMute?.();
+    else if (is('spectate') && watching !== null && !closeMenu) watchNext();
+    else if (is('map') && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
       e.preventDefault();
       showMinimap = !showMinimap;
@@ -1809,7 +1811,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Co-op, fainted: the camera follows a standing teammate instead of the body.
     watching = net && world.player.hp <= 0 && !ended ? spectateTarget(watchable(), watching) : null;
     spectateButton.hidden = watching === null;
-    if (watching !== null) spectateButton.textContent = t(isTouchUi() ? 'spectate.next' : 'spectate.nextKey');
+    if (watching !== null) spectateButton.textContent = isTouchUi() ? t('spectate.next') : fillBindings(t('spectate.nextKey'));
     const watched = watching !== null ? world.remotes.find((r) => r.id === watching) : undefined;
     camera = followCamera(camera, watched ? watched.player.pos : lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, viewWidth, viewHeight, world.arena);
