@@ -7,6 +7,8 @@ import { attachPager } from '../ui/pager';
 import { slider } from '../ui/slider';
 import { h, mdWindow } from '../ui/window';
 import { SETTING_SLIDERS, applySetting, settingChoice, settingChoices, settingControlKind, settingRows, settingSections, type SettingRow, type SettingsAccess } from './settings-panel';
+import { inputOf, rebind, resetBindings, type BindAction } from '../adapters/bindings';
+import { bindingRows, rebindFeedback } from './key-bindings-panel';
 import '../styles/settings.css';
 
 /**
@@ -19,6 +21,8 @@ import '../styles/settings.css';
  * Fixed geometry: the window never changes size between sections. Keyboard and gamepad: Up / Down
  * move between rows, Left / Right adjust, Enter acts, Q / E change section, Esc goes back.
  * settings-panel.ts holds the tested model (which control, which options, which section).
+ * The last section, Keyboard and mouse (issue #62), rebinds the play keys: click a box (or Enter on it), then press
+ * the new key or mouse button; Esc cancels. Its model is key-bindings-panel.ts, the conflict policy bindings.ts.
  */
 export interface SettingsAction {
   label: string;
@@ -44,7 +48,7 @@ export interface SettingsView {
 /** Why a disabled row is off (shown in place of its help). */
 const DISABLED_REASON: Partial<Record<SettingRow['id'], string>> = { clickToLock: 'setting.clickToLock.disabled' };
 
-const FOCUSABLE = '[role="slider"], button[role="switch"], button[role="radio"][tabindex="0"], button.dd, input';
+const FOCUSABLE = '[role="slider"], button[role="switch"], button[role="radio"][tabindex="0"], button.dd, input, button.st-key:not(:disabled), button.st-reset';
 
 export function settingsView(options: SettingsViewOptions): SettingsView {
   const { access } = options;
@@ -56,10 +60,13 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
 
   const sectionsNow = () => settingSections(settingRows(access));
   const sections = sectionsNow();
-  current = Math.min(Math.max(0, current), sections.length - 1);
+  // The keyboard and mouse section comes after the model's sections (its rows are not settings rows).
+  const keysTab = sections.length;
+  const railEntries: { title: string; icon: PixelIconId }[] = [...sections, { title: t('bind.tab'), icon: 'controls' }];
+  current = Math.min(Math.max(0, current), railEntries.length - 1);
 
   // ---- rail
-  const tabs = sections.map((section, i) => {
+  const tabs = railEntries.map((section, i) => {
     const tab = h('button', { type: 'button', className: 'st-tab' }, [pixelIconSvg(section.icon, 'px-icon'), h('span', { textContent: section.title })]);
     tab.setAttribute('role', 'tab');
     tab.addEventListener('click', () => setTab(i));
@@ -244,6 +251,131 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
     return element;
   }
 
+  // ---- keyboard and mouse
+  /** The slot waiting for a key or mouse button. */
+  let listening: { action: BindAction; slot: 0 | 1 } | null = null;
+  /** The click (and context menu) that follows a captured mouse button, and the keyup of a captured key, are eaten. */
+  let swallowClick = false;
+  let swallowKeyUp: string | null = null;
+  const bindStatus = h('p', { className: 'st-bind-status' });
+  bindStatus.setAttribute('aria-live', 'polite');
+
+  function bindingElements(): HTMLElement[] {
+    const rows = bindingRows(access.get().keyBindings).map((row) => {
+      const id = `st-bind-${row.action}`;
+      const keys = row.slots.map((slot, i) => {
+        const waiting = listening?.action === row.action && listening.slot === i;
+        const button = h('button', { type: 'button', className: `st-key${slot.input ? '' : ' is-empty'}${waiting ? ' is-listening' : ''}`, textContent: waiting ? '…' : slot.label });
+        button.setAttribute('aria-label', `${row.label}, ${t(i === 0 ? 'bind.primary' : 'bind.secondary')}: ${slot.label}`);
+        button.dataset.slot = String(i);
+        button.disabled = slot.fixed;
+        button.addEventListener('click', () => listen(row.action, i as 0 | 1));
+        navs.push(button);
+        return button;
+      });
+      const element = h('div', { className: 'st-row st-kind-binding' }, [
+        h('div', { className: 'st-text' }, [h('span', { className: 'st-label', id: `${id}-l`, textContent: row.label })]),
+        h('div', { className: 'st-ctl st-bindkeys' }, keys),
+      ]);
+      element.dataset.row = `bind-${row.action}`;
+      aboutOf.set(element, t('bind.about'));
+      return element;
+    });
+    const reset = h('button', { type: 'button', className: 'st-btn st-reset', textContent: t('bind.reset') });
+    reset.addEventListener('click', () => {
+      listening = null;
+      access.update({ keyBindings: resetBindings() });
+      renderPanel();
+      bindStatus.textContent = t('bind.resetDone');
+    });
+    navs.push(reset);
+    const resetRow = h('div', { className: 'st-row st-kind-reset' }, [h('div', { className: 'st-text' }, [h('p', { className: 'st-bind-note', textContent: t('bind.note') })]), h('div', { className: 'st-ctl' }, [reset])]);
+    resetRow.dataset.row = 'bind-reset';
+    aboutOf.set(resetRow, t('bind.note'));
+    return [...rows, resetRow, bindStatus];
+  }
+
+  function listen(action: BindAction, slot: 0 | 1): void {
+    listening = { action, slot };
+    renderPanel();
+    bindStatus.textContent = t('bind.listening');
+    focusSlot(action, slot);
+  }
+
+  function focusSlot(action: BindAction, slot: 0 | 1): void {
+    const button = rowsBox.querySelector<HTMLElement>(`[data-row="bind-${action}"] .st-key[data-slot="${slot}"]`);
+    if (button) {
+      pager.reveal(button.closest<HTMLElement>('.st-row')!);
+      button.focus({ preventScroll: true });
+    }
+  }
+
+  /** Ends the capture: `input` is bound (or refused), null cancels. */
+  function capture(input: string | null): void {
+    const waiting = listening;
+    listening = null;
+    if (!waiting) return;
+    let message = t('bind.cancelled');
+    if (input !== null) {
+      const result = rebind(access.get().keyBindings, waiting.action, waiting.slot, input);
+      if (result.kind !== 'refused') access.update({ keyBindings: result.bindings });
+      message = rebindFeedback(result, waiting.action, input);
+    }
+    renderPanel();
+    bindStatus.textContent = message;
+    focusSlot(waiting.action, waiting.slot);
+  }
+
+  const onCaptureKey = (e: KeyboardEvent): void => {
+    if (!listening) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    // Esc cancels (the pad's B sends it too); other synthetic pad keys bind nothing.
+    if (e.code === 'Escape') capture(null);
+    else if (e.isTrusted) {
+      swallowKeyUp = e.code;
+      capture(e.code);
+    }
+  };
+  const onCaptureKeyUp = (e: KeyboardEvent): void => {
+    // A Space keyup on the focused box would click it again.
+    if (swallowKeyUp !== e.code) return;
+    swallowKeyUp = null;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  const onCaptureMouse = (e: MouseEvent): void => {
+    if (!listening) {
+      // A new press: whatever click the captured button left pending (not every button sends one) is gone.
+      swallowClick = false;
+      return;
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    swallowClick = true;
+    capture(inputOf(e.button));
+  };
+  const onCaptureClick = (e: MouseEvent): void => {
+    if (!swallowClick) return;
+    if (e.type !== 'contextmenu') swallowClick = false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  const CAPTURE_EVENTS = [
+    ['keydown', onCaptureKey],
+    ['keyup', onCaptureKeyUp],
+    ['mousedown', onCaptureMouse],
+    ['click', onCaptureClick],
+    ['auxclick', onCaptureClick],
+    ['contextmenu', onCaptureClick],
+  ] as const;
+  // Registered before the window's own key handler below, so a captured key never moves the cursor or changes section.
+  for (const [type, handler] of CAPTURE_EVENTS) window.addEventListener(type, handler as EventListener, true);
+  const removeCapture = () => {
+    for (const [type, handler] of CAPTURE_EVENTS) window.removeEventListener(type, handler as EventListener, true);
+  };
+
   function renderPanel(): void {
     const page = pager.page();
     const active = document.activeElement as HTMLElement | null;
@@ -252,9 +384,10 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
     dropdowns = [];
     navs = [];
     aboutOf = new Map();
-    const section = sectionsNow()[current]!;
+    const section = current === keysTab ? { title: t('bind.section'), icon: 'controls' as const, rows: [] } : sectionsNow()[current]!;
     heading.replaceChildren(pixelIconSvg(section.icon, 'px-icon'), h('span', { textContent: section.title }));
-    const rows = section.rows.map(buildRow);
+    if (current !== keysTab) bindStatus.textContent = '';
+    const rows = current === keysTab ? bindingElements() : section.rows.map(buildRow);
     // The profile lives in General, beside the language.
     if (current === 0) rows.push(nicknameRow());
     rowsBox.replaceChildren(...rows);
@@ -285,6 +418,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   }
 
   function setTab(next: number): void {
+    listening = null;
     current = (next + tabs.length) % tabs.length;
     renderPanel();
     options.onTab?.(current);
@@ -306,6 +440,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   const onKey = (e: KeyboardEvent): void => {
     if (!win.isConnected) {
       window.removeEventListener('keydown', onKey, true);
+      removeCapture();
       return;
     }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -364,6 +499,17 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
       enabled()[0]?.focus();
       return;
     }
+    // The two boxes of a binding row: Left / Right move between them.
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && target?.classList.contains('st-key')) {
+      e.preventDefault();
+      e.stopPropagation();
+      const boxes = [...(target.parentElement?.querySelectorAll<HTMLButtonElement>('.st-key:not(:disabled)') ?? [])];
+      const at = boxes.indexOf(target as HTMLButtonElement);
+      const next = at + (e.key === 'ArrowRight' ? 1 : -1);
+      if (next < 0) tabs[current]!.focus();
+      else boxes[Math.min(next, boxes.length - 1)]?.focus();
+      return;
+    }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       // Sliders, segmented controls and switches adjust themselves.
       if (onSlider || target?.getAttribute('role') === 'radio' || target?.getAttribute('role') === 'switch') return;
@@ -386,6 +532,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
     dispose() {
       pager.dispose();
       window.removeEventListener('keydown', onKey, true);
+      removeCapture();
       for (const box of dropdowns) box.dispose();
       dropdowns = [];
     },

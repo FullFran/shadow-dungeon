@@ -153,3 +153,14 @@ html.touch .st-keys { display: none; }
   html.touch .st-btn svg.px-icon { width: 18px; height: 18px; }
   html.touch .st-tab { font-size: 13px; }
 }
+
+/* ---------- Keyboard and mouse bindings (issue #62) ---------- */
+.st-bindkeys { display: flex; gap: 8px; width: 100%; }
+.st-key { all: unset; box-sizing: border-box; flex: 1 1 0; min-width: 0; display: grid; place-items: center; min-height: 40px; padding: 0 8px; cursor: pointer; border: 2px solid var(--rp-edge); border-radius: 6px; background: var(--md-ink); font-family: var(--md-text-font); font-size: 16px; line-height: 1.1; text-align: center; color: var(--md-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: border-color 120ms ease-out, color 120ms ease-out; }
+.st-key:hover { border-color: var(--md-border); color: var(--md-cursor); }
+.st-key:focus-visible { border-color: var(--md-cursor); box-shadow: 0 0 0 3px rgba(255, 191, 94, 0.45); }
+.st-key.is-empty { color: var(--md-text-dim); }
+.st-key:disabled { cursor: not-allowed; opacity: 0.55; }
+.st-key.is-listening { border-color: var(--md-cursor); color: var(--md-ink); background: linear-gradient(180deg, var(--md-cursor), var(--relic-ember)); }
+.st-bind-status { min-height: 1.3em; margin: 4px 2px 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-cursor); }
+.st-bind-note { margin: 6px 2px 0; font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); }
