@@ -231,6 +231,7 @@ function strikeEnemy(
     ...(hit.moveId && !hit.minor ? { moveId: hit.moveId } : {}),
     ...(hit.finisher ? { finisher: true } : {}),
     ...(hit.minor ? { minor: true as const } : {}),
+    ...(state.player.types.includes(hit.type) ? { stab: hit.type } : {}),
   });
   // A burning or poisoning move leaves its damage over time on a survivor (a ranked chance rolls for it).
   let dotTakes = Boolean(hit.effects?.dot && reacted.alive);

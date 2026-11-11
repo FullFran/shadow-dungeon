@@ -219,6 +219,7 @@ const NUMBER_COLORS: Record<FloatingNumber['style'], string> = {
   super: '#ffb347',
   normal: '#ffffff',
   weak: '#9aa0a6',
+  immune: '#7f8fa6',
   blocked: '#8fb3ff',
   hold: '#c9a8ff',
   hurt: '#ff5a5a',
@@ -1604,7 +1605,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fillRect(x - 12, y + 3, Math.round(24 * Math.max(0, Math.min(1, hp / maxHp))), 3);
   }
 
-  /** Damage numbers: outlined in ink, bigger for heavy hits, coloured by effectiveness ("!" on a super-effective hit), status ticks in their own colour. */
+  /** Damage numbers: outlined in ink, bigger for heavy hits, coloured by effectiveness ("!" on a super-effective hit, "Immune" and smaller on a softened immunity, smaller when resisted), glowing in the move's type on a same-type (STAB) hit, status ticks in their own colour. */
   function numbers(list: readonly FloatingNumber[]): void {
     ctx.textAlign = 'center';
     for (const n of list) {
@@ -1613,17 +1614,26 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const pop = 1 + 0.35 * Math.max(0, 1 - n.ageMs / 120);
       ctx.globalAlpha = 1 - life * life;
       const tick = n.style === 'burn' || n.style === 'poison';
-      const size = n.big ? 22 : tick ? FONT.hudPx : 16;
+      // Resisted and immune hits shrink; a same-type (STAB) hit grows a little (issue #60).
+      const small = n.style === 'weak' || n.style === 'immune';
+      const size = (n.big ? 22 : tick || small ? FONT.hudPx : 16) * (n.stab ? 1.15 : 1);
       ctx.font = canvasFont(Math.round(size * pop), true);
       // Fraction-of-max-HP hazards (collapse, fog chill) are not whole numbers: show them rounded.
       const base = n.style === 'blocked' ? t('hud.blocked') : n.style === 'hold' ? t('hud.cardHold') : String(Math.round(n.value));
-      const text = n.style === 'super' ? `${base}!` : base;
+      // A softened immunity still deals a little: the word says it barely affects it.
+      const text = n.style === 'super' ? `${base}!` : n.style === 'immune' ? `${t('hud.immune')} ${base}` : base;
       const x = Math.round(n.pos.x);
       const y = Math.round(n.pos.y - 28 - JUICE.numberRisePx * life);
       ctx.fillStyle = '#000000';
       for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1], [-1, -1]] as const) ctx.fillText(text, x + dx, y + dy);
+      if (n.stab) {
+        ctx.shadowColor = TYPE_COLORS[n.stab].glow;
+        ctx.shadowBlur = 6;
+      }
       ctx.fillStyle = NUMBER_COLORS[n.style];
       ctx.fillText(text, x, y);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
     }
     ctx.globalAlpha = 1;
   }

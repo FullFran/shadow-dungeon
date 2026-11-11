@@ -481,7 +481,7 @@ export type GameEvent =
   | { type: 'buffStarted'; moveId: MoveId }
   | { type: 'moveReleased'; moveId: MoveId; chargeLevel: number }
   /** `moveId`: the local player's move that landed it; `finisher`: the last part of a multi-hit move. */
-  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean; dot?: DotKind; minor?: true; burst?: true }
+  | { type: 'enemyHit'; enemyId: string; damage: number; effectiveness: number; pos: Vec2; moveId?: MoveId; finisher?: boolean; dot?: DotKind; minor?: true; burst?: true; /** The move shares a type with its user (STAB): the number glows in that type's colour. */ stab?: PokemonType }
   | { type: 'enemyDefeated'; enemyId: string }
   /** A leader winds up its rally cry (`windup`) or calls it (`cry`) (core/leaders.ts). */
   | { type: 'leaderRally'; enemyId: string; phase: 'windup' | 'cry' }

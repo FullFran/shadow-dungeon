@@ -6,7 +6,9 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld, spawnEnemy } from '../../src/core/world';
 import { toPlayerInput, wheelPixels, type RawInput } from '../../src/adapters/input';
-import { applyEvents, initialJuice, JUICE, shakeOffset, tickJuice } from '../../src/adapters/juice';
+import { applyEvents, effectivenessStyle, initialJuice, JUICE, shakeOffset, tickJuice } from '../../src/adapters/juice';
+import { hitEffectiveness } from '../../src/core/damage';
+import { POKEMON_TYPES, TYPE_CHART } from '../../src/data/types';
 import { attackFrame, directionRow, enemyAnim, enemySprite, frameAtTime, playerAnim } from '../../src/adapters/sprite-anim';
 import { cameraView, interpolatedPositions, pixelScaleFor, screenToWorld } from '../../src/adapters/view';
 import { barFill, levelUpText } from '../../src/adapters/hud';
@@ -217,6 +219,44 @@ describe('juice', () => {
       vec(0, 0),
     );
     expect(juice.numbers.map((n) => n.style)).toEqual(['weak', 'blocked']);
+  });
+
+  it('marks a hit on an immune type apart from a resisted one (#60)', () => {
+    const immune = hitEffectiveness('normal', ['ghost']);
+    const doubleResisted = hitEffectiveness('fire', ['fire', 'water']);
+    const juice = applyEvents(
+      initialJuice(),
+      [
+        { type: 'enemyHit', enemyId: 'e1', damage: 2, effectiveness: immune, pos: vec(0, 0) },
+        { type: 'enemyHit', enemyId: 'e1', damage: 4, effectiveness: doubleResisted, pos: vec(0, 0) },
+      ],
+      vec(0, 0),
+    );
+    expect(juice.numbers.map((n) => n.style)).toEqual(['immune', 'weak']);
+  });
+
+  it('every immune matchup reads as immune and no other one does (#60)', () => {
+    for (const move of POKEMON_TYPES) {
+      for (const a of POKEMON_TYPES) {
+        for (const b of [undefined, ...POKEMON_TYPES]) {
+          const defenders = b && b !== a ? [a, b] : [a];
+          const immune = defenders.some((d) => TYPE_CHART[move][d] === 0);
+          expect(effectivenessStyle(hitEffectiveness(move, defenders)) === 'immune', `${move} on ${defenders.join('/')}`).toBe(immune);
+        }
+      }
+    }
+  });
+
+  it('a same-type (STAB) hit carries its type to the number (#60)', () => {
+    const juice = applyEvents(
+      initialJuice(),
+      [
+        { type: 'enemyHit', enemyId: 'e1', damage: 9, effectiveness: 1, pos: vec(0, 0), stab: 'dark' },
+        { type: 'enemyHit', enemyId: 'e1', damage: 6, effectiveness: 1, pos: vec(0, 0) },
+      ],
+      vec(0, 0),
+    );
+    expect(juice.numbers.map((n) => n.stab)).toEqual(['dark', undefined]);
   });
 
   it('flashes on a perfect dodge and ages everything out', () => {

@@ -2,6 +2,7 @@ import { COLLAPSE } from '../data/dungeon';
 import type { ItemId } from '../data/items';
 import { MOVES } from '../data/moves';
 import type { PassiveId } from '../data/species';
+import { PLAYER_HIT_LEVELS, type PokemonType } from '../data/types';
 import type { GameEvent } from '../core/state';
 import type { Vec2 } from '../core/vec';
 
@@ -28,7 +29,7 @@ export const JUICE = {
   rumblePx: 1.5,
 } as const;
 
-export type NumberStyle = 'super' | 'normal' | 'weak' | 'blocked' | 'hold' | 'hurt' | 'heal' | 'burn' | 'poison';
+export type NumberStyle = 'super' | 'normal' | 'weak' | 'immune' | 'blocked' | 'hold' | 'hurt' | 'heal' | 'burn' | 'poison';
 
 export interface FloatingNumber {
   pos: Vec2;
@@ -37,6 +38,8 @@ export interface FloatingNumber {
   style: NumberStyle;
   big: boolean;
   ageMs: number;
+  /** A same-type (STAB) hit: the number glows in this type's colour. */
+  stab?: PokemonType;
 }
 
 export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp' | 'item' | 'passive';
@@ -52,9 +55,16 @@ export interface JuiceState {
 
 export const initialJuice = (): JuiceState => ({ hitstopMs: 0, shakeMs: 0, shakePx: 0, numbers: [], flash: null });
 
-/** Colour class of a damage number from the type effectiveness. */
+/**
+ * Colour class of a damage number from the type effectiveness of a player's
+ * hit (the compressed chart, data/types.ts `PLAYER_HIT_LEVELS`). An immunity
+ * is softened, never zero (`TUNING.combat.immunityMultiplier`), and always
+ * lands below the lowest non-immune level, so it reads apart from a resisted
+ * hit (issue #60; tests/adapters/presentation.test.ts checks every matchup).
+ */
 export function effectivenessStyle(effectiveness: number): NumberStyle {
   if (effectiveness > 1) return 'super';
+  if (effectiveness < PLAYER_HIT_LEVELS.doubleResisted) return 'immune';
   if (effectiveness < 1) return 'weak';
   return 'normal';
 }
@@ -91,7 +101,7 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         next = {
           ...next,
           hitstopMs: midCombo ? next.hitstopMs : Math.max(next.hitstopMs, heavy ? JUICE.heavyHitstopMs : JUICE.hitstopMs),
-          numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: effectivenessStyle(event.effectiveness), big: heavy, ageMs: 0 }],
+          numbers: [...next.numbers, { pos: event.pos, value: event.damage, style: effectivenessStyle(event.effectiveness), big: heavy, ageMs: 0, ...(event.stab ? { stab: event.stab } : {}) }],
         };
         if (heavy) next = shake(next, JUICE.shakePx);
         break;

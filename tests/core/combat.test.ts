@@ -163,6 +163,17 @@ describe('type effectiveness in combat', () => {
   });
 });
 
+describe('same-type attack bonus on the hit (#60)', () => {
+  it('a move of one of the player\'s types marks its hit with that type; another type does not', () => {
+    const start = arena(['shadow-claw', 'play-rough'], [['poochyena', vec(425, 300)]]);
+    const own = use(start, 0, FIXED_DT_MS, totalMs('shadow-claw'));
+    const other = use({ ...start, player: { ...start.player, types: ['normal'] } }, 0, FIXED_DT_MS, totalMs('shadow-claw'));
+    expect(start.player.types).toContain(MOVES['shadow-claw'].type);
+    expect(enemyHits(own.events)[0]).toMatchObject({ stab: MOVES['shadow-claw'].type });
+    expect(enemyHits(other.events)[0]).not.toHaveProperty('stab');
+  });
+});
+
 describe('hit reactions', () => {
   it('staggers the enemy and pushes it away from the attacker', () => {
     // A regular enemy: the boss has super armour (boss.test.ts).
