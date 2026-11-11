@@ -633,6 +633,9 @@ export function createSession(options: SessionOptions): NetSession {
         return;
       case 'floor':
         if (role === 'guest') floorChange = Math.max(floorChange ?? 0, message.floor);
+        // Held for the next floor (a rejoin, or a guest that left the run): knock again at each join point, so a held
+        // hello lost on the host (a late peer-leave for this peer's old link drops it) cannot leave it waiting for good.
+        if (toldToWait) knock();
         return;
       case 'clock':
         // Only the host's clock counts, and only a sane one.
