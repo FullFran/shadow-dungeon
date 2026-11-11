@@ -324,7 +324,9 @@ export function applyHostSnapshot(seen: WorldState, snapshot: HostSnapshot): Wor
     };
   });
   const own = state.projectiles.filter((p) => p.owner === 'player');
-  const theirs = snapshot.projectiles.map((s): ProjectileState => {
+  // Shots already spent on this guest stay spent while the host still sends them; forgotten once the host drops them.
+  const spentShots = (state.spentShots ?? []).filter((id) => snapshot.projectiles.some((s) => s.id === id));
+  const theirs = snapshot.projectiles.filter((s) => !spentShots.includes(s.id)).map((s): ProjectileState => {
     const local = state.projectiles.find((p) => p.owner === 'enemy' && p.id === s.id);
     return {
       ...s,
@@ -337,7 +339,9 @@ export function applyHostSnapshot(seen: WorldState, snapshot: HostSnapshot): Wor
   });
   // Berries only ever disappear on a guest: one another player ate, or one it claimed itself.
   const berries = state.berries.filter((b) => snapshot.berries.includes(b.id));
-  return applyGateSync(applySimaSync({ ...counted, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima), snapshot.gate);
+  const { spentShots: _spent, ...rest } = counted;
+  const spent = spentShots.length > 0 ? { spentShots } : {};
+  return applyGateSync(applySimaSync({ ...rest, ...spent, enemies, projectiles: [...own, ...theirs], berries }, snapshot.sima), snapshot.gate);
 }
 
 const withoutParty = (state: WorldState): WorldState => {

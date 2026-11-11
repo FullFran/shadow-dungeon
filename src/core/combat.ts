@@ -620,6 +620,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       current = landed.state;
       // Rolled through: the projectile keeps flying; otherwise it is spent.
       const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
+      // A guest remembers the host's shot it spent, so the next snapshot does not bring it back (sync.ts).
+      if (!dodged && current.role === 'guest') current = { ...current, spentShots: [...(current.spentShots ?? []), moved.id] };
       moved = dodged ? { ...moved, hitIds: [...moved.hitIds, PLAYER_ID] } : null;
     }
     if (moved) survivors.push(moved);
