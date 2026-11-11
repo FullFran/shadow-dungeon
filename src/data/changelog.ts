@@ -45,6 +45,74 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.14.0',
+    date: '2026-11-12',
+    sections: {
+      new: [
+        {
+          es: 'Puedes cambiar los controles de teclado y ratón en Ajustes > Controles: pulsa una casilla y luego la tecla o el botón que quieras. Si choca con otra acción te avisa, y «Restablecer» vuelve a los de siempre.',
+          en: 'You can change the keyboard and mouse controls in Settings > Controls: click a box, then the key or button you want. It warns you if it clashes with another action, and "Reset" brings back the usual ones.',
+          icon: 'wrench',
+        },
+        {
+          es: 'Retratos al estilo Mundo Misterioso junto a quien habla: en el pueblo, en las cinemáticas, en las frases de los jefes y en las tuyas, con su expresión del momento.',
+          en: 'Mystery Dungeon style portraits next to whoever speaks: in town, in cutscenes, in the bosses\' lines and in your own, with the expression of the moment.',
+          icon: 'sparkle',
+        },
+        {
+          es: 'Evolucionar ya no te quita ninguna forma: puedes seguir eligiendo las anteriores, y comparten los movimientos aprendidos y las Mejoras de su línea.',
+          en: 'Evolving no longer takes a form away: you can still pick the earlier ones, and they share their line\'s learned moves and upgrades.',
+          icon: 'rise',
+        },
+      ],
+      improved: [
+        {
+          es: 'Los números de daño dicen más: eficaz en naranja con «!», poco eficaz más pequeño, «Inmune» cuando casi no le afecta, y los golpes con STAB brillan con el color de su tipo.',
+          en: 'Damage numbers tell you more: super effective in orange with "!", not very effective smaller, "Immune" when it barely affects it, and same-type (STAB) hits glow in their type\'s colour.',
+          icon: 'star',
+        },
+        {
+          es: 'Los cambios de fase y la derrota de un jefe se ven bien: un cartel grande en el centro, un momento de cámara lenta jugando solo y un consejo la primera vez.',
+          en: 'Boss phase changes and defeats are easy to see: a big notice in the middle, a moment of slow motion in solo play and a tip the first time.',
+          icon: 'trophy',
+        },
+        {
+          es: 'Las últimas frases de un jefe y la elección de recompensa ya no se cierran con el clic de ataque que llevabas: hay que pulsar con calma.',
+          en: 'A boss\'s last lines and the reward pick no longer close with the attack click you were already making: press calmly to go on.',
+        },
+        {
+          es: 'Las ayudas en pantalla hablan de botones del mando o de tocar, según con qué juegues, y con mando el botón A avanza los diálogos.',
+          en: 'On-screen hints talk about pad buttons or tapping, depending on what you play with, and on a pad the A button moves dialogue on.',
+        },
+      ],
+      balance: [
+        {
+          es: 'Como en los juegos principales, un Pokémon de tipo Fuego no se quema y uno de tipo Veneno o Acero no se envenena. Un compañero Veneno o Acero cruza las charcas del Pantano sin envenenarse.',
+          en: 'As in the main games, a Fire-type Pokémon is never burned and a Poison or Steel type is never poisoned. A Poison or Steel partner wades through the Swamp\'s pools without being poisoned.',
+          icon: 'shield',
+        },
+      ],
+      multiplayer: [
+        {
+          es: 'Si caes, debajo de a quién miras pone si un compañero aún te puede reanimar en esta planta.',
+          en: 'If you faint, under who you are watching it says whether a partner can still revive you on this floor.',
+        },
+        {
+          es: 'Ya nadie se queda esperando tras caer todo el grupo: el anfitrión siempre recibe la pregunta de la hoguera, y si la partida acaba, los invitados se enteran.',
+          en: 'Nobody is left waiting after the whole party falls: the host always gets the bonfire question, and if the run ends, the guests know.',
+        },
+        {
+          es: 'Si el anfitrión cambia de pestaña, la partida sigue para los demás en lugar de congelarse.',
+          en: 'If the host switches tabs, the run goes on for everyone else instead of freezing.',
+        },
+        {
+          es: 'Un invitado que vuelve a la sala a mitad de partida entra siempre en la planta siguiente.',
+          en: 'A guest who comes back to the room mid-run always gets in on the next floor.',
+        },
+      ],
+    },
+  },
+  {
     version: '0.13.0',
     date: '2026-11-11',
     sections: {
