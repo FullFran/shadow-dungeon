@@ -118,6 +118,7 @@ import { dungeonPlace, shrinePlace, simaBandPlace } from '../ui/location-plaque-
 import { bossPlaque, cardPlaque, introPlaque } from '../adapters/floor-plaque';
 import { hintBand } from '../ui/play-hints-model';
 import { trackLastDevice } from '../adapters/last-device';
+import { wordingKey } from '../ui/device-wording';
 import { bossStackRect, liftHintBand } from '../ui/hud-layout';
 import type { PadStyle } from './gamepad-help-data';
 import { MAP_KEY, MENU_KEY, SPECTATE_KEY } from '../adapters/bindings';
@@ -475,6 +476,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let sign: { hint: TutorialHint; element: HTMLElement; shownAtMs: number } | null = null;
   /** The last input came from a gamepad (the sign then names its buttons). */
   let padInUse = false;
+  /** The wording for the input in use (src/ui/device-wording.ts): the tutorial, the leave and shrine choices. */
+  const hintDevice = (): TutorialDevice => (isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys');
   const SIGN_MS = 7000;
   function teach(moment: TutorialMoment): void {
     const tutorial = options.tutorial;
@@ -509,7 +512,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (sign || signQueue.length === 0 || !options.tutorial || (intro && realMs - intro.shownAtMs < 4000)) return;
     const hint = signQueue.shift()!;
     options.tutorial.mark(hint);
-    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    const device = hintDevice();
     const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, t(hintKey(hint, device)), signWaits ? t(`tutorial.continue.${device}`) : undefined);
     if (signWaits) {
       element.classList.add('is-waiting');
@@ -642,7 +645,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const text = storyLines.shift();
     if (text === undefined) return;
     storyGuard.arm(performance.now(), answered ? PRESS_NEXT_GRACE_MS : PRESS_GRACE_MS);
-    const device: TutorialDevice = isTouchUi() ? 'touch' : padInUse ? 'pad' : 'keys';
+    const device = hintDevice();
     storyBox = h('div', { className: 'story-box', role: 'status' }, [h('p', { className: 'story-box-text', textContent: text }), h('p', { className: 'story-box-next' }, signParts(t(`tutorial.continue.${device}`)).map((part) => (part.key ? h('kbd', { textContent: part.text }) : document.createTextNode(part.text))))]);
     storyBox.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -858,7 +861,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (!pact) return;
     // The curse as it will bite at this difficulty (nightmare: harder).
     const curse = pactEffects(pact, worldDifficulty(world), events);
-    showChoice(t('sima.shrine.title'), t('sima.shrine.hint').replace('{floors}', String(events.shrine.floors)), [
+    showChoice(t('sima.shrine.title'), t(wordingKey('sima.shrine.hint', hintDevice())).replace('{floors}', String(events.shrine.floors)), [
       { name: t(`sima.pact.${pact.id}.name`), description: `${t('sima.shrine.blessing')}: ${effectText(pact.blessing)}. ${t('sima.shrine.curse')}: ${effectText({ enemySpeed: curse.enemySpeed, enemyDamage: curse.enemyDamage })}.`, look: 'rare' },
       { name: t('sima.shrine.decline'), description: t('sima.shrine.declineText'), look: 'common' },
     ], (index) => {
@@ -943,7 +946,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     const shared = net !== undefined;
     // The stairs ask to go down, a room's exit to move on, a boss room's fog to cross it.
     const kind = world.fogWall ? 'fog.' : floorPlanOf(run).kind === 'room' ? 'exit.' : '';
-    showChoice(t(`leave.${kind}title`), t(shared ? `leave.${kind}hintShared` : 'leave.hint'), [
+    showChoice(t(`leave.${kind}title`), t(shared ? `leave.${kind}hintShared` : wordingKey('leave.hint', hintDevice())), [
       { name: t(`leave.${kind}go`), description: t(shared ? 'leave.goShared' : `leave.${kind}goText`), look: 'rare' },
       { name: t('leave.stay'), description: t(`leave.${kind}stayText`), look: 'common' },
     ], (index) => {
@@ -976,7 +979,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (action === 'replace') hideChoice();
     const left = respawnsLeft(difficulty, bonfireUsed);
     const texts = dungeonOf(run).endless ? 'bonfire.sima' : 'bonfire';
-    showChoice(t('bonfire.title'), t(net ? 'bonfire.hintShared' : 'leave.hint'), [
+    showChoice(t('bonfire.title'), t(net ? 'bonfire.hintShared' : wordingKey('leave.hint', hintDevice())), [
       // The Sima's bonfire is this floor's fog, and its clock keeps running (core/bonfire.ts).
       { name: t('bonfire.go'), description: left === null ? t(`${texts}.goText`) : t(`${texts}.goLeft`).replace('{n}', String(left)), look: 'rare' },
       { name: t('bonfire.give'), description: t(`${texts}.giveText`), look: 'common' },

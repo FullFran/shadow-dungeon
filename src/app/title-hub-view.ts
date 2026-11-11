@@ -5,6 +5,7 @@ import { pixelIconSvg } from '../ui/pixel-icons';
 import '../styles/hub-altar.css';
 import '../styles/hub-phone.css';
 import { compactHub, hubStep, type HubButton, type HubDirection, type HubGroup, type HubId } from './title-hub';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The title hub on screen (odd/tasks/title-hub.md T4; .agents/DESIGN.md §3):
@@ -265,7 +266,7 @@ export function titleHub(options: TitleHubOptions): { element: HTMLElement; focu
       h('div', { className: 'hub-cta' }, [...(playButton ? [playButton] : []), ...(onlineButton ? [onlineButton] : [])]),
       h('div', { className: 'hub-links' }, zone('links').map((b) => relic(b, 'link'))),
     ]),
-    h('p', { className: 'hub-hint', textContent: t(options.touch ? 'hub.hint.touch' : 'hub.hint') }),
+    deviceHint('hub-hint', 'hub.hint'),
     h('p', { className: 'build-label', textContent: options.buildLabel }),
     status,
   ]);

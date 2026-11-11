@@ -21,6 +21,7 @@ import { endScreen, endVeil } from './end-screen';
 import { shrineEndView } from './shrine-result';
 import { hallCards, hallTabs, type HallInput, type HallTab, type OathCard } from './shrine-hall';
 import '../styles/hall.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * Santuario de los Juramentos (docs/gdd.md §3): the shrine window and its
@@ -135,7 +136,7 @@ export function shrineWindow(options: ShrineOptions): { element: HTMLElement; di
   // Phones: the cards that do not fit become pages, their buttons beside Volver (src/ui/pager.ts).
   const pageNav = h('span', { className: 'oa-pages' });
   const pager = attachPager(grid, { nav: pageNav });
-  const foot = h('div', { className: 'hl-foot' }, [back, pageNav, h('p', { className: 'hl-hint', textContent: options.note ?? t('hub.hint') })]);
+  const foot = h('div', { className: 'hl-foot' }, [back, pageNav, options.note !== undefined ? h('p', { className: 'hl-hint', textContent: options.note }) : deviceHint('hl-hint', 'hub.hint')]);
 
   const line = (label: string, value: string | Node): HTMLElement => h('p', { className: 'hl-line' }, [h('span', { className: 'hl-line-label', textContent: label }), typeof value === 'string' ? h('span', { className: 'hl-line-value', textContent: value }) : value]);
   const chip = (text: string, cls: string): HTMLElement => h('span', { className: `hl-chip ${cls}`, textContent: text });

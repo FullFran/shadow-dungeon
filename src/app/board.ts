@@ -12,6 +12,7 @@ import { coinText } from './coin-lines';
 import { abandonAt, acceptAt, claimAt, missionsAt } from './progress';
 import { loadSave } from './save';
 import '../styles/hall.css';
+import { deviceHint } from '../ui/device-hint';
 
 export { missionText, missionTitle, rewardText, statusText } from './board-view';
 
@@ -59,7 +60,7 @@ export function missionBoardWindow(options: BoardOptions): { element: HTMLElemen
   const logros = h('button', { className: 'hl-back', type: 'button', textContent: t('title.achievements') });
   back.addEventListener('click', () => options.onBack());
   logros.addEventListener('click', () => options.onAchievements());
-  const hint = h('p', { className: 'hl-hint', textContent: t('mission.hint') });
+  const hint = deviceHint('hl-hint', 'mission.hint');
 
   const bar = (share: number, label: string): HTMLElement => {
     const fillBar = h('i');

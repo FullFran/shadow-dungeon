@@ -463,11 +463,13 @@
       }
       html.touch #app { justify-content: safe center; }
       html.touch .hint { display: none; }
-      /* A hint with both wordings (odd/tasks/menu-redesign.md T3) stays on touch and shows its touch line: touch mode starts with the first touch, after the screen was drawn. */
-      .dual-hint .on-touch { display: none; }
-      html.touch .hint.dual-hint { display: block; }
+      /* A hint with its keyboard, pad and touch wordings (src/ui/device-hint.ts, issue #43) shows the one for the input: touch mode starts with the first touch and html.pad with the first button, after the screen was drawn. The pad rules come last: a pad wins over touch. */
+      .dual-hint .on-touch, .dual-hint .on-pad { display: none; }
+      html.touch .hint.dual-hint, html.pad .hint.dual-hint { display: block; }
       html.touch .dual-hint .on-keys { display: none; }
       html.touch .dual-hint .on-touch { display: inline; }
+      html.pad .dual-hint .on-keys, html.pad .dual-hint .on-touch { display: none; }
+      html.pad .dual-hint .on-pad { display: inline; }
       html.touch .notice:not(.in-game) { position: static; width: 100%; padding: 0; }
       /* In a run the fan notice would sit under the thumbs: it stays on the title, credits and end screens. */
       html.touch .notice.in-game { display: none; }

@@ -20,6 +20,7 @@ import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
 import { attachPager } from '../ui/pager';
 import '../styles/evolve-shop.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * Phantump's evolutions (odd/tasks/gacha-evolutions.md T5,
@@ -346,7 +347,7 @@ export function evolveWindow(options: EvolveOptions): { element: HTMLElement; di
   const element = mdWindow({ title: t('evolve.title'), className: 'es-window ev-window' }, [
     h('p', { className: 'dim es-context', textContent: t('evolve.text') }),
     h('div', { className: 'es-body' }, [sheet, grid]),
-    h('div', { className: 'es-foot' }, [back, pageNav, h('span', { className: 'ev-foot-aux' }, [shiny, challenges]), h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'evolve.hint') })]),
+    h('div', { className: 'es-foot' }, [back, pageNav, h('span', { className: 'ev-foot-aux' }, [shiny, challenges]), deviceHint('es-hint', 'evolve.hint')]),
   ]);
 
   const stopKeys = gridNav({

@@ -13,6 +13,7 @@ import { friendsView, gateFor, loadFriends, type FriendsView } from './friends-s
 import { hubStep } from './title-hub';
 import '../styles/relic-controls.css';
 import '../styles/friends.css';
+import { deviceHint } from '../ui/device-hint';
 
 export interface FriendsWindowOptions {
   api: FriendsApi;
@@ -242,7 +243,7 @@ export function friendsWindow(options: FriendsWindowOptions): { element: HTMLEle
     }
     body.replaceChildren(
       signedIn(data ? friendsView(data, options.myRoom()) : null),
-      h('div', { className: 'fr-foot' }, [button(t('menu.back'), 'rk-quiet', options.onBack, 'back'), h('span', { className: 'fr-pages' }), h('p', { className: 'fr-hint', textContent: t('hub.hint') })]),
+      h('div', { className: 'fr-foot' }, [button(t('menu.back'), 'rk-quiet', options.onBack, 'back'), h('span', { className: 'fr-pages' }), deviceHint('fr-hint', 'hub.hint')]),
     );
     const cardsList = body.querySelector<HTMLElement>('.fr-list');
     const pages = body.querySelector<HTMLElement>('.fr-pages');

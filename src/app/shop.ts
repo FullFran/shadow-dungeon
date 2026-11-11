@@ -10,6 +10,7 @@ import { loadSave, writeSave, type SaveData } from './save';
 import { confirmDialog } from '../ui/confirm-dialog';
 import { gridNav } from './window-nav';
 import '../styles/evolve-shop.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * Poochyena's upgrade shop (docs/gdd.md §11), in the Pokémon picker's mould
@@ -211,7 +212,7 @@ export function shopWindow(options: ShopOptions): { element: HTMLElement; dispos
   const element = mdWindow({ title: t('shop.title'), className: 'es-window sh-window' }, [
     h('p', { className: 'dim es-context', textContent: t('shop.text') }),
     h('div', { className: 'es-body' }, [sheet, grid]),
-    h('div', { className: 'es-foot' }, [back, h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'shop.hint') })]),
+    h('div', { className: 'es-foot' }, [back, deviceHint('es-hint', 'shop.hint')]),
   ]);
 
   const stopKeys = gridNav({

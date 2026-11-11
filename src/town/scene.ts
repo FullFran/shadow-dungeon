@@ -58,6 +58,8 @@ import { mountWorldTooltip } from '../ui/world-tooltip';
 import { interactKind, type Box } from '../ui/world-tooltip-model';
 import type { PadStyle } from '../app/gamepad-help-data';
 import { drawTownOverlay, drawTownWorld, type TownCharacter, type TownImages } from './render';
+import { deviceHint } from '../ui/device-hint';
+import { wordingKey, wordingOfDevice } from '../ui/device-wording';
 
 /**
  * The town and the overworld around it (src/data/world.ts): the player's
@@ -388,7 +390,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   Object.assign(roomCode.style, { fontSize: '1.5em', letterSpacing: '0.2em', color: PALETTE.cursor });
   /** The room's tier, for everyone (the host changes it in the entrance and waystone windows). */
   const roomTier = h('p', { className: 'town-room-tier' });
-  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, h('p', { className: 'dim', textContent: t(isTouchUi() ? 'lobby.townHint.touch' : 'lobby.townHint') })])]) : null;
+  const roomWindow = lobby ? h('div', { className: 'town-room' }, [mdWindow({ title: t('lobby.room'), className: 'narrow' }, [roomCode, roomTier, roomList, deviceHint('dim', 'lobby.townHint')])]) : null;
   if (roomWindow) {
     Object.assign(roomWindow.style, { position: 'fixed', top: '8px', right: '8px', zIndex: '4', maxWidth: '40vw', fontSize: '0.8em', pointerEvents: 'none' });
     canvas.parentElement?.append(roomWindow);
@@ -540,7 +542,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       dialog =
         beaconAction(lobby) === 'open'
           ? { speaker: t('town.name.beacon'), state: speak([t('town.beacon.1')]), opens: 'online' }
-          : { speaker: t('town.name.beacon'), state: speak([t('town.beacon.room')]) };
+          : { speaker: t('town.name.beacon'), state: speak([t(wordingKey('town.beacon.room', wordingOfDevice(device.current())))]) };
       return;
     }
     if (target.kind === 'lore') {

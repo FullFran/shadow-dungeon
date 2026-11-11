@@ -17,6 +17,7 @@ import { gridNav } from './window-nav';
 import { attachPager } from '../ui/pager';
 import '../styles/evolve-shop.css';
 import '../styles/challenges.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The challenges menu (odd/tasks/roster-parity.md): every line's trial in
@@ -226,7 +227,7 @@ export function challengesWindow(options: ChallengesOptions): { element: HTMLEle
   const element = mdWindow({ title: t('challenges.title'), className: 'es-window ch-window' }, [
     h('p', { className: 'dim es-context', textContent: t('challenges.text') }),
     h('div', { className: 'es-body' }, [sheet, grid]),
-    h('div', { className: 'es-foot' }, [back, pageNav, h('p', { className: 'es-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'hub.hint') })]),
+    h('div', { className: 'es-foot' }, [back, pageNav, deviceHint('es-hint', 'hub.hint')]),
   ]);
 
   const stopKeys = gridNav({ win: element, controls: () => [...pager.visible(), primary, back, ...pageButtons()], fallback: () => cards.find((c) => c.dataset.dungeon === focused.dungeon.id) ?? cards[0], onBack: options.onBack });

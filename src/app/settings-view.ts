@@ -8,6 +8,7 @@ import { slider } from '../ui/slider';
 import { h, mdWindow } from '../ui/window';
 import { SETTING_SLIDERS, applySetting, settingChoice, settingChoices, settingControlKind, settingRows, settingSections, type SettingRow, type SettingsAccess } from './settings-panel';
 import '../styles/settings.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The Settings window (owner, 2026-11-03: "mejora ... principalmente UX el menú de ajustes"), one
@@ -88,7 +89,7 @@ export function settingsView(options: SettingsViewOptions): SettingsView {
   const footButtons = [back, ...extras];
   // A phone pages the rows of a section instead of scrolling them; the page buttons sit in the footer beside the actions.
   const pageNav = h('div', { className: 'st-pages' });
-  const foot = h('div', { className: 'st-foot' }, [h('div', { className: 'st-actions' }, footButtons), pageNav, about, h('p', { className: 'st-keys', textContent: t('settings.hint') })]);
+  const foot = h('div', { className: 'st-foot' }, [h('div', { className: 'st-actions' }, footButtons), pageNav, about, deviceHint('st-keys', 'settings.hint')]);
 
   const pager = attachPager(rowsBox, { nav: pageNav, enabled: isCompactTouch });
   const win = mdWindow({ title: t('title.settings'), className: 'st-window' }, [h('div', { className: 'st-body' }, [rail, panel]), foot]);
