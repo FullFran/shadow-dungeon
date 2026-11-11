@@ -1,4 +1,5 @@
 import { pausesOnLeave } from './pause-on-leave';
+import { hiddenSteps, stepsWhileHidden } from './hidden-host';
 import { ROTATE_EVENT } from '../ui/orientation-gate';
 import { packMinimap, unpackMinimap, type ResumeWriter, type RunPart } from './run-resume';
 import { signParts, tutorialSign } from '../ui/tutorial-sign';
@@ -1271,7 +1272,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (document.hidden) {
       onLeavePage();
       keepRun();
-    }
+      if (stepsWhileHidden({ role: net?.role ?? null, ended })) startHiddenTicks();
+    } else stopHiddenTicks();
   };
   window.addEventListener('blur', onLeavePage);
   // A phone turned to portrait covers the game with the rotate notice (ui/orientation-gate.ts): a solo run waits under it.
@@ -1572,10 +1574,15 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     return p;
   }
 
-  function simulate(frameMs: number): void {
-    const clock = advanceClock(accumulator, frameMs);
-    accumulator = clock.accumulatorMs;
-    for (let i = 0; i < clock.steps; i++) {
+  /** Runs the steps `frameMs` adds to the accumulator, or exactly `fixedSteps` (the hidden host's timer, which keeps its own accumulator). */
+  function simulate(frameMs: number, fixedSteps?: number): void {
+    let steps = fixedSteps ?? 0;
+    if (fixedSteps === undefined) {
+      const clock = advanceClock(accumulator, frameMs);
+      accumulator = clock.accumulatorMs;
+      steps = clock.steps;
+    }
+    for (let i = 0; i < steps; i++) {
       const keys = toPlayerInput(input.take(), view, pixelScale);
       const aimContext = {
         view,
@@ -1707,7 +1714,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         watchBonfire();
         watchStory(events);
       }
-      if (juice.hitstopMs > 0) {
+      if (juice.hitstopMs > 0 && fixedSteps === undefined) {
         // Hitstop: freeze the simulation from this step on; drop the backlog.
         accumulator = 0;
         break;
@@ -1715,13 +1722,61 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     }
   }
 
-  function frame(now: number): void {
-    // Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
-    // A shared run never pauses: the others keep playing. Except a guest whose link to the host dropped: its run
-    // stands still while the session waits for the host to come back (net/session.ts PEER_GRACE_MS).
-    const paused =
+  /**
+   * Paused: no game time at all (animations, juice and the clock stand still); resuming does not catch up.
+   * A shared run never pauses: the others keep playing. Except a guest whose link to the host dropped: its run
+   * stands still while the session waits for the host to come back (net/session.ts PEER_GRACE_MS).
+   */
+  function simulationStands(): boolean {
+    return (
       (net?.role === 'guest' && net.session.reconnecting()) ||
-      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && (sign !== null || storyBox !== null));
+      simulationPaused(closeMenu !== null, !net) || pickPausesSimulation(closePick !== null, Boolean(net)) || closeCinematic !== null || pickPausesSimulation(closeChoice !== null, Boolean(net)) || pickPausesSimulation(closeMemory !== null, Boolean(net)) || (signWaits && (sign !== null || storyBox !== null))
+    );
+  }
+
+  // The host of a shared run with its tab hidden: requestAnimationFrame stops, so a timer keeps the world (and the
+  // snapshots the guests play from) going, without drawing (app/hidden-host.ts, issue #50). Browsers throttle it to
+  // about one tick a second; each tick runs the fixed steps for the time since the last one, up to a cap.
+  let hiddenTimer: ReturnType<typeof setInterval> | null = null;
+  let hiddenLast = 0;
+  let hiddenAccumulator = 0;
+  function startHiddenTicks(): void {
+    if (hiddenTimer !== null) return;
+    hiddenLast = performance.now();
+    hiddenAccumulator = 0;
+    hiddenTimer = setInterval(hiddenTick, FIXED_DT_MS);
+  }
+  function stopHiddenTicks(): void {
+    if (hiddenTimer === null) return;
+    clearInterval(hiddenTimer);
+    hiddenTimer = null;
+    // The next animation frame starts from now: the hidden span was already stepped.
+    lastFrame = performance.now();
+  }
+  function hiddenTick(): void {
+    if (!document.hidden || !stepsWhileHidden({ role: net?.role ?? null, ended })) {
+      stopHiddenTicks();
+      return;
+    }
+    const now = performance.now();
+    const elapsed = simulationStands() ? 0 : now - hiddenLast;
+    hiddenLast = now;
+    const clock = hiddenSteps(hiddenAccumulator, elapsed);
+    hiddenAccumulator = clock.accumulatorMs;
+    const ms = clock.steps * FIXED_DT_MS;
+    realMs += ms;
+    juice = tickJuice(juice, ms);
+    log = pruneLog(log, realMs);
+    if (clock.steps > 0 && !(ended && world.player.hp <= 0)) simulate(0, clock.steps);
+  }
+
+  function frame(now: number): void {
+    // The hidden host's timer is stepping the world (some browsers still fire a stray frame): no double stepping.
+    if (hiddenTimer !== null) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    const paused = simulationStands();
     const time = frameTime(lastFrame, now, paused);
     const frameMs = time.frameMs;
     lastFrame = time.lastFrameMs;
@@ -1894,6 +1949,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   }
   window.addEventListener('keydown', onKeyDown);
   raf = requestAnimationFrame(frame);
+  // A shared run that starts in a hidden tab (the host clicked away during the countdown).
+  if (document.hidden && stepsWhileHidden({ role: net?.role ?? null, ended })) startHiddenTicks();
   return {
     setLock(settings) {
       lockSettings = settings;
@@ -1919,6 +1976,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       audio?.setDucked(false);
       audio?.setRumble(0);
       cancelAnimationFrame(raf);
+      stopHiddenTicks();
       input.dispose();
       releaseWakeLock();
       // A room's session outlives its run: the room goes back to the town together.
