@@ -12,6 +12,7 @@ import { nextFocus, questionView, quizKeyAction, revealView } from './quiz-view'
 import '../styles/relic-controls.css';
 import '../styles/sprite-fit.css';
 import '../styles/onboarding.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The personality questionnaire as onboarding (owner, 2026-11-04: "rediseñarse al completo acorde a lo que venimos
@@ -84,7 +85,7 @@ export function quizScreen(options: QuizScreenOptions): { element: HTMLElement; 
   /** Focus once the screen is on the page (the first one is built before it is attached). */
   const focus = (el: HTMLElement | undefined): void => queueMicrotask(() => el?.focus({ preventScroll: true }));
 
-  const hint = (key: string): HTMLElement => h('p', { className: 'ob-hint', textContent: t(options.touch ? 'onb.quiz.hint.touch' : key) });
+  const hint = (key: string): HTMLElement => deviceHint('ob-hint', key);
 
   // ---- the voice
   function intro(dir: Dir = 'fwd'): void {

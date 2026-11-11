@@ -20,6 +20,7 @@ import { openPreviewZoom } from './move-preview-zoom';
 import { hubStep } from './title-hub';
 import { tierName } from './tutor';
 import '../styles/loadout-moves.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The loadout's moves step (owner, 2026-11-03: "mejora y adapta la vista de Prepara a"), the pattern of the
@@ -383,7 +384,7 @@ export function loadoutMovesView(options: MovesViewOptions): HTMLElement {
     slotRow,
     h('div', { className: 'lm-body' }, [h('div', { className: 'lm-list' }, [grid, pageNav]), sheet]),
     setup,
-    h('p', { className: 'lm-keys', textContent: t('loadout.keys') }),
+    deviceHint('lm-keys', 'loadout.keys'),
   ]);
 
   const onKey = (e: KeyboardEvent): void => {

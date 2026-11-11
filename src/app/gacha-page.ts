@@ -16,6 +16,7 @@ import { portrait } from './loadout';
 import { loadSave } from './save';
 import { hubStep } from './title-hub';
 import '../styles/gacha-page.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The gacha as a full page, /gacha (owner, 2026-11-03: "Gacha lo haremos todo completamente
@@ -171,7 +172,7 @@ export function gachaPage(options: GachaPageOptions): { element: HTMLElement; fo
     h('div', { className: 'gp-shade' }),
     bubble,
     header,
-    h('div', { className: 'gp-dock' }, [pullDock, odds, pity, h('p', { className: 'gp-hint', textContent: t(options.touch ? 'gacha.page.hint.touch' : 'gacha.page.hint') })]),
+    h('div', { className: 'gp-dock' }, [pullDock, odds, pity, deviceHint('gp-hint', 'gacha.page.hint')]),
     collection,
   ]);
   element.setAttribute('aria-label', t('gacha.page.aria'));

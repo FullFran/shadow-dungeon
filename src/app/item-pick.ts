@@ -1,8 +1,8 @@
-import { isTouchUi } from '../adapters/touch-mode';
 import { ITEMS, type ItemId, type Rarity } from '../data/items';
 import { t } from '../i18n';
 import { cursorList } from '../ui/cursor-list';
 import { h, mdWindow } from '../ui/window';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The pick-1-of-3 held item overlay shown after a boss falls, at a chest and
@@ -85,7 +85,7 @@ export function openItemPick(parent: HTMLElement, cards: readonly PickCard[], sh
   // Mouse down too: the canvas below must not see the press (and nothing takes focus).
   list.element.addEventListener('mousedown', (e) => e.preventDefault());
   overlay.append(
-    mdWindow({ title: t('pick.title'), className: 'pick-panel' }, [list.element, h('p', { className: 'pick-hint dim', textContent: t(isTouchUi() ? 'pick.hint.touch' : 'pick.hint') })]),
+    mdWindow({ title: t('pick.title'), className: 'pick-panel' }, [list.element, deviceHint('pick-hint dim', 'pick.hint')]),
   );
   parent.append(overlay);
   return () => {

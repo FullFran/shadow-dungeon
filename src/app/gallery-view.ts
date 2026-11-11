@@ -9,6 +9,7 @@ import { h, mdWindow } from '../ui/window';
 import { galleryUnlocked, groupSeen, type GalleryEntry, type GalleryGroup, type GallerySeen } from './lore-gallery';
 import { hubStep, type HubDirection } from './title-hub';
 import '../styles/lore-gallery.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The lore gallery in the picker pattern (owner, 2026-11-04: "rediseña ... la galería"): a grid of group
@@ -243,7 +244,7 @@ export function galleryView(options: GalleryViewOptions): { element: HTMLElement
       bar(progress.fraction, 'gv-bar'),
     ]),
     h('div', { className: 'gv-body' }, [grid, sheet]),
-    h('div', { className: 'gv-foot' }, [back, pageNav, rowsNav, h('p', { className: 'gv-hint', textContent: t('gallery.hint.keys') })]),
+    h('div', { className: 'gv-foot' }, [back, pageNav, rowsNav, deviceHint('gv-hint', 'gallery.hint.keys')]),
   ]);
 
   const columns = (): number => {

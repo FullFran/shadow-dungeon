@@ -88,6 +88,7 @@ import { onlineWindow } from './online-window';
 import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
+import { installPadClass } from '../adapters/pad-class';
 import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
@@ -200,6 +201,8 @@ const { account, store } = setupAccount({
     if (app?.querySelector('.title-logo')) titleScreen(app);
   },
 });
+/** `html.pad` while the controller was used last: hints show their pad wording (ui/device-hint.ts). */
+installPadClass();
 /** The controller, for the whole page: every screen hears it as keys, a run takes it over (adapters/gamepad.ts). */
 const gamepads = createGamepads({
   onConnect: () => {

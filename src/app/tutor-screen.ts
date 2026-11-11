@@ -21,6 +21,7 @@ import type { SlotKind } from '../data/slots';
 import { hubStep } from './title-hub';
 import { attachPager, isPhone } from '../ui/pager';
 import '../styles/tutor.css';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * Smeargle's move tutor as a screen, the Pokémon picker's pattern
@@ -358,7 +359,7 @@ export function tutorWindow(options: TutorOptions): { element: HTMLElement; disp
   const element = mdWindow({ title: t('tutor.title'), className: 'tu-window' }, [
     h('div', { className: 'tu-top' }, [back, prev, strip, next, balance]),
     h('div', { className: 'tu-body' }, [column, sheet]),
-    h('div', { className: 'tu-foot' }, [buildLine, h('p', { className: 'tu-hint', textContent: t(isTouchUi() ? 'shop.hint.touch' : 'tutor.hint.keys') })]),
+    h('div', { className: 'tu-foot' }, [buildLine, deviceHint('tu-hint', 'tutor.hint.keys')]),
   ]);
 
   const onKey = (e: KeyboardEvent): void => {

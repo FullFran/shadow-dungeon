@@ -13,6 +13,7 @@ import { attachPager, isPhone } from '../ui/pager';
 import { h, mdWindow } from '../ui/window';
 import { coinText } from './coin-lines';
 import { loadSave } from './save';
+import { deviceHint } from '../ui/device-hint';
 
 /**
  * The achievements on screen (odd/tasks/achievements-missions.md): names
@@ -477,7 +478,7 @@ export function achievementsWindow(options: AchievementsOptions): { element: HTM
     if (!(e.relatedTarget instanceof Node) || !grid.contains(e.relatedTarget)) zone = 'rail';
   });
 
-  const hint = h('p', { className: 'ach-hint', textContent: tr(document.documentElement.classList.contains('touch') ? 'ach.hint.touch' : 'ach.hint') });
+  const hint = deviceHint('ach-hint', 'ach.hint', tr);
 
   const element = mdWindow({ title: tr('achievement.title'), className: 'achievements ach-window' }, [
     head,
