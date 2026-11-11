@@ -1,4 +1,6 @@
 import { CRYPT, TUTORIAL } from '../data/dungeons';
+import { fillBindings } from '../adapters/bindings';
+import { t } from '../i18n';
 
 /**
  * The contextual tutorial (odd/tasks/menu-redesign.md T7, S2, S10; moved to
@@ -16,6 +18,9 @@ export type TutorialDevice = 'keys' | 'touch' | 'pad';
 
 /** The i18n key of a sign for a device: `tutorial.<hint>.<device>`. */
 export const hintKey = (hint: TutorialHint, device: TutorialDevice): string => `tutorial.${hint}.${device}`;
+
+/** A sign's text; the keyboard wording names the player's bound keys (`{bind:<action>}`, issue #62). */
+export const signText = (hint: TutorialHint, device: TutorialDevice): string => (device === 'keys' ? fillBindings(t(hintKey(hint, device))) : t(hintKey(hint, device)));
 
 /**
  * The tutorial dungeon, where a new player learns; and the Crypt too, for a

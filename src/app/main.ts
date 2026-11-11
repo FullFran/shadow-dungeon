@@ -89,6 +89,7 @@ import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
 import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
+import { setActiveBindings } from '../adapters/bindings';
 import { profilePublisher } from './profile-publish';
 import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
@@ -193,6 +194,7 @@ const { account, store } = setupAccount({
   onReplaced: () => {
     // The picked species must still be in the (possibly new) roster.
     settings = loadSettings(store, settings, rosterOf(loadSave(store)));
+    setActiveBindings(settings.keyBindings);
     const app = document.getElementById('app');
     // A walker that arrived with the cloud profile ends the onboarding: the welcome's drawer closes and routes on, any other step re-checks.
     if (onboardingDrawer) onboardingDrawer.close();
@@ -213,6 +215,8 @@ const adminApi = httpAdminApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const friendsApi = httpFriendsApi(apiBaseUrl(import.meta.env.VITE_API_URL));
 const ticketAdmin = adminAccess({ token: () => account.token(), isAdmin: (token) => adminApi.isAdmin(token) });
 let settings: Settings = loadSettings(store, defaultSettings(detectLanguage(navigator.language)), rosterOf(loadSave(store)));
+// The keyboard and mouse bindings every input path reads (issue #62).
+setActiveBindings(settings.keyBindings);
 /** The in-game control hint bar (src/ui/play-hints.ts), for the town and the runs: the Settings switch and the pad layout last chosen. */
 const playHints = { enabled: () => settings.showHints, padStyle: savedPadStyle };
 /** The Sima global ranking on the town notice board (src/town/global-ranking.ts): only a signed-in player asks the server; its own nickname is the online one (Settings). */
@@ -512,6 +516,7 @@ function applyLanguage(language: Language): void {
 function update(changes: Partial<Settings>): void {
   settings = { ...settings, ...changes };
   saveSettings(store, settings);
+  if (changes.keyBindings) setActiveBindings(settings.keyBindings);
   // A new nickname or species reaches the public profile now (signed in only; a no-op when nothing changed).
   if ((changes.nickname !== undefined || changes.species !== undefined) && account.state().kind === 'signed-in') publicProfile.changed();
   audio.setVolumes(settings);

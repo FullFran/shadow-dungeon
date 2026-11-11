@@ -1,4 +1,4 @@
-import { SLOT_KEY_CODES, keyLabel } from '../adapters/bindings';
+import { inputLabel, primaryOf } from '../adapters/bindings';
 import type { LastDevice } from '../adapters/last-device';
 import { GAMEPAD_HELP, buttonName, type PadStyle } from '../app/gamepad-help-data';
 import { bossBar, type BossBar } from '../core/boss';
@@ -225,12 +225,18 @@ export interface MoveSlotModel {
   charge: { fill: number; level: number } | null;
 }
 
+/** The keycap of a slot: its first bound input (issue #62), a dash when it has none. */
+const slotKeyLabel = (kind: SlotKind): string => {
+  const input = primaryOf(kind);
+  return input ? inputLabel(input, undefined, true) : '—';
+};
+
 const padRow = (kind: SlotKind): string => GAMEPAD_HELP.combat.find((r) => r.action === kind)?.buttons[0] ?? '';
 
 export function moveSlotModel(player: PlayerState, index: number, device: LastDevice, padStyle: PadStyle): MoveSlotModel {
   const kind = PLAYER_SLOT_LAYOUT[index] ?? 'fast';
   const moveId = (player.loadout[index] ?? null) as MoveId | null;
-  const key: MoveSlotModel['key'] = device === 'touch' ? null : device === 'gamepad' ? { kind: 'pad', label: buttonName(padRow(kind), padStyle) } : { kind: 'key', label: keyLabel(SLOT_KEY_CODES[index]?.[0] ?? '') };
+  const key: MoveSlotModel['key'] = device === 'touch' ? null : device === 'gamepad' ? { kind: 'pad', label: buttonName(padRow(kind), padStyle) } : { kind: 'key', label: slotKeyLabel(kind) };
   if (!moveId) return { index, kind, moveId: null, state: 'empty', name: t('hud.slot.empty'), type: null, key, cooldown: null, rank: null, glowing: false, charge: null };
   const move = MOVES[moveId];
   const left = cooldownLeft(player, moveId);
