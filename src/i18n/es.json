@@ -361,6 +361,8 @@
   "spectate.next": "Cambiar",
   "spectate.watching": "Mirando a {name}",
   "spectate.nextKey": "Cambiar (Q)",
+  "spectate.reviveHint": "Un compañero te reanima si se queda 3 s a tu lado",
+  "spectate.nextFloor": "Vuelves al bajar a la planta siguiente",
   "net.waitFloor": "Hay una partida en curso: entrarás al empezar la siguiente planta.",
   "net.cutShort.hostLeft": "El anfitrión se ha ido: te llevas lo ganado, con el recorte de una derrota.",
   "net.cutShort.hostLost": "Se ha perdido la conexión con el anfitrión: te llevas lo ganado, con el recorte de una derrota.",

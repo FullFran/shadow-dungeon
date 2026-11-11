@@ -140,6 +140,8 @@ export interface RenderFrame {
   memory?: Vec2 | null;
   /** Co-op, fainted: the teammate the camera follows ("Mirando a Ana"). */
   spectating?: string | null;
+  /** Under `spectating`: whether a teammate can still revive the fainted player on this floor. */
+  spectateHint?: string | null;
   /**
    * The Sima as this player remembers it (app/sima-lore.ts): enemy id -> the
    * species whose name it goes by (a faceless guardian, someone's shadow) on
@@ -1860,6 +1862,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     else if (openedNotice) drawGateNotice(ctx, openedNotice, hud.width, gateY, timeMs);
     if (frame.waiting) drawWaitLine(ctx, frame.waiting, hud.width, hud.height - 48);
     if (frame.spectating) drawWaitLine(ctx, frame.spectating, hud.width, hud.height - (frame.waiting ? 76 : 48));
+    if (frame.spectating && frame.spectateHint) drawWaitLine(ctx, frame.spectateHint, hud.width, hud.height - (frame.waiting ? 104 : 76));
   }
 
   return { draw };
