@@ -13,6 +13,7 @@ import { vec } from '../../src/core/vec';
 import { guestEnemyContacts, pierceZone } from '../../src/core/victim';
 import { musicFor, planAt, ECLIPSE } from '../../src/data/dungeons';
 import { echoAt, ENDLESS, isEchoFloor, isHeraldFloor } from '../../src/data/endless';
+import { TUNING } from '../../src/data/tuning';
 import { decodeMessage, encodeMessage } from '../../src/net/protocol';
 import { IDLE } from './helpers';
 
@@ -101,7 +102,8 @@ describe('a herald fight', () => {
     const id = herald(w).id;
     const before = def.phase2.fromCard - 1;
     w = { ...w, enemies: w.enemies.map((e) => (e.id === id ? { ...e, hp: cardHpFloor(e.maxHp, before, def.cards.length) - 1, boss: { ...e.boss!, combosDone: before, stance: `herald${before}` } } : e)) };
-    const out = play(w, def.phase2.transformMs + 500);
+    // The awakening slows the enemies for a moment (core/boss-moment.ts), so its transform lasts longer in real time.
+    const out = play(w, def.phase2.transformMs / TUNING.perfectDodge.slowMoScale + 500);
     const stances = out.events.filter((e) => e.type === 'bossStance').map((e) => (e.type === 'bossStance' ? e.stance : ''));
     expect(stances).toContain('awaken');
     expect(stances[stances.length - 1]).toBe(`herald${def.phase2.fromCard}x`);

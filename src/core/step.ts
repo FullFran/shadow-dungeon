@@ -23,6 +23,7 @@ import { settleStolen } from './stolen';
 import { guestEnemyContacts } from './victim';
 import { updateSimaEvent } from './sima-events';
 import { keepEnemiesInBounds } from './bounds';
+import { bossMoment, momentSlowMoMs } from './boss-moment';
 import { breakBands, updateLeaders } from './leaders';
 import { updateGate } from './gates';
 import { dungeonById } from '../data/dungeons';
@@ -69,7 +70,8 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
     ...held,
     tick: state.tick + 1,
     timeMs: state.timeMs + dtMs,
-    slowMoMs: Math.max(0, held.slowMoMs - dtMs),
+    // A boss changing phase or falling slows the enemies for a moment, so the player sees it (guests follow the host's snapshots).
+    slowMoMs: Math.max(0, (state.role === 'guest' ? held.slowMoMs : Math.max(held.slowMoMs, momentSlowMoMs(bossMoment(state, held)))) - dtMs),
     events,
   };
 }

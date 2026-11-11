@@ -1,6 +1,7 @@
 import { MUSIC_TRACKS, type MusicContext } from '../data/music';
 import { pixelText } from '../ui/canvas';
 import type { PlaceDef } from '../ui/location-plaque-model';
+import { flashAlpha, NOTICE_LIFE_MS, noticeAlpha, type BossNotice } from '../ui/boss-notice';
 import { canvasFont, PALETTE } from '../ui/tokens';
 
 /**
@@ -194,4 +195,71 @@ export function drawNowPlaying(ctx: CanvasRenderingContext2D, note: NowPlaying, 
   if (at) pixelText(ctx, note.title, at.x, at.y, PALETTE.textDim, at.align ?? 'left');
   else pixelText(ctx, note.title, width - 8, height - 46, PALETTE.textDim, 'right');
   ctx.globalAlpha = 1;
+}
+
+/** The largest font size at most `base` that fits `text` in `maxWidth` (never under `floor`). */
+function fittedSize(ctx: CanvasRenderingContext2D, text: string, base: number, maxWidth: number, bold: boolean, floor = 10): number {
+  ctx.font = canvasFont(base, bold);
+  const wide = ctx.measureText(text).width;
+  return wide <= maxWidth ? base : Math.max(floor, Math.floor((base * maxWidth) / wide));
+}
+
+/** `text` broken into lines of at most `maxWidth` at the current font (words stay whole). */
+function wrapped(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(next).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * A boss moment (phase change or final defeat) in the middle of the view: a white flash opens it, the screen dims
+ * behind a dark band, the heading stands large with the name under it and, on the player's first phase change, the
+ * tip. Sizes fit the view's width, so a small phone shows it whole.
+ */
+export function drawBossNotice(ctx: CanvasRenderingContext2D, notice: BossNotice, nowMs: number, width: number, height: number): void {
+  const age = nowMs - notice.shownAtMs;
+  if (age < 0 || age >= NOTICE_LIFE_MS) return;
+  const alpha = noticeAlpha(age);
+  const flash = flashAlpha(age);
+  ctx.save();
+  if (flash > 0) {
+    ctx.globalAlpha = flash;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+  }
+  if (alpha > 0) {
+    const inner = width - 24;
+    const headSize = fittedSize(ctx, notice.heading, 30, inner, true);
+    const nameSize = fittedSize(ctx, notice.name, 20, inner, true);
+    ctx.font = canvasFont(11);
+    const tipLines = notice.tip ? wrapped(ctx, notice.tip, inner) : [];
+    const bandH = headSize + nameSize + 22 + tipLines.length * 14;
+    const top = Math.max(14, Math.round(height * 0.46 - bandH / 2));
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillRect(0, top - 10, width, bandH);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = PALETTE.eclipseGlow;
+    ctx.fillRect(0, top - 10, width, 2);
+    ctx.fillRect(0, top - 10 + bandH - 2, width, 2);
+    // The heading settles from a little larger, like a seal pressed down.
+    const settle = Math.max(0, 1 - age / 260);
+    ctx.font = canvasFont(Math.round(headSize * (1 + 0.15 * settle)), true);
+    pixelText(ctx, notice.heading, width / 2, top + headSize, notice.kind === 'finale' ? PALETTE.cursor : PALETTE.eclipseGlow, 'center');
+    ctx.font = canvasFont(nameSize, true);
+    pixelText(ctx, notice.name, width / 2, top + headSize + nameSize + 6, PALETTE.text, 'center');
+    ctx.font = canvasFont(11);
+    tipLines.forEach((line, i) => pixelText(ctx, line, width / 2, top + headSize + nameSize + 24 + i * 14, PALETTE.textDim, 'center'));
+  }
+  ctx.restore();
 }

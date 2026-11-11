@@ -33,7 +33,7 @@ import { AIM_DRAG } from './touch';
 import { sheetKey, type SheetStore } from './assets';
 import { cardAlpha, drawFloorCard, type FloorCard } from './card';
 import { drawGateLine, drawGateNotice, drawWaitLine, GATE_NOTICE_MS, gateNotice, type GateNotice } from './hud';
-import { drawCaptureNotice, drawDungeonIntro, drawNowPlaying, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
+import { drawBossNotice, drawCaptureNotice, drawDungeonIntro, drawNowPlaying, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from './intro-card';
 import { drawRunClock, type RunClock } from './clock-hud';
 import { CRYPT, type DungeonDecor, type TilePalette } from '../data/dungeons';
 import { caveCover, caveDecor, cavesArena, crystal, deepEdge, drip, floodVeil, waterTile, type CaveDecor, type CrystalDraw } from './cave-decor';
@@ -43,6 +43,7 @@ import { cardGuard, fightOf, inTurn } from '../core/cards';
 import { cardInfo } from '../data/cards';
 import { drawMinimap, type MinimapMemory } from './minimap';
 import { drawFlashToast, slotCount } from './hud';
+import type { BossNotice } from '../ui/boss-notice';
 import { createCombatHudState, drawBossCaption, drawCombatPanels } from './combat-hud';
 import { createPortraitDrawer } from './hud-portrait';
 import type { LastDevice } from './last-device';
@@ -126,6 +127,8 @@ export interface RenderFrame {
   names?: ReadonlyMap<string, string>;
   /** The boss spell card just announced, while it shows. */
   spell?: SpellBanner | null;
+  /** A boss phase change or final defeat, while its big notice shows (src/ui/boss-notice.ts). */
+  moment?: BossNotice | null;
   /** The card this player just captured, while its notice shows. */
   capture?: CaptureNotice | null;
   /** The endless dungeon's run clock (absent elsewhere). */
@@ -1852,6 +1855,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : { x: hud.width - 8, y: (underMap ? underMap.y + underMap.height : 24) + 14, align: 'right' as const };
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }
+    if (frame.moment) drawBossNotice(ctx, frame.moment, timeMs, hud.width, hud.height);
     if (frame.spell) drawBossCaption(ctx, frame.spell, timeMs, hud, { scale: hudScale, touch: frame.touchUi ?? false }, slotCount(current.player.loadout));
     if (frame.capture) drawCaptureNotice(ctx, frame.capture, timeMs, hud.width, hud.height, t('card.mastered'), t('card.reward').replace('{coins}', String(frame.capture.coins)).replace('{heal}', String(frame.capture.heal)));
     if (frame.clock) drawRunClock(ctx, frame.clock, timeMs, hud.width);

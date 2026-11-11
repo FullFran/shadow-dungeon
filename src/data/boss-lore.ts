@@ -73,3 +73,18 @@ export function bossEvents(species: string): string[] {
   for (const id of registeredCards()) if (id.startsWith(prefix)) out.add(id);
   return [...out];
 }
+
+/**
+ * The stance a boss shows while it changes phase ("El Rey desenvaina", "Despierta"...), by the kind of its
+ * engine; every peer reads it from the synced boss state, so a guest sees the change the host made.
+ */
+export const PHASE_STANCES = ['unsheathe', 'mist', 'ultra', 'awaken'] as const;
+
+const PHASE_STANCE_OF_KIND: Readonly<Record<string, (typeof PHASE_STANCES)[number]>> = { boss: 'unsheathe', archer: 'mist', ultra: 'ultra', danmaku: 'awaken', herald: 'awaken' };
+
+/** The phase-change stance of a boss, or null for one that has no second phase. */
+export function bossPhaseStance(species: string): (typeof PHASE_STANCES)[number] | null {
+  const def = (ENEMY_BEHAVIOUR as Record<string, EventSource | undefined>)[species];
+  if (!def || def.kind === undefined || def.phase2 === undefined) return null;
+  return PHASE_STANCE_OF_KIND[def.kind] ?? null;
+}

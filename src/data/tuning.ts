@@ -46,6 +46,11 @@ export const TUNING = {
     buffDurationMs: 3000,
   },
 
+  /** A boss changes phase or falls: the host slows its enemies so the player sees it (core/boss-moment.ts). */
+  bossMoment: {
+    slowMoMs: 1500,
+  },
+
   combat: {
     /** Damage = power * damagePerPower * STAB * effectiveness * multipliers. */
     damagePerPower: 0.2,

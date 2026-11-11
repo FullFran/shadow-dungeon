@@ -50,6 +50,8 @@ export interface Settings {
   figurations: FigurationMode;
   /** The in-game control hint bar (src/ui/play-hints.ts): on unless turned off. Touch never shows it. */
   showHints: boolean;
+  /** The one-time tip on the first boss phase change has been shown (src/ui/boss-notice.ts). */
+  bossPhaseTipSeen: boolean;
 }
 
 /** The figuraciones settings, in the order the row cycles them. */
@@ -67,7 +69,7 @@ export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 't
 const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true, bossPhaseTipSeen: false };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -198,6 +200,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
     difficulty: isDifficulty(stored.difficulty) ? stored.difficulty : fallback.difficulty,
     figurations: FIGURATION_MODES.find((m) => m === stored.figurations) ?? fallback.figurations,
     showHints: typeof stored.showHints === 'boolean' ? stored.showHints : fallback.showHints,
+    bossPhaseTipSeen: typeof stored.bossPhaseTipSeen === 'boolean' ? stored.bossPhaseTipSeen : fallback.bossPhaseTipSeen,
   };
 }
 

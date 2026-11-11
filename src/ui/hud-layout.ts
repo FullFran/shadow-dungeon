@@ -209,8 +209,8 @@ export function bossRect(space: HudDims, slots = 4, touch = false): HudBox {
   return { x: Math.round((space.width - width) / 2), y: space.height - bottom - m.bossHeight, width, height: m.bossHeight };
 }
 
-/** The announcement's move name in HUD px: about 28 CSS px on desktop (26 to 30 at every scale), 14 on touch. */
-export const captionNameSize = (scale: number, touch: boolean): number => (touch ? 14 : Math.round(28 / scale));
+/** The announcement's move name in HUD px: about 28 CSS px on desktop (26 to 30 at every scale), 18 on touch. */
+export const captionNameSize = (scale: number, touch: boolean): number => (touch ? 18 : Math.round(28 / scale));
 
 /** Name, rule and the sign and cue line, with room for the filigree: what the announcement takes in height (HUD px). */
 const captionHeightFor = (scale: number, touch: boolean): number => captionNameSize(scale, touch) + (touch ? 22 : 26);

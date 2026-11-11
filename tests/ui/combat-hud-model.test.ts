@@ -209,10 +209,10 @@ describe('boss captions: every event of every boss', () => {
   });
 });
 
-describe('caption timing: enter 160 ms, hold 1.4 s, exit 240 ms', () => {
-  it('fades in over 160 ms, holds at 1 for 1.4 s and leaves over 240 ms', () => {
+describe('caption timing: enter 160 ms, hold 2.6 s, exit 240 ms (3 s in all)', () => {
+  it('fades in over 160 ms, holds at 1 for 2.6 s and leaves over 240 ms', () => {
     expect(CAPTION_MS.enter).toBe(160);
-    expect(CAPTION_MS.hold).toBe(1600);
+    expect(CAPTION_MS.hold).toBe(2600);
     expect(CAPTION_MS.exit).toBe(240);
     expect(captionAlpha(0)).toBe(0);
     expect(captionAlpha(80)).toBeCloseTo(0.5, 5);
