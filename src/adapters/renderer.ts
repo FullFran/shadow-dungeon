@@ -57,6 +57,8 @@ import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } fro
 import { cueKey, cueRequest, ERUPTION_CUE, HAND_DRAWN_SHOTS, moveCue, projectileCue, stillShotCue, WORLD_CUES } from './fx/cues';
 import { isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
 import type { FxSystem } from './fx/system';
+import { bulletArt, hangProgress, SHOT_LIFT } from './bullet-art';
+import { createBulletAtlas } from './bullet-atlas';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
@@ -260,6 +262,10 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   /** Real time of the frame being drawn (looping telegraph animations). */
   let currentTimeMs = 0;
   let fx: FxSystem | undefined;
+  /** Enemy bullets: one baked atlas (bullet-atlas.ts). */
+  const bullets = createBulletAtlas();
+  /** Enemy shots seen flying, by id, with the way they last faced: a still one among them is hanging, not a cloud. */
+  const shotFacing = new Map<string, number>();
   /** The floor's gate as last drawn, and the "gate opened" notice it raised (hud.ts `gateNotice`). */
   let lastGate: WorldState['gate'];
   let openedNotice: GateNotice | null = null;
@@ -1444,8 +1450,26 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fill();
   }
 
-  /** Enemy shots in their type colours (move-vfx.ts): spore clouds, leaves, threads, arrows; anything else the projectile orb. */
-  function enemyShot(p: Pick<ProjectileState, 'type' | 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): Drawable | null {
+  /**
+   * Enemy shots: a moving or hanging one is its type's bullet from the atlas
+   * (bullet-art.ts: its bright core is exactly its hitbox); one born still is
+   * a spore cloud, puddle or roots (move-vfx.ts).
+   */
+  function enemyShot(p: Pick<ProjectileState, 'id' | 'type' | 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): Drawable | null {
+    const facing = shotFacing.get(p.id);
+    const art = bulletArt({ owner: 'enemy', vel: p.vel }, facing !== undefined);
+    if (art.kind === 'bullet') {
+      const angle = art.state === 'flying' ? Math.atan2(p.vel.y, p.vel.x) : facing;
+      if (art.state === 'flying') shotFacing.set(p.id, angle!);
+      const hang = hangProgress(p);
+      return {
+        y: pos.y,
+        draw: () => {
+          shadow({ x: pos.x, y: pos.y + 8 }, p.radius * 0.7);
+          bullets.draw(ctx, p.type, p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs, { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) });
+        },
+      };
+    }
     const look = enemyShotLook(p);
     if (!look) return null;
     if (look.kind === 'cloud') return { y: pos.y - 40, draw: () => drawEnemyShotVfx(ctx, look, p, pos, timeMs) };
@@ -1791,6 +1815,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const p of current.projectiles) {
       const pos = posOf(p.id, p.pos);
       drawables.push((p.owner === 'enemy' ? enemyShot(p, pos, timeMs) : null) ?? projectile(p, pos, timeMs));
+    }
+    // Forget shots that are gone (ids are never reused within a run).
+    if (shotFacing.size > current.projectiles.length + 256) {
+      const live = new Set(current.projectiles.map((p) => p.id));
+      for (const id of shotFacing.keys()) if (!live.has(id)) shotFacing.delete(id);
     }
     // Other players' projectiles: drawn only, as reported (they hit nothing here).
     for (const remote of current.remotes) for (const p of remote.projectiles) drawables.push(projectile({ owner: 'player', radius: p.radius, vel: p.vel, ...(p.type ? { type: p.type } : {}), ...(p.moveId ? { moveId: p.moveId } : {}) }, p.pos, timeMs));
