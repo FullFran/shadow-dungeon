@@ -52,7 +52,7 @@ describe('settings', () => {
 
   /** A two-move save as it loads since four-slots: boost and area take the species defaults. */
   const pad = (species: SpeciesId, two: readonly MoveId[]): (MoveId | null)[] => [...two, ...SPECIES[species].defaultLoadout.slice(2)];
-  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: 'normal', figurations: 'on', showHints: true, bossPhaseTipSeen: false, keyBindings: DEFAULT_BINDINGS, bag: [null, null, null] };
+  const SOUND = { masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: 'normal', figurations: 'on', showHints: true, bossPhaseTipSeen: false, perilousTipSeen: false, keyBindings: DEFAULT_BINDINGS, bag: [null, null, null] };
 
   it('defaults to the species loadout, toggle lock with click-to-lock on, sound on and the given language', () => {
     expect(defaultSettings('en')).toEqual({ language: 'en', lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, ...SOUND });
@@ -83,6 +83,7 @@ describe('settings', () => {
       figurations: 'reduced' as const,
       showHints: false,
       bossPhaseTipSeen: true,
+      perilousTipSeen: true,
       keyBindings: { ...DEFAULT_BINDINGS, roll: ['KeyC', null] as const },
       bag: ['dew-tonic', null, 'spore-bomb'] as const,
     };
@@ -117,6 +118,18 @@ describe('settings', () => {
     // A save from before the tip existed has no field: not shown yet.
     store.set('mazmorra-sombria.settings', JSON.stringify({ showHints: false }));
     expect(loadSettings(store, defaultSettings('es')).bossPhaseTipSeen).toBe(false);
+  });
+
+  it('remembers that the perilous attack tip was shown, and reads anything else as not shown yet', () => {
+    const store = memoryStore();
+    expect(defaultSettings('es').perilousTipSeen).toBe(false);
+    store.set('mazmorra-sombria.settings', JSON.stringify({ perilousTipSeen: true }));
+    expect(loadSettings(store, defaultSettings('es')).perilousTipSeen).toBe(true);
+    store.set('mazmorra-sombria.settings', JSON.stringify({ perilousTipSeen: 1 }));
+    expect(loadSettings(store, defaultSettings('es')).perilousTipSeen).toBe(false);
+    // A save from before the tip existed has no field: not shown yet.
+    store.set('mazmorra-sombria.settings', JSON.stringify({ bossPhaseTipSeen: true }));
+    expect(loadSettings(store, defaultSettings('es')).perilousTipSeen).toBe(false);
   });
 
   it('keeps a stored nickname only after sanitising it', () => {

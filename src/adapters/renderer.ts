@@ -59,6 +59,7 @@ import { isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
 import type { FxSystem } from './fx/system';
 import { bulletArt, hangProgress, SHOT_LIFT } from './bullet-art';
 import { createBulletAtlas } from './bullet-atlas';
+import { MARK_CELL_PX, MARK_COLORS, MARK_HEIGHT, MARK_WIDTH, perilousMarkGrid, perilousMarkScale, perilousRim } from './perilous-art';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
@@ -958,8 +959,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
 
   /**
    * A positional attack's own warning (pierceRoll: walk or roll OUT of it,
-   * not through it): a pulsing white and violet double border on its area
-   * and a "!" over the enemy.
+   * not through it, or into it in time: the counterstep): a pulsing white and
+   * violet double border on its area and the big red perilous "!" over the enemy.
    */
   function pierceMark(enemy: EnemyState, pos: Vec2, zone: PierceZone, timeMs: number): void {
     const pulse = 0.5 + 0.5 * Math.sin(timeMs / 90);
@@ -1007,23 +1008,76 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.arc(at.x, at.y, radius + 5, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // The "!" badge: a violet diamond with a white mark, over the enemy.
-    const x = Math.round(pos.x);
-    const y = Math.round(pos.y - enemy.radius - 18 - 2 * pulse);
-    ctx.fillStyle = '#b060ff';
+    ctx.restore();
+    perilousBadge(enemy, pos, timeMs);
+  }
+
+  /** The perilous "!" (adapters/perilous-art.ts), baked once: a red warning triangle with a white "!". */
+  let markImage: HTMLCanvasElement | null = null;
+  function perilousMarkImage(): HTMLCanvasElement {
+    if (markImage) return markImage;
+    const grid = perilousMarkGrid();
+    const canvas = document.createElement('canvas');
+    canvas.width = MARK_WIDTH;
+    canvas.height = MARK_HEIGHT;
+    const g = canvas.getContext('2d')!;
+    grid.forEach((row, y) =>
+      [...row].forEach((cell, x) => {
+        if (cell === '.') return;
+        g.fillStyle = MARK_COLORS[cell as keyof typeof MARK_COLORS];
+        g.fillRect(x, y, 1, 1);
+      }),
+    );
+    markImage = canvas;
+    return canvas;
+  }
+
+  /**
+   * The perilous mark over an enemy winding up (or throwing) an attack a roll
+   * does not avoid: big, red, a triangle shape (it reads without its colour),
+   * popping in at the wind-up's start. Every peer draws it from its own world
+   * (a guest from the host's snapshots).
+   */
+  function perilousBadge(enemy: EnemyState, pos: Vec2, timeMs: number): void {
+    const scale = MARK_CELL_PX * perilousMarkScale(enemy.ai.mode === 'telegraph' ? enemy.ai.modeMs : Number.POSITIVE_INFINITY, timeMs);
+    const w = Math.round(MARK_WIDTH * scale);
+    const h = Math.round(MARK_HEIGHT * scale);
+    const x = Math.round(pos.x - w / 2);
+    const y = Math.round(pos.y - enemy.radius - 10 - h);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(perilousMarkImage(), x, y, w, h);
+    ctx.restore();
+  }
+
+  /** A perilous shot in flight: a red ring past its glow with four turning spikes, its edge pulsing white (the bullet itself is untouched). */
+  function perilousShotRim(radius: number, at: Vec2, timeMs: number): void {
+    const rim = perilousRim(radius, timeMs);
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(232, 51, 42, ${0.75 + 0.25 * rim.pulse})`;
     ctx.beginPath();
-    ctx.moveTo(x, y - 7);
-    ctx.lineTo(x + 6, y);
-    ctx.lineTo(x, y + 7);
-    ctx.lineTo(x - 6, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
+    ctx.arc(at.x, at.y, rim.ring, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x - 1, y - 4, 2, 5);
-    ctx.fillRect(x - 1, y + 2, 2, 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.35 + 0.55 * rim.pulse})`;
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, rim.ring + 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#e8332a';
+    ctx.strokeStyle = '#1a0608';
+    for (const spike of rim.spikes) {
+      const c = Math.cos(spike.angle);
+      const sn = Math.sin(spike.angle);
+      const side = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(at.x + c * spike.outer, at.y + sn * spike.outer);
+      ctx.lineTo(at.x + c * spike.inner - sn * side, at.y + sn * spike.inner + c * side);
+      ctx.lineTo(at.x + c * spike.inner + sn * side, at.y + sn * spike.inner - c * side);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -1470,7 +1524,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
    * (bullet-art.ts: its bright core is exactly its hitbox); one born still is
    * a spore cloud, puddle or roots (move-vfx.ts).
    */
-  function enemyShot(p: Pick<ProjectileState, 'id' | 'type' | 'radius' | 'vel' | 'remainingMs'>, pos: Vec2, timeMs: number): Drawable | null {
+  function enemyShot(p: Pick<ProjectileState, 'id' | 'type' | 'radius' | 'vel' | 'remainingMs' | 'pierceRoll'>, pos: Vec2, timeMs: number): Drawable | null {
     const facing = shotFacing.get(p.id);
     const art = bulletArt({ owner: 'enemy', vel: p.vel }, facing !== undefined);
     if (art.kind === 'bullet') {
@@ -1484,6 +1538,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           const drawn = bullets.draw(ctx, p.type, p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs, { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) });
           // Its block is still baking in the background (a few frames at most): the plain orb in its type colours meanwhile.
           if (!drawn) drawProjectileVfx(ctx, { owner: 'enemy', radius: p.radius, type: p.type, vel: p.vel }, pos, timeMs);
+          // A perilous shot (a roll's i-frames do not avoid it) wears its rim on top.
+          if (p.pierceRoll) perilousShotRim(p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs);
         },
       };
     }

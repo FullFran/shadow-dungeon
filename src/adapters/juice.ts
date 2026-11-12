@@ -42,7 +42,7 @@ export interface FloatingNumber {
   stab?: PokemonType;
 }
 
-export type FlashKind = 'perfectDodge' | 'disguiseBroken' | 'levelUp' | 'item' | 'passive';
+export type FlashKind = 'perfectDodge' | 'counter' | 'disguiseBroken' | 'levelUp' | 'item' | 'passive';
 
 export interface JuiceState {
   hitstopMs: number;
@@ -127,6 +127,10 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         break;
       case 'perfectDodge':
         next = { ...next, flash: { kind: 'perfectDodge', ageMs: 0 } };
+        break;
+      case 'perilousCounter':
+        // The counterstep: its flash, a short hitstop and a firm shake (the attack turned back).
+        next = shake({ ...next, hitstopMs: Math.max(next.hitstopMs, JUICE.hurtHitstopMs), flash: { kind: 'counter', ageMs: 0 } }, JUICE.shakePx);
         break;
       case 'passiveTriggered':
         // Illusion, Flash Fire, Battle Armor: a flash naming it and a light shake (Disguise has its own case).

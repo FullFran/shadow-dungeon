@@ -10,6 +10,12 @@ describe('haptics', () => {
     expect(hapticPulse([{ type: 'perfectDodge' }, { type: 'playerHurt', damage: 3 }] as GameEvent[])).toBe(HAPTICS.hurtMs);
   });
 
+  it('pulses on a counterstep, between a hit taken and a perfect dodge', () => {
+    expect(hapticPulse([{ type: 'perilousCounter', pos: { x: 0, y: 0 } }] as GameEvent[])).toBe(HAPTICS.counterMs);
+    expect(hapticPulse([{ type: 'perfectDodge' }, { type: 'perilousCounter', pos: { x: 0, y: 0 } }] as GameEvent[])).toBe(HAPTICS.counterMs);
+    expect(HAPTICS.counterMs).toBeLessThanOrEqual(HAPTICS.hurtMs);
+  });
+
   it('keeps pulses short', () => {
     expect(HAPTICS.hurtMs).toBeLessThanOrEqual(60);
     expect(HAPTICS.perfectDodgeMs).toBeLessThanOrEqual(30);

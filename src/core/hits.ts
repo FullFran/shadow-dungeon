@@ -1,6 +1,7 @@
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
-import { tierOf } from './difficulty';
+import { tierOf, worldDifficulty } from './difficulty';
+import { countersHit } from './counter';
 import { hitCap, speciesMaxHpAt } from './fairness';
 import { onLethalHit } from './items';
 import { partyDamageScale } from './party';
@@ -14,7 +15,7 @@ import { DAMAGE_TAKEN_FLOOR } from '../data/rank-effects';
 const PERFECT = TUNING.perfectDodge;
 const PASSIVES = TUNING.passives;
 
-export type LandedOutcome = 'hurt' | 'absorbed' | 'dodged' | 'perfectDodge';
+export type LandedOutcome = 'hurt' | 'absorbed' | 'dodged' | 'perfectDodge' | 'countered';
 
 /**
  * Lands a hit on the player, pushing events into `events`. I-frames turn it
@@ -22,7 +23,8 @@ export type LandedOutcome = 'hurt' | 'absorbed' | 'dodged' | 'perfectDodge';
  * otherwise Flash Fire absorbs a Fire hit (and a perfect dodge of one), Disguise
  * absorbs the first damaging hit of the room and Battle Armor halves a
  * frontal hit during a heavy wind-up; being hurt breaks Illusion. A lethal
- * hit may be survived with a held item (Focus Sash, items.ts).
+ * hit may be survived with a held item (Focus Sash, items.ts). A perilous hit
+ * rolled into in time is countered first of all (core/counter.ts).
  */
 export function landHitOnPlayer(
   state: WorldState,
@@ -30,6 +32,12 @@ export function landHitOnPlayer(
   events: GameEvent[],
 ): { state: WorldState; outcome: LandedOutcome } {
   const { player } = state;
+  // Rolled into a perilous hit in time (core/counter.ts): countered before any damage is worked out; its attacker is owed the hit.
+  if (countersHit(player, hit, worldDifficulty(state))) {
+    events.push({ type: 'perilousCounter', pos: player.pos });
+    const attackerId = hit.counter?.attackerId;
+    return { outcome: 'countered', state: attackerId ? { ...state, counterDue: [...(state.counterDue ?? []), attackerId] } : state };
+  }
   // The endless dungeon's deeper floors hit harder (state.enemyScale), and so do harder tiers (victim side: every peer applies its own).
   // A bigger party's boss hits a little harder too (core/party.ts; 1 solo and without a boss).
   const harder = (state.enemyScale?.damage ?? 1) * tierOf(state).damage * partyDamageScale(state);

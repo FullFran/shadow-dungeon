@@ -13,6 +13,7 @@ import { partyStaggerOf, presentPlayers } from './party';
 import { noteAggroDamage } from './aggro';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
+import { shotShooter } from './counter';
 import { cursePlayer } from './player';
 import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
@@ -27,7 +28,7 @@ import { enemyTimeScale } from './time';
 import { FIXED_DT_MS } from './timestep';
 import { add, distance, dot, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 
-const { combat: COMBAT, player: PLAYER } = TUNING;
+const { combat: COMBAT, player: PLAYER, counter: COUNTER } = TUNING;
 export const PLAYER_ID = 'player';
 
 /**
@@ -634,11 +635,14 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
         multiplier: moved.damageMultiplier,
       });
       const from = sub(moved.pos, scale(normalize(moved.vel), moved.radius + PLAYER.radius));
-      const landed = landHitOnPlayer(current, { damage, type: moved.type, from, ...(moved.pierceRoll ? { pierceRoll: true } : {}) }, events);
+      // A perilous shot can be countered (core/counter.ts): its shooter, as this peer can tell it, takes the hit back.
+      const shooter = moved.pierceRoll ? shotShooter(moved, current.enemies) : null;
+      const counter = moved.pierceRoll && length(moved.vel) > 0 ? { counter: shooter ? { attackerId: shooter.id } : {} } : {};
+      const landed = landHitOnPlayer(current, { damage, type: moved.type, from, ...(moved.pierceRoll ? { pierceRoll: true } : {}), ...counter }, events);
       current = landed.state;
       // A cursed shot (Yamask's) that hurt slows this player's stamina recharge for a while.
       if (landed.outcome === 'hurt' && moved.curseMs) current = { ...current, player: cursePlayer(current.player, moved.curseMs) };
-      // Rolled through: the projectile keeps flying; otherwise it is spent.
+      // Rolled through: the projectile keeps flying; otherwise it is spent (a countered one too).
       const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
       // A guest remembers the host's shot it spent, so the next snapshot does not bring it back (sync.ts).
       if (!dodged && current.role === 'guest') current = { ...current, spentShots: [...(current.spentShots ?? []), moved.id] };
@@ -649,6 +653,37 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
   // Shots and zones spawned by this step's hits (rank effects) join from the next step.
   const spawned = current.projectiles.slice(state.projectiles.length).filter((p) => p.owner === 'player' && (p.zone || p.hitIds.length > 0));
   return { ...current, projectiles: spawned.length > 0 ? [...survivors, ...spawned] : survivors };
+}
+
+/**
+ * The counterstep's hit (core/counter.ts): every enemy owed one (a perilous
+ * shot or strike countered this step or the last) is staggered and struck
+ * like a perfect dodge's reward, in the player's first type. A guest's is a
+ * claim like any of its hits; an enemy already down is owed nothing.
+ */
+function strikeCountered(state: WorldState, events: GameEvent[]): WorldState {
+  if (!state.counterDue || state.counterDue.length === 0) return state;
+  let current: WorldState = { ...state, counterDue: undefined };
+  for (const [i, id] of state.counterDue.entries()) {
+    const enemy = current.enemies.find((e) => e.id === id && e.alive);
+    if (!enemy) continue;
+    current = strikeEnemy(
+      current,
+      enemy,
+      {
+        power: COUNTER.power,
+        type: current.player.types[0] ?? 'normal',
+        multiplier: TUNING.perfectDodge.damageMultiplier,
+        hitstunMs: COUNTER.staggerMs,
+        knockback: COUNTER.knockback,
+        from: current.player.pos,
+        source: `counter${state.tick}.${i}`,
+      },
+      events,
+    );
+  }
+  const { counterDue: _done, ...rest } = current;
+  return rest;
 }
 
 /** Ticks enemy stagger and eases out knockback, at the enemy time scale. */
@@ -679,6 +714,7 @@ function updateEnemyReactions(state: WorldState, dtMs: number): WorldState {
 export function updateCombat(state: WorldState, input: PlayerInput, dtMs: number, events: GameEvent[]): WorldState {
   let current = updatePlayerAction(state, input, dtMs, events);
   current = updateProjectiles(current, dtMs, events);
+  current = strikeCountered(current, events);
   // Burns and poisons tick on the host, like the rest of the enemies' reactions.
   // ...and so do the rank effects' marks and weakenings.
   return current.role === 'guest' ? current : tickRankStatus(tickDots(updateEnemyReactions(current, dtMs), dtMs, events), dtMs, events);

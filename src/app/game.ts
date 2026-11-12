@@ -62,6 +62,7 @@ import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type
 import { bossBar } from '../core/boss';
 import { bossMoment } from '../core/boss-moment';
 import { bossNotice, pickWaits, takePhaseTip, type BossNotice } from '../ui/boss-notice';
+import { perilousInSight, perilousTipText, takePerilousTip } from '../ui/perilous-tip';
 import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
@@ -264,6 +265,8 @@ export interface GameOptions {
   hints?: { enabled(): boolean; padStyle?(): PadStyle };
   /** The one-time tip on the first boss phase change: whether it was shown on this device, and the mark once it is (Settings `bossPhaseTipSeen`). Absent: no tip. */
   bossTip?: { seen(): boolean; mark(): void };
+  /** The one-time tip on the first perilous attack (the red "!"; Settings `perilousTipSeen`, src/ui/perilous-tip.ts). Absent: no tip. */
+  perilousTip?: { seen(): boolean; mark(): void };
   /**
    * Solo only: reload-proof play (app/run-resume.ts). `from` is a stored run to continue: it comes back exactly as it was,
    * paused with the menu open. `writer` keeps the record (floor changes, every few seconds, on leaving the page) and
@@ -497,8 +500,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   const overlayParent = canvas.parentElement ?? document.body;
   // The Crypt's contextual tutorial (app/tutorial.ts; odd/tasks/menu-redesign.md T7): one neutral sign at a time, the first time each thing happens on this device.
   const teaching = options.tutorial !== undefined && tutorialApplies({ dungeon: run.dungeon, trial: trial !== null, story: options.story !== undefined, dev: options.startFloor !== undefined || (options.testSpawns?.length ?? 0) > 0 });
-  const signQueue: TutorialHint[] = [];
-  let sign: { hint: TutorialHint; element: HTMLElement; shownAtMs: number } | null = null;
+  /** Tutorial signs, and the perilous tip that shows the same way (anywhere, once per device: src/ui/perilous-tip.ts). */
+  const signQueue: (TutorialHint | 'perilous')[] = [];
+  let sign: { hint: TutorialHint | 'perilous'; element: HTMLElement; shownAtMs: number } | null = null;
   /** The last input came from a gamepad (the sign then names its buttons). */
   let padInUse = false;
   /** The wording for the input in use (src/ui/device-wording.ts): the tutorial, the leave and shrine choices. */
@@ -534,11 +538,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       sign = null;
     }
     // Never over the floor 1 title.
-    if (sign || signQueue.length === 0 || !options.tutorial || (intro && realMs - intro.shownAtMs < 4000)) return;
+    if (sign || signQueue.length === 0 || (intro && realMs - intro.shownAtMs < 4000)) return;
     const hint = signQueue.shift()!;
-    options.tutorial.mark(hint);
+    // The perilous tip was marked seen when it was queued; a tutorial sign is marked as it shows.
+    if (hint !== 'perilous') options.tutorial?.mark(hint);
     const device = hintDevice();
-    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, signText(hint, device), signWaits ? t(`tutorial.continue.${device}`) : undefined);
+    const text = hint === 'perilous' ? perilousTipText(device) : signText(hint, device);
+    const element = tutorialSign(`${t('tutorial.sign.label')} · ${t(`tutorial.${hint}.title`)}`, text, signWaits ? t(`tutorial.continue.${device}`) : undefined);
     if (signWaits) {
       element.classList.add('is-waiting');
       element.addEventListener('pointerdown', (e) => {
@@ -1728,6 +1734,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         audio?.play('bossDefeated');
         music();
       }
+      // The first perilous wind-up this device ever sees (the red "!"): its tip, ahead of any tutorial sign.
+      if (options.perilousTip && !options.perilousTip.seen() && perilousInSight(world) && takePerilousTip(options.perilousTip)) signQueue.unshift('perilous');
       // A boss changes phase or falls: a large centred notice (about 3 s), a cue, and the first time a one-line tip on what a phase change means.
       const turning = bossMoment(before, world);
       if (turning) {

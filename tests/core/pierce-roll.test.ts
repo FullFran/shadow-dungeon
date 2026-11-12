@@ -61,7 +61,8 @@ describe('pierceRoll: positional attacks', () => {
   });
 
   it('rolling through a positional shot still hits; rolling through a plain one does not', () => {
-    const through = (pierce: boolean) => events(shotAtPlayer(base(), pierce), ticksFor(400), vec(-1, 0), true).events;
+    // Met past the counterstep's window (tests/core/counter.test.ts): it lands about 230 ms into the roll, inside the i-frames.
+    const through = (pierce: boolean) => events(shotAtPlayer(base(), pierce, 170), ticksFor(600), vec(-1, 0), true).events;
     expect(hurt(through(false))).toBe(false);
     expect(hurt(through(true))).toBe(true);
   });
