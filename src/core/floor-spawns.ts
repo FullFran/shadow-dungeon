@@ -1,7 +1,7 @@
 import type { Difficulty } from '../data/difficulty';
 import { dungeonById, ECLIPSE, type DungeonDef } from '../data/dungeons';
 import type { SimaEvents } from '../data/sima';
-import { tieredSpawns } from './difficulty';
+import { drawnAt, tieredSpawns } from './difficulty';
 import { generateFloor, weightAt, type Floor } from './dungeon';
 import { endlessSpawns } from './endless';
 import { assignLeaders } from './leaders';
@@ -32,8 +32,8 @@ export const floorEventRules = (def: DungeonDef): SimaEvents | undefined => def.
 /** The rules of an event on the floor: its dungeon's; one that names none is the Sima's. */
 export const eventRulesOf = (event: Pick<SimaEventState, 'dungeon'>): SimaEvents => floorEventRules(event.dungeon ? dungeonById(event.dungeon) : ECLIPSE)!;
 
-/** The species an event's own enemies are drawn from at this floor (`weights[0]`, core/sima-events.ts): the depth's pool, by the dungeon's weights there. */
-export function floorEventPool(def: DungeonDef, floor: number): readonly { species: SpeciesId; weights: readonly number[] }[] {
-  if (def.endless) return endlessSpawns(def.endless, floor).pool;
-  return def.spawns.pool.filter((e) => weightAt(e, floor) > 0).map((e) => ({ species: e.species, weights: [weightAt(e, floor)] }));
+/** The species an event's own enemies are drawn from at this floor (`weights[0]`, core/sima-events.ts): the depth's pool at the tier, by the dungeon's weights there. */
+export function floorEventPool(def: DungeonDef, floor: number, tier: Difficulty): readonly { species: SpeciesId; weights: readonly number[] }[] {
+  if (def.endless) return endlessSpawns(def.endless, floor).pool.filter((e) => drawnAt(e, tier));
+  return def.spawns.pool.filter((e) => weightAt(e, floor) > 0 && drawnAt(e, tier)).map((e) => ({ species: e.species, weights: [weightAt(e, floor)] }));
 }

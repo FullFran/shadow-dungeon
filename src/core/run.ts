@@ -279,7 +279,7 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const rules = floorEventRules(dungeonOf(run));
   const rolled = rules ? chooseSimaEvent(seed, run.floor, floor, run.kind, rules, tier) : null;
   const event = drawnGate === 'waves' && rules ? waveRoomOf(floor, rolled) : rolled;
-  const withEvent = event && rules ? placeSimaEvent(pooled, event, floor, seed, run.floor, rules, floorEventPool(dungeonOf(run), run.floor), tier) : pooled;
+  const withEvent = event && rules ? placeSimaEvent(pooled, event, floor, seed, run.floor, rules, floorEventPool(dungeonOf(run), run.floor, tier), tier) : pooled;
   // Outside the Sima the event names its dungeon: the step and the HUD follow that dungeon's rules.
   const evented = withEvent.simaEvent && !endless ? { ...withEvent, simaEvent: { ...withEvent.simaEvent, dungeon: run.dungeon } } : withEvent;
   // The hunter already pushes (no gate then); a key gate beside a wave room becomes a seal (their doors must not mix).

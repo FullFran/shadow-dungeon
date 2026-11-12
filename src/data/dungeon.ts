@@ -1,3 +1,4 @@
+import type { Difficulty } from './difficulty';
 import type { EncounterBudget } from './encounters';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
@@ -47,6 +48,10 @@ export interface SpawnEntry {
   pack?: number;
   /** A mixed pack: after the pick (and its pack), up to `count` of another species on the next tiles. */
   escort?: { species: SpeciesId; count: number };
+  /** Only runs at this tier or harder draw it (core/difficulty.ts `tieredSpawns`): Hard and Nightmare meet a species or two more. */
+  minDifficulty?: Difficulty;
+  /** A rare spawn: a low weight (at most 0.25) and an arrival cue when the floor holds one (core/dungeon.ts `rareOnFloor`). */
+  rare?: true;
 }
 
 /** Enemies of a dungeon's generated floors. */

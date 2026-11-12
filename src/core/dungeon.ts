@@ -27,6 +27,8 @@ export interface FloorSpawn {
   room: number;
   /** Its group's leader (core/leaders.ts `assignLeaders`). */
   leader?: true;
+  /** Drawn from a rare pool entry (data/dungeon.ts `SpawnEntry.rare`): the floor cues its arrival. */
+  rare?: true;
 }
 
 export interface Floor extends TileGrid {
@@ -212,7 +214,7 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
     for (let i = 0; i < tiles.length; ) {
       const entry = pickSpawn(rng, spawnTuning.pool, depth);
       const size = Math.max(1, entry.pack ?? 1);
-      for (const tile of tiles.slice(i, i + size)) spawns.push({ species: entry.species, tile, room: index });
+      for (const tile of tiles.slice(i, i + size)) spawns.push({ species: entry.species, tile, room: index, ...(entry.rare ? { rare: true as const } : {}) });
       i += size;
       // A mixed pack (the forest's trickster and its pumpkins): the escorts take the next tiles, no extra draw.
       if (entry.escort) {
@@ -281,13 +283,17 @@ function budgetedRoom(rng: Random, pool: readonly SpawnEntry[], budget: Encounte
   const n = ordered.length;
   const fits = (t: TilePoint, line: 'front' | 'back') => (line === 'front' ? rank.get(t)! < Math.ceil(n / 2) : rank.get(t)! >= Math.floor(n * 0.6));
   const used = new Set<TilePoint>();
+  const rare = new Set(pool.filter((e) => e.rare).map((e) => e.species));
   return bought.map((species) => {
     const line = ROLE_LINE[roleOf(species)];
     const tile = shuffled.find((t) => !used.has(t) && fits(t, line)) ?? shuffled.find((t) => !used.has(t))!;
     used.add(tile);
-    return { species, tile, room };
+    return { species, tile, room, ...(rare.has(species) ? { rare: true as const } : {}) };
   });
 }
+
+/** The rare species a generated floor holds (the first one drawn), or null: the floor cues its arrival (data/dungeon.ts `SpawnEntry.rare`). */
+export const rareOnFloor = (floor: Pick<Floor, 'spawns'>): SpeciesId | null => floor.spawns.find((s) => s.rare)?.species ?? null;
 
 /** A tile rectangle in world pixels. */
 export const roomRect = (room: TileRect) => ({ x: room.x * TILE, y: room.y * TILE, width: room.width * TILE, height: room.height * TILE });

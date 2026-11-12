@@ -3,7 +3,9 @@ import type { DungeonDef } from '../data/dungeons';
 import type { EndlessDef, EndlessPoolEntry } from '../data/endless';
 import type { UpgradeLevels } from '../data/upgrades';
 import type { CoinBreakdown } from './coins';
+import type { SimaBandId } from '../data/sima';
 import { deriveSeed } from './rng';
+import { simaBandAt } from './sima';
 
 /**
  * Rules of the endless dungeon (docs/gdd.md §3 "La Sima del Eclipse"),
@@ -40,11 +42,29 @@ export function depthScale(scaling: EndlessDef['scaling'], floor: number, echo =
 export const depthWeight = (e: Pick<EndlessPoolEntry, 'weight' | 'minDepth' | 'perDepth'>, depth: number): number =>
   Math.min(e.weight * 4, Math.max(e.weight * 0.25, e.weight + (e.perDepth ?? 0) * Math.max(0, depth - e.minDepth)));
 
-/** The spawn tuning of one endless floor: every pool entry whose `minDepth` is reached, with its weight. */
-export function endlessSpawns(endless: Pick<EndlessDef, 'pool' | 'spawns'>, depth: number): SpawnTuning {
+/** Weight share of an entry in a stratum: three times inside its `bands`, half outside; as is without bands. */
+export const bandWeight = (e: Pick<EndlessPoolEntry, 'bands'>, band: SimaBandId | undefined, weight: number): number =>
+  !e.bands || !band ? weight : weight * (e.bands.includes(band) ? BAND_IN : BAND_OUT);
+
+const BAND_IN = 3;
+const BAND_OUT = 0.5;
+
+/**
+ * The spawn tuning of one endless floor: every pool entry whose `minDepth` is
+ * reached, with its weight in the floor's stratum (`bandWeight`); tier gates
+ * and rare flags carry over (core/difficulty.ts `tieredSpawns` applies the gate).
+ */
+export function endlessSpawns(endless: Pick<EndlessDef, 'pool' | 'spawns' | 'bands'>, depth: number): SpawnTuning {
+  const band = endless.bands && endless.bands.length > 0 ? simaBandAt(endless.bands, depth).id : undefined;
   const pool = endless.pool
     .filter((e) => e.minDepth <= depth && e.weight > 0)
-    .map((e) => ({ species: e.species, weights: [depthWeight(e, depth)], ...(e.pack ? { pack: e.pack } : {}) }));
+    .map((e) => ({
+      species: e.species,
+      weights: [bandWeight(e, band, depthWeight(e, depth))],
+      ...(e.pack ? { pack: e.pack } : {}),
+      ...(e.minDifficulty ? { minDifficulty: e.minDifficulty } : {}),
+      ...(e.rare ? { rare: true as const } : {}),
+    }));
   return { ...endless.spawns, pool };
 }
 
