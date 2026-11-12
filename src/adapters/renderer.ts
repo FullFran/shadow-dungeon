@@ -64,12 +64,14 @@ import { drawQueenTelegraph, drawUltraTelegraph } from './swamp-telegraphs';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
 import { cryptDecor, decorHash, type CryptDecor } from './crypt-decor';
+import { artThemeOf, type ArtTheme } from './floor-art';
+import { arenaLayer, floorLayer } from './floor-layer';
 import { forestDecor, wispGuide, type Firefly, type ForestDecor } from './forest-decor';
 import { arenaFireflies, drawForestAir, drawForestArena, drawForestFloorDecor, drawForestTree, drawWisp } from './forest-draw';
 import { tileDistances } from '../core/dungeon';
 import { cacheLeft } from '../core/wisp';
 import { drawDeadTree, drawGas, drawPool, drawReeds, drawSpores, drawSwampArena, drawSwampBlock, drawToxicMist, swampDecor, type SwampDecor } from './swamp-decor';
-import { abyssRim, abyssWallTile, drawFallingLight, drawSimaBackdrop, eliteFilter, type SimaLook } from './sima-backdrop';
+import { drawFallingLight, drawSimaBackdrop, eliteFilter, type SimaLook } from './sima-backdrop';
 
 /** Everything one rendered frame needs; the renderer keeps no game state of its own. */
 export interface RenderFrame {
@@ -424,49 +426,36 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.globalAlpha = 1;
   }
 
-  function tiles(grid: TileGrid, view: Rect, collapse: CollapseState | undefined, timeMs: number, abyss = false): void {
+  /**
+   * Generated floors: the floor's prerendered layer (floor-layer.ts: textured
+   * tiles, terrain walls, shadows, banks and props, painted once per floor),
+   * only its visible part; then, per frame, only what moves: the collapse's
+   * rubble behind its front and the cracks just ahead of it.
+   */
+  function tiles(state: WorldState, grid: TileGrid, view: Rect, timeMs: number, palette: TilePalette, theme: ArtTheme): void {
+    const layer = floorLayer(
+      grid,
+      () => ({ ...grid, rooms: state.arena.rooms ?? [], ...(state.arena.water ? { water: state.arena.water } : {}), ...(state.pools ? { pools: state.pools } : {}) }),
+      palette,
+      theme,
+    );
+    const sx = Math.max(0, Math.floor(view.x / TILE - 1) * TILE);
+    const sy = Math.max(0, Math.floor(view.y / TILE - 1) * TILE);
+    const sw = Math.min(layer.width, Math.ceil((view.x + view.width) / TILE + 1) * TILE) - sx;
+    const sh = Math.min(layer.height, Math.ceil((view.y + view.height) / TILE + 1) * TILE) - sy;
+    if (sw > 0 && sh > 0) ctx.drawImage(layer, sx, sy, sw, sh, sx, sy, sw, sh);
+    const collapse = state.collapse;
+    if (!collapse) return;
+    const front = collapseFront(collapse);
+    if (front <= 0) return;
     const { x0, y0, x1, y1 } = visibleTiles(view, grid);
-    const front = collapse ? collapseFront(collapse) : 0;
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
-        const x = tx * TILE;
-        const y = ty * TILE;
-        if (isWall(grid, tx, ty) && abyss) {
-          // The Sima's abyss: no wall, only the void and the underside of the island above.
-          abyssWallTile(ctx, grid, tx, ty);
-        } else if (isWall(grid, tx, ty)) {
-          ctx.fillStyle = COLORS.tileWallTop;
-          ctx.fillRect(x, y, TILE, TILE);
-          // Staggered stone blocks on the wall tops.
-          ctx.fillStyle = COLORS.tileWallBlock;
-          const shift = ty % 2 === 0 ? 0 : 8;
-          ctx.fillRect(x + 2 + shift, y + 3, 12, 10);
-          ctx.fillRect(x + 18 - shift, y + 19, 12, 10);
-          if (!isWall(grid, tx, ty + 1)) {
-            ctx.fillStyle = COLORS.tileWallFace;
-            ctx.fillRect(x, y + TILE - 12, TILE, 12);
-            ctx.fillStyle = COLORS.tileWallLip;
-            ctx.fillRect(x, y + TILE - 12, TILE, 2);
-          }
-          ctx.fillStyle = COLORS.tileWallLip;
-          if (!isWall(grid, tx - 1, ty)) ctx.fillRect(x, y, 1, TILE);
-          if (!isWall(grid, tx + 1, ty)) ctx.fillRect(x + TILE - 1, y, 1, TILE);
-          if (!isWall(grid, tx, ty - 1)) ctx.fillRect(x, y, TILE, 1);
-        } else {
-          const d = collapse ? (collapse.dist[ty * grid.cols + tx] ?? -1) : -1;
-          if (front > 0 && d >= 0 && d < front) {
-            rubbleTile(x, y, tx, ty, front - d);
-            continue;
-          }
-          ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.tileFloorA : COLORS.tileFloorB;
-          ctx.fillRect(x, y, TILE, TILE);
-          if (abyss) abyssRim(ctx, grid, tx, ty, COLORS.tileWallLip);
-          else if (isWall(grid, tx, ty - 1)) {
-            ctx.fillStyle = COLORS.tileShadow;
-            ctx.fillRect(x, y, TILE, 6);
-          }
-          if (front > 0 && d >= 0 && d - front < CRACK_TILES) crackedTile(x, y, tx, ty, d - front, timeMs);
-        }
+        if (isWall(grid, tx, ty)) continue;
+        const d = collapse.dist[ty * grid.cols + tx] ?? -1;
+        if (d < 0) continue;
+        if (d < front) rubbleTile(tx * TILE, ty * TILE, tx, ty, front - d);
+        else if (d - front < CRACK_TILES) crackedTile(tx * TILE, ty * TILE, tx, ty, d - front, timeMs);
       }
     }
   }
@@ -679,7 +668,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     for (const t of decor.trees) if (visible(t.x, t.y)) drawDeadTree(ctx, t.x * TILE, t.y * TILE, decorHash(t.x, t.y, 22), timeMs);
   }
 
-  function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor, sima: SimaLook | null = null): void {
+  function floor(state: WorldState, view: Rect, timeMs: number, decor: Decor, palette: TilePalette, sima: SimaLook | null = null): void {
+    const theme = artThemeOf(decor, sima?.abyss === true);
     if (state.arena.tiles) {
       const grid = state.arena.tiles;
       // The Sima draws its eclipse backdrop where the void would be.
@@ -688,7 +678,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         ctx.fillStyle = COLORS.wall;
         ctx.fillRect(view.x - 16, view.y - 16, view.width + 32, view.height + 32);
       }
-      tiles(grid, view, state.collapse, timeMs, sima?.abyss === true);
+      tiles(state, grid, view, timeMs, palette, theme);
       if (decor === 'crypt') cryptFloorDecor(state, view, timeMs);
       if (decor === 'forest') drawForestFloorDecor(ctx, forestFloor(state), view, timeMs, fallenAt(state));
       if (decor === 'caves') caveFloorDecor(state, view, timeMs);
@@ -704,22 +694,13 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       ctx.fillStyle = COLORS.wall;
       ctx.fillRect(-200, -200, width + 400, height + 400);
     }
-    // The checker, visible tiles only (a tile of margin for the shake): one rect of the first colour,
-    // then the second colour's squares. Tile edges sit on whole backing pixels (integer scale, rounded
-    // offset), so this paints the same pixels as a rect per tile over the whole arena, at a quarter of the calls.
-    const cx0 = Math.max(0, Math.floor((view.x - TILE) / TILE) * TILE);
-    const cy0 = Math.max(0, Math.floor((view.y - TILE) / TILE) * TILE);
-    const cx1 = Math.min(width, view.x + view.width + TILE);
-    const cy1 = Math.min(height, view.y + view.height + TILE);
-    if (cx1 > cx0 && cy1 > cy0) {
-      ctx.fillStyle = COLORS.floorA;
-      ctx.fillRect(cx0, cy0, Math.min(width, Math.ceil(cx1 / TILE) * TILE) - cx0, Math.min(height, Math.ceil(cy1 / TILE) * TILE) - cy0);
-      ctx.fillStyle = COLORS.floorB;
-      for (let y = cy0; y < cy1; y += TILE) {
-        const first = ((cx0 + y) / TILE) % 2 === 0 ? cx0 + TILE : cx0;
-        for (let x = first; x < cx1; x += 2 * TILE) ctx.fillRect(x, y, Math.min(TILE, width - x), Math.min(TILE, height - y));
-      }
-    }
+    // The arena's prerendered floor (floor-layer.ts, once per size and look), only its visible part (a tile of margin for the shake).
+    const layer = arenaLayer(width, height, palette, theme);
+    const ax = Math.max(0, Math.floor((view.x - TILE) / TILE) * TILE);
+    const ay = Math.max(0, Math.floor((view.y - TILE) / TILE) * TILE);
+    const aw = Math.min(layer.width, Math.ceil(view.x + view.width + TILE)) - ax;
+    const ah = Math.min(layer.height, Math.ceil(view.y + view.height + TILE)) - ay;
+    if (aw > 0 && ah > 0) ctx.drawImage(layer, ax, ay, aw, ah, ax, ay, aw, ah);
     ctx.strokeStyle = COLORS.wallEdge;
     ctx.lineWidth = 2;
     ctx.strokeRect(-1, -1, width + 2, height + 2);
@@ -1669,7 +1650,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const oy = Math.round((view.y + shake.y) * pixelScale);
     ctx.setTransform(pixelScale, 0, 0, pixelScale, -ox, -oy);
 
-    floor(current, view, timeMs, frame.decor ?? null, frame.sima ?? null);
+    floor(current, view, timeMs, frame.decor ?? null, frame.palette ?? CRYPT.palette, frame.sima ?? null);
     if (frame.sima?.abyss) drawFallingLight(ctx, view, timeMs);
     if (current.arena.stairs) stairsTile(current.arena.stairs, timeMs);
     gateMarks(current, timeMs);
