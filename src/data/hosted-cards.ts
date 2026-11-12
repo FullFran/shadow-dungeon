@@ -66,7 +66,7 @@ const SAB_GEMS = (hpShare: number): CardSpec => ({ id: 'sc-sab-gems', moves: ['g
 const SAB_VAULT = survival('sc-sab-vault', ['gems'], 12_000);
 
 // The ricochet takes the gems' place on Normal (the lowest share); the gems stay on Hard and Nightmare.
-export const SABLEYE_CARDS_NORMAL = fight('sableye', [SAB_GLINT(0.53), sabRicochet('normal', 0.47)], { hpScale: 0.94 });
+export const SABLEYE_CARDS_NORMAL = fight('sableye', [SAB_GLINT(0.57), sabRicochet('normal', 0.43)], { hpScale: 0.94 });
 export const SABLEYE_CARDS_HARD = fight('sableye', [SAB_GLINT(0.4), SAB_VAULT, SAB_GEMS(0.33), sabRicochet('hard', 0.27)], { hpScale: 0.77 });
 export const SABLEYE_CARDS_NIGHTMARE = fight(
   'sableye',
@@ -147,8 +147,8 @@ const SAL_COURT = survival('sc-sal-court', ['spiral', 'haze'], 12_000);
 const COURT = { dismiss: ['salandit'] } as const;
 
 // The sparks take the haze's place on Normal (the lowest share); the haze stays on Hard and Nightmare.
-export const SALAZZLE_CARDS_NORMAL = fight('salazzle', [SAL_DANCE(0.4), SAL_SPIRAL(0.35), salSparks('normal', 0.25)], COURT);
-export const SALAZZLE_CARDS_HARD = fight('salazzle', [SAL_DANCE(0.36), SAL_SPIRAL(0.3), SAL_COURT, SAL_HAZE(0.16), salSparks('hard', 0.18)], { ...COURT, hpScale: 0.98 });
+export const SALAZZLE_CARDS_NORMAL = fight('salazzle', [SAL_DANCE(0.47), SAL_SPIRAL(0.41), salSparks('normal', 0.12)], COURT);
+export const SALAZZLE_CARDS_HARD = fight('salazzle', [SAL_DANCE(0.4), SAL_SPIRAL(0.34), SAL_COURT, SAL_HAZE(0.16), salSparks('hard', 0.1)], { ...COURT, hpScale: 0.98 });
 export const SALAZZLE_CARDS_NIGHTMARE = fight(
   'salazzle',
   [SAL_DANCE(0.26), SAL_SPIRAL(0.25), SAL_COURT, SAL_HAZE(0.18), salSparks('nightmare', 0.16), { id: 'sc-sal-lastword', moves: ['escort', 'dance', 'haze'], hpShare: 0.15, timerMs: 35_000, lastSpell: true }],
@@ -167,7 +167,7 @@ const NIH_RIFT = survival('sc-nih-rift', ['spores', 'tendrils'], 15_000);
 export const NIHILEGO_CARDS_NORMAL = fight('nihilego', [NIH_TENDRILS(0.36), nihFracture('normal', 0.09), NIH_WORMHOLE(0.27), NIH_FLOOD(0.28)], { hpScale: 0.9 });
 export const NIHILEGO_CARDS_HARD = fight(
   'nihilego',
-  [NIH_TENDRILS(0.17), NIH_SHARDS(0.19), nihFracture('hard', 0.12), NIH_WORMHOLE(0.16), NIH_RIFT, nihUpward('hard', 0.12), nihNeurotoxin('hard', 0.1), NIH_FLOOD(0.14)],
+  [NIH_TENDRILS(0.21), NIH_SHARDS(0.19), nihFracture('hard', 0.12), NIH_WORMHOLE(0.16), NIH_RIFT, nihUpward('hard', 0.05), nihNeurotoxin('hard', 0.1), NIH_FLOOD(0.17)],
   { hpScale: 0.97 },
 );
 export const NIHILEGO_CARDS_NIGHTMARE = fight('nihilego', [
@@ -176,8 +176,8 @@ export const NIHILEGO_CARDS_NIGHTMARE = fight('nihilego', [
   nihFracture('nightmare', 0.08),
   NIH_WORMHOLE(0.14),
   NIH_RIFT,
-  nihUpward('nightmare', 0.08),
-  NIH_FLOOD(0.14),
+  nihUpward('nightmare', 0.04),
+  NIH_FLOOD(0.18),
   nihNeurotoxin('nightmare', 0.07),
   { id: 'sc-nih-downpour', moves: ['downpour', 'spores'], hpShare: 0.14, timerMs: 45_000 },
   { id: 'sc-nih-lastword', moves: ['flood', 'downpour'], hpShare: 0.15, timerMs: 40_000, lastSpell: true },

@@ -19,6 +19,8 @@ import type { PokemonType } from './types';
  * Hitboxes (owner decision 3a: the bright core is the hitbox, the glow is
  * harmless): needles (lasers, arrows, sparks) radius 4-5, orbs (rings,
  * spirals, fans) 6-7, big slow shots (homing orbs, falling drops) 8-9.
+ * Nightmare's waltz and neurotoxin hit harder: a ranked drain build otherwise
+ * out-healed them face-tanking (tests/sim/degenerate-builds.test.ts).
  * Values are provisional; the beatability proof (`npm run prove`) holds them.
  */
 
@@ -28,8 +30,24 @@ const pick = <V>(tier: CardTier, values: readonly [V, V, V]): V => values[T[tier
 
 const shot = (type: PokemonType, power: number, speed: number, radius: number, lifetimeMs = 6000, more: { kin?: ShotKinDef; steer?: SteerDef; pierceRoll?: true } = {}): DanmakuShot => ({ power, type, speed, radius, lifetimeMs, ...more });
 
-/** A card from its id, banner key and steps. */
-const card = (id: SpellCardId, nameKey: string, hpShare: number, timerMs: number, restMs: number, steps: CardStepDef[], more: Partial<SpellCardDef> = {}): SpellCardDef => ({ id, nameKey, hpShare, timerMs, restMs, steps, ...more });
+/**
+ * The opening after each move of a new card ("tu turno" lasts at least this
+ * long): long enough for a melee starter to walk in from where the move
+ * pushed it and still hit (src/sim/prove.ts punish windows and kill margins;
+ * the Senda templates use 1600-2200 ms the same way).
+ */
+const OPENING_MS = 2200;
+
+/** A card from its id, banner key and steps (each with at least `OPENING_MS` of opening). */
+const card = (id: SpellCardId, nameKey: string, hpShare: number, timerMs: number, restMs: number, steps: CardStepDef[], more: Partial<SpellCardDef> = {}): SpellCardDef => ({
+  id,
+  nameKey,
+  hpShare,
+  timerMs,
+  restMs,
+  steps: steps.map((s) => (s.recoverMs >= OPENING_MS ? s : { ...s, recoverMs: OPENING_MS })),
+  ...more,
+});
 
 const layered = (step: CardStepDef, layers: readonly DanmakuPattern[]): CardStepDef => (layers.length > 0 ? { ...step, layers } : step);
 
@@ -43,17 +61,16 @@ const AEG_CORNERS = [
   { x: 0.08, y: 0.9 },
 ] as const;
 
-/** Juramento «Vals de la Hoja Errante»: two shield-swords orbit the King firing short fans outwards (the guard turns with them), then the corner swords answer two at a time (no pillar shelters from both). Guards its front (flank it). */
+/** Juramento «Vals de la Hoja Errante»: two shield-swords orbit the King firing short fans outwards (on Nightmare at the player: no pocket inside their circle; the guard turns with them), then the corner swords answer two at a time (no pillar shelters from both). Guards its front (flank it). */
 export const aegWaltz = (tier: CardTier, hpShare: number): SpellCardDef =>
   card('sc-aeg-waltz', 'spell.aegislash.waltz', hpShare, 40_000, 700, [
     layered(
-      { telegraphMs: 900, recoverMs: 1000, pattern: { kind: 'familiars', count: 2, radius: 90, degPerSec: 45, centre: 'boss', atOnce: 2, volleys: 6, gapMs: 700, perVolley: pick(tier, [5, 6, 6]), spreadDeg: 50, aim: 'out', shot: steel(14, 105) } },
+      { telegraphMs: 900, recoverMs: 1000, pattern: { kind: 'familiars', count: 2, radius: 90, degPerSec: 45, centre: 'boss', atOnce: 2, volleys: 6, gapMs: 700, perVolley: pick(tier, [5, 6, 6]), spreadDeg: 50, aim: tier === 'nightmare' ? 'target' : 'out', shot: steel(pick(tier, [14, 14, 20]), 105) } },
       [
         ...(tier !== 'normal' ? [{ kind: 'rings', rings: 3, perRing: 12, gap: 3, gapTurnDeg: 40, gapMs: 1400, shot: steel(12, 75) } as const] : []),
-        ...(tier === 'nightmare' ? [{ kind: 'turrets', points: AEG_CORNERS, atOnce: 1, volleys: 4, gapMs: 1000, perVolley: 1, spreadDeg: 0, shot: steel(14, 140) } as const] : []),
       ],
     ),
-    { telegraphMs: 900, recoverMs: 1000, pattern: { kind: 'turrets', points: AEG_CORNERS, atOnce: 2, volleys: pick(tier, [4, 5, 5]), gapMs: 700, perVolley: 3, spreadDeg: 16, shot: steel(14, pick(tier, [150, 160, 160])) } },
+    { telegraphMs: 900, recoverMs: 1000, pattern: { kind: 'turrets', points: AEG_CORNERS, atOnce: 2, volleys: pick(tier, [4, 5, 5]), gapMs: 700, perVolley: 3, spreadDeg: 16, shot: steel(pick(tier, [14, 14, 20]), pick(tier, [150, 160, 160])) } },
   ], { guard: 'front' });
 
 /** Edicto «Acero que Devuelve» (Hard+): slow sword fans that bounce once off the throne room's walls (the rebound is the second wave), then bouncing rings while a corner sword fires (no pillar shelters for long). */
@@ -216,7 +233,7 @@ const ember = (power: number, speed: number, radius = 5, lifetimeMs = 5000, kin?
 /** «Chispas de Feromona»: a seeded scatter of embers that brake and hang in the air as burning motes, then a flame spiral. */
 export const salSparks = (tier: CardTier, hpShare: number): SpellCardDef =>
   card('sc-sal-sparks', 'spell.salazzle.card-sparks', hpShare, 35_000, 0, [
-    { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'scatter', bursts: 4, gapMs: 450, count: pick(tier, [8, 9, 10]), coneDeg: 100, salt: 7, aim: 'each', shot: ember(16, 150, 5, 2900, { accel: -110, stop: true }) } },
+    { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'scatter', bursts: 4, gapMs: 450, count: pick(tier, [8, 9, 10]), coneDeg: 100, salt: 7, aim: 'each', shot: ember(16, 190, 5, 2900, { accel: -120, stop: true }) } },
     { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'spiral', arms: 3, everyMs: 180, durationMs: 2400, turnDegPerShot: 12, shot: ember(16, pick(tier, [110, 120, 120]), 6) } },
   ]);
 
@@ -236,10 +253,10 @@ export const nihFracture = (tier: CardTier, hpShare: number): SpellCardDef =>
     shardRings(tier),
   ]);
 
-/** «Lluvia al Revés» (Hard+): neurotoxin drops thrown down at the player fall back upwards (the Ultra's own gravity), then a scatter of drops. */
+/** «Lluvia al Revés» (Hard+): gapped rings of neurotoxin drops that fall upwards (the Ultra's own gravity bends them), then a scatter of drops. */
 export const nihUpward = (tier: CardTier, hpShare: number): SpellCardDef =>
   card('sc-nih-upward', 'spell.nihilego.card-upward', hpShare, 40_000, 0, [
-    { telegraphMs: 1000, recoverMs: 1400, pattern: { kind: 'fan', fans: 4, perFan: pick(tier, [9, 9, 10]), spreadDeg: 140, gapMs: 700, aim: 'first', shot: toxin(16, 140, 8, 5000, { kin: { gravity: { x: 0, y: -70 } } }) } },
+    { telegraphMs: 1000, recoverMs: 1400, pattern: { kind: 'rings', rings: 3, perRing: pick(tier, [14, 14, 16]), gap: 4, gapTurnDeg: 35, gapMs: 900, shot: toxin(16, 120, 8, 3000, { kin: { gravity: { x: 0, y: -60 } } }) } },
     { telegraphMs: 900, recoverMs: 1300, pattern: { kind: 'scatter', bursts: 3, gapMs: 600, count: 7, coneDeg: 60, salt: 23, aim: 'each', shot: toxin(16, 120, 7, 5000, {}) } },
   ]);
 
@@ -249,8 +266,8 @@ export const nihNeurotoxin = (tier: CardTier, hpShare: number): SpellCardDef =>
     {
       telegraphMs: 900,
       recoverMs: 1300,
-      pattern: { kind: 'homing', volleys: 3, gapMs: 1300, orbs: 2, spreadDeg: 80, shot: toxin(16, 70, 9, 4000, { steer: { degPerSec: 75, ms: 2200 } }) },
-      layers: [{ kind: 'rings', rings: 3, perRing: pick(tier, [14, 14, 16]), gap: 3, gapTurnDeg: 30, gapMs: 1300, shot: shard(15, 100) }],
+      pattern: { kind: 'homing', volleys: pick(tier, [3, 3, 4]), gapMs: pick(tier, [1300, 1300, 1000]), orbs: pick(tier, [2, 2, 3]), spreadDeg: 80, shot: toxin(pick(tier, [16, 16, 22]), 70, 9, 4000, { steer: { degPerSec: 75, ms: 2200 } }) },
+      layers: [{ kind: 'rings', rings: 3, perRing: pick(tier, [14, 14, 16]), gap: 3, gapTurnDeg: 30, gapMs: 1300, shot: shard(pick(tier, [15, 15, 20]), 100) }],
     },
     shardRings(tier),
   ]);
