@@ -56,7 +56,7 @@ export function keyLabel(code: string): string {
 // ---- rebinding (issue #62)
 
 /** Every action the player can rebind, in the order the Settings section lists them. */
-export const BIND_ACTIONS = ['up', 'down', 'left', 'right', 'fast', 'heavy', 'boost', 'area', 'roll', 'lock', 'map', 'menu', 'mute', 'interact', 'run', 'spectate'] as const;
+export const BIND_ACTIONS = ['up', 'down', 'left', 'right', 'fast', 'heavy', 'boost', 'area', 'roll', 'lock', 'item', 'itemNext', 'map', 'menu', 'mute', 'interact', 'run', 'spectate'] as const;
 export type BindAction = (typeof BIND_ACTIONS)[number];
 
 /** A `KeyboardEvent.code`, `Mouse<button>`, or nothing. */
@@ -64,7 +64,10 @@ export type Binding = string | null;
 /** Two inputs per action: the primary (what the hints show) and an alternative. */
 export type Bindings = Readonly<Record<BindAction, readonly [Binding, Binding]>>;
 
-/** The defaults: exactly the fixed keys the game had before rebinding (pinned by tests/adapters/key-bindings.test.ts). */
+/**
+ * The defaults: exactly the fixed keys the game had before rebinding (pinned by tests/adapters/key-bindings.test.ts),
+ * plus the bag's (odd/tasks/items-bag.md): G uses the selected consumable, X selects the next one.
+ */
 export const DEFAULT_BINDINGS: Bindings = {
   up: [MOVE_KEY_CODES.up[0], MOVE_KEY_CODES.up[1]],
   down: [MOVE_KEY_CODES.down[0], MOVE_KEY_CODES.down[1]],
@@ -76,6 +79,8 @@ export const DEFAULT_BINDINGS: Bindings = {
   area: ['KeyF', 'Digit2'],
   roll: [ROLL_KEY, null],
   lock: ['ShiftLeft', 'Mouse1'],
+  item: ['KeyG', null],
+  itemNext: ['KeyX', null],
   map: [MAP_KEY, null],
   menu: [MENU_KEY, null],
   mute: ['KeyM', null],
@@ -100,6 +105,8 @@ const PLACES: Record<BindAction, readonly Place[]> = {
   area: ['run'],
   roll: ['run'],
   lock: ['run'],
+  item: ['run'],
+  itemNext: ['run'],
   map: ['run', 'town', 'watch'],
   menu: ['run', 'town', 'watch'],
   mute: ['run', 'watch'],

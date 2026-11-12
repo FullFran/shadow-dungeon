@@ -1,0 +1,30 @@
+/* The bag (odd/tasks/items-bag.md): the loadout's bag step (src/app/loadout-bag-view.ts), the item stall (src/app/item-stall.ts)
+   and the bag in a run (src/ui/bag-hud.ts). Class names never start with "ad-" (ad blockers hide them). */
+.bag-step { width: min(48rem, 100%); }
+.bag-row-name span { white-space: nowrap; }
+.bag-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.bag-slot { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 8px; box-sizing: border-box; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); background: var(--relic-slab, #120d12); border: 2px dashed var(--relic-gold-deep, #6a4a2a); border-radius: 6px; }
+.bag-slot.is-full { color: var(--md-text); border-style: solid; }
+.bag-slot svg.px-icon, .bag-row-name svg.px-icon, .stall-row-name svg.px-icon { flex: none; width: 24px; height: 24px; }
+.bag-row-name, .stall-row-name { display: inline-flex; align-items: center; gap: 8px; }
+.bag-row.is-disabled, .stall-row.is-disabled { opacity: 0.5; }
+.bag-row.is-packed { color: var(--md-cursor); }
+.bag-about, .stall-about { min-height: 3.6em; margin: 6px 0 0; font-family: var(--md-text-font); font-size: 14px; line-height: 1.35; color: var(--md-text-dim); }
+
+.item-stall { width: min(42rem, 100%); }
+.stall-reveal { min-height: 2.8em; margin: 6px 0; font-family: var(--md-text-font); font-size: 15px; color: var(--md-text); }
+.stall-reveal.is-uncommon { color: #8fd3ff; }
+.stall-reveal.is-rare { color: #ffbf5e; }
+
+/* In a run: top centre, small; a tap selects a slot, a tap on the selected one uses it. */
+.bag-hud { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 4px; pointer-events: auto; }
+.bag-hud[hidden] { display: none; }
+.bag-hud-slot { all: unset; box-sizing: border-box; position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: manipulation;
+  background: rgba(12, 9, 13, 0.78); border: 2px solid var(--relic-gold-deep, #6a4a2a); border-radius: 5px; }
+.bag-hud-slot svg.px-icon { width: 24px; height: 24px; }
+.bag-hud-slot.is-empty { opacity: 0.35; }
+.bag-hud-slot.is-selected { border-color: var(--md-cursor, #ffbf5e); box-shadow: 0 0 8px rgba(255, 191, 94, 0.5); }
+.bag-hud-count { position: absolute; right: 1px; bottom: -1px; font-family: var(--md-text-font); font-weight: 700; font-size: 10px; color: var(--md-text, #f3e6d0); text-shadow: 0 1px 0 #000, 0 0 3px #000; }
+.bag-hud-key { margin-left: 2px; padding: 0 5px; font-family: var(--md-text-font); font-weight: 700; font-size: 11px; line-height: 18px; color: var(--md-ink, #140c11); background: var(--md-cursor, #ffbf5e); border-radius: 3px; }
+html.touch .bag-hud-slot { width: 42px; height: 42px; }

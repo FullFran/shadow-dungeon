@@ -19,7 +19,7 @@ export interface MenuGroup {
 }
 
 export const MENU_GROUPS: readonly MenuGroup[] = [
-  { id: 'team', titleKey: 'townMenu.group.team', summaryKey: 'townMenu.group.team.summary', services: ['pokemon', 'evolve', 'tutor', 'shop', 'gacha'] },
+  { id: 'team', titleKey: 'townMenu.group.team', summaryKey: 'townMenu.group.team.summary', services: ['pokemon', 'evolve', 'tutor', 'shop', 'gacha', 'items'] },
   { id: 'progress', titleKey: 'townMenu.group.progress', summaryKey: 'townMenu.group.progress.summary', services: ['dungeons', 'challenges', 'travel', 'shrine', 'board', 'achievements', 'gallery'] },
   { id: 'social', titleKey: 'townMenu.group.social', summaryKey: 'townMenu.group.social.summary', services: ['online', 'friends', 'account'] },
   { id: 'system', titleKey: 'townMenu.group.system', summaryKey: 'townMenu.group.system.summary', services: ['settings', 'controls'] },

@@ -13,6 +13,7 @@ import { opaqueBounds, type Bounds } from '../ui/sprite-bounds';
 import { h } from '../ui/window';
 import { loadoutMovesView } from './loadout-moves-view';
 import { speciesPicker } from './species-picker';
+import { bagStep, type BagStepOptions } from './loadout-bag-view';
 
 /**
  * The loadout picker before a run, in two steps. `species`: a cursor list of
@@ -20,10 +21,12 @@ import { speciesPicker } from './species-picker';
  * idle animation from the sprite sheets, its types and its passive), and
  * confirming picks it. `moves`: the four equip slots as tiles, a grid of the
  * moves each slot can take and a sheet with a live preview (app/loadout-moves-view.ts);
- * picking a move equips it in the open slot and Start begins the run. Back goes from moves to species.
+ * picking a move equips it in the open slot and Start begins the run (or, before a dungeon, a challenge or the Sima,
+ * opens `bag`: the consumables packed for it, app/loadout-bag-view.ts). Back goes one step back.
  */
 export interface LoadoutOptions {
-  stage: 'species' | 'moves';
+  /** `bag`: the third step before a dungeon, a challenge or the Sima (app/loadout-bag-view.ts; never the shrine's). */
+  stage: 'species' | 'moves' | 'bag';
   species: SpeciesId;
   /** Who can be picked: the starters and the owned gacha species (core/collection.ts `rosterOf`; absent = the starters). */
   roster?: readonly SpeciesId[];
@@ -57,6 +60,8 @@ export interface LoadoutOptions {
   skin?: ShinySkins;
   /** The picked gender per line (odd/tasks/pokemon-gender.md): the portraits show it, and the moves step's row changes it. Absent: all male, no row. */
   gender?: LineGender;
+  /** The bag step's stock, pick and tier (odd/tasks/items-bag.md); required for the `bag` stage. */
+  bag?: Pick<BagStepOptions, 'wallet' | 'bag' | 'tier' | 'onChange'>;
 }
 
 /** The player's shiny skins, per line (any form of the line answers for it). */
@@ -213,5 +218,8 @@ function movesStep(options: LoadoutOptions): HTMLElement[] {
 }
 
 export function loadoutScreen(options: LoadoutOptions): HTMLElement[] {
+  if (options.stage === 'bag' && options.bag) {
+    return [bagStep({ ...options.bag, onStart: options.onStart, onBack: options.onBack, ...(options.startLabel ? { startLabel: options.startLabel } : {}), ...(options.context ? { context: options.context } : {}) })];
+  }
   return options.stage === 'species' ? speciesStep(options) : movesStep(options);
 }

@@ -108,7 +108,7 @@ import { SPECIES, type SpeciesId } from '../data/species';
 import type { MoveId } from '../data/moves';
 import { parseSpawnList } from '../core/test-floor';
 import { unlockEverything, veteranProfile } from './dev-unlock';
-import { earnChallengeReward, earnCoins, loadSave, SAVE_KEY, setFemaleAt, wearShinyAt, writeSave } from './save';
+import { earnChallengeReward, earnCoins, loadSave, SAVE_KEY, setFemaleAt, spendConsumableAt, wearShinyAt, writeSave } from './save';
 import { gachaWindow } from './gacha';
 import { gachaPage } from './gacha-page';
 import { gachaUrl, isGachaPath, leaveUrl } from './gacha-route';
@@ -145,6 +145,9 @@ import { clockText, ENDLESS_MODES, endlessSeed, modeOfSeed, utcDateKey, type End
 import { readBoard as readScores, saveScore, scoreLine, tierBoard, type ScoreEntry } from '../town/leaderboard';
 import { endlessEntryScreen } from './endless-entry';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../data/difficulty';
+import { itemStallWindow } from './item-stall';
+import type { ConsumableId } from '../data/consumables';
+import { bagAllowed, packBag } from '../core/consumable-stock';
 import '../styles/mobile.css';
 
 /**
@@ -619,6 +622,7 @@ function titleScreen(root: HTMLElement, initial?: HubId | number): void {
     tutor: () => overlay('tutor', townTutor),
     evolve: () => overlay('evolve', townEvolve),
     gacha: () => openGachaPage(root, 'hub'),
+    items: () => overlay('items', townItems),
     shop: () => overlay('shop', townShop),
     board: () => overlay('board', townBoard),
     challenges: () => overlay('challenges', townChallenges),
@@ -1122,7 +1126,7 @@ function quiz(root: HTMLElement, then: () => void, cancel: () => void): void {
 }
 
 /** The picker: species first, then its moves (Back from moves returns to the species list). */
-function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dungeon?: DungeonId): void {
+function loadout(root: HTMLElement, stage: 'species' | 'moves' | 'bag' = 'species', dungeon?: DungeonId): void {
   // A challenge is played only with a form of its line (core/challenge.ts): the picker lists those, and starts on the one the player has.
   const line = dungeon ? dungeonById(dungeon).challenge?.line : undefined;
   const save = loadSave(store);
@@ -1148,12 +1152,19 @@ function loadout(root: HTMLElement, stage: 'species' | 'moves' = 'species', dung
         onChange: (next) => update({ difficulty: next }),
         allowed: (d) => !dungeon || sendaTierOpen(dungeonById(dungeon), d, save.story),
       },
-      onStart: () => (dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'moves', dungeon)) : chooseDungeon(root, () => loadout(root, 'moves'))),
+      // Moves, then the bag (odd/tasks/items-bag.md), then the run.
+      ...(stage === 'moves' ? { startLabel: t('bag.next') } : {}),
+      bag: bagStepOf(dungeon ? sendaTier(dungeonById(dungeon), settings.difficulty, save.story) : settings.difficulty),
+      onStart: () =>
+        stage === 'moves' ? loadout(root, 'bag', dungeon) : dungeon ? enterDungeon(root, dungeon, () => loadout(root, 'bag', dungeon)) : chooseDungeon(root, () => loadout(root, 'bag')),
       // Runs start in the town now: the loadout's way back is the town.
-      onBack: () => (stage === 'moves' ? loadout(root, 'species', dungeon) : townScreen(root)),
+      onBack: () => (stage === 'bag' ? loadout(root, 'moves', dungeon) : stage === 'moves' ? loadout(root, 'species', dungeon) : townScreen(root)),
     }),
   ]);
 }
+
+/** The loadout's bag step at `tier`: the stored stock, the last bag packed (remembered in the settings). */
+const bagStepOf = (tier: Difficulty) => ({ wallet: loadSave(store), bag: settings.bag, tier, onChange: (bag: (ConsumableId | null)[]) => update({ bag }) });
 
 function settingsScreen(root: HTMLElement, tab = 0): void {
   let current = tab;
@@ -1485,7 +1496,7 @@ function townScreen(root: HTMLElement, at?: TownPlace): void {
   const { tour: forceTour, ...place } = at ?? {};
   // The welcome tour after the Sunken Way (town/tour.ts): alone, once per device, only for a player new to the town.
   const townTour = { due: () => townTourDue({ inRoom: false, startWindow: place.startWindow !== undefined, seen: hasSeenTour(store), cleared: cleared(), traces: loadSave(store), forced: forceTour === true }), seen: () => markTourSeen(store) };
-  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place }).then(keepTownSpot);
+  void openTown({ sheets: sheetsReady(), hints: playHints, species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: (id) => newAdventure(root, dungeonById(id).id), openPokemon: () => pokemonScreen(root, () => townScreen(root)), onQuit: () => titleScreen(root, 0), openShop: townShop, openTutor: townTutor, openGacha: townGacha, openGachaPage: () => openGachaPage(root, 'town'), openItems: townItems, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'town'), openOnline: () => onlineScreen(root, 'town'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), difficulty: () => settings.difficulty, simaPlea: { dungeon: ECLIPSE.id, due: () => simaPleaDue(store), ready: () => pleaReady(cleared()), seen: () => markSimaSceneSeen(store, 'plea') }, townTour, story: loadSave(store).story, globalBoard, ...place }).then(keepTownSpot);
 }
 
 /** What the loadout needs from the move tutor (app/tutor.ts): the known moves, their Mejoras and the recommended build. */
@@ -1591,6 +1602,9 @@ function townSettings(parent: HTMLElement, onClose: () => void): () => void {
   open();
   return () => close();
 }
+
+/** The item stall beside the gacha over the town (odd/tasks/items-bag.md): the item gacha and the consumables' rows. */
+const townItems = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, itemStallWindow({ store, play: (sound) => audio.play(sound), onBack: onClose }));
 
 /** Mimikyu's gacha stall over the town. */
 const townGacha = (parent: HTMLElement, onClose: () => void): (() => void) => townWindow(parent, gachaWindow({ store, sheets: sheetsReady(), play: (sound) => audio.play(sound), onBack: settleOnClose(onClose) }));
@@ -1819,7 +1833,7 @@ const playTrial = (root: HTMLElement, request: TrialRequest, from: ShrineFrom, p
  * to the town. In a room `repick` tells the others; the session stays open
  * meanwhile, so the host starting a run still brings this player along.
  */
-function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void, stage: 'species' | 'moves' = 'species'): void {
+function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void, stage: 'species' | 'moves' | 'bag' = 'species'): void {
   show(root, [
     ...loadoutScreen({
       stage,
@@ -1829,7 +1843,10 @@ function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void,
       sheets: sheetsReady(),
       ...tutorView(settings.species),
       ...skins(repick),
-      startLabel: t('shrine.ready'),
+      // Moves, then the bag (each player packs its own: odd/tasks/items-bag.md), then ready.
+      startLabel: stage === 'moves' ? t('bag.next') : t('shrine.ready'),
+      // A room's runs are at the host's tier; alone, the remembered one.
+      bag: bagStepOf(room && current === room.session ? room.session.difficulty() : settings.difficulty),
       onSpecies: (species) => {
         update(withSpecies(settings, species));
         repick?.();
@@ -1837,10 +1854,11 @@ function pokemonScreen(root: HTMLElement, back: () => void, repick?: () => void,
       },
       onChange: (next) => update({ loadout: next }),
       onStart: () => {
+        if (stage === 'moves') return pokemonScreen(root, back, repick, 'bag');
         repick?.();
         back();
       },
-      onBack: () => (stage === 'moves' ? pokemonScreen(root, back, repick, 'species') : back()),
+      onBack: () => (stage === 'bag' ? pokemonScreen(root, back, repick, 'moves') : stage === 'moves' ? pokemonScreen(root, back, repick, 'species') : back()),
     }),
   ]);
 }
@@ -2103,7 +2121,7 @@ function townLobby(root: HTMLElement): void {
       .replace('{names}', misfits.map((i) => nameOf(roster[i]!)).join(', '));
   };
   const dungeons = townDungeons();
-  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn(), femaleOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
+  void openTown({ sheets: sheetsReady(), species: settings.species, shiny: skinOn(), female: femaleOn(), dungeons, show: showTown, onDepart: depart, departBlock, openPokemon: () => pokemonScreen(root, () => townLobby(root), () => session.repick(settings.species, settings.loadout, skinOn(), femaleOn())), onQuit: leave, openShop: townShop, openTutor: townTutor, openGacha: townGacha, openItems: townItems, openEvolve: townEvolve, openBoard: townBoard, openChallenges: townChallenges, openShrine: () => shrineScreen(root, 'room'), openAchievements: townAchievements, openSettings: townSettings, openControls: townControls, openAccount: townAccount, openFriends: townFriends(root), openGallery: townGallery(root), story: loadSave(store).story, globalBoard, lobby });
 }
 
 /** After a shared run: the host reopens the room's lobby with a new seed (guests follow), a guest goes ahead to wait in the town. */
@@ -2206,6 +2224,9 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     upgrades: loadSave(store).upgrades,
     ...ranksOf(trial?.pick.species ?? settings.species),
     ...shared,
+    // The bag (odd/tasks/items-bag.md): the last one packed, capped by the stock; a stored run brings back what it had left.
+    // Never in the shrine's trials. A used unit leaves the stored stock at once (only used units are spent).
+    ...(bagAllowed({ trial: trial !== undefined }) ? { bag: resume?.part.bag ?? packBag(settings.bag, loadSave(store).stock, shared.difficulty ?? DEFAULT_DIFFICULTY), onConsumableUsed: (id: ConsumableId) => void spendConsumableAt(store, id) } : {}),
     ...(devStartClock() !== undefined ? { startClockMs: devStartClock() } : {}),
     ...(trial ? { trial: trial.request.stops } : {}),
     audio,

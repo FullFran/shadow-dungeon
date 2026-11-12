@@ -23,7 +23,7 @@ export interface HubState {
 export type HubZone = 'play' | 'online' | 'left' | 'right' | 'system' | 'links';
 
 export type HubId =
-  | Extract<TownService, 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'achievements' | 'shrine' | 'challenges' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls'>
+  | Extract<TownService, 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'items' | 'shop' | 'board' | 'achievements' | 'shrine' | 'challenges' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls'>
   | 'play'
   | 'online'
   | 'news'
@@ -49,13 +49,14 @@ export interface HubButton {
 }
 
 /** The services that live in the town: locked on the title until the town opens, as the route already does. */
-export const TOWN_GATED: readonly HubId[] = ['tutor', 'evolve', 'gacha', 'shop', 'board', 'shrine', 'challenges', 'gallery'];
+export const TOWN_GATED: readonly HubId[] = ['tutor', 'evolve', 'gacha', 'items', 'shop', 'board', 'shrine', 'challenges', 'gallery'];
 
 const LAYOUT: readonly { id: HubId; zone: HubZone }[] = [
   { id: 'pokemon', zone: 'left' },
   { id: 'tutor', zone: 'left' },
   { id: 'evolve', zone: 'left' },
   { id: 'gacha', zone: 'left' },
+  { id: 'items', zone: 'left' },
   { id: 'shop', zone: 'left' },
   { id: 'board', zone: 'right' },
   { id: 'challenges', zone: 'right' },

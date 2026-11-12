@@ -37,6 +37,9 @@ describe('key bindings: defaults (issue #62)', () => {
       area: ['KeyF', 'Digit2'],
       roll: ['Space', null],
       lock: ['ShiftLeft', 'Mouse1'],
+      // Added with the bag (odd/tasks/items-bag.md) on keys nothing used: every key above is unchanged.
+      item: ['KeyG', null],
+      itemNext: ['KeyX', null],
       map: ['Tab', null],
       menu: ['Escape', null],
       mute: ['KeyM', null],

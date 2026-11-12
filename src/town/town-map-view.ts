@@ -55,6 +55,7 @@ const GLYPHS: Record<Glyph, string> = {
   shop: 'M3 6h10l-1 8H4zM6 6a2 2 0 0 1 4 0',
   tutor: 'M3 13l7-7 3 3-7 7H3zM10 6l2-2 3 3-2 2',
   gacha: 'M8 2l1.8 4.2L14 7l-3.2 3 .8 4.5L8 12.3 4.4 14.5l.8-4.5L2 7l4.2-.8z',
+  items: 'M4 6h8l1 8H3zM6 6V4a2 2 0 0 1 4 0v2',
   evolve: 'M11 2a6 6 0 1 0 3 10 5 5 0 1 1-3-10z',
   dungeons: 'M8 2l5 5-5 7-5-7z',
   challenges: 'M8 2l5 5-5 7-5-7zM8 6v4',

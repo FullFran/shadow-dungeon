@@ -2,6 +2,7 @@ import { ITEM_EFFECTS, ITEM_IDS, ITEM_OFFER, ITEMS, type ItemId, type StatModifi
 import { TUNING } from '../data/tuning';
 import { levelDamage } from './progression';
 import { upgradeBonuses } from './upgrades';
+import { consumableStats } from './consumables';
 import { deriveSeed, nextRandom } from './rng';
 import type { EnemyState, GameEvent, PlayerState, WorldState } from './state';
 import { vec } from './vec';
@@ -45,11 +46,13 @@ export interface PlayerStats {
 
 const MULTIPLIERS = ['damage', 'heavyDamage', 'superEffective', 'staminaCost', 'actionTime', 'reach'] as const;
 
-/** The player's numbers after level, an evolved form's stage, permanent upgrades and held items. */
-export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgrades' | 'stageDamage'>): PlayerStats {
+/** The player's numbers after level, an evolved form's stage, permanent upgrades, held items and the consumables' boosts. */
+export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgrades' | 'stageDamage' | 'consumables'>): PlayerStats {
   const bonus = upgradeBonuses(player.upgrades);
+  // Ember dust and the wind feather while they last (core/consumables.ts).
+  const boost = consumableStats(player);
   const stats: PlayerStats = {
-    damage: levelDamage(player.level) * (player.stageDamage ?? 1),
+    damage: levelDamage(player.level) * (player.stageDamage ?? 1) * boost.damage,
     heavyDamage: 1,
     superEffective: 1,
     staminaCost: 1,
@@ -57,7 +60,7 @@ export function playerStats(player: Pick<PlayerState, 'items' | 'level' | 'upgra
     critChance: 0,
     perfectWindowMs: TUNING.perfectDodge.windowMs + bonus.perfectWindowMs,
     reach: 1,
-    staminaRegen: bonus.staminaRegen,
+    staminaRegen: bonus.staminaRegen * boost.staminaRegen,
     floorHeal: bonus.floorHeal,
     xpGain: bonus.xpGain,
   };

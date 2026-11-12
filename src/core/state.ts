@@ -1,3 +1,4 @@
+import type { ConsumableId } from '../data/consumables';
 import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { BreakRule, GateKind } from '../data/encounters';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
@@ -204,6 +205,23 @@ export interface PlayerState {
   drained?: number;
   /** Shell Bell (items.ts): HP its heal has drawn from its per-second budget, refilling over time; absent = the budget is full. */
   shellBell?: number;
+  /** Consumables at work (core/consumables.ts): the tonic's heal, the boosts' and the salt's time left, the armed sprout; absent = none. */
+  consumables?: ConsumableEffects;
+}
+
+/** What the consumables used in a run still do (core/consumables.ts); every field is dropped once spent. */
+export interface ConsumableEffects {
+  /** Dew tonic: ms left and HP still to heal (a hit drops it). */
+  tonicMs?: number;
+  tonicHp?: number;
+  /** Clear salt: ms of poison immunity left. */
+  saltMs?: number;
+  /** Ember dust: ms of the damage boost left. */
+  dustMs?: number;
+  /** Wind feather: ms of the stamina regen boost left. */
+  featherMs?: number;
+  /** Second sprout packed: the next faint stands the player up. */
+  sprout?: boolean;
 }
 
 /** A running boost buff: its move (whose `MoveDef.buff` says what it does), time left and, for `power`, hits left. */
@@ -498,6 +516,8 @@ export type GameEvent =
   | { type: 'itemReturned'; item: ItemId }
   /** A held item acted (Sitrus Berry heal, Focus Sash save, Rocky Helmet recoil on `enemyId`). */
   | { type: 'itemTriggered'; item: ItemId; enemyId?: string }
+  /** A consumable from the bag took effect (core/consumables.ts): the app spends its unit. */
+  | { type: 'consumableUsed'; item: ConsumableId }
   /** The local player ate an Oran Berry (solo and host at once; a guest when the host grants its claim). */
   | { type: 'berryEaten'; berryId: string; heal: number }
   /** A guest walked over a berry: the host decides who gets it (berries.ts). */

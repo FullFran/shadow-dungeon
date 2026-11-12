@@ -1,4 +1,5 @@
 import { immuneToDot } from '../data/moves';
+import { poisonWarded } from './consumables';
 import { TOXIC } from '../data/swamp';
 import type { Floor } from './dungeon';
 import { isInvulnerable } from './player';
@@ -74,7 +75,8 @@ export function updateToxic(state: WorldState, dtMs: number, events: GameEvent[]
   let player = state.player;
   let poison = player.poison;
   // A Poison or Steel player wades through unharmed (data/moves.ts `DOT_IMMUNE_TYPES`).
-  if (state.pools && player.hp > 0 && !isInvulnerable(player) && !immuneToDot('poison', player.types) && inPool(state.pools, player.pos)) {
+  // Clear salt (core/consumables.ts) keeps it away while it lasts.
+  if (state.pools && player.hp > 0 && !isInvulnerable(player) && !immuneToDot('poison', player.types) && !poisonWarded(player) && inPool(state.pools, player.pos)) {
     if (!poison) events.push({ type: 'poisoned' });
     // Refreshed while wading: a full duration once this step is over.
     poison = { remainingMs: TOXIC.poison.durationMs + dtMs, tickMs: poison?.tickMs ?? TOXIC.poison.tickMs };
