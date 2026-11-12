@@ -9,7 +9,7 @@ import { spinLoader } from './spinner';
  * stays at least 400 ms once shown, and fades out. Real progress from the
  * loader is the ring's accessible value (no percentage on screen).
  */
-const TIPS = 8;
+const TIPS = 9;
 const DELAY_MS = 150;
 const MIN_VISIBLE_MS = 400;
 const FADE_MS = 200;
