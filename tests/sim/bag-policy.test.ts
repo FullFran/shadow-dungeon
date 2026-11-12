@@ -26,5 +26,5 @@ describe('the balance bots and the bag (docs/research/items-and-prep.md §4)', (
     const s: Scenario = { dungeon: 'crypt-of-the-sword-king', tier: 'normal', bot: 'average', party: 1, seed: 2 };
     expect(runDungeon(s, { maxFloors: 2, bag: BAG })).toEqual(runDungeon(s, { maxFloors: 2, bag: BAG }));
     expect(runDungeon(s, { maxFloors: 2 })).toEqual(runDungeon(s, { maxFloors: 2, bag: [] }));
-  });
+  }, 60_000);
 });

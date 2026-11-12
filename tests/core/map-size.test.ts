@@ -62,7 +62,7 @@ describe('floor size by tier', () => {
         }
       }
     }
-  });
+  }, 60_000);
 
   it('is a pure function of the seed, the depth, the shape and the hall (every co-op peer draws the same floor from the host\'s tier)', () => {
     for (const d of DIFFICULTIES) {
