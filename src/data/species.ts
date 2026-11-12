@@ -52,6 +52,12 @@ export type SpeciesId =
   | 'skrelp'
   | 'salazzle'
   | 'nihilego'
+  // The Crypt's second wave (data/crypt-enemies.ts).
+  | 'honedge'
+  | 'bronzor'
+  | 'yamask'
+  | 'murkrow'
+  | 'klefki'
   // Evolved forms of the regulars (data/enemies.ts EVOLVED_ENEMIES).
   | 'mightyena'
   | 'haunter'
@@ -270,6 +276,12 @@ export const SPECIES: Record<SpeciesId, SpeciesDef> = {
   skrelp: { id: 'skrelp', types: ['poison', 'water'], maxHp: 60, radius: 10, sprite: 'skrelp', movepool: [], defaultLoadout: [] },
   salazzle: { id: 'salazzle', types: ['poison', 'fire'], maxHp: 520, radius: 14, sprite: 'salazzle', movepool: [], defaultLoadout: [] },
   nihilego: { id: 'nihilego', types: ['rock', 'poison'], maxHp: 980, radius: 17, sprite: 'nihilego', movepool: [], defaultLoadout: [] },
+  // The Crypt's second wave (docs/research/enemy-variety.md §4.2); HP provisional.
+  honedge: { id: 'honedge', types: ['steel', 'ghost'], maxHp: 46, radius: 10, sprite: 'honedge', movepool: [], defaultLoadout: [] },
+  bronzor: { id: 'bronzor', types: ['steel', 'psychic'], maxHp: 90, radius: 12, sprite: 'bronzor', movepool: [], defaultLoadout: [] },
+  yamask: { id: 'yamask', types: ['ghost'], maxHp: 54, radius: 10, sprite: 'yamask', movepool: [], defaultLoadout: [] },
+  murkrow: { id: 'murkrow', types: ['dark', 'flying'], maxHp: 42, radius: 10, sprite: 'murkrow', movepool: [], defaultLoadout: [] },
+  klefki: { id: 'klefki', types: ['steel', 'fairy'], maxHp: 50, radius: 9, sprite: 'klefki', movepool: [], defaultLoadout: [] },
   // Evolved forms (data/enemies.ts EVOLVED_ENEMIES): about 1.6 times their base form's HP; provisional.
   mightyena: { id: 'mightyena', types: ['dark'], maxHp: 110, radius: 12, sprite: 'mightyena', movepool: [], defaultLoadout: [] },
   haunter: { id: 'haunter', types: ['ghost', 'poison'], maxHp: 80, radius: 12, sprite: 'haunter', movepool: [], defaultLoadout: [] },

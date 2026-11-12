@@ -17,8 +17,9 @@ import type { SpeciesId } from './species';
  * - `ranged`: shoots from afar, punishes standing still.
  * - `swarm`: weak, comes in numbers (`pack`).
  * - `controller`: denies space (spores, gas, pulses, sludge).
- * - `support`: makes the others better (kill it first). No species of the
- *   roster plays it today; a group's leader (its rally cry) fills it.
+ * - `support`: makes the others better (kill it first): Bronzor's ward,
+ *   Klefki's alarm (data/crypt-enemies.ts); a group's leader (its rally cry)
+ *   fills it elsewhere.
  */
 export type EnemyRole = 'brute' | 'skirmisher' | 'ranged' | 'swarm' | 'controller' | 'support';
 
@@ -85,6 +86,12 @@ export const SPECIES_ROLE: Readonly<Partial<Record<SpeciesId, EnemyRole>>> = {
   koffing: 'controller',
   grimer: 'controller',
   croagunk: 'brute',
+  // The Crypt's second wave (data/crypt-enemies.ts): a boomerang, a ward, a mimic gunner, a thief, an alarm.
+  honedge: 'skirmisher',
+  bronzor: 'support',
+  yamask: 'ranged',
+  murkrow: 'skirmisher',
+  klefki: 'support',
   // The Sima's own roster
   litleo: 'ranged',
   houndour: 'controller',
@@ -141,6 +148,8 @@ export const SPECIES_THREAT: Readonly<Partial<Record<SpeciesId, number>>> = {
   muk: 5,
   toxicroak: 4,
   houndoom: 5,
+  // Klefki rings rather than wards: cheaper than a support (docs/research/enemy-variety.md §4.2).
+  klefki: 3,
 };
 
 /** The role of a species (a species without one counts as a skirmisher: cheap, never blocks a room). */

@@ -12,6 +12,8 @@ import { behaviourAt } from './tricks';
 import { aggroTarget } from './aggro';
 import { updateDanmaku } from './danmaku';
 import { isSwampDef, updateSwamp } from './swamp-brains';
+import { isCryptDef, updateCrypt } from './crypt-brains';
+import { huntMode } from './activation';
 import { updateEclipse } from './eclipse-echo';
 import { updateShadow } from './shadow';
 import { updateHerald } from './herald/brain';
@@ -373,12 +375,21 @@ function updateSpore(state: WorldState, start: EnemyState, def: SporeDef, target
 }
 
 /** A stagger cancels a wind-up or an attack in progress. */
+/** A mimic's rise ends: it hunts like any woken enemy. */
+function risen(enemy: EnemyState): EnemyState {
+  if (!modeOver(enemy.ai)) return enemy;
+  const { attack: _rise, ...ai } = enemy.ai;
+  return { ...enemy, ai: enterMode(ai, huntMode(enemy.species)) };
+}
+
 function interrupted(enemy: EnemyState): EnemyState {
   if (enemy.ai.mode !== 'telegraph' && enemy.ai.mode !== 'attack') return enemy;
   const def = ENEMY_BEHAVIOUR[enemy.species];
   const mode: AiMode = def?.kind === 'caster' ? 'reposition' : 'approach';
   const { chain: _cut, ...ai } = enemy.ai;
-  return { ...enemy, ai: enterMode(ai, mode) };
+  // A cut channel (Bronzor's ward, Klefki's jingle) waits its whole cooldown before the next try: the hit bought that time.
+  const channel = def?.kind === 'support' || def?.kind === 'alarm';
+  return { ...enemy, ai: { ...enterMode(ai, mode), ...(channel ? { cooldownMs: def.cooldownMs } : {}) } };
 }
 
 
@@ -409,7 +420,9 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     const aimed = aggroTarget(current, { ...enemy, ai: tickAiAt(enemy.ai, ems, tier, enemy.elite, { pace, positional }) }, ems, events);
     const ticked = aimed.enemy;
     const target = aimed.target.pos;
-    if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);
+    // A mimic rising from its disguise (core/activation.ts `wakeEnemy`) does nothing else until it stands.
+    if (ticked.ai.mode === 'telegraph' && ticked.ai.attack === 'wake') current = replaceEnemy(current, risen(ticked));
+    else if (def.kind === 'lunger') current = updateLunger(current, ticked, def, target, ems, events);
     else if (def.kind === 'caster') current = updateCaster(current, ticked, def, target, ems, events);
     else if (def.kind === 'slammer') current = updateSlammer(current, ticked, def, target, ems, events);
     else if (def.kind === 'spore') current = updateSpore(current, ticked, def, target, events);
@@ -424,6 +437,7 @@ export function updateEnemies(state: WorldState, dtMs: number, events: GameEvent
     // The tutorial dungeon's boss, the player's shadow (core/shadow.ts).
     else if (def.kind === 'shadow') current = updateShadow(current, ticked, def, target, ems, events);
     else if (isSwampDef(def)) current = updateSwamp(current, ticked, def, target, ems, events);
+    else if (isCryptDef(def)) current = updateCrypt(current, ticked, def, target, ems, events);
     else current = updateRoster(current, ticked, def, target, ems, events);
   }
   return current;

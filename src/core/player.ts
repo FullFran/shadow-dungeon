@@ -1,3 +1,4 @@
+import { CURSE_REGEN } from '../data/crypt-enemies';
 import { SPECIES } from '../data/species';
 import { TUNING } from '../data/tuning';
 import type { Arena, GameEvent, IncomingHit, PlayerInput, PlayerState } from './state';
@@ -19,13 +20,28 @@ export function spendStamina(player: PlayerState, cost: number): PlayerState {
   return { ...player, stamina: player.stamina - cost, staminaRegenDelayMs: STAMINA.regenDelayMs };
 }
 
-function regenStamina(player: PlayerState, dtMs: number): PlayerState {
+function regenStamina(start: PlayerState, dtMs: number): PlayerState {
+  const player = tickCurse(start, dtMs);
   if (player.staminaRegenDelayMs > 0) {
     return { ...player, staminaRegenDelayMs: Math.max(0, player.staminaRegenDelayMs - dtMs) };
   }
-  const stamina = Math.min(STAMINA.max, player.stamina + (STAMINA.regenPerSecond * playerStats(player).staminaRegen * dtMs) / 1000);
+  // Yamask's curse (data/crypt-enemies.ts): the roll's fuel comes back slower while it lasts.
+  const curse = start.cursedMs !== undefined && start.cursedMs > 0 ? CURSE_REGEN : 1;
+  const stamina = Math.min(STAMINA.max, player.stamina + (STAMINA.regenPerSecond * playerStats(player).staminaRegen * curse * dtMs) / 1000);
   return stamina === player.stamina ? player : { ...player, stamina };
 }
+
+/** A curse runs out with time (absent once over). */
+function tickCurse(player: PlayerState, dtMs: number): PlayerState {
+  if (player.cursedMs === undefined) return player;
+  const left = player.cursedMs - dtMs;
+  if (left > 0) return { ...player, cursedMs: left };
+  const { cursedMs: _over, ...rest } = player;
+  return rest;
+}
+
+/** Curses `player` for `ms` (a fresh curse never shortens one in force). */
+export const cursePlayer = (player: PlayerState, ms: number): PlayerState => ({ ...player, cursedMs: Math.max(player.cursedMs ?? 0, ms) });
 
 const confine = (pos: Vec2, arena: Arena): Vec2 => confineCircle(arena, pos, PLAYER.radius);
 

@@ -60,6 +60,8 @@ import type { FxSystem } from './fx/system';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
 import { ringRadius } from '../core/roster';
 import { rollReach } from '../core/swamp-brains';
+import { disguiseOf } from '../core/activation';
+import { drawGraveMask } from './grave-mask';
 import { drawQueenTelegraph, drawUltraTelegraph } from './swamp-telegraphs';
 import { illusionActive } from '../core/passives';
 import { interpolatedPositions, visibleTiles } from './view';
@@ -174,6 +176,8 @@ const COLORS = {
   telegraph: 'rgba(255, 70, 70, 0.22)',
   telegraphEdge: 'rgba(255, 90, 90, 0.85)',
   strike: 'rgba(255, 230, 120, 0.45)',
+  /** A support's channel (Bronzor's ward, Klefki's jingle): cold, not a warning red. */
+  ward: 'rgba(150, 200, 255, 0.35)',
   guard: 'rgba(140, 180, 255, 0.55)',
   transform: 'rgba(200, 160, 255, 0.8)',
   shadow: 'rgba(0, 0, 0, 0.35)',
@@ -1183,6 +1187,25 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       const locked = lockedFor(def.lockMs) || (striking && def.kind === 'dasher');
       const reach = def.kind === 'roller' ? rollReach(def) : def.dashDistance;
       if (winding || def.kind === 'dasher') groundLane(pos, ai.attackDir, reach, enemy.radius * 2, locked ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'boomerang') {
+      // Honedge's spin: the lane out (solid once locked); while it spins, the lane it comes back along from its start.
+      if (winding) groundLane(pos, ai.attackDir, def.reach, enemy.radius * 2, lockedFor(def.lockMs) ? COLORS.strike : fill, progress);
+      else groundLane(ai.aimPoint ?? pos, ai.attackDir, def.reach, enemy.radius * 2, COLORS.strike, 1);
+    } else if (def?.kind === 'diver') {
+      // Murkrow's dive: a lane like a dash, solid once locked.
+      groundLane(pos, ai.attackDir, def.diveDistance, enemy.radius * 2, lockedFor(def.lockMs) || striking ? COLORS.strike : fill, winding ? progress : 1);
+    } else if (def?.kind === 'support' && winding) {
+      // Bronzor's ward: a cold glow filling its reach (not an attack: hit it to cancel).
+      groundCircle(pos, def.radius, COLORS.ward, progress);
+    } else if (def?.kind === 'alarm' && winding) {
+      // Klefki's jingle: rings spreading towards the reach of its call.
+      ctx.strokeStyle = COLORS.ward;
+      ctx.lineWidth = 2;
+      for (const k of [0, 0.33, 0.66]) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius + def.wakeRadius * ((progress + k) % 1) * progress, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else if (def?.kind === 'sniper') {
       // Skrelp's ink line: thin and long, solid once locked.
       if (winding) groundLane(pos, ai.attackDir, 340, lockedFor(def.lockMs) ? 4 : 2, lockedFor(def.lockMs) ? COLORS.strike : fill, progress);
@@ -1432,6 +1455,17 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
   }
 
   /** A filled ground circle with a solid edge; `progress` (0..1) fills it from the centre. */
+  /** A steel ring around a warded enemy (the next hit glances off). */
+  function wardMark(pos: Vec2, radius: number, timeMs: number): void {
+    ctx.save();
+    ctx.strokeStyle = COLORS.ward;
+    ctx.lineWidth = 2 + Math.sin(timeMs / 180);
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function groundCircle(origin: Vec2, radius: number, fill: string, progress: number): void {
     ctx.strokeStyle = COLORS.telegraphEdge;
     ctx.lineWidth = 1;
@@ -1711,6 +1745,8 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
           around(() => {
             shadow(pos, enemy.radius);
             if (enemy.elite && enemy.alive) eliteAura(enemy, pos, timeMs);
+            // A ward's one-hit armor (Bronzor's ring) on an enemy that is not an armored elite.
+            if (enemy.armor && !enemy.elite && enemy.alive) wardMark(pos, enemy.radius, timeMs);
             if ((enemy.warpMs ?? 0) > 0 && enemy.alive) warpPoof(enemy, pos);
           });
           const flicker = enemy.alive ? (enemy.hitstunMs > 0 && Math.floor(timeMs / 50) % 2 === 0 ? 0.55 : 1) : Math.max(0, 1 - sinceDefeatMs / 1100);
@@ -1730,6 +1766,11 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
             return;
           }
           // The player's shadow (the tutorial dungeon's boss) is an original creature drawn in code, never a sheet.
+          // A mimic asleep passes for the crypt's decor (core/activation.ts `disguiseOf`).
+          if (enemy.alive && enemy.ai.mode === 'asleep' && disguiseOf(enemy.species)) {
+            drawGraveMask(ctx, pos, enemy.radius, timeMs);
+            return;
+          }
           if (enemy.species === 'shadow-self') {
             around(() => drawShadowSelf(ctx, pos, enemy.facing, enemy.radius, shadowLook(enemy, fade, enemy.alive ? Number.POSITIVE_INFINITY : sinceDefeatMs), timeMs));
             return;

@@ -90,6 +90,12 @@ export const SPRITE_KEYS = {
   skrelp: '0690/0000',
   salazzle: '0758/0000',
   nihilego: '0793/0000',
+  // The Crypt's second wave.
+  honedge: '0679/0000',
+  bronzor: '0436/0000',
+  yamask: '0562/0000',
+  murkrow: '0198/0000',
+  klefki: '0707/0000',
   // Evolved forms.
   mightyena: '0262/0000',
   haunter: '0093/0000',
