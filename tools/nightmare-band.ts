@@ -17,7 +17,7 @@
  *   npx vite-node tools/nightmare-band.ts --jobs=4  parallel workers (default 6)
  */
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import store from '../reports/proof/witnesses.json';
 import type { Difficulty } from '../src/data/difficulty';
@@ -90,6 +90,7 @@ async function main(): Promise<void> {
   const files = Array.from({ length: n }, (_, i) => join('/tmp', `nightmare-band-${process.pid}-${i}.json`));
   await Promise.all(files.map((f, i) => runWorker(i, n, f)));
   const samples = files.flatMap((f) => JSON.parse(readFileSync(f, 'utf8')) as (BandSample & { boss: string })[]);
+  for (const f of files) rmSync(f, { force: true });
   const { factors, capped } = bandFactors(samples, NIGHTMARE_CARD_HP);
   const homes = samples.filter((s) => s.home && !s.gap && Number.isFinite(s.margin) && s.margin > 0).map((s) => s.margin / (factors[s.card] ?? 1));
   console.log(`nightmare-band: ${samples.length} card samples (${samples.filter((s) => s.home).length} home) in ${((performance.now() - started) / 1000).toFixed(0)} s`);
