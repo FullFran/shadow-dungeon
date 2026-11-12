@@ -36,11 +36,14 @@
   import es from '../src/i18n/es.json';
   import { POKEMON_TYPES } from '../src/data/types.ts';
   import { BULLET_LOOKS } from '../src/adapters/bullet-art.ts';
-  import { createBulletAtlas } from '../src/adapters/bullet-atlas.ts';
+  import { BAKE_BUDGET_MS, createBulletAtlas } from '../src/adapters/bullet-atlas.ts';
   import { drawProjectileVfx } from '../src/adapters/move-vfx.ts';
 
   const params = new URLSearchParams(location.search);
   const atlas = createBulletAtlas();
+  // The game bakes in the background and draws plain orbs until a block is ready; this page bakes its sizes up front so every card is the final art.
+  for (const type of POKEMON_TYPES) for (const r of [4, 5, 6, 7, 9]) atlas.warm(type, r);
+  atlas.flush();
   const scaleEl = document.getElementById('scale');
   const hitboxEl = document.getElementById('hitbox');
   const floorEl = document.getElementById('floor');
@@ -158,7 +161,7 @@
     for (const card of cards) drawCard(card, clock);
     if (stress) drawStress(clock);
     const st = atlas.stats();
-    document.getElementById('bake').textContent = `atlas: ${st.blocks} bloques en ${st.pages} página(s), horneado ${st.bakeMs.toFixed(1)} ms`;
+    document.getElementById('bake').textContent = `atlas: ${st.blocks} bloques en ${st.pages} página(s), horneado ${st.bakeMs.toFixed(1)} ms (en el juego, por tandas de ≤ ${BAKE_BUDGET_MS} ms)`;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

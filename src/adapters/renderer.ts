@@ -1466,7 +1466,9 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         y: pos.y,
         draw: () => {
           shadow({ x: pos.x, y: pos.y + 8 }, p.radius * 0.7);
-          bullets.draw(ctx, p.type, p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs, { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) });
+          const drawn = bullets.draw(ctx, p.type, p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs, { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) });
+          // Its block is still baking in the background (a few frames at most): the plain orb in its type colours meanwhile.
+          if (!drawn) drawProjectileVfx(ctx, { owner: 'enemy', radius: p.radius, type: p.type, vel: p.vel }, pos, timeMs);
         },
       };
     }
