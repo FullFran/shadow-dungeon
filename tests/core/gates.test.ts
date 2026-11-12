@@ -21,12 +21,12 @@ import { insideRect } from '../../src/core/geometry';
 const floorsOf = (d: DungeonDef): number[] => Array.from({ length: d.endless ? 30 : d.plan.length }, (_, i) => i + 1).filter((f) => planAt(d, f)?.kind === 'generated');
 
 /** The first run (seed, floor) of a dungeon whose floor holds a gate of `kind`. */
-function findGate(d: DungeonDef, kind: 'seal' | 'key' | 'waves'): { run: RunState; world: WorldState } {
+function findGate(d: DungeonDef, kind: 'seal' | 'key' | 'waves', fits: (world: WorldState) => boolean = () => true): { run: RunState; world: WorldState } {
   for (let seed = 1; seed < 4000; seed++)
     for (const floor of floorsOf(d)) {
       if (chooseGate(seed, floor, floorKind(seed, floor, d), d.gates) !== kind) continue;
       const started = startRun(seed, {}, floor, d.id);
-      if (started.world.gate?.kind === kind) return started;
+      if (started.world.gate?.kind === kind && fits(started.world)) return started;
     }
   throw new Error(`no ${kind} gate`);
 }
@@ -319,7 +319,8 @@ describe('gates with the out-of-bounds safety net', () => {
   });
 
   it('a walking gate target thrown off the map is snapped back by the net before the gate\'s own clock counts', () => {
-    const { world } = findGate(DUNGEONS[0]!, 'seal');
+    // A walker's seal (a floater, such as Bronzor or Honedge, is never stuck off the map the same way).
+    const { world } = findGate(DUNGEONS[0]!, 'seal', (w) => !floatsOf(w.enemies.find((e) => e.id === w.gate!.target)!.species));
     const id = world.gate!.target!;
     const target = world.enemies.find((e) => e.id === id)!;
     expect(floatsOf(target.species)).toBe(false);

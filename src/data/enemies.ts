@@ -6,6 +6,7 @@ import type { MoveId } from './moves';
 import type { PokemonType } from './types';
 import { EVOLVED_BEHAVIOUR } from './evolved-enemies';
 import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
+import { BRONZOR, HONEDGE, KLEFKI, MURKROW, YAMASK, type CryptDef, type CurseDef, type DisguiseDef } from './crypt-enemies';
 import { NIHILEGO, SALANDIT, SALAZZLE, SKRELP, VENIPEDE, type DasherDef, type QueenDef, type RollerDef, type SniperDef, type UltraDef } from './swamp-enemies';
 
 /**
@@ -129,7 +130,9 @@ export interface GastlyDef {
   castMs: number;
   recoverMs: number;
   cooldownMs: number;
-  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef; curse?: CurseDef };
+  /** A mimic (Yamask): asleep it looks like the room's decor and wakes only up close (data/crypt-enemies.ts). */
+  disguise?: DisguiseDef;
   /** Harder tiers: the cast becomes a fan (Duskull's twin wisps). */
   hardSpread?: TierGate & { count: number; degrees: number };
   /** Harder tiers (Gastly): a second ball `delayMs` into the cast, aimed anew. */
@@ -1542,7 +1545,7 @@ export const DHELMISE: DanmakuDef = {
 };
 
 
-export type EnemyDef = HeraldBaseDef | DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | EclipseEchoDef | ShadowDef;
+export type EnemyDef = HeraldBaseDef | DanmakuDef | PoochyenaDef | GastlyDef | AegislashDef | SlammerDef | TreantDef | SporeDef | ArcherDef | ThiefDef | BeamDef | PulseDef | ConeDef | MortarDef | BomberDef | CounterDef | SwampDef | CryptDef | EclipseEchoDef | ShadowDef;
 /** The Toxic Swamp's new behaviours (data/swamp-enemies.ts, core/swamp-brains.ts). */
 export type SwampDef = RollerDef | DasherDef | SniperDef | QueenDef | UltraDef;
 /**
@@ -1748,6 +1751,12 @@ export const ENEMY_BEHAVIOUR: Partial<Record<SpeciesId, EnemyDef>> = {
   skrelp: SKRELP,
   salazzle: SALAZZLE,
   nihilego: NIHILEGO,
+  // The Crypt's second wave (data/crypt-enemies.ts).
+  honedge: HONEDGE,
+  bronzor: BRONZOR,
+  yamask: YAMASK,
+  murkrow: MURKROW,
+  klefki: KLEFKI,
   'eclipse-hunter': ECLIPSE_HUNTER,
   'eclipse-echo': ECLIPSE_ECHO,
   'shadow-self': SHADOW_SELF,

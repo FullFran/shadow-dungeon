@@ -1,3 +1,4 @@
+import type { CurseDef } from '../data/crypt-enemies';
 import { ENEMY_SHOT_CAP, floatsOf, type EnemyAttackDef, type SteerDef } from '../data/enemies';
 import { wadeFactor } from './water';
 import { ELITE_TRAIT_DEFS } from '../data/difficulty';
@@ -37,7 +38,7 @@ export const perpendicular = (v: Vec2, sign: 1 | -1): Vec2 => vec(-v.y * sign, v
 export const rotate = (v: Vec2, degrees: number): Vec2 => fromAngle(angleOf(v) + (degrees * Math.PI) / 180);
 
 /** An enemy projectile's shape and hit (and its steering, for shots that bend towards the player). */
-export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+export type EnemyShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef; curse?: CurseDef };
 
 /**
  * Fires one enemy projectile along `dir`, from just outside the body (or from
@@ -70,6 +71,7 @@ export function spawnShot(state: WorldState, enemy: EnemyState, shot: EnemyShot,
     knockback: 0,
     hitIds: [],
     ...(shot.steer ? { steer: shot.steer } : {}),
+    ...(shot.curse ? { curseMs: shot.curse.ms } : {}),
     // Positional shots, and every shot of a deep Sima elite that strikes positionally.
     ...(shot.pierceRoll || enemy.pierceRoll ? { pierceRoll: true } : {}),
   };

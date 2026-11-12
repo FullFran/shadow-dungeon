@@ -2,7 +2,8 @@ import type { EncounterBudget } from './encounters';
 import type { MusicContext } from './music';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
-import { SIMA_BANDS, SIMA_ELITES, SIMA_EVENTS, SIMA_SQUADS, type SimaBand, type SimaElites, type SimaEvents, type SimaSquad } from './sima';
+import type { Difficulty } from './difficulty';
+import { SIMA_BANDS, SIMA_ELITES, SIMA_EVENTS, SIMA_SQUADS, type SimaBand, type SimaBandId, type SimaElites, type SimaEvents, type SimaSquad } from './sima';
 
 /**
  * The endless dungeon (Sima del Eclipse, docs/gdd.md §3 "La Sima del
@@ -24,78 +25,95 @@ export interface EndlessPoolEntry {
   pack?: number;
   /** Weight change per floor past `minDepth` (tough species grow, weak ones fade to a quarter, never out). */
   perDepth?: number;
+  /**
+   * The strata it belongs to (data/sima.ts `SIMA_BANDS`): three times its
+   * weight inside them, half outside (core/endless.ts `bandWeight`), so each
+   * stratum draws mostly its own biome. Absent = the same everywhere.
+   */
+  bands?: readonly SimaBandId[];
+  /** Only runs at this tier or harder draw it (as `SpawnEntry.minDifficulty`). */
+  minDifficulty?: Difficulty;
+  /** A rare spawn (as `SpawnEntry.rare`): weight at most 0.25. */
+  rare?: true;
 }
 
 export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   // Tougher, not more (2026-10-25): the weak regulars fade with depth and the
   // tough species come earlier and grow (`perDepth`); counts per room stay low.
   // Crypt of the Sword King
-  { species: 'poochyena', minDepth: 1, weight: 3, perDepth: -0.15 },
-  { species: 'gastly', minDepth: 1, weight: 2, perDepth: -0.05 },
+  { species: 'poochyena', minDepth: 1, weight: 3, perDepth: -0.15, bands: ['crypt'] },
+  { species: 'gastly', minDepth: 1, weight: 2, perDepth: -0.05, bands: ['crypt'] },
   // The remastered Crypt's new enemies, from the floors they first walk
   // there (CRYPT_SPAWNS): Duskull and a Pawniard pair from 2, Golett from 3.
   // Sableye stays the Crypt's mid-boss (no vault echo).
-  { species: 'duskull', minDepth: 2, weight: 2 },
-  { species: 'pawniard', minDepth: 2, weight: 1, pack: 2, perDepth: 0.05 },
-  { species: 'golett', minDepth: 3, weight: 1, perDepth: 0.1 },
+  { species: 'duskull', minDepth: 2, weight: 2, bands: ['crypt'] },
+  { species: 'pawniard', minDepth: 2, weight: 1, pack: 2, perDepth: 0.05, bands: ['crypt'] },
+  { species: 'golett', minDepth: 3, weight: 1, perDepth: 0.1, bands: ['crypt'] },
+  // The Crypt's second wave (odd/tasks/enemy-variety-crypt.md): its stratum's own, with its tier gates; half weights,
+  // the stratum already triples them (the experience per floor stays within the encounters test's bound).
+  { species: 'honedge', minDepth: 1, weight: 0.5, bands: ['crypt'] },
+  { species: 'bronzor', minDepth: 2, weight: 0.5, bands: ['crypt'] },
+  { species: 'yamask', minDepth: 2, weight: 0.5, bands: ['crypt'] },
+  { species: 'murkrow', minDepth: 4, weight: 0.5, bands: ['crypt'], minDifficulty: 'normal' },
+  { species: 'klefki', minDepth: 4, weight: 0.2, bands: ['crypt'], rare: true, minDifficulty: 'hard' },
   // Misty Forest
-  { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1 },
-  { species: 'phantump', minDepth: 2, weight: 2 },
-  { species: 'spinarak', minDepth: 2, weight: 2 },
-  { species: 'foongus', minDepth: 3, weight: 1 },
-  { species: 'hoothoot', minDepth: 3, weight: 2 },
-  { species: 'pumpkaboo-super', minDepth: 4, weight: 1, perDepth: 0.1 },
+  { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1, bands: ['forest'] },
+  { species: 'phantump', minDepth: 2, weight: 2, bands: ['forest'] },
+  { species: 'spinarak', minDepth: 2, weight: 2, bands: ['forest'] },
+  { species: 'foongus', minDepth: 3, weight: 1, bands: ['forest'] },
+  { species: 'hoothoot', minDepth: 3, weight: 2, bands: ['forest'] },
+  { species: 'pumpkaboo-super', minDepth: 4, weight: 1, perDepth: 0.1, bands: ['forest'] },
   // Experimental roster (EXPERIMENTAL_ENEMIES in data/enemies.ts): the
   // suggested min depths and packs (the tough ones a floor or two earlier),
   // with lighter weights so the regulars stay about half of every early floor.
-  { species: 'zubat', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1 },
-  { species: 'stunky', minDepth: 1, weight: 1, pack: 2, perDepth: -0.05 },
-  { species: 'ekans', minDepth: 2, weight: 1 },
+  { species: 'zubat', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1, bands: ['caves'] },
+  { species: 'stunky', minDepth: 1, weight: 1, pack: 2, perDepth: -0.05, bands: ['swamp'] },
+  { species: 'ekans', minDepth: 2, weight: 1, bands: ['swamp'] },
   { species: 'litleo', minDepth: 2, weight: 1 },
-  { species: 'tentacool', minDepth: 2, weight: 1 },
-  { species: 'corphish', minDepth: 3, weight: 1 },
-  { species: 'chinchou', minDepth: 3, weight: 1 },
+  { species: 'tentacool', minDepth: 2, weight: 1, bands: ['caves', 'swamp'] },
+  { species: 'corphish', minDepth: 3, weight: 1, bands: ['caves'] },
+  { species: 'chinchou', minDepth: 3, weight: 1, bands: ['caves'] },
   { species: 'houndour', minDepth: 3, weight: 1, perDepth: 0.06 },
-  { species: 'koffing', minDepth: 3, weight: 1 },
-  { species: 'grimer', minDepth: 3, weight: 1, perDepth: 0.06 },
-  { species: 'wooper', minDepth: 4, weight: 1 },
+  { species: 'koffing', minDepth: 3, weight: 1, bands: ['swamp'] },
+  { species: 'grimer', minDepth: 3, weight: 1, perDepth: 0.06, bands: ['swamp'] },
+  { species: 'wooper', minDepth: 4, weight: 1, bands: ['caves'] },
   { species: 'slugma', minDepth: 3, weight: 1, perDepth: 0.06 },
-  { species: 'clauncher', minDepth: 4, weight: 1, perDepth: 0.08 },
-  { species: 'croagunk', minDepth: 4, weight: 1, perDepth: 0.08 },
+  { species: 'clauncher', minDepth: 4, weight: 1, perDepth: 0.08, bands: ['caves'] },
+  { species: 'croagunk', minDepth: 4, weight: 1, perDepth: 0.08, bands: ['swamp'] },
   // Flooded Caves (integration 2026-10-25): its regulars a little deeper than
   // in their own dungeon, the Sima being harder per floor; Krabby the tank,
   // Remoraid the gunner, Shellos the mortar. Lanturn stays the caves' mid-boss.
-  { species: 'krabby', minDepth: 6, weight: 1, perDepth: 0.06 },
-  { species: 'remoraid', minDepth: 7, weight: 1, perDepth: 0.04 },
-  { species: 'shellos', minDepth: 8, weight: 1, perDepth: 0.06 },
+  { species: 'krabby', minDepth: 6, weight: 1, perDepth: 0.06, bands: ['caves'] },
+  { species: 'remoraid', minDepth: 7, weight: 1, perDepth: 0.04, bands: ['caves'] },
+  { species: 'shellos', minDepth: 8, weight: 1, perDepth: 0.06, bands: ['caves'] },
   // Toxic Swamp: Venipede rolls in pairs, Salandit dashes, Skrelp snipes.
   // Salazzle stays the swamp's mid-boss.
-  { species: 'venipede', minDepth: 9, weight: 1, pack: 2, perDepth: 0.02 },
-  { species: 'salandit', minDepth: 10, weight: 1, perDepth: 0.06 },
-  { species: 'skrelp', minDepth: 11, weight: 1, perDepth: 0.05 },
+  { species: 'venipede', minDepth: 9, weight: 1, pack: 2, perDepth: 0.02, bands: ['swamp'] },
+  { species: 'salandit', minDepth: 10, weight: 1, perDepth: 0.06, bands: ['swamp'] },
+  { species: 'skrelp', minDepth: 11, weight: 1, perDepth: 0.05, bands: ['swamp'] },
   // Evolved forms (data/evolutions.ts) from the late floors of their dungeon's stratum (data/sima.ts
   // SIMA_BANDS: I Crypt 1-10, II Forest 11-20, III Caves 21-30, IV Swamp 31-40); Houndoom, the Sima's
   // own, late in stratum II. One at a time: the Sima's budget is small and they cost one more than their line.
-  { species: 'mightyena', minDepth: 6, weight: 1, perDepth: 0.04 },
-  { species: 'haunter', minDepth: 7, weight: 1, perDepth: 0.04 },
-  { species: 'dusclops', minDepth: 7, weight: 1, perDepth: 0.04 },
-  { species: 'bisharp', minDepth: 8, weight: 1, perDepth: 0.04 },
-  { species: 'gengar', minDepth: 9, weight: 1, perDepth: 0.04 },
-  { species: 'breloom', minDepth: 16, weight: 1, perDepth: 0.04 },
-  { species: 'noctowl', minDepth: 16, weight: 1, perDepth: 0.04 },
-  { species: 'drifblim', minDepth: 17, weight: 1, perDepth: 0.04 },
-  { species: 'ariados', minDepth: 17, weight: 1, perDepth: 0.04 },
-  { species: 'morgrem', minDepth: 18, weight: 1, perDepth: 0.04 },
+  { species: 'mightyena', minDepth: 6, weight: 1, perDepth: 0.04, bands: ['crypt'] },
+  { species: 'haunter', minDepth: 7, weight: 1, perDepth: 0.04, bands: ['crypt'] },
+  { species: 'dusclops', minDepth: 7, weight: 1, perDepth: 0.04, bands: ['crypt'] },
+  { species: 'bisharp', minDepth: 8, weight: 1, perDepth: 0.04, bands: ['crypt'] },
+  { species: 'gengar', minDepth: 9, weight: 1, perDepth: 0.04, bands: ['crypt'] },
+  { species: 'breloom', minDepth: 16, weight: 1, perDepth: 0.04, bands: ['forest'] },
+  { species: 'noctowl', minDepth: 16, weight: 1, perDepth: 0.04, bands: ['forest'] },
+  { species: 'drifblim', minDepth: 17, weight: 1, perDepth: 0.04, bands: ['forest'] },
+  { species: 'ariados', minDepth: 17, weight: 1, perDepth: 0.04, bands: ['forest'] },
+  { species: 'morgrem', minDepth: 18, weight: 1, perDepth: 0.04, bands: ['forest'] },
   { species: 'houndoom', minDepth: 18, weight: 1, perDepth: 0.04 },
-  { species: 'golbat', minDepth: 26, weight: 1, perDepth: 0.04 },
-  { species: 'kingler', minDepth: 26, weight: 1, perDepth: 0.04 },
-  { species: 'octillery', minDepth: 27, weight: 1, perDepth: 0.04 },
-  { species: 'crawdaunt', minDepth: 28, weight: 1, perDepth: 0.04 },
-  { species: 'arbok', minDepth: 36, weight: 1, perDepth: 0.04 },
-  { species: 'skuntank', minDepth: 36, weight: 1, perDepth: 0.04 },
-  { species: 'weezing', minDepth: 37, weight: 1, perDepth: 0.04 },
-  { species: 'muk', minDepth: 37, weight: 1, perDepth: 0.04 },
-  { species: 'toxicroak', minDepth: 38, weight: 1, perDepth: 0.04 },
+  { species: 'golbat', minDepth: 26, weight: 1, perDepth: 0.04, bands: ['caves'] },
+  { species: 'kingler', minDepth: 26, weight: 1, perDepth: 0.04, bands: ['caves'] },
+  { species: 'octillery', minDepth: 27, weight: 1, perDepth: 0.04, bands: ['caves'] },
+  { species: 'crawdaunt', minDepth: 28, weight: 1, perDepth: 0.04, bands: ['caves'] },
+  { species: 'arbok', minDepth: 36, weight: 1, perDepth: 0.04, bands: ['swamp'] },
+  { species: 'skuntank', minDepth: 36, weight: 1, perDepth: 0.04, bands: ['swamp'] },
+  { species: 'weezing', minDepth: 37, weight: 1, perDepth: 0.04, bands: ['swamp'] },
+  { species: 'muk', minDepth: 37, weight: 1, perDepth: 0.04, bands: ['swamp'] },
+  { species: 'toxicroak', minDepth: 38, weight: 1, perDepth: 0.04, bands: ['swamp'] },
 ];
 
 /** A guardian echo: the arena of a guardian (or mid-boss) and the track it fights to. */

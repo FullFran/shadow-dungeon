@@ -127,27 +127,27 @@ describe('the Sima del Eclipse (data)', () => {
     expect(pairs).toBeGreaterThan(0);
   });
 
-  it('mixes old and new: neither the dungeon regulars nor the roster outweighs the other twice over by floor 5', () => {
+  it('mixes old and new, the stratum\'s own biome first (odd/tasks/enemy-variety-crypt.md S1): by floor 5 the roster still weighs between a sixth and as much as the regulars', () => {
     const roster = new Set<string>(EXPERIMENTAL_ENEMIES.map((e) => e.species));
     const weight = (fresh: boolean) => endlessSpawns(ENDLESS, 5).pool.filter((e) => roster.has(e.species) === fresh).reduce((sum, e) => sum + e.weights[0]!, 0);
     const ratio = weight(true) / weight(false);
-    expect(ratio).toBeGreaterThan(0.5);
-    expect(ratio).toBeLessThan(2);
+    expect(ratio).toBeGreaterThan(0.16);
+    expect(ratio).toBeLessThan(1);
   });
 
   it('seeded floors are deterministic and show roster species by floor 5, each only from its min depth', () => {
     const minDepth = new Map(ENDLESS_POOL.map((e) => [e.species, e.minDepth]));
     const roster = new Set<string>(EXPERIMENTAL_ENEMIES.map((e) => e.species));
     const seen = new Set<string>();
-    for (let floor = 1; floor <= 4; floor++) {
-      const floorSpawns = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).spawns;
-      expect(floorSpawns).toEqual(generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor)).spawns);
+    for (const seed of [SEED, SEED + 1, SEED + 2, SEED + 3, SEED + 4]) for (let floor = 1; floor <= 4; floor++) {
+      const floorSpawns = generateFloor(floorSeed(seed, floor), floor, endlessSpawns(ENDLESS, floor)).spawns;
+      expect(floorSpawns).toEqual(generateFloor(floorSeed(seed, floor), floor, endlessSpawns(ENDLESS, floor)).spawns);
       for (const s of floorSpawns) {
         expect(minDepth.get(s.species), `${s.species} on floor ${floor}`).toBeLessThanOrEqual(floor);
         if (roster.has(s.species)) seen.add(s.species);
       }
     }
-    // Floor 5 is an echo; floors 1-4 of one seed already bring several new species.
+    // Floor 5 is an echo; floors 1-4 of a few seeds already bring several new species (fewer per seed since the Crypt stratum favours the Crypt's own).
     expect(seen.size).toBeGreaterThanOrEqual(3);
   });
 

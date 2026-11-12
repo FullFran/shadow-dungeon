@@ -97,11 +97,11 @@ describe('floor events in every dungeon (S3, S4)', () => {
   it('its own enemies come from that dungeon\'s pool at that floor', () => {
     for (const d of NON_ENDLESS.slice(0, 6)) {
       const { run, world } = findEvent(d, 'ambush');
-      const pool = floorEventPool(d, run.floor).map((e) => e.species);
+      const pool = floorEventPool(d, run.floor, 'easy').map((e) => e.species);
       expect(pool.length).toBeGreaterThan(0);
       for (const species of world.simaEvent!.species!) expect(pool, d.id).toContain(species);
     }
-    expect(floorEventPool(DUNGEONS[0]!, 1).every((e) => (e.weights[0] ?? 0) > 0)).toBe(true);
+    expect(floorEventPool(DUNGEONS[0]!, 1, 'easy').every((e) => (e.weights[0] ?? 0) > 0)).toBe(true);
   });
 
   it('runs through the step: a vault\'s chest opens once its guards are down and offers the pick', () => {

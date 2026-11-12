@@ -1,5 +1,6 @@
 import type { FloorKind } from '../data/dungeon';
 import { GATE, threatOf, type GateKind, type GateTuning } from '../data/encounters';
+import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { tileDistances, type Floor } from './dungeon';
 import { deriveSeed } from './rng';
 import { doorTiles, withDoors } from './sima-events';
@@ -66,9 +67,15 @@ export function chooseGate(runSeed: number, floor: number, kind: FloorKind, gate
   return open[open.length - 1]!.kind;
 }
 
-/** The gate's pick among candidates: a leader first, then an elite, then the highest threat, then the farthest walk from the start. */
-function pickTarget(candidates: readonly EnemyState[], walk: (e: EnemyState) => number): EnemyState | undefined {
-  const score = (e: EnemyState) => (e.leader ? 1000 : 0) + (e.elite ? 100 : 0) + threatOf(e.species) * 10 + walk(e) / 1000;
+/** Whether a species carries the floor's key on a key gate whenever it is there (Klefki, data/crypt-enemies.ts). */
+const keyBearer = (e: EnemyState): boolean => {
+  const def = ENEMY_BEHAVIOUR[e.species];
+  return def !== undefined && 'keyBearer' in def && def.keyBearer === true;
+};
+
+/** The gate's pick among candidates: a key bearer first on a key gate, then a leader, then an elite, then the highest threat, then the farthest walk from the start. */
+function pickTarget(candidates: readonly EnemyState[], walk: (e: EnemyState) => number, key = false): EnemyState | undefined {
+  const score = (e: EnemyState) => (key && keyBearer(e) ? 10000 : 0) + (e.leader ? 1000 : 0) + (e.elite ? 100 : 0) + threatOf(e.species) * 10 + walk(e) / 1000;
   return [...candidates].sort((a, b) => score(b) - score(a))[0];
 }
 
@@ -93,7 +100,7 @@ export function placeGate(world: WorldState, kind: GateKind, floor: Floor): Worl
     const locked = withDoors(floor, doors, true);
     const dist = tileDistances(locked, floor.start);
     const walk = (e: EnemyState) => dist[tileOf(e.pos).y * floor.cols + tileOf(e.pos).x] ?? -1;
-    const bearer = pickTarget(alive.filter((e) => !inStairsRoom(e) && walk(e) >= 0), walk);
+    const bearer = pickTarget(alive.filter((e) => !inStairsRoom(e) && walk(e) >= 0), walk, true);
     // No bearer the player can reach: the stairs are sealed by a marked enemy instead.
     if (bearer && doors.length > 0) {
       return { ...world, arena: { ...world.arena, tiles: withDoors(world.arena.tiles ?? floor, doors, true) }, gate: { kind, target: bearer.id, doors, done: false, stuckMs: 0 } };

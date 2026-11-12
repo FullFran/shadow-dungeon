@@ -1,5 +1,5 @@
 import type { SpawnTuning } from '../data/dungeon';
-import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
+import { atLeast, DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { ROLES_PER_ROOM } from '../data/encounters';
 import type { SpeciesId } from '../data/species';
@@ -12,14 +12,19 @@ export const worldDifficulty = (state: Pick<WorldState, 'difficulty'>): Difficul
 
 export const tierOf = (state: Pick<WorldState, 'difficulty'>): TierDef => TIERS[worldDifficulty(state)];
 
+/** Whether a pool entry shows up at tier `d` (its `minDifficulty`, if any, is reached). */
+export const drawnAt = (entry: { minDifficulty?: Difficulty }, d: Difficulty): boolean => !entry.minDifficulty || atLeast(d, entry.minDifficulty);
+
 /**
- * A dungeon's enemy table at tier `d`: the tier's extra enemies per room (the
- * cap rises with them) and, on a budgeted table, the tier's roles per room
+ * A dungeon's enemy table at tier `d`: only the entries the tier reaches
+ * (`minDifficulty`), the tier's extra enemies per room (the cap rises with
+ * them) and, on a budgeted table, the tier's roles per room
  * (data/encounters.ts `ROLES_PER_ROOM`).
  */
 export function tieredSpawns(tuning: SpawnTuning, d: Difficulty): SpawnTuning {
   const extra = TIERS[d].extraPerRoom;
-  const counted = extra === 0 ? tuning : { ...tuning, base: tuning.base + extra, maxPerRoom: tuning.maxPerRoom + extra };
+  const gated = tuning.pool.every((e) => drawnAt(e, d)) ? tuning : { ...tuning, pool: tuning.pool.filter((e) => drawnAt(e, d)) };
+  const counted = extra === 0 ? gated : { ...gated, base: gated.base + extra, maxPerRoom: gated.maxPerRoom + extra };
   return counted.budget ? { ...counted, budget: { ...counted.budget, maxRoles: ROLES_PER_ROOM[d], maxEnemies: counted.budget.maxEnemies + extra } } : counted;
 }
 

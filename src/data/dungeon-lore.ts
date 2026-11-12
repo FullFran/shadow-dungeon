@@ -20,7 +20,7 @@ export const DUNGEON_LORE: readonly DungeonLore[] = [
     id: 'crypt-of-the-sword-king',
     nameKey: 'dungeon.crypt.name',
     subtitleKey: 'dungeon.crypt.subtitle',
-    loreKeys: ['dungeon.crypt.lore.1', 'dungeon.crypt.lore.2'],
+    loreKeys: ['dungeon.crypt.lore.1', 'dungeon.crypt.lore.2', 'dungeon.crypt.lore.3'],
     floorKeys: [1, 2, 3, 4, 5, 6].map((floor) => `dungeon.crypt.floor.${floor}`),
   },
   {

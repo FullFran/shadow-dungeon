@@ -179,7 +179,8 @@ function encodeEnemy(e: EnemySnapshot): unknown[] {
     r3(e.ai.attackDir.x),
     r3(e.ai.attackDir.y),
   ];
-  const elite = e.elite !== undefined;
+  // The elite slot also carries a ward's armor on a plain enemy (Bronzor's ring): "*" with no trait.
+  const elite = e.elite !== undefined || e.armor === true;
   const named = e.ai.attack !== undefined || e.ai.aimPoint !== undefined || e.spent === true || elite;
   if (e.boss || named) out.push(e.boss?.stance ?? null, e.boss?.comboIndex ?? null);
   // Optional named attack and landing point (experimental roster), after the boss slots.
@@ -187,7 +188,7 @@ function encodeEnemy(e: EnemySnapshot): unknown[] {
   // Optional spent flag (fell by its own blast).
   if (e.spent || elite) out.push(e.spent ? 1 : 0);
   // Optional elite trait (any of data/difficulty.ts `ELITE_TRAIT_DEFS`), "*" while its armor holds, "!" if it strikes positionally, last.
-  if (elite) out.push(`${e.elite}${e.armor ? '*' : ''}${e.pierceRoll ? '!' : ''}`);
+  if (elite) out.push(`${e.elite ?? ''}${e.armor ? '*' : ''}${e.pierceRoll ? '!' : ''}`);
   return out;
 }
 
@@ -236,24 +237,27 @@ function decodeEnemy(w: unknown): EnemySnapshot | null {
     },
     ...(typeof stance === 'string' ? { boss: { stance, comboIndex: finite(comboIndex) ? comboIndex : 0 } } : {}),
     ...(spent === 1 ? { spent: true } : {}),
-    ...(isEliteTrait(trait) ? { elite: trait, ...(elite!.includes('*') ? { armor: true as const } : {}), ...(elite!.includes('!') ? { pierceRoll: true as const } : {}) } : {}),
+    ...(isEliteTrait(trait) ? { elite: trait, ...(elite!.includes('!') ? { pierceRoll: true as const } : {}) } : {}),
+    ...(typeof elite === 'string' && elite.includes('*') ? { armor: true as const } : {}),
   };
 }
 
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
-  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move. An older peer ignores them.
-  if (p.pierceRoll || p.mult !== undefined || p.moveId) out.push(p.pierceRoll ? 1 : 0);
-  if (p.mult !== undefined || p.moveId) out.push(p.mult === undefined ? 0 : r3(p.mult));
-  if (p.moveId) out.push(p.moveId);
+  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move, an enemy shot's curse. An older peer ignores them.
+  const tail = p.curseMs !== undefined;
+  if (p.pierceRoll || p.mult !== undefined || p.moveId || tail) out.push(p.pierceRoll ? 1 : 0);
+  if (p.mult !== undefined || p.moveId || tail) out.push(p.mult === undefined ? 0 : r3(p.mult));
+  if (p.moveId || tail) out.push(p.moveId ?? 0);
+  if (tail) out.push(ri(p.curseMs!));
   return out;
 }
 
 /** A projectile from the wire, or null when its id, type or a number is off. */
 function decodeProjectile(w: unknown): ProjectileSnapshot | null {
   if (!Array.isArray(w)) return null;
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId, curseMs] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -265,6 +269,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     number,
     number,
     number | undefined,
+    unknown,
     unknown,
     unknown,
   ];
@@ -281,8 +286,12 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     ...(pierce === 1 ? { pierceRoll: true } : {}),
     ...(finite(mult) && mult > 0 && mult <= MAX_SHOT_MULT ? { mult } : {}),
     ...(isMove(moveId) ? { moveId } : {}),
+    ...(finite(curseMs) && curseMs > 0 && curseMs <= MAX_CURSE_MS ? { curseMs } : {}),
   };
 }
+
+/** The longest curse an enemy shot may carry on the wire. */
+const MAX_CURSE_MS = 10000;
 
 /** The largest damage multiplier an enemy shot may carry on the wire (a weakening only lowers it). */
 const MAX_SHOT_MULT = 1;

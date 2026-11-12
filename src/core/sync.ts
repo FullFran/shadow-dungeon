@@ -112,6 +112,8 @@ export interface ProjectileSnapshot {
   pierceRoll?: boolean;
   /** Enemy shots only: the damage multiplier when it is not 1 (a weakened enemy's shot, core/brain.ts `spawnShot`). */
   mult?: number;
+  /** Enemy shots only: a curse's length (Yamask's, data/crypt-enemies.ts). */
+  curseMs?: number;
 }
 
 export interface HostSnapshot {
@@ -142,6 +144,7 @@ function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
     remainingMs: p.remainingMs,
     ...(p.pierceRoll ? { pierceRoll: true } : {}),
     ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
+    ...(p.owner === 'enemy' && p.curseMs ? { curseMs: p.curseMs } : {}),
     ...(p.owner === 'player' && p.moveId ? { moveId: p.moveId } : {}),
   };
 }
@@ -269,6 +272,8 @@ function sameAttack(local: EnemyState, snapshot: EnemySnapshot): boolean {
     local.ai.mode === 'attack' &&
     snapshot.ai.mode === 'attack' &&
     (local.boss?.comboIndex ?? 0) === (snapshot.boss?.comboIndex ?? 0) &&
+    // A named pass of the same attack (Honedge's way out, then back) is a fresh contact.
+    local.ai.attack === snapshot.ai.attack &&
     snapshot.ai.modeMs >= local.ai.modeMs - 1e-6
   );
 }

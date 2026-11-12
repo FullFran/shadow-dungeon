@@ -181,8 +181,10 @@ export interface PlayerState {
   upgrades?: UpgradeLevels;
   /** Harder tiers' roll (data/difficulty.ts `TierDef.roll`): when the i-frames end and the stamina cost share; absent = the tuning's. */
   rollTier?: { iframesEndMs: number; staminaCost: number };
-  /** A held item Sableye took (stolen.ts): out of `items` until it comes back. */
+  /** A held item Sableye or Murkrow took (stolen.ts): out of `items` until it comes back. */
   stolen?: StolenItem;
+  /** Cursed by Yamask's shot (data/crypt-enemies.ts): stamina recharges at `CURSE_REGEN` for this many more ms; absent = not cursed. */
+  cursedMs?: number;
   /** Poisoned by a Toxic Swamp pool (toxic.ts); absent = not poisoned. */
   poison?: PoisonState;
   /** Boost and area moves on cooldown: ms left per move (core/boosts.ts); absent = none running. */
@@ -386,6 +388,8 @@ export interface ProjectileState {
   wave?: boolean;
   /** Player projectiles: the move that fired it (its hits and its look). */
   moveId?: MoveId;
+  /** Enemy shots that curse the player they hurt (Yamask's, data/crypt-enemies.ts): the curse's length; its rate is `CURSE_REGEN`. */
+  curseMs?: number;
   /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */
   steer?: SteerDef;
   /** A positional enemy shot (a sweeping wall, data `pierceRoll`): rolling through it does not help. */

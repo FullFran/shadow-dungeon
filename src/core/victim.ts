@@ -13,6 +13,7 @@ import { behaviourFor } from './tricks';
 import { heraldCard, heraldContact, heraldOf } from './herald/brain';
 import { heraldDef } from './herald/generate';
 import { isSwampDef, swampAttack } from './swamp-brains';
+import { cryptAttack, isCryptDef } from './crypt-brains';
 import { shadowAttack, shadowTouches } from './shadow';
 import { floodPockets, hazePockets } from './swamp-bosses';
 import type { Arena, EnemyState, GameEvent, WorldState } from './state';
@@ -196,6 +197,12 @@ export function guestEnemyContacts(state: WorldState, events: GameEvent[]): Worl
       const active = swampAttack(current.arena, enemy, behaviourFor(enemy.species, worldDifficulty(current)) as typeof def, current.player.pos);
       if (!active) continue;
       hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+    } else if (isCryptDef(def)) {
+      // A spin or a dive (the channels never hurt); Murkrow's dive that hurts takes an item, as on the host.
+      const active = cryptAttack(enemy, def, current.player.pos);
+      if (!active) continue;
+      hit = contactPlayer(current, enemy, active.attack, active.touches, events);
+      if (hit.contact === 'hit' && active.steals) hit = { ...hit, state: { ...hit.state, player: stealItem(hit.state.player, enemy.id, active.steals, events) } };
     } else if (isRosterDef(def)) {
       const active = rosterAttack(enemy, def, current.player.pos);
       if (!active) continue;

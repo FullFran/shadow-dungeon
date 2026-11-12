@@ -100,6 +100,12 @@ const TARGETS = [
   { dex: '0690', form: '0000', species: 'skrelp', formName: 'base' },
   { dex: '0758', form: '0000', species: 'salazzle', formName: 'base' },
   { dex: '0793', form: '0000', species: 'nihilego', formName: 'base' },
+  // The Crypt's second wave (docs/research/enemy-variety.md §4.2; tracker.json 2026-11-12: Walk, Attack, Charge, Hurt and a shiny set).
+  { dex: '0679', form: '0000', species: 'honedge', formName: 'base' },
+  { dex: '0436', form: '0000', species: 'bronzor', formName: 'base' },
+  { dex: '0562', form: '0000', species: 'yamask', formName: 'base' },
+  { dex: '0198', form: '0000', species: 'murkrow', formName: 'base' },
+  { dex: '0707', form: '0000', species: 'klefki', formName: 'base' },
   // Evolved forms of the regulars (AnimData.xml 2026-10-26: all have native Idle, Walk, Attack, Shoot, Charge and Hurt;
   // Golurk and Grimmsnarl left out, their Shoot is a copy of another sheet).
   { dex: '0262', form: '0000', species: 'mightyena', formName: 'base' },

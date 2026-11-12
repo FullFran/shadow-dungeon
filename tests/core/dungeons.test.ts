@@ -26,11 +26,11 @@ describe('the Crypt as a DungeonDef', () => {
   });
 
   // Meaningful encounters (2026-10-25) deliberately changed floor 1: it no longer generates like the M2 table, but it stays the gentle entry.
-  it('keeps floor 1 a gentle entry: only Poochyena and Gastly, at most two per room, a breather now and then', () => {
+  it('keeps floor 1 a gentle entry: only Poochyena, Gastly and Honedge (odd/tasks/enemy-variety-crypt.md), at most two per room, a breather now and then', () => {
     let rest = 0;
     for (let seed = 1; seed <= 60; seed++) {
       const floor = generateFloor(seed, 1, CRYPT.spawns);
-      expect(floor.spawns.filter((s) => s.species !== 'poochyena' && s.species !== 'gastly')).toEqual([]);
+      expect(floor.spawns.filter((s) => s.species !== 'poochyena' && s.species !== 'gastly' && s.species !== 'honedge')).toEqual([]);
       const rooms = floor.rooms.map((_, i) => floor.spawns.filter((s) => s.room === i).length);
       expect(Math.max(...rooms)).toBeLessThanOrEqual(2);
       rest += rooms.filter((n, i) => n === 0 && i !== floor.startRoom).length;

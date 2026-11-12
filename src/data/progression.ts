@@ -56,6 +56,12 @@ export const PROGRESSION = {
     skrelp: 12,
     salazzle: 55,
     nihilego: 110,
+    // The Crypt's second wave (data/crypt-enemies.ts).
+    honedge: 9,
+    bronzor: 18,
+    yamask: 13,
+    murkrow: 10,
+    klefki: 16,
     // Evolved forms: about their base form's times the threat ratio (data/encounters.ts SPECIES_THREAT).
     mightyena: 16,
     haunter: 19,

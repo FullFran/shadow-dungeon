@@ -3,7 +3,7 @@ import { DIFFICULTIES, ELITE_TRAIT_DEFS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIE
 import { CRYPT, ECLIPSE, FOREST } from '../../src/data/dungeons';
 import { COINS } from '../../src/data/coins';
 import { ENEMY_BEHAVIOUR, POOCHYENA } from '../../src/data/enemies';
-import { eliteFor, encounterChance, encounterWaves, tickAiAt, tieredSpawns } from '../../src/core/difficulty';
+import { drawnAt, eliteFor, encounterChance, encounterWaves, tickAiAt, tieredSpawns } from '../../src/core/difficulty';
 import { CRYPT_SPAWNS } from '../../src/data/dungeon';
 import { ROLES_PER_ROOM } from '../../src/data/encounters';
 import { landHitOnPlayer } from '../../src/core/hits';
@@ -87,7 +87,9 @@ function fnv(text: string): string {
  * to the simulation changes it: re-record it only on purpose.
  */
 // 'd0d94354' (more chests, odd/tasks/boss-items-events.md): with the event weights and chances put back on the merged 0.9.8 code it gives '68fd7315'.
-const PRE_TIER_DIGEST = 'd0d94354';
+// '6434cee9' (the Crypt's second wave, odd/tasks/enemy-variety-crypt.md): new species in CRYPT_SPAWNS; with the pool put back the code gives 'd0d94354'
+// (the full suite was green at commit c1889f1 with the behaviours in and the old pool).
+const PRE_TIER_DIGEST = '6434cee9';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
@@ -185,7 +187,9 @@ describe('difficulty tiers: harder tiers', () => {
     // Meaningful encounters: the room cap and budget never change with the tier; harder tiers only mix more roles (research P2).
     for (const d of DIFFICULTIES) {
       const tiered = tieredSpawns(CRYPT_SPAWNS, d);
-      expect({ ...tiered, budget: { ...tiered.budget!, maxRoles: undefined } }).toEqual({ ...CRYPT_SPAWNS, budget: { ...CRYPT_SPAWNS.budget!, maxRoles: undefined } });
+      // The pool only loses the entries the tier does not reach (`minDifficulty`, odd/tasks/enemy-variety-crypt.md): never more bodies.
+      expect({ ...tiered, pool: undefined, budget: { ...tiered.budget!, maxRoles: undefined } }).toEqual({ ...CRYPT_SPAWNS, pool: undefined, budget: { ...CRYPT_SPAWNS.budget!, maxRoles: undefined } });
+      expect(tiered.pool).toEqual(CRYPT_SPAWNS.pool.filter((e) => drawnAt(e, d)));
       expect(tiered.budget!.maxRoles).toBe(ROLES_PER_ROOM[d]);
     }
     // The rooms, without the floor events: those come more often on harder tiers by design (`encounters.frequency`) and bring their own enemies (odd/tasks/boss-items-events.md).

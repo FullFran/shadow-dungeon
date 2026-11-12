@@ -7,7 +7,7 @@ import { dungeonChoices } from '../../src/core/dungeon-select';
 import { evolutionOf, lineOf } from '../../src/core/evolution';
 import { awakeningsOf } from '../../src/data/player-evolutions';
 import { floorCount, isBossFloor, startRun } from '../../src/core/run';
-import { challengeOfRoad, CHALLENGES, CRYPT, DUNGEONS, dungeonById, guardianOf, roadFor, SENDA_ROADS } from '../../src/data/dungeons';
+import { challengeOfRoad, CHALLENGES, CRYPT, DUNGEONS, dungeonById, guardianOf, ROAD_EXTRAS, roadFor, SENDA_ROADS, type DungeonDef } from '../../src/data/dungeons';
 import { STORY_BOSSES } from '../../src/data/story/bosses';
 import { GACHA_POOL } from '../../src/data/gacha';
 import { ROOMS } from '../../src/data/rooms';
@@ -255,8 +255,10 @@ describe('Senda roads: each chapter walks its own road (owner 2026-10-26)', () =
     expect(new Set(roads.map((r) => r.palette)).size).toBe(3);
   });
 
-  it.each(SENDA_ROADS.map((d) => [d.id, d] as const))('%s: the pool stays the line\'s, and every boss can hurt every form of the line on every tier', (_, road) => {
-    expect(road.spawns.pool).toBe(challengeOfRoad(road).spawns.pool);
+  it.each(SENDA_ROADS.map((d) => [d.id, d] as const))('%s: the pool stays the line\'s (plus its road\'s biome wave), and every boss can hurt every form of the line on every tier', (_, road) => {
+    const wave = new Set(Object.values(ROAD_EXTRAS).flatMap((extras) => extras.map((e) => e.species)));
+    const lineOf = (d: DungeonDef) => d.spawns.pool.filter((e) => !wave.has(e.species));
+    expect(lineOf(road)).toEqual(lineOf(challengeOfRoad(road)));
     for (const tier of TIERS) for (const p of road.plan) if (p.kind === 'room') expect(canHurtLine(ROOMS[p.room].spawns[0]!.species, road.challenge!.line, tier), `${p.room} ${tier}`).toBe(true);
   });
 

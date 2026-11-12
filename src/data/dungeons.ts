@@ -616,12 +616,24 @@ const roadPlan = (road: SendaRoad): readonly FloorPlan[] => sendaPlan(road.mid[0
  * own two shadows before the wound. The enemy pool is the line's.
  */
 function senda(line: ChallengeLine, roads: readonly [SendaRoad, SendaRoad, SendaRoad], pool: readonly SpawnEntry[]): readonly [DungeonDef, DungeonDef, DungeonDef] {
-  const [one, two, three] = roads.map((road, i) => challenge(line, BASES[road.base], road.wound, pool, roadPlan(road), (i + 1) as 1 | 2 | 3));
+  const [one, two, three] = roads.map((road, i) => challenge(line, BASES[road.base], road.wound, [...pool, ...ROAD_EXTRAS[road.base]], roadPlan(road), (i + 1) as 1 | 2 | 3));
   return [{ ...one!, roads: { hard: two!.id, nightmare: three!.id } }, two!, three!];
 }
 
 /** A pool entry: its weight on challenge floors 1, 2 and 3. */
 const at = (species: SpeciesId, f1: number, f2: number, f3: number): SpawnEntry => ({ species, weights: [f1, f2, f3] });
+
+/**
+ * A road's own biome on top of the line's pool (odd/tasks/enemy-variety-crypt.md):
+ * every road through the Crypt meets its second wave (Honedge's blade, the
+ * disguised Yamask, Bronzor's ward). The other biomes' waves are pending.
+ */
+export const ROAD_EXTRAS: Readonly<Record<SendaRoad['base'], readonly SpawnEntry[]>> = {
+  crypt: [at('honedge', 1, 1, 1), at('yamask', 0, 1, 1), at('bronzor', 0, 1, 1)],
+  forest: [],
+  caves: [],
+  swamp: [],
+};
 
 /**
  * One challenge per line, each with its own trial and a boss its types can

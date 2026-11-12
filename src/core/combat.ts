@@ -11,6 +11,7 @@ import { partyStaggerOf, presentPlayers } from './party';
 import { noteAggroDamage } from './aggro';
 import { wallAt } from './tiles';
 import { landHitOnPlayer } from './hits';
+import { cursePlayer } from './player';
 import { answerGuardedHit, guardChip } from './roster';
 import { onHitDealt, playerStats, rollCrit, type PlayerStats } from './items';
 import { bonusMultiplier, breakIllusion, illusionActive, stokeFlashFire } from './passives';
@@ -620,6 +621,8 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
       const from = sub(moved.pos, scale(normalize(moved.vel), moved.radius + PLAYER.radius));
       const landed = landHitOnPlayer(current, { damage, type: moved.type, from, ...(moved.pierceRoll ? { pierceRoll: true } : {}) }, events);
       current = landed.state;
+      // A cursed shot (Yamask's) that hurt slows this player's stamina recharge for a while.
+      if (landed.outcome === 'hurt' && moved.curseMs) current = { ...current, player: cursePlayer(current.player, moved.curseMs) };
       // Rolled through: the projectile keeps flying; otherwise it is spent.
       const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
       // A guest remembers the host's shot it spent, so the next snapshot does not bring it back (sync.ts).

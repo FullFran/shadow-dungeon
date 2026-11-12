@@ -1,3 +1,4 @@
+import type { Difficulty } from './difficulty';
 import type { EncounterBudget } from './encounters';
 import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
@@ -47,6 +48,10 @@ export interface SpawnEntry {
   pack?: number;
   /** A mixed pack: after the pick (and its pack), up to `count` of another species on the next tiles. */
   escort?: { species: SpeciesId; count: number };
+  /** Only runs at this tier or harder draw it (core/difficulty.ts `tieredSpawns`): Hard and Nightmare meet a species or two more. */
+  minDifficulty?: Difficulty;
+  /** A rare spawn: a low weight (at most 0.25) and an arrival cue when the floor holds one (core/dungeon.ts `rareOnFloor`). */
+  rare?: true;
 }
 
 /** Enemies of a dungeon's generated floors. */
@@ -71,6 +76,10 @@ export interface SpawnTuning {
  * floor 1 exactly (Poochyena 3, Gastly 2, one or two per room; the new
  * species weigh 0 there and come after, so the same seed draws the same
  * enemies). Duskull and the Pawniard pairs join on floor 2, Golett on 4.
+ * The second wave (odd/tasks/enemy-variety-crypt.md, data/crypt-enemies.ts):
+ * Honedge from floor 1 (taking some of Poochyena's weight), Bronzor and the
+ * disguised Yamask from 2, Murkrow from 4 on Normal and up, and Klefki, a
+ * rare spawn, from 4 on Hard and Nightmare only.
  */
 export const CRYPT_SPAWNS: SpawnTuning = {
   base: 1,
@@ -79,11 +88,16 @@ export const CRYPT_SPAWNS: SpawnTuning = {
   maxPerRoom: 4,
   budget: { base: 2, perDepth: 1, jitter: 1, maxEnemies: 3, rest: [0.15, 0.25, 0.25, 0.2, 0.2], repeatWeight: 0.4, leaders: { fromFloor: 2, start: 0.3, perFloor: 0.1, max: 0.6 } },
   pool: [
-    { species: 'poochyena', weights: [3, 3, 2, 2, 2] },
+    { species: 'poochyena', weights: [2, 2, 2, 2, 2] },
+    { species: 'honedge', weights: [1, 1, 1, 1, 2] },
     { species: 'gastly', weights: [2, 2, 2, 2, 2] },
     { species: 'duskull', weights: [0, 1, 1, 2, 2] },
     { species: 'pawniard', weights: [0, 1, 1, 2, 2], pack: 2 },
     { species: 'golett', weights: [0, 0, 0, 1, 2] },
+    { species: 'bronzor', weights: [0, 1, 1, 1, 1] },
+    { species: 'yamask', weights: [0, 1, 1, 1, 2] },
+    { species: 'murkrow', weights: [0, 0, 0, 1, 1], minDifficulty: 'normal' },
+    { species: 'klefki', weights: [0, 0, 0, 0.2, 0.2], rare: true, minDifficulty: 'hard' },
     // Evolved forms on the floors after the vault (data/evolutions.ts): Mightyena with a Poochyena at its
     // side, Bisharp with a Pawniard, Gengar (floor 5) with a Gastly; each the room's leader when it has one.
     { species: 'mightyena', weights: [0, 0, 0, 1, 2], escort: { species: 'poochyena', count: 1 } },

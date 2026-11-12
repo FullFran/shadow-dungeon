@@ -118,6 +118,9 @@ export const SIMA_SQUADS: readonly SimaSquad[] = [
   { minDepth: 16, members: ['shellos', 'krabby', 'tentacool'] },
   { minDepth: 18, members: ['salandit', 'skrelp'] },
   { minDepth: 22, members: ['venipede', 'skrelp', 'salandit'] },
+  // The Crypt's second wave: a ward behind a tank, a boomerang with a gunner.
+  { minDepth: 6, members: ['bronzor', 'golett'] },
+  { minDepth: 9, members: ['honedge', 'dusclops'] },
 ];
 
 /** Chance that a room with two or more enemies holds a squad instead: from floor 4, rising, capped. */
