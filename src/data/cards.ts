@@ -101,6 +101,13 @@ export interface CardFightDef {
    * (src/sim/prove.ts, kill feasibility). Absent = 1.
    */
   hpScale?: number;
+  /**
+   * A Sima echo's own segment HP for some cards, as a ratio of the fight's
+   * (core/cards.ts `echoCards`): the Nightmare card HP band gives an echo its
+   * own factor where the home one would drop it under its kill target
+   * (data/nightmare-band.ts `NIGHTMARE_ECHO_CARD_HP`). Absent = 1.
+   */
+  echoHp?: Readonly<Partial<Record<string, number>>>;
   /** Species the boss summons during its cards (Salazzle's court): they leave with the card when it ends, so a declaration holds no threat. */
   dismiss?: readonly string[];
 }
@@ -181,12 +188,15 @@ export const registeredCards = (): string[] => [...registry.keys()];
  * data/nightmare-band.ts): card `id`'s segment gets `factors[id]` times its
  * HP and every other segment keeps its own, so the fight's `hpScale` grows by
  * exactly what the raised cards add. No factor: the very same fight.
+ * `echo`: the factors a Sima echo plays instead (a card absent there takes
+ * its home factor), kept as `echoHp` ratios for core/cards.ts `echoCards`.
  */
-export function bandFight(fight: CardFightDef, factors: Readonly<Partial<Record<string, number>>>): CardFightDef {
+export function bandFight(fight: CardFightDef, factors: Readonly<Partial<Record<string, number>>>, echo: Readonly<Partial<Record<string, number>>> = {}): CardFightDef {
   if (!fight.cards.some((c) => (factors[c.id] ?? 1) !== 1)) return fight;
+  const ratios = fight.cards.filter((c) => echo[c.id] !== undefined).map((c) => [c.id, echo[c.id]! / (factors[c.id] ?? 1)] as const);
   const total = fight.cards.reduce((sum, c) => sum + c.hpShare, 0);
   const raised = fight.cards.reduce((sum, c) => sum + c.hpShare * (factors[c.id] ?? 1), 0);
   // The shares still cover the whole bar (they keep the authored total); the bar grows instead.
   const cards = fight.cards.map((c) => ({ ...c, hpShare: (c.hpShare * (factors[c.id] ?? 1) * total) / raised }));
-  return { ...fight, cards, hpScale: ((fight.hpScale ?? 1) * raised) / total };
+  return { ...fight, cards, hpScale: ((fight.hpScale ?? 1) * raised) / total, ...(ratios.length > 0 ? { echoHp: Object.fromEntries(ratios) } : {}) };
 }

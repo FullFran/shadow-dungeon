@@ -4,7 +4,7 @@ import type { Trick } from './forest-tricks';
 import { HOSTED_FIGHTS } from './hosted-cards';
 import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
 import { bandFight, type CardFightDef } from './cards';
-import { NIGHTMARE_CARD_HP } from './nightmare-band';
+import { NIGHTMARE_CARD_HP, NIGHTMARE_ECHO_CARD_HP } from './nightmare-band';
 import type { SpeciesId } from './species';
 
 /**
@@ -48,7 +48,7 @@ const AUTHORED: Partial<Record<SpeciesId, readonly Trick[]>> = {
 /** A Nightmare trick's fight with the card HP band applied (data/nightmare-band.ts); every other trick as authored. */
 const banded = (t: Trick): Trick => {
   const fight = 'spellCards' in t.patch ? t.patch.spellCards : undefined;
-  return t.minDifficulty === 'nightmare' && fight ? { ...t, patch: { ...t.patch, spellCards: bandFight(fight, NIGHTMARE_CARD_HP) } as Trick['patch'] } : t;
+  return t.minDifficulty === 'nightmare' && fight ? { ...t, patch: { ...t.patch, spellCards: bandFight(fight, NIGHTMARE_CARD_HP, NIGHTMARE_ECHO_CARD_HP) } as Trick['patch'] } : t;
 };
 
 /** Every card boss (a new one included, by being here) plays its Nightmare fight inside the band. */

@@ -20,12 +20,13 @@ Objective: make Nightmare harder by tightening what exists (owner-approved optio
 |---|---|---|---|---|
 | T1 | S2-S5, S8 | inline | done | a65b8e2; RED: 10 of 12 tests in tests/core/nightmare-tuning.test.ts failed (traits, `tierHealing` missing, heal 65 vs 55, Leftovers 12 vs 11.5, turn 800, coins 2.2); GREEN 12/12 |
 | T2 | S1, S6, S7 | inline | done | N1 commit; RED: tests/data/nightmare-band.test.ts could not load `data/nightmare-band`; GREEN 6/6; `npm run prove` 166/166, 24/24 |
+| T4 | S1, S6 | inline | done | branch fix/nightmare-band-new-cards (feat/boss-patterns merged): RED: 4 new tests in tests/data/nightmare-band.test.ts (bandFactors `echo` 2.12 vs 2.27, echo segment 0.6 vs 0.48, `NIGHTMARE_ECHO_CARD_HP` missing); GREEN 11/11; `npm run prove` exit 0, 217/217, 24/24; band tool stable on rerun |
 | T3 | S9 | inline | done | docs commit; RED: N5 hint test "expected 'Cartas de hechizo extra y élites a me…' to contain '×2,5'"; GREEN |
 
 ## Parity checklist
 
 - [x] Every card boss gets the band through the one wiring point (`GUARDIAN_TRICKS`, src/data/guardian-tricks.ts): 8 guardians, 42 Senda shadows, 8 wounds measured; a new boss is banded by being there, and the proof fails (`marginCeiling`) for a home case above 1.8 until `tools/nightmare-band.ts --write` runs. Evidence: tests/data/nightmare-band.test.ts iterates every species of `GUARDIAN_TRICKS`.
-- [x] Sima echoes, Sima story bosses and reused road bosses: inherit the banded segments; used as lower bounds (none capped); proof and story-prove-sima / story-prove-reused tests green.
+- [x] Sima echoes, Sima story bosses and reused road bosses: inherit the banded segments; used as lower bounds; proof and story-prove-sima / story-prove-reused tests green. Since T4 the echoes band on their own factor (`NIGHTMARE_ECHO_CARD_HP`, applied by `echoCards`), so an echo no longer caps the home fight; story and reused cases still bound the home factor (none capped after the boss-patterns merge).
 - [x] Every dungeon (main, challenges, Senda roads, Sima, shrine): the levers read `TIERS` (`tierEliteRule`, `tierHealing`, `turnMsFor`, `COINS.difficulty`); no per-dungeon list. A dungeon's own `floorHeal` (the tutorial's 1) still wins. The Sima keeps its own elite list (`SIMA_ELITES`, already all six).
 - [x] Solo and co-op: elites and berries come from the floor seed and the host's tier (same on every peer); floor heal and sustain are per peer from the world's tier; no co-op-only path.
 - [x] Save/migrate/sanitize, net protocol: no new fields (elite traits were already on the wire as `ALL_ELITE_TRAITS`; tier is already shared).
@@ -74,4 +75,5 @@ Findings:
 - L3 (2026-11-12): finding: N4 does not move the proof (turn = max(turnMs, the move's recovery)); kept as specified.
 - L4 (2026-11-12): the structure tests' "last spell ≤ 15 % of the bar" now checks the authored fight; on Nightmare the band may grow a segment (GDD note added). Shares stay normalised (the bar grows through `hpScale`).
 - L5 (2026-11-12): pending: N5's "a Nightmare clear guarantees one uncommon item-gacha pull" (doc §3.3) is not in this brief and depends on the item gacha (other worker); not done, not dropped.
-
+- L6 (2026-11-12, coordinator brief): "make the Nightmare card HP band converge with the new boss cards ... prove ... fails `dhelmise nightmare sc-dhe-chain: kill margin 1.91 > 1.8`, and the tool prints `sc-dhe-chain: x2.12 (capped by a case at its target)` ... find a principled fix: for example band the home fight and the reused cases with separate factors (per case, not per card) ... Do not loosen the band for any other card."
+- L7 (2026-11-12): finding: the binding case was `dhelmise-echo` (unbanded margin 2.35 vs home 4.05; the echo plays a 0.6 share of the guardian at its depth). Fix: per-case factors for the one case kind that can carry its own, the Sima echo (`echoCards` scales each kept card by `echoHp`, `bandFight` writes it from `NIGHTMARE_ECHO_CARD_HP`, the tool measures both tables). sc-dhe-chain Nightmare: home ×2.27 → margin 1.78, echo ×2.12 → 1.11 (its only two cases). No other card's factor or ceiling changed. Story and reused cases still share the home fight, so they stay lower bounds.

@@ -5,10 +5,10 @@ import { DECIDUEYE_CARDS_HARD, DECIDUEYE_CARDS_NIGHTMARE, DECIDUEYE_CARDS_NORMAL
 import type { Difficulty } from '../../src/data/difficulty';
 import { GUARDIAN_TRICKS } from '../../src/data/guardian-tricks';
 import { HOSTED_FIGHTS } from '../../src/data/hosted-cards';
-import { NIGHTMARE_BAND, NIGHTMARE_CARD_HP } from '../../src/data/nightmare-band';
+import { NIGHTMARE_BAND, NIGHTMARE_CARD_HP, NIGHTMARE_ECHO_CARD_HP } from '../../src/data/nightmare-band';
 import type { SpeciesId } from '../../src/data/species';
 import { STORY_BOSSES, STORY_FIGHTS } from '../../src/data/story/bosses';
-import { fightOf } from '../../src/core/cards';
+import { echoCards, echoShare, fightOf } from '../../src/core/cards';
 import { behaviourFor } from '../../src/core/tricks';
 import { bandFactors } from '../../src/sim/band';
 import { proofFailures, type CardProof } from '../../src/sim/prove';
@@ -88,6 +88,59 @@ describe('Nightmare card HP band (N1)', () => {
     // sc-z: 2.4 / 1.79 → 1.35, but its other case allows only 1.32 / 1.1 = 1.2.
     expect(f.factors['sc-z']).toBe(1.19);
     expect(f.capped).toEqual(['sc-z']);
+  });
+
+  it('bandFactors: a Sima echo bands on its own factor, so it never holds back the home fight (sc-dhe-chain)', () => {
+    const f = bandFactors([
+      { card: 'sc-x', home: true, margin: 4.05, target: 1.1 },
+      { card: 'sc-x', home: false, echo: true, margin: 2.35, target: 1.1 },
+      { card: 'sc-y', home: true, margin: 3.58, target: 1.1 },
+      { card: 'sc-y', home: false, echo: true, margin: 4, target: 1.1 },
+    ]);
+    // sc-x: home 4.05 / 1.79 → 2.27; its echo allows only 2.35 / 1.105 → 2.12, and keeps that.
+    expect(f.factors['sc-x']).toBe(2.27);
+    expect(f.echo['sc-x']).toBe(2.12);
+    // sc-y: its echo takes the home factor (no entry), nothing is capped.
+    expect(f.factors['sc-y']).toBe(2);
+    expect('sc-y' in f.echo).toBe(false);
+    expect(f.capped).toEqual([]);
+    // A current echo factor within 0.01 is kept while it still meets the target.
+    expect(bandFactors([{ card: 'sc-x', home: true, margin: 4.05, target: 1.1 }, { card: 'sc-x', home: false, echo: true, margin: 2.35, target: 1.1 }], {}, { 'sc-x': 2.11 }).echo['sc-x']).toBe(2.11);
+  });
+
+  it('bandFight with echo factors: an echo plays those cards\' segments at their echo factor, the home fight and every other segment as before', () => {
+    const banded = bandFight(FIGHT, { 'sc-b': 1.5 }, { 'sc-b': 1.2 });
+    segments(banded).forEach((x, i) => expect(x).toBeCloseTo(segments(bandFight(FIGHT, { 'sc-b': 1.5 }))[i]!, 10));
+    const echo = echoCards(banded, 3);
+    const total = banded.cards.reduce((s, c) => s + c.hpShare, 0);
+    const kept = echo.cards.reduce((s, c) => s + c.hpShare, 0);
+    expect(echoShare(banded, 3)).toBeCloseTo(kept / total, 10);
+    // An echo's segment = its max HP share (echoShare) × its card's share of the echo bar.
+    const echoSegments = echo.cards.map((c) => (banded.hpScale ?? 1) * echoShare(banded, 3) * (c.hpShare / kept));
+    expect(echoSegments[0]).toBeCloseTo(segments(FIGHT)[0]!, 10);
+    expect(echoSegments[2]).toBeCloseTo(segments(FIGHT)[2]! * 1.2, 10);
+  });
+
+  it('every card boss\'s Nightmare echo plays each card at its echo factor (else the home one)', () => {
+    for (const s of Object.keys(GUARDIAN_TRICKS) as SpeciesId[]) {
+      const nightmare = RAW[s]![2];
+      const played = fightOf(behaviourFor(s, 'nightmare'))!;
+      const echo = echoCards(played, 3);
+      const kept = echo.cards.reduce((sum, c) => sum + c.hpShare, 0);
+      const got = echo.cards.map((c) => (played.hpScale ?? 1) * echoShare(played, 3) * (c.hpShare / kept));
+      const want = segments(nightmare).map((x, i) => {
+        const id = nightmare.cards[i]!.id;
+        return x * (NIGHTMARE_ECHO_CARD_HP[id] ?? NIGHTMARE_CARD_HP[id] ?? 1);
+      });
+      got.forEach((x, i) => expect(x, `${s} echo ${nightmare.cards[i]!.id}`).toBeCloseTo(want[i]!, 10));
+    }
+  });
+
+  it('every echo factor names a banded Nightmare card and is under its home factor', () => {
+    for (const [id, f] of Object.entries(NIGHTMARE_ECHO_CARD_HP)) {
+      expect(NIGHTMARE_CARD_HP[id as never], id).toBeDefined();
+      expect(f, id).toBeLessThan(NIGHTMARE_CARD_HP[id as never]!);
+    }
   });
 
   it('bandFactors keeps a current factor within 0.01 of the measured one (HP rounding never churns the table)', () => {

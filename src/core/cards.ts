@@ -416,14 +416,14 @@ export function echoKeeps(fight: CardFightDef, stage: EchoStage): boolean[] {
 
 const echoCache = new WeakMap<CardFightDef, Map<EchoStage, CardFightDef>>();
 
-/** The fight an echo of `stage` plays: its kept cards (their shares as they were), each timer `ECHO_CARDS.timerScale` as long. */
+/** The fight an echo of `stage` plays: its kept cards (their shares as they were, times the fight's `echoHp` ratio), each timer `ECHO_CARDS.timerScale` as long. */
 export function echoCards(fight: CardFightDef, stage: EchoStage): CardFightDef {
   const byStage = echoCache.get(fight) ?? new Map<EchoStage, CardFightDef>();
   echoCache.set(fight, byStage);
   const hit = byStage.get(stage);
   if (hit) return hit;
   const keeps = echoKeeps(fight, stage);
-  const echo: CardFightDef = { ...fight, cards: fight.cards.filter((_, i) => keeps[i]).map((c) => ({ ...c, timerMs: Math.round(c.timerMs * ECHO_CARDS.timerScale) })) };
+  const echo: CardFightDef = { ...fight, cards: fight.cards.filter((_, i) => keeps[i]).map((c) => ({ ...c, hpShare: c.hpShare * (fight.echoHp?.[c.id] ?? 1), timerMs: Math.round(c.timerMs * ECHO_CARDS.timerScale) })) };
   byStage.set(stage, echo);
   return echo;
 }
