@@ -45,6 +45,11 @@ export const SAVE_FIELD_RULES = {
   females: 'economy',
   // Senda chapters gate tiered materials and bond lines, so they travel with the economy they paid for.
   story: 'economy',
+  // Consumables were paid for: the stock, the unlocks and the item gacha's pity stay with the kept side.
+  stock: 'economy',
+  unlockedConsumables: 'economy',
+  itemPity: 'economy',
+  itemRarePity: 'economy',
 } as const satisfies Record<keyof SaveData, FieldRule>;
 
 /** Union of unlocked achievements, each with its earliest day. */

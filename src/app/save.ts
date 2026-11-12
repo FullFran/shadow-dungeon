@@ -10,6 +10,8 @@ import { challengeReward } from '../core/challenge';
 import { FEMALE_LINES, setFemale } from '../core/gender';
 import { challengeShiny, SHINY_LINES, wearShiny } from '../core/shiny';
 import { GACHA } from '../data/gacha';
+import { BAG, CONSUMABLE_IDS, ITEM_GACHA, STARTER_CONSUMABLES, isConsumableId, type ConsumableId } from '../data/consumables';
+import { buyConsumable, itemPull, spendUnit, type ConsumableStock, type ItemPullResult } from '../core/consumable-stock';
 import type { DungeonDef } from '../data/dungeons';
 import type { Difficulty } from '../data/difficulty';
 import type { LearnedMoves, RankedMoves } from '../core/tutor';
@@ -37,6 +39,7 @@ export const SAVE_KEY = 'mazmorra-sombria.save';
  * 4: achievements, lifetime Pokémonedas and missions (odd/tasks/achievements-missions.md); a v3 save reads with none.
  *    Since odd/tasks/shiny-echo.md (same version, optional fields only): `shinies`, `shinyWorn` and `shinyPity`.
  *    Since odd/tasks/pokemon-gender.md (same version, optional field only): `females`.
+ *    Since odd/tasks/items-bag.md (same version, optional fields only): `stock`, `unlockedConsumables`, `itemPity`, `itemRarePity`.
  */
 export const SAVE_VERSION = 4;
 
@@ -72,6 +75,14 @@ export interface SaveData {
   females?: readonly SpeciesId[];
   /** Senda chapters closed per challenge line, 1..3 (absent = none; core/story.ts). */
   story?: StoryProgress;
+  /** Consumable units per kind, 1..`BAG.stockCap` (absent = none; core/consumable-stock.ts). */
+  stock?: ConsumableStock;
+  /** Consumable kinds the item gacha unlocked beyond the commons (absent = none). */
+  unlockedConsumables?: readonly ConsumableId[];
+  /** Item gacha pulls since the last uncommon or better (absent = 0). */
+  itemPity?: number;
+  /** Item gacha pulls since the last rare (absent = 0). */
+  itemRarePity?: number;
 }
 
 export const EMPTY_SAVE: SaveData = { version: SAVE_VERSION, coins: 0, upgrades: {} };
@@ -118,6 +129,10 @@ export function sanitize(raw: unknown): SaveData {
   const shinyPity = Math.min(wholeCount(raw.shinyPity), GACHA.shinyPity - 1);
   const females = sanitizeLines(raw.females)?.filter((line) => FEMALE_LINES.includes(line));
   const story = sanitizeStory(raw.story);
+  const stock = sanitizeStock(raw.stock);
+  const unlockedConsumables = Array.isArray(raw.unlockedConsumables) ? [...new Set(raw.unlockedConsumables.filter(isConsumableId))].filter((id) => !STARTER_CONSUMABLES.includes(id)) : [];
+  const itemPity = Math.min(wholeCount(raw.itemPity), ITEM_GACHA.uncommonPity - 1);
+  const itemRarePity = Math.min(wholeCount(raw.itemRarePity), ITEM_GACHA.rarePity - 1);
   return {
     version: SAVE_VERSION,
     coins,
@@ -136,7 +151,22 @@ export function sanitize(raw: unknown): SaveData {
     ...(shinyPity > 0 ? { shinyPity } : {}),
     ...(females && females.length > 0 ? { females } : {}),
     ...(story ? { story } : {}),
+    ...(stock ? { stock } : {}),
+    ...(unlockedConsumables.length > 0 ? { unlockedConsumables } : {}),
+    ...(itemPity > 0 ? { itemPity } : {}),
+    ...(itemRarePity > 0 ? { itemRarePity } : {}),
   };
+}
+
+/** The consumable stock: known kinds, whole counts clamped to `BAG.stockCap`, in table order; null when none. */
+function sanitizeStock(raw: unknown): ConsumableStock | null {
+  if (!isRecord(raw)) return null;
+  const out: ConsumableStock = {};
+  for (const id of CONSUMABLE_IDS) {
+    const n = Math.min(BAG.stockCap, wholeCount(raw[id]));
+    if (n > 0) out[id] = n;
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 /** Skin lines: first forms of playable lines, once each, in the order stored; null when none. */
@@ -318,4 +348,28 @@ export function earnChallengeReward(store: KeyValueStore, dungeon: DungeonDef, v
   const next = challengeShiny(challengeReward(save, dungeon, victory, difficulty), dungeon, victory, difficulty);
   if (next !== save) writeSave(store, next);
   return next;
+}
+
+/** Buys one unit of `id` at its fixed price in the stored save; the new save, or null (nothing written) when refused. */
+export function buyConsumableAt(store: KeyValueStore, id: ConsumableId): SaveData | null {
+  const next = buyConsumable(loadSave(store), id);
+  if (!next) return null;
+  writeSave(store, next);
+  return loadSave(store);
+}
+
+/** One item gacha pull on the stored save, written at once; null (nothing written) without the Pokémonedas. */
+export function itemPullAt(store: KeyValueStore, rng: number): { result: ItemPullResult; save: SaveData } | null {
+  const pulled = itemPull(loadSave(store), rng);
+  if (!pulled) return null;
+  writeSave(store, pulled.state);
+  return { result: pulled.result, save: loadSave(store) };
+}
+
+/** A unit used in a run leaves the stored stock at once (owner's option 2a: only used units are spent). */
+export function spendConsumableAt(store: KeyValueStore, id: ConsumableId): SaveData {
+  const save = loadSave(store);
+  const next = { ...save, stock: spendUnit(save.stock, id) };
+  writeSave(store, next);
+  return loadSave(store);
 }
