@@ -4,6 +4,8 @@ import { RUN } from '../../src/data/dungeon';
 import { ENEMY_BEHAVIOUR } from '../../src/data/enemies';
 import { ITEM_EFFECTS, ORAN_BERRY } from '../../src/data/items';
 import { COINS } from '../../src/data/coins';
+import es from '../../src/i18n/es.json';
+import en from '../../src/i18n/en.json';
 import type { SpeciesId } from '../../src/data/species';
 import { placeBerries } from '../../src/core/berries';
 import { turnMsFor } from '../../src/core/cards';
@@ -95,9 +97,14 @@ describe('Nightmare tuning: the levers', () => {
     expect(turnMsFor({ difficulty: 'nightmare' })).toBe(700);
   });
 
-  it('N5: Nightmare pays ×2.5', () => {
+  it('N5: Nightmare pays ×2.5, and every tier\'s hint (es/en) says what it pays', () => {
     expect(TIERS.nightmare.coins).toBe(2.5);
     expect(COINS.difficulty.nightmare).toBe(2.5);
+    for (const d of ['normal', 'hard', 'nightmare'] as const) {
+      const key = `difficulty.${d}.hint` as const;
+      expect((es as Record<string, string>)[key], key).toContain(`×${String(TIERS[d].coins).replace('.', ',')}`);
+      expect((en as Record<string, string>)[key], key).toContain(`×${TIERS[d].coins}`);
+    }
   });
 });
 
