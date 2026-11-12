@@ -571,6 +571,11 @@ function painter(ctx: CanvasRenderingContext2D): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
+/** A pixel grid over `ctx` with a dungeon's art palette: the dev art gallery (tools/dungeon-art-gallery.html) draws single tiles and props with it. */
+export function artGrid(ctx: CanvasRenderingContext2D, palette: TilePalette, theme: ArtTheme): Grid {
+  return new Grid(painter(ctx), artPalette(palette, theme));
+}
+
 /** Paints a whole generated floor into `ctx` (world px at 1:1): tiles, edges, wall tops, banks, props. */
 export function paintFloor(ctx: CanvasRenderingContext2D, floor: ArtFloor, palette: TilePalette, theme: ArtTheme): void {
   const pal = artPalette(palette, theme);

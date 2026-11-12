@@ -1,0 +1,144 @@
+<!doctype html>
+<!-- Dev tool, not part of the build: `npm run dev`, then /tools/dungeon-art-gallery.html.
+     The dungeon art pass (odd/tasks/dungeon-art-pass.md) per theme: the floor tile variants, every prop, a whole
+     generated floor and a boss arena, drawn by the game's own code (src/adapters/floor-layer.ts). A note per theme is
+     kept in this browser and "Copiar notas" copies them all. ?seed=7 picks the sample floors' seed, ?zoom=4 the scale. -->
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Arte de las mazmorras</title>
+<style>
+  body { margin: 0; background: #14121c; color: #d8d4e4; font: 13px monospace; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: #14121c; flex-wrap: wrap; border-bottom: 1px solid #2c2940; }
+  button, select { background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  section { margin: 14px 12px 26px; background: #1b1924; border: 1px solid #2c2940; border-radius: 6px; padding: 10px; }
+  h2 { margin: 0 0 8px; font: bold 15px monospace; }
+  h3 { margin: 12px 0 6px; font: bold 13px monospace; color: #b9b3cc; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  figure { margin: 0; text-align: center; }
+  figcaption { color: #8d88a0; margin-top: 3px; }
+  canvas { display: block; image-rendering: pixelated; }
+  .big { max-width: 100%; height: auto; }
+  textarea { box-sizing: border-box; width: 100%; height: 52px; margin-top: 10px; background: #22202e; color: inherit; border: 1px solid #4a4660; border-radius: 4px; padding: 4px 6px; font: inherit; }
+  #copied { color: #9ad08f; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Arte de las mazmorras</strong>
+  <label>Semilla <select id="seed"></select></label>
+  <label>Planta <select id="depth"><option>1</option><option selected>3</option><option>5</option></select></label>
+  <button id="copy">Copiar notas</button>
+  <span id="copied"></span>
+</header>
+<div id="themes"></div>
+<script type="module">
+  import { TILE } from '../src/core/tiles.ts';
+  import { startRun } from '../src/core/run.ts';
+  import { CRYPT, FOREST, CAVES, SWAMP, ECLIPSE } from '../src/data/dungeons.ts';
+  import { FLOOR_VARIANTS, THEME_SETS } from '../src/adapters/floor-art.ts';
+  import { artGrid, drawFloorTile, drawProp, paintArena, paintFloor } from '../src/adapters/floor-layer.ts';
+
+  const params = new URLSearchParams(location.search);
+  const zoom = Number(params.get('zoom') ?? 4);
+  const THEMES = [
+    { theme: 'crypt', label: 'Cripta', dungeon: CRYPT },
+    { theme: 'forest', label: 'Bosque Brumoso', dungeon: FOREST },
+    { theme: 'caves', label: 'Cuevas Inundadas', dungeon: CAVES },
+    { theme: 'swamp', label: 'Pantano Tóxico', dungeon: SWAMP },
+    { theme: 'abyss', label: 'Sima (abismo)', dungeon: ECLIPSE },
+  ];
+  const seedSelect = document.getElementById('seed');
+  for (let s = 1; s <= 12; s++) seedSelect.append(new Option(String(s), String(s), s === Number(params.get('seed') ?? 3), s === Number(params.get('seed') ?? 3)));
+  const depthSelect = document.getElementById('depth');
+
+  /** A canvas of `w`x`h` world px, shown `scale` times larger. */
+  function canvasOf(w, h, scale) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.style.width = `${w * scale}px`;
+    c.style.height = `${h * scale}px`;
+    return c;
+  }
+  function figure(canvas, caption) {
+    const f = document.createElement('figure');
+    const cap = document.createElement('figcaption');
+    cap.textContent = caption;
+    f.append(canvas, cap);
+    return f;
+  }
+
+  function section({ theme, label, dungeon }) {
+    const el = document.createElement('section');
+    el.innerHTML = `<h2>${label} <small style="color:#8d88a0">(${theme})</small></h2>`;
+
+    el.append(Object.assign(document.createElement('h3'), { textContent: `Variantes de suelo (${FLOOR_VARIANTS})` }));
+    const variants = document.createElement('div');
+    variants.className = 'row';
+    for (let v = 0; v < FLOOR_VARIANTS; v++) {
+      const c = canvasOf(TILE, TILE, zoom);
+      drawFloorTile(artGrid(c.getContext('2d'), dungeon.palette, theme), theme, v, 0, 0, 0.5, 0.5);
+      variants.append(figure(c, `variante ${v}`));
+    }
+    el.append(variants);
+
+    el.append(Object.assign(document.createElement('h3'), { textContent: 'Decoración' }));
+    const props = document.createElement('div');
+    props.className = 'row';
+    for (const { kind, weight, corner } of THEME_SETS[theme].props) {
+      const c = canvasOf(TILE, TILE, zoom);
+      const g = artGrid(c.getContext('2d'), dungeon.palette, theme);
+      drawFloorTile(g, theme, 0, 0, 0, 0.5, 0.5);
+      drawProp(g, theme, kind, 0, 0, 0.5);
+      props.append(figure(c, `${kind} · peso ${weight}${corner ? ' · esquina' : ''}`));
+    }
+    el.append(props);
+
+    el.append(Object.assign(document.createElement('h3'), { textContent: 'Planta generada y arena de jefe' }));
+    const samples = document.createElement('div');
+    samples.className = 'row';
+    try {
+      // The first generated floor from the chosen one (some floors are fixed rooms or arenas, with no tile grid).
+      let world = null;
+      let depth = Number(depthSelect.value);
+      for (let tries = 0; tries < 12 && !world?.arena?.tiles; tries++, depth++) world = startRun(Number(seedSelect.value), {}, depth, dungeon.id).world;
+      if (!world?.arena?.tiles) throw new Error('no generated floor in the next 12');
+      depth -= 1;
+      const grid = world.arena.tiles;
+      const floor = { ...grid, rooms: world.arena.rooms ?? [], ...(world.arena.water ? { water: world.arena.water } : {}), ...(world.pools ? { pools: world.pools } : {}) };
+      const c = canvasOf(grid.cols * TILE, grid.rows * TILE, 1);
+      c.className = 'big';
+      paintFloor(c.getContext('2d'), floor, dungeon.palette, theme);
+      samples.append(figure(c, `${dungeon.id} · semilla ${seedSelect.value} · planta ${depth} (sin enemigos ni efectos)`));
+    } catch (error) {
+      samples.append(Object.assign(document.createElement('p'), { textContent: `No se pudo generar la planta: ${error}` }));
+    }
+    const arena = canvasOf(480, 270, 1);
+    paintArena(arena.getContext('2d'), 480, 270, dungeon.palette, theme);
+    samples.append(figure(arena, 'arena de jefe (sin decoración a propósito)'));
+    el.append(samples);
+
+    const note = document.createElement('textarea');
+    note.placeholder = `Notas sobre ${label}...`;
+    note.value = localStorage.getItem(`art-note:${theme}`) ?? '';
+    note.addEventListener('input', () => localStorage.setItem(`art-note:${theme}`, note.value));
+    el.append(note);
+    return el;
+  }
+
+  function render() {
+    const root = document.getElementById('themes');
+    root.replaceChildren(...THEMES.map(section));
+  }
+  seedSelect.addEventListener('change', render);
+  depthSelect.addEventListener('change', render);
+  document.getElementById('copy').addEventListener('click', async () => {
+    const text = THEMES.map(({ theme, label }) => `## ${label}\n${localStorage.getItem(`art-note:${theme}`) ?? ''}`).join('\n\n');
+    await navigator.clipboard.writeText(text);
+    document.getElementById('copied').textContent = 'Copiado';
+  });
+  render();
+</script>
+</body>
+</html>
