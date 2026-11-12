@@ -41,6 +41,9 @@ describe('event -> sound mapping', () => {
     [{ type: 'lockSwitched', targetId: 'e' }, 'lock'],
     [{ type: 'lockReleased', reason: 'key' }, 'unlock'],
     [{ type: 'enemyTelegraph', enemyId: 'e', attack: 'bite', durationMs: 400 }, 'telegraph'],
+    // A perilous wind-up (odd/tasks/perilous-counter.md S1) has its own cue; the counterstep too (S2).
+    [{ type: 'enemyTelegraph', enemyId: 'e', attack: 'midnight', durationMs: 900, pierceRoll: true }, 'perilous'],
+    [{ type: 'perilousCounter', pos: { x: 0, y: 0 } }, 'counter'],
     [{ type: 'enemyAttack', enemyId: 'e', attack: 'bite' }, 'enemyAttack'],
     [{ type: 'bossStance', enemyId: 'e', stance: 'blade' }, 'stance'],
     [{ type: 'levelUp', level: 2 }, 'levelUp'],

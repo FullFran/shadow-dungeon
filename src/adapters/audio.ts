@@ -43,7 +43,8 @@ export const SOUND_IDS = [
   'lock',
   'unlock',
   'telegraph',
-  'zoneWarning',
+  'perilous',
+  'counter',
   'enemyAttack',
   'stance',
   'click',
@@ -106,6 +107,8 @@ export function soundFor(event: GameEvent): SoundId | null {
       return 'dodge';
     case 'perfectDodge':
       return 'perfectDodge';
+    case 'perilousCounter':
+      return 'counter';
     case 'rollStarted':
       return 'roll';
     case 'rollDenied':
@@ -117,8 +120,8 @@ export function soundFor(event: GameEvent): SoundId | null {
     case 'lockReleased':
       return 'unlock';
     case 'enemyTelegraph':
-      // A positional attack (pierceRoll) has its own warning: walk out of it, rolling will not help.
-      return event.pierceRoll ? 'zoneWarning' : 'telegraph';
+      // A perilous attack (pierceRoll) has its own warning, with the big red "!": a roll's i-frames will not help (walk out, or roll into it in time).
+      return event.pierceRoll ? 'perilous' : 'telegraph';
     case 'enemyAttack':
       return 'enemyAttack';
     case 'bossStance':
@@ -489,12 +492,23 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
       tone(s, t + 0.07, { type: 'triangle', from: 880, dur: 0.05, gain: 0.05 });
     },
   },
-  /** A positional attack winding up: a low, rising two-tone siren, unlike any other cue. */
-  zoneWarning: {
-    ms: 420,
+  /** A perilous attack winding up (with the big red "!"): a hard, bright strike, then a low rising two-tone siren, unlike any other cue. */
+  perilous: {
+    ms: 480,
     play: (s, t) => {
-      tone(s, t, { type: 'square', from: 330, to: 440, dur: 0.16, gain: 0.07 });
-      tone(s, t + 0.2, { type: 'square', from: 330, to: 523, dur: 0.18, gain: 0.07 });
+      tone(s, t, { type: 'square', from: 1568, to: 1175, dur: 0.07, gain: 0.08, attack: 0.002 });
+      noise(s, t, { filter: 'highpass', from: 3500, dur: 0.05, gain: 0.18 });
+      tone(s, t + 0.1, { type: 'square', from: 330, to: 440, dur: 0.15, gain: 0.07 });
+      tone(s, t + 0.28, { type: 'square', from: 330, to: 523, dur: 0.17, gain: 0.07 });
+    },
+  },
+  /** The counterstep: a sharp ring that snaps down into a thud, the attack turned back. */
+  counter: {
+    ms: 360,
+    play: (s, t) => {
+      tone(s, t, { type: 'triangle', from: 2093, to: 2637, dur: 0.09, gain: 0.12, attack: 0.002 });
+      tone(s, t + 0.06, { type: 'square', from: 523, to: 130, dur: 0.2, gain: 0.08 });
+      noise(s, t + 0.06, { filter: 'bandpass', from: 900, to: 300, dur: 0.16, gain: 0.2, q: 1.4 });
     },
   },
   enemyAttack: { ms: 110, play: (s, t, v) => noise(s, t, { filter: 'bandpass', from: 1300 * v, to: 400, dur: 0.1, gain: 0.16, q: 1.5 }) },
