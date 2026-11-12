@@ -6,6 +6,7 @@ import { ELITE_TRAIT_DEFS } from '../data/difficulty';
 import { computeDamage } from './damage';
 import { sweepCircle } from './geometry';
 import { landHitOnPlayer } from './hits';
+import { strikeInReach } from './counter';
 import { flowStep } from './flow';
 import { onContact } from './items';
 import { lineOfSight, tileCenter, tileOf } from './tiles';
@@ -136,9 +137,12 @@ export function contactPlayer(
     defenderTypes: state.player.types,
     ...(enemy.weakened ? { multiplier: enemy.weakened.factor } : {}),
   });
-  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(attack.pierceRoll || enemy.pierceRoll ? { pierceRoll: true } : {}) }, events);
+  const perilous = attack.pierceRoll === true || enemy.pierceRoll === true;
+  // A perilous strike within reach of its attacker can be countered (core/counter.ts); a zone landing away from it is ground.
+  const counter = perilous && strikeInReach(state.player.pos, enemy) ? { counter: { attackerId: enemy.id } } : {};
+  const landed = landHitOnPlayer(state, { damage, type: attack.type, from: enemy.pos, ...(perilous ? { pierceRoll: true } : {}), ...counter }, events);
   if (landed.outcome === 'hurt' || landed.outcome === 'absorbed') onContact(state.player, enemy, events);
-  const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge';
+  const dodged = landed.outcome === 'dodged' || landed.outcome === 'perfectDodge' || landed.outcome === 'countered';
   return { state: landed.state, contact: dodged ? 'dodged' : 'hit' };
 }
 

@@ -46,6 +46,25 @@ export const TUNING = {
     buffDurationMs: 3000,
   },
 
+  /**
+   * The counterstep (Contrapaso, core/counter.ts): rolling INTO a perilous
+   * (`pierceRoll`) shot or strike, with the hit landing within `windowMs`
+   * of the roll's start, counters it: no damage, the shot is gone, and the
+   * attacker is staggered and struck like a perfect dodge's reward.
+   */
+  counter: {
+    /** From the roll's start, per tier: harder tiers leave less time. */
+    windowMs: { easy: 180, normal: 160, hard: 140, nightmare: 120 },
+    /** The roll must head within this angle of where the hit comes from. */
+    maxAngleDeg: 60,
+    /** A strike is counterable only this close to its attacker's body (zones away from it are ground, not strikes). */
+    meleeReachPx: 28,
+    /** The counter's own hit on the attacker, times the perfect dodge's damage multiplier. */
+    power: 50,
+    staggerMs: 700,
+    knockback: 60,
+  },
+
   /** A boss changes phase or falls: the host slows its enemies so the player sees it (core/boss-moment.ts). */
   bossMoment: {
     slowMoMs: 1500,

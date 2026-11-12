@@ -38,9 +38,9 @@ function world(role: 'host' | 'guest' = 'host', localId = 'p1'): WorldState {
   return spawnEnemy({ ...w, player: { ...w.player, disguiseBroken: true } }, 'gastly', vec(60, 60), { dormant: true });
 }
 
-/** The local player mid-roll (in place: rolling along the shot's lane), inside its i-frames. */
+/** The local player mid-roll (along the shot's lane), inside its i-frames but past the counterstep's window (tests/core/counter.test.ts). */
 function rolling(w: WorldState): WorldState {
-  const next = run(w, input({ move: vec(0, -1), roll: true }), ticksFor(60));
+  const next = run(w, input({ move: vec(0, -1), roll: true }), ticksFor(180));
   expect(isInvulnerable(next.player)).toBe(true);
   return next;
 }

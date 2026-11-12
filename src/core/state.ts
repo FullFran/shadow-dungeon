@@ -488,6 +488,8 @@ export type GameEvent =
   | { type: 'rollDenied' }
   | { type: 'hitDodged' }
   | { type: 'perfectDodge' }
+  /** The counterstep (core/counter.ts): a perilous hit rolled into in time; `pos` is the player's. */
+  | { type: 'perilousCounter'; pos: Vec2 }
   /** `pierceRoll`: the hit was positional (rolling could not stop it); read by the balance harness only. */
   | { type: 'playerHurt'; damage: number; pierceRoll?: true }
   /** A spell card ended (host): its segment emptied, its timer ran out, or a survival card was survived (core/cards.ts). */
@@ -644,6 +646,8 @@ export interface WorldState {
    * out instead of rebuilding them with a clean hit record (#48, #49).
    */
   spentShots?: readonly string[];
+  /** Enemies owed a counterstep's hit (core/counter.ts): struck by the local player at its next combat step, then cleared. */
+  counterDue?: readonly string[];
   /** Oran Berries still on this floor (a guest's list follows the host's snapshots). */
   berries: readonly Berry[];
   lock: LockState;
@@ -695,4 +699,9 @@ export interface IncomingHit {
   from?: Vec2;
   /** A positional attack (data `pierceRoll`): the roll's i-frames do not stop it, and it is never a perfect dodge. */
   pierceRoll?: boolean;
+  /**
+   * A perilous shot, or a perilous strike within reach of its attacker: rolling into it in time counters it
+   * (core/counter.ts). `attackerId`: who takes the counter's hit (none: the shot is only destroyed).
+   */
+  counter?: { attackerId?: string };
 }
