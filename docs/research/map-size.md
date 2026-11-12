@@ -48,7 +48,7 @@ At 140 px/s (`src/data/tuning.ts:14`, 4.4 tiles/s) the median straight walk to t
 | Minimap | 4 HUD px per tile (3 on touch): 160 x 112 px for 40 x 28; the touch caption and the location plaque assume 40 columns. | `src/ui/hud-layout.ts` |
 | Floor layer | One canvas of cols x rows x 32² px painted once per floor. | `src/adapters/floor-layer.ts:626` |
 | Net snapshot | Tiles are never sent (every peer generates the floor from the seed and the host's tier); only entity count grows. | `src/net/protocol.ts` |
-| Expected level (one-hit cap, boss bands) | Measured on generated floors through `generatedFloor`; kept on Easy's shape after this change so the bands do not move. | `src/core/fairness.ts:44` |
+| Expected level (one-hit cap, boss bands) | Mean of 8 reference seeds through `generatedFloor`. Measured on Easy's shape on every tier after this change: on the new geometry the 8-seed mean drifted by noise (challenge-abra Nightmare F5: 313 to 221 XP, while 16 real seeds paid 334 as before), and the boss bands must not move. | `src/core/fairness.ts:44` |
 | Fixed arenas, shrine | Not generated: unaffected. | `src/data/rooms.ts` |
 
 ## 4. Recommendation (implemented, provisional)
@@ -59,13 +59,13 @@ Floor shape by tier (`FLOOR_SHAPES`, `src/data/dungeon.ts`), Easy unchanged:
 |---|---|---|---|---|---|---|---|---|
 | Easy | 40 x 28 | 3 x 2 | 4-6 | 5-9 x 4-8 | 36 | 1 | 315 | 5.7 |
 | Normal | 44 x 30 | 3 x 2 | 4-6 | 5-10 x 4-9 | 41 | 1.15 | 366 | 5.7 |
-| Hard | 52 x 38 | 4 x 3 | 5-7 | 5-10 x 4-9 | 52 | 1.45 | 551 | 7.2 |
-| Nightmare | 58 x 40 | 4 x 3 | 6-8 | 5-11 x 4-9 | 60 | 1.65 | 636 | 8.7 |
+| Hard | 52 x 38 | 4 x 3 | 4-6 | 5-10 x 4-9 | 51 | 1.4 | 520 | 5.7 |
+| Nightmare | 58 x 40 | 4 x 3 | 4-6 | 5-11 x 4-9 | 56 | 1.55 | 568 | 5.6 |
 
 (1000 seeds per tier, floors 1-6, Crypt pool; `tests/core/map-size.test.ts` re-measures walkScale.)
 
 - More cells than rooms on Hard and Nightmare: the extra cells are junctions, so the floor is longer to cross, like Mystery Dungeon's dummy rooms, without crowding it.
-- Rooms keep their density (the 2026-10-25 rule "harder rooms never have more enemies"); the floor has 1-2 more rooms.
+- Same 4-6 rooms on every tier, so enemies and experience per floor do not change (the 2026-10-25 rule "harder rooms never have more enemies" holds per room and per floor). A first try with 1-2 extra rooms on Hard and Nightmare (5-7, 6-8) gave +26 % and +53 % enemies per floor, raised the expected level and pushed four more Nightmare boss cards past the 1.8 kill margin (`npm run prove -- --judge`); more rooms is a one-line data change once the Nightmare band is retuned.
 - Clocks: fog closing, flood rise and the Sima's descent bonus stretch by `walkScale`. Collapse and gas need nothing.
 - Minimap: keeps Easy's footprint; the tile shrinks (2.76 HUD px on Nightmare).
 
@@ -73,13 +73,13 @@ Wave room (`WAVE_ROOM`): a floor that will hold one (its wave gate or its rolled
 
 ## 5. Costs measured
 
-Floor-layer paint (`paintFloor`, Chromium headless, desktop, Crypt floor 2, median of 12 seeds):
+Floor-layer paint (`paintFloor`, Chromium headless, desktop, idle machine, Crypt floor 2, 12 seeds; before is the base branch, where every tier is 40 x 28):
 
-| Tier | Size | Before | After | Layer memory |
+| Tier | Size | Before median | After median (max) | Layer memory |
 |---|---|---|---|---|
-| Easy | 40 x 28 | 33-47 ms | 47 ms | 4.4 MB |
-| Normal | 44 x 30 | 33 ms | 39 ms | 5.2 MB |
-| Hard | 52 x 38 | 33 ms | 62 ms | 7.7 MB |
-| Nightmare | 58 x 40 | 37 ms | 74 ms | 9.1 MB |
+| Easy | 40 x 28 | 26 ms | 21 ms (27) | 4.4 MB |
+| Normal | 44 x 30 | 21 ms | 24 ms (167, one outlier) | 5.2 MB |
+| Hard | 52 x 38 | 18 ms | 33 ms (39) | 7.7 MB |
+| Nightmare | 58 x 40 | 23 ms | 36 ms (42) | 9.1 MB |
 
-One-off per floor, roughly proportional to area; a slow phone may take 3-4x (a hitch of about 0.25 s on Nightmare at floor entry). Generation itself stays under 0.3 ms.
+One-off per floor, roughly proportional to area (about 1.6x on Nightmare); a slow phone may take 3-4x (well under 0.2 s at floor entry). Generation itself stays under 0.3 ms.
