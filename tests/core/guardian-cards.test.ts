@@ -17,6 +17,8 @@ import { vec, type Vec2 } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { IDLE } from './helpers';
+import { bounceOff, driveShot } from '../../src/core/kinematics';
+import { aimedThreats, patternDensity, positionalStep, stepPatterns } from '../../src/core/card-fairness';
 import { computeDamage } from '../../src/core/damage';
 import { firePattern } from '../../src/core/danmaku';
 import { hitCap, speciesMaxHpAt } from '../../src/core/fairness';
@@ -43,23 +45,10 @@ const CARD_TIERS: readonly Difficulty[] = ['normal', 'hard', 'nightmare'];
 
 const fight = (species: SpeciesId, d: Difficulty): CardFightDef | undefined => fightOf(behaviourFor(species, d));
 
-const patternsOf = (s: CardStepDef): readonly DanmakuPattern[] => [s.pattern, ...(s.layers ?? [])];
+const patternsOf = stepPatterns;
 const shotOf = (p: DanmakuPattern) => ('shot' in p ? p.shot : undefined);
-const positional = (s: CardStepDef): boolean =>
-  patternsOf(s).some((p) => ((p.kind === 'sweep' || p.kind === 'zone') && p.attack.pierceRoll === true) || shotOf(p)?.pierceRoll === true);
-
-/** Aimed threats a move sends at one player at once: an aimed fan is one, turrets fire from `atOnce` places. */
-const aimedThreats = (s: CardStepDef): number => patternsOf(s).reduce((n, p) => n + (p.kind === 'fan' && p.aim === 'each' ? 1 : p.kind === 'turrets' ? p.atOnce : 0), 0);
-
-/** Shots per part (ring, fan, wave, volley): the density knob. */
-function density(p: DanmakuPattern): number {
-  if (p.kind === 'rings') return p.perRing - p.gap;
-  if (p.kind === 'spiral') return p.arms;
-  if (p.kind === 'fan') return p.perFan;
-  if (p.kind === 'turrets') return p.atOnce * p.perVolley;
-  if (p.kind === 'lanes' || p.kind === 'walls') return 1000 / p.spacing - p.gapWidth / p.spacing;
-  return 1;
-}
+const positional = positionalStep;
+const density = patternDensity;
 
 describe('guardian spell cards: structure per tier', () => {
   for (const { species } of GUARDIANS) {
@@ -239,8 +228,18 @@ function simulate(room: RoomId, d: Difficulty, f: CardFightDef, index: number, m
     const e = state.enemies[0]!;
     if (e.alive) state = updateCardFight(state, { ...e, ai: tickAiAt(e.ai, FIXED_DT_MS, d) }, f, state.player.pos, FIXED_DT_MS, events);
     const dt = FIXED_DT_MS / 1000;
+    // The shots fly as the engine flies them: their kinematics (curves, braking, gravity) and one bounce off the room's edge (core/kinematics.ts).
+    const outside = (q: Vec2) => q.x < 0 || q.y < 0 || q.x > width || q.y > height;
     const moved = state.projectiles
-      .map((p) => ({ ...p, pos: vec(p.pos.x + p.vel.x * dt, p.pos.y + p.vel.y * dt), remainingMs: p.remainingMs - FIXED_DT_MS }))
+      .map((p) => {
+        const driven = p.kin ? driveShot(p.vel, p.kin, FIXED_DT_MS) : { vel: p.vel, kin: p.kin };
+        let next = { ...p, vel: driven.vel, ...(driven.kin ? { kin: driven.kin } : {}), pos: vec(p.pos.x + driven.vel.x * dt, p.pos.y + driven.vel.y * dt), remainingMs: p.remainingMs - FIXED_DT_MS };
+        if (next.kin && next.kin.bounces > 0 && outside(next.pos)) {
+          const b = bounceOff(p.pos, next.pos, next.vel, outside);
+          if (b) next = { ...next, pos: b.pos, vel: b.vel, kin: { ...next.kin, bounces: next.kin.bounces - 1 } };
+        }
+        return next;
+      })
       .filter((p) => p.remainingMs > 0 && p.pos.x > -p.radius && p.pos.y > -p.radius && p.pos.x < width + p.radius && p.pos.y < height + p.radius)
       .filter((p) => !obstacles.some((o) => o.cover && p.pos.x > o.x && p.pos.x < o.x + o.width && p.pos.y > o.y && p.pos.y < o.y + o.height));
     state = { ...state, projectiles: moved };
@@ -370,7 +369,8 @@ describe('guardian spell cards: in a run', () => {
   it('Aegislash on normal declares its first card on sight; the bar shows the segments and the clock', () => {
     const played = runFor(throne('normal'), 2000);
     const boss = played.enemies[0]!;
-    expect(boss.boss!.stance).toBe('sc-aeg-walls');
+    // The waltz took the walls' place as the first card on Normal (odd/tasks/boss-patterns.md, decision 2b).
+    expect(boss.boss!.stance).toBe('sc-aeg-waltz');
     const bar = bossBar(played)!;
     expect(bar.segments).toHaveLength(3);
     expect(bar.segments![0]).toBeCloseTo(boss.maxHp * cardFloorShare(fight('aegislash', 'normal')!, 0));

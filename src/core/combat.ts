@@ -1,4 +1,5 @@
 import { tierHealing, worldDifficulty } from './difficulty';
+import { bounceOff, driveShot } from './kinematics';
 import { UNKILLABLE } from '../data/sima';
 import { cardHolds, cardHpFloor } from './cards';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
@@ -471,14 +472,22 @@ function updatePlayerAction(state: WorldState, input: PlayerInput, dtMs: number,
   return { ...current, player: { ...current.player, slotsHeld } };
 }
 
+/** Outside the map or, on tiled floors, in a wall (what a bouncing shot reflects off). */
+const outsideWalls = (state: WorldState, pos: Vec2) =>
+  pos.x < 0 || pos.y < 0 || pos.x > state.arena.width || pos.y > state.arena.height || Boolean(state.arena.tiles && wallAt(state.arena.tiles, pos));
+
+/** On a `cover` block (the arena pillars): it stops every shot. */
+const inCover = (state: WorldState, pos: Vec2) => (state.arena.obstacles ?? []).some((o) => o.cover === true && insideRect(pos, o));
+
 /** Inside the map and, on tiled floors, not in a wall: projectiles die on walls (and on `cover` blocks, the arena pillars). */
-const insideArena = (state: WorldState, pos: Vec2) =>
-  pos.x >= 0 &&
-  pos.y >= 0 &&
-  pos.x <= state.arena.width &&
-  pos.y <= state.arena.height &&
-  !(state.arena.tiles && wallAt(state.arena.tiles, pos)) &&
-  !(state.arena.obstacles ?? []).some((o) => o.cover === true && insideRect(pos, o));
+const insideArena = (state: WorldState, pos: Vec2) => !outsideWalls(state, pos) && !inCover(state, pos);
+
+/** An enemy shot's kinematics (core/kinematics.ts) over `ms`: its curve, acceleration and cap. */
+function driveKin(p: ProjectileState, ms: number): ProjectileState {
+  if (!p.kin) return p;
+  const driven = driveShot(p.vel, p.kin, ms);
+  return { ...p, vel: driven.vel, kin: driven.kin };
+}
 
 /** An enemy shot that bends (Duskull's wisp) turns its velocity towards the nearest present player, at most `degPerSec`. */
 function steerShot(state: WorldState, p: ProjectileState, ms: number): ProjectileState {
@@ -540,12 +549,17 @@ function updateProjectiles(state: WorldState, dtMs: number, events: GameEvent[])
   const survivors: ProjectileState[] = [];
   for (const projectile of state.projectiles) {
     const ms = dtMs * (projectile.owner === 'enemy' ? enemyTimeScale(state) : 1);
-    const steered = rearmZone(homeShot(current, steerShot(current, projectile, ms), ms), ms);
+    const steered = driveKin(rearmZone(homeShot(current, steerShot(current, projectile, ms), ms), ms), ms);
     let moved: ProjectileState | null = {
       ...steered,
       pos: add(projectile.pos, scale(steered.vel, ms / 1000)),
       remainingMs: projectile.remainingMs - ms,
     };
+    // A bouncing shot (core/kinematics.ts) reflects off the arena edge and wall tiles while it has bounces left; cover still stops it.
+    if (moved.remainingMs > 0 && moved.kin && moved.kin.bounces > 0 && !insideArena(current, moved.pos) && !inCover(current, moved.pos)) {
+      const bounced = bounceOff(projectile.pos, moved.pos, moved.vel, (p) => outsideWalls(current, p));
+      if (bounced) moved = { ...moved, pos: bounced.pos, vel: bounced.vel, kin: { ...moved.kin, bounces: moved.kin.bounces - 1 } };
+    }
     if (moved.remainingMs <= 0 || !insideArena(current, moved.pos)) {
       // A ranked boomerang that ran out on its way home is thrown again all the same.
       const again = moved.owner === 'player' && moved.returnAtMs === undefined ? rethrown(moved, current.player.pos) : null;

@@ -1,4 +1,4 @@
-import { fanDirections, laneGap, laneGapOf, sweepAngle, turretPoints, turretsFiring } from '../core/danmaku';
+import { familiarPoints, fanDirections, laneGap, laneGapOf, laserDirections, laserFiring, sweepAngle, turretPoints, turretsFiring, waveDirections } from '../core/danmaku';
 import type { EnemyState } from '../core/state';
 import type { Vec2 } from '../core/vec';
 import type { DanmakuCard, DanmakuDef, DanmakuPattern } from '../data/enemies';
@@ -61,8 +61,15 @@ export function drawCardFight(ctx: CanvasRenderingContext2D, enemy: EnemyState, 
   }
   if (ai.mode !== 'telegraph' && ai.mode !== 'attack') return;
   const step = cardStep(fight, enemy);
-  if (step) drawPattern(ctx, enemy, step.pattern, pos, arena, timeMs);
+  // The move's pattern and its layers (a laser or familiars layer warns like a pattern of its own).
+  if (step) for (const p of [step.pattern, ...(step.layers ?? [])]) drawPattern(ctx, enemy, p, pos, arena, timeMs);
 }
+
+/** Every pattern kind this module draws a telegraph for (tests/adapters/danmaku-vfx.test.ts iterates them). */
+export const TELEGRAPHED_KINDS: readonly DanmakuPattern['kind'][] = ['rings', 'spiral', 'lanes', 'fan', 'walls', 'turrets', 'sweep', 'zone', 'familiars', 'wave', 'closing', 'scatter', 'homing', 'laser'];
+
+/** Far enough to reach every wall of any arena. */
+const BEAM_PX = 1400;
 
 /** The telegraph of one danmaku pattern while it winds up (and, for sweeps and zones, while it strikes). */
 function drawPattern(ctx: CanvasRenderingContext2D, enemy: EnemyState, p: DanmakuPattern, pos: Vec2, arena: { width: number; height: number }, timeMs: number): void {
@@ -156,6 +163,102 @@ function drawPattern(ctx: CanvasRenderingContext2D, enemy: EnemyState, p: Danmak
         ctx.arc(at.x, at.y + bob, 16 + 6 * (1 - progress), 0, Math.PI * 2);
         ctx.stroke();
       }
+    }
+    return;
+  }
+  if (p.kind === 'familiars') {
+    // The familiars on their circle (where they are now), the ones about to fire glowing.
+    const points = familiarPoints(p, pos, ai.attackDir, arena, striking ? ai.modeMs : 0);
+    const next = turretsFiring(points.length, p.atOnce, winding ? 0 : Math.floor(ai.modeMs / p.gapMs) + 1);
+    for (const [i, at] of points.entries()) {
+      const hot = next.includes(i);
+      ctx.fillStyle = hot ? 'rgba(255, 140, 140, 0.9)' : 'rgba(210, 220, 245, 0.75)';
+      ctx.beginPath();
+      ctx.arc(at.x, at.y, 7 + Math.sin(timeMs / 200 + i) * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (hot) {
+        ctx.strokeStyle = EDGE;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(at.x, at.y, 14 + 5 * (1 - progress), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    return;
+  }
+  if (p.kind === 'wave' || p.kind === 'scatter' || p.kind === 'homing') {
+    if (!winding) return;
+    ctx.strokeStyle = EDGE;
+    ctx.lineWidth = 2;
+    if (p.kind === 'wave') {
+      // The arms swinging from the body.
+      const reach = enemy.radius + 6 + 64 * progress;
+      for (const d of waveDirections(ai.attackDir, { ...p, everyMs: Math.max(1, timeMs % p.periodMs) }, 1)) {
+        ctx.beginPath();
+        ctx.moveTo(pos.x + d.x * (enemy.radius + 4), pos.y + d.y * (enemy.radius + 4));
+        ctx.lineTo(pos.x + d.x * reach, pos.y + d.y * reach);
+        ctx.stroke();
+      }
+    } else if (p.kind === 'scatter') {
+      // The cone the spread fills.
+      const half = (p.coneDeg / 2) * DEG;
+      ctx.fillStyle = DANGER;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.arc(pos.x, pos.y, 80 + 40 * progress, aim - half, aim + half);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // The orbs gathering round the body.
+      ctx.fillStyle = 'rgba(255, 150, 210, 0.8)';
+      for (let i = 0; i < p.orbs; i++) {
+        const a = timeMs / 250 + (i * 2 * Math.PI) / p.orbs;
+        ctx.beginPath();
+        ctx.arc(pos.x + Math.cos(a) * (enemy.radius + 10), pos.y + Math.sin(a) * (enemy.radius + 10), 3 + 3 * progress, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    return;
+  }
+  if (p.kind === 'closing') {
+    // The ring that will close: on the mark, its gap lit on the side away from the boss.
+    const at = ai.aimPoint;
+    if (!at) return;
+    const ring = winding ? 0 : Math.floor(ai.modeMs / p.gapMs) + 1;
+    if (ring >= p.rings) return;
+    const gapAt = aim + ring * p.gapTurnDeg * DEG;
+    const half = ((p.gap + 1) / 2) * (360 / p.perRing) * DEG;
+    ctx.strokeStyle = EDGE;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, p.radius, gapAt + half, gapAt - half + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = SAFE;
+    ctx.beginPath();
+    ctx.moveTo(at.x, at.y);
+    ctx.arc(at.x, at.y, p.radius, gapAt - half, gapAt + half);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  if (p.kind === 'laser') {
+    // The warning lines of the volley about to fire: thin, brighter as the beam nears (owner option 4a).
+    const t = striking ? ai.modeMs : 0;
+    const volley = Math.floor(t / p.everyMs);
+    if (volley >= p.volleys) return;
+    const local = t - volley * p.everyMs;
+    const firing = laserFiring(p, Math.floor(t / p.beamEveryMs)) !== null;
+    if (local >= p.warnMs + p.fireMs) return;
+    const heat = winding ? 0.25 * progress : firing ? 1 : Math.min(1, local / Math.max(1, p.warnMs));
+    ctx.strokeStyle = `rgba(255, 80, 80, ${0.25 + 0.6 * heat})`;
+    ctx.lineWidth = firing ? 3 : 1;
+    for (const d of laserDirections(ai.attackDir, p, volley)) {
+      ctx.beginPath();
+      ctx.moveTo(pos.x + d.x * (enemy.radius + 2), pos.y + d.y * (enemy.radius + 2));
+      ctx.lineTo(pos.x + d.x * BEAM_PX, pos.y + d.y * BEAM_PX);
+      ctx.stroke();
     }
     return;
   }

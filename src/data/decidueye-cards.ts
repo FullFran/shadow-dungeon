@@ -1,5 +1,6 @@
 import { registerCards, type CardFightDef, type CardStepDef, type SpellCardDef } from './cards';
 import type { DanmakuShot } from './enemies';
+import { decBend, decSunbeam } from './pattern-cards';
 
 /**
  * Decidueye, el Arquero de la niebla, as a spell-card guardian on Normal and
@@ -159,7 +160,8 @@ export const DECIDUEYE_CARDS_NORMAL: CardFightDef = registerCards({
   ...FIGHT,
   maxShots: 100,
   power: 1,
-  cards: [volley(volleySteps(200, false), 0.25), leaves(leavesSteps(9, false), 0.25), feathers(feathersSteps(false, 4), 0.25), rain(rainSteps(170, 90, false), 0.25)],
+  // The bending arrows (data/pattern-cards.ts) take the leaves' place on Normal (owner decision 2b: the shares tie, the leaves had the highest kill margin); the leaves stay on Hard and Nightmare.
+  cards: [volley(volleySteps(200, false), 0.25), decBend('normal', 0.25), feathers(feathersSteps(false, 4), 0.25), rain(rainSteps(170, 90, false), 0.25)],
 });
 
 /** Hard: arrows x1.15 speed, leaf fans x1.22 density + a ring layer, the counter spiral and two more clone volleys, rain x1.1 speed; the survival card in phase 2. */
@@ -168,11 +170,13 @@ export const DECIDUEYE_CARDS_HARD: CardFightDef = registerCards({
   maxShots: 120,
   power: 1.12,
   cards: [
-    volley(volleySteps(230, false), 0.27),
-    leaves(leavesSteps(11, true), 0.27),
-    feathers(feathersSteps(true, 6), 0.23),
+    volley(volleySteps(230, false), 0.1944),
+    leaves(leavesSteps(11, true), 0.1944),
+    decBend('hard', 0.14),
+    feathers(feathersSteps(true, 6), 0.1656),
     forest(false),
-    rain(rainSteps(187, 86, false), 0.23),
+    decSunbeam('hard', 0.14),
+    rain(rainSteps(187, 86, false), 0.1656),
   ],
 });
 
@@ -184,12 +188,14 @@ export const DECIDUEYE_CARDS_NIGHTMARE: CardFightDef = registerCards({
   // The compressed chart cut Zorua's margin on the rain and the stitch (1.09, 1.10 < 1.1; the echo's feathers too): HP x0.95 restores it (odd/tasks/type-balance.md).
   hpScale: 0.95,
   cards: [
-    volley(volleySteps(230, true), 0.18),
-    leaves(leavesSteps(11, true), 0.18),
-    feathers(feathersSteps(true, 6), 0.18),
+    volley(volleySteps(230, true), 0.144),
+    leaves(leavesSteps(11, true), 0.144),
+    decBend('nightmare', 0.1),
+    feathers(feathersSteps(true, 6), 0.144),
     forest(true),
-    rain(rainSteps(187, 86, true), 0.18),
-    stitch,
-    moonless,
+    decSunbeam('nightmare', 0.1),
+    rain(rainSteps(187, 86, true), 0.144),
+    { ...stitch, hpShare: 0.128 },
+    { ...moonless, hpShare: 0.096 },
   ],
 });

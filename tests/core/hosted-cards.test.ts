@@ -99,7 +99,8 @@ describe('hosted spell cards: structure per tier', () => {
     it(`${species}: every card plays only moves its own engine knows, and only moves it already plays at that tier`, () => {
       const known = knownMoves(species);
       for (const d of CARD_TIERS) {
-        for (const card of fight(species, d)!.cards) {
+        // Pattern cards (data/pattern-cards.ts) play steps on the shared engine: tests/core/card-fairness.test.ts holds them.
+        for (const card of fight(species, d)!.cards.filter((c) => c.moves)) {
           expect(card.steps).toEqual([]);
           expect(card.moves!.length).toBeGreaterThan(0);
           for (const move of card.moves!) expect(known, `${d} ${card.id} ${move}`).toContain(move);
@@ -184,7 +185,8 @@ describe('hosted spell cards: in a run', () => {
       const p2 = { ...s0, enemies: s0.enemies.map((e) => (e.boss ? atCard(e, f, at) : e)) };
       const played = runUntil(p2, (s) => !isDeclaring(bossOf(s)), 4000).state;
       expect(bossOf(played).boss!.phase, species).toBe(2);
-      expect(bossOf(played).boss!.stance, species).toBe(f.cards[at]!.moves![0]);
+      // A hosted awakening plays its first move; a pattern one (Dhelmise's chain) keeps the card as its stance.
+      expect(bossOf(played).boss!.stance, species).toBe(f.cards[at]!.moves?.[0] ?? f.cards[at]!.id);
     }
   });
 

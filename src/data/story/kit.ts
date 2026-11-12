@@ -37,7 +37,27 @@ export type CardTemplate =
   /** Two walls close in from the sides with one row open, then aimed fans. */
   | 'walls'
   /** A wide static fan of crescents, then a blade swung around the body (stand off), as Aegislash's midnight cut. */
-  | 'blades';
+  | 'blades'
+  /** Hard+ (odd/tasks/boss-patterns.md): «Corte de Satélites», three familiars orbit the boss firing at the player in turn over slow rings, then gapped rings. */
+  | 'orbit'
+  /** Hard+: «Haz Partido», warned laser lines (fast shots) that turn each volley, then aimed fans. */
+  | 'beam'
+  /** Hard+: «Velo Errante», rings whose shots curve one way and the other in alternate rings, then a static fan that curls back. */
+  | 'curl';
+
+/** The extra pattern card a Senda boss plays from Hard (owner decision 2b: Normal fights keep their length). */
+export type ExtraTemplate = Extract<CardTemplate, 'orbit' | 'beam' | 'curl'>;
+
+const ORBIT_TYPES: readonly PokemonType[] = ['psychic', 'fairy', 'normal', 'water'];
+const BEAM_TYPES: readonly PokemonType[] = ['electric', 'fire', 'dragon', 'ice', 'steel', 'ground'];
+
+/**
+ * A boss's extra card, by its main bullets (docs/research/boss-patterns.md
+ * §4): psychic, fairy, normal and water ones orbit; electric, fire, dragon,
+ * ice, steel and ground ones beam; ghost, dark, poison and the rest curl
+ * (the research's `hang` needs hold-and-relaunch, E5, still pending).
+ */
+export const extraTemplateOf = (shots: ShotTypes): ExtraTemplate => (ORBIT_TYPES.includes(shots.a) ? 'orbit' : BEAM_TYPES.includes(shots.a) ? 'beam' : 'curl');
 
 /** The two of a boss's shot types: `a` its main bullets, `b` its layers and rings. */
 export interface ShotTypes {
@@ -102,6 +122,30 @@ function stepsOf(template: CardTemplate, k: Tier, t: ShotTypes, points: Points):
       return [
         { telegraphMs: 800, recoverMs: 1200, pattern: { kind: 'fan', fans: 6, perFan: ([9, 9, 11, 11] as const)[k], spreadDeg: 110, gapMs: 400, aim: 'first', shot: shotOf(t.a, 14, 120, 6, 6000) } },
         { telegraphMs: 900, recoverMs: 1600, pattern: { kind: 'sweep', radius: 125, sweepDeg: 360, sweepMs: 700, armDeg: 32, attack: { power: 30, type: t.b, pierceRoll: true } } },
+      ];
+    case 'orbit':
+      return [
+        {
+          telegraphMs: 900,
+          recoverMs: 2200,
+          pattern: { kind: 'familiars', count: 3, radius: 100, degPerSec: 40, centre: 'boss', atOnce: 1, volleys: 8, gapMs: 450, perVolley: 1, spreadDeg: 0, aim: 'target', shot: shotOf(t.a, 16, ([170, 180, 190, 190] as const)[k]) },
+          layers: [{ kind: 'rings', rings: 2, perRing: 12, gap: 3, gapTurnDeg: 30, gapMs: 1800, shot: shotOf(t.b, 13, 80, 6, 6000) }],
+        },
+        { telegraphMs: 800, recoverMs: 2200, pattern: { kind: 'rings', rings: 3, perRing, gap: 3, gapTurnDeg: 35, gapMs: 650, shot: shotOf(t.b, 15, 100, 6, 6000) } },
+      ];
+    case 'beam':
+      return [
+        {
+          telegraphMs: 900,
+          recoverMs: 2200,
+          pattern: { kind: 'laser', volleys: 3, everyMs: 1500, lines: k === 3 ? 4 : 3, fanDeg: 60, turnDeg: 15, warnMs: 650, fireMs: 400, beamEveryMs: 45, shot: shotOf(t.a, 18, 430, 4, 2000) },
+        },
+        { telegraphMs: 700, recoverMs: 2200, pattern: { kind: 'fan', fans: 4, perFan: 3, spreadDeg: 24, gapMs: 500, aim: 'each', shot: shotOf(t.b, 18, 200) } },
+      ];
+    case 'curl':
+      return [
+        { telegraphMs: 900, recoverMs: 2200, pattern: { kind: 'rings', rings: 3, perRing: ([14, 14, 14, 16] as const)[k], gap: 3, gapTurnDeg: 30, gapMs: 700, shot: { ...shotOf(t.a, 15, 100, 6, 6000), kin: { curveDegPerSec: 30, curveAlternate: true } } } },
+        { telegraphMs: 800, recoverMs: 2200, pattern: { kind: 'fan', fans: 4, perFan: 7, spreadDeg: 90, gapMs: 550, aim: 'first', shot: { ...shotOf(t.b, 15, 120, 6, 6000), kin: { curveDegPerSec: -25, curveAlternate: true } } } },
       ];
     case 'walls':
       return [
@@ -190,6 +234,8 @@ export interface StoryBossDef {
 const FIGHT = { aggroRange: 900, breakMs: 1200, phase2BreakMs: 1800, walkSpeed: 55, keepDistance: 110 } as const;
 const POWER: Tier4<number> = [0.9, 1, 1.12, 1.22];
 const MAX_SHOTS: Tier4<number> = [80, 100, 120, 140];
+/** The bar share (before the last word's) of a boss's extra card on Hard and Nightmare. */
+const EXTRA_SHARE = 0.15;
 
 /** The signature cards a tier plays: a mid-boss 2, 2, 3 and 3; a wound 2, 3, 4 and 4 (its fourth from Hard). */
 const signatureCount = (boss: StoryBossDef, k: Tier): number => (boss.wound ? [2, 3, 4, 4] : [2, 2, 3, 3])[k]!;
@@ -217,6 +263,10 @@ function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
   if (k >= 2) {
     // The survival card comes after the third signature card (a wound's fourth follows it).
     cards.splice(3, 0, { id: cardId(boss, 'survival'), nameKey: spellKey(boss.id, 'survival'), hpShare: 0, timerMs: 15_000, survival: true, restMs: 500, steps: survivalSteps(k, boss.shots, points) });
+    // Its extra pattern card (odd/tasks/boss-patterns.md) follows the survival card, with `EXTRA_SHARE` of the bar the signature cards give up.
+    const extra = extraTemplateOf(boss.shots);
+    for (const c of cards) c.hpShare *= 1 - EXTRA_SHARE;
+    cards.splice(4, 0, { id: cardId(boss, extra), nameKey: spellKey(boss.id, extra), hpShare: (1 - last) * EXTRA_SHARE, timerMs: 35_000, restMs: 600, steps: stepsOf(extra, k, boss.shots, points) });
   }
   if (k === 3) cards.push({ id: cardId(boss, 'last'), nameKey: spellKey(boss.id, 'last'), hpShare: last, timerMs: 35_000, lastSpell: true, restMs: 600, steps: lastSteps(boss.shots, points, boss.last) });
   return registerCards({ ...FIGHT, maxShots: MAX_SHOTS[k], power: POWER[k], hpScale: boss.hpScale[k], cards });
@@ -226,7 +276,7 @@ function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
 export const fightsOf = (boss: StoryBossDef): Tier4<CardFightDef> => [fightOf(boss, 0), fightOf(boss, 1), fightOf(boss, 2), fightOf(boss, 3)];
 
 /** The card names a boss needs in the i18n (its signature cards, survival and last word). */
-export const cardNamesOf = (boss: StoryBossDef): string[] => [...boss.cards, 'survival', 'last'];
+export const cardNamesOf = (boss: StoryBossDef): string[] => [...boss.cards, 'survival', 'last', extraTemplateOf(boss.shots)];
 
 /**
  * A Senda boss's arena: about one screen big, four pillars to hide behind
