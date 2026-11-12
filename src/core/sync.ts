@@ -1,3 +1,4 @@
+import type { ShotKin } from './kinematics';
 import { crossFogWall } from './fog-wall';
 import { worldDifficulty } from './difficulty';
 import { asHerald } from './herald/floor';
@@ -114,6 +115,8 @@ export interface ProjectileSnapshot {
   mult?: number;
   /** Enemy shots only: a curse's length (Yamask's, data/crypt-enemies.ts). */
   curseMs?: number;
+  /** Enemy shots only: its kinematics (core/kinematics.ts), so the guest steps it as the host does. */
+  kin?: ShotKin;
 }
 
 export interface HostSnapshot {
@@ -145,6 +148,7 @@ function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
     ...(p.pierceRoll ? { pierceRoll: true } : {}),
     ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
     ...(p.owner === 'enemy' && p.curseMs ? { curseMs: p.curseMs } : {}),
+    ...(p.owner === 'enemy' && p.kin ? { kin: p.kin } : {}),
     ...(p.owner === 'player' && p.moveId ? { moveId: p.moveId } : {}),
   };
 }

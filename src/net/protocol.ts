@@ -6,6 +6,7 @@ import { MOVES, type MoveId } from '../data/moves';
 import { SPECIES, isPlayable, type SpeciesId } from '../data/species';
 import { POKEMON_TYPES, type PokemonType } from '../data/types';
 import type { ActionPhase, AiMode, BossStance, HitClaim } from '../core/state';
+import type { ShotKin } from '../core/kinematics';
 import type { EnemySnapshot, HostSnapshot, PlayerSnapshot, ProjectileSnapshot } from '../core/sync';
 
 /**
@@ -245,19 +246,21 @@ function decodeEnemy(w: unknown): EnemySnapshot | null {
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
-  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move, an enemy shot's curse. An older peer ignores them.
-  const tail = p.curseMs !== undefined;
-  if (p.pierceRoll || p.mult !== undefined || p.moveId || tail) out.push(p.pierceRoll ? 1 : 0);
-  if (p.mult !== undefined || p.moveId || tail) out.push(p.mult === undefined ? 0 : r3(p.mult));
-  if (p.moveId || tail) out.push(p.moveId ?? 0);
-  if (tail) out.push(ri(p.curseMs!));
+  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move, an enemy shot's kinematics, an enemy shot's curse (0 fills a gap).
+  const kin = p.kin;
+  const curse = p.curseMs !== undefined;
+  if (p.pierceRoll || p.mult !== undefined || p.moveId || kin || curse) out.push(p.pierceRoll ? 1 : 0);
+  if (p.mult !== undefined || p.moveId || kin || curse) out.push(p.mult === undefined ? 0 : r3(p.mult));
+  if (p.moveId || kin || curse) out.push(p.moveId ?? 0);
+  if (kin || curse) out.push(kin ? [r3(kin.acc.x), r3(kin.acc.y), r3(kin.curve), r1(kin.max), kin.bounces, kin.stop ? 1 : 0] : 0);
+  if (curse) out.push(ri(p.curseMs!));
   return out;
 }
 
 /** A projectile from the wire, or null when its id, type or a number is off. */
 function decodeProjectile(w: unknown): ProjectileSnapshot | null {
   if (!Array.isArray(w)) return null;
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId, curseMs] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId, kin, curseMs] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -269,6 +272,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     number,
     number,
     number | undefined,
+    unknown,
     unknown,
     unknown,
     unknown,
@@ -287,7 +291,19 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     ...(finite(mult) && mult > 0 && mult <= MAX_SHOT_MULT ? { mult } : {}),
     ...(isMove(moveId) ? { moveId } : {}),
     ...(finite(curseMs) && curseMs > 0 && curseMs <= MAX_CURSE_MS ? { curseMs } : {}),
+    ...decodeKin(kin),
   };
+}
+
+/** The most bounces a shot may carry on the wire. */
+const MAX_BOUNCES = 3;
+
+/** An enemy shot's kinematics from the wire ([ax, ay, curve, max, bounces, stop]); nothing when absent or malformed. */
+function decodeKin(w: unknown): { kin?: ShotKin } {
+  if (!Array.isArray(w) || w.length < 6) return {};
+  const [ax, ay, curve, max, bounces, stop] = w as number[];
+  if (!allFinite([ax!, ay!, curve!, max!, bounces!]) || max! < 0 || !Number.isInteger(bounces) || bounces! < 0 || bounces! > MAX_BOUNCES) return {};
+  return { kin: { acc: { x: ax!, y: ay! }, curve: curve!, max: max!, bounces: bounces!, ...(stop === 1 ? { stop: true as const } : {}) } };
 }
 
 /** The longest curse an enemy shot may carry on the wire. */

@@ -14,8 +14,8 @@ const world = (shiny: boolean) => createWorld({ seed: 1, arena: { width: 800, he
 
 describe('shiny on the wire', () => {
   it('bumped the protocol (an older peer would drop the skin silently)', () => {
-    // 4: shiny skins; 5: player hits on the compressed chart and the card floor's `held` (odd/tasks/type-balance.md).
-    expect(PROTOCOL_VERSION).toBe(5);
+    // 4: shiny skins; 5: player hits on the compressed chart and the card floor's `held` (odd/tasks/type-balance.md); 6: enemy shot kinematics (odd/tasks/boss-patterns.md).
+    expect(PROTOCOL_VERSION).toBe(6);
   });
 
   it('hello and roster entries carry it only when it is exactly true', () => {

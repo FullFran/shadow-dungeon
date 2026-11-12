@@ -13,7 +13,8 @@ const world = (female: boolean, shiny = false) => createWorld({ seed: 1, arena: 
 
 describe('gender on the wire', () => {
   it('does not bump the protocol: it is optional and cosmetic, so builds with and without it still play together', () => {
-    expect(PROTOCOL_VERSION).toBe(5);
+    // Gender left it at 5; 6 came later with the enemy shot kinematics (odd/tasks/boss-patterns.md).
+    expect(PROTOCOL_VERSION).toBe(6);
     expect(CONTENT_HASH).toMatch(/^[0-9a-f]{8}$/);
   });
 
