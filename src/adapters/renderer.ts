@@ -1956,7 +1956,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
     drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}), cardResult: frame.cardResult ?? null, cardTip: frame.cardTip ?? null });
     drawFlashToast(ctx, current, juice, hud, { touch: frame.touchUi ?? false });
-    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false));
+    if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false, current.arena.tiles?.cols, current.arena.tiles?.rows));
     // The message log is the bottom-left corner's (the boss block is clear of it); it dims while a fight is on.
     if (frame.log) drawMessageLog(ctx, frame.log, timeMs, hud.height, combatHud.combat);
     if (frame.card) drawFloorCard(ctx, frame.card, timeMs, hud.width, hud.height);
@@ -1965,7 +1965,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
       // Touch: above the message log, clear of the action buttons in the bottom-right corner.
       const logLines = frame.touchUi && frame.log ? visibleMessages(frame.log, timeMs).length : 0;
       const grid = current.arena.tiles;
-      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows, minimapTilePx(frame.touchUi ?? false)) : null;
+      const underMap = grid ? minimapRect(hud, grid.cols, grid.rows, minimapTilePx(frame.touchUi ?? false, grid.cols, grid.rows)) : null;
       const at = frame.touchUi ? { x: 8, y: hud.height - 18 - (logLines > 0 ? logLines * 13 + 15 : 0) } : { x: hud.width - 8, y: (underMap ? underMap.y + underMap.height : 24) + 14, align: 'right' as const };
       drawNowPlaying(ctx, frame.nowPlaying, timeMs, hud.width, hud.height, at);
     }

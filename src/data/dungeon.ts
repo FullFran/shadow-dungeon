@@ -4,26 +4,62 @@ import type { RoomId } from './rooms';
 import type { SpeciesId } from './species';
 
 /**
- * Floor generator tuning (docs/gdd.md §3 "Plantas normales"). Sizes are in
- * tiles; the map is split into a grid of cells and each cell holds one room
- * or a corridor junction, Mystery Dungeon style. Values are provisional.
+ * The shape of a generated floor (docs/gdd.md §3 "Plantas normales"). Sizes
+ * are in tiles; the map is split into a grid of cells and each cell holds
+ * one room or a corridor junction, Mystery Dungeon style.
  */
+export interface FloorShape {
+  /** Map size in tiles (the outer ring is always wall). */
+  cols: number;
+  rows: number;
+  /** Cell grid laid over the map; every cell holds a room or a junction. */
+  cellCols: number;
+  cellRows: number;
+  rooms: { min: number; max: number };
+  /** Room size in tiles, inclusive bounds (capped by the cell). */
+  roomWidth: { min: number; max: number };
+  roomHeight: { min: number; max: number };
+  /** Extra corridors on top of the spanning tree, inclusive bounds. */
+  extraLoops: { min: number; max: number };
+  /**
+   * How much longer this shape's floors are to walk than Easy's (median
+   * start-to-stairs walk over Easy's; tests/core/map-size.test.ts measures
+   * it): the clocks that do not already follow the walking distance (the
+   * fog's closing, the flood's rise, the Sima's descent bonus) stretch by it.
+   */
+  walkScale: number;
+}
+
+/**
+ * Floors grow with the tier (owner request 2026-11-12, docs/research/map-size.md):
+ * Easy keeps the original 40x28 floor, Normal is a little roomier, Hard and
+ * Nightmare add a cell column and row (Nightmare is close to a Mystery
+ * Dungeon floor, 56x32). Every tier keeps 4 to 6 rooms: the extra cells are
+ * corridor junctions, so a floor is longer to walk but holds no more enemies
+ * nor experience (more rooms raised the Nightmare boss margins; pending the
+ * band's retune). The tier is the host's, so every co-op peer generates the
+ * same floor from the same seed.
+ */
+export const FLOOR_SHAPES: Readonly<Record<Difficulty, FloorShape>> = {
+  easy: { cols: 40, rows: 28, cellCols: 3, cellRows: 2, rooms: { min: 4, max: 6 }, roomWidth: { min: 5, max: 9 }, roomHeight: { min: 4, max: 8 }, extraLoops: { min: 1, max: 2 }, walkScale: 1 },
+  normal: { cols: 44, rows: 30, cellCols: 3, cellRows: 2, rooms: { min: 4, max: 6 }, roomWidth: { min: 5, max: 10 }, roomHeight: { min: 4, max: 9 }, extraLoops: { min: 1, max: 2 }, walkScale: 1.15 },
+  hard: { cols: 52, rows: 38, cellCols: 4, cellRows: 3, rooms: { min: 4, max: 6 }, roomWidth: { min: 5, max: 10 }, roomHeight: { min: 4, max: 9 }, extraLoops: { min: 2, max: 3 }, walkScale: 1.4 },
+  nightmare: { cols: 58, rows: 40, cellCols: 4, cellRows: 3, rooms: { min: 4, max: 6 }, roomWidth: { min: 5, max: 11 }, roomHeight: { min: 4, max: 9 }, extraLoops: { min: 2, max: 3 }, walkScale: 1.55 },
+};
+
+/**
+ * The wave room (salas de oleadas, core/sima-events.ts): a floor that will
+ * hold one gets a hall at least this big (interior tiles, walls excluded),
+ * never the start or the stairs room. Before 2026-11-12 any room could be
+ * the wave room, down to 5x4 (players complained it was cramped).
+ */
+export const WAVE_ROOM = { minWidth: 11, minHeight: 9, maxWidth: 14, maxHeight: 10 } as const;
+
+/** Floor generator constants shared by every shape. Values are provisional. */
 export const DUNGEON = {
   tileSize: 32,
-  /** Map size in tiles (the outer ring is always wall). */
-  cols: 40,
-  rows: 28,
-  /** Cell grid laid over the map; every cell holds a room or a junction. */
-  cellCols: 3,
-  cellRows: 2,
-  rooms: { min: 4, max: 6 },
-  /** Room size in tiles, inclusive bounds. */
-  roomWidth: { min: 5, max: 9 },
-  roomHeight: { min: 4, max: 8 },
   /** Corridor width in tiles: 2 leaves room to roll. */
   corridorWidth: 2,
-  /** Extra corridors on top of the spanning tree, inclusive bounds. */
-  extraLoops: { min: 1, max: 2 },
   spawns: {
     /** No spawn closer than this to the start (world px). */
     safeRadius: 192,

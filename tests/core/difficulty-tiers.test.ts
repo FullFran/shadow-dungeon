@@ -89,7 +89,9 @@ function fnv(text: string): string {
 // 'd0d94354' (more chests, odd/tasks/boss-items-events.md): with the event weights and chances put back on the merged 0.9.8 code it gives '68fd7315'.
 // '6434cee9' (the Crypt's second wave, odd/tasks/enemy-variety-crypt.md): new species in CRYPT_SPAWNS; with the pool put back the code gives 'd0d94354'
 // (the full suite was green at commit c1889f1 with the behaviours in and the old pool).
-const PRE_TIER_DIGEST = '6434cee9';
+// '5011c078' (wave rooms get a hall of at least 11x9, odd/tasks/map-size.md): only the Crypt floors that hold a wave room change; with
+// `holdsWaveRoom` forced to false the code gives '6434cee9' again (Easy keeps its 40x28 floors).
+const PRE_TIER_DIGEST = '5011c078';
 
 describe('difficulty tiers: easy is the game as it shipped', () => {
   it('easy changes nothing: every stat is 1, no extra enemies, no elites, unlimited restarts, coins ×1', () => {
@@ -195,9 +197,20 @@ describe('difficulty tiers: harder tiers', () => {
     // The rooms, without the floor events: those come more often on harder tiers by design (`encounters.frequency`) and bring their own enemies (odd/tasks/boss-items-events.md).
     const { events } = CRYPT;
     delete CRYPT.events;
+    // Harder tiers walk bigger floors (data/dungeon.ts `FLOOR_SHAPES`, owner request 2026-11-12) with the same rooms: neither a room nor the floor holds more.
     const count = (d: Difficulty) => [...Array(40).keys()].reduce((sum, seed) => sum + startRun(seed + 1, { difficulty: d }, 2).world.enemies.length, 0);
-    expect(count('nightmare')).toBeLessThanOrEqual(count('easy') * 1.15);
-    for (const seed of [1, 2, 3, 4]) expect(startRun(seed, { difficulty: 'normal' }, 2).world.enemies.map((e) => e.species)).toEqual(startRun(seed, {}, 2).world.enemies.map((e) => e.species));
+    for (const d of DIFFICULTIES) expect(count(d)).toBeLessThanOrEqual(count('easy') * 1.15);
+    const perRoom = (d: Difficulty) => {
+      let enemies = 0;
+      let rooms = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const { world } = startRun(seed, { difficulty: d }, 2);
+        enemies += world.enemies.length;
+        rooms += (world.arena.rooms?.length ?? 1) - 1;
+      }
+      return enemies / rooms;
+    };
+    for (const d of DIFFICULTIES) expect(perRoom(d)).toBeLessThanOrEqual(perRoom('easy') * 1.15);
     CRYPT.events = events;
   });
 

@@ -4,6 +4,7 @@ import { LEADER } from '../data/encounters';
 import { PROGRESSION } from '../data/progression';
 import { ROOMS } from '../data/rooms';
 import { SPECIES, type SpeciesId } from '../data/species';
+import { FLOOR_SHAPES } from '../data/dungeon';
 import { generatedFloor } from './floor-spawns';
 import { levelForXp, MAX_LEVEL, xpFor } from './progression';
 import { deriveSeed } from './rng';
@@ -41,7 +42,9 @@ export function expectedFloorXp(dungeon: DungeonId, floor: number, d: Difficulty
   if (!plan) return 0;
   if (plan.kind === 'room') return ROOMS[plan.room].spawns.reduce((sum, s) => sum + xpOf(s.species, floor), 0);
   let total = 0;
-  for (const seed of REFERENCE_SEEDS) total += generatedFloor(def, floor, deriveSeed(seed, floor), d).spawns.reduce((sum, s) => sum + xpOf(s.species, floor, s.leader), 0);
+  // Measured on the reference floor shape (Easy's, data/dungeon.ts `FLOOR_SHAPES`) on every tier: harder tiers walk bigger floors with
+  // the same rooms and budgets (odd/tasks/map-size.md), so they pay the same on average, and 8 seeds on another geometry would only add noise.
+  for (const seed of REFERENCE_SEEDS) total += generatedFloor(def, floor, deriveSeed(seed, floor), d, false, FLOOR_SHAPES.easy).spawns.reduce((sum, s) => sum + xpOf(s.species, floor, s.leader), 0);
   return total / REFERENCE_SEEDS.length;
 }
 

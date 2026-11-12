@@ -15,9 +15,14 @@ export interface FogState {
   elapsedMs: number;
   /** Time left before the next chill once the fog has closed. */
   chillMs: number;
+  /** The closing time's stretch on bigger floors (data/dungeon.ts `FloorShape.walkScale`); absent is 1 (Easy). */
+  scale?: number;
 }
 
-export const startFog = (): FogState => ({ elapsedMs: 0, chillMs: FOG.chillIntervalMs });
+/** A fog that closes over `FOG.closeMs` stretched by the floor's `walkScale` (a longer walk to the stairs, more time). */
+export const startFog = (scale = 1): FogState => ({ elapsedMs: 0, chillMs: FOG.chillIntervalMs, ...(scale !== 1 ? { scale } : {}) });
+
+const closeMsOf = (fog: FogState): number => FOG.closeMs * (fog.scale ?? 1);
 
 const smoothstep = (x: number): number => {
   const t = Math.min(1, Math.max(0, x));
@@ -25,13 +30,13 @@ const smoothstep = (x: number): number => {
 };
 
 /** How far the fog has closed, 0 (just arrived) to 1 (fully closed). */
-export const fogClosure = (fog: FogState): number => smoothstep((fog.elapsedMs - FOG.graceMs) / FOG.closeMs);
+export const fogClosure = (fog: FogState): number => smoothstep((fog.elapsedMs - FOG.graceMs) / closeMsOf(fog));
 
 /** Vision radius in tiles: shrinks from the start radius to the minimum and never grows back. */
 export const fogRadiusTiles = (fog: FogState): number => FOG.startTiles - (FOG.startTiles - FOG.minTiles) * fogClosure(fog);
 
 /** True once the fog has fully closed (it starts to chill). */
-export const fogClosed = (fog: FogState): boolean => fog.elapsedMs >= FOG.graceMs + FOG.closeMs;
+export const fogClosed = (fog: FogState): boolean => fog.elapsedMs >= FOG.graceMs + closeMsOf(fog);
 
 /** One step: the clock, and once closed a chill on the local player every interval (a floor hazard: no dodge, no Disguise). */
 export function updateFog(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {

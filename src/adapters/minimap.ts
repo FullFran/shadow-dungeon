@@ -152,13 +152,15 @@ export function drawMinimap(
   drawPanel(ctx, frame.x, frame.y, frame.width, frame.height, { alpha: 0.9, fill: 0.7 });
   const collapse = state.collapse;
   const front = collapse ? collapseFront(collapse) : 0;
+  // Tiles snap to whole HUD px (a big floor's tile is fractional, minimapTilePx): no seams between neighbours.
+  const at = (o: number, i: number) => Math.round(o + i * px);
   for (let y = 0; y < grid.rows; y++) {
     for (let x = 0; x < grid.cols; x++) {
       // Floor only, Mystery Dungeon style: rooms and corridors read as shapes on the dark panel.
       if (!isSeen(memory, x, y) || isWall(grid, x, y)) continue;
       const d = collapse ? (collapse.dist[y * grid.cols + x] ?? -1) : -1;
       ctx.fillStyle = front > 0 && d >= 0 && d < front ? COLORS.rubble : COLORS.floor;
-      ctx.fillRect(x0 + x * px, y0 + y * px, px, px);
+      ctx.fillRect(at(x0, x), at(y0, y), at(x0, x + 1) - at(x0, x), at(y0, y + 1) - at(y0, y));
     }
   }
   const marks = minimapMarks(state, memory, view);
