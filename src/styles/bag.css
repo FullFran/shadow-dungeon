@@ -1,6 +1,7 @@
 /* The bag (odd/tasks/items-bag.md): the loadout's bag step (src/app/loadout-bag-view.ts), the item stall (src/app/item-stall.ts)
    and the bag in a run (src/ui/bag-hud.ts). Class names never start with "ad-" (ad blockers hide them). */
-.bag-step { width: min(40rem, 100%); }
+.bag-step { width: min(48rem, 100%); }
+.bag-row-name span { white-space: nowrap; }
 .bag-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
 .bag-slot { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 8px; box-sizing: border-box; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); background: var(--relic-slab, #120d12); border: 2px dashed var(--relic-gold-deep, #6a4a2a); border-radius: 6px; }
