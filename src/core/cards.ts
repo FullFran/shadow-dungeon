@@ -23,7 +23,8 @@ import { worldDifficulty } from './difficulty';
  * when the boss's HP reaches the card's floor (`boss.hpFloor`: hits never go
  * below it while the card plays; and the segment's last HP holds,
  * `boss.holdFloor`, until the card floor's share of the timer: data/cards.ts
- * `CARD_FLOOR`)
+ * `CARD_FLOOR`; never on the last card, whose floor is 0: the hit that takes
+ * the boss's last HP kills it)
  * or when the timer runs out (the rest of the
  * segment is lost; on the last card that is the boss's end). A survival card
  * only ends with its timer. Ending clears every enemy shot and declares the
@@ -137,14 +138,24 @@ export function holdFloor(top: number, floor: number, cardMs: number, timerMs: n
 export const cardFloorOf = (state: Pick<WorldState, 'difficulty'>): number => CARD_FLOOR[worldDifficulty(state)];
 
 /**
+ * Whether a card's segment is the boss's last (its floor is 0): the last
+ * card has no hold, so the hit that takes the boss's last HP kills it
+ * (owner, 2026-11-12: "tenemos que quitar que si le das el golpe de que
+ * apenas le queda vida que no aguante. en le resto de fases si"). True for
+ * the last card a fight plays: a guardian's or hosted boss's last spell, a
+ * Senda boss's, a herald's, a Sima echo's last kept card.
+ */
+export const isLastSegment = (floor: number): boolean => floor <= 0;
+
+/**
  * A card boss after its clock moved (host): its hold for the card in play
- * (`holdFloor`, absent once the card floor stops holding or on a survival
- * card) and whether it sits on it now (`held`, synced for the guests'
- * feedback).
+ * (`holdFloor`, absent once the card floor stops holding, on a survival
+ * card, or on the last card: `isLastSegment`) and whether it sits on it now
+ * (`held`, synced for the guests' feedback).
  */
 export function holdBoss(state: Pick<WorldState, 'difficulty'>, enemy: EnemyState, top: number, floor: number, cardMs: number, card: Pick<SpellCardDef, 'timerMs' | 'survival'>): EnemyState {
   const { holdFloor: _last, held: _held, ...boss } = enemy.boss!;
-  const hold = card.survival ? floor : holdFloor(top, floor, cardMs, card.timerMs, cardFloorOf(state));
+  const hold = card.survival || isLastSegment(floor) ? floor : holdFloor(top, floor, cardMs, card.timerMs, cardFloorOf(state));
   if (hold <= floor) return enemy.boss!.holdFloor === undefined && !enemy.boss!.held ? enemy : { ...enemy, boss };
   return { ...enemy, boss: { ...boss, holdFloor: hold, ...(enemy.hp <= hold ? { held: true as const } : {}) } };
 }
@@ -161,8 +172,8 @@ export function cardHolds(enemy: Pick<EnemyState, 'boss' | 'hp'>, damage: number
   return enemy.boss?.held === true;
 }
 
-/** `holdBoss` for card `index` of a card fight. */
-const holdCard = (state: WorldState, enemy: EnemyState, fight: CardFightDef, index: number, cardMs: number): EnemyState =>
+/** `holdBoss` for card `index` of a card fight (exported for the tests). */
+export const holdCard = (state: WorldState, enemy: EnemyState, fight: CardFightDef, index: number, cardMs: number): EnemyState =>
   holdBoss(state, enemy, enemy.maxHp * (index === 0 ? 1 : cardFloorShare(fight, index - 1)), enemy.maxHp * cardFloorShare(fight, index), cardMs, fight.cards[index]!);
 
 /**

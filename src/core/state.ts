@@ -333,7 +333,8 @@ export interface BossState {
   hpFloor?: number;
   /**
    * Spell-card fight: the card floor's hold (core/cards.ts `holdFloor`), `HOLD_HP` above `hpFloor` until the card
-   * floor's share of its timer has run; hits never take the boss below it either (host only; absent once it stops holding).
+   * floor's share of its timer has run; hits never take the boss below it either (host only; absent once it stops holding,
+   * and never on the last card: core/cards.ts `isLastSegment`).
    */
   holdFloor?: number;
   /** The boss sits on its hold: hits are absorbed ("¡Aguanta!"). Synced: guests show the feedback from it. */

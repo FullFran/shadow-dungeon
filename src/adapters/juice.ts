@@ -111,7 +111,7 @@ export function applyEvents(juice: JuiceState, events: readonly GameEvent[], pla
         next = shake(next, 1.5);
         break;
       case 'cardHold':
-        // A spell card's floor absorbed the hit (core/cards.ts `paceFloor`): the boss holds.
+        // A spell card's floor absorbed the hit (core/cards.ts `holdFloor`): the boss holds.
         next = { ...next, numbers: [...next.numbers, { pos: event.pos, value: 0, style: 'hold', big: false, ageMs: 0 }] };
         break;
       case 'playerHurt':
