@@ -96,7 +96,7 @@ export interface BulletCell {
 
 /** Whether (u, v), in hitbox radii (u along the bullet's facing), is inside the shape. `anim` is 0 or 1. */
 function inShape(shape: BulletShape, u: number, v: number, anim: number): boolean {
-  const d = Math.hypot(u, v);
+  const d = Math.sqrt(u * u + v * v);
   const au = Math.abs(u);
   const av = Math.abs(v);
   switch (shape) {
@@ -161,7 +161,7 @@ function inShape(shape: BulletShape, u: number, v: number, anim: number): boolea
       return d <= 1.25 || (u < 0 && u >= -1.55 && Math.abs(av - 0.8) <= 0.3 * (1 + (u + 0.6) / 0.95));
     case 'crescent':
       // A crescent behind the core, its horns forward.
-      return d <= 1.5 && Math.hypot(u - 0.75, v) >= 1.15;
+      return d <= 1.5 && (u - 0.75) ** 2 + v * v >= 1.15 ** 2;
   }
 }
 
@@ -203,13 +203,21 @@ function roleAlpha(role: number, big: boolean, anim: number): number {
   return 1;
 }
 
+const ROLE_NAMES = Object.keys(ROLE) as (keyof typeof ROLE)[];
+/** Each type's palette by role index (painting a cell reads it per pixel). */
+const paletteByRole = new Map<PokemonType, [number, number, number][]>();
+
 function colour(cell: BulletCell, type: PokemonType, big: boolean, anim: number): BulletCell {
-  const palette = bulletPalette(type);
-  const names = Object.keys(ROLE) as (keyof typeof ROLE)[];
+  let palette = paletteByRole.get(type);
+  if (!palette) {
+    const named = bulletPalette(type);
+    palette = ROLE_NAMES.map((name) => (name === 'empty' ? [0, 0, 0] : named[name]));
+    paletteByRole.set(type, palette);
+  }
   for (let i = 0; i < cell.roles.length; i++) {
     const role = cell.roles[i]!;
     if (role === ROLE.empty) continue;
-    const [r, g, b] = palette[names[role] as Exclude<keyof typeof ROLE, 'empty'>];
+    const [r, g, b] = palette[role]!;
     cell.rgba[i * 4] = r;
     cell.rgba[i * 4 + 1] = g;
     cell.rgba[i * 4 + 2] = b;
@@ -225,6 +233,20 @@ const DIRS4 = [
   [0, -1],
 ] as const;
 const DIRS8 = [...DIRS4, [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
+
+/** The role at (x, y); outside the cell is empty. */
+function roleAt(roles: Uint8Array, size: number, x: number, y: number): number {
+  return x < 0 || y < 0 || x >= size || y >= size ? ROLE.empty : roles[y * size + x]!;
+}
+
+/** Whether a neighbour of (x, y) along `dirs` has a role in [min, max] (plain loops: this runs per pixel of every baked cell). */
+function touches(roles: Uint8Array, size: number, x: number, y: number, dirs: readonly (readonly [number, number])[], min: number, max: number): boolean {
+  for (let i = 0; i < dirs.length; i++) {
+    const role = roleAt(roles, size, x + dirs[i]![0], y + dirs[i]![1]);
+    if (role >= min && role <= max) return true;
+  }
+  return false;
+}
 
 /** Which direction and animation frame a flight frame index holds. */
 export function decodeFrame(frame: number): { dir: number; anim: number } {
@@ -251,13 +273,12 @@ export function paintBullet(type: PokemonType, radius: number, frame: number): B
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const roles = new Uint8Array(size * size);
-  const at = (x: number, y: number): number => (x < 0 || y < 0 || x >= size || y >= size ? ROLE.empty : roles[y * size + x]!);
-  const dist = (x: number, y: number): number => Math.hypot(x + 0.5 - c, y + 0.5 - c);
+  const dist = (x: number, y: number): number => Math.sqrt((x + 0.5 - c) ** 2 + (y + 0.5 - c) ** 2);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const px = x + 0.5 - c;
       const py = y + 0.5 - c;
-      const d = Math.hypot(px, py);
+      const d = Math.sqrt(px * px + py * py);
       if (d <= radius) {
         roles[y * size + x] = ROLE.core;
         continue;
@@ -277,9 +298,9 @@ export function paintBullet(type: PokemonType, radius: number, frame: number): B
   const shaded: number[] = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (at(x, y) !== ROLE.body) continue;
-      const touchesCore = DIRS4.some(([dx, dy]) => at(x + dx, y + dy) === ROLE.core);
-      const touchesOut = DIRS4.some(([dx, dy]) => at(x + dx, y + dy) === ROLE.empty);
+      if (roles[y * size + x] !== ROLE.body) continue;
+      const touchesCore = touches(roles, size, x, y, DIRS4, ROLE.core, ROLE.core);
+      const touchesOut = touches(roles, size, x, y, DIRS4, ROLE.empty, ROLE.empty);
       if (touchesCore && x + y + 1 < size) roles[y * size + x] = ROLE.rim;
       else if (touchesOut && (look.darkRim || x + y + 1 > size)) shaded.push(y * size + x);
     }
@@ -289,8 +310,8 @@ export function paintBullet(type: PokemonType, radius: number, frame: number): B
   const outline: number[] = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (at(x, y) !== ROLE.empty || dist(x, y) > reach + 0.5) continue;
-      if (DIRS4.some(([dx, dy]) => at(x + dx, y + dy) >= ROLE.body)) outline.push(y * size + x);
+      if (roles[y * size + x] !== ROLE.empty || dist(x, y) > reach + 0.5) continue;
+      if (touches(roles, size, x, y, DIRS4, ROLE.body, ROLE.ring)) outline.push(y * size + x);
     }
   }
   for (const i of outline) roles[i] = ROLE.outline;
@@ -298,8 +319,8 @@ export function paintBullet(type: PokemonType, radius: number, frame: number): B
   const glow: number[] = [];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (at(x, y) !== ROLE.empty || dist(x, y) > reach + 0.5) continue;
-      if (DIRS8.some(([dx, dy]) => at(x + dx, y + dy) === ROLE.outline)) glow.push(y * size + x);
+      if (roles[y * size + x] !== ROLE.empty || dist(x, y) > reach + 0.5) continue;
+      if (touches(roles, size, x, y, DIRS8, ROLE.outline, ROLE.outline)) glow.push(y * size + x);
     }
   }
   for (const i of glow) roles[i] = ROLE.glow;
@@ -318,7 +339,7 @@ export function paintHangRing(type: PokemonType, radius: number, step: number): 
     for (let x = 0; x < size; x++) {
       const px = x + 0.5 - c;
       const py = y + 0.5 - c;
-      const d = Math.hypot(px, py);
+      const d = Math.sqrt(px * px + py * py);
       if (Math.abs(d - ringAt) > 0.5 || d > reach + 0.5) continue;
       const tick = Math.floor(((Math.atan2(py, px) + Math.PI) / (Math.PI * 2)) * 12);
       roles[y * size + x] = tick % 2 === 0 ? ROLE.ring : ROLE.outline;
