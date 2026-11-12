@@ -118,6 +118,16 @@ describe('boss bar model', () => {
     expect(m.clock).toMatchObject({ seconds: 5, urgent: true });
     expect(model('sableye', 0.5, { segments: [300], cardLeftMs: 20000, stance: 'glint' }).clock?.urgent).toBe(false);
   });
+
+  it('the clock carries the share of the card\'s time left and the local capture seal (odd/tasks/last-phase-and-timer.md S3)', () => {
+    const bar = { enemyId: 'b1', species: 'sableye' as const, hp: 300, maxHp: 600, stance: 'glint' as const, segments: [300], cardLeftMs: 10_000, cardTimerMs: 40_000 };
+    const enemy = { types: ['ghost' as const], hitstunMs: 0 };
+    const live = bossBarModel({ bar, enemy, chip: 1, capture: { enemyId: 'b1', card: 'sc-x' as never, hit: false } });
+    expect(live.clock).toMatchObject({ seconds: 10, share: 0.25, seal: 'live' });
+    expect(bossBarModel({ bar, enemy, chip: 1, capture: { enemyId: 'b1', card: 'sc-x' as never, hit: true } }).clock?.seal).toBe('lost');
+    // A host bar without the card's timer (an older snapshot) still shows the seconds, the line full.
+    expect(bossBarModel({ bar: { ...bar, cardTimerMs: undefined }, enemy, chip: 1 }).clock).toMatchObject({ seconds: 10, share: 1, seal: null });
+  });
 });
 
 describe('boss stage: entrance and defeat', () => {

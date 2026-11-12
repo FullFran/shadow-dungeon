@@ -47,6 +47,8 @@ export const SOUND_IDS = [
   'enemyAttack',
   'stance',
   'click',
+  'cardTick',
+  'cardTickLast',
   'victory',
   'defeat',
   'collapse',
@@ -507,6 +509,9 @@ const SFX: Record<SoundId, { ms: number; play(s: Synth, t: number, v: number): v
     },
   },
   click: { ms: 30, play: (s, t) => tone(s, t, { type: 'square', from: 1000, dur: 0.025, gain: 0.05, attack: 0.002 }) },
+  // The spell card clock's last seconds (ui/card-clock.ts `cardTick`): a dry wooden tock each second, a higher double one on the last.
+  cardTick: { ms: 90, play: (s, t) => { tone(s, t, { type: 'triangle', from: 1400, to: 900, dur: 0.06, gain: 0.12, attack: 0.002 }); noise(s, t, { filter: 'bandpass', from: 2400, to: 1800, dur: 0.03, gain: 0.05, q: 3 }); } },
+  cardTickLast: { ms: 220, play: (s, t) => { tone(s, t, { type: 'triangle', from: 1900, to: 1300, dur: 0.07, gain: 0.13, attack: 0.002 }); tone(s, t + 0.11, { type: 'triangle', from: 1900, to: 1300, dur: 0.08, gain: 0.13, attack: 0.002 }); } },
   bossDefeated: {
     ms: 1500,
     // The boss is down: a low hit, a bright climbing fanfare and a held chord over a soft swell.

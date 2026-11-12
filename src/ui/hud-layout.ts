@@ -234,9 +234,43 @@ export function captionRect(space: HudDims, _slots = 4, touch = false): HudBox {
   return { x: Math.round((space.width - width) / 2), y: Math.floor(space.height * 0.25) - height, width, height };
 }
 
-/** What the hint bar must keep clear of in a boss fight: the boss block (the announcement is at the top now). */
+/**
+ * Room over the boss bar for the spell card clock (ui/card-clock.ts): its plate (digits, hourglass, capture seal,
+ * draining line) and the result band of a card's end above it, in HUD px.
+ */
+export const CARD_CLOCK = { plateWidth: 150, plateHeight: 35, bandHeight: 36, gap: 3 } as const;
+export const CARD_CLOCK_STACK = CARD_CLOCK.plateHeight + CARD_CLOCK.bandHeight + 2 * CARD_CLOCK.gap;
+
+/**
+ * Where the card clock and its result band go: over the boss bar, centred on it; on touch at its left end, so the
+ * thumb buttons on the right never cover it (owner: readable on a 568x320 phone).
+ */
+export function cardClockRect(boss: HudBox, touch = false): HudBox {
+  const width = Math.min(CARD_CLOCK.plateWidth, boss.width);
+  const x = touch ? boss.x : Math.round(boss.x + (boss.width - width) / 2);
+  return { x, y: boss.y - CARD_CLOCK_STACK, width, height: CARD_CLOCK_STACK };
+}
+
+/**
+ * The one-time card clock tip: under the boss announcement (the top centre, over the arena's top quarter, clear of
+ * the bottom HUD and the hint bar); on touch it starts after the status window and stays left of 72 % of the width
+ * (the lock button sits at the top right).
+ */
+export function cardTipRect(space: HudDims, touch = false): HudBox {
+  const caption = captionRect(space, 0, touch);
+  const height = 70;
+  if (touch) {
+    const width = Math.min(caption.width, Math.round(space.width * 0.72) - caption.x);
+    return { x: caption.x, y: caption.y + caption.height + 4, width, height };
+  }
+  const width = Math.max(caption.width, 300);
+  return { x: Math.round((space.width - width) / 2), y: caption.y + caption.height + 6, width, height };
+}
+
+/** What the hint bar must keep clear of in a boss fight: the boss block and the card clock over it (the announcement is at the top now). */
 export function bossStackRect(space: HudDims, slots = 4, touch = false): HudBox {
-  return bossRect(space, slots, touch);
+  const boss = bossRect(space, slots, touch);
+  return { ...boss, y: boss.y - CARD_CLOCK_STACK, height: boss.height + CARD_CLOCK_STACK };
 }
 
 export interface HudRectsOptions {

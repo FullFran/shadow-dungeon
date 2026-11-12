@@ -17,6 +17,8 @@ export interface LocationPlaque {
   show(plaque: Plaque): void;
   /** Takes it off at once (a window opened over play, the run ended). */
   hide(): void;
+  /** Whether a place is on screen now (the card clock's tip waits for it: they share the top of a phone). */
+  showing(): boolean;
   dispose(): void;
 }
 
@@ -104,6 +106,7 @@ export function mountLocationPlaque(parent: HTMLElement): LocationPlaque {
       );
     },
     hide,
+    showing: () => !root.hidden,
     dispose() {
       hide();
       root.remove();

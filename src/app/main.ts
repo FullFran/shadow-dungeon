@@ -2232,6 +2232,7 @@ async function play(root: HTMLElement, join?: NetJoin, dungeon: DungeonId = devD
     audio,
     hints: playHints,
     bossTip: { seen: () => settings.bossPhaseTipSeen, mark: () => update({ bossPhaseTipSeen: true }) },
+    cardTip: { seen: () => settings.cardTimerTipSeen, mark: () => update({ cardTimerTipSeen: true }) },
     onToggleMute: () => update({ muted: !settings.muted }),
     touch: { autoAim: () => settings.autoAim, haptics: () => settings.haptics },
     gamepad: gamepads,
