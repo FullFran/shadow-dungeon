@@ -1,4 +1,5 @@
-import type { SpawnTuning } from '../data/dungeon';
+import { RUN, type SpawnTuning } from '../data/dungeon';
+import { ITEM_EFFECTS, ORAN_BERRY } from '../data/items';
 import { DEFAULT_DIFFICULTY, ELITE_TRAIT_DEFS, ELITE_TRAITS, scaledTelegraphMs, TELEGRAPH_FLOOR, TIERS, type Difficulty, type EliteRule, type EliteTrait, type TierDef } from '../data/difficulty';
 import { ENEMY_BEHAVIOUR } from '../data/enemies';
 import { ROLES_PER_ROOM } from '../data/encounters';
@@ -36,7 +37,11 @@ export function eliteFor(floorSeed: number, index: number, d: Difficulty): Elite
 }
 
 /** The elites of a regular dungeon's floor at tier `d`: the tier's chance, the tier's traits, no HP bonus beyond the trait's. */
-export const tierEliteRule = (d: Difficulty): EliteRule => ({ chance: TIERS[d].eliteChance, traits: ELITE_TRAITS, hpScale: 1, pierceRollChance: 0 });
+export const tierEliteRule = (d: Difficulty): EliteRule => ({ chance: TIERS[d].eliteChance, traits: TIERS[d].eliteTraits ?? ELITE_TRAITS, hpScale: 1, pierceRollChance: 0 });
+
+/** The free healing of tier `d` (data/difficulty.ts `TierDef.healing`): the tier's override, else the game's own numbers. */
+export const tierHealing = (d: Difficulty): { floorHeal: number; berryChance: number; sustainPerSecond: number } =>
+  TIERS[d].healing ?? { floorHeal: RUN.floorHeal, berryChance: ORAN_BERRY.roomChance, sustainPerSecond: ITEM_EFFECTS.sustainPerSecond };
 
 /** The traits of `traits` an enemy of `species` may draw (volley only for casters). */
 export function fittingTraits(traits: readonly EliteTrait[], species?: SpeciesId): readonly EliteTrait[] {

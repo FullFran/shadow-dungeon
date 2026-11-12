@@ -1,3 +1,4 @@
+import { tierHealing, worldDifficulty } from './difficulty';
 import { ITEM_EFFECTS, ITEM_IDS, ITEM_OFFER, ITEMS, type ItemId, type StatModifiers } from '../data/items';
 import { TUNING } from '../data/tuning';
 import { levelDamage } from './progression';
@@ -115,29 +116,29 @@ export function rollCrit(state: WorldState, chance: number): { state: WorldState
 }
 
 /** Shell Bell's budget for `bells` stacks: HP per second it may heal (under the items' shared sustain ceiling, Leftovers first), and the most it holds. */
-const bellRate = (player: PlayerState, bells: number): number => {
-  const room = ITEM_EFFECTS.sustainPerSecond - ITEM_EFFECTS.leftoversPerSecond * itemCount(player, 'leftovers');
+const bellRate = (player: PlayerState, bells: number, ceiling: number): number => {
+  const room = ceiling - ITEM_EFFECTS.leftoversPerSecond * itemCount(player, 'leftovers');
   return Math.max(0, Math.min(ITEM_EFFECTS.shellBellPerSecond * bells, room)) * player.maxHp;
 };
-const bellBudget = (player: PlayerState, bells: number): number => bellRate(player, bells) * ITEM_EFFECTS.shellBellBurstSeconds;
+const bellBudget = (player: PlayerState, bells: number, ceiling: number): number => bellRate(player, bells, ceiling) * ITEM_EFFECTS.shellBellBurstSeconds;
 
 /**
  * onHitDealt: the player's hit took `damage` HP from an enemy. A direct hit
  * makes Shell Bell heal a share of it, out of its budget (`ITEM_EFFECTS`);
  * a zone tick, a chain jump, a split shard or a rethrow (`direct` false) heals nothing.
  */
-export function onHitDealt(player: PlayerState, damage: number, direct: boolean): PlayerState {
+export function onHitDealt(player: PlayerState, damage: number, direct: boolean, ceiling: number = ITEM_EFFECTS.sustainPerSecond): PlayerState {
   const bells = itemCount(player, 'shell-bell');
   if (bells <= 0 || player.hp <= 0 || !direct || damage <= 0 || player.hp >= player.maxHp) return player;
   const spent = player.shellBell ?? 0;
-  const heal = Math.min(damage * ITEM_EFFECTS.shellBellHeal * bells, bellBudget(player, bells) - spent, player.maxHp - player.hp);
+  const heal = Math.min(damage * ITEM_EFFECTS.shellBellHeal * bells, bellBudget(player, bells, ceiling) - spent, player.maxHp - player.hp);
   return heal > 0 ? { ...healed(player, heal), shellBell: spent + heal } : player;
 }
 
 /** Shell Bell's budget refills at its rate (the field is dropped once full). */
-function refillBell(player: PlayerState, dtMs: number): PlayerState {
+function refillBell(player: PlayerState, dtMs: number, ceiling: number): PlayerState {
   if (player.shellBell === undefined) return player;
-  const spent = player.shellBell - (bellRate(player, itemCount(player, 'shell-bell')) * dtMs) / 1000;
+  const spent = player.shellBell - (bellRate(player, itemCount(player, 'shell-bell'), ceiling) * dtMs) / 1000;
   const { shellBell: _full, ...rest } = player;
   return spent > 0 ? { ...player, shellBell: spent } : rest;
 }
@@ -183,12 +184,14 @@ export function applyRecoil(state: WorldState, events: GameEvent[]): WorldState 
 
 /** onTick: Shell Bell's budget, Leftovers regen and the Sitrus Berry's heal under its HP threshold (one per stack per floor). */
 export function onTick(state: WorldState, dtMs: number, events: GameEvent[]): WorldState {
-  let player = refillBell(state.player, dtMs);
+  // The held items' sustain ceiling is the tier's (core/difficulty.ts `tierHealing`: lower on Nightmare).
+  const ceiling = tierHealing(worldDifficulty(state)).sustainPerSecond;
+  let player = refillBell(state.player, dtMs, ceiling);
   if (player.hp <= 0 || player.items.length === 0) return player === state.player ? state : { ...state, player };
   const leftovers = itemCount(player, 'leftovers');
   // Waiting by a lit bonfire is not a way to heal for free: the fight on its floor still counts.
   const resting = state.bonfireLit === true && state.enemies.every((e) => !e.alive);
-  if (leftovers > 0 && !resting && player.hp < player.maxHp) player = healed(player, (ITEM_EFFECTS.leftoversPerSecond * leftovers * player.maxHp * dtMs) / 1000);
+  if (leftovers > 0 && !resting && player.hp < player.maxHp) player = healed(player, (Math.min(ITEM_EFFECTS.leftoversPerSecond * leftovers, ceiling) * player.maxHp * dtMs) / 1000);
   if (player.hp < ITEM_EFFECTS.sitrusThreshold * player.maxHp && usesOf(player, 'sitrus-berry') < itemCount(player, 'sitrus-berry')) {
     events.push({ type: 'itemTriggered', item: 'sitrus-berry' });
     player = healed(used(player, 'sitrus-berry'), ITEM_EFFECTS.sitrusHeal * player.maxHp);

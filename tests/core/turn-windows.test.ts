@@ -46,7 +46,7 @@ describe('tu turno: the tier table', () => {
       expect(turnMsFor(s, { survival: true })).toBe(0);
     }
     expect(TIERS.easy.turnMs).toBe(1600);
-    expect(TIERS.nightmare.turnMs).toBe(800);
+    expect(TIERS.nightmare.turnMs).toBe(700);
     // A pact that quickens the enemies keeps the real window: longer in enemy time.
     expect(turnMsFor({ difficulty: 'hard', simaPact: { enemySpeed: 1.25 } as never })).toBeCloseTo(1250);
   });

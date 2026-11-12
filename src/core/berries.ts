@@ -19,19 +19,20 @@ import { distance } from './vec';
 /** Salt that keeps berry placement independent of the floor generator's own draws. */
 const BERRY_SALT = 0xbe44;
 
-export function placeBerries(floor: Floor, seed: number, depth: number): Berry[] {
+/** `chance` per room: the tier's (core/difficulty.ts `tierHealing`); a lower chance keeps a subset of the same rooms. */
+export function placeBerries(floor: Floor, seed: number, depth: number, chance: number = ORAN_BERRY.roomChance): Berry[] {
   const taken = new Set([floor.start, floor.stairs, ...floor.spawns.map((s) => s.tile)].map((t) => `${t.x},${t.y}`));
   const berries: Berry[] = [];
   floor.rooms.forEach((room, index) => {
     if (index === floor.startRoom) return;
-    const chance = nextRandom(deriveSeed(seed, BERRY_SALT + index));
-    if (chance.value >= ORAN_BERRY.roomChance) return;
+    const roll = nextRandom(deriveSeed(seed, BERRY_SALT + index));
+    if (roll.value >= chance) return;
     const free: TilePoint[] = [];
     for (let y = room.y; y < room.y + room.height; y++) {
       for (let x = room.x; x < room.x + room.width; x++) if (!isWall(floor, x, y) && !taken.has(`${x},${y}`)) free.push({ x, y });
     }
     if (free.length === 0) return;
-    const tile = free[Math.floor(nextRandom(chance.state).value * free.length)]!;
+    const tile = free[Math.floor(nextRandom(roll.state).value * free.length)]!;
     berries.push({ id: `f${depth}b${index}`, pos: tileCenter(tile) });
   });
   return berries;
