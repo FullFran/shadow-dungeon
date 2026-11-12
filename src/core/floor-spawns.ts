@@ -37,3 +37,16 @@ export function floorEventPool(def: DungeonDef, floor: number, tier: Difficulty)
   if (def.endless) return endlessSpawns(def.endless, floor).pool.filter((e) => drawnAt(e, tier));
   return def.spawns.pool.filter((e) => weightAt(e, floor) > 0 && drawnAt(e, tier)).map((e) => ({ species: e.species, weights: [weightAt(e, floor)] }));
 }
+
+/**
+ * The rare species standing on a freshly loaded floor (a pool entry with
+ * `rare`, data/dungeon.ts), or null: the floor cues its arrival on entry
+ * (`floor.rare.<species>`). A pure function of the seeded spawns, so every
+ * peer of a shared run cues the same one.
+ */
+export function rareArrival(def: DungeonDef, floor: number, enemies: readonly { species: SpeciesId; alive: boolean }[]): SpeciesId | null {
+  const pool = def.endless ? endlessSpawns(def.endless, floor).pool : def.spawns.pool;
+  const rare = new Set(pool.filter((e) => e.rare).map((e) => e.species));
+  if (rare.size === 0) return null;
+  return enemies.find((e) => e.alive && rare.has(e.species))?.species ?? null;
+}

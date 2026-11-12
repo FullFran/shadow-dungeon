@@ -49,6 +49,13 @@ export const ENDLESS_POOL: readonly EndlessPoolEntry[] = [
   { species: 'duskull', minDepth: 2, weight: 2, bands: ['crypt'] },
   { species: 'pawniard', minDepth: 2, weight: 1, pack: 2, perDepth: 0.05, bands: ['crypt'] },
   { species: 'golett', minDepth: 3, weight: 1, perDepth: 0.1, bands: ['crypt'] },
+  // The Crypt's second wave (odd/tasks/enemy-variety-crypt.md): its stratum's own, with its tier gates; half weights,
+  // the stratum already triples them (the experience per floor stays within the encounters test's bound).
+  { species: 'honedge', minDepth: 1, weight: 0.5, bands: ['crypt'] },
+  { species: 'bronzor', minDepth: 2, weight: 0.5, bands: ['crypt'] },
+  { species: 'yamask', minDepth: 2, weight: 0.5, bands: ['crypt'] },
+  { species: 'murkrow', minDepth: 4, weight: 0.5, bands: ['crypt'], minDifficulty: 'normal' },
+  { species: 'klefki', minDepth: 4, weight: 0.2, bands: ['crypt'], rare: true, minDifficulty: 'hard' },
   // Misty Forest
   { species: 'pumpkaboo-small', minDepth: 1, weight: 2, pack: 3, perDepth: -0.1, bands: ['forest'] },
   { species: 'phantump', minDepth: 2, weight: 2, bands: ['forest'] },

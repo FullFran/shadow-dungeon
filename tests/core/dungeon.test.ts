@@ -93,7 +93,7 @@ describe('floor generator', () => {
           expect(insideRoom(spawn.tile, floor.rooms[spawn.room]!)).toBe(true);
           expect(distance(tileCenter(spawn.tile), start)).toBeGreaterThan(DUNGEON.spawns.safeRadius);
           expect(CRYPT_SPAWNS.pool.map((e) => e.species)).toContain(spawn.species);
-          if (depth === 1) expect(['poochyena', 'gastly']).toContain(spawn.species);
+          if (depth === 1) expect(['poochyena', 'gastly', 'honedge']).toContain(spawn.species);
           const key = `${spawn.tile.x},${spawn.tile.y}`;
           expect(used.has(key)).toBe(false);
           used.add(key);
@@ -114,11 +114,12 @@ describe('floor generator', () => {
     }
   });
 
-  it('mixes the Crypt species over many floors: only the M2 pair on floor 1, Golett and the evolved forms from floor 4, Gengar on 5', () => {
+  it('mixes the Crypt species over many floors: the M2 pair and Honedge on floor 1, Golett, Murkrow and the evolved forms from floor 4, Gengar on 5 (the raw table: tiers filter it, core/difficulty.ts)', () => {
     const at = (depth: number) => new Set(SEEDS.slice(0, 100).flatMap((seed) => generateFloor(seed, depth).spawns.map((s) => s.species)));
-    expect([...at(1)].sort()).toEqual(['gastly', 'poochyena']);
-    expect([...at(2)].sort()).toEqual(['duskull', 'gastly', 'pawniard', 'poochyena']);
-    expect([...at(4)].sort()).toEqual(['bisharp', 'dusclops', 'duskull', 'gastly', 'golett', 'haunter', 'mightyena', 'pawniard', 'poochyena']);
+    expect([...at(1)].sort()).toEqual(['gastly', 'honedge', 'poochyena']);
+    expect([...at(2)].sort()).toEqual(['bronzor', 'duskull', 'gastly', 'honedge', 'pawniard', 'poochyena', 'yamask']);
+    // Klefki is a rare spawn (weight 0.2): it may or may not show in 100 seeds.
+    expect([...at(4)].filter((s) => s !== 'klefki').sort()).toEqual(['bisharp', 'bronzor', 'dusclops', 'duskull', 'gastly', 'golett', 'haunter', 'honedge', 'mightyena', 'murkrow', 'pawniard', 'poochyena', 'yamask']);
     expect(at(5).has('gengar')).toBe(true);
   });
 

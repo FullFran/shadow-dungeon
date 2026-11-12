@@ -29,7 +29,7 @@ import { MOVES, type MoveId } from '../data/moves';
 import { SPECIES, type SpeciesId } from '../data/species';
 import { SPRITE_KEYS } from '../data/sprites';
 import type { UpgradeLevels } from '../data/upgrades';
-import { floorEventRules } from '../core/floor-spawns';
+import { floorEventRules, rareArrival } from '../core/floor-spawns';
 import { roomCleared } from '../core/rooms';
 import { collapseProximity } from '../core/collapse';
 import { atLeavingPoint, bossFell, bossPickDue, chooseItem, dungeonOf, floorPlanOf, followToFloor, isBossFloor, progressRun, picksAfterReturn, returnToFloor, roomExit, runClockStep, setClock, startRun, strayHere, withFogWall, withRewardOffer, floorMusic, type RunState } from '../core/run';
@@ -769,6 +769,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // The Forest's spirit light (core/wisp.ts).
     wispFound = false;
     if (world.wisp) say(t('forest.wisp.appear'), 'info');
+    // A rare spawn makes itself heard (data/dungeon.ts `SpawnEntry.rare`).
+    const rare = rareArrival(dungeonOf(run), run.floor, world.enemies);
+    if (rare) say(t(`floor.rare.${rare}`), 'info');
     // A Sima floor event makes itself known (not the monster house or the ambush: those are surprises).
     if (world.simaEvent && announcedOnEntry(world.simaEvent.kind)) say(t(`sima.log.${world.simaEvent.kind}.here`), 'warn');
     // The Eco del Eclipse copies a player of the party (core/eclipse-echo.ts `echoMimic`): the same pick on every peer (the host's roster).

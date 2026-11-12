@@ -19,14 +19,14 @@ describe('move shape', () => {
 
 describe('matchup against the Crypt', () => {
   it('lists the Crypt enemies, boss included', () => {
-    expect(cryptRoster()).toEqual(['poochyena', 'gastly', 'aegislash']);
+    expect(cryptRoster()).toEqual(['poochyena', 'honedge', 'gastly', 'aegislash']);
   });
 
   it('splits the roster into effective and not very effective targets', () => {
-    expect(matchup('normal')).toEqual({ strong: [], weak: ['gastly', 'aegislash'] });
-    expect(matchup('dark')).toEqual({ strong: ['gastly', 'aegislash'], weak: ['poochyena'] });
-    expect(matchup('fire')).toEqual({ strong: ['aegislash'], weak: [] });
-    expect(matchup('ground')).toEqual({ strong: ['gastly', 'aegislash'], weak: [] });
+    expect(matchup('normal')).toEqual({ strong: [], weak: ['honedge', 'gastly', 'aegislash'] });
+    expect(matchup('dark')).toEqual({ strong: ['honedge', 'gastly', 'aegislash'], weak: ['poochyena'] });
+    expect(matchup('fire')).toEqual({ strong: ['honedge', 'aegislash'], weak: [] });
+    expect(matchup('ground')).toEqual({ strong: ['honedge', 'gastly', 'aegislash'], weak: [] });
   });
 });
 
@@ -38,19 +38,19 @@ describe('move card lines', () => {
     expect(stats).toContain('Sin coste');
     expect(stats).toContain('arco corto');
     expect(stats).toContain('×5');
-    expect(hint).toContain('Poco eficaz contra Gastly, Aegislash');
+    expect(hint).toContain('Poco eficaz contra Honedge, Gastly, Aegislash');
     const [heavy] = moveInfoLines('night-daze');
     expect(heavy).toContain('Estamina 30');
     expect(heavy).toContain('anillo 360°');
   });
 
   it('names only the side that applies', () => {
-    expect(moveInfoLines('ember')[1]).toBe('Eficaz contra Aegislash');
+    expect(moveInfoLines('ember')[1]).toBe('Eficaz contra Honedge, Aegislash');
   });
 
   it('speaks English too', () => {
     setLanguage('en');
     expect(moveInfoLines('fury-swipes')[0]).toContain('short arc');
-    expect(moveInfoLines('fury-swipes')[1]).toBe('Not very effective against Gastly, Aegislash');
+    expect(moveInfoLines('fury-swipes')[1]).toBe('Not very effective against Honedge, Gastly, Aegislash');
   });
 });
