@@ -60,3 +60,16 @@ describe('a hosted fight plays pattern cards', () => {
     expect(played).toBeGreaterThan(0);
   });
 });
+
+describe('a phase-2 pattern card in a hosted fight', () => {
+  it('puts the boss engine in phase 2 for good, as a hosted phase-2 card does', () => {
+    const fight: CardFightDef = registerCards({ ...FIGHT, cards: [{ ...FIGHT.cards[0]!, id: 'sc-test-hostedawaken', phase2: true }, FIGHT.cards[1]!] });
+    let state: WorldState = spawnEnemy(world(vec(400, 450)), 'dhelmise', vec(400, 200));
+    for (let i = 0; i < Math.round(3000 / FIXED_DT_MS); i++) {
+      const before = state.enemies[0]!;
+      state = updateHostedCardFight(state, { ...before, ai: tickAiAt(before.ai, FIXED_DT_MS, 'normal') }, fight, state.player.pos, FIXED_DT_MS, [], (s) => s, () => 'undertow');
+    }
+    expect(state.enemies[0]!.boss?.stance).toBe('sc-test-hostedawaken');
+    expect(state.enemies[0]!.boss?.phase).toBe(2);
+  });
+});

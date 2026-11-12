@@ -201,6 +201,27 @@ Desde Normal, Aegislash y Decidueye pelean como un jefe de Touhou (`src/data/car
 
 En partida de tres o más, el movimiento de área de grupo (sección 8) entra una vez más en cada vuelta de cada carta.
 
+**Patrones nuevos y cartas nuevas** (`odd/tasks/boss-patterns.md`, `docs/research/boss-patterns.md`; motor en `src/core/kinematics.ts` y `src/core/danmaku.ts`, cartas en `src/data/pattern-cards.ts`):
+
+- **Familias nuevas para cualquier jefe con cartas:** brazos que oscilan en vez de girar, anillos que se cierran sobre donde estabas (el hueco mira lejos del jefe), dispersión con semilla dentro de un cono (igual en todos los equipos), orbes lentos que te siguen un rato, láseres (una línea de aviso fina y luego una fila de balas rápidas; nunca un rayo persistente) y familiares que orbitan al jefe o a la sala y disparan por turnos.
+- **Balas que cambian en vuelo:** aceleran o frenan (y vuelven por donde vinieron), frenan y se quedan quietas hasta apagarse, giran a ritmo constante, caen con gravedad o rebotan una vez en el borde de la sala (los pilares y árboles siguen parándolas). El anfitrión y los invitados las mueven igual: viajan en la instantánea y el protocolo pasa a la versión 6 (un equipo de otra versión se rechaza como siempre).
+- **Equidad de las familias** (`src/core/card-fairness.ts`, comprobada con tests en todos los jefes y niveles): un láser avisa al menos 400 ms; un familiar orbita a 60°/s como mucho; una curva gira 40°/s como mucho; una bala rebota una vez como mucho; un orbe que persigue gira 80°/s como mucho durante 2,5 s como mucho; un anillo que se cierra deja un hueco de al menos 40 px; una bala que vuelve no pasa de 140 px/s. Los orbes que persiguen y los familiares que apuntan cuentan como amenazas apuntadas.
+- **Caja de golpe:** el núcleo brillante de la bala es su caja de golpe; el brillo de alrededor no hace daño. Agujas (láseres, flechas, chispas) radio 4-5, orbes 6-7, balas grandes y lentas 8-9.
+- **Dónde entran (decisión 2b del dueño):** en Normal, la carta nueva de cada jefe sustituye a su carta más débil (la de menor tramo de vida; en empate, la de mayor margen de muerte en la prueba), que sigue en Difícil y Pesadilla. Las demás cartas nuevas entran en Difícil y Pesadilla (el Relámpago Abisal solo en Pesadilla). Los ecos de la Sima, los reflejos y desafíos del Santuario y los retos usan los mismos combates, así que también las tienen. En cooperativo no añaden balas por jugador: apuntan solo al objetivo del jefe y la escala de grupo (vida y daño) no cambia.
+
+| Jefe | Normal (sustituye a) | Difícil y Pesadilla |
+|---|---|---|
+| Aegislash | Juramento «Vals de la Hoja Errante» (Muralla Cerrada): dos espadas-escudo orbitan al Rey disparando abanicos hacia fuera, luego las espadas de las esquinas; protege su frente | + Edicto «Acero que Devuelve»: abanicos y anillos lentos que rebotan una vez en las paredes, con una espada de esquina |
+| Decidueye | Signo Niebla «Flechas que se Curvan» (Abanico del Claro): flechas que se curvan a un lado y al otro en andanadas alternas, luego anillos de hojas que se enroscan al revés con los clones | + Signo Hoja «Rayo del Claro»: tres láseres avisados que giran un poco cada andanada sobre anillos de hojas |
+| Sableye | Signo Joya «Gemas de Rebote» (Gemas Robadas): anillos y abanicos de gemas que rebotan una vez en la bóveda | — |
+| Trevenant | Signo Rama «Ramas al Viento» (Viajeros Perdidos): brazos de hojas que oscilan como ramas en la tormenta | + Maldición «Corro de Fuegos Fatuos»: un anillo de fuegos que se cierra sobre ti y dos fuegos que te siguen |
+| Lanturn | Signo Burbuja «Corriente de Retorno» (Señuelo): anillos que salen, frenan, vuelven atravesando a Lanturn y siguen por el otro lado; luego su descarga | + Signo Farol «Faroles a la Deriva»: tres luces que orbitan y disparan chispas de una en una. Pesadilla: + Signo Abismo «Relámpago Abisal» (dos láseres opuestos que giran) |
+| Dhelmise | Signo Ancla «Cadena del Ancla» (Corriente del Pecio; es su despertar en Normal): dos radios densos que giran despacio (rodéalo con el hueco), luego el kelp | + Signo Marea «Remolino Inverso»: un anillo de burbujas que se cierra curvándose, luego el ancla |
+| Salazzle | Signo Feromona «Chispas de Feromona» (Neblina de la Reina): chispas dispersas que frenan y quedan flotando hasta apagarse, luego una espiral de llamas | — |
+| Nihilego | Signo Ultra «Fractura del Cielo» (Joya Rota): láseres desde la grieta, un ángulo nuevo cada andanada, luego anillos de esquirlas | + Signo Toxina «Lluvia al Revés» (gotas lanzadas hacia ti que caen hacia arriba) y Signo Neurotoxina «Neurotoxina Errante» (orbes que te siguen sobre anillos) |
+
+Pendiente (sin aprobar aún, no descartado): balas que se paran y se relanzan apuntadas (E5) y balas que se parten (E6), con sus cartas («Espadas Suspendidas», «Plumas Dormidas», «Brillo Partido», «Flor de Llama»); que los heraldos de la Sima generen balas con cinemática (necesita su prueba analítica en `src/core/herald/fairness.ts`).
+
 En el servidor de desarrollo, `?card=N` empieza el combate en la carta N (para capturas); también un heraldo de la Sima.
 
 ### El Santuario de los Juramentos *(provisional)*

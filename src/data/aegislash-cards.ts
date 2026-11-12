@@ -1,5 +1,6 @@
 import { registerCards, type CardFightDef, type CardStepDef, type SpellCardDef } from './cards';
 import type { DanmakuShot } from './enemies';
+import { aegEdict, aegWaltz } from './pattern-cards';
 
 /**
  * Aegislash, el Rey de las Espadas, as a spell-card guardian on Normal and
@@ -184,7 +185,8 @@ export const AEGISLASH_CARDS_NORMAL: CardFightDef = registerCards({
   // The compressed chart (data/types.ts PLAYER_HIT_LEVELS) cut Zorua's Dark x2 margin on the walls and swords (1.25 < 1.5): HP x0.8 restores it (odd/tasks/type-balance.md).
   hpScale: 0.8,
   // Shares tuned by the beatability proof (src/sim/prove.ts): the walls give the fewest openings, the fans and the curtain the most.
-  cards: [walls(wallsSteps(120, false, false), 0.09), fans(fansSteps(9, false, false), 0.345), swords(swordsSteps(6, false, false), 0.21), hundred(hundredSteps(150, 100, false), 0.355)],
+  // The waltz (data/pattern-cards.ts) takes the walls' place on Normal (owner decision 2b: the weakest card, the lowest share); the walls stay on Hard and Nightmare.
+  cards: [aegWaltz('normal', 0.09), fans(fansSteps(9, false, false), 0.345), swords(swordsSteps(6, false, false), 0.21), hundred(hundredSteps(150, 100, false), 0.355)],
 });
 
 /** Hard: walls x1.15 speed, fans x1.22 density + a static ring layer, swords +2 volleys and a slow ring layer, curtain x1.1 speed; the survival card in phase 2. */
@@ -195,26 +197,31 @@ export const AEGISLASH_CARDS_HARD: CardFightDef = registerCards({
   // The compressed chart cut Zorua's margin on the fans (1.21 < 1.3): HP x0.9 restores it (odd/tasks/type-balance.md).
   hpScale: 0.9,
   cards: [
-    walls(wallsSteps(138, true, false), 0.27),
-    fans(fansSteps(11, true, false), 0.27),
-    swords(swordsSteps(8, true, false), 0.23),
+    walls(wallsSteps(138, true, false), 0.1944),
+    aegWaltz('hard', 0.14),
+    fans(fansSteps(11, true, false), 0.1944),
+    swords(swordsSteps(8, true, false), 0.1656),
     crown(false),
-    hundred(hundredSteps(165, 96, false), 0.23),
+    aegEdict('hard', 0.14),
+    hundred(hundredSteps(165, 96, false), 0.1656),
   ],
 });
 
 /** Nightmare: Hard's cards with aimed layers (and the swords' counter spiral), plus Juicio del Rey and the last word. */
 export const AEGISLASH_CARDS_NIGHTMARE: CardFightDef = registerCards({
   ...FIGHT,
-  maxShots: 170,
+  // The global ENEMY_SHOT_CAP (160) decides past it anyway: the data says what really plays (it said 170).
+  maxShots: 160,
   power: 1.22,
   cards: [
-    walls(wallsSteps(138, true, true), 0.18),
-    fans(fansSteps(11, true, true), 0.18),
-    swords(swordsSteps(8, true, true), 0.18),
+    walls(wallsSteps(138, true, true), 0.144),
+    aegWaltz('nightmare', 0.1),
+    fans(fansSteps(11, true, true), 0.144),
+    swords(swordsSteps(8, true, true), 0.144),
     crown(true),
-    hundred(hundredSteps(165, 96, true), 0.18),
-    judgement,
-    lastWord,
+    aegEdict('nightmare', 0.1),
+    hundred(hundredSteps(165, 96, true), 0.144),
+    { ...judgement, hpShare: 0.128 },
+    { ...lastWord, hpShare: 0.096 },
   ],
 });

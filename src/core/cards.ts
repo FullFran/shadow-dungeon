@@ -465,7 +465,11 @@ export function updateHostedCardFight(state: WorldState, start: EnemyState, figh
   const found = currentCard(fight, enemy.boss!);
   if (!found) return replaceEnemy(state, declare(enemy, fight, 0, 'start', events));
   // A pattern card among the hosted ones (odd/tasks/boss-patterns.md): the shared engine plays its steps, the boss's own waits.
-  if (!found.card.moves) return updateCardFight(state, start, fight, target, ms, events);
+  if (!found.card.moves) {
+    // A phase-2 pattern card (Dhelmise's chain on Normal) wakes its engine for good, as a hosted phase-2 card does.
+    const woken = found.card.phase2 && start.boss.phase !== 2 ? withBoss(start, { phase: 2 }) : start;
+    return updateCardFight(state, woken, fight, target, ms, events);
+  }
   const { card, index } = found;
   if (isDeclaring(enemy)) {
     if (!modeOver(ai)) return replaceEnemy(state, enemy);
