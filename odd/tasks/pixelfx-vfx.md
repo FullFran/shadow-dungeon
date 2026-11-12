@@ -32,7 +32,7 @@ Delivery: `ask-on-risk`, work-unit commits, push and PR are the owner's call. Te
 - [ ] PENDING: swamp crystal spire, crypt treasure pile, berry, nest, merchant still hand-drawn
 - [x] Status: burn and poison on enemies, poison on the player, roll dust, level up, boss stance, enemy death, summons
 - [ ] PENDING: mark and weakened keep their hand-drawn marks; player death has no effect; herald blink has no event hook
-- [ ] PENDING: enemy Bug, Ghost, Grass, Flying and Steel streak shots, spore clouds and roots keep their hand-drawn looks (they are readable fairness cues)
+- [x] Enemy shots in flight: every type is a baked pixel-art bullet with a hitbox-honest core (odd/tasks/bullet-art.md). Spore clouds and roots born still keep their hand-drawn looks (readable fairness cues)
 - [ ] PENDING: town embers and DOM screens (evolve, gacha, shiny sparkle) unchanged
 - [x] i18n: no player-facing text added
 - [x] Save/migrate/sanitize untouched. Net protocol: a player shot's optional trailing move id (L14)

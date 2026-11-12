@@ -112,14 +112,14 @@ describe('type colours', () => {
     expect(telegraphFill('flying', false)).toBe(withAlpha(TYPE_COLORS.flying.core, 0.5));
   });
 
-  it('draws the forest shots in their type colours: threads, arrows and leaves as streaks, spores as a Grass/Poison cloud', () => {
+  it('draws still forest shots in their type colours (spores as a Grass/Poison cloud); every moving shot is a bullet of its type (bullet-art.ts)', () => {
     const shot = (type: 'bug' | 'ghost' | 'grass' | 'poison', moving = true) => ({ type, radius: 5, vel: moving ? vec(100, 0) : vec(0, 0), remainingMs: 1000 });
-    expect(enemyShotLook(shot('bug'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.bug });
-    expect(enemyShotLook(shot('ghost'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.ghost });
-    expect(enemyShotLook(shot('grass'))).toEqual({ kind: 'streak', colors: TYPE_COLORS.grass });
-    expect(enemyShotLook(shot('poison', false))).toEqual({ kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge });
-    // Gastly's moving Poison ball keeps the orb look.
+    expect(enemyShotLook(shot('bug'))).toBeNull();
+    expect(enemyShotLook(shot('ghost'))).toBeNull();
+    expect(enemyShotLook(shot('grass'))).toBeNull();
     expect(enemyShotLook(shot('poison'))).toBeNull();
+    expect(enemyShotLook(shot('poison', false))).toEqual({ kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge });
+    expect(enemyShotLook(shot('grass', false))).toEqual({ kind: 'root' });
   });
 });
 

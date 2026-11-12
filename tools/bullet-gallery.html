@@ -1,0 +1,170 @@
+<!doctype html>
+<!-- Dev tool, not part of the build: `npm run dev`, then /tools/bullet-gallery.html.
+     Every type's enemy bullet (src/adapters/bullet-art.ts, baked by bullet-atlas.ts) side by side:
+     the three size classes in flight, the hanging state, the player's shot of the same type, on a dark and a bright floor.
+     ?scale=3 (pixels per world pixel) ?hitbox=1 (draw the true hitbox circle) ?stress=160 (frame cost of 160 bullets: atlas vs the old orb) -->
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Balas enemigas por tipo</title>
+<style>
+  body { margin: 0; background: #14121c; color: #d8d4e4; font: 13px monospace; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 14px; align-items: center; padding: 8px 12px; background: #14121c; flex-wrap: wrap; }
+  select, input { background: #22202e; color: inherit; border: 1px solid #4a4660; padding: 3px 6px; font: inherit; }
+  canvas { display: block; image-rendering: pixelated; }
+  #cards { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 12px 40px; }
+  .card { background: #1b1924; border: 1px solid #2c2940; border-radius: 6px; padding: 6px; }
+  .card h3 { margin: 2px 2px 6px; font: bold 13px monospace; }
+  .card h3 small { font-weight: normal; color: #8d88a0; }
+  .legend { color: #8d88a0; padding: 0 12px 8px; }
+  #stress { padding: 0 12px 12px; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Balas enemigas</strong>
+  <label>Escala <select id="scale"><option>2</option><option selected>3</option><option>4</option></select></label>
+  <label><input type="checkbox" id="hitbox" /> Hitbox real</label>
+  <label>Suelo <select id="floor"><option value="both">oscuro y claro</option><option value="dark">oscuro (cripta)</option><option value="light">claro (bosque)</option></select></label>
+  <label>Velocidad <select id="speed"><option value="1">normal</option><option value="0.5">x0,5</option><option value="0.25">x0,25</option><option value="0">quieto</option></select></label>
+  <span id="bake"></span>
+</header>
+<div class="legend">Columnas: S (radio 4), M (radio 6), L (radio 9) en vuelo; colgada (M, el anillo se cierra hasta que vuelve a volar); disparo del jugador del mismo tipo (dibujo de respaldo, sin borde oscuro). El núcleo claro es exactamente el hitbox; el color y el brillo no hacen daño.</div>
+<div id="stress"></div>
+<div id="cards"></div>
+<script type="module">
+  import es from '../src/i18n/es.json';
+  import { POKEMON_TYPES } from '../src/data/types.ts';
+  import { BULLET_LOOKS } from '../src/adapters/bullet-art.ts';
+  import { BAKE_BUDGET_MS, createBulletAtlas } from '../src/adapters/bullet-atlas.ts';
+  import { drawProjectileVfx } from '../src/adapters/move-vfx.ts';
+
+  const params = new URLSearchParams(location.search);
+  const atlas = createBulletAtlas();
+  // The game bakes in the background and draws plain orbs until a block is ready; this page bakes its sizes up front so every card is the final art.
+  for (const type of POKEMON_TYPES) for (const r of [4, 5, 6, 7, 9]) atlas.warm(type, r);
+  atlas.flush();
+  const scaleEl = document.getElementById('scale');
+  const hitboxEl = document.getElementById('hitbox');
+  const floorEl = document.getElementById('floor');
+  const speedEl = document.getElementById('speed');
+  if (params.get('scale')) scaleEl.value = params.get('scale');
+  if (params.get('hitbox') === '1') hitboxEl.checked = true;
+  const SHAPES = { orb: 'orbe', knuckle: 'puño', blade: 'espada', wisp: 'fuego fatuo', leaf: 'hoja', feather: 'pluma/flecha', thread: 'hilo con nudo', bubble: 'burbuja', spark: 'chispa', ember: 'ascua', drop: 'gota', shard: 'esquirla', pebble: 'guijarro', crystal: 'cristal', disc: 'disco', star: 'estrella', scale: 'escama', crescent: 'media luna' };
+  const FLOORS = { dark: ['#1c1a24', '#232030'], light: ['#7fa35a', '#8db466'] };
+  const W = 150;
+  const ROW = 34;
+  const COLS = [{ label: 'S', r: 4 }, { label: 'M', r: 6 }, { label: 'L', r: 9 }, { label: 'colgada', r: 6, hanging: true }, { label: 'jugador', r: 6, player: true }];
+
+  const cards = [];
+  for (const type of POKEMON_TYPES) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `<h3>${es[`type.${type}`] ?? type} <small>${SHAPES[BULLET_LOOKS[type].shape]} · ${BULLET_LOOKS[type].facing === 'velocity' ? 'apunta al vuelo' : BULLET_LOOKS[type].facing === 'spin' ? 'gira' : 'derecha'}</small></h3>`;
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    document.getElementById('cards').appendChild(el);
+    cards.push({ type, canvas, ctx: canvas.getContext('2d') });
+  }
+
+  function floors() {
+    return floorEl.value === 'both' ? ['dark', 'light'] : [floorEl.value];
+  }
+
+  function drawCard(card, timeMs) {
+    const scale = Number(scaleEl.value);
+    const fl = floors();
+    const h = ROW * fl.length + 12;
+    const width = COLS.length * 30 + 4;
+    if (card.canvas.width !== width * scale || card.canvas.height !== h * scale) {
+      card.canvas.width = width * scale;
+      card.canvas.height = h * scale;
+    }
+    const ctx = card.ctx;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, width, h);
+    fl.forEach((floor, i) => {
+      const y0 = i * ROW;
+      for (let x = 0; x < width; x += 8) { ctx.fillStyle = FLOORS[floor][(x / 8 + i) % 2]; ctx.fillRect(x, y0, 8, ROW); }
+      COLS.forEach((col, j) => {
+        const cx = 17 + j * 30;
+        const cy = y0 + ROW / 2;
+        const angle = timeMs / 900;
+        const vel = { x: Math.cos(angle) * 80, y: Math.sin(angle) * 80 };
+        if (col.player) drawProjectileVfx(ctx, { owner: 'player', radius: col.r, type: card.type, vel }, { x: cx, y: cy + 6 }, timeMs);
+        else {
+          const hang = col.hanging ? ((timeMs % 1600) / 1600) : undefined;
+          atlas.draw(ctx, card.type, col.r, { x: cx, y: cy }, timeMs, { state: col.hanging ? 'hanging' : 'flying', angle, ...(hang !== undefined ? { hang } : {}) });
+        }
+        if (hitboxEl.checked && !col.player) {
+          ctx.strokeStyle = '#ff2a6a';
+          ctx.lineWidth = 1 / scale;
+          ctx.beginPath();
+          ctx.arc(cx, cy, col.r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+    });
+    ctx.fillStyle = '#8d88a0';
+    ctx.font = '6px monospace';
+    COLS.forEach((col, j) => ctx.fillText(col.label, 6 + j * 30, ROW * fl.length + 9));
+  }
+
+  // ?stress=N: N bullets of every type flying round one canvas, drawn by the atlas or by the old orb, and what a frame of them costs.
+  const stressCount = Number(params.get('stress') ?? 0);
+  let stress = null;
+  if (stressCount > 0) {
+    const box = document.getElementById('stress');
+    box.innerHTML = '<label>Dibujar con <select id="mode"><option value="atlas">atlas (nuevo)</option><option value="orb">orbe a mano (antes, sin efectos)</option></select></label> <span id="cost"></span>';
+    const canvas = document.createElement('canvas');
+    canvas.width = 640 * 2;
+    canvas.height = 320 * 2;
+    canvas.style.width = '640px';
+    box.appendChild(canvas);
+    const shots = Array.from({ length: stressCount }, (_, i) => ({ type: POKEMON_TYPES[i % POKEMON_TYPES.length], r: [4, 5, 6, 7, 9][i % 5], a: (i * 2.4) % (Math.PI * 2), d: 30 + ((i * 37) % 130) }));
+    stress = { canvas, ctx: canvas.getContext('2d'), shots, samples: { atlas: [], orb: [] } };
+  }
+
+  function drawStress(timeMs) {
+    const { ctx, shots, samples } = stress;
+    const mode = document.getElementById('mode').value;
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#1c1a24';
+    ctx.fillRect(0, 0, 640, 320);
+    const started = performance.now();
+    for (const s of shots) {
+      const a = s.a + timeMs / 2000;
+      const pos = { x: 320 + Math.cos(a) * s.d * 1.8, y: 160 + Math.sin(a) * s.d * 0.9 };
+      const vel = { x: -Math.sin(a) * 80, y: Math.cos(a) * 80 };
+      if (mode === 'atlas') atlas.draw(ctx, s.type, s.r, pos, timeMs, { state: 'flying', angle: Math.atan2(vel.y, vel.x) });
+      else drawProjectileVfx(ctx, { owner: 'enemy', radius: s.r, type: s.type, vel }, { x: pos.x, y: pos.y + 6 }, timeMs);
+    }
+    const list = samples[mode];
+    list.push(performance.now() - started);
+    if (list.length > 240) list.shift();
+    const fmt = (l) => {
+      if (!l.length) return '-';
+      const sorted = [...l].sort((x, y) => x - y);
+      return `p50 ${sorted[Math.floor(sorted.length / 2)].toFixed(2)} ms · p95 ${sorted[Math.floor(sorted.length * 0.95)].toFixed(2)} ms (${l.length} frames)`;
+    };
+    document.getElementById('cost').textContent = `${shots.length} balas · atlas: ${fmt(samples.atlas)} · orbe: ${fmt(samples.orb)}`;
+    globalThis.__bulletStress = { atlas: [...samples.atlas], orb: [...samples.orb] };
+  }
+
+  let clock = 0;
+  let last = performance.now();
+  function frame(now) {
+    clock += (now - last) * Number(speedEl.value);
+    last = now;
+    for (const card of cards) drawCard(card, clock);
+    if (stress) drawStress(clock);
+    const st = atlas.stats();
+    document.getElementById('bake').textContent = `atlas: ${st.blocks} bloques en ${st.pages} página(s), horneado ${st.bakeMs.toFixed(1)} ms (en el juego, por tandas de ≤ ${BAKE_BUDGET_MS} ms)`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -271,26 +271,22 @@ export function drawPlayerVfx(ctx: CanvasRenderingContext2D, vfx: readonly Playe
 }
 
 /**
- * Look of an enemy shot: a still shot is a spore cloud (Poison puffs with
- * Grass specks: Foongus, Koffing, Grimer's sludge) or a puddle in its type
- * colours (Slugma's lava, Wooper's mud), Bug threads, Ghost arrows and Grass leaves are
- * streaks in their type colours; anything else (Gastly's Poison ball) keeps
- * the orb of `drawProjectileVfx` (null).
+ * Look of a still enemy shot (one born still: it lingers where it was put):
+ * a spore cloud (Poison puffs with Grass specks: Foongus, Koffing, Grimer's
+ * sludge), a puddle in its type colours (Slugma's lava, Wooper's mud) or
+ * Trevenant's roots. A moving shot is a bullet of its type (bullet-art.ts,
+ * baked in bullet-atlas.ts): null.
  */
-export type EnemyShotLook = { kind: 'streak'; colors: TypeColors } | { kind: 'cloud'; puff: string; speck: string; edge: string } | { kind: 'root' };
-
-const STREAK_TYPES: readonly PokemonType[] = ['bug', 'ghost', 'grass', 'flying', 'steel'];
+export type EnemyShotLook = { kind: 'cloud'; puff: string; speck: string; edge: string } | { kind: 'root' };
 
 export function enemyShotLook(p: Pick<ProjectileState, 'type' | 'vel'>): EnemyShotLook | null {
-  if (p.vel.x === 0 && p.vel.y === 0) {
-    // Still Grass shots are Trevenant's roots bursting from the ground.
-    if (p.type === 'grass') return { kind: 'root' };
-    // Poison keeps Foongus' spore look; other still shots are puddles in their type colours (lava, mud, water).
-    if (p.type === 'poison') return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
-    const c = TYPE_COLORS[p.type];
-    return { kind: 'cloud', puff: c.core, speck: c.glow, edge: c.edge };
-  }
-  return STREAK_TYPES.includes(p.type) ? { kind: 'streak', colors: TYPE_COLORS[p.type] } : null;
+  if (p.vel.x !== 0 || p.vel.y !== 0) return null;
+  // Still Grass shots are Trevenant's roots bursting from the ground.
+  if (p.type === 'grass') return { kind: 'root' };
+  // Poison keeps Foongus' spore look; other still shots are puddles in their type colours (lava, mud, water).
+  if (p.type === 'poison') return { kind: 'cloud', puff: TYPE_COLORS.poison.core, speck: TYPE_COLORS.grass.glow, edge: TYPE_COLORS.poison.edge };
+  const c = TYPE_COLORS[p.type];
+  return { kind: 'cloud', puff: c.core, speck: c.glow, edge: c.edge };
 }
 
 /** Draws an enemy shot with its look (lifted off the ground; the shadow is the renderer's). */
@@ -320,43 +316,23 @@ export function drawEnemyShotVfx(ctx: CanvasRenderingContext2D, look: EnemyShotL
     void timeMs;
     return;
   }
-  if (look.kind === 'cloud') {
-    const fade = Math.min(1, p.remainingMs / 600);
-    for (let i = 0; i < 5; i++) {
-      const a = timeMs / 700 + i * 1.3;
-      const at = { x: pos.x + Math.cos(a) * p.radius * 0.35, y: pos.y + Math.sin(a) * p.radius * 0.25 };
-      ctx.fillStyle = withAlpha(look.puff, 0.45 * fade);
-      ctx.beginPath();
-      ctx.arc(at.x, at.y, p.radius * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = withAlpha(look.speck, 0.7 * fade);
-      ctx.fillRect(Math.round(at.x + Math.sin(a * 2) * p.radius * 0.4), Math.round(at.y - p.radius * 0.3), 2, 2);
-    }
-    ctx.strokeStyle = withAlpha(look.edge, 0.5 * fade);
-    ctx.lineWidth = 1;
+  // A spore cloud or a puddle.
+  const fade = Math.min(1, p.remainingMs / 600);
+  for (let i = 0; i < 5; i++) {
+    const a = timeMs / 700 + i * 1.3;
+    const at = { x: pos.x + Math.cos(a) * p.radius * 0.35, y: pos.y + Math.sin(a) * p.radius * 0.25 };
+    ctx.fillStyle = withAlpha(look.puff, 0.45 * fade);
     ctx.beginPath();
-    ctx.ellipse(pos.x, pos.y, p.radius, p.radius * 0.7, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    return;
+    ctx.arc(at.x, at.y, p.radius * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = withAlpha(look.speck, 0.7 * fade);
+    ctx.fillRect(Math.round(at.x + Math.sin(a * 2) * p.radius * 0.4), Math.round(at.y - p.radius * 0.3), 2, 2);
   }
-  const c = look.colors;
-  ctx.save();
-  ctx.translate(pos.x, pos.y - 6);
-  ctx.rotate(Math.atan2(p.vel.y, p.vel.x));
-  ctx.fillStyle = withAlpha(c.glow, 0.4);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, p.radius * 2.3, p.radius * 1.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = c.core;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, p.radius * 1.8, p.radius * 0.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = c.edge;
+  ctx.strokeStyle = withAlpha(look.edge, 0.5 * fade);
   ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(pos.x, pos.y, p.radius, p.radius * 0.7, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.fillStyle = withAlpha(c.edge, 0.6);
-  ctx.fillRect(-p.radius * 1.4, -0.5, p.radius * 2.8, 1);
-  ctx.restore();
 }
 
 /** Fields a projectile needs to be drawn (a remote one from an older peer carries no type: it falls back to Ghost). */

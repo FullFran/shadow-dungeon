@@ -25,10 +25,13 @@ const VIEWPORTS = [
 /** Heavy scenes: a Nightmare spell card full of bullets, a crowded arena (co-op sized), a generated floor, the town. */
 const SCENES = [
   { name: 'boss-card', query: 'screen=run&dungeon=misty-forest&floor=8&card=2&seed=7', settings: { difficulty: 'nightmare' } },
+  // A card boss on the test arena from the first frame (`?spawn=`): the guardian rooms only wake their boss once the player walks in, so boss-card above shows no bullets.
+  { name: 'card-decidueye', query: 'screen=run&spawn=decidueye&card=2&seed=7', settings: { difficulty: 'nightmare' } },
+  { name: 'card-lanturn', query: 'screen=run&spawn=lanturn&card=1&seed=7', settings: { difficulty: 'nightmare' } },
   { name: 'crowd-12', query: 'screen=run&spawn=koffing,zubat,duskull,houndour,slugma,remoraid,koffing,zubat,duskull,houndour,slugma,remoraid&seed=7', settings: { difficulty: 'easy' } },
   { name: 'floor', query: 'screen=run&dungeon=crypt-of-the-sword-king&floor=3&seed=7', settings: { difficulty: 'hard' } },
   { name: 'town', query: 'screen=town', settings: {} },
-].filter((s) => !only || s.name === only);
+].filter((s) => !only || only.split(',').includes(s.name));
 
 const vite = await startVite(4417);
 const { page, stop } = await startFirefox(9347);
