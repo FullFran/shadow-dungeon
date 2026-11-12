@@ -1,3 +1,4 @@
+import type { ShotKin } from './kinematics';
 import { crossFogWall } from './fog-wall';
 import { worldDifficulty } from './difficulty';
 import { asHerald } from './herald/floor';
@@ -112,6 +113,8 @@ export interface ProjectileSnapshot {
   pierceRoll?: boolean;
   /** Enemy shots only: the damage multiplier when it is not 1 (a weakened enemy's shot, core/brain.ts `spawnShot`). */
   mult?: number;
+  /** Enemy shots only: its kinematics (core/kinematics.ts), so the guest steps it as the host does. */
+  kin?: ShotKin;
 }
 
 export interface HostSnapshot {
@@ -142,6 +145,7 @@ function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
     remainingMs: p.remainingMs,
     ...(p.pierceRoll ? { pierceRoll: true } : {}),
     ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
+    ...(p.owner === 'enemy' && p.kin ? { kin: p.kin } : {}),
     ...(p.owner === 'player' && p.moveId ? { moveId: p.moveId } : {}),
   };
 }

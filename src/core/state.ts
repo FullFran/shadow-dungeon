@@ -1,3 +1,4 @@
+import type { ShotKin } from './kinematics';
 import type { Difficulty, EliteTrait } from '../data/difficulty';
 import type { BreakRule, GateKind } from '../data/encounters';
 import type { AegislashCard, ArcherCard, DanmakuCard, EclipseCard, SteerDef, ThiefCard, TreantCard } from '../data/enemies';
@@ -390,6 +391,8 @@ export interface ProjectileState {
   steer?: SteerDef;
   /** A positional enemy shot (a sweeping wall, data `pierceRoll`): rolling through it does not help. */
   pierceRoll?: boolean;
+  /** Enemy shots whose motion changes in flight: acceleration, curve, gravity, bounces left (core/kinematics.ts). */
+  kin?: ShotKin;
   /** A lingering zone (Fire Spin): what it hit may be hit again every this many ms; `lingerMs` counts down to the next. */
   linger?: number;
   lingerMs?: number;

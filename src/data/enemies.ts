@@ -105,6 +105,24 @@ export interface PoochyenaDef {
   scuttle?: number;
 }
 
+/** A shot's kinematics as data (core/kinematics.ts steps them). */
+export interface ShotKinDef {
+  /** Px/s² along the launch heading: positive speeds it up, negative slows it, turns it round and brings it back (unless `stop`). */
+  accel?: number;
+  /** A constant world acceleration, px/s² (an arc that falls). */
+  gravity?: { x: number; y: number };
+  /** Constant turn of the velocity, degrees per second (positive: clockwise on screen). */
+  curveDegPerSec?: number;
+  /** Every other part of the pattern turns the other way (alternating curves). */
+  curveAlternate?: true;
+  /** Speed cap, px/s. */
+  maxSpeed?: number;
+  /** A decelerating shot halts where its speed reaches zero and hangs there until its lifetime ends. */
+  stop?: true;
+  /** Times it bounces off the arena edge (and wall tiles) before it dies there; cover still stops it. */
+  bounces?: number;
+}
+
 /** A shot that bends towards the nearest player for a while (Duskull's will-o-wisp). */
 export interface SteerDef {
   degPerSec: number;
@@ -1388,7 +1406,8 @@ export const SHELLOS: MortarDef = {
  */
 export type DanmakuCard = 'bubbles' | 'lure' | 'surge' | 'deep' | 'undertow' | 'whirlpool' | 'kelp' | 'riptide' | 'bell' | 'maelstrom' | 'awaken';
 
-export type DanmakuShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+/** A card bullet: `steer` bends it towards the nearest player for a while (homing), `kin` changes its motion in flight (core/kinematics.ts). */
+export type DanmakuShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef; kin?: ShotKinDef };
 
 /**
  * One spell card's pattern. Every bullet pattern leaves a way through:
