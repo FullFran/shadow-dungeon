@@ -123,7 +123,12 @@ import { trackLastDevice } from '../adapters/last-device';
 import { wordingKey } from '../ui/device-wording';
 import { bossStackRect, liftHintBand } from '../ui/hud-layout';
 import type { PadStyle } from './gamepad-help-data';
-import { boundTo, fillBindings, type BindAction } from '../adapters/bindings';
+import { boundTo, fillBindings, inputLabel, primaryOf, type BindAction } from '../adapters/bindings';
+import { armSprout, disarmSprout, useConsumable } from '../core/consumables';
+import type { BagSlot } from '../core/consumable-stock';
+import type { ConsumableId } from '../data/consumables';
+import { firstFilled, nextSlot, spendFromBag } from './bag-model';
+import { mountBagHud } from '../ui/bag-hud';
 
 /** Endless, shared run: the host sends its clock about this often (and on every floor change). */
 const CLOCK_SEND_MS = 1000;
@@ -267,6 +272,10 @@ export interface GameOptions {
   resume?: { from?: RunPart; writer: ResumeWriter; crashed(): boolean };
   /** The Sima's figuraciones setting in effect (adapters/figurations.ts), read live; absent: off. Drawn only, never simulated. */
   figurations?(): FigurationMode;
+  /** The consumables packed for this run (odd/tasks/items-bag.md); absent: no bag (the shrine's trials). */
+  bag?: readonly (BagSlot | null)[];
+  /** A unit from the bag took effect: the caller spends it from the stored stock at once (only used units are spent). */
+  onConsumableUsed?(id: ConsumableId): void;
 }
 
 /** The shapes figuraciones take: the shadows of those who did not come back. The player's own joins them per run. */
@@ -327,6 +336,20 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   (canvas.parentElement ?? document.body).append(touch.element);
   /** The control hint bar (null without the option: the sim and tests). */
   const hints = options.hints ? mountPlayHints(canvas.parentElement ?? document.body, options.hints) : null;
+  /**
+   * The bag (odd/tasks/items-bag.md): what is left of it, the slot selected, and a use waiting for the next step (the
+   * use key, the controller's RT, or a tap on the selected slot of the bag HUD; a tap on another slot selects it).
+   */
+  let bag: (BagSlot | null)[] = options.bag ? [...options.bag] : [];
+  let bagSelected = firstFilled(bag);
+  let useQueued = false;
+  let retreating = false;
+  const bagHud = options.bag
+    ? mountBagHud(canvas.parentElement ?? document.body, (index) => {
+        if (index === bagSelected) useQueued = true;
+        else if (bag[index]) bagSelected = index;
+      })
+    : null;
   /** The location plaque (src/ui/location-plaque.ts) names each floor, stratum and boss on arrival; it replaces the canvas floor card and dungeon title. Null in the sim and tests. */
   const plaque = options.hints ? mountLocationPlaque(canvas.parentElement ?? document.body) : null;
   let plaqued: { card: FloorCard | null; intro: DungeonIntro | null } = { card: null, intro: null };
@@ -1218,6 +1241,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       trialHit,
       realMs,
       ...(minimap ? { minimap: packMinimap(minimap.seen) } : {}),
+      ...(options.bag ? { bag: [...bag] } : {}),
     };
   }
   /** Writes the record now (never in a shared run or after the end). A player who is down leaves none: a reload must not undo the blow. */
@@ -1363,7 +1387,9 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay.toggle();
     } else if (closePick && !closeMenu && pickIndexForKey(e.code, run.offer?.length ?? 0) !== null) {
       choose(pickIndexForKey(e.code, run.offer?.length ?? 0)!);
-    } else if (is('mute') && !closeMenu) options.onToggleMute?.();
+    } else if (is('item') && !closeMenu && options.bag) useQueued = true;
+    else if (is('itemNext') && !closeMenu && options.bag) bagSelected = nextSlot(bag, bagSelected, 1);
+    else if (is('mute') && !closeMenu) options.onToggleMute?.();
     else if (is('spectate') && watching !== null && !closeMenu) watchNext();
     else if (is('map') && !closeMenu) {
       // Tab would move the page focus; here it shows or hides the minimap.
@@ -1496,7 +1522,37 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     ]);
     overlayParent.append(victoryBand);
   }
-  function end(result: GameResult, cut?: CutShort): void {
+  /** The key the bag HUD names for using a consumable (the player's binding). */
+  const bagKeyLabel = (): string | null => {
+    const input = primaryOf('item');
+    return input ? inputLabel(input, t, true) : null;
+  };
+  /** A boss arena: a guardian's floor, behind a boss fog, or a boss standing (no exit cord there). */
+  const inBossArena = (): boolean => isBossFloor(run) || world.fogWall !== undefined || world.enemies.some((e) => e.alive && e.boss !== undefined);
+  /** Uses the selected slot (core/consumables.ts): its events, or none when refused (the unit stays, a line says why). */
+  function useFromBag(): GameEvent[] {
+    const slot = bag[bagSelected];
+    if (!slot || ended || closeMenu || closePick) return [];
+    const outcome = useConsumable(world, slot.id, { bossArena: inBossArena(), shared: Boolean(net) });
+    if (outcome.refused) {
+      say(t(`bag.refused.${outcome.refused}`), 'warn');
+      return [];
+    }
+    world = outcome.state;
+    return outcome.events;
+  }
+  /** A consumable took effect (used by hand, or the sprout on fainting): its unit leaves the bag and the stored stock. */
+  function consumableTookEffect(id: ConsumableId): void {
+    bag = spendFromBag(bag, id);
+    if (!bag[bagSelected]) bagSelected = nextSlot(bag, bagSelected, 1);
+    options.onConsumableUsed?.(id);
+    say(t('bag.used').replace('{name}', t(`consumable.${id}`)), 'item');
+    // The mist lamp lights the whole floor's map (presentation only).
+    if (id === 'fog-lamp' && minimap) minimap.seen.fill(1);
+    if (id === 'exit-cord') retreating = true;
+  }
+  /** `retreat`: left with the exit cord (a defeat that keeps every Pokémoneda earned). */
+  function end(result: GameResult, cut?: CutShort, retreat = false): void {
     if (ended) return;
     ended = true;
     // A finished run never comes back: the record goes now, before the end screen, so a reload on it cannot undo a defeat.
@@ -1506,7 +1562,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     audio?.setMusic(null);
     // What the merchant took comes off the pay.
     // A shrine trial pays nothing here (main.ts pays a gauntlet's first clear).
-    const coins = trial ? coinBreakdown(emptyTally(), null, difficulty) : spendCoins(scaleCoins(coinBreakdown(tally, result, difficulty), dungeonOf(run).endless?.coinScale ?? 1), simaSpent);
+    const coins = trial ? coinBreakdown(emptyTally(), null, difficulty) : spendCoins(scaleCoins(coinBreakdown(tally, retreat ? null : result, difficulty), dungeonOf(run).endless?.coinScale ?? 1), simaSpent);
     const trialSummary: TrialSummary | null = trial
       ? { stops: trial.stops, beaten: trial.index + (result === 'victory' ? 1 : 0), ms: tally.playedMs, captures: tally.captures ?? 0, noHit: !trialHit }
       : null;
@@ -1617,7 +1673,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       };
       // The controller plays only while nothing is open: a shared run keeps going under a pick, where it acts as keys.
       options.gamepad?.setCombat(!inputSuspended && !closeMenu && !closePick && !closeChoice && !closeMemory && !(signWaits && (sign !== null || storyBox !== null)));
-      const padInput = touchToPlayerInput(options.gamepad?.take() ?? IDLE_TOUCH, aimContext);
+      const padNow = options.gamepad?.take() ?? IDLE_TOUCH;
+      if (padNow.item) useQueued = true;
+      if (padNow.itemCycle) bagSelected = nextSlot(bag, bagSelected, padNow.itemCycle > 0 ? 1 : -1);
+      const padInput = touchToPlayerInput(padNow, aimContext);
       if (hadInput(padInput)) padInUse = true;
       else if (hadInput(keys)) padInUse = false;
       const raw = mergeInputs(mergeInputs(keys, touchToPlayerInput(touch.take(), aimContext)), padInput);
@@ -1633,8 +1692,13 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         world = synced.world;
         netEvents = synced.events;
       }
+      // The bag: a packed sprout stays armed; a queued use takes effect right before the step, its events join the step's.
+      if (options.bag) world = bag.some((slot) => slot?.id === 'second-sprout') ? armSprout(world) : disarmSprout(world);
+      const usedEvents = useQueued ? useFromBag() : [];
+      useQueued = false;
       const before = world;
       world = step(world, playerInput, FIXED_DT_MS);
+      if (usedEvents.length > 0) world = { ...world, events: [...usedEvents, ...world.events] };
       const agreed = gather();
       // The endless dungeon's clock runs in simulated time (it stands still with a paused solo run); the host's is the one that counts.
       const clockBefore = run.clockMs;
@@ -1689,6 +1753,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           hurtSinceKept = true;
         }
         if (event.type === 'enemyDefeated') defeatedAt.set(event.enemyId, realMs);
+        if (event.type === 'consumableUsed') consumableTookEffect(event.item);
         if (event.type === 'berryEaten' && event.berryId.includes(WISP_BERRY) && !wispFound) {
           wispFound = true;
           say(t('forest.wisp.found'), 'good');
@@ -1697,6 +1762,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       teach({ events });
       if (trial && trialHurt(events)) trialHit = true;
       if (trialHurt(events)) floorHit = true;
+      // The exit cord: the run ends here, every Pokémoneda kept.
+      if (retreating) {
+        end('defeat', undefined, true);
+        break;
+      }
       const hostFloor = net?.role === 'guest' ? net.session.takeFloorChange() : null;
       const progress = trial ? trialProgress(hostFloor, agreed) : progressRun(run, world, agreed);
       // An echo's time bonus changes the run without a floor change (entering a floor goes through enterFloor below).
@@ -1954,6 +2024,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         realMs,
       );
     }
+    // The bag's slots, the selection and the key that uses it (the controller's RT; none on touch: a tap uses it).
+    bagHud?.update(bag, bagSelected, isTouchUi() ? null : padInUse ? 'RT' : bagKeyLabel(), (id) => t(`consumable.${id}`));
     raf = requestAnimationFrame(frame);
   }
 
@@ -2005,6 +2077,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       overlay?.dispose();
       hints?.dispose();
       plaque?.dispose();
+      bagHud?.dispose();
       device.dispose();
       spectateButton.remove();
       sign?.element.remove();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
-import { bagLeftOk, bagRows, toggleBag, type BagPick } from '../../src/app/bag-model';
+import { bagLeftOk, bagRows, firstFilled, nextSlot, spendFromBag, toggleBag, type BagPick } from '../../src/app/bag-model';
 import { defaultSettings, loadSettings, saveSettings } from '../../src/app/settings';
 import { BAG, CONSUMABLE_IDS, CONSUMABLES } from '../../src/data/consumables';
 import { DIFFICULTIES } from '../../src/data/difficulty';
@@ -56,5 +56,28 @@ describe('the bag in a stored run (reload-proof play)', () => {
     expect(bagLeftOk([{ id: 'nope', count: 1 }])).toBe(false);
     expect(bagLeftOk([null, null, null, null])).toBe(false);
     expect(bagLeftOk('x')).toBe(false);
+  });
+});
+
+describe('the bag in a run', () => {
+  const bag = [{ id: 'dew-tonic' as const, count: 2 }, null, { id: 'second-sprout' as const, count: 1 }];
+
+  it('the selection moves to the next or previous filled slot, wrapping; an empty bag stays put', () => {
+    expect(nextSlot(bag, 0, 1)).toBe(2);
+    expect(nextSlot(bag, 2, 1)).toBe(0);
+    expect(nextSlot(bag, 0, -1)).toBe(2);
+    expect(nextSlot([null, null, null], 1, 1)).toBe(1);
+  });
+
+  it('a unit used leaves its slot by kind (the slot empties at 0)', () => {
+    expect(spendFromBag(bag, 'dew-tonic')).toEqual([{ id: 'dew-tonic', count: 1 }, null, { id: 'second-sprout', count: 1 }]);
+    expect(spendFromBag(bag, 'second-sprout')).toEqual([{ id: 'dew-tonic', count: 2 }, null, null]);
+    expect(spendFromBag(bag, 'exit-cord')).toEqual(bag);
+  });
+
+  it('the selection lands on a filled slot', () => {
+    expect(firstFilled(bag)).toBe(0);
+    expect(firstFilled([null, null, { id: 'exit-cord', count: 1 }])).toBe(2);
+    expect(firstFilled([null, null, null])).toBe(0);
   });
 });

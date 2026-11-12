@@ -14,7 +14,7 @@ import type { SpeciesId } from '../../src/data/species';
 import { IDLE, world } from './helpers';
 import '../../src/data/guardian-tricks';
 
-const SOLO: UseContext = { bossArena: false, guest: false };
+const SOLO: UseContext = { bossArena: false, shared: false };
 
 const hurt = (state: WorldState, hp: number): WorldState => ({ ...state, player: { ...state.player, hp } });
 
@@ -89,7 +89,7 @@ describe('consumables in a run: every kind does its thing', () => {
 
   it('hush-lantern on a guest: the host\'s shots stop counting for this player (victim side, no protocol change)', () => {
     const state: WorldState = { ...world(), role: 'guest', localId: 'p2', projectiles: [shot('e1', 'enemy'), shot('e2', 'enemy')] };
-    const used = useConsumable(state, 'hush-lantern', { bossArena: false, guest: true }).state;
+    const used = useConsumable(state, 'hush-lantern', { bossArena: false, shared: true }).state;
     expect(used.spentShots).toEqual(expect.arrayContaining(['e1', 'e2']));
   });
 
@@ -106,7 +106,7 @@ describe('consumables in a run: every kind does its thing', () => {
 
   it('spore-bomb on a guest claims its hits through the existing hit-claim path', () => {
     const state = { ...spawnEnemy(world(vec(400, 300)), 'poochyena', vec(420, 300), { dormant: true }), role: 'guest' as const, localId: 'p2' };
-    const used = useConsumable(state, 'spore-bomb', { bossArena: false, guest: true });
+    const used = useConsumable(state, 'spore-bomb', { bossArena: false, shared: true });
     const claims = used.events.filter((e) => e.type === 'hitClaim');
     expect(claims).toHaveLength(1);
     expect(claims[0]).toMatchObject({ claim: { enemyId: state.enemies[0]!.id, hitstunMs: CONSUMABLE_EFFECTS.sporeStunMs } });
@@ -138,9 +138,9 @@ describe('consumables in a run: every kind does its thing', () => {
     expect(settleConsumables(world().player, { ...world(), player: { ...world().player, hp: 0 } }, FIXED_DT_MS, []).player.hp).toBe(0);
   });
 
-  it('the exit cord is refused in a boss arena and for a guest', () => {
-    expect(useConsumable(world(), 'exit-cord', { bossArena: true, guest: false }).refused).toBe('boss-arena');
-    expect(useConsumable(world(), 'exit-cord', { bossArena: false, guest: true }).refused).toBe('guest');
+  it('the exit cord is refused in a boss arena and in a shared run', () => {
+    expect(useConsumable(world(), 'exit-cord', { bossArena: true, shared: false }).refused).toBe('boss-arena');
+    expect(useConsumable(world(), 'exit-cord', { bossArena: false, shared: true }).refused).toBe('shared');
     expect(useConsumable(world(), 'exit-cord', SOLO).refused).toBeUndefined();
   });
 

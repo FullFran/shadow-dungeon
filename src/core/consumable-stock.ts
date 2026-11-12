@@ -126,3 +126,9 @@ export function packBag(wanted: readonly (ConsumableId | null)[], stock: Consuma
 export function takeFromBag(bag: Bag, index: number): (BagSlot | null)[] {
   return bag.map((slot, i) => (i !== index || !slot ? slot : slot.count > 1 ? { ...slot, count: slot.count - 1 } : null));
 }
+
+/** The bag after one unit of `id` was used, wherever it is packed (unchanged when it is not). */
+export function spendFromBag(bag: Bag, id: ConsumableId): (BagSlot | null)[] {
+  const at = bag.findIndex((slot) => slot?.id === id);
+  return at < 0 ? [...bag] : takeFromBag(bag, at);
+}

@@ -1,6 +1,6 @@
 import { BAG, CONSUMABLE_IDS, CONSUMABLES, isConsumableId, type ConsumableId } from '../data/consumables';
 import type { Difficulty } from '../data/difficulty';
-import { isUnlocked, packable, stockOf, type BagSlot, type ConsumableWallet } from '../core/consumable-stock';
+import { isUnlocked, packable, spendFromBag, stockOf, type Bag, type BagSlot, type ConsumableWallet } from '../core/consumable-stock';
 
 /**
  * The loadout's bag step (odd/tasks/items-bag.md), pure: the kinds the player picked for the next run (remembered in
@@ -57,3 +57,19 @@ export function bagLeftOk(raw: unknown): raw is (BagSlot | null)[] {
   if (!Array.isArray(raw) || raw.length > BAG.slots) return false;
   return raw.every((slot) => slot === null || (typeof slot === 'object' && isConsumableId((slot as BagSlot).id) && Number.isInteger((slot as BagSlot).count) && (slot as BagSlot).count >= 1 && (slot as BagSlot).count <= CONSUMABLES[(slot as BagSlot).id].perSlot));
 }
+
+/** The slot `delta` filled slots away from `from`, wrapping (`from` when the bag is empty). */
+export function nextSlot(bag: Bag, from: number, delta: 1 | -1): number {
+  const n = bag.length;
+  for (let step = 1; step <= n; step++) {
+    const i = (((from + delta * step) % n) + n) % n;
+    if (bag[i]) return i;
+  }
+  return from;
+}
+
+/** The first filled slot (0 when the bag is empty): where the selection starts. */
+export const firstFilled = (bag: Bag): number => Math.max(0, bag.findIndex(Boolean));
+
+/** The bag after one unit of `id` was used, wherever it is packed (core/consumable-stock.ts). */
+export { spendFromBag };

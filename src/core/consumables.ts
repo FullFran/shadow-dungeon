@@ -16,13 +16,13 @@ import { distance, vec } from './vec';
  * uses one keeps exactly its state (the field stays absent).
  */
 
-/** Where the player stands when it uses one: a boss arena (no exit cord) and whether it is a co-op guest. */
+/** Where the player stands when it uses one: a boss arena or a shared run (no exit cord in either). */
 export interface UseContext {
   bossArena: boolean;
-  guest: boolean;
+  shared: boolean;
 }
 
-export type UseRefusal = 'fainted' | 'passive' | 'nothing' | 'boss-arena' | 'guest';
+export type UseRefusal = 'fainted' | 'passive' | 'nothing' | 'boss-arena' | 'shared';
 
 export interface UseOutcome {
   state: WorldState;
@@ -140,7 +140,8 @@ export function useConsumable(state: WorldState, id: ConsumableId, context: UseC
       next = hushLantern(state);
       break;
     case 'exit-cord':
-      if (context.guest) return refuse('guest');
+      // Leaving alone would break a shared run for the others.
+      if (context.shared) return refuse('shared');
       if (context.bossArena) return refuse('boss-arena');
       break;
     // The lamp only lights the minimap (the app's), nothing in the world.
