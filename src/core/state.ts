@@ -339,6 +339,8 @@ export interface BossState {
   holdFloor?: number;
   /** The boss sits on its hold: hits are absorbed ("¡Aguanta!"). Synced: guests show the feedback from it. */
   held?: true;
+  /** Guest only: the card clock the host sent (core/boss.ts `cardClockOf`), time left and the card's timer; absent between cards. */
+  clock?: { leftMs: number; totalMs: number };
 }
 
 /**
