@@ -22,6 +22,10 @@ import { firePattern } from '../../src/core/danmaku';
 import { hitCap, speciesMaxHpAt } from '../../src/core/fairness';
 import { hitPlayer } from '../../src/core/step';
 import { PLAYABLE_SPECIES, SPECIES, type SpeciesId } from '../../src/data/species';
+import { NIGHTMARE_CARD_HP } from '../../src/data/nightmare-band';
+/** A Nightmare fight as authored: the card HP band (data/nightmare-band.ts) taken out; the last spell's 15 % is an authoring rule, the band may grow it. */
+const authored = (f: CardFightDef): CardFightDef => ({ ...f, cards: f.cards.map((c) => ({ ...c, hpShare: c.hpShare / (NIGHTMARE_CARD_HP[c.id] ?? 1) })) });
+
 
 /**
  * The guardians' spell cards (data/aegislash-cards.ts, data/decidueye-cards.ts)
@@ -74,7 +78,7 @@ describe('guardian spell cards: structure per tier', () => {
       expect(nightmare.length - hard.length).toBeGreaterThanOrEqual(1);
       expect(nightmare.length - hard.length).toBeLessThanOrEqual(2);
       expect(nightmare.at(-1)!.lastSpell).toBe(true);
-      expect(cardFloorShare(fight(species, 'nightmare')!, nightmare.length - 2)).toBeLessThanOrEqual(0.15);
+      expect(cardFloorShare(authored(fight(species, 'nightmare')!), nightmare.length - 2)).toBeLessThanOrEqual(0.15 + 1e-9);
       // Every tier's shares cover the whole bar, and every card has a timer.
       for (const d of CARD_TIERS) {
         const cards = fight(species, d)!.cards;

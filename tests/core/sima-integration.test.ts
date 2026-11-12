@@ -106,10 +106,10 @@ describe('one elite system', () => {
     expect(elite.maxHp).toBeCloseTo(SPECIES[elite.species].maxHp * world.enemyScale!.hp * TIERS.nightmare.hp * ELITE_TRAIT_DEFS[elite.elite!].hp * SIMA_ELITES.hpScale);
   });
 
-  it('regular dungeons draw only the tier\'s traits; the Caves\' elites are tough or frenzied', () => {
+  it('regular dungeons draw only the tier\'s traits (Nightmare: all six, odd/tasks/nightmare-tuning.md N2), never positional', () => {
     const elites = SEEDS.flatMap((seed) => [1, 2, 3, 4].flatMap((f) => startRun(seed, { difficulty: 'nightmare' }, f, 'flooded-caves').world.enemies.filter((e) => e.elite)));
     expect(elites.length).toBeGreaterThan(0);
-    for (const e of elites) expect(ELITE_TRAITS).toContain(e.elite);
+    for (const e of elites) expect(tierEliteRule('nightmare').traits).toContain(e.elite);
     for (const e of elites) expect(e.pierceRoll).toBeUndefined();
   });
 

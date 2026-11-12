@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import store from '../../reports/proof/witnesses.json';
-import { CHALLENGES, challengeOfRoad, roadFor, SENDA_ROADS } from '../../src/data/dungeons';
 import { ROOMS } from '../../src/data/rooms';
-import type { Difficulty } from '../../src/data/difficulty';
-import { STORY_BOSSES } from '../../src/data/story/bosses';
-import { cardWorld, CARD_BOSSES, fightIn, judgeCard, proofFailures, startsOf, type BossCase, type Witness } from '../../src/sim/prove';
+import { cardWorld, CARD_BOSSES, fightIn, judgeCard, proofFailures, REUSED_BOSSES, startsOf, type Witness } from '../../src/sim/prove';
 
 /**
  * An older boss met again as a gacha Senda's mid-boss (Nihilego in Abra's and
@@ -18,21 +15,8 @@ import { cardWorld, CARD_BOSSES, fightIn, judgeCard, proofFailures, startsOf, ty
  * tens of seconds each.
  */
 const cards = (store as { cards: Record<string, (Witness | null)[]> }).cards;
-const GACHA_LINES = new Set(['abra', 'piplup', 'shinx', 'axew']);
-const NEW = new Set<string>(STORY_BOSSES.map((b) => b.id));
-const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 const HOME = new Map(CARD_BOSSES.map((c) => [c.species, c.room]));
-
-const REUSED: readonly { boss: BossCase; tiers: readonly Difficulty[] }[] = [...CHALLENGES, ...SENDA_ROADS]
-  .filter((d) => GACHA_LINES.has(d.challenge?.line ?? ''))
-  .flatMap((d) => {
-    const tiers = TIERS.filter((t) => roadFor(challengeOfRoad(d), t).id === d.id);
-    return d.plan.flatMap((p, i) => {
-      if (p.kind !== 'room' || p.role !== 'midboss') return [];
-      const species = ROOMS[p.room].spawns[0]!.species;
-      return NEW.has(species) ? [] : [{ boss: { species, room: p.room, where: { dungeon: d.id, floor: i + 1 } }, tiers }];
-    });
-  });
+const REUSED = REUSED_BOSSES;
 
 /** An arena with its home arena's geometry: same size, obstacles, start and boss spot (only the way on may differ). */
 const sameGeometry = (a: (typeof ROOMS)[keyof typeof ROOMS], b: (typeof ROOMS)[keyof typeof ROOMS]): boolean =>

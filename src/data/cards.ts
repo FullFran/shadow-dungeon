@@ -175,3 +175,18 @@ export const cardInfo = (stance: string | null | undefined): CardInfo | undefine
 
 /** Every registered spell card id (the HUD tests iterate them so a card without a caption fails a test). */
 export const registeredCards = (): string[] => [...registry.keys()];
+
+/**
+ * A fight with some cards' segments raised (the Nightmare card HP band,
+ * data/nightmare-band.ts): card `id`'s segment gets `factors[id]` times its
+ * HP and every other segment keeps its own, so the fight's `hpScale` grows by
+ * exactly what the raised cards add. No factor: the very same fight.
+ */
+export function bandFight(fight: CardFightDef, factors: Readonly<Partial<Record<string, number>>>): CardFightDef {
+  if (!fight.cards.some((c) => (factors[c.id] ?? 1) !== 1)) return fight;
+  const total = fight.cards.reduce((sum, c) => sum + c.hpShare, 0);
+  const raised = fight.cards.reduce((sum, c) => sum + c.hpShare * (factors[c.id] ?? 1), 0);
+  // The shares still cover the whole bar (they keep the authored total); the bar grows instead.
+  const cards = fight.cards.map((c) => ({ ...c, hpShare: (c.hpShare * (factors[c.id] ?? 1) * total) / raised }));
+  return { ...fight, cards, hpScale: ((fight.hpScale ?? 1) * raised) / total };
+}

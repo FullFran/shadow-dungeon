@@ -16,6 +16,10 @@ import { vec } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
 import { catalog, LANGUAGES } from '../../src/i18n';
 import { IDLE } from './helpers';
+import { NIGHTMARE_CARD_HP } from '../../src/data/nightmare-band';
+/** A Nightmare fight as authored: the card HP band (data/nightmare-band.ts) taken out; the last spell's 15 % is an authoring rule, the band may grow it. */
+const authored = (f: CardFightDef): CardFightDef => ({ ...f, cards: f.cards.map((c) => ({ ...c, hpShare: c.hpShare / (NIGHTMARE_CARD_HP[c.id] ?? 1) })) });
+
 
 /**
  * The six bosses that had their own card cycles, as hosted spell cards on
@@ -80,7 +84,7 @@ describe('hosted spell cards: structure per tier', () => {
       expect(nightmare.length - hard.length).toBeGreaterThanOrEqual(1);
       expect(nightmare.length - hard.length).toBeLessThanOrEqual(2);
       expect(nightmare.at(-1)!.lastSpell).toBe(true);
-      expect(cardFloorShare(fight(species, 'nightmare')!, nightmare.length - 2)).toBeLessThanOrEqual(0.15 + 1e-9);
+      expect(cardFloorShare(authored(fight(species, 'nightmare')!), nightmare.length - 2)).toBeLessThanOrEqual(0.15 + 1e-9);
       for (const d of CARD_TIERS) {
         const cards = fight(species, d)!.cards;
         expect(cards.reduce((s, c) => s + c.hpShare, 0)).toBeCloseTo(1);

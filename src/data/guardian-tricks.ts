@@ -3,7 +3,8 @@ import { DECIDUEYE_CARDS_HARD, DECIDUEYE_CARDS_NIGHTMARE, DECIDUEYE_CARDS_NORMAL
 import type { Trick } from './forest-tricks';
 import { HOSTED_FIGHTS } from './hosted-cards';
 import { STORY_BOSSES, STORY_FIGHTS } from './story/bosses';
-import type { CardFightDef } from './cards';
+import { bandFight, type CardFightDef } from './cards';
+import { NIGHTMARE_CARD_HP } from './nightmare-band';
 import type { SpeciesId } from './species';
 
 /**
@@ -23,7 +24,7 @@ const hosted = ([normal, hard, nightmare]: readonly [CardFightDef, CardFightDef,
 /** A Senda boss (data/story/kit.ts): its Normal, Hard and Nightmare fights as tricks (Easy is its behaviour's own). */
 const story = ([, normal, hard, nightmare]: readonly [CardFightDef, CardFightDef, CardFightDef, CardFightDef]): readonly Trick[] => hosted([normal, hard, nightmare]);
 
-export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
+const AUTHORED: Partial<Record<SpeciesId, readonly Trick[]>> = {
   sableye: hosted(HOSTED_FIGHTS.sableye),
   trevenant: hosted(HOSTED_FIGHTS.trevenant),
   lanturn: hosted(HOSTED_FIGHTS.lanturn),
@@ -43,3 +44,12 @@ export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
     { minDifficulty: 'nightmare', patch: { spellCards: DECIDUEYE_CARDS_NIGHTMARE } },
   ],
 };
+
+/** A Nightmare trick's fight with the card HP band applied (data/nightmare-band.ts); every other trick as authored. */
+const banded = (t: Trick): Trick => {
+  const fight = 'spellCards' in t.patch ? t.patch.spellCards : undefined;
+  return t.minDifficulty === 'nightmare' && fight ? { ...t, patch: { ...t.patch, spellCards: bandFight(fight, NIGHTMARE_CARD_HP) } as Trick['patch'] } : t;
+};
+
+/** Every card boss (a new one included, by being here) plays its Nightmare fight inside the band. */
+export const GUARDIAN_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = Object.fromEntries(Object.entries(AUTHORED).map(([species, tricks]) => [species, tricks!.map(banded)]));
