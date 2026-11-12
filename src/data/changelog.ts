@@ -45,6 +45,70 @@ export function compareVersions(a: string, b: string): number {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: '0.15.0',
+    date: '2026-11-12',
+    sections: {
+      new: [
+        {
+          es: 'La bolsa: antes de entrar eliges hasta tres objetos de un solo uso y los usas en plena partida con su tecla o su botón del mando. Se consiguen en el nuevo puesto de objetos, junto al de Mimikyu, con tiradas o a precio fijo.',
+          en: 'The bag: before you go in, pick up to three single-use items and use them mid-run with their key or controller button. Get them at the new item stall next to Mimikyu\'s, by pulls or at a fixed price.',
+          icon: 'download',
+        },
+        {
+          es: 'Cinco Pokémon nuevos en la Cripta, sus Sendas y el estrato de la Cripta de la Sima: Honedge, Bronzor, Yamask, Murkrow y Klefki, cada uno con su forma de pelear.',
+          en: 'Five new Pokémon in the Crypt, its Senda roads and the Sima\'s Crypt stratum: Honedge, Bronzor, Yamask, Murkrow and Klefki, each with its own way of fighting.',
+          icon: 'ghost',
+        },
+        {
+          es: 'Cartas de hechizo nuevas para los ocho jefes de mazmorra, con patrones nuevos (oleadas, cercos, láseres, balas que te siguen y familiares), y una carta más para cada jefe de Senda en Difícil y Pesadilla.',
+          en: 'New spell cards for the eight dungeon bosses, with new patterns (waves, closing rings, lasers, homing shots and familiars), and one more card for every Senda boss on Hard and Nightmare.',
+          icon: 'eclipse',
+        },
+        {
+          es: 'Ataques peligrosos: los que rodar no esquiva llevan una gran marca roja y su propio sonido. Rueda hacia ellos justo a tiempo y contraatacas.',
+          en: 'Perilous attacks: the ones a roll does not dodge wear a big red mark and their own sound. Roll into them just in time to strike back.',
+          icon: 'warning',
+        },
+      ],
+      improved: [
+        {
+          es: 'Las mazmorras se ven mejor: suelos con textura, paredes de roca y objetos de decoración en cada sala.',
+          en: 'Dungeons look better: textured floors, rock walls and props in every room.',
+          icon: 'sparkle',
+        },
+        {
+          es: 'Cada tipo de bala enemiga tiene su dibujo, y lo que se ve es justo lo que golpea.',
+          en: 'Every kind of enemy bullet has its own look, and what you see is exactly what hits.',
+          icon: 'star',
+        },
+        {
+          es: 'Un reloj de carta de hechizo que se lee de un vistazo, con sello de captura y aviso en los últimos segundos. La última carta de un jefe ya no se queda colgada: el golpe final lo derriba.',
+          en: 'A spell card clock you read at a glance, with a capture seal and a warning in the last seconds. A boss\'s last card no longer hangs: the final hit brings it down.',
+          icon: 'trophy',
+        },
+      ],
+      balance: [
+        {
+          es: 'Las plantas crecen con la dificultad (Difícil y Pesadilla son más grandes) y las salas de oleadas tienen más sitio para moverse.',
+          en: 'Floors grow with the difficulty (Hard and Nightmare are bigger) and wave rooms have more room to move.',
+          icon: 'rise',
+        },
+        {
+          es: 'Pesadilla es más dura: élites con todos sus rasgos, menos curación y cartas de jefe con más vida. A cambio paga ×2,5.',
+          en: 'Nightmare is harder: elites with all their traits, less healing and boss cards with more HP. In return it pays ×2.5.',
+          icon: 'shield',
+        },
+      ],
+      fixed: [
+        {
+          es: 'La elección de objeto tras un jefe espera a que acabe el aviso de victoria y sus últimas palabras.',
+          en: 'The item pick after a boss waits for the victory notice and its last lines.',
+          icon: 'wrench',
+        },
+      ],
+    },
+  },
+  {
     version: '0.14.0',
     date: '2026-11-12',
     sections: {
