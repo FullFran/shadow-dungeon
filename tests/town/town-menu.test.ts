@@ -120,6 +120,7 @@ describe('town Esc menu', () => {
       shop: 'openShop',
       tutor: 'openTutor',
       gacha: 'openGacha',
+      items: 'openItems',
       board: 'openBoard',
       achievements: 'openAchievements',
       shrine: 'openShrine',

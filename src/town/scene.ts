@@ -105,6 +105,8 @@ export interface TownOptions {
   openGacha?: TownWindowOpener;
   /** Alone, the stall is its own page (/gacha, app/gacha-page.ts): the town is left for it, like the shrine; a room keeps `openGacha`'s window. */
   openGachaPage?: () => void;
+  /** Opens the item stall beside the gacha (the item gacha and the consumables' rows: app/item-stall.ts), like `openShop`. */
+  openItems?: TownWindowOpener;
   /** Opens Phantump's evolution window, like `openShop` (its "Desafíos" row departs from it). */
   openEvolve?: TownWindowOpener;
   /** Opens the notice board's missions window once its records are read, like `openShop`. */
@@ -824,6 +826,7 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       shop: !!options.openShop,
       tutor: !!options.openTutor,
       gacha: !!(options.openGacha ?? options.openGachaPage),
+      items: !!options.openItems,
       board: !!options.openBoard,
       achievements: !!options.openAchievements,
       shrine: !!options.openShrine,
@@ -882,6 +885,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         return openShopWindow(options.openTutor);
       case 'gacha':
         return options.openGachaPage ? leaveTown(options.openGachaPage) : openShopWindow(options.openGacha);
+      case 'items':
+        return openShopWindow(options.openItems);
       case 'board':
         return openShopWindow(options.openBoard);
       case 'achievements':

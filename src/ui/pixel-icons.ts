@@ -12,7 +12,7 @@ export interface PixelIcon {
 /** Icons of hub actions that are not town services. */
 export const HUB_ICON_IDS = ['play', 'news', 'fullscreen', 'prologue', 'credits', 'report', 'install', 'tickets', 'coin', 'lock'] as const;
 
-export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'error' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror' | 'rotate';
+export type PixelIconId = 'pokemon' | 'tutor' | 'evolve' | 'gacha' | 'items' | 'shop' | 'board' | 'challenges' | 'shrine' | 'achievements' | 'gallery' | 'friends' | 'account' | 'settings' | 'controls' | 'dungeons' | 'travel' | 'online' | 'news' | 'fullscreen' | 'prologue' | 'credits' | 'report' | 'install' | 'tickets' | 'play' | 'coin' | 'lock' | 'error' | 'title' | 'resume' | 'room' | 'vitality' | 'stamina' | 'respite' | 'reflexes' | 'insight' | 'lockon' | 'sound' | 'access' | 'touch' | 'stairs' | 'sword' | 'star' | 'seal' | 'mirror' | 'rotate';
 
 export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
   pokemon: {
@@ -97,6 +97,28 @@ export const PIXEL_ICONS: Record<PixelIconId, PixelIcon> = {
       '...kddpppppdk...',
       '....kkddddkk....',
       '......kkkk......',
+    ],
+  },
+  // The item stall (odd/tasks/items-bag.md): a leather satchel with its flap and a gold clasp.
+  items: {
+    palette: { k: '#140c11', b: '#7a4a2e', B: '#a8693e', d: '#4a2a18', g: '#ffbf5e', G: '#fff1c2' },
+    rows: [
+      '................',
+      '......kkkk......',
+      '.....kd..dk.....',
+      '....kd....dk....',
+      '..kkkkkkkkkkkk..',
+      '.kBBBBBBBBBBBBk.',
+      '.kBbbbbbbbbbbBk.',
+      '.kbbbbbkkbbbbbk.',
+      '.kbbbbkgGkbbbbk.',
+      '.kbbbbkggkbbbbk.',
+      '.kbbbbbkkbbbbbk.',
+      '.kbbbbbbbbbbbbk.',
+      '.kdbbbbbbbbbbdk.',
+      '.kddddddddddddk.',
+      '..kkkkkkkkkkkk..',
+      '................',
     ],
   },
   shop: {
