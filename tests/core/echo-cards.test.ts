@@ -51,7 +51,10 @@ describe('echo cards: the stages', () => {
         expect(two.cards.some((c) => c.survival || c.lastSpell)).toBe(false);
         expect(three.cards.map((c) => c.id)).toEqual(f.cards.map((c) => c.id));
         for (const c of three.cards) expect(c.timerMs).toBe(Math.round(f.cards.find((k) => k.id === c.id)!.timerMs * ECHO_CARDS.timerScale));
-        expect(echoShare(f, 3)).toBeCloseTo(1);
+        // A full echo keeps the whole bar, but for the cards it plays at its own Nightmare band factor (data/nightmare-band.ts `NIGHTMARE_ECHO_CARD_HP`).
+        const total = f.cards.reduce((sum, c) => sum + c.hpShare, 0);
+        expect(echoShare(f, 3), `${species} ${d}`).toBeCloseTo(f.cards.reduce((sum, c) => sum + c.hpShare * (f.echoHp?.[c.id] ?? 1), 0) / total, 10);
+        if (d !== 'nightmare') expect(f.echoHp).toBeUndefined();
         expect(echoShare(f, 1)).toBeLessThanOrEqual(1);
         if (f.cards.some((c) => (c.phase2 || c.lastSpell) && c.hpShare > 0)) expect(echoShare(f, 1)).toBeLessThan(1);
         // The same object every time (cached), so the bar, the brain and the renderer agree.

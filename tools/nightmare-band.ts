@@ -6,9 +6,11 @@
  *
  * The band's home cases are the card bosses in their own arenas: the
  * guardians (stored witnesses, reports/proof/witnesses.json), the Sendas'
- * shadows and wounds (searched live, as their tests do). The Sima echoes,
- * the Sima's story bosses and the older bosses reused on gacha roads only
- * bound a factor from below: none of them may drop under its kill target.
+ * shadows and wounds (searched live, as their tests do). The Sima's story
+ * bosses and the older bosses reused on gacha roads only bound a factor
+ * from below: none of them may drop under its kill target. The Sima echoes
+ * band on their own factor (NIGHTMARE_ECHO_CARD_HP): the home one, or less
+ * where it would drop an echo under its target.
  * Margins are measured on the current data and divided back by the current
  * factor, so a run on banded data gives the same table.
  *
@@ -21,7 +23,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import store from '../reports/proof/witnesses.json';
 import type { Difficulty } from '../src/data/difficulty';
-import { NIGHTMARE_CARD_HP } from '../src/data/nightmare-band';
+import { NIGHTMARE_CARD_HP, NIGHTMARE_ECHO_CARD_HP } from '../src/data/nightmare-band';
 import { bandFactors, type BandSample } from '../src/sim/band';
 import { CARD_BOSSES, cardWorld, ECHO_BOSSES, fightIn, judgeCard, KNOWN_KILL_GAPS, proveCard, REUSED_BOSSES, SHADOW_BOSSES, SIMA_STORY_CASES, startsOf, WOUND_BOSSES, woundOnTier, type BossCase, type CardProof, type Witness } from '../src/sim/prove';
 
@@ -34,12 +36,13 @@ const cards = (store as { cards: Record<string, (Witness | null)[]> }).cards;
 interface Job {
   boss: BossCase;
   home: boolean;
+  echo?: boolean;
   stored?: string;
 }
 
 const JOBS: readonly Job[] = [
   ...CARD_BOSSES.map((boss) => ({ boss, home: true, stored: boss.label ?? boss.species })),
-  ...ECHO_BOSSES.map((boss) => ({ boss, home: false, stored: boss.label ?? boss.species })),
+  ...ECHO_BOSSES.map((boss) => ({ boss, home: false, echo: true, stored: boss.label ?? boss.species })),
   ...REUSED_BOSSES.filter((r) => r.tiers.includes(TIER)).map((r) => ({ boss: r.boss, home: false, stored: r.boss.species })),
   ...SHADOW_BOSSES.map((boss) => ({ boss, home: true })),
   ...WOUND_BOSSES.map((w) => ({ boss: woundOnTier(w, TIER), home: true })),
@@ -56,8 +59,8 @@ function measure(job: Job): BandSample[] {
     if (card.survival) return [];
     const p = job.stored ? judgeCard(job.boss, TIER, index, starts, cards[`${job.stored}/${TIER}/${card.id}`] ?? []) : proveCard(job.boss, TIER, index, starts);
     if (!p.survivable) console.error(`  not survivable: ${p.boss} ${card.id} (${p.failures.join('; ')})`);
-    const factor = NIGHTMARE_CARD_HP[card.id] ?? 1;
-    return [{ card: card.id, home: job.home, margin: p.margin * factor, target: p.marginTarget, ...(gap(p) ? { gap: true } : {}), boss: p.boss } as BandSample];
+    const factor = (job.echo ? NIGHTMARE_ECHO_CARD_HP[card.id] : undefined) ?? NIGHTMARE_CARD_HP[card.id] ?? 1;
+    return [{ card: card.id, home: job.home, ...(job.echo ? { echo: true } : {}), margin: p.margin * factor, target: p.marginTarget, ...(gap(p) ? { gap: true } : {}), boss: p.boss } as BandSample];
   });
 }
 
@@ -68,13 +71,14 @@ function runWorker(i: number, n: number, file: string): Promise<void> {
   });
 }
 
-/** Rewrites the table between the markers of data/nightmare-band.ts. */
-function write(factors: Record<string, number>): void {
+/** Rewrites the home table (band markers) and the echo table (echo markers) of data/nightmare-band.ts. */
+function write(factors: Record<string, number>, echo: Record<string, number>): void {
   const path = join('src', 'data', 'nightmare-band.ts');
-  const text = readFileSync(path, 'utf8');
-  const rows = Object.entries(factors).map(([id, f]) => `  '${id}': ${f},`);
-  const next = text.replace(/( *\/\/ band:begin\n)[\s\S]*?( *\/\/ band:end)/, `$1${rows.map((r) => `${r}\n`).join('')}$2`);
-  writeFileSync(path, next);
+  const rows = (table: Record<string, number>): string => Object.entries(table).map(([id, f]) => `  '${id}': ${f},\n`).join('');
+  const text = readFileSync(path, 'utf8')
+    .replace(/( *\/\/ band:begin\n)[\s\S]*?( *\/\/ band:end)/, `$1${rows(factors)}$2`)
+    .replace(/( *\/\/ echo:begin\n)[\s\S]*?( *\/\/ echo:end)/, `$1${rows(echo)}$2`);
+  writeFileSync(path, text);
 }
 
 async function main(): Promise<void> {
@@ -91,13 +95,15 @@ async function main(): Promise<void> {
   await Promise.all(files.map((f, i) => runWorker(i, n, f)));
   const samples = files.flatMap((f) => JSON.parse(readFileSync(f, 'utf8')) as (BandSample & { boss: string })[]);
   for (const f of files) rmSync(f, { force: true });
-  const { factors, capped } = bandFactors(samples, NIGHTMARE_CARD_HP);
+  const { factors, echo, capped } = bandFactors(samples, NIGHTMARE_CARD_HP, NIGHTMARE_ECHO_CARD_HP);
   const homes = samples.filter((s) => s.home && !s.gap && Number.isFinite(s.margin) && s.margin > 0).map((s) => s.margin / (factors[s.card] ?? 1));
   console.log(`nightmare-band: ${samples.length} card samples (${samples.filter((s) => s.home).length} home) in ${((performance.now() - started) / 1000).toFixed(0)} s`);
   console.log(`  ${Object.keys(factors).length} cards raised; home margins after: min ${Math.min(...homes).toFixed(2)}, max ${Math.max(...homes).toFixed(2)}`);
   for (const [id, f] of Object.entries(factors)) console.log(`  ${id}: ×${f}${capped.includes(id) ? ' (capped by a case at its target)' : ''}`);
   for (const id of capped.filter((c) => !(c in factors))) console.log(`  ${id}: above the band, held at ×1 by a case at its target`);
-  if (args.includes('--write')) write(factors);
+  for (const [id, f] of Object.entries(echo)) console.log(`  ${id}: echoes ×${f} (the home ×${factors[id]} would drop one under its target)`);
+  for (const id of capped) for (const s of samples.filter((x) => x.card === id)) console.log(`    ${s.boss}${s.home ? ' (home)' : ''}${s.gap ? ' (gap)' : ''}: unbanded margin ${s.margin.toFixed(2)}, target ${s.target}`);
+  if (args.includes('--write')) write(factors, echo);
 }
 
 void main();
