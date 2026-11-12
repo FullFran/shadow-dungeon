@@ -74,6 +74,17 @@ export interface TierDef {
    * `turnMsFor`). Available to other enemies' recovery windows later.
    */
   turnMs: number;
+  /** The traits this tier's elites may draw on the regular dungeons; absent = `ELITE_TRAITS` (Nightmare draws all six: odd/tasks/nightmare-tuning.md N2). */
+  eliteTraits?: readonly EliteTrait[];
+  /**
+   * Free healing on this tier (odd/tasks/nightmare-tuning.md N3); absent = the
+   * game's: `floorHeal` share of max HP on entering a floor (data/dungeon.ts
+   * `RUN.floorHeal`; a dungeon's own `floorHeal` still wins), the Oran Berry
+   * chance per room (data/items.ts `ORAN_BERRY.roomChance`) and the held
+   * items' sustain ceiling per second (`ITEM_EFFECTS.sustainPerSecond`).
+   * Read through core/difficulty.ts `tierHealing`.
+   */
+  healing?: { floorHeal: number; berryChance: number; sustainPerSecond: number };
 }
 
 export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
@@ -81,7 +92,10 @@ export const TIERS: Readonly<Record<Difficulty, TierDef>> = {
   // No tier adds enemies (user feedback 2026-10-25: more enemies is not fun); tougher ones instead: elites, patterns, aggression.
   normal: { hp: 1.15, damage: 1.15, telegraph: 0.95, extraPerRoom: 0, cooldown: 0.9, eliteChance: 0.1, restartsPerFloor: null, bonfireRespawns: 3, coins: 1.3, encounters: { frequency: 1.2, extraWaves: 0 }, roll: { iframes: 1, stamina: 1 }, turnMs: 1300 },
   hard: { hp: 1.3, damage: 1.3, telegraph: 0.9, extraPerRoom: 0, cooldown: 0.8, eliteChance: 0.2, restartsPerFloor: 1, bonfireRespawns: 1, coins: 1.7, encounters: { frequency: 1.5, extraWaves: 0 }, roll: { iframes: 0.9, stamina: 1.1 }, turnMs: 1000 },
-  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, bonfireRespawns: 0, coins: 2.2, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false, turnMs: 800 },
+  nightmare: { hp: 1.45, damage: 1.5, telegraph: 0.85, extraPerRoom: 0, cooldown: 0.7, eliteChance: 0.3, restartsPerFloor: 0, bonfireRespawns: 0, coins: 2.5, encounters: { frequency: 2, extraWaves: 1 }, roll: { iframes: 0.8, stamina: 1.2 }, coopRevive: false, turnMs: 700,
+    // odd/tasks/nightmare-tuning.md (owner option 5(a)): every elite trait, less free healing, the turn at its floor, ×2.5 coins.
+    eliteTraits: ['tough', 'frenzied', 'swift', 'volley', 'armored', 'enrage'],
+    healing: { floorHeal: 0.15, berryChance: 0.2, sustainPerSecond: 0.015 } },
 };
 
 /**

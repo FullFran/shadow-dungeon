@@ -18,7 +18,7 @@ import { placePools } from './toxic';
 import type { Floor } from './dungeon';
 import { chooseGate, gateShut, placeGate } from './gates';
 import type { SimaEventKind } from '../data/sima';
-import { worldDifficulty } from './difficulty';
+import { tierHealing, worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
 import { floorEventPool, floorEventRules, generatedFloor } from './floor-spawns';
 import { addItem, playerStats } from './items';
@@ -262,7 +262,7 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   const tier = worldDifficulty(world);
   // The generator's rooms, the Sima's squads and the leaders (core/floor-spawns.ts, shared with core/fairness.ts).
   const floor = generatedFloor(dungeonOf(run), run.floor, seed, tier);
-  const berries = placeBerries(floor, seed, run.floor);
+  const berries = placeBerries(floor, seed, run.floor, tierHealing(tier).berryChance);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
   // Elites: one system; the Sima's rule joins its depth ramp to the tier's chance (core/sima.ts `eliteRuleAt`), elsewhere the tier's.
@@ -347,7 +347,7 @@ function goDown(leaving: RunState, leavingWorld: WorldState, floor: number): { r
   const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
   const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, ...clock };
-  return { run: next, world: enterFloor(descendPact(heal(world, dungeonOf(run).floorHeal)), next), bonusMs };
+  return { run: next, world: enterFloor(descendPact(heal(world, dungeonOf(run).floorHeal ?? tierHealing(worldDifficulty(world)).floorHeal)), next), bonusMs };
 }
 
 /** The run clock after `dtMs` more of play (the endless dungeon only; other runs have none). */

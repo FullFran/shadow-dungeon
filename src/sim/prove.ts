@@ -1,6 +1,8 @@
 import type { CardFightDef, SpellCardDef } from '../data/cards';
 import { TIERS, type Difficulty } from '../data/difficulty';
-import { CHALLENGES, DUNGEONS, SENDA_ROADS, type DungeonId } from '../data/dungeons';
+import { NIGHTMARE_BAND } from '../data/nightmare-band';
+import { CHALLENGES, challengeOfRoad, DUNGEONS, ECLIPSE, guardianOf, roadFor, SENDA_ROADS, type ChallengeLine, type DungeonId } from '../data/dungeons';
+import { SIMA_SHADOWS, SIMA_STORY, SIMA_WOUNDS, type SimaStoryBoss } from '../data/sima-story';
 import { MOVES, type MoveDef } from '../data/moves';
 import { ROOMS, type RoomId } from '../data/rooms';
 import { STARTER_SPECIES, SPECIES, type SpeciesId } from '../data/species';
@@ -60,7 +62,9 @@ const DIRS: readonly Vec2[] = [vec(0, 0), ...Array.from({ length: 8 }, (_, i) =>
 /** A window at least this long counts as a punish opportunity. */
 export const PUNISH_MIN_MS = 600;
 /** Kill-feasibility targets: timer / estimated time to break, per tier. */
-export const KILL_MARGIN: Readonly<Record<Difficulty, number>> = { easy: 1.5, normal: 1.5, hard: 1.3, nightmare: 1.1 };
+export const KILL_MARGIN: Readonly<Record<Difficulty, number>> = { easy: 1.5, normal: 1.5, hard: 1.3, nightmare: NIGHTMARE_BAND.min };
+/** Kill-margin ceilings (the Nightmare card HP band, data/nightmare-band.ts): checked on the cases marked `band`. */
+export const KILL_CEILING: Readonly<Partial<Record<Difficulty, number>>> = { nightmare: NIGHTMARE_BAND.max };
 
 /** A card boss in its arena. */
 export interface BossCase {
@@ -71,17 +75,19 @@ export interface BossCase {
   /** Where the fight happens for the reference level (default: the room's own dungeon and floor). */
   where?: { dungeon: DungeonId; floor: number };
   label?: string;
+  /** A card boss in its own arena: on a tier with a `KILL_CEILING` its cards' margins must stay under it (the band's home cases). */
+  band?: true;
 }
 
 export const CARD_BOSSES: readonly BossCase[] = [
-  { species: 'aegislash', room: 'boss' },
-  { species: 'decidueye', room: 'roost' },
-  { species: 'sableye', room: 'vault' },
-  { species: 'trevenant', room: 'hollow' },
-  { species: 'lanturn', room: 'grotto' },
-  { species: 'dhelmise', room: 'wreck' },
-  { species: 'salazzle', room: 'den' },
-  { species: 'nihilego', room: 'rift' },
+  { species: 'aegislash', room: 'boss', band: true },
+  { species: 'decidueye', room: 'roost', band: true },
+  { species: 'sableye', room: 'vault', band: true },
+  { species: 'trevenant', room: 'hollow', band: true },
+  { species: 'lanturn', room: 'grotto', band: true },
+  { species: 'dhelmise', room: 'wreck', band: true },
+  { species: 'salazzle', room: 'den', band: true },
+  { species: 'nihilego', room: 'rift', band: true },
 ];
 
 export const CARD_TIERS: readonly Difficulty[] = ['normal', 'hard', 'nightmare'];
@@ -548,6 +554,8 @@ export interface CardProof {
   segmentHp: number;
   margin: number;
   marginTarget: number;
+  /** The tier's kill-margin ceiling, on a band case (`BossCase.band`). */
+  marginCeiling?: number;
   worstStarter: SpeciesId | null;
 }
 
@@ -615,6 +623,7 @@ export function judgeCard(c: BossCase, tier: Difficulty, index: number, starts: 
     segmentHp: Math.round(segmentHp),
     margin: card.survival ? Infinity : margin,
     marginTarget: KILL_MARGIN[tier],
+    ...(c.band && KILL_CEILING[tier] !== undefined ? { marginCeiling: KILL_CEILING[tier] } : {}),
     worstStarter,
   };
 }
@@ -786,10 +795,71 @@ export const SHADOW_BOSSES: readonly BossCase[] = (() => {
     d.plan.flatMap((p, i) => {
       if (p.kind !== 'room' || p.role !== 'midboss') return [];
       const species = ROOMS[p.room].spawns[0]!.species;
-      return story.has(species) && !isWound(species) ? [{ species, room: p.room as RoomId, where: { dungeon: d.id, floor: i + 1 } }] : [];
+      return story.has(species) && !isWound(species) ? [{ species, room: p.room as RoomId, where: { dungeon: d.id, floor: i + 1 }, band: true as const }] : [];
     }),
   );
 })();
+
+/**
+ * The Sendas' wounds (docs/story-quests.md): the last boss of a Senda, a
+ * challenge whose last arena holds a `-wound` species, so a new line's wound
+ * is covered by being in the data. The live proof (tests/sim/wound-prove.ts)
+ * and the Nightmare band (tools/nightmare-band.ts) read this one list.
+ */
+export const WOUND_BOSSES: readonly (BossCase & { line: ChallengeLine })[] = CHALLENGES.flatMap((d) => {
+  const species = guardianOf(d);
+  const last = [...d.plan].reverse().find((p) => p.kind === 'room' && p.role === undefined);
+  if (!species?.endsWith('-wound') || last?.kind !== 'room') return [];
+  return [{ species, room: last.room as RoomId, where: { dungeon: d.id, floor: d.plan.length }, line: d.challenge!.line, band: true as const }];
+});
+
+/** A wound on a tier: at the end of the road that tier plays (a Senda's chapter road: its reference level is that road's). */
+export const woundOnTier = (w: BossCase, tier: Difficulty): BossCase => {
+  const road = roadFor(CHALLENGES.find((d) => d.id === w.where!.dungeon)!, tier);
+  return { ...w, where: { dungeon: road.id, floor: road.plan.length } };
+};
+
+/**
+ * Older bosses met again as a gacha Senda's mid-boss (tests/sim/story-prove-reused.test.ts),
+ * on the tiers their road is played; proven from their home arena's stored witnesses.
+ */
+export const REUSED_BOSSES: readonly { boss: BossCase; tiers: readonly Difficulty[] }[] = (() => {
+  const gacha = new Set(['abra', 'piplup', 'shinx', 'axew']);
+  const story = new Set<string>(STORY_BOSSES.map((b) => b.id));
+  const tiers: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
+  return [...CHALLENGES, ...SENDA_ROADS]
+    .filter((d) => gacha.has(d.challenge?.line ?? ''))
+    .flatMap((d) => {
+      const on = tiers.filter((t) => roadFor(challengeOfRoad(d), t).id === d.id);
+      return d.plan.flatMap((p, i) => {
+        if (p.kind !== 'room' || p.role !== 'midboss') return [];
+        const species = ROOMS[p.room].spawns[0]!.species;
+        return story.has(species) ? [] : [{ boss: { species, room: p.room, where: { dungeon: d.id, floor: i + 1 } }, tiers: on }];
+      });
+    });
+})();
+
+/** A Senda boss as the Sima meets it on `floor` (tests/sim/story-prove-sima.test.ts). */
+export function simaStoryCase(b: SimaStoryBoss, floor: number): BossCase {
+  const damage = depthScale(ENDLESS.scaling, floor).damage;
+  return {
+    species: b.species,
+    room: b.room,
+    label: `${b.species}-sima`,
+    where: { dungeon: ECLIPSE.id, floor },
+    prepare: (s: WorldState): WorldState => {
+      const hp = (maxHp: number) => Math.max(1, Math.round(maxHp * SIMA_STORY.hp));
+      const enemies = s.enemies.map((e) => (e.species === b.species ? { ...e, maxHp: hp(e.maxHp), hp: hp(e.maxHp) } : e));
+      return { ...s, depth: floor, enemyScale: { hp: SIMA_STORY.hp, damage }, enemies };
+    },
+  };
+}
+
+/** Every lost shadow on the first floor a stray can be and every wound on the first wound floor. */
+export const SIMA_STORY_CASES: readonly BossCase[] = [
+  ...SIMA_SHADOWS.map((b) => simaStoryCase(b, SIMA_STORY.strays.fromFloor)),
+  ...SIMA_WOUNDS.map((b) => simaStoryCase(b, ENDLESS.wounds!.from)),
+];
 
 export const PROOF_CASES: readonly ProofCase[] = [
   ...CARD_BOSSES.map((c) => ({ case: c, tiers: CARD_TIERS, fights: ['nightmare'] as const })),
@@ -836,6 +906,7 @@ export function proofFailures(proofs: readonly CardProof[]): string[] {
     const short = killShortfalls(p);
     if (short.length > 0 && !gapOf(p)) out.push(`${at}: ${short.join('; ')}`);
     if (short.length === 0 && gapOf(p)) out.push(`${at}: listed in KNOWN_KILL_GAPS but meets its targets now (delete the entry)`);
+    if (!p.survival && p.marginCeiling !== undefined && Number.isFinite(p.margin) && p.margin > p.marginCeiling) out.push(`${at}: kill margin ${p.margin.toFixed(2)} > ${p.marginCeiling} (Nightmare band: npx vite-node tools/nightmare-band.ts --write)`);
   }
   return out;
 }

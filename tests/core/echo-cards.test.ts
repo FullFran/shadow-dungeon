@@ -86,7 +86,8 @@ describe('echo cards: in the Sima', () => {
     const f = fightOf(behaviourFor('aegislash', 'nightmare'))!;
     // Easy's echo has no cards: its HP is the plain echo scale (depth included); a card echo drops the depth (the tier's HP aside).
     const guardian = plain.maxHp / depthScale(ENDLESS.scaling, 5, true).hp;
-    expect(boss.maxHp / guardian).toBeCloseTo(1.45 * ECHO_CARDS.hpScale * echoShare(f, 1), 1);
+    // The fight's own HP scale (the Nightmare card HP band raises it, data/nightmare-band.ts) is the guardian's too.
+    expect(boss.maxHp / guardian).toBeCloseTo(1.45 * (f.hpScale ?? 1) * ECHO_CARDS.hpScale * echoShare(f, 1), 1);
     expect(depthScale(ENDLESS.scaling, 5, true).echo).toBe(true);
   });
 

@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { depthScale } from '../../src/core/endless';
-import type { WorldState } from '../../src/core/state';
 import type { Difficulty } from '../../src/data/difficulty';
-import { ECLIPSE } from '../../src/data/dungeons';
-import { ENDLESS } from '../../src/data/endless';
-import { SIMA_SHADOWS, SIMA_STORY, SIMA_WOUNDS, type SimaStoryBoss } from '../../src/data/sima-story';
-import { cardWorld, fightIn, proofFailures, proveCard, startsOf, type BossCase } from '../../src/sim/prove';
+import { SIMA_SHADOWS, SIMA_WOUNDS } from '../../src/data/sima-story';
+import { cardWorld, fightIn, proofFailures, proveCard, SIMA_STORY_CASES, startsOf } from '../../src/sim/prove';
 
 /**
  * The Sendas' bosses are beatable where the Sima puts them (docs/sima-redesign.md
@@ -21,26 +17,6 @@ import { cardWorld, fightIn, proofFailures, proveCard, startsOf, type BossCase }
  */
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
-/** A Senda boss as the Sima meets it on `floor`. */
-export function simaCase(b: SimaStoryBoss, floor: number): BossCase {
-  const damage = depthScale(ENDLESS.scaling, floor).damage;
-  return {
-    species: b.species,
-    room: b.room,
-    label: `${b.species}-sima`,
-    where: { dungeon: ECLIPSE.id, floor },
-    prepare: (s: WorldState): WorldState => {
-      const hp = (maxHp: number) => Math.max(1, Math.round(maxHp * SIMA_STORY.hp));
-      const enemies = s.enemies.map((e) => (e.species === b.species ? { ...e, maxHp: hp(e.maxHp), hp: hp(e.maxHp) } : e));
-      return { ...s, depth: floor, enemyScale: { hp: SIMA_STORY.hp, damage }, enemies };
-    },
-  };
-}
-
-export const SIMA_STORY_CASES: readonly BossCase[] = [
-  ...SIMA_SHADOWS.map((b) => simaCase(b, SIMA_STORY.strays.fromFloor)),
-  ...SIMA_WOUNDS.map((b) => simaCase(b, ENDLESS.wounds!.from)),
-];
 
 describe('the Sendas\' bosses are beatable in the Sima', () => {
   // Back-to-back synchronous proofs never let the worker read its RPC replies ("Timeout calling onTaskUpdate" once a file runs past 60 s): yield a macrotask after each.

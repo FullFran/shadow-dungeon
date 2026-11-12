@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { CHALLENGES, guardianOf, roadFor, type ChallengeLine } from '../../src/data/dungeons';
-import type { RoomId } from '../../src/data/rooms';
+import type { ChallengeLine } from '../../src/data/dungeons';
 import type { Difficulty } from '../../src/data/difficulty';
-import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, startsOf, type BossCase } from '../../src/sim/prove';
+import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, startsOf, woundOnTier, WOUND_BOSSES, type BossCase } from '../../src/sim/prove';
 
 /**
  * The Sendas' wounds are beatable (docs/story-quests.md, docs/gdd.md
@@ -16,20 +15,11 @@ import { cardWorld, FIGHT_SEEDS, fightIn, proofFailures, proveCard, solveFight, 
  * covered by being in the data. The shards (wound-prove*.test.ts) split the
  * lines across workers.
  */
-export const WOUNDS: readonly (BossCase & { line: ChallengeLine })[] = CHALLENGES.flatMap((d) => {
-  const species = guardianOf(d);
-  const last = [...d.plan].reverse().find((p) => p.kind === 'room' && p.role === undefined);
-  if (!species?.endsWith('-wound') || last?.kind !== 'room') return [];
-  return [{ species, room: last.room as RoomId, where: { dungeon: d.id, floor: d.plan.length }, line: d.challenge!.line }];
-});
+export const WOUNDS: readonly (BossCase & { line: ChallengeLine })[] = WOUND_BOSSES;
 
 const TIERS: readonly Difficulty[] = ['easy', 'normal', 'hard', 'nightmare'];
 
-/** A wound on a tier: at the end of the road that tier plays (a Senda's chapter road: its reference level is that road's). */
-const onTier = (w: BossCase, tier: Difficulty): BossCase => {
-  const road = roadFor(CHALLENGES.find((d) => d.id === w.where!.dungeon)!, tier);
-  return { ...w, where: { dungeon: road.id, floor: road.plan.length } };
-};
+const onTier = woundOnTier;
 
 /** Proves the wounds of `lines`. */
 export function proveWounds(lines: readonly ChallengeLine[]): void {

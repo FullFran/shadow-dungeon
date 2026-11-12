@@ -1,3 +1,4 @@
+import { tierHealing, worldDifficulty } from './difficulty';
 import { UNKILLABLE } from '../data/sima';
 import { cardHolds, cardHpFloor } from './cards';
 import { AEGISLASH, floatsOf, poiseOf } from '../data/enemies';
@@ -268,7 +269,7 @@ function strikeEnemy(
   let next: WorldState = {
     ...state,
     // Shell Bell heals on the HP the hit really took, and only for a direct hit (no zone tick, chain jump, split shard or rethrow).
-    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), enemy.hp - hp, !hit.minor && !hit.secondary)), hit.effects, damage, enemy.hp - hp), nextHitBuff: null },
+    player: { ...afterHit(spendBuffHit(onHitDealt(stokeFlashFire(breakIllusion(state.player, events), hit.type, events), enemy.hp - hp, !hit.minor && !hit.secondary, tierHealing(worldDifficulty(state)).sustainPerSecond)), hit.effects, damage, enemy.hp - hp), nextHitBuff: null },
     enemies: state.enemies.map((e) => (e.id === enemy.id ? struck : e)),
   };
   // Zones, split shots and chained jumps are the striker's own hits: a guest spawns them on its side and claims what they hit.
