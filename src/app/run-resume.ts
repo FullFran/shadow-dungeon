@@ -1,4 +1,6 @@
 import type { KeyValueStore } from '../adapters/storage';
+import { bagLeftOk } from './bag-model';
+import type { BagSlot } from '../core/consumable-stock';
 import type { CoinTally } from '../core/coins';
 import type { KillsByType } from '../core/run-report';
 import type { RunState } from '../core/run';
@@ -80,6 +82,8 @@ export interface RunPart {
   realMs: number;
   /** The minimap's fog of war as one '0'/'1' per tile (presentation only); absent when the floor has none. */
   minimap?: string;
+  /** The consumables still in the bag (app/bag-model.ts); absent when the run had none. */
+  bag?: readonly (BagSlot | null)[];
 }
 
 interface Base {
@@ -214,6 +218,7 @@ function partOk(part: unknown, launch: RunLaunch): part is RunPart {
   if (!numbers(part.bossPicks) || !numbers(part.memoriesRead) || !numbers(part.bossesMourned)) return false;
   if (!Array.isArray(part.simaLog) || !part.simaLog.every((r) => isRecord(r) && num(r.floor) && typeof r.kind === 'string' && typeof r.outcome === 'string')) return false;
   if (part.minimap !== undefined && typeof part.minimap !== 'string') return false;
+  if (part.bag !== undefined && !bagLeftOk(part.bag)) return false;
   const b = part.bonfire;
   if (b !== null && !(isRecord(b) && runOk(b.run) && worldOk(b.world) && tallyOk(b.tally) && count(b.spent))) return false;
   // A trial run and its launch go together: one without the other would play the wrong arena.

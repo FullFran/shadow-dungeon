@@ -406,6 +406,8 @@
   "bind.action.area": "Movimiento de área",
   "bind.action.roll": "Rodar",
   "bind.action.lock": "Fijar al enemigo",
+  "bind.action.item": "Usar el objeto de la bolsa",
+  "bind.action.itemNext": "Siguiente objeto de la bolsa",
   "bind.action.map": "Minimapa (atajos en el pueblo)",
   "bind.action.menu": "Menú y pausa",
   "bind.action.mute": "Silenciar",

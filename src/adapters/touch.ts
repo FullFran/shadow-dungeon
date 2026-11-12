@@ -49,6 +49,10 @@ export interface TouchFrame {
    * button keeps it for one more step, the one that fires the move.
    */
   aim: { slot: number; dir: Vec2 | null } | null;
+  /** Edge: use the bag's selected consumable (the controller's RT; app/game.ts reads it, never the core). */
+  item?: boolean;
+  /** Bag slots to move the selection by since the last step (+ next, - previous; the controller's D-pad down and up). */
+  itemCycle?: number;
 }
 
 export const IDLE_TOUCH: TouchFrame = { move: { x: 0, y: 0 }, roll: false, fast: false, heavy: false, boost: false, area: false, lockHeld: false, lockTap: false, swipe: 0, tap: null, aim: null };

@@ -10,6 +10,8 @@ import { LOCK_TYPES, type LockType } from '../core/state';
 import { LANGUAGES, type Language } from '../i18n';
 import type { KeyValueStore } from '../adapters/storage';
 import { DEFAULT_BINDINGS, sanitizeBindings, type Bindings } from '../adapters/bindings';
+import { EMPTY_BAG, sanitizeBagPick } from './bag-model';
+import type { ConsumableId } from '../data/consumables';
 import { TOUCH_MODES, type TouchMode, type TouchPrefs } from '../adapters/touch-mode';
 import { TOUCH_SCALES } from '../ui/touch-layout';
 
@@ -55,6 +57,8 @@ export interface Settings {
   bossPhaseTipSeen: boolean;
   /** Keyboard and mouse bindings (src/adapters/bindings.ts; issue #62). The defaults are the game's original keys. */
   keyBindings: Bindings;
+  /** The consumables packed for the next run (app/bag-model.ts; the loadout's bag step): the last bag, null = empty slot. */
+  bag: readonly (ConsumableId | null)[];
 }
 
 /** The figuraciones settings, in the order the row cycles them. */
@@ -72,7 +76,7 @@ export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 't
 const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true, bossPhaseTipSeen: false, keyBindings: DEFAULT_BINDINGS };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true, bossPhaseTipSeen: false, keyBindings: DEFAULT_BINDINGS, bag: EMPTY_BAG };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -207,6 +211,8 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
     bossPhaseTipSeen: typeof stored.bossPhaseTipSeen === 'boolean' ? stored.bossPhaseTipSeen : fallback.bossPhaseTipSeen,
     // Each binding kept only while valid and conflict-free; older saves have none and get the defaults.
     keyBindings: stored.keyBindings === undefined ? fallback.keyBindings : sanitizeBindings(stored.keyBindings),
+    // Known kinds only, once each; older settings have none.
+    bag: stored.bag === undefined ? fallback.bag : sanitizeBagPick(stored.bag),
   };
 }
 

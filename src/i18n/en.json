@@ -406,6 +406,8 @@
   "bind.action.area": "Area move",
   "bind.action.roll": "Roll",
   "bind.action.lock": "Lock on",
+  "bind.action.item": "Use the bag item",
+  "bind.action.itemNext": "Next bag item",
   "bind.action.map": "Minimap (shortcuts in the town)",
   "bind.action.menu": "Menu and pause",
   "bind.action.mute": "Mute",

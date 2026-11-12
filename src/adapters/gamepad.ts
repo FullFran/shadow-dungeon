@@ -110,6 +110,10 @@ export function padFrame(state: PadState, memory: PadMemory): { frame: TouchFram
       lockTap: edge(PAD.lt) || edge(PAD.r3),
       swipe: (edge(PAD.right) ? 1 : 0) - (edge(PAD.left) ? 1 : 0),
       aim,
+      // The bag (odd/tasks/items-bag.md): RT uses the selected consumable, the D-pad's down and up pick the next or previous one.
+      // Only when pressed: an idle pad still gives the idle frame.
+      ...(edge(PAD.rt) ? { item: true } : {}),
+      ...(edge(PAD.down) !== edge(PAD.up) ? { itemCycle: edge(PAD.down) ? 1 : -1 } : {}),
     },
     memory: { pressed: state.pressed, aims },
   };
