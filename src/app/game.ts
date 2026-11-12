@@ -61,7 +61,7 @@ import type { MusicContext } from '../data/music';
 import { trackNote, type CaptureNotice, type DungeonIntro, type NowPlaying, type SpellBanner } from '../adapters/intro-card';
 import { bossBar } from '../core/boss';
 import { bossMoment } from '../core/boss-moment';
-import { bossNotice, takePhaseTip, type BossNotice } from '../ui/boss-notice';
+import { bossNotice, pickWaits, takePhaseTip, type BossNotice } from '../ui/boss-notice';
 import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
@@ -1106,6 +1106,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   /** A boss down and the run goes on: its item pick, once (each peer its own offer, like a vault's). Shrine trials hold no items. */
   function watchBossPick(): void {
     if (trial || !bossPickDue(run, world, bossPicks)) return;
+    // "¡JEFE DERROTADO!" first, then its last lines, then the reward: it is asked again each step until both are done.
+    if (pickWaits(moment, realMs, storyBox !== null || storyLines.length > 0)) return;
     bossPicks.add(run.floor);
     say(t(strayHere(run) ? 'sima.stray.reward' : 'pick.boss'), 'item');
     run = withRewardOffer(run, world);
