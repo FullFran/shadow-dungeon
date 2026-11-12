@@ -11,18 +11,18 @@ Delivery: work-unit commits on the branch; push/merge are the owner's. Runner: v
 - S6 "Also fix: Aegislash Nightmare maxShots 170 exceeds the global ENEMY_SHOT_CAP 160."
 - S7 "`npm run prove` must keep every card survivable (add the new ones to it); GDD boss sections; i18n."
 - Assumption (A1): "weakest card" = the Normal card with the lowest HP share; ties broken by the highest Normal kill margin in reports/proof/latest.md. The replaced card stays on Hard and Nightmare (no content is lost).
-- Assumption (A2): a new card the research marks "(Nightmare)" goes on Nightmare only; every other extra card goes on Hard and Nightmare.
-- Assumption (A3): the research's Senda `hang` template needs E5 (pending); Ghost/Dark/Poison Senda bosses get a `curl` template (curving veils, E2) instead, `hang` stays pending.
+- Assumption (A2): extra cards go on Hard and Nightmare; a card the research marks "(Nightmare)" goes on Nightmare only unless the existing rule "Nightmare adds 1-2 cards over Hard" (tests/core/guardian-cards.test.ts, hosted-cards.test.ts) forces it onto Hard too (Aegislash's edict, Nihilego's neurotoxin); Lanturn's bolt stays Nightmare-only.
+- Assumption (A3): the research's Senda `hang` template needs E5 (pending); Ghost/Dark/Poison (and any other unmapped type) Senda bosses get a `curl` template (curving veils, E2) instead, `hang` stays pending. There are 50 Senda bosses in the data (the research counted 48); all 50 get their extra card.
 
 ## Tasks
 
 | ID | Specs | Route | Status | Evidence |
 |---|---|---|---|---|
-| T1 | S1 S4 | inline | todo | kinematics: accel, gravity, curve, max speed, stop, bounce (core/kinematics.ts) |
-| T2 | S1 S5 | inline | todo | DanmakuPattern kinds wave, closing, scatter, homing, laser, familiars (orbit) |
-| T3 | S2 | inline | todo | wire kinematics, PROTOCOL_VERSION 5 → 6 |
-| T4 | S3 | inline | todo | hosted fights can play pattern cards |
-| T5 | S3 S6 S7 | inline | todo | dungeon boss cards (8 bosses) + Aegislash cap |
+| T1 | S1 S4 | inline | done | 47c3491; RED 3 world tests failing, GREEN 15/15 tests/core/kinematics.test.ts |
+| T2 | S1 S5 | inline | done | c569499; RED missing exports, GREEN 13/13 tests/core/pattern-kinds.test.ts, 15/15 tests/adapters/danmaku-vfx.test.ts |
+| T3 | S2 | inline | done | 47c3491; RED 6/7 failing (version 5, kin undefined), GREEN 7/7 tests/net/kin-wire.test.ts |
+| T4 | S3 | inline | done | c569499 + 15c4fd0; RED shots 0 / phase undefined, GREEN 2/2 tests/core/hosted-pattern-cards.test.ts |
+| T5 | S3 S6 S7 | inline | done (proof pending) | 15c4fd0; card-fairness 8 i18n RED then GREEN; guardian safespot RED then GREEN |
 | T6 | S3 S7 | inline | todo | Senda templates orbit, beam, curl on Hard/Nightmare |
 | T7 | S7 | inline | todo | telegraphs (danmaku-vfx), GDD, i18n |
 

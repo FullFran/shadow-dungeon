@@ -8,6 +8,8 @@ import { ENEMY_BEHAVIOUR } from '../../src/data/enemies';
 import { NEW_CARDS } from '../../src/data/pattern-cards';
 import type { SpeciesId } from '../../src/data/species';
 import { catalog, LANGUAGES } from '../../src/i18n';
+import { STORY_BOSSES, STORY_FIGHTS } from '../../src/data/story/bosses';
+import { extraTemplateOf } from '../../src/data/story/kit';
 
 /**
  * Every pattern card of every card boss (the guardians, the hosted bosses'
@@ -21,8 +23,8 @@ const fight = (s: SpeciesId, d: Difficulty): CardFightDef | undefined => fightOf
 const CARD_BOSSES = SPECIES.filter((s) => TIERS.some((d) => fight(s, d)));
 
 describe('pattern cards keep the fairness rules on every boss and tier', () => {
-  it('finds the card bosses (8 dungeon bosses and the Senda shadows)', () => {
-    expect(CARD_BOSSES.length).toBeGreaterThanOrEqual(8 + 48);
+  it('finds the card bosses (8 dungeon bosses and the 50 Senda bosses)', () => {
+    expect(CARD_BOSSES.length).toBeGreaterThanOrEqual(8 + 50);
   });
 
   it.each(CARD_BOSSES.map((s) => [s] as const))('%s', (species) => {
@@ -82,5 +84,18 @@ describe('the family limits catch what they should', () => {
     expect(familyViolations({ kind: 'familiars', count: 2, radius: 80, degPerSec: 90, centre: 'boss', atOnce: 1, volleys: 2, gapMs: 500, perVolley: 1, spreadDeg: 0, aim: 'target', shot })).toHaveLength(1);
     expect(familyViolations({ kind: 'fan', fans: 1, perFan: 3, spreadDeg: 30, gapMs: 300, aim: 'first', shot: { ...shot, kin: { curveDegPerSec: 60, bounces: 2 } } })).toHaveLength(2);
     expect(familyViolations({ kind: 'homing', volleys: 1, gapMs: 500, orbs: 1, spreadDeg: 0, shot: { ...shot, steer: { degPerSec: 120, ms: 4000 } } })).toHaveLength(1);
+  });
+});
+
+describe('every Senda boss plays its extra pattern card from Hard (decision 2b)', () => {
+  it.each(STORY_BOSSES.map((b) => [b.id, b] as const))('%s', (_id, boss) => {
+    const extra = `sc-${boss.id}-${extraTemplateOf(boss.shots)}`;
+    const fights = STORY_FIGHTS[boss.id as keyof typeof STORY_FIGHTS];
+    expect(fights[0].cards.map((c) => c.id)).not.toContain(extra);
+    expect(fights[1].cards.map((c) => c.id)).not.toContain(extra);
+    for (const f of [fights[2], fights[3]]) {
+      expect(f.cards.map((c) => c.id)).toContain(extra);
+      expect(f.cards.reduce((s, c) => s + c.hpShare, 0)).toBeCloseTo(1);
+    }
   });
 });
