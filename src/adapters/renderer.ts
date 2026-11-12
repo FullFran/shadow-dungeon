@@ -1,4 +1,5 @@
 import { resolveAnimSheet } from './anim-sheet';
+import type { CardResultBanner } from '../ui/card-clock';
 import type { Figuration } from './figurations';
 import { drawCreatureFrame, withCreatureScale } from './creature-scale';
 import { drawHerald, heraldScale } from './herald-vfx';
@@ -138,6 +139,10 @@ export interface RenderFrame {
   moment?: BossNotice | null;
   /** The card this player just captured, while its notice shows. */
   capture?: CaptureNotice | null;
+  /** How the last spell card ended, while its banner shows (ui/card-clock.ts). */
+  cardResult?: CardResultBanner | null;
+  /** The one-time card clock tip, while it shows. */
+  cardTip?: { shownAtMs: number } | null;
   /** The endless dungeon's run clock (absent elsewhere). */
   clock?: RunClock | null;
   /** The Sima del Eclipse: the eclipse backdrop beyond the map, and the abyss band's floating islands. */
@@ -1949,7 +1954,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     const hudScale = frame.hudScale ?? pixelScale;
     const hud = hudSpace(canvas.width, canvas.height, hudScale);
     ctx.setTransform(hudScale, 0, 0, hudScale, 0, 0);
-    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}) });
+    drawCombatPanels(ctx, current, hud, { nowMs: timeMs, state: combatHud, device: frame.device ?? (frame.touchUi ? 'touch' : 'keyboard'), pad: frame.padStyle ?? 'xbox', portrait, ...(frame.names ? { names: frame.names } : {}), ...(frame.shownAs ? { shownAs: frame.shownAs } : {}), touch: frame.touchUi ?? false, scale: hudScale, floor: frame.floor, ...(frame.coins !== undefined ? { coins: frame.coins } : {}), cardResult: frame.cardResult ?? null, cardTip: frame.cardTip ?? null });
     drawFlashToast(ctx, current, juice, hud, { touch: frame.touchUi ?? false });
     if (frame.minimap) drawMinimap(ctx, current, frame.minimap, view, timeMs, hud, openedNotice ? { doors: openedNotice.doors, ageMs: timeMs - openedNotice.atMs } : undefined, minimapTilePx(frame.touchUi ?? false));
     // The message log is the bottom-left corner's (the boss block is clear of it); it dims while a fight is on.

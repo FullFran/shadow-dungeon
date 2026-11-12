@@ -13,8 +13,9 @@ import type { Difficulty } from '../../src/data/difficulty';
 /**
  * The card floor (data/cards.ts `CARD_FLOOR`, odd/tasks/type-balance.md):
  * no spell card can be broken before its tier's share of its timer, however
- * hard the player hits; the floor never makes a card outlast its timer, and
- * survival cards and last spells keep their rules.
+ * hard the player hits, except the last card (no hold: the hit that takes the
+ * boss's last HP kills it); the floor never makes a card outlast its timer,
+ * and survival cards keep their rules.
  */
 
 const SHOT = { power: 10, type: 'ghost' as const, speed: 100, radius: 6, lifetimeMs: 3000 };
@@ -101,7 +102,7 @@ describe('card floor: data', () => {
 
 describe('card floor: no card ends before its floor', () => {
   for (const tier of ['normal', 'hard', 'nightmare'] as const) {
-    it(`${tier}: an overwhelming hit every tick breaks each card at its floor, not before; survival and last spell keep their rules`, () => {
+    it(`${tier}: an overwhelming hit every tick breaks each card at its floor, not before, the last one on the first hit; survival keeps its rule`, () => {
       const share = CARD_FLOOR[tier];
       const { ends, fell, events } = slug(tier, 1e6);
       const first = ends.find((e) => e.card === 'sc-floor-a')!;
@@ -112,11 +113,11 @@ describe('card floor: no card ends before its floor', () => {
       const survival = ends.find((e) => e.card === 'sc-floor-survive')!;
       expect(survival.outcome).toBe('survived');
       expect(survival.cardMs).toBeGreaterThanOrEqual(3000);
-      // The last spell: the boss falls, never before the floor.
+      // The last spell has no hold (odd/tasks/last-phase-and-timer.md S1): the first hit that empties it fells the boss.
       expect(fell).not.toBeNull();
-      expect(fell!).toBeGreaterThanOrEqual(share * 6000);
-      expect(fell!).toBeLessThanOrEqual(share * 6000 + 3 * FIXED_DT_MS);
-      // The player is told why the hits stopped landing.
+      expect(fell!).toBeLessThan(200);
+      expect(fell!).toBeLessThan(share * 6000);
+      // The player is told why the hits stopped landing (on the earlier cards).
       expect(events.some((e) => e.type === 'cardHold')).toBe(true);
     });
   }

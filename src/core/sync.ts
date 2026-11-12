@@ -11,7 +11,7 @@ import { SPECIES, type SpeciesId } from '../data/species';
 import { illusionActive } from './passives';
 import type { PokemonType } from '../data/types';
 import type { EliteTrait } from '../data/difficulty';
-import { hasBossState, initialBoss, onBossDamaged } from './boss';
+import { cardClockOf, hasBossState, initialBoss, onBossDamaged } from './boss';
 import { initialAi } from './enemies';
 import { answerGuardedHit } from './roster';
 import { noteAggroDamage } from './aggro';
@@ -37,7 +37,8 @@ import type { SpellCardId } from '../data/cards';
 import type { BossState } from './state';
 
 /** The boss state without its hosted card and its hold: the latest snapshot says whether one plays and whether it holds. */
-const withoutSpell = ({ spell: _spell, held: _held, ...boss }: BossState): BossState => boss;
+/** A guest's boss without the host-synced card fields: each snapshot says them again (or drops them). */
+const withoutSpell = ({ spell: _spell, held: _held, clock: _clock, ...boss }: BossState): BossState => boss;
 import { createPlayer } from './world';
 import { clampParty } from '../data/party-scaling';
 import { partyField, partyHpScale, partySizeOf } from './party';
@@ -82,8 +83,8 @@ export interface EnemySnapshot {
   hitstunMs: number;
   /** Behaviour, for animation, telegraphs and the guest's victim-side melee check. */
   ai: { mode: AiMode; modeMs: number; modeDurationMs: number; attackDir: Vec2; attack?: string; aimPoint?: Vec2 };
-  /** `spell`: a hosted spell card in play (core/cards.ts), absent otherwise; `held`: on its card floor's hold (hits absorbed). */
-  boss?: { stance: BossStance; comboIndex: number; spell?: SpellCardId; held?: true };
+  /** `spell`: a hosted spell card in play (core/cards.ts), absent otherwise; `held`: on its card floor's hold (hits absorbed); `clock`: its card's clock (core/boss.ts `cardClockOf`). */
+  boss?: { stance: BossStance; comboIndex: number; spell?: SpellCardId; held?: true; clock?: { leftMs: number; totalMs: number } };
   /** Fell by its own hand: the guest credits it nothing either. */
   spent?: boolean;
   /** Elite trait (the one table, data/difficulty.ts), whether its armor still holds, and whether it strikes positionally. */
@@ -210,6 +211,13 @@ export function applyRemotePlayers(state: WorldState, snapshots: readonly Player
 /** A peer left: its player is no longer in the world. */
 export const removeRemote = (state: WorldState, id: string): WorldState => ({ ...state, remotes: state.remotes.filter((r) => r.id !== id) });
 
+/** A boss's synced state: its stance and combo, the hosted card, the hold flag and the card clock. */
+function bossSnapshot(state: WorldState, e: EnemyState): NonNullable<EnemySnapshot['boss']> {
+  const boss = e.boss!;
+  const clock = cardClockOf(state, e);
+  return { stance: boss.stance, comboIndex: boss.comboIndex, ...(boss.spell ? { spell: boss.spell } : {}), ...(boss.held ? { held: true as const } : {}), ...(clock ? { clock } : {}) };
+}
+
 export function hostSnapshot(state: WorldState): HostSnapshot {
   return {
     tick: state.tick,
@@ -230,7 +238,7 @@ export function hostSnapshot(state: WorldState): HostSnapshot {
         ...(e.ai.attack !== undefined ? { attack: e.ai.attack } : {}),
         ...(e.ai.aimPoint ? { aimPoint: e.ai.aimPoint } : {}),
       },
-      ...(e.boss ? { boss: { stance: e.boss.stance, comboIndex: e.boss.comboIndex, ...(e.boss.spell ? { spell: e.boss.spell } : {}), ...(e.boss.held ? { held: true as const } : {}) } } : {}),
+      ...(e.boss ? { boss: bossSnapshot(state, e) } : {}),
       ...(e.spent ? { spent: true } : {}),
       ...(e.elite ? { elite: e.elite } : {}),
       ...(e.herald ? { herald: e.herald } : {}),

@@ -139,7 +139,8 @@ export const ECHO_CARDS = { phase2FromFloor: 25, fullFromFloor: 35, timerScale: 
  * reports/balance/type-chart-baseline.md): no spell card can be broken
  * before this share of its timer: until then its segment keeps its last HP
  * (core/cards.ts `holdFloor`) and hits beyond it are absorbed ("¡Aguanta!"). It never makes a card last past its timer; survival cards
- * and last spells keep their rules. Easy keeps its classic balance.
+ * keep their rule, and the last card has no hold (core/cards.ts `isLastSegment`: the hit that takes the boss's last HP
+ * kills it). Easy keeps its classic balance.
  */
 export const CARD_FLOOR: Readonly<Record<Difficulty, number>> = { easy: 0, normal: 0.35, hard: 0.35, nightmare: 0.35 };
 

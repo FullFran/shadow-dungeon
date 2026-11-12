@@ -1,7 +1,7 @@
 import { AEGISLASH, ENEMY_BEHAVIOUR, type AegislashCard, type AegislashDef, type ComboHitDef } from '../data/enemies';
 import { atLeast, type Difficulty } from '../data/difficulty';
 import { worldDifficulty } from './difficulty';
-import { cardFloors, cardGuard, cardTimeLeftMs, fightFor, fightOf, spellOf, updateCardFight } from './cards';
+import { cardFloors, cardGuard, cardTimeLeftMs, currentCard, fightFor, fightOf, spellOf, updateCardFight } from './cards';
 import { heraldBar } from './herald/brain';
 import { behaviourFor } from './tricks';
 import type { SpeciesId } from '../data/species';
@@ -94,9 +94,10 @@ export interface BossBar {
   maxHp: number;
   /** Null for a mid-boss without stances (Trevenant). */
   stance: BossStance | null;
-  /** Spell-card fights: where each card's segment ends, in HP (the bar's notches), and the time left on the card in play (host only). */
+  /** Spell-card fights: where each card's segment ends, in HP (the bar's notches), the time left on the card in play and its timer (a guest's from the host's snapshot). */
   segments?: readonly number[];
   cardLeftMs?: number;
+  cardTimerMs?: number;
 }
 
 export const showsBar = (enemy: EnemyState): boolean => {
@@ -112,11 +113,30 @@ export function bossBar(state: WorldState): BossBar | null {
   const bar: BossBar = { enemyId: enemy.id, species: enemy.species, hp: enemy.hp, maxHp: enemy.maxHp, stance: spellOf(enemy.boss) ?? enemy.boss?.stance ?? null };
   // A herald's cards: equal segments, its card clock (core/herald/brain.ts).
   const herald = enemy.herald ? heraldBar(state, enemy) : null;
-  if (herald) return { ...bar, ...herald };
+  // A guest has no card clock of its own: the host's comes in the snapshot (`boss.clock`).
+  const synced = state.role === 'guest' && enemy.boss?.clock ? { cardLeftMs: enemy.boss.clock.leftMs, cardTimerMs: enemy.boss.clock.totalMs } : {};
+  if (herald) return { ...bar, ...herald, ...synced };
   const fight = spellOf(enemy.boss) ? fightFor(state, fightOf(behaviourFor(enemy.species, worldDifficulty(state)))) : undefined;
   if (!fight) return bar;
+  const clock = cardClockOf(state, enemy);
+  return { ...bar, segments: cardFloors(fight).slice(0, -1).map((share) => share * enemy.maxHp), ...(clock ? { cardLeftMs: clock.leftMs, cardTimerMs: clock.totalMs } : {}), ...synced };
+}
+
+/**
+ * The clock of the spell card a boss plays (host): time left and the card's timer; null while it declares, between
+ * cards, or for a boss with no card clock. The host sends it to guests in the snapshot (core/sync.ts).
+ */
+export function cardClockOf(state: WorldState, enemy: EnemyState): { leftMs: number; totalMs: number } | null {
+  if (!enemy.boss || state.role === 'guest') return null;
+  if (enemy.herald) {
+    const herald = heraldBar(state, enemy);
+    return herald?.cardLeftMs !== undefined && herald.cardTimerMs !== undefined ? { leftMs: herald.cardLeftMs, totalMs: herald.cardTimerMs } : null;
+  }
+  const fight = spellOf(enemy.boss) ? fightFor(state, fightOf(behaviourFor(enemy.species, worldDifficulty(state)))) : undefined;
+  if (!fight) return null;
   const left = cardTimeLeftMs(fight, enemy);
-  return { ...bar, segments: cardFloors(fight).slice(0, -1).map((share) => share * enemy.maxHp), ...(left !== null ? { cardLeftMs: left } : {}) };
+  const found = left === null ? null : currentCard(fight, enemy.boss);
+  return found && left !== null ? { leftMs: left, totalMs: found.card.timerMs } : null;
 }
 
 const withAi = (enemy: EnemyState, ai: AiState): EnemyState => ({ ...enemy, ai });

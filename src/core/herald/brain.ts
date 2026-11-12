@@ -83,14 +83,14 @@ export const HERALD_DECLARE_MS = 700;
 const floorOf = (enemy: Pick<EnemyState, 'maxHp'>, index: number, count: number): number => enemy.maxHp * segmentFloorShare(equalShares(count), index);
 
 /** The boss bar's spell-card fields for a herald (core/boss.ts `bossBar`): its notches and (host or solo) the card's time left. */
-export function heraldBar(state: WorldState, enemy: EnemyState): { segments: readonly number[]; cardLeftMs?: number } | null {
+export function heraldBar(state: WorldState, enemy: EnemyState): { segments: readonly number[]; cardLeftMs?: number; cardTimerMs?: number } | null {
   const def = heraldOf(state, enemy);
   if (!def || !enemy.boss) return null;
   const count = def.cards.length;
   const segments = Array.from({ length: Math.max(0, count - 1) }, (_, i) => floorOf(enemy, i, count));
   const card = heraldCard(def, enemy.boss.stance);
   const playing = card && enemy.ai.mode !== 'transform' && enemy.ai.mode !== 'idle' && state.role !== 'guest';
-  return { segments, ...(playing ? { cardLeftMs: Math.max(0, card.timerMs - enemy.boss.stanceMs) } : {}) };
+  return { segments, ...(playing ? { cardLeftMs: Math.max(0, card.timerMs - enemy.boss.stanceMs), cardTimerMs: card.timerMs } : {}) };
 }
 
 const enemyShots = (state: WorldState): number => state.projectiles.reduce((n, p) => n + (p.owner === 'enemy' ? 1 : 0), 0);

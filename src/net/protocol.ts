@@ -2,6 +2,7 @@ import type { SimaSync } from '../core/sima-events';
 import type { GateSync } from '../core/gates';
 import { isEliteTrait, toDifficulty, type Difficulty } from '../data/difficulty';
 import { isDungeonId } from '../data/dungeons';
+import { cardInfo, type SpellCardId } from '../data/cards';
 import { MOVES, type MoveId } from '../data/moves';
 import { SPECIES, isPlayable, type SpeciesId } from '../data/species';
 import { POKEMON_TYPES, type PokemonType } from '../data/types';
@@ -351,6 +352,32 @@ function withHeralds(enemies: EnemySnapshot[], wire: unknown): EnemySnapshot[] {
   return enemies.map((e) => (byId.has(e.id) ? { ...e, herald: byId.get(e.id)! } : e));
 }
 
+/** Card bosses of the snap on the wire: [id, time left, card timer, hosted card, held] (clock null between cards; card null when none). */
+type CardWire = [string, number | null, number | null, string | null, 0 | 1];
+
+const encodeCards = (enemies: readonly EnemySnapshot[]): CardWire[] =>
+  enemies.flatMap((e) => {
+    const b = e.boss;
+    if (!b || (!b.clock && !b.spell && !b.held)) return [];
+    return [[e.id, b.clock ? ri(b.clock.leftMs) : null, b.clock ? ri(b.clock.totalMs) : null, b.spell ?? null, b.held ? 1 : 0] as CardWire];
+  });
+
+/** The snap's bosses with their card clock, hosted card and hold from the wire (malformed entries are dropped; an older host sends none). */
+function withCards(enemies: EnemySnapshot[], wire: unknown): EnemySnapshot[] {
+  if (!Array.isArray(wire)) return enemies;
+  const byId = new Map<string, Pick<NonNullable<EnemySnapshot['boss']>, 'clock' | 'spell' | 'held'>>();
+  for (const entry of wire) {
+    if (!Array.isArray(entry) || entry.length !== 5 || typeof entry[0] !== 'string') continue;
+    const [id, left, total, spell, held] = entry as unknown[];
+    const timed = finite(left) && finite(total) && left >= 0 && total > 0;
+    if (!timed && (left !== null || total !== null)) continue;
+    if (spell !== null && !(typeof spell === 'string' && cardInfo(spell))) continue;
+    if (held !== 0 && held !== 1) continue;
+    byId.set(id as string, { ...(timed ? { clock: { leftMs: left, totalMs: total } } : {}), ...(spell ? { spell: spell as SpellCardId } : {}), ...(held === 1 ? { held: true as const } : {}) });
+  }
+  return enemies.map((e) => (e.boss && byId.has(e.id) ? { ...e, boss: { ...e.boss, ...byId.get(e.id)! } } : e));
+}
+
 /** A gate's progress on the wire: [done, outcome, key x, key y] (key and outcome optional). */
 function encodeGate(g: GateSync): unknown[] {
   return [g.done ? 1 : 0, g.outcome ?? null, ...(g.key ? [r1(g.key.x), r1(g.key.y)] : [])];
@@ -391,6 +418,8 @@ export function encodeMessage(message: NetMessage): string {
         ...(encodeStatuses(message.s.enemies).length > 0 ? { x: encodeStatuses(message.s.enemies) } : {}),
         // Which herald an enemy is (optional: an older guest ignores it).
         ...(encodeHeralds(message.s.enemies).length > 0 ? { h: encodeHeralds(message.s.enemies) } : {}),
+        // Card bosses' clock, hosted card and hold (optional: an older guest ignores them).
+        ...(encodeCards(message.s.enemies).length > 0 ? { c: encodeCards(message.s.enemies) } : {}),
       };
       break;
     case 'town':
@@ -476,7 +505,7 @@ export function decodeMessage(text: string): NetMessage | null {
         s: {
           tick: wire.k,
           berries: Array.isArray(wire.b) ? wire.b.filter((b): b is string => typeof b === 'string') : [],
-          enemies: withHeralds(withStatuses(decodeList(wire.e, decodeEnemy), wire.x), wire.h),
+          enemies: withCards(withHeralds(withStatuses(decodeList(wire.e, decodeEnemy), wire.x), wire.h), wire.c),
           projectiles: decodeList(wire.p, decodeProjectile),
           ...(wire.v && typeof wire.v === 'object' ? { sima: wire.v as SimaSync } : {}),
           ...(finite(wire.n) && wire.n >= 1 && wire.n <= 4 ? { party: Math.floor(wire.n) } : {}),

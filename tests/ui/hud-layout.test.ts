@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { playViewport } from '../../src/adapters/viewport';
 import { itemsChip } from '../../src/adapters/hud';
 import { setLanguage } from '../../src/i18n';
-import { BOSS_BAR, type HudBox, bossStackRect, captionNameSize, hudRects, hudScaleFor, hudSpace, liftHintBand, toastRect } from '../../src/ui/hud-layout';
+import { BOSS_BAR, CARD_CLOCK_STACK, type HudBox, bossStackRect, captionNameSize, cardClockRect, cardTipRect, hudRects, hudScaleFor, hudSpace, liftHintBand, toastRect } from '../../src/ui/hud-layout';
 import { hintBand, hintSizes } from '../../src/ui/play-hints-model';
 
 const MINIMAP = { cols: 40, rows: 28 };
@@ -75,6 +75,9 @@ describe('HUD layout', () => {
         ...rects.partners.map((p, i) => [`partner${i}`, p] as [string, HudBox]),
         ...rects.slots.map((s, i) => [`slot${i}`, s] as [string, HudBox]),
         ...(touch ? [] : [['hint', hintBox(band, space, scale)] as [string, HudBox]]),
+        // The spell card clock with its result band over the boss bar, and its one-time tip under the announcement.
+        ['clock', cardClockRect(rects.boss, touch)],
+        ['tip', cardTipRect(space, touch)],
       ];
       expect(rects.partners).toHaveLength(3);
       for (const [name, box] of boxes) {
@@ -140,6 +143,22 @@ describe('HUD layout', () => {
     expect(fight.log.y + fight.log.height).toBeLessThanOrEqual(space.height - 6);
     expect(overlaps(fight.log, fight.boss)).toBe(false);
     expect(overlaps(fight.log, fight.caption)).toBe(false);
+  });
+
+  it('the card clock sits over the boss bar (centred; on touch at its left, clear of the thumb buttons) and the boss stack makes room for it', () => {
+    const desk = layoutFor(1280, 720, false);
+    const clock = cardClockRect(desk.rects.boss, false);
+    expect(clock.y + clock.height).toBeLessThanOrEqual(desk.rects.boss.y);
+    expect(Math.abs(clock.x + clock.width / 2 - (desk.rects.boss.x + desk.rects.boss.width / 2))).toBeLessThanOrEqual(1);
+    expect(bossStackRect(desk.space, 4).y).toBeLessThanOrEqual(clock.y);
+    expect(desk.rects.boss.y - bossStackRect(desk.space, 4).y).toBeGreaterThanOrEqual(CARD_CLOCK_STACK);
+    const phone = layoutFor(568, 320, true, 1);
+    const left = cardClockRect(phone.rects.boss, true);
+    expect(left.x).toBe(phone.rects.boss.x);
+    // The thumb buttons take the right ~45% of a phone: the clock and the tip stay left of it.
+    expect(left.x + left.width).toBeLessThanOrEqual(phone.space.width * 0.56);
+    const tip = cardTipRect(phone.space, true);
+    expect(tip.x + tip.width).toBeLessThanOrEqual(phone.space.width * 0.75);
   });
 
   it('lifting the hint bar for a boss fight raises it over the boss block and changes nothing else', () => {

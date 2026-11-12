@@ -9,10 +9,11 @@ import type { EnemyState, WorldState } from '../core/state';
 import { PLAYER_SLOT_LAYOUT } from '../data/slots';
 import { t } from '../i18n';
 import { BOSS_CUES, bossCaption, captionMotion, CAPTION_LIFE_MS } from '../ui/boss-caption';
+import { cardTipText, resultAlpha, TIP_MS, type CardClockView, type CardResultBanner } from '../ui/card-clock';
 import { STAMINA_MAX, bossBarModel, createBossStage, createChipTrail, createCombatFade, createPassiveNote, fightKind, fillOf, moveSlotModel, type BossStage, type BossStatus, type ChipTrail, type CombatFade, type MoveSlotModel, type PassiveNote } from '../ui/combat-hud-model';
 import { COMBAT_ICONS, drawIcon } from '../ui/combat-icons';
 import { drawPanel, noLigatures } from '../ui/canvas';
-import { BOSS_BAR, HUD_METRICS, bossRect, captionNameSize, captionRect, chipsRect, hudVariant, slotRect, statusRect, type HudBox, type HudDims, type HudVariant } from '../ui/hud-layout';
+import { BOSS_BAR, CARD_CLOCK, HUD_METRICS, bossRect, captionNameSize, cardClockRect, cardTipRect, captionRect, chipsRect, hudVariant, slotRect, statusRect, type HudBox, type HudDims, type HudVariant } from '../ui/hud-layout';
 import { canvasFont, PALETTE, RELIC, TIER_COLORS, TYPE_COLORS } from '../ui/tokens';
 import { levelProgress } from '../core/progression';
 import { passiveStatus, itemsChip, coinsLabel, slotCount } from './hud';
@@ -57,6 +58,10 @@ export interface CombatView {
   scale: number;
   floor: number;
   coins?: number;
+  /** How the last card ended, while its banner shows (ui/card-clock.ts). */
+  cardResult?: CardResultBanner | null;
+  /** The one-time card clock tip, while it shows: when it appeared (real ms). */
+  cardTip?: { shownAtMs: number } | null;
 }
 
 type Ctx = CanvasRenderingContext2D;
@@ -595,6 +600,7 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
     chip: 1,
     name: bar.species === 'eclipse-echo' ? echoName(state.echoMimic) : t(`species.${view.shownAs?.get(bar.enemyId) ?? bar.species}`),
     ...(herald ? { tag: herald.label } : {}),
+    capture: state.capture,
   });
   const shownFill = model.fill * stage.fill;
   const chip = Math.max(shownFill, hs.boss.update(model.fill, view.nowMs) * stage.fill);
@@ -616,13 +622,6 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
     rx -= ui.s + 3;
     typeBadge(ctx, model.type, snap(rx, ui.scale), snap(iconY, ui.scale), ui.s);
   }
-  if (model.clock) {
-    const label = t('hud.cooldown').replace('{s}', String(model.clock.seconds));
-    rx -= 4;
-    outlined(ctx, label, rx, nameBase, model.clock.urgent ? PALETTE.danger : PALETTE.textDim, 11, 'right');
-    rx -= widthOf(ctx, label) + ui.s + 2;
-    smallIcon(ctx, 'hourglass', rx, iconY, ui, model.clock.urgent ? 1 : 0.7);
-  }
   if (model.pips) {
     rx -= 4;
     for (let i = model.pips.length - 1; i >= 0; i--) {
@@ -643,6 +642,14 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
     fitted(ctx, epithet, afterName + 16, nameBase, room - nameW - 22, herald ? herald.colour : PALETTE.textDim);
   }
 
+  // The card clock: its own plate centred over the bar, with the result of the last card and the first-time tip above it.
+  ctx.globalAlpha = stage.enter;
+  const clockRect = cardClockRect(box, view.touch);
+  const plateTop = model.clock ? cardClockPlate(ctx, model.clock, box, clockRect, view.touch, ui) : box.y - CARD_CLOCK.gap;
+  ctx.globalAlpha = 1;
+  if (view.cardResult) cardResultBand(ctx, view.cardResult, box, clockRect, view.touch, plateTop, view.nowMs);
+  if (view.cardTip) cardTipPanel(ctx, view.cardTip.shownAtMs, cardTipRect(screen, view.touch), view.nowMs);
+
   // The bar: an iron frame with gilt finials, a darker blood fill, the chip trail in ember.
   ctx.globalAlpha = Math.min(1, stage.enter * 2);
   const colour = herald ? herald.colour : model.guarded ? '#8fb3ff' : RELIC.blood;
@@ -656,6 +663,143 @@ function bossBlock(ctx: Ctx, state: WorldState, screen: HudDims, view: CombatVie
     ctx.fillRect(nx, by - 1, 1, BOSS_BAR.thick + 2);
   }
   ctx.globalAlpha = 1;
+}
+
+// -- Card clock (odd/tasks/last-phase-and-timer.md S3, docs/research/boss-timer.md) ------------------------------
+
+/** Plate sizes in HUD px: digits calm and at the urgent pulse's peak, the hourglass's art scale, the draining line. */
+const CLOCK_PLATE = { digits: 20, gap: 6, line: 3, pad: 4 } as const; // 20 + 3 + 3 x 4 = ui/hud-layout.ts CARD_CLOCK.plateHeight
+
+/**
+ * The card's clock over the boss bar, centred: a large hourglass (upside down in the last 5 s), the seconds in big
+ * digits (red, larger and pulsing in the last 5 s: size and the flipped glass carry the warning without colour), the
+ * capture seal with its word (a lit gem while the capture is still on; hollow and struck through once a hit lost
+ * it), and a line that drains with the card's time. Returns the plate's top edge.
+ */
+function cardClockPlate(ctx: Ctx, clock: CardClockView, box: HudBox, rect: HudBox, touch: boolean, ui: Ui): number {
+  const size = Math.round(CLOCK_PLATE.digits * clock.scale);
+  const digits = String(clock.seconds);
+  const glass = ui.s * 1.5;
+  const sealWord = clock.seal === 'lost' ? t('card.clock.sealLost') : t('card.clock.seal');
+  const digitW = widthOf(ctx, digits, size);
+  const sealW = clock.seal ? 12 + CLOCK_PLATE.gap + widthOf(ctx, sealWord, 10) : 0;
+  const inner = glass + CLOCK_PLATE.gap + Math.max(digitW, widthOf(ctx, '00', CLOCK_PLATE.digits)) + (sealW > 0 ? CLOCK_PLATE.gap * 2 + sealW : 0);
+  const w = Math.round(inner + CLOCK_PLATE.pad * 4);
+  const h = CLOCK_PLATE.digits + CLOCK_PLATE.line + CLOCK_PLATE.pad * 3;
+  // Centred over the bar; on touch at its left end (core of ui/hud-layout.ts `cardClockRect`).
+  const x = Math.round(touch ? rect.x : rect.x + rect.width / 2 - w / 2);
+  const y = Math.round(box.y - h - CARD_CLOCK.gap);
+  // A dark plate with a gilt hairline (red once urgent, and thicker: a shape cue too).
+  ctx.fillStyle = 'rgba(5,4,7,0.78)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = clock.urgent ? PALETTE.danger : PALETTE.borderShade;
+  const edge = clock.urgent ? 2 : 1;
+  ctx.fillRect(x, y, w, edge);
+  ctx.fillRect(x, y + h - edge, w, edge);
+  ctx.fillRect(x, y, edge, h);
+  ctx.fillRect(x + w - edge, y, edge, h);
+  // The hourglass, flipped in the last seconds.
+  const gx = x + CLOCK_PLATE.pad * 2;
+  const gy = y + CLOCK_PLATE.pad + (CLOCK_PLATE.digits - glass) / 2;
+  ctx.save();
+  if (clock.urgent) {
+    ctx.translate(gx + glass / 2, gy + glass / 2);
+    ctx.rotate(Math.PI);
+    ctx.translate(-(gx + glass / 2), -(gy + glass / 2));
+  }
+  drawIcon(ctx, COMBAT_ICONS.hourglass!, snap(gx, ui.scale), snap(gy, ui.scale), ui.u * 1.5, 1);
+  ctx.restore();
+  // The seconds: big, centred on their own column.
+  const dx = gx + glass + CLOCK_PLATE.gap;
+  const columnW = Math.max(digitW, widthOf(ctx, '00', CLOCK_PLATE.digits));
+  outlined(ctx, digits, dx + columnW / 2, y + CLOCK_PLATE.pad + CLOCK_PLATE.digits - 2 + (size - CLOCK_PLATE.digits) / 3, clock.urgent ? PALETTE.danger : PALETTE.text, size, 'center');
+  // The capture seal: a gem lit gold, or hollow and struck through, and its word.
+  if (clock.seal) {
+    const sx = dx + columnW + CLOCK_PLATE.gap * 2;
+    const sy = y + CLOCK_PLATE.pad + CLOCK_PLATE.digits / 2;
+    const live = clock.seal === 'live';
+    diamond(ctx, sx + 5, sy - 1, 5, live ? PALETTE.cursor : null, live ? PALETTE.text : PALETTE.disabled);
+    if (!live) {
+      ctx.fillStyle = PALETTE.disabled;
+      ctx.fillRect(Math.round(sx - 1), Math.round(sy - 1), 13, 1);
+    }
+    outlined(ctx, sealWord, sx + 12 + CLOCK_PLATE.gap, sy + 3, live ? PALETTE.cursor : PALETTE.disabled, 10, 'left');
+  }
+  // The line that drains with the card's time, right to left.
+  const lx = x + CLOCK_PLATE.pad;
+  const lw = w - CLOCK_PLATE.pad * 2;
+  const ly = y + h - CLOCK_PLATE.pad - CLOCK_PLATE.line;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(lx, ly, lw, CLOCK_PLATE.line);
+  ctx.fillStyle = clock.urgent ? PALETTE.danger : GOLD;
+  ctx.fillRect(lx, ly, Math.round(lw * clock.share), CLOCK_PLATE.line);
+  return y;
+}
+
+/** "¡CARTA SUPERADA!" / "¡TIEMPO!" over the clock plate as a card ends, with what it means under it. Returns its top edge. */
+function cardResultBand(ctx: Ctx, banner: CardResultBanner, box: HudBox, rect: HudBox, touch: boolean, bottom: number, nowMs: number): number {
+  const a = resultAlpha(nowMs - banner.shownAtMs);
+  if (a <= 0) return bottom;
+  // Over the clock's plate: centred on the bar, on touch over the bar's left end (clear of the thumb buttons).
+  ctx.font = canvasFont(16);
+  const cx = touch ? rect.x + Math.max(rect.width, widthOf(ctx, banner.heading, 16) + 30) / 2 : box.x + box.width / 2;
+  const h = banner.sub ? 34 : 22;
+  const y = bottom - h - 2;
+  const before = ctx.globalAlpha;
+  ctx.globalAlpha = a;
+  const bx = touch ? rect.x : box.x;
+  const bw = touch ? 2 * (cx - rect.x) : box.width;
+  const band = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+  band.addColorStop(0, 'rgba(5,4,7,0)');
+  band.addColorStop(0.2, 'rgba(5,4,7,0.75)');
+  band.addColorStop(0.8, 'rgba(5,4,7,0.75)');
+  band.addColorStop(1, 'rgba(5,4,7,0)');
+  ctx.fillStyle = band;
+  ctx.fillRect(bx, y, bw, h);
+  const colour = banner.tone === 'good' ? PALETTE.cursor : PALETTE.danger;
+  spaced(ctx, banner.heading, cx, y + 17, colour, 16, 2, 'center');
+  if (banner.sub) outlined(ctx, banner.sub, cx, y + 30, PALETTE.text, 10, 'center');
+  ctx.globalAlpha = before;
+  return y;
+}
+
+/** Words of `text` in lines no wider than `maxW` at `size`. */
+function wrapped(ctx: Ctx, text: string, maxW: number, size: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && widthOf(ctx, next, size) > maxW) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** The one-time tip on the card clock: a framed panel under the boss announcement (ui/hud-layout.ts `cardTipRect`), its title in gold, then the rule in a few lines. */
+function cardTipPanel(ctx: Ctx, shownAtMs: number, rect: HudBox, nowMs: number): void {
+  const age = nowMs - shownAtMs;
+  if (age < 0 || age >= TIP_MS) return;
+  const a = Math.min(1, age / 250, (TIP_MS - age) / 500);
+  const tip = cardTipText();
+  const w = rect.width;
+  const lines = wrapped(ctx, tip.body, w - 16, 10);
+  const h = 22 + lines.length * 12;
+  const x = rect.x;
+  const y = rect.y;
+  const before = ctx.globalAlpha;
+  ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(5,4,7,0.88)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(x, y, w, 1);
+  ctx.fillRect(x, y + h - 1, w, 1);
+  diamond(ctx, x + 10, y + 9, 3, PALETTE.cursor, PALETTE.text);
+  outlined(ctx, tip.title, x + 18, y + 13, PALETTE.cursor, 11, 'left');
+  lines.forEach((line, i) => outlined(ctx, line, x + 8, y + 26 + i * 12, PALETTE.text, 10, 'left'));
+  ctx.globalAlpha = before;
 }
 
 /** "GUARDIÁN CAÍDO": a slim dark band in the lower fifth (clear of the arena's middle), the name carved in gold, fading in and out. */

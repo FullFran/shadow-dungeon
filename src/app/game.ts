@@ -63,6 +63,7 @@ import { bossBar } from '../core/boss';
 import { bossMoment } from '../core/boss-moment';
 import { bossNotice, pickWaits, takePhaseTip, type BossNotice } from '../ui/boss-notice';
 import { perilousInSight, perilousTipText, takePerilousTip } from '../ui/perilous-tip';
+import { cardResult, cardResultBanner, cardTick, RESULT_MS, takeCardTip, TIP_MS, type CardResultBanner } from '../ui/card-clock';
 import { fightKind } from '../ui/combat-hud-model';
 import { fogRadiusTiles } from '../core/fog';
 import { spellCardKey } from '../data/enemies';
@@ -267,6 +268,8 @@ export interface GameOptions {
   bossTip?: { seen(): boolean; mark(): void };
   /** The one-time tip on the first perilous attack (the red "!"; Settings `perilousTipSeen`, src/ui/perilous-tip.ts). Absent: no tip. */
   perilousTip?: { seen(): boolean; mark(): void };
+  /** The one-time tip on the spell card clock, the first time one shows (Settings `cardTimerTipSeen`). Absent: no tip. */
+  cardTip?: { seen(): boolean; mark(): void };
   /**
    * Solo only: reload-proof play (app/run-resume.ts). `from` is a stored run to continue: it comes back exactly as it was,
    * paused with the menu open. `writer` keeps the record (floor changes, every few seconds, on leaving the page) and
@@ -414,6 +417,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   if (options.heraldSeed !== undefined && !net) world = withHerald(world, options.heraldSeed, started.run.floor);
   // Development server only: the live world for headless checks (the roll direction playtest read the player's position from it).
   if (import.meta.env.DEV) (globalThis as { __mzWorld?: () => WorldState }).__mzWorld = () => world;
+  // Development only: rewrites the live world (headless screenshots set a card's clock or a boss's HP: tools/mobile).
+  if (import.meta.env.DEV) (globalThis as { __mzPatch?: (patch: (w: WorldState) => WorldState) => void }).__mzPatch = (patch) => (world = patch(world));
   // A guest joining a room's trial under way starts on the host's arena (its `start` floor is the arena, `trialEpoch`).
   if (trial && net?.role === 'guest' && (options.startFloor ?? 1) > 1) {
     const caught = progressSharedTrial(trial, run, world, 0, 'guest', options.startFloor ?? 1);
@@ -574,6 +579,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let moment: BossNotice | null = null;
   /** "¡Técnica dominada!": the last card this player captured, while its notice shows. */
   let capture: CaptureNotice | null = null;
+  /** The spell card clock (ui/card-clock.ts): how the last card ended while its banner shows, and the one-time tip while it shows. */
+  let cardEnd: CardResultBanner | null = null;
+  let cardTipAt: { shownAtMs: number } | null = null;
+  let cardTipAsked = false;
   let lastCard: string | null = null;
   // Each peer of a shared run plays the music of its own floor (nothing goes over the network).
   // Behind a boss's fog there is none (core/run.ts `floorMusic`): the boss track starts after the crossing and its cinematic.
@@ -1752,6 +1761,19 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const events = netEvents.length > 0 ? [...netEvents, ...world.events] : world.events;
       const won = events.find((e) => e.type === 'cardCaptured');
       if (won && won.type === 'cardCaptured') capture = { shownAtMs: realMs, coins: CAPTURE.coins, heal: won.heal };
+      // The spell card clock: a word as each card ends, a tick in its last seconds, and the first time a clock shows, the tip.
+      const ended = cardResult(before, world);
+      if (ended) cardEnd = cardResultBanner(ended.outcome, won !== undefined, realMs);
+      if (cardEnd && realMs - cardEnd.shownAtMs >= RESULT_MS) cardEnd = null;
+      const leftAfter = bossBar(world)?.cardLeftMs;
+      const tick = cardTick(bossBar(before)?.cardLeftMs, leftAfter);
+      if (tick) audio?.play(tick === 'last' ? 'cardTickLast' : 'cardTick');
+      // The tip waits for the location plaque to go (they share the top of a phone).
+      if (leftAfter !== undefined && !cardTipAsked && !plaque?.showing()) {
+        cardTipAsked = true;
+        if (takeCardTip(options.cardTip)) cardTipAt = { shownAtMs: realMs };
+      }
+      if (cardTipAt && realMs - cardTipAt.shownAtMs >= TIP_MS) cardTipAt = null;
       juice = applyEvents(juice, events, world.player.pos);
       fxDirector.handleEvents(events, world.player);
       audio?.handleEvents(events);
@@ -1985,6 +2007,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       spell,
       moment,
       capture,
+      cardResult: cardEnd,
+      cardTip: cardTipAt,
       clock: run.clockMs !== undefined ? { ms: run.clockMs, lowMs, bonus: clockBonus } : null,
       touchUi: isTouchUi(),
       touchAim: isTouchUi() ? touch.aimPreview() : null,

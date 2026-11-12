@@ -57,6 +57,8 @@ export interface Settings {
   bossPhaseTipSeen: boolean;
   /** The one-time tip on the first perilous attack (the red "!") has been shown (src/ui/perilous-tip.ts). */
   perilousTipSeen: boolean;
+  /** The one-time tip on the spell card clock was shown on this device (ui/card-clock.ts `takeCardTip`). */
+  cardTimerTipSeen: boolean;
   /** Keyboard and mouse bindings (src/adapters/bindings.ts; issue #62). The defaults are the game's original keys. */
   keyBindings: Bindings;
   /** The consumables packed for the next run (app/bag-model.ts; the loadout's bag step): the last bag, null = empty slot. */
@@ -78,7 +80,7 @@ export const touchPrefsOf = (s: Pick<Settings, 'touchSize' | 'touchOpacity' | 't
 const offered = (value: unknown, choices: readonly number[], fallback: number): number => (typeof value === 'number' && choices.includes(value) ? value : fallback);
 
 export function defaultSettings(language: Language): Settings {
-  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true, bossPhaseTipSeen: false, perilousTipSeen: false, keyBindings: DEFAULT_BINDINGS, bag: EMPTY_BAG };
+  return { language, lockType: 'toggle', clickToLock: true, species: 'mimikyu', starterChosen: false, loadout: SPECIES.mimikyu.defaultLoadout, loadouts: {}, masterVolume: 0.7, musicVolume: 0.5, sfxVolume: 0.8, muted: false, touchMode: 'auto', autoAim: true, haptics: true, touchSize: 1, touchOpacity: 1, touchLeftHanded: false, nickname: '', difficulty: NEW_PLAYER_DIFFICULTY, figurations: 'on', showHints: true, bossPhaseTipSeen: false, perilousTipSeen: false, cardTimerTipSeen: false, keyBindings: DEFAULT_BINDINGS, bag: EMPTY_BAG };
 }
 
 /** A stored volume clamped to 0..1, or the fallback when it is not a finite number. */
@@ -212,6 +214,7 @@ export function loadSettings(store: KeyValueStore, fallback: Settings, roster: r
     showHints: typeof stored.showHints === 'boolean' ? stored.showHints : fallback.showHints,
     bossPhaseTipSeen: typeof stored.bossPhaseTipSeen === 'boolean' ? stored.bossPhaseTipSeen : fallback.bossPhaseTipSeen,
     perilousTipSeen: typeof stored.perilousTipSeen === 'boolean' ? stored.perilousTipSeen : fallback.perilousTipSeen,
+    cardTimerTipSeen: typeof stored.cardTimerTipSeen === 'boolean' ? stored.cardTimerTipSeen : fallback.cardTimerTipSeen,
     // Each binding kept only while valid and conflict-free; older saves have none and get the defaults.
     keyBindings: stored.keyBindings === undefined ? fallback.keyBindings : sanitizeBindings(stored.keyBindings),
     // Known kinds only, once each; older settings have none.

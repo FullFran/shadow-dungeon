@@ -9,6 +9,7 @@ import { TILE } from '../core/tiles';
 import { distance } from '../core/vec';
 import { bossEpithetKey } from '../data/boss-lore';
 import { cardInfo } from '../data/cards';
+import { cardClockView, type CardClockView } from './card-clock';
 import { AEGISLASH } from '../data/enemies';
 import { MOVES, type MoveId } from '../data/moves';
 import { PLAYER_SLOT_LAYOUT, type SlotKind } from '../data/slots';
@@ -99,8 +100,8 @@ export interface BossBarModel {
   statuses: BossStatus[];
   /** The shield stance or a guarded card: the bar turns steel blue. */
   guarded: boolean;
-  /** The card's clock: whole seconds left (rounded up), the share still to run, and the last-five warning. */
-  clock: { seconds: number; urgent: boolean } | null;
+  /** The card's clock (ui/card-clock.ts): whole seconds left (rounded up), the share still to run, the last-five warning and the capture seal. */
+  clock: CardClockView | null;
 }
 
 export interface BossBarInput {
@@ -112,9 +113,11 @@ export interface BossBarInput {
   name?: string;
   /** A herald's bar text; replaces the tag. */
   tag?: string | null;
+  /** The local player's capture watch (WorldState `capture`): lights the clock's seal. */
+  capture?: WorldState['capture'];
 }
 
-export function bossBarModel({ bar, enemy, chip, name, tag }: BossBarInput): BossBarModel {
+export function bossBarModel({ bar, enemy, chip, name, tag, capture }: BossBarInput): BossBarModel {
   const stance = bar.stance;
   const info = cardInfo(stance);
   const guarded = stance === 'shield' || info?.guard === 'front';
@@ -150,7 +153,7 @@ export function bossBarModel({ bar, enemy, chip, name, tag }: BossBarInput): Bos
     type: enemy?.types[0] ?? null,
     statuses,
     guarded,
-    clock: bar.cardLeftMs === undefined ? null : { seconds: Math.ceil(bar.cardLeftMs / 1000), urgent: bar.cardLeftMs <= 5000 },
+    clock: bar.cardLeftMs === undefined ? null : cardClockView({ leftMs: bar.cardLeftMs, totalMs: bar.cardTimerMs ?? bar.cardLeftMs }, { capture, enemyId: bar.enemyId }),
   };
 }
 
