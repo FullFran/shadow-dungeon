@@ -66,6 +66,18 @@ describe('kinematic shots cross the wire', () => {
     expect(g.vel.y).toBeCloseTo(h.vel.y, 3);
   });
 
+  it('a cursed shot (Yamask) keeps its curse with or without kinematics, and the kinematics with it', () => {
+    const cursed = (id: string, kin: ProjectileState['kin']): ProjectileState => ({ ...shot(id, kin), curseMs: 2400 });
+    const host = { ...createWorld({ seed: 1, arena: ARENA, playerPos: vec(40, 560), localId: 'p1' }), projectiles: [cursed('c1', undefined), cursed('c2', KINDS.curve)] };
+    const guest = wire(host);
+    const plain = guest.projectiles.find((p) => p.id === 'c1')!;
+    const both = guest.projectiles.find((p) => p.id === 'c2')!;
+    expect(plain.curseMs).toBe(2400);
+    expect(plain.kin).toBeUndefined();
+    expect(both.curseMs).toBe(2400);
+    expect(both.kin).toEqual(KINDS.curve);
+  });
+
   it('a plain shot still carries no kinematics', () => {
     const host = { ...createWorld({ seed: 1, arena: ARENA, playerPos: vec(40, 560), localId: 'p1' }), projectiles: [shot('k2', undefined)] };
     expect(wire(host).projectiles.find((p) => p.id === 'k2')?.kin).toBeUndefined();
