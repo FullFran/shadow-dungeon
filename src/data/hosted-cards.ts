@@ -172,13 +172,15 @@ export const NIHILEGO_CARDS_HARD = fight(
 );
 export const NIHILEGO_CARDS_NIGHTMARE = fight('nihilego', [
   NIH_TENDRILS(0.14),
-  NIH_SHARDS(0.06),
+  NIH_SHARDS(0.07),
   nihFracture('nightmare', 0.08),
   NIH_WORMHOLE(0.14),
   NIH_RIFT,
   nihUpward('nightmare', 0.04),
   NIH_FLOOD(0.18),
-  nihNeurotoxin('nightmare', 0.07),
+  // 0.06, not 0.07: at 0.07 its kill margin sat at the band's floor at home (1.10) and under it where Nihilego is
+  // reused on the gacha road (challenge-abra-3 F6, 1.06 < 1.1); the share went to Shards, which had margin to spare.
+  nihNeurotoxin('nightmare', 0.06),
   { id: 'sc-nih-downpour', moves: ['downpour', 'spores'], hpShare: 0.14, timerMs: 45_000 },
   { id: 'sc-nih-lastword', moves: ['flood', 'downpour'], hpShare: 0.15, timerMs: 40_000, lastSpell: true },
 ]);
