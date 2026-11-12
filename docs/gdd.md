@@ -152,6 +152,29 @@ Por tope se entiende cuántas copias puedes llevar; cada copia suma su efecto. L
 
 **Bayas Aranja.** En las plantas generadas, cada sala menos la de entrada tiene un 35 % de llevar una Baya Aranja en el suelo (se decide con la semilla, así que la misma semilla pone las mismas bayas). Pasar por encima cura 20 PS. El minimapa enseña las bayas que has visto. En partida compartida manda el anfitrión: quien la pisa la pide, el anfitrión se la da al primero que la pidió y las instantáneas dicen qué bayas quedan.
 
+### Consumibles y la bolsa *(provisional)*
+
+Petición de la dueña: «luego hay que añadir gacha de objetos y objetos consumibles y demas que te puedas preparar antes de la mazmorra o los desafios». Diseño: `docs/research/items-and-prep.md`; implementación: `odd/tasks/items-bag.md`. Código: `src/data/consumables.ts`, `src/core/consumable-stock.ts` (reserva, gacha, compra, bolsa) y `src/core/consumables.ts` (efectos en partida), puros.
+
+A diferencia de los objetos equipados, los consumibles son tuyos entre partidas: tienes una **reserva** (hasta 9 de cada clase) y antes de cada partida llenas una **bolsa de tres huecos**. Durante la partida los usas a mano. Solo se gastan los que usas; lo que no usas vuelve a la reserva (opción 2a de la dueña). Cada unidad usada sale de la reserva en el momento, así que recargar la página no la devuelve.
+
+| Consumible | Clase | Efecto | Por hueco | Precio |
+|---|---|---|---|---|
+| Tónico de rocío | Común | Cura el 30 % de la vida máxima en 1 s; un golpe lo corta. No se usa con la vida llena | 2 | 20 |
+| Sal clara | Común | Cura el veneno y te protege de él 4 s | 1 | 20 |
+| Pluma de viento | Común | La estamina vuelve un 50 % más rápido durante 20 s | 1 | 35 |
+| Polvo de brasa | Poco común | Un 20 % más de daño durante 20 s; el suelo de las cartas se respeta igual | 1 | 35 |
+| Bomba de esporas | Poco común | A tu alrededor (72 px) aturde 2 s a los enemigos comunes y hace 6 de daño; a los jefes solo los araña (sin aturdir, sin bajar del suelo de su carta) | 1 | 40 |
+| Lámpara de bruma | Poco común | Ilumina el minimapa entero de la planta, bayas incluidas | 1 | 40 |
+| Brote de aliento | Rara | Va solo: si caes con él en la bolsa, te levanta una vez con el 35 % de la vida. Nunca en Pesadilla (opción 3b) | 1 | 80 |
+| Farol de calma | Rara | Apaga todos los disparos enemigos en pantalla, como el respiro de «tu turno»; la carta en curso ya no se captura | 1 | 80 |
+| Cordón de vuelta | Rara | Sales de la partida con todas las Pokémonedas ganadas (una derrota guarda el 75 %). No en la sala de un jefe ni en una partida compartida | 1 | 80 |
+
+- **La bolsa.** Es el tercer paso del selector antes de una mazmorra, un desafío o la Sima: Pokémon, movimientos y bolsa («Siguiente: la bolsa»). Lista las clases que tienes desbloqueadas con lo que tienes de cada una; Intro o un clic la mete en el primer hueco libre o la saca. Se recuerda la última bolsa (en los ajustes del dispositivo). En el Santuario no hay bolsa: las pruebas siguen «sin objetos ni mejoras» (opción 4a). En una sala en línea cada jugador prepara la suya en «Cambiar Pokémon», antes de «Listo».
+- **Usarlos.** La bolsa sale arriba en el centro con sus tres huecos y el seleccionado marcado. Teclado: G usa el seleccionado y X pasa al siguiente (las dos se pueden reasignar en Ajustes → Controles). Mando: RT usa, la cruceta arriba y abajo cambia de hueco (antes no hacían nada en combate). Táctil y ratón: tocar un hueco lo selecciona y tocar el seleccionado lo usa (dos toques, para no gastar uno sin querer). Si no sirve (sin fuerzas, vida llena, el cordón en la sala de un jefe) sale una línea que dice por qué y no se gasta.
+- **Cooperativo.** Cada jugador tiene su bolsa y su reserva. Lo que te afecta a ti (tónico, sal, polvo, pluma, brote) se aplica en tu dispositivo, como tu daño, y viaja en tu instantánea. La bomba de esporas manda sus golpes al anfitrión por el mismo camino que el Casco Dentado. El farol de un invitado apaga los disparos para él (los marca como ya gastados en su lado, como hace con los que ya le dieron); el del anfitrión, para todos. No cambia el protocolo de red.
+- **Las pruebas no los usan.** La garantía de que todo se puede pasar (§9) se mide sin bolsa: `npm run prove` arranca sus mundos sin consumibles y un test lo comprueba.
+
 ### Jefes
 
 - Patrones que se aprenden y avisos claros (la animación Charge sirve como carga del golpe).
@@ -212,6 +235,7 @@ Un altar en el Refugio del Ocaso (y la fila Santuario del menú del pueblo): «D
 - **Equipo.** Tras elegir jefe o desafío (y nivel) se abre el mismo selector de una partida: primero el Pokémon, luego sus cuatro movimientos, con «Comenzar el juramento» para empezar. Atrás vuelve de los movimientos al Pokémon y de ahí al santuario, en la misma fila y nivel. Usa los mismos ajustes guardados que una partida (`species`, `loadout` y los equipos recordados de cada Pokémon, `loadouts`): lo último elegido se recuerda en los dos sitios, sin un segundo equipo que mantener. Código de la ruta: `src/app/shrine-route.ts` (puro).
 - **Qué abre cada jefe.** Sale de los récords de siempre, sin migración: un guardián, al limpiar su mazmorra; un jefe intermedio, también cuando una partida pasó de su planta (su salida solo se abre al vencerlo).
 - **Récords.** Por jefe y por desafío, en cada nivel: victorias, mejor tiempo (tiempo de juego, sin pausas), más cartas capturadas y «Sin rasguños» si alguna vez se ganó sin recibir un golpe (ni romper el Disfraz). Junto al mejor tiempo se guarda el Pokémon con el que se hizo (campo opcional `species`: los récords anteriores se leen igual, sin él) y la ventana lo enseña con su sprite y su nombre. Una prueba nunca cuenta como partida: no toca los récords de mazmorra. El tablón del pueblo añade una línea con los reflejos abiertos y los desafíos superados.
+- **Sin bolsa.** Las pruebas no llevan consumibles: el selector del santuario no tiene el paso de la bolsa (opción 4a de la dueña).
 - **Pokémonedas.** Los reflejos no pagan nada. Cada desafío paga una vez por nivel la primera vez que se supera (150 y 300, por el multiplicador del nivel). Así no hay granja.
 - **En una sala en línea.** El anfitrión usa el altar del pueblo de la sala para elegir reflejo o desafío y nivel (el nivel es el de la sala); los invitados ven su elección en el altar, sin poder cambiarla, y cada uno elige allí su Pokémon y sus ataques («Listo»: su especie llega al anfitrión con un `hello` repetido). El anfitrión empieza el juramento para todos con el `start` de siempre y un campo aditivo `trial` (tipo, jefe o desafío, nivel); la elección viaja antes en `lobby`. Los jefes se escalan por grupo como en una partida (`party` del roster al empezar), los PS de un desafío pasan por jugador, se reanima como en una partida, y la planta que viaja por la red es el número de sala (1, 2, 3…), así que un invitado nunca carga la siguiente sala por su cuenta: sigue al anfitrión (`progressSharedTrial`). Al acabar, todos vuelven al pueblo de la sala. Cada jugador guarda sus récords en local, aparte («En grupo», el campo opcional `group`) si la sala tenía dos o más; en grupo no se cobra la recompensa de un desafío. Un par de versión antigua (su `hello` no lleva `shrine: 1`) no puede jugar: el anfitrión ve «Versión antigua» y no puede empezar, y si llega tarde a un juramento en marcha se le dice que la sala está llena. El reinicio de planta no existe dentro del santuario.
 - Desarrollo: `?screen=shrine` (con `&view=reflections|gauntlets|heralds`); `&trialSkip=1` empieza la prueba con el primer jefe ya vencido (capturas de la pausa y del siguiente).
@@ -590,6 +614,8 @@ Al pisar la boca de una mazmorra sale una ventana «¿Entrar en …?». Si aún 
 | Clic izquierdo sobre un enemigo | Lo fija (o cambia a él si ya tenías otro), además de atacar. Se puede desactivar en ajustes |
 | Rueda del ratón | Con objetivo fijado, cambiar al siguiente |
 | Tab | Mostrar u ocultar el minimapa |
+| G | Usar el consumible seleccionado de la bolsa (ver «Consumibles y la bolsa») |
+| X | Pasar al siguiente consumible de la bolsa |
 | Esc | Menú: continuar, ajustes rápidos, reiniciar la planta (vuelve a como entraste) y salir al menú principal |
 
 Es el esquema de Hades y Death's Door (ataque al clic izquierdo, especial al derecho, esquiva al Espacio), así que le resulta natural a cualquiera que haya jugado algo parecido. Todas las teclas se pueden cambiar.
@@ -1079,6 +1105,16 @@ Por qué estos: Garra Umbría es eficaz contra los dos fantasmas (Gastly y Aegis
 - Las tiradas se pagan solo con lo que ganas jugando (Pokémonedas o tickets). Nunca con dinero real, ni ahora ni después: es un fan game gratis.
 - No hay reclutamiento dentro de la mazmorra. Un compañero controlado por la máquina obliga a escribir una IA de compañero, y eso es caro y fácil que salga mal. Además, los compañeros ya son las personas del chat que juegan contigo.
 - Antes de entrar eliges con qué Pokémon de tu colección juegas.
+
+### El gacha de objetos *(provisional)*
+
+Al lado del gacha de Pokémon, en el menú del pueblo («Objetos», grupo «Tu equipo») y en la portada, está el **puesto de objetos** (`src/app/item-stall.ts`). Opción 1a de la dueña: el gacha **desbloquea clases** de consumible y el puesto vende a **precio fijo** las que ya tienes desbloqueadas (los comunes lo están desde el principio). Así la mala suerte nunca te deja sin la build que quieres; el gacha es el descubrimiento y un descuento.
+
+- Una tirada cuesta 50. Común (75 %): 2 o 3 unidades de una clase común. Poco común (22 %): 1 o 2 de una poco común y la desbloquea si era nueva. Rara (3 %): desbloquea una rara que aún no tengas (y te da una), o te da una unidad de cualquier rara cuando ya las tienes todas.
+- Suelo: un poco común o mejor seguro a la quinta tirada desde el último; una rara segura a la trigésima. Contadores propios en la partida guardada (`itemPity`, `itemRarePity`).
+- Lo que no cabe en la reserva (9 por clase) devuelve 10 por unidad.
+- Partida guardada: campos opcionales, la versión sigue en 4 (`stock`, `unlockedConsumables`, `itemPity`, `itemRarePity`; `sanitize` quita lo desconocido y recorta a la reserva). Viajan con la cuenta como el resto de la partida y, al fusionar perfiles, son economía (se queda entero el lado elegido).
+- Es el primer gasto **renovable** de las Pokémonedas: todo lo demás (mejoras, movimientos, Pokémon) se acaba.
 
 ### Gacha, evoluciones y mazmorras reto *(provisional)*
 

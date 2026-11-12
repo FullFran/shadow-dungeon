@@ -6,6 +6,9 @@ import type { ItemId } from '../data/items';
 import type { MoveId } from '../data/moves';
 import type { SpeciesId } from '../data/species';
 import { addItem } from '../core/items';
+import { armSprout, disarmSprout, useConsumable } from '../core/consumables';
+import { spendFromBag, type Bag, type BagSlot } from '../core/consumable-stock';
+import { botBagChoice } from './bag-policy';
 import { rewardsItems } from '../core/sima-events';
 import { bossPickDue, chooseItem, floorPlanOf, progressRun, roomExit, startRun, tickRunClock, withRewardOffer, type RunState } from '../core/run';
 import type { Rect, WorldState } from '../core/state';
@@ -64,6 +67,8 @@ export interface RunOptions {
   moveRanks?: Readonly<Partial<Record<MoveId, number>>>;
   /** Held items the bots start with (the degenerate-build audit, odd/tasks/degenerate-builds.md); absent = none. */
   items?: readonly ItemId[];
+  /** The consumables the bots pack (odd/tasks/items-bag.md; used by `botBagChoice`, src/sim/bag-policy.ts); absent = none. The proof never packs any. */
+  bag?: Bag;
 }
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -141,10 +146,22 @@ function play(s: Scenario, startFloor: number, options: RunOptions, single: bool
     run = picked.run;
     world = picked.world;
   };
+  let bag: (BagSlot | null)[] = options.bag ? [...options.bag] : [];
   for (;;) {
+    // The bag: a packed sprout stays armed, and the bot uses what its rules pick (a refused use spends nothing).
+    if (bag.length > 0) {
+      world = bag.some((slot) => slot?.id === 'second-sprout') ? armSprout(world) : disarmSprout(world);
+      const choice = botBagChoice(world, bag);
+      const used = choice ? useConsumable(world, choice, { bossArena: true, shared: false }) : null;
+      if (choice && used && !used.refused) {
+        world = used.state;
+        bag = spendFromBag(bag, choice);
+      }
+    }
     const before = options.inject ? options.inject(world) : world;
     const input = bot.decide(observe(before), { exit: exitOf(run, before), urgent: run.kind !== 'normal', ...gateOf(before), ...eventOf(before) });
     const after = step(before, input, FIXED_DT_MS);
+    for (const e of after.events) if (e.type === 'consumableUsed') bag = spendFromBag(bag, e.item);
     recorder.record(before, after);
     const progress = progressRun(tickRunClock(run, FIXED_DT_MS), after);
     if (progress.outcome) {
