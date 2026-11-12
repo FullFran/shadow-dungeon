@@ -13,6 +13,7 @@ import { wormholePull } from './swamp-bosses';
 import { NIHILEGO } from '../data/swamp-enemies';
 import { landHitOnPlayer } from './hits';
 import { updateRevive } from './revive';
+import { settleConsumables } from './consumables';
 import { pickUpBerries } from './berries';
 import { applyRecoil, onTick } from './items';
 import { updateLock } from './lockon';
@@ -61,7 +62,9 @@ export function step(state: WorldState, input: PlayerInput, dtMs: number): World
   const pulled = wormholePull(enemies, dtMs, NIHILEGO);
   const fought = settleStolen(creditDefeats(onTick(applyRecoil(updateToxic(updateGas(updateFlood(updateFog(updateCollapse(pulled, dtMs, events), dtMs, events), dtMs, events), dtMs, events), dtMs, events), events), dtMs, events), events), dtMs, events);
   // Co-op: a fainted local player may be got up by an ally standing by (core/revive.ts; nothing solo).
-  const revived = updateRevive(fought, dtMs, events);
+  // Consumables at work (core/consumables.ts): the tonic, the boosts' timers, and an armed sprout before the faint counts.
+  const settled = settleConsumables(state.player, fought, dtMs, events);
+  const revived = updateRevive(settled, dtMs, events);
   // A guardian's spell card captured by the local player (core/cards.ts; every peer for itself).
   const captured = updateCapture(revived, events);
   // A boss room's fog (core/fog-wall.ts): nobody walks or shoots through it before the party crosses.
