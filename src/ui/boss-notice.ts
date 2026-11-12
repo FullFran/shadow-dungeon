@@ -52,6 +52,17 @@ export function bossNotice(moment: Pick<BossMoment, 'kind' | 'species' | 'stance
   return { kind: 'phase', heading: t('boss.moment.phase'), name: quoted ? quoted[1]! : raw, tip: options.showTip ? t('boss.moment.tip') : null, shownAtMs };
 }
 
+/**
+ * Whether a boss's item pick must wait (owner, 2026-11-12: "que primero te
+ * salga que lo has vencido y despues para elegir objeto"): while the defeat
+ * notice is still on screen, or while a story line (its last words) is open.
+ * A phase change never holds a pick.
+ */
+export function pickWaits(notice: BossNotice | null, nowMs: number, storyOpen: boolean): boolean {
+  if (storyOpen) return true;
+  return notice?.kind === 'finale' && nowMs - notice.shownAtMs < NOTICE_LIFE_MS;
+}
+
 /** The one-time tip: true the first time (and marks it as seen), false after, or when the run has no tip store. */
 export function takePhaseTip(tip: { seen(): boolean; mark(): void } | undefined): boolean {
   if (!tip || tip.seen()) return false;
