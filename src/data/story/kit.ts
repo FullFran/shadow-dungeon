@@ -127,25 +127,25 @@ function stepsOf(template: CardTemplate, k: Tier, t: ShotTypes, points: Points):
       return [
         {
           telegraphMs: 900,
-          recoverMs: 1600,
+          recoverMs: 2200,
           pattern: { kind: 'familiars', count: 3, radius: 100, degPerSec: 40, centre: 'boss', atOnce: 1, volleys: 8, gapMs: 450, perVolley: 1, spreadDeg: 0, aim: 'target', shot: shotOf(t.a, 16, ([170, 180, 190, 190] as const)[k]) },
           layers: [{ kind: 'rings', rings: 2, perRing: 12, gap: 3, gapTurnDeg: 30, gapMs: 1800, shot: shotOf(t.b, 13, 80, 6, 6000) }],
         },
-        { telegraphMs: 800, recoverMs: 1600, pattern: { kind: 'rings', rings: 3, perRing, gap: 3, gapTurnDeg: 35, gapMs: 650, shot: shotOf(t.b, 15, 100, 6, 6000) } },
+        { telegraphMs: 800, recoverMs: 2200, pattern: { kind: 'rings', rings: 3, perRing, gap: 3, gapTurnDeg: 35, gapMs: 650, shot: shotOf(t.b, 15, 100, 6, 6000) } },
       ];
     case 'beam':
       return [
         {
           telegraphMs: 900,
-          recoverMs: 1600,
+          recoverMs: 2200,
           pattern: { kind: 'laser', volleys: 3, everyMs: 1500, lines: k === 3 ? 4 : 3, fanDeg: 60, turnDeg: 15, warnMs: 650, fireMs: 400, beamEveryMs: 45, shot: shotOf(t.a, 18, 430, 4, 2000) },
         },
-        { telegraphMs: 700, recoverMs: 1600, pattern: { kind: 'fan', fans: 4, perFan: 3, spreadDeg: 24, gapMs: 500, aim: 'each', shot: shotOf(t.b, 18, 200) } },
+        { telegraphMs: 700, recoverMs: 2200, pattern: { kind: 'fan', fans: 4, perFan: 3, spreadDeg: 24, gapMs: 500, aim: 'each', shot: shotOf(t.b, 18, 200) } },
       ];
     case 'curl':
       return [
-        { telegraphMs: 900, recoverMs: 1600, pattern: { kind: 'rings', rings: 3, perRing: ([14, 14, 14, 16] as const)[k], gap: 3, gapTurnDeg: 30, gapMs: 700, shot: { ...shotOf(t.a, 15, 100, 6, 6000), kin: { curveDegPerSec: 30, curveAlternate: true } } } },
-        { telegraphMs: 800, recoverMs: 1600, pattern: { kind: 'fan', fans: 4, perFan: 7, spreadDeg: 90, gapMs: 550, aim: 'first', shot: { ...shotOf(t.b, 15, 120, 6, 6000), kin: { curveDegPerSec: -25, curveAlternate: true } } } },
+        { telegraphMs: 900, recoverMs: 2200, pattern: { kind: 'rings', rings: 3, perRing: ([14, 14, 14, 16] as const)[k], gap: 3, gapTurnDeg: 30, gapMs: 700, shot: { ...shotOf(t.a, 15, 100, 6, 6000), kin: { curveDegPerSec: 30, curveAlternate: true } } } },
+        { telegraphMs: 800, recoverMs: 2200, pattern: { kind: 'fan', fans: 4, perFan: 7, spreadDeg: 90, gapMs: 550, aim: 'first', shot: { ...shotOf(t.b, 15, 120, 6, 6000), kin: { curveDegPerSec: -25, curveAlternate: true } } } },
       ];
     case 'walls':
       return [
