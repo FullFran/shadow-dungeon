@@ -3,6 +3,7 @@ import { withDoors } from '../../src/core/sima-events';
 import { describe, expect, it } from 'vitest';
 import { coinBreakdown, emptyTally, tallyFloor } from '../../src/core/coins';
 import { generateFloor } from '../../src/core/dungeon';
+import { holdsWaveRoom } from '../../src/core/floor-spawns';
 import { unlockedDungeons, needsDungeonSelect } from '../../src/core/dungeon-select';
 import {
   addTime,
@@ -226,7 +227,8 @@ describe('endless run', () => {
       // A key gate keeps the stairs room's doorways shut (core/gates.ts).
       // A lost shadow's floor (core/sima-story.ts) is its arena instead.
       if (floorPlanOf(p.run).kind === 'generated') {
-        const drawn = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor));
+        // A floor that holds a wave room gets its hall (data/dungeon.ts `WAVE_ROOM`).
+        const drawn = generateFloor(floorSeed(SEED, floor), floor, endlessSpawns(ENDLESS, floor), { hall: holdsWaveRoom(ECLIPSE, SEED, floor, p.run.kind, 'easy') });
         const doors = p.world.gate?.doors;
         expect(p.world.arena.tiles!.tiles).toEqual(doors ? withDoors(drawn, doors, true).tiles : drawn.tiles);
       }

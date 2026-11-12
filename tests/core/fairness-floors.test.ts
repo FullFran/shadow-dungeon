@@ -85,8 +85,10 @@ describe('reference level after meaningful encounters', () => {
     startRun(seed, { difficulty: tier }, f, d.id).world.enemies.reduce((sum, e) => sum + enemyXp(e, f), 0);
 
   it('a regular dungeon\'s generated floor pays exactly what the run places on its reference seeds (counts, roles, leaders)', () => {
+    // The yardstick measures the reference floor shape (Easy's) on every tier: there it is exact; the bigger floors of harder
+    // tiers (data/dungeon.ts `FLOOR_SHAPES`) keep the rooms and budgets, and the next test checks they pay the same within a level.
     for (const d of [...DUNGEONS, ...CHALLENGES].filter((x) => !x.endless))
-      for (const tier of ['easy', 'nightmare'] as const)
+      for (const tier of ['easy'] as const)
         for (let f = 2; f <= lastFloor(d); f++) {
           if (!generated(d, f)) continue;
           // The yardstick counts the generator's rooms alone: a floor event's own enemies pay on top (they only put the player above the expected level).
@@ -102,7 +104,7 @@ describe('reference level after meaningful encounters', () => {
   it('the expected level is within one level of what real run seeds reach, floor by floor, in every dungeon', () => {
     const seeds = Array.from({ length: 16 }, (_, i) => 101 + i);
     for (const d of [...DUNGEONS, ...CHALLENGES])
-      for (const tier of ['easy', 'nightmare'] as const) {
+      for (const tier of DIFFICULTIES) {
         let xp = 0;
         for (let f = 1; f <= lastFloor(d); f++) {
           const real = levelForXp(xp);

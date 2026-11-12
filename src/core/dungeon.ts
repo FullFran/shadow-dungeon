@@ -1,4 +1,4 @@
-import { CRYPT_SPAWNS, DUNGEON, type SpawnEntry, type SpawnTuning } from '../data/dungeon';
+import { CRYPT_SPAWNS, DUNGEON, FLOOR_SHAPES, WAVE_ROOM, type FloorShape, type SpawnEntry, type SpawnTuning } from '../data/dungeon';
 import { ROLE_LINE, roleOf, ROLES_PER_ROOM, threatOf, type EncounterBudget, type EnemyRole } from '../data/encounters';
 import type { SpeciesId } from '../data/species';
 import { deriveSeed, nextRandom } from './rng';
@@ -40,7 +40,18 @@ export interface Floor extends TileGrid {
   start: TilePoint;
   stairs: TilePoint;
   spawns: readonly FloorSpawn[];
+  /** The hall (index into `rooms`) a wave room needs (data/dungeon.ts `WAVE_ROOM`); only on floors generated with `hall`. */
+  hall?: number;
 }
+
+/** Options of a generated floor: its shape (the tier's, Easy's by default) and whether it needs a wave room's hall. */
+export interface FloorOptions {
+  shape?: FloorShape;
+  hall?: boolean;
+}
+
+/** Cells a hall spans side by side in a shape: one when the minimum hall and its margin fit a cell, else two. */
+export const hallSpan = (shape: FloorShape): number => (WAVE_ROOM.minWidth + 2 <= Math.floor((shape.cols - 2) / shape.cellCols) ? 1 : 2);
 
 /** Local seeded draw helpers; the closure keeps the generator a pure function of its inputs. */
 function random(seed: number) {
@@ -106,9 +117,18 @@ export function tileDistances(grid: TileGrid, from: TilePoint): number[] {
   return dist;
 }
 
-/** One generated floor; `spawns` is the dungeon's enemy table (the Crypt's by default). */
-export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTuning = CRYPT_SPAWNS): Floor {
-  const { cols, rows, cellCols, cellRows, corridorWidth: cw } = DUNGEON;
+/**
+ * One generated floor; `spawns` is the dungeon's enemy table (the Crypt's by
+ * default), `options.shape` the tier's shape (Easy's by default). With
+ * `options.hall` the floor also gets a hall for a wave room (`Floor.hall`,
+ * at least `WAVE_ROOM`'s size, spanning two cells where one is too narrow),
+ * never the start or the stairs room. Without it the draws are exactly the
+ * ones a floor of that shape always had.
+ */
+export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTuning = CRYPT_SPAWNS, options: FloorOptions = {}): Floor {
+  const shape = options.shape ?? FLOOR_SHAPES.easy;
+  const { cols, rows, cellCols, cellRows } = shape;
+  const cw = DUNGEON.corridorWidth;
   const rng = random(deriveSeed(seed, depth));
   const tiles = new Array<number>(cols * rows).fill(0);
   const carve = (x: number, y: number) => {
@@ -123,18 +143,37 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
   const cellW = Math.floor((cols - 2) / cellCols);
   const cellH = Math.floor((rows - 2) / cellRows);
   const cellCount = cellCols * cellRows;
-  const roomCount = rng.int(DUNGEON.rooms.min, Math.min(DUNGEON.rooms.max, cellCount));
-  const roomCells = new Set(rng.shuffle([...Array(cellCount).keys()]).slice(0, roomCount));
+  // The hall's cell (and the cell it spills into when it spans two): drawn first, only on hall floors.
+  const span = options.hall ? hallSpan(shape) : 1;
+  const hallCell = options.hall ? rng.shuffle([...Array(cellCount).keys()].filter((c) => (c % cellCols) + span <= cellCols))[0]! : -1;
+  const merged = span > 1 ? hallCell + 1 : -1;
+  const free = [...Array(cellCount).keys()].filter((c) => c !== hallCell && c !== merged);
+  const roomCount = rng.int(shape.rooms.min, Math.min(shape.rooms.max, cellCount - (span - 1)));
+  const roomCells = new Set(options.hall ? [hallCell, ...rng.shuffle(free).slice(0, roomCount - 1)] : rng.shuffle(free).slice(0, roomCount));
 
   const rooms: TileRect[] = [];
+  let hall: number | undefined;
   /** Per cell: the tile corridors start from, and its room index (or -1 for a junction). */
   const anchors: { point: TilePoint; room: number }[] = [];
   for (let cell = 0; cell < cellCount; cell++) {
     const x0 = 1 + (cell % cellCols) * cellW;
     const y0 = 1 + Math.floor(cell / cellCols) * cellH;
-    if (roomCells.has(cell)) {
-      const width = rng.int(DUNGEON.roomWidth.min, Math.min(DUNGEON.roomWidth.max, cellW - 2));
-      const height = rng.int(DUNGEON.roomHeight.min, Math.min(DUNGEON.roomHeight.max, cellH - 2));
+    if (cell === merged) {
+      // The hall's second cell: its corridors start inside the hall.
+      const room = rooms[hall!]!;
+      anchors.push({ point: { x: room.x + room.width - cw, y: room.y + Math.floor((room.height - cw) / 2) }, room: hall! });
+    } else if (cell === hallCell) {
+      const areaW = span * cellW;
+      const width = rng.int(WAVE_ROOM.minWidth, Math.min(WAVE_ROOM.maxWidth, areaW - 2));
+      const height = rng.int(WAVE_ROOM.minHeight, Math.min(WAVE_ROOM.maxHeight, cellH - 2));
+      const room = { x: x0 + 1 + rng.int(0, areaW - 2 - width), y: y0 + 1 + rng.int(0, cellH - 2 - height), width, height };
+      for (let y = room.y; y < room.y + height; y++) for (let x = room.x; x < room.x + width; x++) carve(x, y);
+      hall = rooms.length;
+      anchors.push({ point: { x: room.x, y: room.y + Math.floor((room.height - cw) / 2) }, room: hall });
+      rooms.push(room);
+    } else if (roomCells.has(cell)) {
+      const width = rng.int(shape.roomWidth.min, Math.min(shape.roomWidth.max, cellW - 2));
+      const height = rng.int(shape.roomHeight.min, Math.min(shape.roomHeight.max, cellH - 2));
       const room = { x: x0 + 1 + rng.int(0, cellW - 2 - width), y: y0 + 1 + rng.int(0, cellH - 2 - height), width, height };
       for (let y = room.y; y < room.y + height; y++) for (let x = room.x; x < room.x + width; x++) carve(x, y);
       const point = { x: rng.int(room.x, room.x + width - cw), y: rng.int(room.y, room.y + height - cw) };
@@ -163,7 +202,7 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
     inTree.add(edge[0]).add(edge[1]);
     spare = spare.filter((e) => e !== edge);
   }
-  const loops = rng.int(DUNGEON.extraLoops.min, DUNGEON.extraLoops.max);
+  const loops = rng.int(shape.extraLoops.min, shape.extraLoops.max);
   used.push(...rng.shuffle(spare).slice(0, loops));
 
   for (const [a, b] of used) {
@@ -177,13 +216,15 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
   }
 
   const grid: TileGrid = { cols, rows, tiles };
-  const startRoom = rng.int(0, rooms.length - 1);
+  // The start: any room but the hall (a hall floor draws among the others).
+  const others = rooms.map((_, i) => i).filter((i) => i !== hall);
+  const startRoom = hall === undefined ? rng.int(0, rooms.length - 1) : others[rng.int(0, others.length - 1)]!;
   const start = centerOf(rooms[startRoom]!);
-  // Stairs in the room whose centre is the longest walk from the start.
+  // Stairs in the room whose centre is the longest walk from the start (never the hall).
   const dist = tileDistances(grid, start);
-  let stairsRoom = startRoom === 0 ? 1 : 0;
+  let stairsRoom = others.find((i) => i !== startRoom)!;
   rooms.forEach((room, index) => {
-    if (index === startRoom) return;
+    if (index === startRoom || index === hall) return;
     const c = centerOf(room);
     const best = centerOf(rooms[stairsRoom]!);
     if (dist[c.y * cols + c.x]! > dist[best.y * cols + best.x]!) stairsRoom = index;
@@ -224,7 +265,7 @@ export function generateFloor(seed: number, depth: number, spawnTuning: SpawnTun
     }
   });
 
-  return { seed, depth, cols, rows, tiles, rooms, startRoom, stairsRoom, start, stairs, spawns };
+  return { seed, depth, cols, rows, tiles, rooms, startRoom, stairsRoom, start, stairs, spawns, ...(hall === undefined ? {} : { hall }) };
 }
 
 /** Threat budget of one room at a depth, before its jitter (data/encounters.ts). */

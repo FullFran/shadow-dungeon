@@ -74,9 +74,9 @@ export const tickClock = (msLeft: number, dtMs: number): number => Math.max(0, m
 /** Time added: never negative, never on a clock that already ran out (the eclipse has swallowed the floor). */
 export const addTime = (msLeft: number, bonusMs: number): number => (msLeft <= 0 ? 0 : msLeft + Math.max(0, bonusMs));
 
-/** Time gained on entering floor `floor` (2 and deeper): shrinking with depth, down to a minimum. */
-export const descendBonusMs = (clock: EndlessDef['clock'], floor: number): number =>
-  floor < 2 ? 0 : Math.max(clock.descendMinMs, clock.descendMs - clock.descendShrinkMs * (floor - 2));
+/** Time gained on entering floor `floor` (2 and deeper): shrinking with depth, down to a minimum; stretched by the tier's floor walk (`walkScale`, data/dungeon.ts `FLOOR_SHAPES`; 1 on Easy). */
+export const descendBonusMs = (clock: EndlessDef['clock'], floor: number, walkScale = 1): number =>
+  floor < 2 ? 0 : Math.round(walkScale * Math.max(clock.descendMinMs, clock.descendMs - clock.descendShrinkMs * (floor - 2)));
 
 /**
  * Whether the run clock stands still this frame: only a paused solo run

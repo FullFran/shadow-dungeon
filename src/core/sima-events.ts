@@ -95,20 +95,8 @@ export const simaWaves = (def: SimaEvents, d: Difficulty = 'easy'): number => en
 /** Enemies of wave `wave` (1-based): an extra wave repeats the last planned size. */
 export const simaWaveSize = (def: SimaEvents, wave: number): number => def.waves.waves[Math.min(wave, def.waves.waves.length) - 1] ?? 0;
 
-/**
- * The event of a generated floor, if any: one draw against the depth's
- * chance, one weighted pick among the kinds open at that depth, one room
- * (never the start room; never the stairs' room either, except for a hunter,
- * which has no room of its own). Never on urgent floors.
- */
-export function chooseSimaEvent(
-  seed: number,
-  depth: number,
-  floor: Floor,
-  kind: FloorKind,
-  def: SimaEvents,
-  difficulty: Difficulty = 'easy',
-): { kind: SimaEventKind; room: number } | null {
+/** The kind of event a generated floor rolls, with the draw that then picks its room; null when it has none. Needs no floor: the run knows it before generating (a wave room needs a hall). */
+function rollEvent(seed: number, depth: number, kind: FloorKind, def: SimaEvents, difficulty: Difficulty): { kind: SimaEventKind; draw: () => number } | null {
   if (kind !== 'normal') return null;
   const draw = draws(deriveSeed(seed, depth + EVENT_SALT));
   if (draw() >= simaEventChance(def, depth, difficulty)) return null;
@@ -123,10 +111,36 @@ export function chooseSimaEvent(
       break;
     }
   }
-  if (picked.kind === 'hunter') return { kind: 'hunter', room: floor.startRoom };
+  return { kind: picked.kind, draw };
+}
+
+/** The kind of event floor `depth` will hold (the same roll as `chooseSimaEvent`), or null. */
+export const simaEventKind = (seed: number, depth: number, kind: FloorKind, def: SimaEvents, difficulty: Difficulty = 'easy'): SimaEventKind | null =>
+  rollEvent(seed, depth, kind, def, difficulty)?.kind ?? null;
+
+/**
+ * The event of a generated floor, if any: one draw against the depth's
+ * chance, one weighted pick among the kinds open at that depth, one room
+ * (never the start room; never the stairs' room either, except for a hunter,
+ * which has no room of its own). A wave room takes the floor's hall
+ * (core/dungeon.ts `Floor.hall`, data/dungeon.ts `WAVE_ROOM`) when it has
+ * one. Never on urgent floors.
+ */
+export function chooseSimaEvent(
+  seed: number,
+  depth: number,
+  floor: Floor,
+  kind: FloorKind,
+  def: SimaEvents,
+  difficulty: Difficulty = 'easy',
+): { kind: SimaEventKind; room: number } | null {
+  const rolled = rollEvent(seed, depth, kind, def, difficulty);
+  if (!rolled) return null;
+  if (rolled.kind === 'hunter') return { kind: 'hunter', room: floor.startRoom };
+  if (rolled.kind === 'waves' && floor.hall !== undefined) return { kind: 'waves', room: floor.hall };
   const rooms = floor.rooms.map((_, i) => i).filter((i) => i !== floor.startRoom && i !== floor.stairsRoom);
   if (rooms.length === 0) return null;
-  return { kind: picked.kind, room: rooms[Math.min(rooms.length - 1, Math.floor(draw() * rooms.length))]! };
+  return { kind: rolled.kind, room: rooms[Math.min(rooms.length - 1, Math.floor(rolled.draw() * rooms.length))]! };
 }
 
 /** Inner tiles of a room (off its walls), in a seeded order. */

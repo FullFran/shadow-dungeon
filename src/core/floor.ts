@@ -1,4 +1,4 @@
-import type { FloorKind } from '../data/dungeon';
+import { FLOOR_SHAPES, type FloorKind } from '../data/dungeon';
 import { startCollapse } from './collapse';
 import { drawElite, tierEliteRule, worldDifficulty } from './difficulty';
 import type { EliteRule } from '../data/difficulty';
@@ -30,13 +30,15 @@ export function floorArena(floor: Floor): Arena {
  */
 export function loadFloor(state: WorldState, floor: Floor, kind: FloorKind = 'normal', elites?: EliteRule): WorldState {
   const entered = enterRoom(state);
+  // The fog and the flood are clocks, not fronts: they stretch with the tier's walk (the collapse and the gas already follow the walking distance).
+  const walk = FLOOR_SHAPES[worldDifficulty(state)].walkScale;
   let next: WorldState = {
     ...entered,
     arena: floorArena(floor),
     player: { ...entered.player, pos: tileCenter(floor.start), roll: null, facing: vec(0, 1) },
     ...(kind === 'collapse' ? { collapse: startCollapse(floor) } : {}),
-    ...(kind === 'fog' ? { fog: startFog() } : {}),
-    ...(kind === 'flood' ? { flood: startFlood() } : {}),
+    ...(kind === 'fog' ? { fog: startFog(walk) } : {}),
+    ...(kind === 'flood' ? { flood: startFlood(walk) } : {}),
     ...(kind === 'gas' ? { gas: startGas(floor) } : {}),
   };
   // Elites: some floor enemies are elites, drawn from the floor seed (the same on every peer), by the tier's rule or the dungeon's (the Sima's).

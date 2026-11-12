@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DUNGEON, CRYPT_SPAWNS } from '../../src/data/dungeon';
+import { DUNGEON, CRYPT_SPAWNS, FLOOR_SHAPES } from '../../src/data/dungeon';
 import { generateFloor, spawnsPerRoom, type Floor } from '../../src/core/dungeon';
 import { isWall, TILE, tileCenter, type TilePoint } from '../../src/core/tiles';
 import { distance } from '../../src/core/vec';
@@ -39,11 +39,11 @@ describe('floor generator', () => {
   it('keeps every room, the start and the stairs inside the map, with a solid border', () => {
     for (const seed of SEEDS) {
       const floor = generateFloor(seed, 1);
-      expect(floor.cols).toBe(DUNGEON.cols);
-      expect(floor.rows).toBe(DUNGEON.rows);
+      expect(floor.cols).toBe(FLOOR_SHAPES.easy.cols);
+      expect(floor.rows).toBe(FLOOR_SHAPES.easy.rows);
       expect(floor.tiles.length).toBe(floor.cols * floor.rows);
-      expect(floor.rooms.length).toBeGreaterThanOrEqual(DUNGEON.rooms.min);
-      expect(floor.rooms.length).toBeLessThanOrEqual(DUNGEON.rooms.max);
+      expect(floor.rooms.length).toBeGreaterThanOrEqual(FLOOR_SHAPES.easy.rooms.min);
+      expect(floor.rooms.length).toBeLessThanOrEqual(FLOOR_SHAPES.easy.rooms.max);
       for (let x = 0; x < floor.cols; x++) expect(isWall(floor, x, 0) && isWall(floor, x, floor.rows - 1)).toBe(true);
       for (let y = 0; y < floor.rows; y++) expect(isWall(floor, 0, y) && isWall(floor, floor.cols - 1, y)).toBe(true);
       for (const room of floor.rooms) {

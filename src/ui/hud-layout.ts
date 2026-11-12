@@ -45,6 +45,9 @@ export const HUD_BOX = {
   minimapTilePxTouch: 3,
   minimapMargin: 10,
   minimapFrame: 4,
+  /** The minimap never outgrows an Easy floor's footprint (40x28 tiles): bigger floors (data/dungeon.ts `FLOOR_SHAPES`) shrink the tile instead. */
+  minimapMaxCols: 40,
+  minimapMaxRows: 28,
 } as const;
 
 /** Sizes per variant, in HUD pixels. */
@@ -168,8 +171,14 @@ export function slotRect(space: HudDims, index: number, count: number): HudBox {
   return { x: left + (index % 2) * (slot + m.slotGap), y: top + Math.floor(index / 2) * (slot + m.slotGap), width: slot, height: slot };
 }
 
-/** The minimap tile in HUD px: 4 on desktop (the size it had before the HUD scale rule), 3 on touch. */
-export const minimapTilePx = (touch: boolean): number => (touch ? HUD_BOX.minimapTilePxTouch : HUD_BOX.minimapTilePx);
+/**
+ * The minimap tile in HUD px: 4 on desktop (the size it had before the HUD
+ * scale rule), 3 on touch, shrunk on floors bigger than Easy's so the map
+ * keeps Easy's footprint (the caption and the location plaque leave room for
+ * exactly that).
+ */
+export const minimapTilePx = (touch: boolean, cols: number = HUD_BOX.minimapMaxCols, rows: number = HUD_BOX.minimapMaxRows): number =>
+  (touch ? HUD_BOX.minimapTilePxTouch : HUD_BOX.minimapTilePx) * Math.min(1, HUD_BOX.minimapMaxCols / cols, HUD_BOX.minimapMaxRows / rows);
 
 /** The minimap frame for a `cols` x `rows` grid; the map itself starts `minimapFrame` inside. */
 export function minimapRect(space: Pick<HudSpace, 'width'>, cols: number, rows: number, tilePx: number = HUD_BOX.minimapTilePx): HudBox {

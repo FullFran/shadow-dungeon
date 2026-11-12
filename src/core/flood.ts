@@ -18,9 +18,14 @@ export interface FloodState {
   elapsedMs: number;
   /** Time left before the next chill once the water is fully up. */
   chillMs: number;
+  /** The rise time's stretch on bigger floors (data/dungeon.ts `FloorShape.walkScale`); absent is 1 (Easy). */
+  scale?: number;
 }
 
-export const startFlood = (): FloodState => ({ elapsedMs: 0, chillMs: FLOOD.chillIntervalMs });
+/** A flood that rises over `FLOOD.riseMs` stretched by the floor's `walkScale` (a longer walk to the stairs, more time). */
+export const startFlood = (scale = 1): FloodState => ({ elapsedMs: 0, chillMs: FLOOD.chillIntervalMs, ...(scale !== 1 ? { scale } : {}) });
+
+const riseMsOf = (flood: FloodState): number => FLOOD.riseMs * (flood.scale ?? 1);
 
 const smoothstep = (x: number): number => {
   const t = Math.min(1, Math.max(0, x));
@@ -28,10 +33,10 @@ const smoothstep = (x: number): number => {
 };
 
 /** Water level, 0 (just arrived) to 1 (fully risen); it never goes down. */
-export const floodLevel = (flood: FloodState): number => smoothstep((flood.elapsedMs - FLOOD.graceMs) / FLOOD.riseMs);
+export const floodLevel = (flood: FloodState): number => smoothstep((flood.elapsedMs - FLOOD.graceMs) / riseMsOf(flood));
 
 /** True once the water is fully up (it starts to chill). */
-export const floodRisen = (flood: FloodState): boolean => flood.elapsedMs >= FLOOD.graceMs + FLOOD.riseMs;
+export const floodRisen = (flood: FloodState): boolean => flood.elapsedMs >= FLOOD.graceMs + riseMsOf(flood);
 
 const isWaterType = (types: readonly PokemonType[]): boolean => types.includes('water');
 

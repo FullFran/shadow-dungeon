@@ -3,7 +3,7 @@ import { echoShare, echoStageAt, fightOf, type EchoStage } from './cards';
 import { ECHO_CARDS } from '../data/cards';
 import { behaviourFor } from './tricks';
 import { heraldSeed, withHerald } from './herald/floor';
-import { RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
+import { FLOOR_SHAPES, RUN, type FloorKind, type FloorPlan } from '../data/dungeon';
 import { chanceAt, CRYPT, dungeonById, floorsOf, musicFor, planAt, roadFor, type DungeonDef, type DungeonId } from '../data/dungeons';
 import type { MusicContext } from '../data/music';
 import { ROOMS, type RoomRect } from '../data/rooms';
@@ -20,7 +20,7 @@ import { chooseGate, gateShut, placeGate } from './gates';
 import type { SimaEventKind } from '../data/sima';
 import { tierHealing, worldDifficulty } from './difficulty';
 import { expectedLevel } from './fairness';
-import { floorEventPool, floorEventRules, generatedFloor } from './floor-spawns';
+import { floorEventPool, floorEventRules, generatedFloor, holdsWaveRoom } from './floor-spawns';
 import { addItem, playerStats } from './items';
 import { loadFloor, onStairs } from './floor';
 import { wispCache } from './wisp';
@@ -261,7 +261,7 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
   // Harder tiers: more enemies per room (core/difficulty.ts); every peer generates the same floor from the host's tier.
   const tier = worldDifficulty(world);
   // The generator's rooms, the Sima's squads and the leaders (core/floor-spawns.ts, shared with core/fairness.ts).
-  const floor = generatedFloor(dungeonOf(run), run.floor, seed, tier);
+  const floor = generatedFloor(dungeonOf(run), run.floor, seed, tier, holdsWaveRoom(dungeonOf(run), run.seed, run.floor, run.kind, tier));
   const berries = placeBerries(floor, seed, run.floor, tierHealing(tier).berryChance);
   // The Forest's spirit light and its berry cache (none elsewhere).
   const wisp = wispCache(floor, seed, run.floor, dungeonOf(run), berries);
@@ -290,9 +290,10 @@ function enterFloor(entering: WorldState, run: RunState, party = presentPartySiz
 /** Loads `run`'s current floor into `world` with no heal (the boss shrine's arenas, core/shrine.ts). */
 export const enterRunFloor = (world: WorldState, run: RunState): WorldState => enterFloor(world, run);
 
-/** A wave gate's room: the rolled event's if it already is a wave room, else the first room that is neither the start nor the stairs. */
+/** A wave gate's room: the rolled event's if it already is a wave room, else the floor's hall, else the first room that is neither the start nor the stairs. */
 function waveRoomOf(floor: Floor, rolled: { kind: SimaEventKind; room: number } | null): { kind: SimaEventKind; room: number } | null {
   if (rolled?.kind === 'waves') return rolled;
+  if (floor.hall !== undefined) return { kind: 'waves', room: floor.hall };
   const room = floor.rooms.findIndex((_, i) => i !== floor.startRoom && i !== floor.stairsRoom);
   return room >= 0 ? { kind: 'waves', room } : rolled;
 }
@@ -343,7 +344,7 @@ function goDown(leaving: RunState, leavingWorld: WorldState, floor: number): { r
   const { run, world } = chooseItem(leaving, leavingWorld, 0);
   const escape = world.collapse ? { floor: run.floor, ms: world.collapse.elapsedMs } : null;
   const endless = dungeonOf(run).endless;
-  const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor) : 0;
+  const bonusMs = endless && run.clockMs !== undefined && run.clockMs > 0 ? descendBonusMs(endless.clock, floor, FLOOR_SHAPES[worldDifficulty(leavingWorld)].walkScale) : 0;
   const grace = endless?.clock.graceMs ? { graceMs: endless.clock.graceMs } : {};
   const clock = run.clockMs !== undefined ? { clockMs: addTime(run.clockMs, bonusMs), echoPaid: false, eventPaid: false, ...grace } : {};
   const next: RunState = { ...run, floor, kind: floorKind(run.seed, floor, dungeonOf(run)), escape, ...clock };
