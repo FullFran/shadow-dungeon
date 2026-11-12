@@ -1443,6 +1443,29 @@ export type DanmakuPattern =
    * more than `atOnce` places at once.
    */
   | { kind: 'turrets'; points: readonly { x: number; y: number }[]; atOnce: number; volleys: number; gapMs: number; perVolley: number; spreadDeg: number; shot: DanmakuShot }
+  /**
+   * Familiars (docs/research/boss-patterns.md E3): `count` emitters evenly
+   * spaced on a circle of `radius` around the boss (or the arena's middle),
+   * turning `degPerSec`; volley k fires from `atOnce` of them in turn,
+   * `perVolley` shots across `spreadDeg`, aimed at the target or straight
+   * out from the centre (`out`: a static fan that moves with its emitter).
+   */
+  | { kind: 'familiars'; count: number; radius: number; degPerSec: number; centre: 'boss' | 'arena'; atOnce: number; volleys: number; gapMs: number; perVolley: number; spreadDeg: number; aim: 'target' | 'out'; shot: DanmakuShot }
+  /** Arms whose angle swings `amplitudeDeg` around the aim on a sine of `periodMs` (`mirror`: the opposite swing too), a shot per arm every `everyMs` (the heralds' `wave`). */
+  | { kind: 'wave'; arms: number; everyMs: number; durationMs: number; amplitudeDeg: number; periodMs: number; mirror?: true; shot: DanmakuShot }
+  /** A ring of `perRing` slots `radius` round the mark (where the target stood), closing inwards; its `gap` faces away from the boss and turns `gapTurnDeg` a ring (the heralds' `closing`). */
+  | { kind: 'closing'; rings: number; gapMs: number; perRing: number; gap: number; radius: number; gapTurnDeg: number; shot: DanmakuShot }
+  /** Bursts of `count` shots at seeded angles inside a `coneDeg` cone, the same on every peer (the heralds' `scatter`); `each` aims every burst at the target. */
+  | { kind: 'scatter'; bursts: number; gapMs: number; count: number; coneDeg: number; salt: number; aim: 'each' | 'first'; shot: DanmakuShot }
+  /** `orbs` slow shots fanned over `spreadDeg` at the target that bend towards the nearest player for a while (`shot.steer`; the heralds' `homing`). */
+  | { kind: 'homing'; volleys: number; gapMs: number; orbs: number; spreadDeg: number; shot: DanmakuShot }
+  /**
+   * Lasers as lines of fast shots (owner option 4a, the heralds' `laser`):
+   * every `everyMs` a volley of `lines` lines fanned over `fanDeg` round the
+   * aim (turned `turnDeg` a volley) is shown `warnMs`, then fires a shot per
+   * line every `beamEveryMs` for `fireMs`.
+   */
+  | { kind: 'laser'; volleys: number; everyMs: number; lines: number; fanDeg: number; turnDeg: number; warnMs: number; fireMs: number; beamEveryMs: number; shot: DanmakuShot }
   /** An anchor or chain swung around the body: `sweepDeg` of a turn over `sweepMs`, hitting within `radius` near the arm. */
   | { kind: 'sweep'; radius: number; sweepDeg: number; sweepMs: number; armDeg: number; attack: EnemyAttackDef }
   /**

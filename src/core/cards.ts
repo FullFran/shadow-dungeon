@@ -247,6 +247,8 @@ function startStep(state: WorldState, enemy: EnemyState, card: SpellCardDef, ind
   if (p.kind === 'zone') aimPoint = p.at === 'self' ? enemy.pos : target;
   // Closing walls: the gap row is the one the player stands in now.
   if (p.kind === 'walls') aimPoint = vec(0, target.y);
+  // A closing ring: centred where the target stands as the move starts (every layer that closes shares it).
+  if (p.kind === 'closing' || (step.layers ?? []).some((l) => l.kind === 'closing')) aimPoint = target;
   if (p.kind === 'lanes') {
     // The wall starts at the far end from the player and comes at them; the mark is the safe lane.
     attackDir = target.y > state.arena.height / 2 ? vec(0, 1) : vec(0, -1);
@@ -272,6 +274,9 @@ function fireParts(state: WorldState, enemy: EnemyState, fight: CardFightDef, st
   }
   return { state: next, last };
 }
+
+/** Patterns whose aim follows the target through the wind-up (the rest keep the aim the move started with: lanes, walls, turrets, zones). */
+const AIMS_WHILE_WINDING: ReadonlySet<DanmakuPattern['kind']> = new Set(['rings', 'spiral', 'sweep', 'fan', 'wave', 'closing', 'scatter', 'homing', 'laser', 'familiars']);
 
 /** One step of the moves of the card in play. */
 function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, card: SpellCardDef, target: Vec2, ms: number, events: GameEvent[]): WorldState {
@@ -299,7 +304,7 @@ function playCard(state: WorldState, start: EnemyState, fight: CardFightDef, car
         break;
       }
       const p = step.pattern;
-      if (p.kind === 'rings' || p.kind === 'spiral' || p.kind === 'sweep' || p.kind === 'fan') enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
+      if (AIMS_WHILE_WINDING.has(p.kind)) enemy = { ...enemy, facing: toPlayer, ai: { ...ai, attackDir: toPlayer } };
       // A mark on the player follows them, then holds still for the last `lockMs` (walk out of it).
       if (p.kind === 'zone' && p.at === 'target' && ai.modeDurationMs - ai.modeMs > p.lockMs) enemy = withAi(enemy, { ...enemy.ai, aimPoint: target });
       if (!modeOver(ai)) break;
@@ -446,7 +451,8 @@ export type HostedPlay = (state: WorldState, enemy: EnemyState, card: SpellCardD
  * After a declaration the boss starts its card fresh: `opening` is the
  * stance its engine starts a cycle from (the first move, or Trevenant's
  * slam), in `approach` with the first move's short wait; a `phase2` card
- * puts its engine in phase 2 for good.
+ * puts its engine in phase 2 for good. A card without `moves` is a pattern
+ * card: `updateCardFight` plays it, as it does a guardian's.
  */
 export function updateHostedCardFight(state: WorldState, start: EnemyState, fight: CardFightDef, target: Vec2, ms: number, events: GameEvent[], play: HostedPlay, opening: (card: SpellCardDef) => string): WorldState {
   if (!start.boss || fight.cards.length === 0) return state;
@@ -458,6 +464,8 @@ export function updateHostedCardFight(state: WorldState, start: EnemyState, figh
   }
   const found = currentCard(fight, enemy.boss!);
   if (!found) return replaceEnemy(state, declare(enemy, fight, 0, 'start', events));
+  // A pattern card among the hosted ones (odd/tasks/boss-patterns.md): the shared engine plays its steps, the boss's own waits.
+  if (!found.card.moves) return updateCardFight(state, start, fight, target, ms, events);
   const { card, index } = found;
   if (isDeclaring(enemy)) {
     if (!modeOver(ai)) return replaceEnemy(state, enemy);

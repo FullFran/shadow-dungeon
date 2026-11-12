@@ -2,6 +2,8 @@ import type { DanmakuCard, DanmakuCardDef, DanmakuDef, DanmakuPattern, DanmakuSh
 import { TUNING } from '../data/tuning';
 import { contactPlayer, enterMode, modeOver, moveEnemy, perpendicular, replaceEnemy, rotate, spawnShot, spreadDirections, towardTarget } from './brain';
 import { confineCircle } from './geometry';
+import { kinFor } from './kinematics';
+import { scatterAngles } from './herald/patterns';
 import type { AiState, BossState, EnemyState, GameEvent, WorldState } from './state';
 import { add, angleOf, distance, fromAngle, length, normalize, scale, sub, vec, type Vec2 } from './vec';
 import { fightFor, hostedMoves, updateHostedCardFight } from './cards';
@@ -56,6 +58,12 @@ export function shoot(state: WorldState, enemy: EnemyState, maxShots: number, sh
   if (enemyShots(state) >= maxShots) return state;
   return spawnShot(state, enemy, power === 1 ? shot : { ...shot, power: Math.round(shot.power * power) }, dir, at);
 }
+
+/** Part `index`'s bullet: alternating curves turn the other way on odd parts (core/kinematics.ts `kinFor`). */
+const partShot = (shot: DanmakuShot, index: number): DanmakuShot => {
+  const kin = kinFor(shot.kin, index);
+  return kin === shot.kin ? shot : { ...shot, ...(kin ? { kin } : {}) };
+};
 
 /**
  * Directions of ring `index`: `perRing` slots evenly spaced, `gap` of them
@@ -114,6 +122,39 @@ export function turretsFiring(points: number, atOnce: number, index: number): nu
 
 /** Where a turret pattern's weapons float in a room. */
 export const turretPoints = (p: { points: readonly { x: number; y: number }[] }, arena: { width: number; height: number }): Vec2[] => p.points.map((q) => vec(q.x * arena.width, q.y * arena.height));
+
+/** Directions of wave part `index`: each arm swung on its sine (and its mirror's), around `aim`. */
+export function waveDirections(aim: Vec2, p: Extract<DanmakuPattern, { kind: 'wave' }>, index: number): Vec2[] {
+  const swing = p.amplitudeDeg * Math.sin((2 * Math.PI * index * p.everyMs) / p.periodMs);
+  const out: Vec2[] = [];
+  for (let a = 0; a < p.arms; a++) {
+    const arm = (a * 360) / p.arms;
+    out.push(rotate(aim, arm + swing));
+    if (p.mirror) out.push(rotate(aim, arm - swing));
+  }
+  return out;
+}
+
+/** The volley laser part `index` fires for, or null while its lines only warn (or rest). */
+export function laserFiring(p: Extract<DanmakuPattern, { kind: 'laser' }>, index: number): number | null {
+  const t = index * p.beamEveryMs;
+  const volley = Math.floor(t / p.everyMs);
+  const local = t - volley * p.everyMs;
+  return volley < p.volleys && local >= p.warnMs && local < p.warnMs + p.fireMs ? volley : null;
+}
+
+/** The line directions of laser volley `volley`: fanned round `aim`, turned `turnDeg` a volley. */
+export function laserDirections(aim: Vec2, p: Extract<DanmakuPattern, { kind: 'laser' }>, volley: number): Vec2[] {
+  const turn = volley * p.turnDeg;
+  return Array.from({ length: p.lines }, (_, i) => rotate(aim, turn + (p.lines === 1 ? 0 : -p.fanDeg / 2 + (i * p.fanDeg) / (p.lines - 1))));
+}
+
+/** Where a familiars pattern's emitters are `tMs` into its attack: evenly on their circle round the boss (`bossPos`) or the arena's middle, the first one along `aim` at 0, turning `degPerSec`. */
+export function familiarPoints(p: Extract<DanmakuPattern, { kind: 'familiars' }>, bossPos: Vec2, aim: Vec2, arena: { width: number; height: number }, tMs: number): Vec2[] {
+  const centre = p.centre === 'arena' ? vec(arena.width / 2, arena.height / 2) : bossPos;
+  const turn = (p.degPerSec * tMs) / 1000;
+  return Array.from({ length: p.count }, (_, i) => add(centre, scale(rotate(aim, turn + (i * 360) / p.count), p.radius)));
+}
 
 /** The x of each kelp shot of one wave: every `spacing` px, none inside the safe lane. */
 export function laneShots(arenaWidth: number, gapX: number, gapWidth: number, spacing: number): number[] {
@@ -186,10 +227,11 @@ function firePart(state: WorldState, enemy: EnemyState, def: DanmakuDef, cd: Dan
  * keeping the room under `maxShots` enemy shots, each `power` times as
  * strong. Shared with the guardians' spell cards (core/cards.ts).
  */
-export function firePattern(state: WorldState, enemy: EnemyState, maxShots: number, p: DanmakuPattern, index: number, power = 1, target?: Vec2): WorldState {
+export function firePattern(state: WorldState, enemy: EnemyState, maxShots: number, pattern: DanmakuPattern, index: number, power = 1, target?: Vec2): WorldState {
   let next = state;
   const aim = enemy.ai.attackDir;
   const { width, height } = state.arena;
+  const p = 'shot' in pattern ? ({ ...pattern, shot: partShot(pattern.shot, index) } as DanmakuPattern) : pattern;
   if (p.kind === 'rings') for (const dir of ringDirections(aim, p.perRing, p.gap, p.gapTurnDeg, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
   if (p.kind === 'spiral') for (const dir of spiralDirections(aim, p.arms, p.turnDegPerShot, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
   if (p.kind === 'lanes') {
@@ -222,6 +264,38 @@ export function firePattern(state: WorldState, enemy: EnemyState, maxShots: numb
       for (const d of spreadDirections(dir, p.perVolley, p.spreadDeg)) next = shoot(next, enemy, maxShots, p.shot, d, add(from, scale(d, p.shot.radius + 4)), power);
     }
   }
+  if (p.kind === 'familiars') {
+    const centre = p.centre === 'arena' ? vec(width / 2, height / 2) : enemy.pos;
+    const points = familiarPoints(p, enemy.pos, aim, state.arena, index * p.gapMs);
+    const at = target ?? state.player.pos;
+    for (const i of turretsFiring(points.length, p.atOnce, index)) {
+      const from = points[i]!;
+      const dir = normalize(sub(p.aim === 'out' ? from : at, p.aim === 'out' ? centre : from));
+      if (length(dir) === 0) continue;
+      for (const d of spreadDirections(dir, p.perVolley, p.spreadDeg)) next = shoot(next, enemy, maxShots, p.shot, d, add(from, scale(d, p.shot.radius + 4)), power);
+    }
+  }
+  if (p.kind === 'wave') for (const dir of waveDirections(aim, p, index)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
+  if (p.kind === 'closing') {
+    const mark = enemy.ai.aimPoint ?? enemy.pos;
+    for (const u of ringDirections(aim, p.perRing, p.gap, p.gapTurnDeg, index)) {
+      const at = add(mark, scale(u, p.radius));
+      if (at.x < 1 || at.y < 1 || at.x > width - 1 || at.y > height - 1) continue;
+      next = shoot(next, enemy, maxShots, p.shot, scale(u, -1), at, power);
+    }
+  }
+  if (p.kind === 'scatter') {
+    const centre = p.aim === 'each' && target ? towardTarget(target, enemy) : aim;
+    for (const off of scatterAngles(p.salt, index, p.count, p.coneDeg)) next = shoot(next, enemy, maxShots, p.shot, rotate(centre, off), undefined, power);
+  }
+  if (p.kind === 'homing') {
+    const centre = target ? towardTarget(target, enemy) : aim;
+    for (const d of spreadDirections(centre, p.orbs, p.spreadDeg)) next = shoot(next, enemy, maxShots, p.shot, d, undefined, power);
+  }
+  if (p.kind === 'laser') {
+    const volley = laserFiring(p, index);
+    if (volley !== null) for (const dir of laserDirections(aim, p, volley)) next = shoot(next, enemy, maxShots, p.shot, dir, undefined, power);
+  }
   return next;
 }
 
@@ -234,7 +308,11 @@ export function patternParts(p: DanmakuPattern): { count: number; every: number 
   if (p.kind === 'spiral') return { count: Math.max(1, Math.floor(p.durationMs / p.everyMs)), every: p.everyMs };
   if (p.kind === 'lanes' || p.kind === 'walls') return { count: p.waves, every: p.gapMs };
   if (p.kind === 'fan') return { count: p.fans, every: p.gapMs };
-  if (p.kind === 'turrets') return { count: p.volleys, every: p.gapMs };
+  if (p.kind === 'turrets' || p.kind === 'familiars' || p.kind === 'homing') return { count: p.volleys, every: p.gapMs };
+  if (p.kind === 'wave') return { count: Math.max(1, Math.floor(p.durationMs / p.everyMs)), every: p.everyMs };
+  if (p.kind === 'closing') return { count: p.rings, every: p.gapMs };
+  if (p.kind === 'scatter') return { count: p.bursts, every: p.gapMs };
+  if (p.kind === 'laser') return { count: Math.ceil((p.volleys * p.everyMs) / p.beamEveryMs), every: p.beamEveryMs };
   return null;
 }
 
