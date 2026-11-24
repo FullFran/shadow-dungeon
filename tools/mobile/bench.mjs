@@ -2,7 +2,10 @@
 // phone viewports, the dev perf probe (src/adapters/perf-probe.ts, `?perf=1`)
 // recording per-frame simulation and render ms in heavy scenes.
 //
-//   node tools/mobile/bench.mjs [--seconds=6] [--out=reports/perf/latest.json] [--only=boss-card]
+//   node tools/mobile/bench.mjs [--seconds=6] [--out=reports/perf/latest.json] [--only=boss-card] [--sampler=off]
+//
+// `--sampler=off` turns off the report's performance sampler (src/adapters/perf-sampler.ts, `?perfsampler=0`)
+// for the before/after comparison of issue #71; the `sampler` channel is its own cost per frame when on.
 //
 // Firefox cannot throttle the CPU: the numbers are this machine's; read them
 // against a phone budget of ~4-6x slower (16.7 ms frame -> ~3-4 ms here).
@@ -16,6 +19,7 @@ const seconds = Number(flag('seconds', '6'));
 const out = flag('out', 'reports/perf/latest.json');
 const only = flag('only', '');
 const shotDir = flag('shots', '');
+const samplerOff = flag('sampler', 'on') === 'off';
 
 const VIEWPORTS = [
   { name: 'landscape', width: 844, height: 390 },
@@ -28,6 +32,9 @@ const SCENES = [
   // A card boss on the test arena from the first frame (`?spawn=`): the guardian rooms only wake their boss once the player walks in, so boss-card above shows no bullets.
   { name: 'card-decidueye', query: 'screen=run&spawn=decidueye&card=2&seed=7', settings: { difficulty: 'nightmare' } },
   { name: 'card-lanturn', query: 'screen=run&spawn=lanturn&card=1&seed=7', settings: { difficulty: 'nightmare' } },
+  // An enemy-density ladder (issue #71: frame time against enemy count on the same arena and seed). The test arena
+  // takes 12 enemies at most (core/test-floor.ts `TEST_FLOOR.maxEnemies`), so 12 is the top of the ladder here.
+  { name: 'crowd-4', query: 'screen=run&spawn=koffing,zubat,duskull,houndour&seed=7', settings: { difficulty: 'easy' } },
   { name: 'crowd-12', query: 'screen=run&spawn=koffing,zubat,duskull,houndour,slugma,remoraid,koffing,zubat,duskull,houndour,slugma,remoraid&seed=7', settings: { difficulty: 'easy' } },
   { name: 'floor', query: 'screen=run&dungeon=crypt-of-the-sword-king&floor=3&seed=7', settings: { difficulty: 'hard' } },
   { name: 'town', query: 'screen=town', settings: {} },
@@ -41,7 +48,7 @@ try {
     for (const scene of SCENES) {
       await page.viewport(viewport.width, viewport.height, 3);
       await seedSettings(page, vite.url, scene.settings);
-      await page.nav(`${vite.url}?perf=1&${scene.query}`);
+      await page.nav(`${vite.url}?perf=1${samplerOff ? '&perfsampler=0' : ''}&${scene.query}`);
       // Sprites, the floor card and any short cutscene; a floor's item pick is taken (key 1): then measure.
       await wait(3000);
       await page.evaluate(`(window.dispatchEvent(new KeyboardEvent('keydown', { key: '1', code: 'Digit1', bubbles: true })), 1)`);
@@ -51,11 +58,11 @@ try {
       const report = await page.evaluate(`globalThis.__mzPerf ? globalThis.__mzPerf.report() : null`);
       const canvas = await page.evaluate(`(() => { const c = document.querySelector('canvas.game'); return c ? [c.width, c.height] : null; })()`);
       if (shotDir) await page.screenshot(`${shotDir}/bench-${scene.name}-${viewport.width}x${viewport.height}.png`);
-      results.push({ scene: scene.name, viewport: `${viewport.width}x${viewport.height}`, dpr: 3, canvas, report });
+      results.push({ scene: scene.name, viewport: `${viewport.width}x${viewport.height}`, dpr: 3, sampler: samplerOff ? 'off' : 'on', canvas, report });
       const r = report ?? {};
       const fmt = (c) => (c ? `${c.p50.toFixed(2)}/${c.p95.toFixed(2)}` : '-');
       console.log(
-        `${scene.name.padEnd(10)} ${viewport.name.padEnd(9)} canvas ${canvas ? canvas.join('x') : '-'}  frame p50/p95 ${fmt(r.frame)}  sim ${fmt(r.sim)}  render ${fmt(r.render)}  bullets max ${r.bullets?.max ?? '-'} enemies max ${r.enemies?.max ?? '-'}`,
+        `${scene.name.padEnd(10)} ${viewport.name.padEnd(9)} canvas ${canvas ? canvas.join('x') : '-'}  frame p50/p95 ${fmt(r.frame)}  sim ${fmt(r.sim)}  render ${fmt(r.render)}  sampler ${fmt(r.sampler)}  bullets max ${r.bullets?.max ?? '-'} enemies max ${r.enemies?.max ?? '-'}`,
       );
     }
   }
@@ -64,5 +71,5 @@ try {
   vite.stop();
 }
 mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, `${JSON.stringify({ at: new Date().toISOString(), seconds, results }, null, 2)}\n`);
+writeFileSync(out, `${JSON.stringify({ at: new Date().toISOString(), seconds, sampler: samplerOff ? 'off' : 'on', results }, null, 2)}\n`);
 console.log(`→ ${out}`);

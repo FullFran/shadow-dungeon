@@ -2043,6 +2043,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         perf.record('enemies', world.enemies.length);
       }
       if (sampler && !paused) {
+        const samplerAt = perf ? performance.now() : 0;
         // Active enemies and those inside the camera's view, in one pass over the enemies already in memory.
         let active = 0;
         let visible = 0;
@@ -2052,6 +2053,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
           if (enemy.pos.x >= view.x && enemy.pos.x <= view.x + view.width && enemy.pos.y >= view.y && enemy.pos.y <= view.y + view.height) visible++;
         }
         sampler.frame(now, simMs, renderMs, active, visible, world.projectiles.length);
+        // The sampler's own cost per frame, for the before/after benchmark (tools/mobile/bench.mjs).
+        perf?.record('sampler', performance.now() - samplerAt);
       }
     }
     overlay?.update(realMs);
