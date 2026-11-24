@@ -2,6 +2,8 @@
 <!-- Dev tool, not part of the build: `npm run dev`, then /tools/bullet-gallery.html.
      Every type's enemy bullet (src/adapters/bullet-art.ts, baked by bullet-atlas.ts) side by side:
      the three size classes in flight, the hanging state, the player's shot of the same type, on a dark and a bright floor.
+     Below them, every move an enemy shot is drawn as (issue #67): the enemy shot as the game draws it (the move's baked effect
+     with the hitbox core on top) next to the player's use of the same move, with the sources that fire it.
      ?scale=3 (pixels per world pixel) ?hitbox=1 (draw the true hitbox circle) ?stress=160 (frame cost of 160 bullets: atlas vs the old orb) -->
 <html lang="es">
 <head>
@@ -32,12 +34,25 @@
 <div class="legend">Columnas: S (radio 4), M (radio 6), L (radio 9) en vuelo; colgada (M, el anillo se cierra hasta que vuelve a volar); disparo del jugador del mismo tipo (dibujo de respaldo, sin borde oscuro). El núcleo claro es exactamente el hitbox; el color y el brillo no hacen daño.</div>
 <div id="stress"></div>
 <div id="cards"></div>
+<h2 style="margin: 0 12px 6px; font: bold 14px monospace;">Disparos enemigos como movimientos</h2>
+<div class="legend">Cada movimiento que dispara un enemigo: a la izquierda el disparo enemigo tal como lo dibuja el juego (el efecto horneado del movimiento, del tamaño del disparo, con el núcleo claro del hitbox encima) en sus radios de uso; a la derecha el mismo movimiento usado por el jugador. Debajo, quién lo dispara y con qué tipo de daño.</div>
+<div id="moves" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 0 12px 40px;"></div>
 <script type="module">
   import es from '../src/i18n/es.json';
   import { POKEMON_TYPES } from '../src/data/types.ts';
   import { BULLET_LOOKS } from '../src/adapters/bullet-art.ts';
   import { BAKE_BUDGET_MS, createBulletAtlas } from '../src/adapters/bullet-atlas.ts';
   import { drawProjectileVfx } from '../src/adapters/move-vfx.ts';
+  import { MOVES } from '../src/data/moves.ts';
+  import { SPECIES } from '../src/data/species.ts';
+  import { DIFFICULTIES } from '../src/data/difficulty.ts';
+  import { STORY_FIGHTS } from '../src/data/story/bosses.ts';
+  import { behaviourFor } from '../src/core/tricks.ts';
+  import { heraldDef } from '../src/core/herald/generate.ts';
+  import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
+  import { FxSystem } from '../src/adapters/fx/system.ts';
+  import { enemyShotArt, projectileCue } from '../src/adapters/fx/cues.ts';
+  import { moveSpawn, SHOT_HEIGHT } from '../src/adapters/fx/director.ts';
 
   const params = new URLSearchParams(location.search);
   const atlas = createBulletAtlas();
@@ -153,12 +168,96 @@
     globalThis.__bulletStress = { atlas: [...samples.atlas], orb: [...samples.orb] };
   }
 
+  // Every move an enemy shot is drawn as, with its radii, damage types and sources (the same walk as tests/data/enemy-shot-moves.test.ts).
+  const used = new Map();
+  function walk(root, source, seen = new Set()) {
+    if (!root || typeof root !== 'object' || seen.has(root)) return;
+    seen.add(root);
+    if (typeof root.speed === 'number' && root.speed > 0 && typeof root.radius === 'number' && typeof root.move === 'string') {
+      const u = used.get(root.move) ?? { radii: new Set(), types: new Set(), sources: new Set() };
+      u.radii.add(root.radius);
+      u.types.add(root.type);
+      u.sources.add(source);
+      used.set(root.move, u);
+    }
+    for (const v of Object.values(root)) walk(v, source, seen);
+  }
+  for (const species of Object.keys(SPECIES)) for (const tier of DIFFICULTIES) walk(behaviourFor(species, tier), species);
+  for (const [id, tiers] of Object.entries(STORY_FIGHTS)) walk(tiers, id);
+  for (let seed = 1; seed <= 12; seed++) for (const tier of DIFFICULTIES) walk(heraldDef(seed, 10 + seed * 4, tier), 'heraldo');
+  const fx = new FxSystem(new FxStore(browserFxBackend()));
+  const moveCards = [...used.entries()].sort(([a], [b]) => MOVES[a].type.localeCompare(MOVES[b].type) || a.localeCompare(b)).map(([id, u]) => {
+    const move = MOVES[id];
+    const radii = [...u.radii].sort((a, b) => a - b);
+    const shown = [...new Set([radii[0], radii[Math.floor(radii.length / 2)], radii[radii.length - 1]])];
+    const el = document.createElement('div');
+    el.className = 'card';
+    const sources = [...u.sources];
+    el.innerHTML = `<h3>${es[`move.${id}`] ?? id} <small>${id} · ${es[`type.${move.type}`] ?? move.type} · ${enemyShotArt(id).held ? 'variante: su efecto, solo los frames llenos' : 'el disparo del jugador'}</small></h3>`;
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    const note = document.createElement('div');
+    note.className = 'legend';
+    note.style.padding = '4px 2px 0';
+    note.style.maxWidth = '360px';
+    note.textContent = `radios ${radii.join(', ')} · daño ${[...u.types].map((t) => es[`type.${t}`] ?? t).join(', ')} · ${sources.slice(0, 8).join(', ')}${sources.length > 8 ? ` y ${sources.length - 8} más` : ''}`;
+    el.appendChild(note);
+    document.getElementById('moves').appendChild(el);
+    return { id, move, shown, type: [...u.types][0], canvas, ctx: canvas.getContext('2d') };
+  });
+
+  function drawMoveCard(card, timeMs) {
+    const scale = Number(scaleEl.value);
+    const width = 40 * card.shown.length + 90;
+    const h = 60;
+    if (card.canvas.width !== width * scale) {
+      card.canvas.width = width * scale;
+      card.canvas.height = h * scale;
+    }
+    const ctx = card.ctx;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    for (let x = 0; x < width; x += 8) { ctx.fillStyle = FLOORS.dark[(x / 8) % 2]; ctx.fillRect(x, 0, 8, h); }
+    const angle = timeMs / 900;
+    const vel = { x: Math.cos(angle) * 80, y: Math.sin(angle) * 80 };
+    const art = enemyShotArt(card.id);
+    card.shown.forEach((r, j) => {
+      const at = { x: 20 + j * 40, y: h / 2 - 4 };
+      const pose = { state: 'flying', angle };
+      // Exactly the renderer's path (renderer.ts `moveShot`): a held swing or burst, or the player's shot looping.
+      const size = r * SHOT_HEIGHT.enemy * (art.cue.shotScale ?? 1);
+      card.baked = art.held ? fx.drawHeld(ctx, art.cue, at, angle, size, timeMs) : fx.drawLoop(ctx, art.cue, { ...at, placement: 'aim', angle, fitHeight: size }, timeMs);
+      if (card.baked) atlas.drawCore(ctx, card.type, r, at, timeMs, pose);
+      else atlas.draw(ctx, card.type, r, at, timeMs, pose);
+      if (hitboxEl.checked) { ctx.strokeStyle = '#ff2a6a'; ctx.lineWidth = 1 / scale; ctx.beginPath(); ctx.arc(at.x, at.y, r, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.fillStyle = '#8d88a0';
+      ctx.font = '6px monospace';
+      ctx.fillText(`r${r}`, at.x - 5, h - 4);
+    });
+    // The player's use: its shot in flight, or its swing, thrust or burst as the player plays it.
+    const px = 40 * card.shown.length + 45;
+    ctx.fillStyle = '#2c2940';
+    ctx.fillRect(px - 45, 0, 1, h);
+    if (card.move.hitbox.kind === 'projectile') {
+      const pcue = projectileCue(card.move.type, card.id);
+      if (!fx.drawLoop(ctx, pcue, { x: px, y: h / 2 - 6, placement: 'aim', angle, fitHeight: card.move.hitbox.radius * SHOT_HEIGHT.player * (pcue.shotScale ?? 1) }, timeMs)) drawProjectileVfx(ctx, { owner: 'player', radius: card.move.hitbox.radius, type: card.move.type, vel }, { x: px, y: h / 2 }, timeMs);
+    } else {
+      const spawn = moveSpawn(card.move, { pos: { x: px - 14, y: h / 2 + 12 }, action: { aimDir: { x: 1, y: 0 }, chargeLevel: 0 }, items: [], upgrades: [], level: 1 });
+      if (spawn) fx.drawLoop(ctx, spawn.cue, { ...spawn, fit: Math.min(spawn.fit ?? 30, 40) }, timeMs);
+    }
+    ctx.fillStyle = '#8d88a0';
+    ctx.font = '6px monospace';
+    ctx.fillText('jugador', px - 12, h - 4);
+  }
+
   let clock = 0;
   let last = performance.now();
   function frame(now) {
     clock += (now - last) * Number(speedEl.value);
     last = now;
     for (const card of cards) drawCard(card, clock);
+    for (const card of moveCards) drawMoveCard(card, clock);
+    globalThis.__moveShots = moveCards.map((c) => ({ id: c.id, baked: c.baked }));
     if (stress) drawStress(clock);
     const st = atlas.stats();
     document.getElementById('bake').textContent = `atlas: ${st.blocks} bloques en ${st.pages} página(s), horneado ${st.bakeMs.toFixed(1)} ms (en el juego, por tandas de ≤ ${BAKE_BUDGET_MS} ms)`;

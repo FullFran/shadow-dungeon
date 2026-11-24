@@ -24,7 +24,7 @@ Objective: every moving enemy shot names a learnable `MoveId` and is drawn exact
 | T1 | S3 S5 S11 | inline | done | `tests/data/enemy-shot-moves.test.ts` RED (3 failed) then GREEN (4 passed); `MovingShotDef.move` required by the type; defaults per type in `src/data/shot-moves.ts`; Easy golden digest unchanged with `shotMove` projected out |
 | T2 | S3 S6 | inline | done | `tests/net/shot-move-wire.test.ts` RED (2 failed) then GREEN; snapshot `shotMove` (enemy shots), trailing wire slot after the curse, `PROTOCOL_VERSION` 6 → 7; `tests/net` 346 passed |
 | T3 | S4 S7 S9 | inline | done | `tests/adapters/enemy-shot-look.test.ts` (projectile move = `projectileCue`, other moves = `moveCue`, held frames never blank, held art centred); RED 3 failed then GREEN 7; atlas core cell (`paintCore`, `drawCore` at `CORE_OVER_ART_ALPHA` 0.5); renderer `moveShot`; `tests/adapters` + `tests/ui` 1785 passed; typecheck clean |
-| T4 | S8 | inline | todo | bullet gallery: enemy shot next to the player's move |
+| T4 | S8 | inline | done | `tools/bullet-gallery.html` section «Disparos enemigos como movimientos»: every move an enemy shot is drawn as (24), the enemy shot through the renderer's path at its radii next to the player's use, with damage types and sources; loaded headless in Firefox, all 24 baked, no errors |
 | T5 | S10 S11 | inline | todo | GDD, bullet-art.md |
 | T6 | S9 S12 | inline | todo | gate + bench before/after |
 
