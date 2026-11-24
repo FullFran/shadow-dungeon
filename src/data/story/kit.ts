@@ -1,6 +1,8 @@
 import { registerCards, type CardFightDef, type CardStepDef, type SpellCardDef } from '../cards';
 import type { DanmakuPattern, DanmakuShot } from '../enemies';
 import { DEFAULT_SHOT_MOVE } from '../shot-moves';
+import { MOVES, type MoveId } from '../moves';
+import { STORY_CARD_MOVES } from './card-moves';
 import type { RoomDef, RoomId } from '../rooms';
 import type { SPRITE_KEYS } from '../sprites';
 import type { PokemonType } from '../types';
@@ -245,6 +247,22 @@ const cardId = (boss: StoryBossDef, name: string): `sc-${string}` => `sc-${boss.
 /** i18n keys: `spell.story.<boss>.<card>` (the banner) and `boss.stance.sc-<boss>-<card>` (its short name). */
 export const spellKey = (bossId: string, name: string): string => `spell.story.${bossId}.${name}`;
 
+/** Every shot of `move`'s type in `node` drawn as `move` (a copy; the rest untouched). */
+function drawnAs<T>(node: T, move: MoveId): T {
+  if (Array.isArray(node)) return node.map((n) => drawnAs(n, move)) as T;
+  if (!node || typeof node !== 'object') return node;
+  const o = node as Record<string, unknown>;
+  const copy = Object.fromEntries(Object.entries(o).map(([k, v]) => [k, drawnAs(v, move)]));
+  if (typeof o.move === 'string' && o.type === MOVES[move].type) copy.move = move;
+  return copy as T;
+}
+
+/** A card named after a move (card-moves.ts) draws its shots of that move's type as it (issue #67, S5). */
+function namedAfter(boss: StoryBossDef, card: SpellCardDef): SpellCardDef {
+  const move = STORY_CARD_MOVES[`${boss.id}.${card.nameKey.slice(spellKey(boss.id, '').length)}`];
+  return move ? { ...card, steps: drawnAs(card.steps, move) } : card;
+}
+
 /** A boss's fight on one tier: its signature cards (equal HP shares), a survival card from Hard, its last word on Nightmare. */
 function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
   const points = boss.points ?? CORNERS;
@@ -270,7 +288,7 @@ function fightOf(boss: StoryBossDef, k: Tier): CardFightDef {
     cards.splice(4, 0, { id: cardId(boss, extra), nameKey: spellKey(boss.id, extra), hpShare: (1 - last) * EXTRA_SHARE, timerMs: 35_000, restMs: 600, steps: stepsOf(extra, k, boss.shots, points) });
   }
   if (k === 3) cards.push({ id: cardId(boss, 'last'), nameKey: spellKey(boss.id, 'last'), hpShare: last, timerMs: 35_000, lastSpell: true, restMs: 600, steps: lastSteps(boss.shots, points, boss.last) });
-  return registerCards({ ...FIGHT, maxShots: MAX_SHOTS[k], power: POWER[k], hpScale: boss.hpScale[k], cards });
+  return registerCards({ ...FIGHT, maxShots: MAX_SHOTS[k], power: POWER[k], hpScale: boss.hpScale[k], cards: cards.map((c) => namedAfter(boss, c)) });
 }
 
 /** A boss's four fights, Easy to Nightmare. */

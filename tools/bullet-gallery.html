@@ -52,7 +52,7 @@
   import { browserFxBackend, FxStore } from '../src/adapters/fx/store.ts';
   import { FxSystem } from '../src/adapters/fx/system.ts';
   import { enemyShotArt, projectileCue } from '../src/adapters/fx/cues.ts';
-  import { moveSpawn, SHOT_HEIGHT } from '../src/adapters/fx/director.ts';
+  import { enemyShotSize, moveSpawn, SHOT_HEIGHT } from '../src/adapters/fx/director.ts';
 
   const params = new URLSearchParams(location.search);
   const atlas = createBulletAtlas();
@@ -225,7 +225,7 @@
       const at = { x: 20 + j * 40, y: h / 2 - 4 };
       const pose = { state: 'flying', angle };
       // Exactly the renderer's path (renderer.ts `moveShot`): a held swing or burst, or the player's shot looping.
-      const size = r * SHOT_HEIGHT.enemy * (art.cue.shotScale ?? 1);
+      const size = enemyShotSize(r, art);
       card.baked = art.held ? fx.drawHeld(ctx, art.cue, at, angle, size, timeMs) : fx.drawLoop(ctx, art.cue, { ...at, placement: 'aim', angle, fitHeight: size }, timeMs);
       if (card.baked) atlas.drawCore(ctx, card.type, r, at, timeMs, pose);
       else atlas.draw(ctx, card.type, r, at, timeMs, pose);

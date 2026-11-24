@@ -56,7 +56,7 @@ import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } from './sprite-anim';
 import { cueKey, cueRequest, enemyShotArt, ERUPTION_CUE, HAND_DRAWN_SHOTS, moveCue, projectileCue, stillShotCue, WORLD_CUES, type FxCue } from './fx/cues';
-import { isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
+import { enemyShotSize, isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
 import type { FxSystem } from './fx/system';
 import { bulletArt, hangProgress, OUTLINE, SHOT_LIFT } from './bullet-art';
 import { createBulletAtlas } from './bullet-atlas';
@@ -1532,7 +1532,7 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     if (!fx) return false;
     let look = shotLooks.get(move);
     if (!look) shotLooks.set(move, (look = enemyShotArt(move)));
-    const size = radius * SHOT_HEIGHT.enemy * (look.cue.shotScale ?? 1);
+    const size = enemyShotSize(radius, look);
     // A swing, blow or burst loops only its full frames, centred on the shot (fx/system.ts `drawHeld`).
     if (look.held) return fx.drawHeld(ctx, look.cue, at, angle, size, timeMs);
     return fx.drawLoop(ctx, look.cue, { ...at, placement: 'aim', angle, fitHeight: size }, timeMs);

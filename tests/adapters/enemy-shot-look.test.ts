@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MOVES, type MoveDef } from '../../src/data/moves';
+import { MOVES, type MoveDef, type MoveId } from '../../src/data/moves';
+import { everyShot } from '../data/enemy-shots';
 import { DEFAULT_SHOT_MOVE, FLYING_SHOT_MOVE } from '../../src/data/shot-moves';
 import { cueKey, cueRequest, enemyShotCue, enemyShotArt, moveCue, projectileCue } from '../../src/adapters/fx/cues';
 import { bakeEffect } from '../../src/adapters/fx/bake';
 import { loadEffect } from '../../src/adapters/fx/effects';
 import { HELD_SHARE, heldFrames, heldPlacement } from '../../src/adapters/fx/system';
+import { enemyShotSize, HELD_SCALE, SHOT_HEIGHT } from '../../src/adapters/fx/director';
 
 /**
  * Issue #67 (S4, S7): an enemy shot is drawn with the very baked effect the
@@ -48,8 +50,9 @@ describe('an enemy shot looks like the player\'s move (#67)', () => {
   });
 });
 
-/** The moves enemy shots are drawn as whose own effect is a swing, blow or burst (S7), listed in the feature doc. */
-const HELD_SHOTS = ['x-scissor', 'dark-pulse', 'dazzling-gleam', 'focus-punch', 'shadow-sneak', 'rock-slide', 'iron-head'] as const;
+/** Every move an enemy shot is drawn as, and those of them that are held (S7: their own effect is a swing, blow or burst). */
+const USED = [...new Set(everyShot().map((s) => String(s.shot.move)))].sort() as MoveId[];
+const HELD_SHOTS = USED.filter((id) => enemyShotArt(id).held);
 
 describe('a move without a flight look is held, not looped (#67, S7)', () => {
   it('held exactly when the move is not a projectile; the cue is the player\'s either way', () => {
@@ -58,7 +61,8 @@ describe('a move without a flight look is held, not looped (#67, S7)', () => {
       expect(look.cue, m.id).toEqual(enemyShotCue(m.id));
       expect(look.held, m.id).toBe(m.hitbox.kind !== 'projectile' && moveCue(m) !== null);
     }
-    for (const id of HELD_SHOTS) expect(enemyShotArt(id).held, id).toBe(true);
+    // The list the feature doc and the GDD give (odd/tasks/enemy-shots-as-moves.md, S7): a new one shows up here first.
+    expect(HELD_SHOTS).toEqual(HELD_LIST);
   });
 
   it('a held shot loops only its full frames: never a blank one, each at least the share of the fullest', async () => {
@@ -74,6 +78,12 @@ describe('a move without a flight look is held, not looped (#67, S7)', () => {
     }
   }, 60_000);
 
+  it('a flying look is as tall as the player\'s shot of that size; a held one spans a box HELD_SCALE times that, as its art is sparse', () => {
+    expect(enemyShotSize(6, enemyShotArt('ember'))).toBeCloseTo(6 * SHOT_HEIGHT.enemy * (enemyShotCue('ember').shotScale ?? 1));
+    expect(enemyShotSize(6, enemyShotArt('night-slash'))).toBeCloseTo(6 * SHOT_HEIGHT.enemy * HELD_SCALE * (enemyShotCue('night-slash').shotScale ?? 1));
+    expect(HELD_SCALE).toBeGreaterThan(1);
+  });
+
   it('held art is centred on the shot and its larger side spans the box, at any heading', () => {
     const bounds = { left: -7, right: 100, top: -78, bottom: 16 };
     for (const angle of [0, 1, Math.PI * 0.75, Math.PI, -2]) {
@@ -87,3 +97,6 @@ describe('a move without a flight look is held, not looped (#67, S7)', () => {
     }
   });
 });
+
+/** The held moves (S7), as listed in the feature doc and the GDD. */
+const HELD_LIST = ['bone-rush', 'crunch', 'dark-pulse', 'dazzling-gleam', 'dig', 'dragon-claw', 'earthquake', 'feint-attack', 'focus-punch', 'future-sight', 'ice-fang', 'iron-head', 'metal-claw', 'night-daze', 'night-slash', 'outrage', 'play-rough', 'psycho-cut', 'rock-slide', 'shadow-claw', 'shadow-sneak', 'spark', 'sucker-punch', 'surf', 'thunder', 'thunder-fang', 'thunder-punch', 'x-scissor'];

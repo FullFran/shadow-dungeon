@@ -19,6 +19,13 @@ import type { FxSpawn, FxSystem } from './system';
 const BODY_LIFT = 8;
 /** Height of a shot's art against its radius. An enemy shot's solid body must not look smaller than what hits you (its art is mostly glow). */
 export const SHOT_HEIGHT = { player: 3.5, enemy: 4.5 } as const;
+/** A held enemy shot's box against a flying one's (issue #67): a swing's or burst's art is sparse, so its body needs room to read past the core. */
+export const HELD_SCALE = 2;
+
+/** World pixels an enemy shot's art spans (its height flying, its larger side held: fx/system.ts `drawHeld`). */
+export function enemyShotSize(radius: number, art: { cue: FxCue; held: boolean }): number {
+  return radius * SHOT_HEIGHT.enemy * (art.cue.shotScale ?? 1) * (art.held ? HELD_SCALE : 1);
+}
 
 interface PlayerSeen {
   moveId: MoveId | null;
