@@ -188,9 +188,23 @@ func validate(b Body) (Body, *fieldError) {
 		if len(diag) > reports.MaxDiagnosticsBytes {
 			return out, &fieldError{Error: "diagnostics too large", Field: "diagnostics"}
 		}
-		var obj map[string]any
-		if json.Unmarshal(diag, &obj) != nil {
+		var obj map[string]json.RawMessage
+		if json.Unmarshal(diag, &obj) != nil || obj == nil {
 			return out, &fieldError{Error: "diagnostics must be an object", Field: "diagnostics"}
+		}
+		// The performance summary (issue #71) is checked against its allowlist; one that is not
+		// a summary is dropped and the rest of the report goes on.
+		if raw, ok := obj["performance"]; ok {
+			if clean, valid := reports.SanitizePerformance(raw); valid {
+				obj["performance"] = clean
+			} else {
+				delete(obj, "performance")
+			}
+			rebuilt, err := json.Marshal(obj)
+			if err != nil || len(rebuilt) > reports.MaxDiagnosticsBytes {
+				return out, &fieldError{Error: "diagnostics too large", Field: "diagnostics"}
+			}
+			diag = rebuilt
 		}
 		compact := &bytes.Buffer{}
 		if json.Compact(compact, diag) != nil {
