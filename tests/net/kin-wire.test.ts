@@ -49,8 +49,8 @@ function wire(host: WorldState): WorldState {
 }
 
 describe('kinematic shots cross the wire', () => {
-  it('the protocol version moved to 6 with the kinematics batch (older peers are turned away by the version gate)', () => {
-    expect(PROTOCOL_VERSION).toBe(6);
+  it('the protocol version moved to 6 with the kinematics batch (older peers are turned away by the version gate; 7 since enemy shots carry their move)', () => {
+    expect(PROTOCOL_VERSION).toBeGreaterThanOrEqual(6);
   });
 
   it.each(Object.entries(KINDS))('a %s shot arrives with its kinematics and the guest steps it as the host does', (_name, kin) => {

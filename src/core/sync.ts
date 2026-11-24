@@ -118,6 +118,8 @@ export interface ProjectileSnapshot {
   curseMs?: number;
   /** Enemy shots only: its kinematics (core/kinematics.ts), so the guest steps it as the host does. */
   kin?: ShotKin;
+  /** Enemy shots only: the learnable move it is drawn as (issue #67), so the guest draws the host's look. */
+  shotMove?: MoveId;
 }
 
 export interface HostSnapshot {
@@ -150,6 +152,7 @@ function projectileSnapshot(p: ProjectileState): ProjectileSnapshot {
     ...(p.owner === 'enemy' && p.damageMultiplier !== 1 ? { mult: p.damageMultiplier } : {}),
     ...(p.owner === 'enemy' && p.curseMs ? { curseMs: p.curseMs } : {}),
     ...(p.owner === 'enemy' && p.kin ? { kin: p.kin } : {}),
+    ...(p.owner === 'enemy' && p.shotMove ? { shotMove: p.shotMove } : {}),
     ...(p.owner === 'player' && p.moveId ? { moveId: p.moveId } : {}),
   };
 }

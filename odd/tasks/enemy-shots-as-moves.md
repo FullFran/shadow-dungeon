@@ -22,7 +22,7 @@ Objective: every moving enemy shot names a learnable `MoveId` and is drawn exact
 | ID | Specs | Route | Status | Evidence |
 |---|---|---|---|---|
 | T1 | S3 S5 S11 | inline | done | `tests/data/enemy-shot-moves.test.ts` RED (3 failed) then GREEN (4 passed); `MovingShotDef.move` required by the type; defaults per type in `src/data/shot-moves.ts`; Easy golden digest unchanged with `shotMove` projected out |
-| T2 | S3 S6 | inline | todo | spawned projectiles carry the move; snapshot + protocol v bump; guest decode |
+| T2 | S3 S6 | inline | done | `tests/net/shot-move-wire.test.ts` RED (2 failed) then GREEN; snapshot `shotMove` (enemy shots), trailing wire slot after the curse, `PROTOCOL_VERSION` 6 → 7; `tests/net` 346 passed |
 | T3 | S4 S7 S9 | inline | todo | `enemyShotCue` = `projectileCue` test; core cell in the atlas; renderer path |
 | T4 | S8 | inline | todo | bullet gallery: enemy shot next to the player's move |
 | T5 | S10 S11 | inline | todo | GDD, bullet-art.md |
