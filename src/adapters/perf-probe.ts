@@ -1,9 +1,10 @@
 /**
- * Frame-time probe for the mobile benchmark (tools/mobile-bench.mjs). The
+ * Frame-time probe for the mobile benchmark (tools/mobile/bench.mjs). The
  * game and the town record per-frame timings into named channels (frame
  * interval, simulation, render) only when it is enabled: development server
- * with `?perf=1`. Disabled, `devPerfProbe()` returns null and the loops do
- * no timing at all. The live probe is exposed as `globalThis.__mzPerf`.
+ * with `?perf=1`. Disabled, `devPerfProbe()` returns null. The live probe is
+ * exposed as `globalThis.__mzPerf`. The ring and the percentile math here are
+ * shared with the production sampler for player reports (perf-sampler.ts).
  */
 
 export interface PerfSummary {
@@ -20,9 +21,45 @@ export interface PerfProbe {
   report(): Record<string, PerfSummary>;
 }
 
-/** Nearest-rank percentile of sorted samples. */
-function rank(sorted: readonly number[], p: number): number {
+/** Nearest-rank percentile of sorted samples (at least one). */
+export function rank(sorted: ArrayLike<number>, p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1))]!;
+}
+
+/** A fixed-size circular buffer of numbers: pushing past `capacity` overwrites the oldest, in constant time, with no allocation. */
+export interface Ring {
+  readonly size: number;
+  push(value: number): void;
+  /** The value `i` places after the oldest kept one (0 = oldest). */
+  at(i: number): number;
+  /** The kept values, oldest first (a copy). */
+  values(): number[];
+  clear(): void;
+}
+
+export function createRing(capacity: number): Ring {
+  const data = new Float64Array(Math.max(1, capacity));
+  let start = 0;
+  let size = 0;
+  const at = (i: number) => data[(start + i) % data.length]!;
+  return {
+    get size() {
+      return size;
+    },
+    push(value) {
+      if (size < data.length) data[(start + size++) % data.length] = value;
+      else {
+        data[start] = value;
+        start = (start + 1) % data.length;
+      }
+    },
+    at,
+    values: () => Array.from({ length: size }, (_, i) => at(i)),
+    clear() {
+      start = 0;
+      size = 0;
+    },
+  };
 }
 
 export function summarize(samples: readonly number[]): PerfSummary {
@@ -34,20 +71,19 @@ export function summarize(samples: readonly number[]): PerfSummary {
 
 /** A probe holding at most `capacity` newest samples per channel. */
 export function createPerfProbe(capacity = 4096): PerfProbe {
-  const channels = new Map<string, number[]>();
+  const channels = new Map<string, Ring>();
   return {
     record(channel, ms) {
       let samples = channels.get(channel);
-      if (!samples) channels.set(channel, (samples = []));
+      if (!samples) channels.set(channel, (samples = createRing(capacity)));
       samples.push(ms);
-      if (samples.length > capacity) samples.shift();
     },
     reset() {
       channels.clear();
     },
     report() {
       const out: Record<string, PerfSummary> = {};
-      for (const [name, samples] of channels) out[name] = summarize(samples);
+      for (const [name, samples] of channels) out[name] = summarize(samples.values());
       return out;
     },
   };
