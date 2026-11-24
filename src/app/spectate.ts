@@ -14,11 +14,11 @@ export function spectateTarget(team: readonly Watchable[], current: string | nul
   return team.find((m) => m.standing)?.id ?? null;
 }
 
-/** The next standing teammate after `current`, wrapping round; null when nobody stands. */
-export function nextSpectate(team: readonly Watchable[], current: string | null): string | null {
+/** The next standing teammate after `current` (`dir` -1: the one before it), wrapping round; null when nobody stands. */
+export function nextSpectate(team: readonly Watchable[], current: string | null, dir: 1 | -1 = 1): string | null {
   const from = team.findIndex((m) => m.id === current);
   for (let step = 1; step <= team.length; step++) {
-    const m = team[(from + step + team.length) % team.length]!;
+    const m = team[(((from + dir * step) % team.length) + team.length) % team.length]!;
     if (m.standing) return m.id;
   }
   return null;
