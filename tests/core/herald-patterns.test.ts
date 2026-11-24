@@ -5,7 +5,7 @@ import { checkCard, type FairnessEnv } from '../../src/core/herald/fairness';
 import { aimedThreat, asksChoice, cardAttackMs, emitBetween, emitPart, laneCentre, partTimes, ringSlots, scatterAngles, type EmitContext } from '../../src/core/herald/patterns';
 import { vec } from '../../src/core/vec';
 
-const SHOT: HeraldShot = { power: 16, type: 'dark', speed: 95, radius: 6, lifetimeMs: 7000 };
+const SHOT: HeraldShot = { power: 16, type: 'dark', move: 'dark-pulse', speed: 95, radius: 6, lifetimeMs: 7000 };
 const ARENA = { width: HERALD_ARENA.width, height: HERALD_ARENA.height };
 const ORIGIN = vec(320, 110);
 const ENV: FairnessEnv = { arena: ARENA, origins: [ORIGIN], bossRadius: 16, tier: 'normal', maxShots: 120 };

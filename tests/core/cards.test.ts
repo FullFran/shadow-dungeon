@@ -11,7 +11,7 @@ import { FIXED_DT_MS } from '../../src/core/timestep';
 import { vec } from '../../src/core/vec';
 import { createWorld } from '../../src/core/world';
 
-const SHOT = { power: 10, type: 'ghost' as const, speed: 100, radius: 6, lifetimeMs: 3000 };
+const SHOT = { power: 10, type: 'ghost' as const, move: 'shadow-ball' as const, speed: 100, radius: 6, lifetimeMs: 3000 };
 
 /** A small fight for the engine alone: two HP cards around a survival card. */
 const FIGHT: CardFightDef = registerCards({

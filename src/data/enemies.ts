@@ -32,6 +32,15 @@ export interface EnemyAttackDef {
 }
 
 /**
+ * A moving enemy shot (issue #67): its hit, its flight, and the learnable
+ * move it is drawn as (adapters/fx/cues.ts `enemyShotCue`: the player's own
+ * look of that move). `type` stays the damage type and is the move's type
+ * (tests/data/enemy-shot-moves.test.ts), but for `FLYING_SHOT_MOVE`.
+ */
+export type MovingShotDef = EnemyAttackDef & { move: MoveId; speed: number; radius: number; lifetimeMs: number };
+
+
+/**
  * A pattern only harder tiers play (docs/gdd.md §9): the core checks it with
  * `atLeast(worldDifficulty(state), minDifficulty)`. Every gated attack keeps a
  * telegraph of at least 280 ms and ends in a recovery (the punish window).
@@ -148,7 +157,7 @@ export interface GastlyDef {
   castMs: number;
   recoverMs: number;
   cooldownMs: number;
-  projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef; curse?: CurseDef };
+  projectile: MovingShotDef & { steer?: SteerDef; curse?: CurseDef };
   /** A mimic (Yamask): asleep it looks like the room's decor and wakes only up close (data/crypt-enemies.ts). */
   disguise?: DisguiseDef;
   /** Harder tiers: the cast becomes a fan (Duskull's twin wisps). */
@@ -195,7 +204,7 @@ export const GASTLY: GastlyDef = {
   castMs: 250,
   recoverMs: 500,
   cooldownMs: 1800,
-  projectile: { power: 40, type: 'poison', speed: 95, radius: 7, lifetimeMs: 4500 },
+  projectile: { power: 40, type: 'poison', move: 'sludge-bomb', speed: 95, radius: 7, lifetimeMs: 4500 },
   secondBall: { minDifficulty: 'hard', delayMs: 200 },
 };
 
@@ -218,7 +227,7 @@ export type ExtraBlowDef = ComboHitDef & TierGate & { feint?: true };
 export type AegislashCard = 'midnight' | 'oaths' | 'shadow' | 'judgement';
 
 /** An enemy shot (shape, speed, life). */
-export type ShotDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+export type ShotDef = MovingShotDef;
 
 /**
  * Aegislash's second phase, "El Rey desenvaina": at half HP a long,
@@ -327,12 +336,12 @@ export const AEGISLASH: AegislashDef = {
       strikeMs: 220,
       attack: { power: 34, type: 'ghost' },
       pierceRollFrom: 'hard',
-      blades: { count: 12, shot: { power: 18, type: 'steel', speed: 120, radius: 7, lifetimeMs: 4000 } },
+      blades: { count: 12, shot: { power: 18, type: 'steel', move: 'iron-head', speed: 120, radius: 7, lifetimeMs: 4000 } },
       recoverMs: 1500,
     },
-    oaths: { telegraphMs: 800, volleys: 3, perVolley: 5, spreadDegrees: 60, gapMs: 750, blade: { power: 15, type: 'steel', speed: 150, radius: 6, lifetimeMs: 4000 }, recoverMs: 1600 },
+    oaths: { telegraphMs: 800, volleys: 3, perVolley: 5, spreadDegrees: 60, gapMs: 750, blade: { power: 15, type: 'steel', move: 'iron-head', speed: 150, radius: 6, lifetimeMs: 4000 }, recoverMs: 1600 },
     // The shadow wall is positional on every tier (user feedback 2026-10-25): the gap lane is the way through, not a roll.
-    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', speed: 160, radius: 9, lifetimeMs: 5000, pierceRoll: true }, sweepMs: 900, recoverMs: 1400 },
+    shadow: { telegraphMs: 1300, lanes: 5, spacing: 30, gapWidth: 96, sword: { power: 30, type: 'ghost', move: 'shadow-sneak', speed: 160, radius: 9, lifetimeMs: 5000, pierceRoll: true }, sweepMs: 900, recoverMs: 1400 },
     judgement: { telegraphMs: 1300, secondTelegraphMs: 900, sweepMs: 900, recoverMs: 1800 },
   },
   poise: { hitstunScale: 0, knockbackScale: 0.15 },
@@ -393,7 +402,7 @@ export interface SlammerDef {
   recoverMs: number;
   cooldownMs: number;
   /** Projectiles thrown evenly around it when it slams. */
-  ring?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  ring?: { count: number; projectile: MovingShotDef };
   /** Shows the boss bar (a mid-boss). */
   bar?: true;
   /** Floats over obstacles (Tentacool drifts). */
@@ -408,7 +417,7 @@ export interface SlammerDef {
    */
   arcDegrees?: number;
   /** Harder tiers: a ring of slow shots thrown with the slam (Golett's aftershock of rubble). */
-  hardRing?: TierGate & { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  hardRing?: TierGate & { count: number; projectile: MovingShotDef };
   /**
    * A leap instead of a stomp (Shroomish): the wind-up marks the landing spot
    * (towards the player, at most `distance` away), which stops following
@@ -465,7 +474,7 @@ export interface ArcherPhase2Def {
 /** Most enemy projectiles in the air at once; beyond it new ones are not thrown (performance; patterns only get sparser). */
 export const ENEMY_SHOT_CAP = 160;
 
-export type ArrowDef = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+export type ArrowDef = MovingShotDef;
 
 /**
  * Decidueye: three spell cards in a fixed order, each announced by name and
@@ -559,7 +568,7 @@ export const SPINARAK: GastlyDef = {
   castMs: 300,
   recoverMs: 600,
   cooldownMs: 2300,
-  projectile: { power: 20, type: 'bug', speed: 115, radius: 5, lifetimeMs: 2600 },
+  projectile: { power: 20, type: 'bug', move: 'x-scissor', speed: 115, radius: 5, lifetimeMs: 2600 },
 };
 
 export const PUMPKABOO_SUPER: SlammerDef = {
@@ -647,7 +656,7 @@ export const TREVENANT: TreantDef = {
     radius: 85,
     attack: { power: 38, type: 'ghost' },
     recoverMs: 1400,
-    ring: { count: 10, projectile: { power: 20, type: 'grass', speed: 85, radius: 7, lifetimeMs: 4200 } },
+    ring: { count: 10, projectile: { power: 20, type: 'grass', move: 'energy-ball', speed: 85, radius: 7, lifetimeMs: 4200 } },
   },
   roots: {
     telegraphMs: 1100,
@@ -658,8 +667,8 @@ export const TREVENANT: TreantDef = {
     spike: { power: 30, type: 'grass', radius: 24, lifetimeMs: 500, pierceRoll: true },
     recoverMs: 1300,
   },
-  spiral: { telegraphMs: 900, arms: 4, turnDegrees: 18, everyMs: 200, bursts: 14, leaf: { power: 18, type: 'grass', speed: 95, radius: 6, lifetimeMs: 5000 }, recoverMs: 1300 },
-  curse: { telegraphMs: 1000, lockMs: 300, radius: 160, count: 20, gap: 4, rings: 2, ringGapMs: 800, shot: { power: 22, type: 'ghost', speed: 80, radius: 7, lifetimeMs: 2000 }, recoverMs: 1400 },
+  spiral: { telegraphMs: 900, arms: 4, turnDegrees: 18, everyMs: 200, bursts: 14, leaf: { power: 18, type: 'grass', move: 'energy-ball', speed: 95, radius: 6, lifetimeMs: 5000 }, recoverMs: 1300 },
+  curse: { telegraphMs: 1000, lockMs: 300, radius: 160, count: 20, gap: 4, rings: 2, ringGapMs: 800, shot: { power: 22, type: 'ghost', move: 'hex', speed: 80, radius: 7, lifetimeMs: 2000 }, recoverMs: 1400 },
   grove: { arms: 3, turnDegrees: 22 },
 };
 
@@ -693,7 +702,7 @@ export const DECIDUEYE: ArcherDef = {
       columnsPerLane: 2,
       spawnMs: 400,
       everyMs: 100,
-      arrow: { power: 22, type: 'ghost', speed: 520, radius: 5, lifetimeMs: 900, pierceRoll: true },
+      arrow: { power: 22, type: 'ghost', move: 'shadow-sneak', speed: 520, radius: 5, lifetimeMs: 900, pierceRoll: true },
       recoverMs: 1300,
     },
     feathers: {
@@ -703,12 +712,12 @@ export const DECIDUEYE: ArcherDef = {
       turnDegrees: 14,
       everyMs: 160,
       bursts: 16,
-      feather: { power: 18, type: 'grass', speed: 115, radius: 5, lifetimeMs: 4500 },
+      feather: { power: 18, type: 'grass', move: 'energy-ball', speed: 115, radius: 5, lifetimeMs: 4500 },
       recoverMs: 1300,
     },
-    stitch: { telegraphMs: 1000, gapMs: 700, lockMs: 300, stitches: 3, arrowsPerLine: 3, inset: 60, arrow: { power: 22, type: 'ghost', speed: 300, radius: 5, lifetimeMs: 2600 }, recoverMs: 1500 },
+    stitch: { telegraphMs: 1000, gapMs: 700, lockMs: 300, stitches: 3, arrowsPerLine: 3, inset: 60, arrow: { power: 22, type: 'ghost', move: 'shadow-sneak', speed: 300, radius: 5, lifetimeMs: 2600 }, recoverMs: 1500 },
   },
-  volley: { telegraphMs: 900, shots: 5, gapMs: 480, arrow: { power: 24, type: 'ghost', speed: 230, radius: 5, lifetimeMs: 2400 }, recoverMs: 900 },
+  volley: { telegraphMs: 900, shots: 5, gapMs: 480, arrow: { power: 24, type: 'ghost', move: 'shadow-sneak', speed: 230, radius: 5, lifetimeMs: 2400 }, recoverMs: 900 },
   fan: {
     vanishMs: 700,
     telegraphMs: 800,
@@ -716,7 +725,7 @@ export const DECIDUEYE: ArcherDef = {
     leaves: 7,
     spreadDegrees: 80,
     gapMs: 650,
-    leaf: { power: 22, type: 'grass', speed: 120, radius: 6, lifetimeMs: 6000 },
+    leaf: { power: 22, type: 'grass', move: 'energy-ball', speed: 120, radius: 6, lifetimeMs: 6000 },
     recoverMs: 1100,
     edgeInset: 80,
   },
@@ -827,7 +836,7 @@ export interface MortarDef {
   cooldownMs: number;
   repeat?: RepeatDef;
   /** The landing throws a ring of droplets outwards (Shellos from hard on). */
-  splash?: { count: number; projectile: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number } };
+  splash?: { count: number; projectile: MovingShotDef };
 }
 
 /** Koffing: floats close and puffs gas clouds; when its HP drops low it swells and explodes (a big marked ring), unless killed first. */
@@ -1079,7 +1088,7 @@ export const LITLEO: GastlyDef = {
   castMs: 250,
   recoverMs: 500,
   cooldownMs: 1700,
-  projectile: { power: 30, type: 'fire', speed: 150, radius: 8, lifetimeMs: 2500 },
+  projectile: { power: 30, type: 'fire', move: 'ember', speed: 150, radius: 8, lifetimeMs: 2500 },
 };
 
 export const KOFFING: BomberDef = {
@@ -1189,7 +1198,7 @@ export interface ThiefDef {
     rings: number;
     perRing: number;
     gapMs: number;
-    gem: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+    gem: MovingShotDef;
     recoverMs: number;
     /**
      * Every tier: the gems burst out of the ground around it as the first ring
@@ -1218,7 +1227,7 @@ export const DUSKULL: GastlyDef = {
   castMs: 300,
   recoverMs: 700,
   cooldownMs: 2600,
-  projectile: { power: 28, type: 'fire', speed: 70, radius: 8, lifetimeMs: 5200, steer: { degPerSec: 65, ms: 2200 } },
+  projectile: { power: 28, type: 'fire', move: 'inferno', speed: 70, radius: 8, lifetimeMs: 5200, steer: { degPerSec: 65, ms: 2200 } },
   // Hard: twin wisps that part and close in from both sides.
   hardSpread: { minDifficulty: 'hard', count: 2, degrees: 50 },
 };
@@ -1236,7 +1245,7 @@ export const GOLETT: SlammerDef = {
   attack: { power: 46, type: 'ground' },
   recoverMs: 1400,
   cooldownMs: 1600,
-  hardRing: { minDifficulty: 'hard', count: 8, projectile: { power: 18, type: 'ground', speed: 70, radius: 7, lifetimeMs: 3200 } },
+  hardRing: { minDifficulty: 'hard', count: 8, projectile: { power: 18, type: 'ground', move: 'mud-slap', speed: 70, radius: 7, lifetimeMs: 3200 } },
 };
 
 export const PAWNIARD: PoochyenaDef = {
@@ -1285,7 +1294,7 @@ export const SABLEYE: ThiefDef = {
     rings: 3,
     perRing: 12,
     gapMs: 800,
-    gem: { power: 20, type: 'dark', speed: 105, radius: 6, lifetimeMs: 5000 },
+    gem: { power: 20, type: 'dark', move: 'dark-pulse', speed: 105, radius: 6, lifetimeMs: 5000 },
     recoverMs: 1500,
     burst: { radius: 64, activeMs: 160, attack: { power: 22, type: 'dark', pierceRoll: true } },
     extraRings: { minDifficulty: 'hard', rings: 1 },
@@ -1344,7 +1353,7 @@ export const DRIFLOON: GastlyDef = {
   castMs: 300,
   recoverMs: 700,
   cooldownMs: 2400,
-  projectile: { power: 22, type: 'fire', speed: 60, radius: 7, lifetimeMs: 5000 },
+  projectile: { power: 22, type: 'fire', move: 'ember', speed: 60, radius: 7, lifetimeMs: 5000 },
   ring: { count: 8 },
 };
 
@@ -1380,7 +1389,7 @@ export const REMORAID: GastlyDef = {
   castMs: 420,
   recoverMs: 650,
   cooldownMs: 2100,
-  projectile: { power: 20, type: 'water', speed: 200, radius: 6, lifetimeMs: 1800 },
+  projectile: { power: 20, type: 'water', move: 'water-gun', speed: 200, radius: 6, lifetimeMs: 1800 },
   burst: { shots: 3, gapMs: 150 },
 };
 
@@ -1410,7 +1419,7 @@ export const SHELLOS: MortarDef = {
 export type DanmakuCard = 'bubbles' | 'lure' | 'surge' | 'deep' | 'undertow' | 'whirlpool' | 'kelp' | 'riptide' | 'bell' | 'maelstrom' | 'awaken';
 
 /** A card bullet: `steer` bends it towards the nearest player for a while (homing), `kin` changes its motion in flight (core/kinematics.ts). */
-export type DanmakuShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef; kin?: ShotKinDef };
+export type DanmakuShot = MovingShotDef & { steer?: SteerDef; kin?: ShotKinDef };
 
 /**
  * One spell card's pattern. Every bullet pattern leaves a way through:
@@ -1509,11 +1518,11 @@ export interface DanmakuDef {
   maxShots: number;
 }
 
-export const BUBBLE = (power: number, speed: number, radius = 7): DanmakuShot => ({ power, type: 'water', speed, radius, lifetimeMs: 6000 });
+export const BUBBLE = (power: number, speed: number, radius = 7): DanmakuShot => ({ power, type: 'water', move: 'bubble-beam', speed, radius, lifetimeMs: 6000 });
 
 export const LANTURN_PATTERNS: Partial<Record<DanmakuCard, DanmakuCardDef>> = {
   bubbles: { telegraphMs: 800, recoverMs: 1300, pattern: { kind: 'rings', rings: 4, perRing: 20, gap: 3, gapTurnDeg: 40, gapMs: 700, shot: BUBBLE(18, 95) } },
-  lure: { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'spiral', arms: 2, everyMs: 110, durationMs: 2600, turnDegPerShot: 13, shot: { power: 16, type: 'electric', speed: 120, radius: 5, lifetimeMs: 4500 } } },
+  lure: { telegraphMs: 900, recoverMs: 1400, pattern: { kind: 'spiral', arms: 2, everyMs: 110, durationMs: 2600, turnDegPerShot: 13, shot: { power: 16, type: 'electric', move: 'thunderbolt', speed: 120, radius: 5, lifetimeMs: 4500 } } },
   surge: { telegraphMs: 1300, recoverMs: 1600, pattern: { kind: 'zone', at: 'self', radius: 150, lockMs: 0, impactMs: 220, attack: { power: 34, type: 'electric', pierceRoll: true } } },
   deep: { telegraphMs: 900, recoverMs: 1500, pattern: { kind: 'rings', rings: 6, perRing: 28, gap: 4, gapTurnDeg: 25, gapMs: 520, shot: BUBBLE(16, 100, 6) } },
 };
@@ -1538,7 +1547,7 @@ export const LANTURN: DanmakuDef = {
   maxShots: 90,
 };
 
-const KELP = { power: 20, type: 'grass', speed: 150, radius: 8, lifetimeMs: 7000 } as const;
+const KELP = { power: 20, type: 'grass', move: 'giga-drain', speed: 150, radius: 8, lifetimeMs: 7000 } as const;
 
 export const DHELMISE_PATTERNS: Partial<Record<DanmakuCard, DanmakuCardDef>> = {
   undertow: { telegraphMs: 1000, recoverMs: 1300, pattern: { kind: 'sweep', radius: 150, sweepDeg: 270, sweepMs: 900, armDeg: 26, attack: { power: 38, type: 'steel', pierceRoll: true } } },
@@ -1549,7 +1558,7 @@ export const DHELMISE_PATTERNS: Partial<Record<DanmakuCard, DanmakuCardDef>> = {
     recoverMs: 1500,
     pattern: { kind: 'zone', at: 'target', radius: 72, lockMs: 400, impactMs: 220, attack: { power: 40, type: 'ghost', pierceRoll: true }, ring: { count: 16, gap: 3, shot: BUBBLE(16, 105, 6) } },
   },
-  bell: { telegraphMs: 900, recoverMs: 1300, pattern: { kind: 'rings', rings: 5, perRing: 24, gap: 4, gapTurnDeg: 35, gapMs: 600, shot: { power: 18, type: 'ghost', speed: 100, radius: 7, lifetimeMs: 6000 } } },
+  bell: { telegraphMs: 900, recoverMs: 1300, pattern: { kind: 'rings', rings: 5, perRing: 24, gap: 4, gapTurnDeg: 35, gapMs: 600, shot: { power: 18, type: 'ghost', move: 'shadow-ball', speed: 100, radius: 7, lifetimeMs: 6000 } } },
   maelstrom: { telegraphMs: 1000, recoverMs: 1500, pattern: { kind: 'spiral', arms: 4, everyMs: 140, durationMs: 3200, turnDegPerShot: -9, shot: BUBBLE(15, 100, 6) } },
 };
 
@@ -1740,7 +1749,7 @@ export const ECLIPSE_ECHO: EclipseEchoDef = {
   baseCards: 2,
   extraCards: 0,
   maxShots: 110,
-  shot: { power: 16, type: 'dark', speed: 95, radius: 5, lifetimeMs: 7000 },
+  shot: { power: 16, type: 'dark', move: 'dark-pulse', speed: 95, radius: 5, lifetimeMs: 7000 },
   ring: { waves: 4, count: 24, gap: 4, turn: 2, intervalMs: 900 },
   spiral: { arms: 3, emissions: 30, intervalMs: 120, turnDeg: 11 },
   mirror: { arms: 2, emissions: 26, intervalMs: 140, turnDeg: 13 },

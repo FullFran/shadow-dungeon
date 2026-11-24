@@ -20,8 +20,8 @@ import { aegEdict, aegWaltz } from './pattern-cards';
  * Values are provisional.
  */
 
-const steel = (power: number, speed: number, radius = 6, lifetimeMs = 6000): DanmakuShot => ({ power, type: 'steel', speed, radius, lifetimeMs });
-const ghost = (power: number, speed: number, radius = 8, lifetimeMs = 6000, pierceRoll = false): DanmakuShot => ({ power, type: 'ghost', speed, radius, lifetimeMs, ...(pierceRoll ? { pierceRoll: true } : {}) });
+const steel = (power: number, speed: number, radius = 6, lifetimeMs = 6000): DanmakuShot => ({ power, type: 'steel', move: 'iron-head', speed, radius, lifetimeMs });
+const ghost = (power: number, speed: number, radius = 8, lifetimeMs = 6000, pierceRoll = false): DanmakuShot => ({ power, type: 'ghost', move: 'shadow-sneak', speed, radius, lifetimeMs, ...(pierceRoll ? { pierceRoll: true } : {}) });
 
 /** Where the oath swords float: the four corners of the throne room, outside the pillars. */
 const CORNERS = [

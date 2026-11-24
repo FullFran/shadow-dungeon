@@ -19,8 +19,8 @@ import { decBend, decSunbeam } from './pattern-cards';
  * Values are provisional.
  */
 
-const arrow = (power: number, speed: number, pierceRoll = false): DanmakuShot => ({ power, type: 'ghost', speed, radius: 5, lifetimeMs: 4000, ...(pierceRoll ? { pierceRoll: true } : {}) });
-const leaf = (power: number, speed: number, radius = 6): DanmakuShot => ({ power, type: 'grass', speed, radius, lifetimeMs: 6000 });
+const arrow = (power: number, speed: number, pierceRoll = false): DanmakuShot => ({ power, type: 'ghost', move: 'shadow-sneak', speed, radius: 5, lifetimeMs: 4000, ...(pierceRoll ? { pierceRoll: true } : {}) });
+const leaf = (power: number, speed: number, radius = 6): DanmakuShot => ({ power, type: 'grass', move: 'energy-ball', speed, radius, lifetimeMs: 6000 });
 
 /** The shadow clones: the two top corners of the clearing (and the bottom ones on the hardest cards). */
 const CLONES_TOP = [

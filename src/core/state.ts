@@ -410,6 +410,8 @@ export interface ProjectileState {
   wave?: boolean;
   /** Player projectiles: the move that fired it (its hits and its look). */
   moveId?: MoveId;
+  /** Enemy shots: the learnable move it is drawn as (its look only; its hit is `type` and `power`). Never `moveId`, which carries a player move's effects. */
+  shotMove?: MoveId;
   /** Enemy shots that curse the player they hurt (Yamask's, data/crypt-enemies.ts): the curse's length; its rate is `CURSE_REGEN`. */
   curseMs?: number;
   /** Enemy shots that bend towards the nearest player (Duskull's will-o-wisp): steering left. */

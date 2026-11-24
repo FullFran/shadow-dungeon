@@ -1,5 +1,7 @@
 import type { CardStepDef, SpellCardDef, SpellCardId } from './cards';
 import { DHELMISE_PATTERNS, LANTURN_PATTERNS, type DanmakuPattern, type DanmakuShot, type ShotKinDef, type SteerDef } from './enemies';
+import type { MoveId } from './moves';
+import { DEFAULT_SHOT_MOVE } from './shot-moves';
 import type { PokemonType } from './types';
 
 /**
@@ -28,7 +30,8 @@ export type CardTier = 'normal' | 'hard' | 'nightmare';
 const T = { normal: 0, hard: 1, nightmare: 2 } as const;
 const pick = <V>(tier: CardTier, values: readonly [V, V, V]): V => values[T[tier]];
 
-const shot = (type: PokemonType, power: number, speed: number, radius: number, lifetimeMs = 6000, more: { kin?: ShotKinDef; steer?: SteerDef; pierceRoll?: true } = {}): DanmakuShot => ({ power, type, speed, radius, lifetimeMs, ...more });
+/** A card shot of `type`, drawn as `more.move` (its type's default move otherwise, data/shot-moves.ts). */
+const shot = (type: PokemonType, power: number, speed: number, radius: number, lifetimeMs = 6000, more: { kin?: ShotKinDef; steer?: SteerDef; pierceRoll?: true; move?: MoveId } = {}): DanmakuShot => ({ power, type, move: DEFAULT_SHOT_MOVE[type], speed, radius, lifetimeMs, ...more });
 
 /**
  * The opening after each move of a new card ("tu turno" lasts at least this
@@ -53,7 +56,7 @@ const layered = (step: CardStepDef, layers: readonly DanmakuPattern[]): CardStep
 
 // --- Aegislash, el Rey de las Espadas (Crypt guardian; pillars stop shots) -----
 
-const steel = (power: number, speed: number, radius = 6, lifetimeMs = 6000, kin?: ShotKinDef): DanmakuShot => shot('steel', power, speed, radius, lifetimeMs, kin ? { kin } : {});
+const steel = (power: number, speed: number, radius = 6, lifetimeMs = 6000, kin?: ShotKinDef): DanmakuShot => shot('steel', power, speed, radius, lifetimeMs, { move: 'iron-head', ...(kin ? { kin } : {}) });
 const AEG_CORNERS = [
   { x: 0.08, y: 0.1 },
   { x: 0.92, y: 0.1 },
@@ -88,7 +91,7 @@ export const aegEdict = (tier: CardTier, hpShare: number): SpellCardDef =>
 
 // --- Decidueye, el Arquero de la Niebla (Forest guardian; trees stop arrows) ---
 
-const arrow = (power: number, speed: number, kin?: ShotKinDef): DanmakuShot => shot('ghost', power, speed, 5, 4000, kin ? { kin } : {});
+const arrow = (power: number, speed: number, kin?: ShotKinDef): DanmakuShot => shot('ghost', power, speed, 5, 4000, { move: 'shadow-sneak', ...(kin ? { kin } : {}) });
 const leaf = (power: number, speed: number, radius = 6, kin?: ShotKinDef, lifetimeMs = 6000): DanmakuShot => shot('grass', power, speed, radius, lifetimeMs, kin ? { kin } : {});
 const CLONES_TOP = [
   { x: 0.08, y: 0.1 },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DECIDUEYE, TREVENANT, type ShotDef } from '../../src/data/enemies';
+import { DECIDUEYE, TREVENANT } from '../../src/data/enemies';
 import { scaledTelegraphMs, TELEGRAPH_FLOOR, type Difficulty } from '../../src/data/difficulty';
-import { spawnShot } from '../../src/core/brain';
+import { spawnShot, type EnemyShot } from '../../src/core/brain';
 import { isInvulnerable } from '../../src/core/player';
 import type { EnemyState, GameEvent, WorldState } from '../../src/core/state';
 import { step } from '../../src/core/step';
@@ -25,12 +25,12 @@ const PLAYER_AT = vec(400, 300);
 const hurt = (events: GameEvent[]) => events.some((e) => e.type === 'playerHurt');
 
 /** The forest shots under test, as data: Trevenant's root spike (still) and Decidueye's rain arrow (falling). */
-const FOREST_SHOTS: readonly { name: string; shot: ShotDef; dir: Vec2; from: (p: Vec2) => Vec2 }[] = [
+const FOREST_SHOTS: readonly { name: string; shot: EnemyShot; dir: Vec2; from: (p: Vec2) => Vec2 }[] = [
   { name: 'TREVENANT.roots.spike', shot: { ...TREVENANT.roots.spike, speed: 0 }, dir: vec(0, 1), from: (p) => p },
   { name: 'DECIDUEYE.phase2.rain.arrow', shot: DECIDUEYE.phase2.rain.arrow, dir: vec(0, 1), from: (p) => vec(p.x, p.y - 30) },
 ];
 
-const withoutPierce = ({ pierceRoll: _pierce, ...plain }: ShotDef): ShotDef => plain;
+const withoutPierce = ({ pierceRoll: _pierce, ...plain }: EnemyShot): EnemyShot => plain;
 
 /** A world with a dormant forest shooter far away, from the point of view of `role`. */
 function world(role: 'host' | 'guest' = 'host', localId = 'p1'): WorldState {
@@ -45,7 +45,7 @@ function rolling(w: WorldState): WorldState {
   return next;
 }
 
-function fire(w: WorldState, shot: ShotDef, dir: Vec2, at: Vec2): WorldState {
+function fire(w: WorldState, shot: EnemyShot, dir: Vec2, at: Vec2): WorldState {
   return spawnShot(w, w.enemies[0]!, shot, dir, at);
 }
 
@@ -67,7 +67,7 @@ describe('forest pierceRoll shots', () => {
 
   for (const { name, shot, dir, from } of FOREST_SHOTS) {
     it(`${name} hits a rolling player solo (and the same shot without the flag does not)`, () => {
-      const solo = (s: ShotDef) => {
+      const solo = (s: EnemyShot) => {
         const w = rolling(world());
         return hurt(stepEvents(fire(w, s, dir, from(w.player.pos)), 150));
       };
@@ -76,7 +76,7 @@ describe('forest pierceRoll shots', () => {
     });
 
     it(`${name} hits a rolling guest after the host snapshot crosses the wire`, () => {
-      const asGuest = (s: ShotDef) => {
+      const asGuest = (s: EnemyShot) => {
         const guest = rolling(world('guest', 'p2'));
         const host = fire(world(), s, dir, from(guest.player.pos));
         const wire = decodeMessage(encodeMessage({ t: 'snap', at: 0, floor: 1, s: hostSnapshot(host) }));

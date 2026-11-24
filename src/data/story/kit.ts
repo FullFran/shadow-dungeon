@@ -1,5 +1,6 @@
 import { registerCards, type CardFightDef, type CardStepDef, type SpellCardDef } from '../cards';
 import type { DanmakuPattern, DanmakuShot } from '../enemies';
+import { DEFAULT_SHOT_MOVE } from '../shot-moves';
 import type { RoomDef, RoomId } from '../rooms';
 import type { SPRITE_KEYS } from '../sprites';
 import type { PokemonType } from '../types';
@@ -65,7 +66,7 @@ export interface ShotTypes {
   b: PokemonType;
 }
 
-const shotOf = (type: PokemonType, power: number, speed: number, radius = 5, lifetimeMs = 5000): DanmakuShot => ({ power, type, speed, radius, lifetimeMs });
+const shotOf = (type: PokemonType, power: number, speed: number, radius = 5, lifetimeMs = 5000): DanmakuShot => ({ power, type, move: DEFAULT_SHOT_MOVE[type], speed, radius, lifetimeMs });
 
 /** The four corners of an arena (the default turret points). */
 export const CORNERS = [

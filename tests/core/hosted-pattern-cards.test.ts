@@ -29,7 +29,7 @@ const FIGHT: CardFightDef = registerCards({
       hpShare: 0.5,
       timerMs: 6000,
       restMs: 300,
-      steps: [{ telegraphMs: 500, recoverMs: 500, pattern: { kind: 'rings', rings: 2, perRing: 10, gap: 2, gapTurnDeg: 20, gapMs: 400, shot: { power: 10, type: 'water', speed: 90, radius: 6, lifetimeMs: 3000 } } }],
+      steps: [{ telegraphMs: 500, recoverMs: 500, pattern: { kind: 'rings', rings: 2, perRing: 10, gap: 2, gapTurnDeg: 20, gapMs: 400, shot: { power: 10, type: 'water', move: 'bubble-beam', speed: 90, radius: 6, lifetimeMs: 3000 } } }],
     },
     { id: 'sc-test-hostedmoves', nameKey: 'spell.test.moves', hpShare: 0.5, timerMs: 6000, restMs: 0, steps: [], moves: ['bubbles'] },
   ],

@@ -18,7 +18,7 @@ import type { Difficulty } from '../../src/data/difficulty';
  * and survival cards keep their rules.
  */
 
-const SHOT = { power: 10, type: 'ghost' as const, speed: 100, radius: 6, lifetimeMs: 3000 };
+const SHOT = { power: 10, type: 'ghost' as const, move: 'shadow-ball' as const, speed: 100, radius: 6, lifetimeMs: 3000 };
 const RINGS = [{ telegraphMs: 500, recoverMs: 400, pattern: { kind: 'rings' as const, rings: 1, perRing: 8, gap: 3, gapTurnDeg: 0, gapMs: 300, shot: SHOT } }];
 
 const FIGHT: CardFightDef = registerCards({

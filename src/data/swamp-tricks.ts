@@ -21,7 +21,7 @@ export const SWAMP_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   skrelp: [{ minDifficulty: 'hard', patch: { fan: { count: 3, degrees: 22 } } }],
   // Evolved forms (data/evolved-enemies.ts): the jab a third time; a ring of sludge with the slam.
   toxicroak: [{ minDifficulty: 'hard', patch: { repeat: { ...TOXICROAK.repeat!, times: 2 } } }],
-  muk: [{ minDifficulty: 'hard', patch: { hardRing: { minDifficulty: 'hard', count: 8, projectile: { power: 16, type: 'poison', speed: 65, radius: 7, lifetimeMs: 3200 } } } }],
+  muk: [{ minDifficulty: 'hard', patch: { hardRing: { minDifficulty: 'hard', count: 8, projectile: { power: 16, type: 'poison', move: 'sludge-bomb', speed: 65, radius: 7, lifetimeMs: 3200 } } } }],
   salazzle: [
     { minDifficulty: 'hard', patch: { dance: { ...SALAZZLE.dance, dashes: SALAZZLE.dance.dashes + 1 } } },
     { minDifficulty: 'nightmare', patch: { cards: [...SALAZZLE.cards, 'escort'] } },

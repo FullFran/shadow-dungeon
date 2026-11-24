@@ -149,7 +149,7 @@ describe('guardian spell cards: damage per tier', () => {
       const f = fight(species, 'nightmare')!;
       const state = loadRoom(createWorld({ seed: 2, arena: { width: 1, height: 1 }, playerPos: vec(0, 0), difficulty: 'nightmare' }), species === 'aegislash' ? 'boss' : 'roost');
       const boss = state.enemies[0]!;
-      const ring = { kind: 'rings' as const, rings: 1, perRing: 8, gap: 2, gapTurnDeg: 0, gapMs: 100, shot: { power: 20, type: 'steel' as const, speed: 100, radius: 6, lifetimeMs: 1000 } };
+      const ring = { kind: 'rings' as const, rings: 1, perRing: 8, gap: 2, gapTurnDeg: 0, gapMs: 100, shot: { power: 20, type: 'steel' as const, move: 'flash-cannon' as const, speed: 100, radius: 6, lifetimeMs: 1000 } };
       const fired = firePattern(state, boss, 100, ring, 0, f.power).projectiles.filter((p) => p.owner === 'enemy');
       expect(fired.length).toBe(6);
       expect(fired.every((p) => p.power === Math.round(20 * f.power))).toBe(true);
@@ -335,7 +335,7 @@ describe('guardian spell cards: a safe path through every card (simulation)', ()
 });
 
 describe('guardian spell cards: the fairness check can fail', () => {
-  const shot = { power: 10, type: 'ghost' as const, speed: 140, radius: 7, lifetimeMs: 6000 };
+  const shot = { power: 10, type: 'ghost' as const, move: 'shadow-ball' as const, speed: 140, radius: 7, lifetimeMs: 6000 };
   const curtain = (gapWidth: number): CardFightDef => ({
     ...fight('aegislash', 'normal')!,
     cards: [{ id: 'sc-test-curtain', nameKey: 'x', hpShare: 1, timerMs: 30_000, restMs: 400, steps: [{ telegraphMs: 600, recoverMs: 600, pattern: { kind: 'lanes', waves: 9, gapMs: 700, spacing: 24, gapWidth, shiftPx: 80, shot } }] }],
