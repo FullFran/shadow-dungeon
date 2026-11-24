@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { padKeyDefault, sendPadKey, type FocusedControl, type PadKeyPage } from '../../src/adapters/gamepad';
+import { padKeyDefault, padLossWatch, sendPadKey, type FocusedControl, type PadKeyPage } from '../../src/adapters/gamepad';
 
 /**
  * The pad's keys are synthetic, and the browser runs no default action for them (issue #32 audit, odd/tasks/gamepad.md
@@ -94,5 +94,31 @@ describe('sending a pad key', () => {
     sendPadKey(fake, 'keydown', 'Enter', false);
     sendPadKey(fake, 'keydown', 'ArrowDown', false);
     expect(did).toEqual(['keydown Enter', 'keydown ArrowDown']);
+  });
+});
+
+describe('losing the controller mid-run (issue #32: "a sensible pause")', () => {
+  it('says so once when the last controller goes while it plays, and not again until one comes back and goes', () => {
+    const watch = padLossWatch();
+    expect(watch.update(1, true)).toBe(false);
+    expect(watch.update(0, true)).toBe(true);
+    expect(watch.update(0, true)).toBe(false);
+    expect(watch.update(1, true)).toBe(false);
+    expect(watch.update(0, true)).toBe(true);
+  });
+  it('one of two controllers going is no loss', () => {
+    const watch = padLossWatch();
+    watch.update(2, true);
+    expect(watch.update(1, true)).toBe(false);
+  });
+  it('outside combat (a menu, a window, the town) losing it pauses nothing, nor later when the run comes back', () => {
+    const watch = padLossWatch();
+    watch.update(1, false);
+    expect(watch.update(0, false)).toBe(false);
+    expect(watch.update(0, true)).toBe(false);
+  });
+  it('a page that never had a controller never loses one', () => {
+    const watch = padLossWatch();
+    expect(watch.update(0, true)).toBe(false);
   });
 });

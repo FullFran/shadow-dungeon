@@ -247,7 +247,7 @@ export interface GameOptions {
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
   touch?: { autoAim(): boolean; haptics(): boolean };
   /** The controller: in combat it plays, otherwise it acts as keys (adapters/gamepad.ts). */
-  gamepad?: Pick<Gamepads, 'take' | 'setCombat'>;
+  gamepad?: Pick<Gamepads, 'take' | 'setCombat' | 'lost'>;
   /**
    * The Sima as this player remembers it (app/sima-lore.ts): names, epithets
    * and silhouettes of its bosses. Presentation only; absent, every boss goes
@@ -1917,6 +1917,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     tickSign();
     const perf = devPerfProbe();
     const simAt = perf ? performance.now() : 0;
+    // The controller playing went away (issue #32): the run's menu opens, as Start would (solo, the run waits; a shared run never stops, the player stands still).
+    if (options.gamepad?.lost() && padInUse) showMenu();
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
     if (resume && !ended && frameMs > 0) {
       sinceKeptMs += frameMs;

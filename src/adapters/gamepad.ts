@@ -238,9 +238,26 @@ export const browserPadKeyPage: PadKeyPage<Element | Window> = {
   },
 };
 
+/**
+ * Losing the controller mid-run (issue #32, "a sensible pause"): true once when the last controller goes while it
+ * plays (combat); losing it in a menu, a window or the town pauses nothing, then or later.
+ */
+export function padLossWatch(): { update(connected: number, combat: boolean): boolean } {
+  let before = 0;
+  return {
+    update(connected, combat) {
+      const lost = combat && before > 0 && connected === 0;
+      before = connected;
+      return lost;
+    },
+  };
+}
+
 export interface Gamepads {
   /** One combat step's frame; idle outside combat or without a controller. */
   take(): TouchFrame;
+  /** True once after the last controller went away while it played (the run opens its menu). */
+  lost(): boolean;
   /** In combat the pad plays; otherwise it acts as keys. */
   setCombat(combat: boolean): void;
   dispose(): void;
@@ -257,7 +274,10 @@ export function createGamepads(options: { onConnect?(): void } = {}): Gamepads {
   let memory = padMemory(null);
   let frameId = 0;
   const keysOf = (state: PadState | null): Set<string> => (!state ? new Set() : combat ? padCombatKeys(state) : padKeys(state));
+  const loss = padLossWatch();
+  let lost = false;
   const tick = (nowMs: number) => {
+    if (loss.update((navigator.getGamepads?.() ?? []).filter((p) => p?.connected).length, combat)) lost = true;
     emitter.update(keysOf(current()), nowMs);
     frameId = requestAnimationFrame(tick);
   };
@@ -276,9 +296,15 @@ export function createGamepads(options: { onConnect?(): void } = {}): Gamepads {
       memory = step.memory;
       return step.frame;
     },
+    lost() {
+      const was = lost;
+      lost = false;
+      return was;
+    },
     setCombat(next) {
       if (next === combat) return;
       combat = next;
+      lost = false;
       const state = current();
       memory = padMemory(state);
       // What is held now belongs to the mode being left: it fires nothing in this one.
