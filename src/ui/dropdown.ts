@@ -203,7 +203,7 @@ export function dropdown(config: DropdownConfig): Dropdown {
       typed = now - typedAt > TYPE_AHEAD_MS ? e.key : typed + e.key;
       typedAt = now;
     }
-    const out = dropdownKey(state, e.key, items, Math.max(0, indexOf(value)), e.key.length === 1 && e.key !== ' ' ? typed : e.key);
+    const out = dropdownKey(state, e.key, items, Math.max(0, indexOf(value)), e.key.length === 1 && e.key !== ' ' ? typed : e.key, !e.isTrusted);
     if (out.handled) {
       e.preventDefault();
       e.stopPropagation();

@@ -10,6 +10,11 @@ const options: DropdownOption[] = [
 ];
 
 describe('dropdown keyboard model', () => {
+  it('from the pad, a closed list lets the arrows go on to the next field and opens only with A (issue #32: no field traps the pad)', () => {
+    for (const key of ['ArrowDown', 'ArrowUp']) expect(dropdownKey({ open: false, active: 0 }, key, options, 3, key, true)).toEqual({ state: { open: false, active: 0 }, handled: false });
+    expect(dropdownKey({ open: false, active: 0 }, 'Enter', options, 3, 'Enter', true).state).toEqual({ open: true, active: 3 });
+    expect(dropdownKey({ open: true, active: 3 }, 'ArrowUp', options, 3, 'ArrowUp', true).state).toEqual({ open: true, active: 1 });
+  });
   it('opens on the selected option with Enter, Space or the arrows', () => {
     for (const key of ['Enter', ' ', 'ArrowDown', 'ArrowUp']) {
       const out = dropdownKey({ open: false, active: 0 }, key, options, 3);

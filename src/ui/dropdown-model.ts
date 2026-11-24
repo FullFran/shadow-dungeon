@@ -56,11 +56,14 @@ export function typeAhead(options: readonly DropdownOption[], from: number, type
 /**
  * What a key does. `selected` is the committed option's index (where an open
  * list starts). `typed` is the type-ahead buffer including this key, when the
- * caller keeps one; by default the key alone.
+ * caller keeps one; by default the key alone. `fromPad`: the controller's
+ * synthetic keys (src/adapters/gamepad.ts), whose arrows on a closed list go on
+ * to the next field (a pad has no Tab to leave by); A opens it.
  */
-export function dropdownKey(state: DropdownState, key: string, options: readonly DropdownOption[], selected: number, typed: string = key): DropdownKeyResult {
+export function dropdownKey(state: DropdownState, key: string, options: readonly DropdownOption[], selected: number, typed: string = key, fromPad = false): DropdownKeyResult {
   const ignored: DropdownKeyResult = { state, handled: false };
   if (!state.open) {
+    if (fromPad && (key === 'ArrowDown' || key === 'ArrowUp')) return ignored;
     if (key === 'Enter' || key === ' ' || key === 'ArrowDown' || key === 'ArrowUp') return { state: { open: true, active: landing(options, selected) }, handled: true };
     if (key.length === 1 && key !== ' ') {
       const hit = typeAhead(options, selected, typed);

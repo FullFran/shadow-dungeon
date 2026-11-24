@@ -294,6 +294,8 @@
   "menu.controls": "Controls",
   "menu.controls.gamepad": "Controller: the buttons are in Options and the town menu, under Controller buttons.",
   "gamepad.connected": "Controller connected. The buttons are in Options and the town menu: Controller buttons.",
+  "gamepad.limit.type": "Typing here needs a keyboard: the device's own or a physical one. The controller cannot type; the D-pad leaves the field.",
+  "gamepad.limit.file": "The system's file dialog needs a mouse, a keyboard or touch, not the controller.",
   "menu.controls.move": "WASD or arrows: move",
   "menu.controls.roll": "Space: roll the way you hold (no direction: at the cursor; invulnerable; costs stamina)",
   "menu.controls.fast": "Left click or Q: fast move (the click aims at the cursor, Q where you face)",
