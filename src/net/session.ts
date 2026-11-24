@@ -152,6 +152,8 @@ export interface NetSession {
   onReconnecting(handler: (on: boolean) => void): void;
   /** Not started yet: the other tabs knocking at the same time (for the local host election). */
   rivals(): readonly string[];
+  /** Host: the peers linked to the room but not let in yet (their hello not heard), neither held for the next floor nor turned away; [] for a guest. */
+  connecting(): readonly string[];
   /** Sends a round-trip probe to every peer (also done every 60 steps). */
   ping(): void;
   /** Rates, snapshot age and round trips for the net stats overlay. */
@@ -342,6 +344,8 @@ export function createSession(options: SessionOptions): NetSession {
    */
   let joinOpen = true;
   const held = new Map<string, Knock>();
+  /** Host: peers told the room is full or on another version (still linked, never on their way in). */
+  const turnedAway = new Set<string>();
   const waitHandlers: Array<() => void> = [];
   let clock: { ms: number; floor: number } | null = null;
   /** This player's gather status (sent with its state), and the others' as last heard. */
@@ -436,11 +440,17 @@ export function createSession(options: SessionOptions): NetSession {
     return true;
   }
 
+  /** Host: the room is full for `peer`. */
+  function turnAway(peer: string): void {
+    turnedAway.add(peer);
+    send({ t: 'full', peer }, true);
+  }
+
   /** Host, at a join point: the run is open to new players until its next step; the ones held are let in now. */
   function openJoin(): void {
     joinOpen = true;
     if (held.size === 0) return;
-    for (const [peer, theirs] of held) if (!admit(peer, theirs)) send({ t: 'full', peer }, true);
+    for (const [peer, theirs] of held) if (!admit(peer, theirs)) turnAway(peer);
     held.clear();
     send(startMessage(), true);
   }
@@ -480,6 +490,7 @@ export function createSession(options: SessionOptions): NetSession {
     lastHeard.delete(peer);
     const entry = roster.find((r) => r.peer === peer);
     held.delete(peer);
+    turnedAway.delete(peer);
     tracker.forget(peer);
     pending.delete(peer);
     walkers.delete(peer);
@@ -513,6 +524,7 @@ export function createSession(options: SessionOptions): NetSession {
         }
         // Another version would desync the run (or crash on content it does not know): turned away, on both screens.
         if (!same) {
+          turnedAway.add(from);
           send({ t: 'full', peer: from, reason: 'version', ...(options.build ? { b: options.build } : {}) }, true);
           note('versionRefused');
           for (const handler of versionHandlers) handler(name, message.b);
@@ -524,7 +536,7 @@ export function createSession(options: SessionOptions): NetSession {
           send({ t: 'wait', peer: from }, true);
           return;
         }
-        if (!admit(from, { species: message.species, name, shiny: message.shiny === true, female: message.female === true })) send({ t: 'full', peer: from }, true);
+        if (!admit(from, { species: message.species, name, shiny: message.shiny === true, female: message.female === true })) turnAway(from);
         else if (lobby) send(lobbyMessage(), true);
         else send(startMessage(), true);
         return;
@@ -765,7 +777,7 @@ export function createSession(options: SessionOptions): NetSession {
       running = null;
       resetRun();
       // Players held during the last run come into the room now.
-      for (const [peer, theirs] of held) if (!admit(peer, theirs)) send({ t: 'full', peer }, true);
+      for (const [peer, theirs] of held) if (!admit(peer, theirs)) turnAway(peer);
       held.clear();
       send(lobbyMessage(), true);
     },
@@ -790,6 +802,7 @@ export function createSession(options: SessionOptions): NetSession {
     reconnecting: () => hostAway,
     onReconnecting: (handler) => void reconnectHandlers.push(handler),
     rivals: () => (started || role === 'host' ? [] : [...pending.keys()]),
+    connecting: () => (role === 'host' ? transport.peers().filter((peer) => !turnedAway.has(peer) && !held.has(peer) && !roster.some((r) => r.peer === peer)) : []),
     ping() {
       send({ t: 'ping', at: scheduler.now() }, true);
     },

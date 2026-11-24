@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADMIT_TIMEOUT_MS, beaconAction, canTravel, entranceAction, enterRows, PRESENCE_MS, presenceDue, roomStatus } from '../../src/town/lobby';
+import { ADMIT_TIMEOUT_MS, beaconAction, canTravel, connectingLine, createAdmitClock, entranceAction, enterRows, PRESENCE_MS, presenceDue, roomStatus } from '../../src/town/lobby';
 import { REFUGIO } from '../../src/data/world';
 import { t } from '../../src/i18n';
 
@@ -62,6 +62,29 @@ describe('town lobby rules', () => {
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: 0 })).toBe('connecting');
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS - 1 })).toBe('connecting');
     expect(roomStatus({ isHost: false, admitted: false, waitedMs: ADMIT_TIMEOUT_MS })).toBe('unreachable');
+  });
+
+  // Issue #3: a guest the host dropped knocks again; it is connecting again, not "the host is not answering" at once.
+  it('the wait for the host starts over when a guest falls out of the room after being in', () => {
+    const clock = createAdmitClock(0);
+    const status = (admitted: boolean, now: number) => roomStatus({ isHost: false, admitted, waitedMs: clock.waitedMs(now) });
+    clock.seen(false, 0);
+    expect(status(false, ADMIT_TIMEOUT_MS - 1)).toBe('connecting');
+    clock.seen(true, 5_000);
+    expect(status(true, 120_000)).toBe('in');
+    // Dropped two minutes in: the timeout counts from the drop, not from opening the room.
+    clock.seen(false, 120_000);
+    expect(status(false, 120_000)).toBe('connecting');
+    expect(status(false, 120_000 + ADMIT_TIMEOUT_MS - 1)).toBe('connecting');
+    expect(status(false, 120_000 + ADMIT_TIMEOUT_MS)).toBe('unreachable');
+    // Roster updates that leave it out again do not restart the wait.
+    clock.seen(false, 130_000);
+    expect(status(false, 120_000 + ADMIT_TIMEOUT_MS)).toBe('unreachable');
+  });
+
+  it('names each player the host sees still connecting', () => {
+    expect(t('lobby.peerConnecting')).not.toBe('lobby.peerConnecting');
+    expect(connectingLine('Jugador-ABC')).toContain('Jugador-ABC');
   });
 
   // Ticket SD-RIKZIZ: the host answered "wait for the next floor"; the room must not say it does not respond.

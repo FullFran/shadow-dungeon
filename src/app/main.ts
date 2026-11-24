@@ -92,7 +92,7 @@ import { installPadClass } from '../adapters/pad-class';
 import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
 import { setActiveBindings } from '../adapters/bindings';
 import { profilePublisher } from './profile-publish';
-import { roomStatus, versionNotice, type TownLobby } from '../town/lobby';
+import { createAdmitClock, roomStatus, versionNotice, type AdmitClock, type TownLobby } from '../town/lobby';
 import { displayName, isPublicNickname, sanitizeNickname } from '../net/nickname';
 import { clearedDungeons, readRecords, saveRun } from '../town/records';
 import { dungeonById, ECLIPSE, TUTORIAL, tierFor, guardianOf, type ChallengeLine, type DungeonDef, type DungeonId } from '../data/dungeons';
@@ -275,7 +275,7 @@ let hideCode = false;
  * The online room this tab is in, kept across its runs: the room walks the
  * town between runs (`townLobby`), and the session outlives each run.
  */
-let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; openedAt: number; turnServers: number } | null = null;
+let room: { session: NetSession; code: string; asHost: boolean; seed: number; from: OnlineFrom; wait: AdmitClock; turnServers: number } | null = null;
 // The heartbeat reads the room above, so it starts here.
 friendsBeat = friendsHeartbeat({
   session: () => {
@@ -349,7 +349,7 @@ async function collectDiagnostics(): Promise<Diagnostics> {
   const coop = session
     ? {
         session: session.diagnostics(),
-        roomStatus: r ? roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: Date.now() - r.openedAt }) : 'local',
+        roomStatus: r ? roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: r.wait.waitedMs(Date.now()) }) : 'local',
         turnServers: r?.turnServers ?? 0,
         links: await session.links().catch(() => ({})),
         linkEvents: session.linkEvents(),
@@ -2015,7 +2015,10 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
   }
   diagLog.transition(asHost ? 'joinedRoom:host' : 'joinedRoom:guest');
   current = session;
-  room = { session, code, asHost, seed: runSeed(), from, openedAt: Date.now(), turnServers };
+  const wait = createAdmitClock(Date.now());
+  // Dropped by the host and knocking again: the wait for its answer starts over (issue #3).
+  session.onRoster((roster) => wait.seen(roster.some((e) => e.peer === session.peerId()), Date.now()));
+  room = { session, code, asHost, seed: runSeed(), from, wait, turnServers };
   friendsBeat?.sync();
   // Load the sprites while connecting, so the town and the run do not wait for them.
   void sheetsReady();
@@ -2100,7 +2103,9 @@ function townLobby(root: HTMLElement): void {
       session.setDifficulty(next);
       update({ difficulty: next });
     },
-    status: () => roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: Date.now() - r.openedAt }),
+    status: () => roomStatus({ isHost: r.asHost, admitted: session.roster().some((e) => e.peer === session.peerId()), held: session.held(), waitedMs: r.wait.waitedMs(Date.now()) }),
+    // Linked to the room, hello not heard yet: the host sees them before it starts (issue #3).
+    connecting: () => session.connecting().map((peer) => nameOf({ peer })),
     variants: (id) => (dungeonById(id).id === id && dungeonById(id).endless ? ENDLESS_MODES.map((m) => ({ label: t(`endless.mode.${m}`), value: m })) : null),
   };
   const depart = (id: string, variant?: string) => {

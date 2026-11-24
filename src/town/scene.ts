@@ -38,7 +38,7 @@ import { pleaActor, pleaAnswered, pleaCrowd, pleaOnArrival, pleaSpoken, startPle
 import { PLEA_ANSWERS, PLEA_STAGE, answerKey, pleaKeys, replyKey, type PleaAnswer } from '../data/sima-plea';
 import { guideFacing, playerFacing, skipTour, startTour, stepTour, tourEndSpot, tourSpoken, tourStop, type TourState } from './tour';
 import { TOWN_TOUR, tourKeys } from '../data/town-tour';
-import { beaconAction, canTravel, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
+import { beaconAction, canTravel, connectingLine, entranceAction, enterRows, presenceDue, tierRow, type TierRow, type TownLobby } from './lobby';
 
 /** A row of a town choice window. */
 type ChoiceRow = { label: string; onConfirm: () => void } | TierRow;
@@ -401,7 +401,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const players = lobby.players();
     const tier = lobby.difficulty?.() ?? null;
     const status = lobby.status?.() ?? 'in';
-    const key = `${lobby.code()}|${tier}|${status}|` + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
+    const connecting = lobby.connecting?.() ?? [];
+    const key = `${lobby.code()}|${tier}|${status}|${connecting.join(',')}|` + players.map((p) => `${p.name}|${p.host}|${p.self}`).join(',');
     if (key === roomShown) return;
     roomShown = key;
     roomCode.textContent = lobby.code();
@@ -412,6 +413,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
         const tags = [p.host ? t('lobby.host') : null, p.self ? t('lobby.you') : null].filter(Boolean);
         return h('li', {}, [h('span', { className: 'roster-id', textContent: p.name }), tags.length > 0 ? h('span', { className: 'dim', textContent: ` ${tags.join(' · ')}` }) : null]);
       }),
+      // Host: linked to the room, not let in yet (its hello is on its way); starting now would leave them behind.
+      ...connecting.map((name) => h('li', { className: 'room-status connecting', textContent: connectingLine(name) })),
       // Not let in yet: nobody else is drawn until the host answers, so say why the town looks empty.
       ...(status === 'in' ? [] : [h('li', { className: `room-status ${status}`, textContent: t(`lobby.${status}`) })]),
     );
