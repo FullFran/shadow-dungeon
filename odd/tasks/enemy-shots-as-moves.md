@@ -23,7 +23,7 @@ Objective: every moving enemy shot names a learnable `MoveId` and is drawn exact
 |---|---|---|---|---|
 | T1 | S3 S5 S11 | inline | done | `tests/data/enemy-shot-moves.test.ts` RED (3 failed) then GREEN (4 passed); `MovingShotDef.move` required by the type; defaults per type in `src/data/shot-moves.ts`; Easy golden digest unchanged with `shotMove` projected out |
 | T2 | S3 S6 | inline | done | `tests/net/shot-move-wire.test.ts` RED (2 failed) then GREEN; snapshot `shotMove` (enemy shots), trailing wire slot after the curse, `PROTOCOL_VERSION` 6 → 7; `tests/net` 346 passed |
-| T3 | S4 S7 S9 | inline | todo | `enemyShotCue` = `projectileCue` test; core cell in the atlas; renderer path |
+| T3 | S4 S7 S9 | inline | done | `tests/adapters/enemy-shot-look.test.ts` (projectile move = `projectileCue`, other moves = `moveCue`, held frames never blank, held art centred); RED 3 failed then GREEN 7; atlas core cell (`paintCore`, `drawCore` at `CORE_OVER_ART_ALPHA` 0.5); renderer `moveShot`; `tests/adapters` + `tests/ui` 1785 passed; typecheck clean |
 | T4 | S8 | inline | todo | bullet gallery: enemy shot next to the player's move |
 | T5 | S10 S11 | inline | todo | GDD, bullet-art.md |
 | T6 | S9 S12 | inline | todo | gate + bench before/after |
@@ -52,3 +52,4 @@ Route evidence: one behaviour with one owner and the dispatch forbids helpers; n
 - L3 Baseline bench (Firefox headless, this machine, `node tools/mobile/bench.mjs --only=boss-card,card-decidueye,card-lanturn --seconds=8`), render p50/p95 ms: card-decidueye landscape 3.64/5.16, portrait 2.38/3.64; card-lanturn landscape 3.00/4.38, portrait 2.20/3.48 (47 and 58 bullets). boss-card shows 0 bullets (not usable).
 - L4 (2026-11-24) Asked the coordinator about Flying; answer recorded as S11.
 - L5 (2026-11-25) T1: the Easy golden digest (tests/core/difficulty-tiers.test.ts) moved only by the new `shotMove` field; projected out like `referenceLevel`, it gives '5011c078' again (play unchanged).
+- L6 (2026-11-25) T3, measured on the bullet gallery: a move whose own effect is a swing, blow or burst flew blank between flashes when looped as a shot, so it is held (`heldFrames`: only frames at least 60% of the fullest, centred on the shot, larger side = the shot's size class). Held moves (S7 list): x-scissor (double-slash), shadow-sneak (thrust), iron-head (blunt-hit), focus-punch (crit-hit), dark-pulse (plasma-explosion), dazzling-gleam (sunburst), rock-slide (earth-spike). An opaque hitbox-sized core hid the art's head (the fireball read as a white ball with a trail), so the core over art is drawn at alpha 0.5: the art shows through, the outlined edge still marks the hitbox. Fallback order: move art + core, then the type's atlas bullet while the art bakes, then the plain orb.

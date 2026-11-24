@@ -1,6 +1,6 @@
 import type { Vec2 } from '../core/vec';
 import type { PokemonType } from '../data/types';
-import { bakedRadiusOf, BULLET_DIRS, BULLET_ANIMS, bulletSprite, cellSize, HANG_STEPS, paintBullet, paintHangRing, type BulletPose } from './bullet-art';
+import { bakedRadiusOf, BULLET_DIRS, BULLET_ANIMS, bulletSprite, cellSize, HANG_STEPS, paintBullet, paintCore, paintHangRing, type BulletPose } from './bullet-art';
 
 /**
  * The enemy bullets' one baked atlas (bullet-art.ts paints the cells). A
@@ -19,10 +19,13 @@ import { bakedRadiusOf, BULLET_DIRS, BULLET_ANIMS, bulletSprite, cellSize, HANG_
 /** Side of an atlas page, px. */
 export const ATLAS_PAGE = 512;
 const PAGE = ATLAS_PAGE;
-/** Cells per block row: the flight frames, then the ring steps. */
+/** Cells per block row: the flight frames, then the ring steps, then the core alone (drawn over a move's look, issue #67). */
 const COLS = 8;
 const FLIGHT_FRAMES = BULLET_DIRS * BULLET_ANIMS;
-const CELLS = FLIGHT_FRAMES + HANG_STEPS;
+const CORE_CELL = FLIGHT_FRAMES + HANG_STEPS;
+/** The core drawn over a move's art (drawCore): see-through enough that the art's head shows, its outlined edge still the hitbox. */
+export const CORE_OVER_ART_ALPHA = 0.5;
+const CELLS = CORE_CELL + 1;
 const ROWS = Math.ceil(CELLS / COLS);
 
 /** Where a block of `w` × `h` goes (`w` and `h` at most a page): rows of blocks, a new row when one is full, a new page when a page is. */
@@ -73,6 +76,8 @@ export interface BulletAtlas {
    * and returns false (the caller draws its fallback). Never bakes.
    */
   draw(ctx: CanvasRenderingContext2D, type: PokemonType, radius: number, pos: Vec2, timeMs: number, pose: BulletPose): boolean;
+  /** Like `draw`, but only the hitbox core (and a hanging shot's ring): what goes over a shot drawn as its move (issue #67). */
+  drawCore(ctx: CanvasRenderingContext2D, type: PokemonType, radius: number, pos: Vec2, timeMs: number, pose: BulletPose): boolean;
   /** Queues a type at a radius for baking (a fight warming up its bullets). */
   warm(type: PokemonType, radius: number): void;
   /** Bakes queued cells for up to `budgetMs` (at least one cell); returns whether any are left. */
@@ -149,7 +154,8 @@ export function createBulletAtlas(options: BulletAtlasOptions = {}): BulletAtlas
     const size = block.size;
     block.pixels ??= makeImageData(COLS * size, ROWS * size);
     const index = block.next;
-    const cell = index < FLIGHT_FRAMES ? paintBullet(block.type, block.bakedRadius, index) : paintHangRing(block.type, block.bakedRadius, index - FLIGHT_FRAMES);
+    const cell =
+      index < FLIGHT_FRAMES ? paintBullet(block.type, block.bakedRadius, index) : index < CORE_CELL ? paintHangRing(block.type, block.bakedRadius, index - FLIGHT_FRAMES) : paintCore(block.type, block.bakedRadius);
     const o = cellOrigin({ x: 0, y: 0 }, size, index);
     const width = COLS * size;
     for (let row = 0; row < size; row++) block.pixels.data.set(cell.rgba.subarray(row * size * 4, (row + 1) * size * 4), ((o.y + row) * width + o.x) * 4);
@@ -191,19 +197,26 @@ export function createBulletAtlas(options: BulletAtlasOptions = {}): BulletAtlas
   addPages(2);
   wake();
 
+  /** Draws cell `cell` of a bullet's block (its flight frame, or the core alone) and a hanging shot's ring; false while the block bakes. */
+  function drawCell(ctx: CanvasRenderingContext2D, type: PokemonType, radius: number, pos: Vec2, timeMs: number, pose: BulletPose, coreOnly: boolean): boolean {
+    const sprite = bulletSprite(type, radius, pos, timeMs, pose);
+    const block = blockOf(type, sprite.bakedRadius);
+    if (block.next < CELLS) return false;
+    const o = cellOrigin(block, block.size, coreOnly ? CORE_CELL : sprite.frame);
+    const under = ctx.globalAlpha;
+    if (coreOnly) ctx.globalAlpha = under * CORE_OVER_ART_ALPHA;
+    ctx.drawImage(block.page, o.x, o.y, block.size, block.size, sprite.dx, sprite.dy, sprite.dw, sprite.dh);
+    ctx.globalAlpha = under;
+    if (sprite.ring) {
+      const r = cellOrigin(block, block.size, FLIGHT_FRAMES + sprite.ring.step);
+      ctx.drawImage(block.page, r.x, r.y, block.size, block.size, sprite.ring.dx, sprite.ring.dy, sprite.ring.dw, sprite.ring.dh);
+    }
+    return true;
+  }
+
   return {
-    draw(ctx, type, radius, pos, timeMs, pose) {
-      const sprite = bulletSprite(type, radius, pos, timeMs, pose);
-      const block = blockOf(type, sprite.bakedRadius);
-      if (block.next < CELLS) return false;
-      const o = cellOrigin(block, block.size, sprite.frame);
-      ctx.drawImage(block.page, o.x, o.y, block.size, block.size, sprite.dx, sprite.dy, sprite.dw, sprite.dh);
-      if (sprite.ring) {
-        const r = cellOrigin(block, block.size, FLIGHT_FRAMES + sprite.ring.step);
-        ctx.drawImage(block.page, r.x, r.y, block.size, block.size, sprite.ring.dx, sprite.ring.dy, sprite.ring.dw, sprite.ring.dh);
-      }
-      return true;
-    },
+    draw: (ctx, type, radius, pos, timeMs, pose) => drawCell(ctx, type, radius, pos, timeMs, pose, false),
+    drawCore: (ctx, type, radius, pos, timeMs, pose) => drawCell(ctx, type, radius, pos, timeMs, pose, true),
     warm(type, radius) {
       blockOf(type, bakedRadiusOf(radius));
     },

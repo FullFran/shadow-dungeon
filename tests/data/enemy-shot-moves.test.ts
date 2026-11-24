@@ -8,6 +8,7 @@ import { heraldDef } from '../../src/core/herald/generate';
 import { SHRINE_BOSSES, gauntletStops, heraldStop } from '../../src/core/shrine';
 import { GAUNTLETS } from '../../src/data/shrine';
 import { FLYING_SHOT_MOVE, FLYING_SHOT_BOSSES } from '../../src/data/shot-moves';
+import { ERUPTION_MOVES, HAND_DRAWN_SHOTS } from '../../src/adapters/fx/cues';
 
 /**
  * Issue #67 (design note 2): every moving enemy shot is a move a Pokémon can
@@ -68,6 +69,11 @@ describe('enemy shots are learnable moves (#67)', () => {
     expect(missing.map((s) => `${s.source} ${s.shot.type} r${s.shot.radius} v${s.shot.speed}`).slice(0, 20)).toEqual([]);
     const selfMoves = shots.filter((s) => MOVES[s.shot.move as MoveId].hitbox.kind === 'self');
     expect(selfMoves.map((s) => `${s.source} ${String(s.shot.move)}`).slice(0, 20)).toEqual([]);
+  }, 60_000);
+
+  it('no shot is a move that does not fly as a baked shot (Bonemerang\'s hand-drawn bone, Earth Power\'s eruptions)', () => {
+    const odd = shots.filter((s) => HAND_DRAWN_SHOTS.has(String(s.shot.move)) || ERUPTION_MOVES.has(String(s.shot.move)));
+    expect(odd.map((s) => `${s.source} ${String(s.shot.move)}`).slice(0, 20)).toEqual([]);
   }, 60_000);
 
   it('its type is its move type, but for the pinned Flying exception', () => {

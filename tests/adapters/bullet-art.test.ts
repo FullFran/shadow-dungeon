@@ -12,6 +12,7 @@ import {
   bulletArt,
   bulletFrameCount,
   bulletSprite,
+  cellSize,
   GLOW_REACH,
   hangRingStep,
   HANG_STEPS,
@@ -19,6 +20,7 @@ import {
   MIN_CORE_SCREEN_PX,
   OUTLINE,
   paintBullet,
+  paintCore,
   paintHangRing,
   ROLE,
   SIZE_CLASS_RADII,
@@ -139,6 +141,39 @@ describe('bullet art: the bright core is exactly the hitbox', () => {
     // The ring closes: its reach shrinks step by step.
     const reaches = Array.from({ length: HANG_STEPS }, (_, s) => reachOf(paintHangRing('water', 8, s)));
     for (let s = 1; s < HANG_STEPS; s++) expect(reaches[s]!).toBeLessThan(reaches[s - 1]!);
+  });
+});
+
+describe('bullet art: the core over a move\'s look (#67)', () => {
+  it('the core cell is the hitbox disc and its dark outline, nothing else: every type and size class', () => {
+    for (const type of POKEMON_TYPES) {
+      for (const r of EVERY_RADIUS) {
+        const cell = paintCore(type, r);
+        expect(cell.size).toBe(cellSize(r));
+        expect(coreRadiusOf(cell), `${type} r=${r}`).toBe(r);
+        const c = cell.size / 2;
+        let outline = 0;
+        for (let y = 0; y < cell.size; y++) {
+          for (let x = 0; x < cell.size; x++) {
+            const d = Math.hypot(x + 0.5 - c, y + 0.5 - c);
+            const role = cell.roles[y * cell.size + x];
+            expect(role === ROLE.core, `${type} r=${r} (${x},${y})`).toBe(d <= r);
+            if (role === ROLE.outline) outline++;
+            else if (role !== ROLE.core) expect(role, `${type} r=${r} (${x},${y})`).toBe(ROLE.empty);
+            if (role === ROLE.outline) expect(d).toBeLessThanOrEqual(r + 1.5);
+          }
+        }
+        expect(outline, `${type} r=${r}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('drawn with the bullet\'s rect, its core is the hitbox for fractional radii too', () => {
+    for (const r of [4, 5.5, 6, 7.5, 9, 14, 20]) {
+      const sprite = bulletSprite('fire', r, { x: 0, y: 0 }, 0, { state: 'flying' });
+      const cell = paintCore('fire', sprite.bakedRadius);
+      expect(coreRadiusOf(cell) * (sprite.dw / cell.size), `r=${r}`).toBeCloseTo(r, 9);
+    }
   });
 });
 

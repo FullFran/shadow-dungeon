@@ -348,6 +348,28 @@ export function paintHangRing(type: PokemonType, radius: number, step: number): 
   return colour({ size, roles, rgba: new Uint8ClampedArray(size * size * 4) }, type, false, 0);
 }
 
+/**
+ * The core alone, drawn over an enemy shot's move look (issue #67): every
+ * pixel whose centre lies within the hitbox `radius` in the type's bright
+ * core colour, and a 1 px dark outline round it, so the hitbox reads on the
+ * effect and on any floor. Same cell size as the bullet, drawn with its rect.
+ */
+export function paintCore(type: PokemonType, radius: number): BulletCell {
+  const size = cellSize(radius);
+  const c = size / 2;
+  const roles = new Uint8Array(size * size);
+  const dist = (x: number, y: number): number => Math.sqrt((x + 0.5 - c) ** 2 + (y + 0.5 - c) ** 2);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (dist(x, y) <= radius) roles[y * size + x] = ROLE.core;
+  const outline: number[] = [];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (roles[y * size + x] === ROLE.empty && touches(roles, size, x, y, DIRS8, ROLE.core, ROLE.core)) outline.push(y * size + x);
+    }
+  }
+  for (const i of outline) roles[i] = ROLE.outline;
+  return colour({ size, roles, rgba: new Uint8ClampedArray(size * size * 4) }, type, false, 0);
+}
+
 /** The ring step of a hanging shot `progress` (0..1) through its wait. */
 export function hangRingStep(progress: number): number {
   return Math.max(0, Math.min(HANG_STEPS - 1, Math.floor(progress * HANG_STEPS)));
