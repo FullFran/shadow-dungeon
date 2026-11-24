@@ -124,6 +124,13 @@
 .rp-switch-text small { font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); line-height: 1.35; overflow-wrap: anywhere; }
 .rp-state { margin-left: auto; flex: none; font-family: var(--md-text-font); font-size: 15px; color: var(--md-cursor); }
 .report-window .report-tech { margin: 8px 0 0; font-size: 14px; color: var(--md-text-dim); overflow-wrap: anywhere; }
+/* "Ver datos que enviaré": the attachment's JSON, exactly as sent (issue #71). */
+.rp-preview-btn { margin-top: 10px; min-height: 44px; padding: 4px 16px; font-size: 17px; }
+.rp-preview { margin-top: 8px; }
+.rp-preview[hidden] { display: none; }
+.rp-preview-intro { margin: 0 0 6px; font-family: var(--md-text-font); font-size: 14px; color: var(--md-text-dim); }
+.rp-preview-json { margin: 0; max-height: 40vh; overflow: auto; padding: 8px 10px; border: 2px solid var(--rp-edge); border-radius: 6px; background: var(--md-ink); color: var(--md-text); font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rp-preview-json:focus-visible { outline: 3px solid var(--md-cursor); outline-offset: 2px; }
 .report-window .report-status { min-height: 1.4em; margin: 6px 0 0; font-family: var(--md-text-font); font-size: 16px; color: var(--md-danger); }
 .report-window .report-status.is-busy { color: var(--md-cursor); }
 
@@ -175,6 +182,8 @@
   .report-window.is-compact textarea.rp-input { min-height: 44px; max-height: calc(100dvh - 252px); resize: none; }
   .report-window.is-compact .rp-about, .report-window.is-compact .report-intro, .report-window.is-compact .report-tech { display: none; }
   .report-window.is-compact .rp-switch { margin: 0; min-height: 52px; }
+  .report-window.is-compact .rp-preview-btn { margin: 0; align-self: flex-start; }
+  .report-window.is-compact .rp-preview-json { max-height: calc(100dvh - 300px); }
   .report-window.is-compact .rp-footer { flex: none; margin: 0; padding-top: 4px; }
   .report-window.is-compact .report-status { margin: 0 0 4px; min-height: 0; font-size: 14px; }
   .report-window.is-compact .report-status:empty { display: none; }

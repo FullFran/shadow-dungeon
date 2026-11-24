@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memoryStore } from '../../src/adapters/storage';
 import { sendReport } from '../../src/adapters/report-api';
-import { buildReport, clearDraft, collectReport, deviceSummary, emptyDraft, loadDraft, REPORT_CATEGORIES, REPORT_DRAFT_KEY, REPORT_LIMITS, reportErrorKey, saveDraft } from '../../src/app/report-screen';
+import { buildReport, clearDraft, collectReport, deviceSummary, emptyDraft, loadDraft, REPORT_CATEGORIES, REPORT_DRAFT_KEY, REPORT_LIMITS, reportErrorKey, saveDraft, takeTech, techPreviewText } from '../../src/app/report-screen';
 import { catalog, LANGUAGES } from '../../src/i18n';
 
 const UA = {
@@ -14,7 +14,9 @@ const UA = {
   ipadDesktop: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
 };
 
-const withAnswers = (answers: Record<string, string>) => ({ ...emptyDraft(), answers });
+/** A draft with the technical attachment turned on (a new report starts with it off). */
+const withAnswers = (answers: Record<string, string>) => ({ ...emptyDraft(), answers, attachTech: true });
+const SCREEN = readFileSync(join(__dirname, '../../src/app/report-screen.ts'), 'utf8');
 
 describe('report device summary', () => {
   it('names only the browser family, the OS family and touch, never versions or models', () => {
@@ -90,6 +92,63 @@ describe('report building', () => {
   });
 });
 
+describe('report consent (issue #71)', () => {
+  const performance = { schema: 1, scene: 'run', frameSamples: 540, frameMs: { p50: 16.7, p95: 33.4, max: 90 }, enemies: { mean: 14, peak: 24 } };
+  const snapshot = { build: 'v0.15.0 · 8223b60', screen: 'run', errors: [], performance };
+
+  it('a new report starts with the technical attachment off', () => {
+    expect(emptyDraft().attachTech).toBe(false);
+  });
+
+  it('opting out sends zero technical or performance data, and the ticket still goes', async () => {
+    let taken = 0;
+    const draft = { ...withAnswers({ 'performance.what': 'Slow with many enemies', 'performance.often': 'always' }), type: 'performance' as const, attachTech: false };
+    const built = await collectReport(draft, { version: 'v0.15.0', device: 'Chrome / Android / touch', diagnostics: () => (taken++, Promise.resolve(snapshot)) });
+    expect(taken).toBe(0);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.report).toEqual({ category: 'performance', description: 'Con qué frecuencia: Siempre\nSlow with many enemies', steps: '', expected: '', observed: '', version: '', device: '' });
+    expect(JSON.stringify(built.report)).not.toMatch(/"performance":|frameMs|diagnostics|Chrome|v0\.15/);
+  });
+
+  it('the preview is exactly what is sent: version, device and the snapshot taken for it', async () => {
+    let taken = 0;
+    const tech = { version: '  v0.15.0 · 8223b60  ', device: 'Chrome / Android / touch', diagnostics: () => (taken++, Promise.resolve(snapshot)) };
+    const shown = await takeTech(tech);
+    const preview = techPreviewText(shown);
+    const draft = { ...withAnswers({ 'performance.what': 'Slow' }), type: 'performance' as const };
+    const built = await collectReport(draft, tech, shown);
+    // The snapshot shown is the one sent: not taken again at send time.
+    expect(taken).toBe(1);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const { version, device, diagnostics } = built.report;
+    expect(JSON.parse(preview)).toEqual({ version, device, diagnostics });
+    expect(version).toBe('v0.15.0 · 8223b60');
+    expect(preview).toContain('"frameMs"');
+  });
+
+  it('a preview whose snapshot fails still shows (and sends) the version and device only', async () => {
+    const shown = await takeTech({ version: 'v', device: 'd', diagnostics: () => Promise.reject(new Error('x')) });
+    expect(JSON.parse(techPreviewText(shown))).toEqual({ version: 'v', device: 'd' });
+  });
+
+  it('a saved draft never carries the decision: an old "on" reads back off, and it is not written', () => {
+    const store = memoryStore();
+    store.set(REPORT_DRAFT_KEY, JSON.stringify({ type: 'performance', answers: { 'performance.what': 'Slow' }, attachTech: true }));
+    expect(loadDraft(store).attachTech).toBe(false);
+    saveDraft(store, { ...withAnswers({ 'bug.what': 'x' }) });
+    expect(JSON.parse(store.get(REPORT_DRAFT_KEY)!)).not.toHaveProperty('attachTech');
+    expect(loadDraft(store).attachTech).toBe(false);
+  });
+
+  it('the form shows the preview button by the switch and sends the previewed snapshot', () => {
+    expect(SCREEN).toMatch(/t\('report\.attachTech\.preview'\)/);
+    expect(SCREEN).toMatch(/techPreviewText\(shown\)/);
+    expect(SCREEN).toMatch(/collectReport\(draft, options, shown \?\? undefined\)/);
+  });
+});
+
 describe('report draft', () => {
   it('keeps the draft in storage and restores it, and clears it after sending', () => {
     const store = memoryStore();
@@ -137,6 +196,11 @@ describe('report screen text', () => {
         'report.attachTech',
         'report.attachTech.about',
         'report.attachTech.session',
+        'report.attachTech.privacy',
+        'report.attachTech.preview',
+        'report.attachTech.previewHide',
+        'report.attachTech.previewIntro',
+        'report.attachTech.previewOff',
         'report.send',
         'report.sending',
         'report.sent.title',

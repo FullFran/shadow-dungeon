@@ -23,14 +23,18 @@ export { REPORT_CATEGORIES, REPORT_LIMITS };
 
 export const REPORT_DRAFT_KEY = 'mazmorra-sombria.reportDraft';
 
-/** What the player is typing. Answers are keyed `type.field`. `attachTech` adds the game version, the coarse device summary and this session's diagnostics snapshot. */
+/**
+ * What the player is typing. Answers are keyed `type.field`. `attachTech` adds the game version, the coarse device summary and
+ * this session's diagnostics snapshot (with the last 10 s of frame performance, issue #71). It starts off on every new report and
+ * is never saved with the draft: each report is its own decision, never a standing permission.
+ */
 export interface ReportDraft {
   type: ReportType;
   answers: Record<string, string>;
   attachTech: boolean;
 }
 
-export const emptyDraft = (): ReportDraft => ({ type: 'bug', answers: emptyAnswers(), attachTech: true });
+export const emptyDraft = (): ReportDraft => ({ type: 'bug', answers: emptyAnswers(), attachTech: false });
 
 const fieldOf = (type: ReportType, id: string): FieldSpec | undefined => REPORT_FORMS[type].fields.find((f) => f.id === id);
 
@@ -47,7 +51,7 @@ export function loadDraft(store: KeyValueStore): ReportDraft {
   const saved = raw as Record<string, unknown>;
   const type = (saved.type ?? saved.category) as ReportType;
   if (REPORT_TYPES.includes(type)) draft.type = type;
-  if (typeof saved.attachTech === 'boolean') draft.attachTech = saved.attachTech;
+  // A saved `attachTech` (drafts before issue #71 kept it, on by default) is not consent for this report: it stays off.
   if (saved.answers && typeof saved.answers === 'object' && !Array.isArray(saved.answers)) {
     for (const [key, value] of Object.entries(saved.answers as Record<string, unknown>)) {
       const [kind, id] = key.split('.') as [ReportType, string];
@@ -64,8 +68,9 @@ export function loadDraft(store: KeyValueStore): ReportDraft {
   return draft;
 }
 
+/** Keeps what was typed; the attachment decision is not kept (see `ReportDraft`). */
 export function saveDraft(store: KeyValueStore, draft: ReportDraft): void {
-  store.set(REPORT_DRAFT_KEY, JSON.stringify(draft));
+  store.set(REPORT_DRAFT_KEY, JSON.stringify({ type: draft.type, answers: draft.answers }));
 }
 
 /** Forgets the draft (after a report is sent). An empty value reads back as the empty draft. */
@@ -127,31 +132,43 @@ export interface ReportTech {
   diagnostics?: object;
 }
 
+/** The technical attachment exactly as posted: version and device within the server's limits, and the snapshot if any. */
+function techFields(tech: ReportTech): ReportTech {
+  return { version: tech.version.trim().slice(0, REPORT_LIMITS.version), device: tech.device.trim().slice(0, REPORT_LIMITS.device), ...(tech.diagnostics ? { diagnostics: tech.diagnostics } : {}) };
+}
+
 /** The report to send: the form folded into the server's fields (report-forms.ts), required answers present, every field within the server's limits. */
 export function buildReport(draft: ReportDraft, tech: ReportTech, label: (key: string) => string = t): BuildResult {
   const checked = validateReport(draft.type, draft.answers, label);
   if (!checked.ok) return checked;
   const composed = composeReport(draft.type, draft.answers, label);
-  return {
-    ok: true,
-    report: {
-      ...composed,
-      version: draft.attachTech ? tech.version.trim().slice(0, REPORT_LIMITS.version) : '',
-      device: draft.attachTech ? tech.device.trim().slice(0, REPORT_LIMITS.device) : '',
-      ...(draft.attachTech && tech.diagnostics ? { diagnostics: tech.diagnostics } : {}),
-    },
-  };
+  return { ok: true, report: { ...composed, ...(draft.attachTech ? techFields(tech) : { version: '', device: '' }) } };
 }
 
+/** Where the technical attachment comes from: the version, the device summary and the snapshot to take (src/app/diagnostics.ts). */
+export interface TechSource {
+  version: string;
+  device: string;
+  diagnostics?: () => Promise<object>;
+}
+
+/** The technical attachment with its snapshot taken now. A snapshot that fails leaves the attachment without it rather than stopping the report. */
+export async function takeTech(tech: TechSource): Promise<ReportTech> {
+  const diagnostics = tech.diagnostics ? await tech.diagnostics().catch(() => undefined) : undefined;
+  return techFields({ version: tech.version, device: tech.device, ...(diagnostics ? { diagnostics } : {}) });
+}
+
+/** "Ver datos que enviaré": the attachment as the JSON the report carries, pretty-printed. */
+export const techPreviewText = (tech: ReportTech): string => JSON.stringify(techFields(tech), null, 2);
+
 /**
- * The report with its snapshot taken now, only when technical info is on
- * (nothing is gathered otherwise). A snapshot that fails leaves the report
- * without it rather than stopping it.
+ * The report to post. With technical info on, it carries `shown` (the
+ * attachment the player previewed) or, without a preview, a snapshot taken
+ * now. With it off nothing is gathered.
  */
-export async function collectReport(draft: ReportDraft, tech: { version: string; device: string; diagnostics?: () => Promise<object> }): Promise<BuildResult> {
-  let diagnostics: object | undefined;
-  if (draft.attachTech && tech.diagnostics) diagnostics = await tech.diagnostics().catch(() => undefined);
-  return buildReport(draft, { version: tech.version, device: tech.device, ...(diagnostics ? { diagnostics } : {}) });
+export async function collectReport(draft: ReportDraft, tech: TechSource, shown?: ReportTech): Promise<BuildResult> {
+  if (!draft.attachTech) return buildReport(draft, { version: '', device: '' });
+  return buildReport(draft, shown ?? (await takeTech(tech)));
 }
 
 export type ReportError = 'rate-limited' | 'unavailable' | 'invalid' | 'required' | 'too-long';
@@ -165,7 +182,7 @@ export interface ReportWindowOptions {
   version: string;
   /** The device summary to attach (`deviceSummary(navigator)`). */
   device: string;
-  /** This session's technical snapshot (src/app/diagnostics.ts), taken at send time only with technical info on. */
+  /** This session's technical snapshot (src/app/diagnostics.ts), taken only to preview it or to send it with technical info on. */
   diagnostics?: () => Promise<object>;
   send(report: ReportPayload): Promise<ReportResult>;
   onBack(): void;
@@ -235,8 +252,9 @@ interface FieldView {
  * The report form window: a type dropdown (each type with its own pixel
  * icon), the fields of that type (dropdowns for the choices, text boxes for
  * the rest, required ones marked, a problem shown under its field), a switch
- * for the technical info, Send (the one primary action) and Back. On success
- * it shows the reference to quote.
+ * for the technical info (off on every new report) with a preview of exactly
+ * what it adds, Send (the one primary action) and Back. On success it shows
+ * the reference to quote.
  */
 export function reportWindow(options: ReportWindowOptions): { element: HTMLElement; dispose(): void } {
   const draft = loadDraft(options.store);
@@ -371,14 +389,43 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   ]);
   techRow.setAttribute('role', 'switch');
   const tech = h('p', { className: 'report-tech' });
-  const techStep = h('div', { className: 'rp-field rp-tech' }, [techRow]);
+  // "Ver datos que enviaré" (issue #71): the attachment as the JSON the report carries. The snapshot shown is the one sent.
+  let shown: ReportTech | null = null;
+  const previewButton = h('button', { type: 'button', className: 'rp-btn rp-secondary rp-preview-btn', textContent: t('report.attachTech.preview') });
+  previewButton.setAttribute('aria-expanded', 'false');
+  previewButton.setAttribute('aria-controls', 'rp-preview');
+  const previewIntro = h('p', { className: 'rp-preview-intro' });
+  const previewText = h('pre', { className: 'rp-preview-json' });
+  // Scrollable by keyboard too.
+  previewText.tabIndex = 0;
+  const preview = h('div', { className: 'rp-preview', id: 'rp-preview' }, [previewIntro, previewText]);
+  preview.hidden = true;
+  const techStep = h('div', { className: 'rp-field rp-tech' }, [techRow, previewButton, preview]);
   const paintTech = () => {
     techRow.setAttribute('aria-checked', String(draft.attachTech));
     techState.textContent = t(draft.attachTech ? 'report.on' : 'report.off');
     techAbout.textContent = t('report.attachTech.about.short');
     const session = options.diagnostics ? ` ${t('report.attachTech.session')}` : '';
-    tech.textContent = draft.attachTech ? `${t('report.attachTech.about')} ${options.version} · ${options.device}.${session}` : '';
+    tech.textContent = draft.attachTech ? `${t('report.attachTech.about')} ${options.version} · ${options.device}.${session}` : t('report.attachTech.privacy');
+    previewIntro.textContent = t(draft.attachTech ? 'report.attachTech.previewIntro' : 'report.attachTech.previewOff');
   };
+  async function togglePreview(): Promise<void> {
+    if (!preview.hidden) {
+      preview.hidden = true;
+      previewButton.textContent = t('report.attachTech.preview');
+      previewButton.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    // Taken once, when first shown: Send posts this same snapshot.
+    shown ??= await takeTech(options);
+    if (disposed) return;
+    previewText.textContent = techPreviewText(shown);
+    preview.hidden = false;
+    previewButton.textContent = t('report.attachTech.previewHide');
+    previewButton.setAttribute('aria-expanded', 'true');
+    paintTech();
+  }
+  previewButton.addEventListener('click', () => void togglePreview());
   const toggleTech = () => {
     draft.attachTech = !draft.attachTech;
     paintTech();
@@ -398,7 +445,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
   const backButton = h('button', { type: 'button', className: 'rp-btn rp-secondary', textContent: t('report.back') });
   backButton.addEventListener('click', () => options.onBack());
   sendButton.addEventListener('click', () => void submit());
-  for (const button of [sendButton, backButton]) {
+  for (const button of [sendButton, backButton, previewButton]) {
     button.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
@@ -430,7 +477,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     keep();
     status.classList.add('is-busy');
     status.textContent = t('report.sending');
-    const built = await collectReport(draft, options);
+    const built = await collectReport(draft, options, shown ?? undefined);
     if (disposed) return;
     const result = built.ok ? await options.send(built.report) : ({ kind: 'invalid' } as const);
     busy = false;
@@ -452,7 +499,7 @@ export function reportWindow(options: ReportWindowOptions): { element: HTMLEleme
     }
     // The fields scroll; the status line and the buttons stay in view.
     body.replaceChildren(
-      h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-intro', textContent: t('report.intro') }), typeField, fields, techRow, tech]),
+      h('div', { className: 'rp-scroll' }, [h('p', { className: 'report-intro', textContent: t('report.intro') }), typeField, fields, techRow, tech, previewButton, preview]),
       h('div', { className: 'rp-footer' }, [status, h('div', { className: 'rp-actions' }, [sendButton, backButton])]),
     );
   }
