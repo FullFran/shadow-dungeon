@@ -77,7 +77,7 @@ import { pleaReady } from '../town/plea';
 import { hasSeenTour, markTourSeen } from '../town/tour';
 import { globalRankingLines, globalRankingSource } from '../town/global-ranking';
 import { apiBaseUrl, httpAccountApi } from '../adapters/account-api';
-import { fetchIceServers } from '../adapters/turn';
+import { createIceCache, fetchIceServers } from '../adapters/turn';
 import { sendReport } from '../adapters/report-api';
 import { deviceSummary, reportWindow } from './report-screen';
 import { installDismiss } from '../ui/dismiss';
@@ -1958,8 +1958,14 @@ function creditsScreen(root: HTMLElement): void {
   show(root, [creditsWindow(single(t('menu.back'), () => titleScreen(root, 'credits')))]);
 }
 
+/** The co-op relay credentials (issue #4), fetched ahead while the online screen is open so opening a room does not wait for them (issue #51). */
+const iceServers = createIceCache(() => fetchIceServers(apiBaseUrl(import.meta.env.VITE_API_URL)));
+
 /** "Play online": create a room or join one by code (`?room=CODE` prefills it). */
 function onlineScreen(root: HTMLElement, from: OnlineFrom = 'title'): void {
+  iceServers.prefetch();
+  // The network code too, so Create and Join only connect.
+  void import('../adapters/trystero');
   const open = onlineWindow({
     prefill: roomCodeFromSearch(window.location.search) ?? '',
     nickname: settings.nickname,
@@ -2003,7 +2009,7 @@ async function openLobby(root: HTMLElement, code: string, asHost: boolean, trans
     // The relay credentials come with the room (issue #4); without them the room still opens, direct only.
     const base = transport
       ? transport()
-      : await Promise.all([import('../adapters/trystero'), fetchIceServers(apiBaseUrl(import.meta.env.VITE_API_URL))]).then(([trystero, turn]) => {
+      : await Promise.all([import('../adapters/trystero'), iceServers.get()]).then(([trystero, turn]) => {
           turnServers = turn.length;
           return trystero.joinTrysteroRoom(code, turn);
         });
