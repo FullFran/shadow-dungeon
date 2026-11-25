@@ -1,5 +1,6 @@
 import { bestiaryLines } from './bestiary';
 import { devPerfProbe } from '../adapters/perf-probe';
+import { perfSampler } from '../adapters/perf-sampler';
 import { lookKey, SPRITE_KEYS } from '../data/sprites';
 import { GROUND_SHEETS, TOWN_GROUND, TOWN_PROPS, type TownNpc } from '../data/town';
 import { HUB, WORLD, type DungeonEntrance, type LorePoint, type MapLink, type WorldMap, type WorldMapId } from '../data/world';
@@ -1083,7 +1084,9 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
     const view = townCamera(camera, map, viewWidth, viewHeight);
     const timeMs = now - start;
     const perf = devPerfProbe();
-    const drawAt = perf ? performance.now() : 0;
+    // The report's performance sampler (issue #71): the town has no separate simulation step, enemies or bullets.
+    const sampler = perfSampler();
+    const drawAt = perf || sampler ? performance.now() : 0;
     ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     drawTownWorld(ctx, images, sheets, { map, look: map.look, view, timeMs, characters: characters(moving), glows: map.entrances });
     const target = exitWindow || closeShop || fade || plea || tour ? null : nearestInteractable(walker.pos, targets);
@@ -1114,9 +1117,11 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
       },
       timeMs,
     );
-    if (perf) {
-      perf.record('frame', dt);
-      perf.record('render', performance.now() - drawAt);
+    if (perf || sampler) {
+      const renderMs = performance.now() - drawAt;
+      perf?.record('frame', dt);
+      perf?.record('render', renderMs);
+      sampler?.frame(now, Number.NaN, renderMs, Number.NaN, Number.NaN, Number.NaN);
     }
     raf = requestAnimationFrame(frame);
   }
@@ -1157,6 +1162,8 @@ export async function openTown(options: TownOptions): Promise<TownHandle> {
   if (options.startWindow === 'menu') openMenu();
   if (options.startWindow === 'account') openShopWindow(options.openAccount);
   if (options.startWindow === 'gallery') openShopWindow(galleryOpener());
+  // The report's performance window starts with this town visit.
+  perfSampler()?.begin('town');
   raf = requestAnimationFrame(frame);
   return handle;
 }

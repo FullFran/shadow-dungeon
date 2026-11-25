@@ -288,3 +288,69 @@ func TestAnnouncesOnlyReportsItStored(t *testing.T) {
 		t.Fatalf("past the cap: %d, %d announced", rec.Code, len(notified))
 	}
 }
+
+// Issue #71: diagnostics.performance is checked against the allowlist; a
+// summary that is not one is dropped and the report still goes.
+func TestKeepsAValidPerformanceSummary(t *testing.T) {
+	app := newApp(t)
+	body := `{"category":"performance","description":"Slow with many enemies","diagnostics":{"build":"v0.15.0","performance":{"schema":1,"scene":"run","frameSamples":540,"frameMs":{"p50":16.7,"p95":33.4,"max":90},"enemies":{"mean":14,"peak":24},"byEnemies":[{"enemies":"20+","frames":120,"p50":33.4,"p95":50}]}}}`
+	rec := post(mux(t, app, DailyCap, time.Now), body)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	r, err := app.FindFirstRecordByData(Collection, "category", "performance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored struct {
+		Build       string         `json:"build"`
+		Performance map[string]any `json:"performance"`
+	}
+	if err := json.Unmarshal([]byte(r.GetString("diagnostics")), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Build != "v0.15.0" || stored.Performance["frameSamples"] != 540.0 || stored.Performance["byEnemies"] == nil {
+		t.Fatalf("stored %s", r.GetString("diagnostics"))
+	}
+}
+
+func TestDropsAPerformanceSummaryOffTheAllowlistAndKeepsTheReport(t *testing.T) {
+	for name, perf := range map[string]string{
+		"string in a number": `{"schema":1,"scene":"run","frameSamples":"lots"}`,
+		"injected token":     `{"schema":1,"scene":"run","frameSamples":1,"token":"eyJhbGciOiJIUzI1NiJ9.e30.x"}`,
+		"raw trace":          `{"schema":1,"scene":"run","frameSamples":3,"frames":[16.7,16.6,33.4]}`,
+		"huge counter":       `{"schema":1,"scene":"run","frameSamples":1,"bullets":{"mean":1,"peak":1e12}}`,
+		"nested object":      `{"schema":1,"scene":"run","frameSamples":1,"canvas":{"width":1,"height":1,"dpr":{"a":1}}}`,
+		"not an object":      `"fast"`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := newApp(t)
+			rec := post(mux(t, app, DailyCap, time.Now), `{"category":"performance","description":"x","diagnostics":{"build":"v0.15.0","performance":`+perf+`}}`)
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+			}
+			r, err := app.FindFirstRecordByData(Collection, "category", "performance")
+			if err != nil {
+				t.Fatal(err)
+			}
+			diag := r.GetString("diagnostics")
+			if strings.Contains(diag, "performance") || !strings.Contains(diag, "v0.15.0") {
+				t.Fatalf("stored %s", diag)
+			}
+		})
+	}
+}
+
+func TestPerformanceSummaryStaysWithinTheDiagnosticsCap(t *testing.T) {
+	app := newApp(t)
+	perf := `{"schema":1,"scene":"run","frameSamples":1}`
+	// {"errors":"…","performance":…}: one byte over the cap with the summary, within it without.
+	filler := strings.Repeat("e", MaxDiagnosticsBytes-len(`{"errors":"","performance":}`)-len(perf)+1)
+	rec := post(mux(t, app, DailyCap, time.Now), `{"category":"performance","description":"x","diagnostics":{"errors":"`+filler+`","performance":`+perf+`}}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "diagnostics") {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if count(t, app) != 0 {
+		t.Fatal("an oversized report was stored")
+	}
+}

@@ -14,6 +14,10 @@ describe('technical report wiring', () => {
     expect(MAIN).toMatch(/function copyReport[\s\S]*?diagnosticsText\(await collectDiagnostics\(\)\)[\s\S]*?clipboard[\s\S]*?lobby\.reportCopied[\s\S]*?lobby\.reportCopyFailed/);
   });
 
+  it('the snapshot carries the performance sampler\'s summary with the game canvas (issue #71)', () => {
+    expect(MAIN).toMatch(/async function collectDiagnostics[\s\S]*?performance: perfSampler\(\)\?\.snapshot\(performance\.now\(\), gameCanvasSize\(\)\)[\s\S]*?\n}/);
+  });
+
   it('the bug report takes the same snapshot', () => {
     expect(MAIN).toMatch(/function reportOptions[\s\S]*?diagnostics: collectDiagnostics/);
   });

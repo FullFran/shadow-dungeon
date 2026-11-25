@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildDiagnostics, createDiagnosticsLog, diagnosticsBytes, DIAGNOSTICS_MAX_BYTES, errorEntry, MAX_ERRORS, type DiagnosticsInput } from '../../src/app/diagnostics';
+import type { PerformanceSnapshot } from '../../src/adapters/perf-sampler';
 import { SPECIES } from '../../src/data/species';
 import { selectedPair } from '../../src/net/diagnostics';
 import { createSession } from '../../src/net/session';
@@ -146,5 +147,81 @@ describe('diagnostics privacy', () => {
     // Still useful: the error kept its shape and the peer its link.
     expect(snap.errors[0]!.source).toBe('app.js:3');
     expect(snap.coop!.peers[0]!.via).toBe('relay');
+  });
+});
+
+/** Issue #71: the performance summary rides in the same snapshot, allowlisted and within the same 16 KiB. */
+const perf = (): PerformanceSnapshot => ({
+  schema: 1,
+  scene: 'run',
+  frameSamples: 540,
+  windowMs: 9984,
+  ageMs: 1200,
+  refreshHz: 60,
+  frameMs: { p50: 16.7, p95: 33.4, max: 120.5 },
+  lowFpsRatio: 0.04,
+  missedRatio: 0.12,
+  simMs: { p50: 2.1, p95: 6.3 },
+  renderMs: { p50: 5.2, p95: 11 },
+  enemies: { mean: 14.2, peak: 24 },
+  visibleEnemies: { mean: 6.1, peak: 11 },
+  bullets: { mean: 80.3, peak: 212 },
+  byEnemies: [
+    { enemies: '5-9', frames: 120, p50: 16.7, p95: 16.7 },
+    { enemies: '20+', frames: 8 },
+  ],
+  canvas: { width: 2500, height: 1200, dpr: 3 },
+});
+
+describe('diagnostics performance summary', () => {
+  it('carries the summary as given when the sampler has one', () => {
+    expect(buildDiagnostics(base({ performance: perf() })).performance).toEqual(perf());
+  });
+
+  it('has no performance field when nothing was sampled', () => {
+    expect(buildDiagnostics(base({ performance: null }))).not.toHaveProperty('performance');
+    expect(buildDiagnostics(base())).not.toHaveProperty('performance');
+  });
+
+  it('copies only the allowlisted keys and finite numbers (defense in depth)', () => {
+    const tampered = {
+      ...perf(),
+      token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIn0.c2lnbmF0dXJl',
+      userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8)',
+      frames: [16.7, 16.6, 33.4],
+      frameMs: { p50: 16.7, p95: Number.NaN, max: 'slow', trace: [1, 2] },
+      enemies: { mean: 3, peak: 4, ids: ['e1'] },
+      byEnemies: [{ enemies: '0-4', frames: 70, p50: 16.7, p95: 17, peer: 'guestpeer2' }, { enemies: 'all', frames: 3 }],
+    } as unknown as PerformanceSnapshot;
+    const out = buildDiagnostics(base({ performance: tampered })).performance!;
+    const json = JSON.stringify(out);
+    for (const leak of ['eyJ', 'Mozilla', 'guestpeer2', 'trace', 'ids', 'secret', 'slow']) expect(json).not.toContain(leak);
+    expect(out).not.toHaveProperty('frames');
+    expect(out).not.toHaveProperty('token');
+    expect(out.frameMs).toBeUndefined();
+    expect(out.enemies).toEqual({ mean: 3, peak: 4 });
+    expect(out.byEnemies).toEqual([{ enemies: '0-4', frames: 70, p50: 16.7, p95: 17 }]);
+  });
+
+  it('leaves out a summary of an unknown version or scene', () => {
+    expect(buildDiagnostics(base({ performance: { ...perf(), schema: 2 } as unknown as PerformanceSnapshot }))).not.toHaveProperty('performance');
+    expect(buildDiagnostics(base({ performance: { ...perf(), scene: 'dungeon://secret' } as unknown as PerformanceSnapshot }))).not.toHaveProperty('performance');
+  });
+
+  it('keeps the summary within 16 KB by dropping the oldest errors first', () => {
+    const errors = Array.from({ length: 20 }, (_, i) => errorEntry(i * 10, `${i}:` + 'é'.repeat(1200), 'a.js', i));
+    const snap = buildDiagnostics(base({ errors, performance: perf() }));
+    expect(diagnosticsBytes(snap)).toBeLessThanOrEqual(DIAGNOSTICS_MAX_BYTES);
+    expect(snap.performance).toEqual(perf());
+  });
+
+  it('drops the density split, then the whole summary, only when nothing else is left to drop', () => {
+    const bare = buildDiagnostics(base());
+    const withSplit = buildDiagnostics(base({ performance: perf() }));
+    const { byEnemies: _split, ...withoutSplit } = perf();
+    const noSplitBytes = diagnosticsBytes({ ...bare, performance: withoutSplit });
+    expect(buildDiagnostics(base({ performance: perf() }), noSplitBytes).performance).toEqual(withoutSplit);
+    expect(buildDiagnostics(base({ performance: perf() }), noSplitBytes - 1)).toEqual(bare);
+    expect(diagnosticsBytes(withSplit)).toBeGreaterThan(noSplitBytes);
   });
 });

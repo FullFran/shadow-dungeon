@@ -101,6 +101,7 @@ import { createTouchControls } from '../ui/touch-controls';
 import { slotButtonState } from '../adapters/touch-slots';
 import { enterImmersive } from '../ui/fullscreen';
 import { devPerfProbe } from '../adapters/perf-probe';
+import { perfSampler } from '../adapters/perf-sampler';
 import type { NetSession } from '../net/session';
 import { t } from '../i18n';
 import { displayName } from '../net/nickname';
@@ -1333,6 +1334,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   };
   const onHidden = () => {
     if (document.hidden) {
+      // A hidden tab is a break for the report's performance sampler, never a slow frame.
+      perfSampler()?.pause();
       onLeavePage();
       keepRun();
       if (stepsWhileHidden({ role: net?.role ?? null, ended })) startHiddenTicks();
@@ -1914,7 +1917,11 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     log = pruneLog(log, realMs);
     tickSign();
     const perf = devPerfProbe();
-    const simAt = perf ? performance.now() : 0;
+    // The report's performance sampler (issue #71): local memory only; a standing (paused) world is a break, not frames.
+    const sampler = perfSampler();
+    if (sampler && paused) sampler.pause();
+    const timed = perf !== null || (sampler !== null && !paused);
+    const simAt = timed ? performance.now() : 0;
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
     if (resume && !ended && frameMs > 0) {
       sinceKeptMs += frameMs;
@@ -1923,9 +1930,10 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     fx.store.tick(realMs);
     fx.update(frameMs);
     fxDirector.observe(world, realMs);
+    const simMs = timed ? performance.now() - simAt : 0;
     if (perf) {
       perf.record('frame', frameMs);
-      perf.record('sim', performance.now() - simAt);
+      perf.record('sim', simMs);
     }
 
     const alpha = frozen ? 1 : accumulator / FIXED_DT_MS;
@@ -1973,7 +1981,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
         touch.setSlot(id, moveId ? t(`move.${moveId}`) : '', slotButtonState(world.player, i));
       });
     }
-    const drawAt = perf ? performance.now() : 0;
+    const drawAt = timed ? performance.now() : 0;
     renderer.draw({
       fx,
       prev,
@@ -2027,10 +2035,27 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       // Whether a teammate can still bring this fainted player back on this floor, or only the next floor will (#50).
       spectateHint: watched && net ? t(faintedHintKey(reviveAvailable(world))) : null,
     });
-    if (perf) {
-      perf.record('render', performance.now() - drawAt);
-      perf.record('bullets', world.projectiles.length);
-      perf.record('enemies', world.enemies.length);
+    if (timed) {
+      const renderMs = performance.now() - drawAt;
+      if (perf) {
+        perf.record('render', renderMs);
+        perf.record('bullets', world.projectiles.length);
+        perf.record('enemies', world.enemies.length);
+      }
+      if (sampler && !paused) {
+        const samplerAt = perf ? performance.now() : 0;
+        // Active enemies and those inside the camera's view, in one pass over the enemies already in memory.
+        let active = 0;
+        let visible = 0;
+        for (const enemy of world.enemies) {
+          if (!enemy.alive) continue;
+          active++;
+          if (enemy.pos.x >= view.x && enemy.pos.x <= view.x + view.width && enemy.pos.y >= view.y && enemy.pos.y <= view.y + view.height) visible++;
+        }
+        sampler.frame(now, simMs, renderMs, active, visible, world.projectiles.length);
+        // The sampler's own cost per frame, for the before/after benchmark (tools/mobile/bench.mjs).
+        perf?.record('sampler', performance.now() - samplerAt);
+      }
     }
     overlay?.update(realMs);
     if (plaque && (card !== plaqued.card || intro !== plaqued.intro)) {
@@ -2078,6 +2103,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     keepRun();
   }
   window.addEventListener('keydown', onKeyDown);
+  // The report's performance window starts with this run (the town's or an earlier run's frames are forgotten).
+  perfSampler()?.begin('run');
   raf = requestAnimationFrame(frame);
   // A shared run that starts in a hidden tab (the host clicked away during the countdown).
   if (document.hidden && stepsWhileHidden({ role: net?.role ?? null, ended })) startHiddenTicks();

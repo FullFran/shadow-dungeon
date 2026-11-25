@@ -283,7 +283,7 @@ Players report problems from the game (title menu and pause menu, "Reportar un p
 | `expected`, `observed` | optional, at most 1000 each |
 | `version` | optional, at most 40 (game version) |
 | `device` | optional, at most 200 (coarse browser / OS / touch summary) |
-| `diagnostics` | optional JSON object, at most 16 KB |
+| `diagnostics` | optional JSON object, at most 16 KB; its `performance` member (the game's 10 s frame summary, issue #71) must match the allowlist in `internal/reports/performance.go` (finite numbers in range, two enums, no unknown keys) or it is dropped and the report kept |
 | `website` | honeypot: must be empty. If filled, the route answers success with a made-up ref and stores nothing |
 
 Text is trimmed and control characters are dropped; unknown fields are rejected. It answers `201 {"ref":"SD-XXXXXX"}`, `400 {"error":"...","field":"..."}` for a bad field, `413` for an oversized body, `429` past 5 reports per IP every 10 minutes (rate-limit rule `/api/sd/reports`), and `503` past `DailyCap` (200) reports per UTC day across all clients.

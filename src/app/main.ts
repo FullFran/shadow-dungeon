@@ -1,6 +1,7 @@
 import { glyphSvg, type Glyph } from '../town/town-map-view';
 import { markTutorialSeen, tutorialSeen } from './tutorial';
 import { figurationMode } from '../adapters/figurations';
+import { perfSampler } from '../adapters/perf-sampler';
 import { fullscreenSupported, isFullscreen, toggleFullscreen } from '../ui/fullscreen';
 import { devHeraldFloor } from '../core/herald/floor';
 import { hasMet } from '../town/bestiary';
@@ -342,7 +343,14 @@ function screenContext(): string {
   return town ? 'town' : document.querySelector('.title-menu') ? 'title' : 'menu';
 }
 
-/** The snapshot of this session now: build, screen, run, recent errors and, in a room, the connection. */
+/** The game's (or the town's) canvas backing size and the device pixel ratio, for the performance summary; none outside them. */
+function gameCanvasSize(): { width: number; height: number; dpr: number } | undefined {
+  // The town's canvas is `game town`: one query covers both.
+  const canvas = document.querySelector<HTMLCanvasElement>('canvas.game');
+  return canvas ? { width: canvas.width, height: canvas.height, dpr: window.devicePixelRatio } : undefined;
+}
+
+/** The snapshot of this session now: build, screen, run, the last 10 s of frame performance, recent errors and, in a room, the connection. */
 async function collectDiagnostics(): Promise<Diagnostics> {
   const session = room?.session ?? current;
   const r = room;
@@ -362,6 +370,7 @@ async function collectDiagnostics(): Promise<Diagnostics> {
     touch: isTouchUi(),
     screen: screenContext(),
     ...(running ? { run: running.info() } : {}),
+    performance: perfSampler()?.snapshot(performance.now(), gameCanvasSize()),
     errors: diagLog.errors(),
     transitions: diagLog.transitions(),
     ...(coop ? { coop } : {}),
