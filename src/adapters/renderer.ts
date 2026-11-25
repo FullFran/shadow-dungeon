@@ -22,7 +22,7 @@ import { FOG } from '../data/dungeon';
 import { fogRadiusTiles } from '../core/fog';
 import { DIVE_LOCK_MS, rainSafeLane, stitchSources } from '../core/archer';
 import { shadowGapX } from '../core/boss';
-import { MOVES } from '../data/moves';
+import { MOVES, type MoveId } from '../data/moves';
 import { SPRITES } from '../data/sprites';
 import { TUNING } from '../data/tuning';
 import { t } from '../i18n';
@@ -55,10 +55,10 @@ import { drawMessageLog, visibleMessages, type MessageLog } from './message-log'
 import { canvasFont, FONT } from '../ui/tokens';
 import { JUICE, rumbleOffset, shakeOffset, type FloatingNumber, type JuiceState } from './juice';
 import { directionRow, enemyAnim, frameAtTime, playerAnim, type AnimChoice } from './sprite-anim';
-import { cueKey, cueRequest, ERUPTION_CUE, HAND_DRAWN_SHOTS, moveCue, projectileCue, stillShotCue, WORLD_CUES } from './fx/cues';
-import { isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
+import { cueKey, cueRequest, enemyShotArt, ERUPTION_CUE, HAND_DRAWN_SHOTS, moveCue, projectileCue, stillShotCue, WORLD_CUES, type FxCue } from './fx/cues';
+import { enemyShotSize, isGroundEruption, SHOT_HEIGHT, vanishAlpha } from './fx/director';
 import type { FxSystem } from './fx/system';
-import { bulletArt, hangProgress, SHOT_LIFT } from './bullet-art';
+import { bulletArt, hangProgress, OUTLINE, SHOT_LIFT } from './bullet-art';
 import { createBulletAtlas } from './bullet-atlas';
 import { MARK_CELL_PX, MARK_COLORS, MARK_HEIGHT, MARK_WIDTH, perilousMarkGrid, perilousMarkScale, perilousRim } from './perilous-art';
 import { drawEnemyShotVfx, drawPlayerVfx, drawProjectileVfx, enemyAttackType, enemyShotLook, playerVfx, telegraphFill, withAlpha, type DrawnProjectile } from './move-vfx';
@@ -1524,27 +1524,49 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
     ctx.fill();
   }
 
+  /** Each move's enemy shot look, made once (a storm draws hundreds a frame). */
+  const shotLooks = new Map<MoveId, ReturnType<typeof enemyShotArt>>();
+
+  /** An enemy shot drawn as the player's use of its move (issue #67), once its effect is baked: false meanwhile. */
+  function moveShot(move: MoveId, radius: number, at: Vec2, angle: number, timeMs: number): boolean {
+    if (!fx) return false;
+    let look = shotLooks.get(move);
+    if (!look) shotLooks.set(move, (look = enemyShotArt(move)));
+    const size = enemyShotSize(radius, look);
+    // A swing, blow or burst loops only its full frames, centred on the shot (fx/system.ts `drawHeld`).
+    if (look.held) return fx.drawHeld(ctx, look.cue, at, angle, size, timeMs);
+    return fx.drawLoop(ctx, look.cue, { ...at, placement: 'aim', angle, fitHeight: size }, timeMs);
+  }
+
   /**
-   * Enemy shots: a moving or hanging one is its type's bullet from the atlas
-   * (bullet-art.ts: its bright core is exactly its hitbox); one born still is
-   * a spore cloud, puddle or roots (move-vfx.ts).
+   * Enemy shots: a moving or hanging one is drawn as its move, exactly the
+   * player's baked effect, with its hitbox core on top (bullet-art.ts
+   * `paintCore`: the bright disc is exactly the hitbox). Until that effect is
+   * baked, and for a shot without a move, its type's bullet from the atlas.
+   * One born still is a spore cloud, puddle or roots (move-vfx.ts).
    */
-  function enemyShot(p: Pick<ProjectileState, 'id' | 'type' | 'radius' | 'vel' | 'remainingMs' | 'pierceRoll'>, pos: Vec2, timeMs: number): Drawable | null {
+  function enemyShot(p: Pick<ProjectileState, 'id' | 'type' | 'radius' | 'vel' | 'remainingMs' | 'pierceRoll' | 'shotMove'>, pos: Vec2, timeMs: number): Drawable | null {
     const facing = shotFacing.get(p.id);
     const art = bulletArt({ owner: 'enemy', vel: p.vel }, facing !== undefined);
     if (art.kind === 'bullet') {
       const angle = art.state === 'flying' ? Math.atan2(p.vel.y, p.vel.x) : facing;
       if (art.state === 'flying') shotFacing.set(p.id, angle!);
       const hang = hangProgress(p);
+      const pose = { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) };
       return {
         y: pos.y,
         draw: () => {
           shadow({ x: pos.x, y: pos.y + 8 }, p.radius * 0.7);
-          const drawn = bullets.draw(ctx, p.type, p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs, { state: art.state, ...(angle !== undefined ? { angle } : {}), ...(hang !== undefined ? { hang } : {}) });
-          // Its block is still baking in the background (a few frames at most): the plain orb in its type colours meanwhile.
-          if (!drawn) drawProjectileVfx(ctx, { owner: 'enemy', radius: p.radius, type: p.type, vel: p.vel }, pos, timeMs);
+          const at = { x: pos.x, y: pos.y - SHOT_LIFT };
+          if (p.shotMove && moveShot(p.shotMove, p.radius, at, angle ?? 0, timeMs)) {
+            // The hitbox over the effect; while its cell bakes (a few frames), a plain disc.
+            if (!bullets.drawCore(ctx, p.type, p.radius, at, timeMs, pose)) plainCore(p.radius, at);
+          } else if (!bullets.draw(ctx, p.type, p.radius, at, timeMs, pose)) {
+            // Its block is still baking in the background (a few frames at most): the plain orb in its type colours meanwhile.
+            drawProjectileVfx(ctx, { owner: 'enemy', radius: p.radius, type: p.type, vel: p.vel }, pos, timeMs);
+          }
           // A perilous shot (a roll's i-frames do not avoid it) wears its rim on top.
-          if (p.pierceRoll) perilousShotRim(p.radius, { x: pos.x, y: pos.y - SHOT_LIFT }, timeMs);
+          if (p.pierceRoll) perilousShotRim(p.radius, at, timeMs);
         },
       };
     }
@@ -1558,6 +1580,19 @@ export function createRenderer(canvas: HTMLCanvasElement, sheets: SheetStore): R
         drawEnemyShotVfx(ctx, look, p, pos, timeMs);
       },
     };
+  }
+
+  /** A hitbox disc with a dark edge, for the frames before a core cell is baked. */
+  function plainCore(radius: number, at: Vec2): void {
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Niebla: mist over everything outside the sight circle around the player (world units). */

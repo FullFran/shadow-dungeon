@@ -1,4 +1,4 @@
-import type { EnemyAttackDef, HazardDef, PoiseDef } from './enemies';
+import type { EnemyAttackDef, HazardDef, MovingShotDef, PoiseDef } from './enemies';
 import type { CardFightDef } from './cards';
 
 /*
@@ -73,7 +73,7 @@ export interface SniperDef {
   maxDistance: number;
   telegraphMs: number;
   lockMs: number;
-  bolt: EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+  bolt: MovingShotDef;
   /** The hop back after spitting. */
   hop: { ms: number; distance: number };
   recoverMs: number;
@@ -124,7 +124,7 @@ export const SKRELP: SniperDef = {
   maxDistance: 300,
   telegraphMs: 1000,
   lockMs: 350,
-  bolt: { power: 30, type: 'poison', speed: 290, radius: 6, lifetimeMs: 1600 },
+  bolt: { power: 30, type: 'poison', move: 'sludge-bomb', speed: 290, radius: 6, lifetimeMs: 1600 },
   hop: { ms: 260, distance: 70 },
   recoverMs: 1100,
   cooldownMs: 2200,
@@ -134,7 +134,7 @@ export const SKRELP: SniperDef = {
 export const SWAMP_SHOT_CAP = 140;
 
 /** An enemy shot (shape, speed, life). */
-type Shot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number };
+type Shot = MovingShotDef;
 
 /** Salazzle's spell cards (Toxic Swamp mid-boss); `escort` only on nightmare. */
 export type QueenCard = 'dance' | 'spiral' | 'haze' | 'escort';
@@ -261,7 +261,7 @@ export const SALAZZLE: QueenDef = {
     smoke: { everyPx: 60, puff: { power: 14, type: 'poison', radius: 20, lifetimeMs: 3000 } },
     recoverMs: 1300,
   },
-  spiral: { telegraphMs: 900, arms: 4, everyMs: 160, durationMs: 2600, degPerSec: 60, flame: { power: 18, type: 'fire', speed: 115, radius: 6, lifetimeMs: 5000 }, recoverMs: 1400 },
+  spiral: { telegraphMs: 900, arms: 4, everyMs: 160, durationMs: 2600, degPerSec: 60, flame: { power: 18, type: 'fire', move: 'flamethrower', speed: 115, radius: 6, lifetimeMs: 5000 }, recoverMs: 1400 },
   haze: { telegraphMs: 1700, activeMs: 500, pocketRadius: 72, attack: { power: 32, type: 'poison', pierceRoll: true }, recoverMs: 1300 },
   escort: { telegraphMs: 900, count: 2, species: 'salandit', recoverMs: 900 },
   maxShots: SWAMP_SHOT_CAP,
@@ -287,15 +287,15 @@ export const NIHILEGO: UltraDef = {
   phase1: ['tendrils', 'spores', 'shards'],
   phase2: { threshold: 0.5, awakenMs: 1800, restMs: 950, cards: ['wormhole', 'tendrils', 'spores', 'flood', 'shards'] },
   tendrils: { lanes: 7, telegraphMs: 950, strikeMs: 260, waves: 2, attack: { power: 30, type: 'poison' }, recoverMs: 1100 },
-  spores: { telegraphMs: 800, arms: 3, arms2: 4, everyMs: 170, durationMs: 2700, degPerSec: 55, spore: { power: 18, type: 'poison', speed: 95, radius: 7, lifetimeMs: 5200 }, recoverMs: 1200 },
-  shards: { telegraphMs: 850, rings: 3, perRing: 14, gapMs: 700, shard: { power: 20, type: 'rock', speed: 115, radius: 6, lifetimeMs: 5000 }, recoverMs: 1200 },
+  spores: { telegraphMs: 800, arms: 3, arms2: 4, everyMs: 170, durationMs: 2700, degPerSec: 55, spore: { power: 18, type: 'poison', move: 'sludge-bomb', speed: 95, radius: 7, lifetimeMs: 5200 }, recoverMs: 1200 },
+  shards: { telegraphMs: 850, rings: 3, perRing: 14, gapMs: 700, shard: { power: 20, type: 'rock', move: 'rock-slide', speed: 115, radius: 6, lifetimeMs: 5000 }, recoverMs: 1200 },
   wormhole: {
     telegraphMs: 1100,
     radius: 78,
     pullRange: 220,
     pullSpeed: 38,
     jumps: 3,
-    burst: { count: 10, shot: { power: 18, type: 'rock', speed: 105, radius: 6, lifetimeMs: 4500 } },
+    burst: { count: 10, shot: { power: 18, type: 'rock', move: 'rock-slide', speed: 105, radius: 6, lifetimeMs: 4500 } },
     attack: { power: 30, type: 'poison', pierceRoll: true },
     strikeMs: 220,
     recoverMs: 1300,

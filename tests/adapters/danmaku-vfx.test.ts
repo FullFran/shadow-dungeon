@@ -8,7 +8,7 @@ import type { DanmakuPattern, DanmakuShot } from '../../src/data/enemies';
 import { world } from '../core/helpers';
 
 /** Every card pattern kind is telegraphed on every peer from the snapshot fields (GDD §9): a kind nobody draws fails here. */
-const SHOT: DanmakuShot = { power: 10, type: 'ghost', speed: 100, radius: 5, lifetimeMs: 4000 };
+const SHOT: DanmakuShot = { power: 10, type: 'ghost', move: 'shadow-ball', speed: 100, radius: 5, lifetimeMs: 4000 };
 const ATTACK = { power: 20, type: 'ghost' as const, pierceRoll: true as const };
 
 const SAMPLES: Record<DanmakuPattern['kind'], DanmakuPattern> = {

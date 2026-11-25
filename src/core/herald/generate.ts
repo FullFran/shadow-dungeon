@@ -15,6 +15,7 @@ import {
   type HeraldPhase2Rule,
   type HeraldShot,
 } from '../../data/herald';
+import { DEFAULT_SHOT_MOVE } from '../../data/shot-moves';
 import { TYPE_COLOURS } from '../../data/herald-words';
 import { SPECIES } from '../../data/species';
 import { SPRITE_KEYS, SPRITES } from '../../data/sprites';
@@ -90,7 +91,7 @@ export interface GenStats {
 const R = Math.round;
 
 function shot(g: GenContext, speed: number, radius: number, s: number, extra: Partial<HeraldShot> = {}): HeraldShot {
-  return { power: g.power, type: g.type, speed: R(speed * s), radius, lifetimeMs: 7000, ...extra };
+  return { power: g.power, type: g.type, move: DEFAULT_SHOT_MOVE[g.type], speed: R(speed * s), radius, lifetimeMs: 7000, ...extra };
 }
 
 /** Which primitives a card's first layer may be (deeper floors open more). */

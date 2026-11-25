@@ -1,5 +1,5 @@
 import type { Difficulty } from './difficulty';
-import type { EnemyAttackDef, PoiseDef, SteerDef } from './enemies';
+import type { EnemyAttackDef, MovingShotDef, PoiseDef, SteerDef } from './enemies';
 import type { SpeciesId } from './species';
 import type { PokemonType } from './types';
 
@@ -12,7 +12,7 @@ import type { PokemonType } from './types';
  * families; every name is composed from our own word lists.
  */
 
-export type HeraldShot = EnemyAttackDef & { speed: number; radius: number; lifetimeMs: number; steer?: SteerDef };
+export type HeraldShot = MovingShotDef & { steer?: SteerDef };
 
 /** `static`: the shape does not look at the player; `aimed`: it is turned towards where the player stood when the card's wind-up began. */
 export type HeraldAim = 'static' | 'aimed';

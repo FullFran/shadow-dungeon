@@ -1,5 +1,6 @@
 import { cueKey, cueRequest, type FxCue } from './cues';
 import type { FxStore, ReadyEffect } from './store';
+import type { BakedFrame } from './bake';
 
 /**
  * Plays baked effects. One-shots live here for their `playMs`, at most
@@ -74,8 +75,32 @@ export function drawFxFrame(ctx: CanvasRenderingContext2D, effect: ReadyEffect, 
   ctx.restore();
 }
 
+/** A held shot's frames are those at least this share of its fullest frame's area. */
+export const HELD_SHARE = 0.6;
+
+/**
+ * The frames of a one-shot (a swing, blow or burst) that read as a body: what
+ * an enemy shot drawn as that move loops (issue #67, S7), so it never flies
+ * blank between flashes.
+ */
+export function heldFrames(frames: readonly BakedFrame[]): number[] {
+  const area = (f: BakedFrame) => f.w * f.h;
+  const fullest = Math.max(0, ...frames.map(area));
+  if (fullest === 0) return [];
+  return frames.flatMap((f, i) => (area(f) >= fullest * HELD_SHARE ? [i] : []));
+}
+
+/** Where to anchor held art (drawn with `aim`) so its middle sits on the shot and its larger side spans `box`. */
+export function heldPlacement(bounds: ReadyEffect['bounds'], at: { x: number; y: number }, angle: number, box: number): { x: number; y: number; scale: number } {
+  const span = Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top);
+  const scale = span > 0 ? box / span : 1;
+  const middle = ((bounds.left + bounds.right) / 2) * scale;
+  return { x: at.x - Math.cos(angle) * middle, y: at.y - Math.sin(angle) * middle, scale };
+}
+
 export class FxSystem {
   private live: Live[] = [];
+  private held = new WeakMap<ReadyEffect, number[]>();
 
   constructor(readonly store: FxStore) {}
 
@@ -128,6 +153,19 @@ export class FxSystem {
     if (!effect) return false;
     const turn = (((timeMs / cue.playMs) % 1) + 1) % 1;
     drawFxFrame(ctx, effect, frameAt(effect.frames.length, turn), spawn, fitScale(effect, spawn.placement, spawn.fit, spawn.fitHeight), alpha);
+    return true;
+  }
+
+  /** Loops a one-shot's full frames, centred on `at` and turned to `angle`, its larger side `box` wide; false while baking. */
+  drawHeld(ctx: CanvasRenderingContext2D, cue: FxCue, at: { x: number; y: number }, angle: number, box: number, timeMs: number): boolean {
+    const effect = this.store.get(cueKey(cue), cueRequest(cue));
+    if (!effect) return false;
+    let held = this.held.get(effect);
+    if (!held) this.held.set(effect, (held = heldFrames(effect.frames)));
+    if (held.length === 0) return false;
+    const turn = (((timeMs / cue.playMs) % 1) + 1) % 1;
+    const p = heldPlacement(effect.bounds, at, angle, box);
+    drawFxFrame(ctx, effect, held[frameAt(held.length, turn)]!, { x: p.x, y: p.y, placement: 'aim', angle }, p.scale);
     return true;
   }
 }

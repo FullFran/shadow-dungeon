@@ -11,7 +11,7 @@ import { world } from './helpers';
  * E1: wave, closing, scatter, homing, laser) and the orbiting familiars (E3),
  * as `DanmakuPattern` kinds fired by core/danmaku.ts `firePattern`.
  */
-const SHOT: DanmakuShot = { power: 10, type: 'ghost', speed: 100, radius: 5, lifetimeMs: 5000 };
+const SHOT: DanmakuShot = { power: 10, type: 'ghost', move: 'shadow-ball', speed: 100, radius: 5, lifetimeMs: 5000 };
 const DEG = Math.PI / 180;
 
 function bossAt(aim: Vec2, mark?: Vec2): WorldState {

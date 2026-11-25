@@ -47,7 +47,7 @@ export const HAUNTER: GastlyDef = {
   castMs: 300,
   recoverMs: 550,
   cooldownMs: 1800,
-  projectile: { power: 40, type: 'poison', speed: 100, radius: 7, lifetimeMs: 4500 },
+  projectile: { power: 40, type: 'poison', move: 'sludge-bomb', speed: 100, radius: 7, lifetimeMs: 4500 },
   secondBall: { minDifficulty: 'easy', delayMs: 220 },
   hardSpread: { minDifficulty: 'hard', count: 3, degrees: 32 },
 };
@@ -65,7 +65,7 @@ export const GENGAR: GastlyDef = {
   castMs: 380,
   recoverMs: 800,
   cooldownMs: 2500,
-  projectile: { power: 32, type: 'poison', speed: 80, radius: 8, lifetimeMs: 5000 },
+  projectile: { power: 32, type: 'poison', move: 'sludge-bomb', speed: 80, radius: 8, lifetimeMs: 5000 },
   ring: { count: 10 },
   secondBall: { minDifficulty: 'easy', delayMs: 260 },
 };
@@ -83,7 +83,7 @@ export const DUSCLOPS: GastlyDef = {
   castMs: 320,
   recoverMs: 800,
   cooldownMs: 2800,
-  projectile: { power: 30, type: 'fire', speed: 70, radius: 9, lifetimeMs: 5400, steer: { degPerSec: 65, ms: 2400 } },
+  projectile: { power: 30, type: 'fire', move: 'inferno', speed: 70, radius: 9, lifetimeMs: 5400, steer: { degPerSec: 65, ms: 2400 } },
   spread: { count: 2, degrees: 50 },
   hardSpread: { minDifficulty: 'hard', count: 3, degrees: 70 },
 };
@@ -123,7 +123,7 @@ export const BRELOOM: SlammerDef = {
   recoverMs: 1050,
   cooldownMs: 1800,
   leap: { distance: 220, airMs: 460, lockMs: 260 },
-  ring: { count: 6, projectile: { power: 14, type: 'grass', speed: 70, radius: 6, lifetimeMs: 3000 } },
+  ring: { count: 6, projectile: { power: 14, type: 'grass', move: 'energy-ball', speed: 70, radius: 6, lifetimeMs: 3000 } },
 };
 
 /** Drifblim: Drifloon's ring of will-o-wisps, ten wide and twice per cast, the second turned half a step. */
@@ -139,7 +139,7 @@ export const DRIFBLIM: GastlyDef = {
   castMs: 320,
   recoverMs: 800,
   cooldownMs: 2700,
-  projectile: { power: 24, type: 'fire', speed: 60, radius: 7, lifetimeMs: 5200 },
+  projectile: { power: 24, type: 'fire', move: 'ember', speed: 60, radius: 7, lifetimeMs: 5200 },
   ring: { count: 10, waves: 2, waveGapMs: 380 },
 };
 
@@ -193,7 +193,7 @@ export const ARIADOS: GastlyDef = {
   castMs: 340,
   recoverMs: 650,
   cooldownMs: 2500,
-  projectile: { power: 22, type: 'bug', speed: 120, radius: 5, lifetimeMs: 2800 },
+  projectile: { power: 22, type: 'bug', move: 'x-scissor', speed: 120, radius: 5, lifetimeMs: 2800 },
   secondBall: { minDifficulty: 'easy', delayMs: 260 },
 };
 
@@ -251,7 +251,7 @@ export const OCTILLERY: GastlyDef = {
   castMs: 650,
   recoverMs: 750,
   cooldownMs: 2400,
-  projectile: { power: 22, type: 'water', speed: 210, radius: 6, lifetimeMs: 1900 },
+  projectile: { power: 22, type: 'water', move: 'water-gun', speed: 210, radius: 6, lifetimeMs: 1900 },
   burst: { shots: 5, gapMs: 130 },
   hardSpread: { minDifficulty: 'hard', count: 3, degrees: 26 },
 };

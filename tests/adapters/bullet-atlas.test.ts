@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { POKEMON_TYPES } from '../../src/data/types';
-import { ATLAS_PAGE, BAKE_BUDGET_MS, cellOrigin, createBulletAtlas } from '../../src/adapters/bullet-atlas';
-import { BULLET_ANIMS, BULLET_DIRS, cellSize, HANG_STEPS, MAX_BAKED_RADIUS, paintBullet, paintHangRing } from '../../src/adapters/bullet-art';
+import { ATLAS_PAGE, BAKE_BUDGET_MS, cellOrigin, CORE_OVER_ART_ALPHA, createBulletAtlas } from '../../src/adapters/bullet-atlas';
+import { BULLET_ANIMS, BULLET_DIRS, cellSize, HANG_STEPS, MAX_BAKED_RADIUS, paintBullet, paintCore, paintHangRing } from '../../src/adapters/bullet-art';
 
-const CELLS = BULLET_DIRS * BULLET_ANIMS + HANG_STEPS;
+/** Flight frames, ring steps and the core cell (drawn over a move's look, #67). */
+const CELLS = BULLET_DIRS * BULLET_ANIMS + HANG_STEPS + 1;
 
 /** A headless atlas: stub canvases that record what is put on them, a clock that ticks `msPerRead` on every read, and a hand-run scheduler. */
 function harness(msPerRead = 1) {
@@ -17,14 +18,15 @@ function harness(msPerRead = 1) {
     now: () => (clock += msPerRead),
   });
   const draws: number[][] = [];
-  const ctx = { drawImage: (...args: number[]) => draws.push(args.slice(1)) } as unknown as CanvasRenderingContext2D;
+  const alphas: number[] = [];
+  const ctx = { globalAlpha: 1, drawImage(this: { globalAlpha: number }, ...args: number[]) { draws.push(args.slice(1)); alphas.push(this.globalAlpha); } } as unknown as CanvasRenderingContext2D;
   /** Runs the next scheduled bake callback, as the browser would in its next idle period; false when none is scheduled. */
   const idle = (budgetMs = BAKE_BUDGET_MS): boolean => {
     const bake = pending.shift();
     bake?.(budgetMs);
     return bake !== undefined;
   };
-  return { atlas, ctx, puts, draws, pending, idle };
+  return { atlas, ctx, puts, draws, alphas, pending, idle };
 }
 
 describe('bullet atlas: the bake never freezes a frame', () => {
@@ -124,5 +126,35 @@ describe('bullet atlas: the bake never freezes a frame', () => {
     };
     for (let f = 0; f < BULLET_DIRS * BULLET_ANIMS; f++) check(paintBullet('dragon', 7, f), f);
     for (let s = 0; s < HANG_STEPS; s++) check(paintHangRing('dragon', 7, s), BULLET_DIRS * BULLET_ANIMS + s);
+    check(paintCore('dragon', 7), CELLS - 1);
+  });
+
+  it('the core alone (over a move\'s look, #67): false until baked, then one draw, plus the ring while hanging', () => {
+    const { atlas, ctx, draws, alphas, idle } = harness();
+    expect(atlas.drawCore(ctx, 'grass', 6, { x: 10, y: 20 }, 0, { state: 'flying', angle: 0 })).toBe(false);
+    expect(draws).toHaveLength(0);
+    while (idle()) {
+      // Bake it.
+    }
+    expect(atlas.drawCore(ctx, 'grass', 6, { x: 10, y: 20 }, 0, { state: 'flying', angle: 0 })).toBe(true);
+    expect(draws).toHaveLength(1);
+    const size = cellSize(6);
+    // The core cell's source rect, centred on the shot at the bullet's size.
+    const [sx, sy, sw, sh, dx, dy, dw] = draws[0]!;
+    const o = cellOrigin({ x: 0, y: 0 }, size, CELLS - 1);
+    expect([sx, sy, sw, sh]).toEqual([o.x, o.y, size, size]);
+    expect(dx! + dw! / 2).toBeCloseTo(10, 9);
+    expect(dy! + dw! / 2).toBeCloseTo(20, 9);
+    // See-through over the move's art, and the canvas left as it was.
+    expect(alphas[0]).toBe(CORE_OVER_ART_ALPHA);
+    expect(CORE_OVER_ART_ALPHA).toBeGreaterThan(0.3);
+    expect(CORE_OVER_ART_ALPHA).toBeLessThan(1);
+    expect(ctx.globalAlpha).toBe(1);
+    expect(atlas.drawCore(ctx, 'grass', 6, { x: 10, y: 20 }, 0, { state: 'hanging', hang: 0.5 })).toBe(true);
+    expect(draws).toHaveLength(3);
+    // The hanging ring keeps its full strength: it warns the shot is about to fly again.
+    expect(alphas[2]).toBe(1);
+    atlas.draw(ctx, 'grass', 6, { x: 10, y: 20 }, 0, { state: 'flying', angle: 0 });
+    expect(alphas[3]).toBe(1);
   });
 });

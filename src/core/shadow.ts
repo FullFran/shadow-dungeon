@@ -122,7 +122,8 @@ export function updateShadow(state: WorldState, start: EnemyState, def: ShadowDe
         const hitbox = MOVES[move as MoveId]?.hitbox;
         const speed = (hitbox?.kind === 'projectile' ? hitbox.speed : 300) * def.shotSpeedScale;
         const life = Math.min(4000, (hitbox?.kind === 'projectile' ? hitbox.lifetimeMs : 1000) / def.shotSpeedScale);
-        state = spawnShot(state, enemy, { ...shadowAttack(move, def), speed, radius: Math.max(5, reach.width / 2), lifetimeMs: life }, enemy.ai.attackDir);
+        // Drawn as the very move it copies (issue #67).
+        state = spawnShot(state, enemy, { ...shadowAttack(move, def), ...(hitbox ? { move: move as MoveId } : {}), speed, radius: Math.max(5, reach.width / 2), lifetimeMs: life }, enemy.ai.attackDir);
         enemy = { ...enemy, ai: enterMode(enemy.ai, 'attack', 250) };
       } else {
         enemy = { ...enemy, ai: { ...enterMode(enemy.ai, 'attack', reach.shape === 'dash' ? def.dashMs : def.strikeMs), contact: 'none' } };

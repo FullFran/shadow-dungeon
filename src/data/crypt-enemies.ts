@@ -212,6 +212,6 @@ export const YAMASK: GastlyDef & { disguise: DisguiseDef } = {
   castMs: 260,
   recoverMs: 600,
   cooldownMs: 2200,
-  projectile: { power: 34, type: 'ghost', speed: 82, radius: 8, lifetimeMs: 4200, curse: { ms: 3500, regen: CURSE_REGEN } },
+  projectile: { power: 34, type: 'ghost', move: 'hex', speed: 82, radius: 8, lifetimeMs: 4200, curse: { ms: 3500, regen: CURSE_REGEN } },
   disguise: { wakeRadius: 72, wakeMs: 450 },
 };

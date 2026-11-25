@@ -183,6 +183,24 @@ export function projectileCue(type: PokemonType, moveId?: string): FxCue {
   }
 }
 
+/**
+ * An enemy shot's look (issue #67): the very cue the player's use of its move
+ * plays. A projectile move flies as the player's shot; a move whose own effect
+ * is a swing, blow or burst (`held`) keeps that effect, drawn at shot size
+ * from its full frames only (fx/system.ts `heldFrames`), never the anonymous
+ * orb. The look follows the move, never the shot's damage type (the Flying
+ * exception, data/shot-moves.ts).
+ */
+export function enemyShotArt(moveId: MoveId): { cue: FxCue; held: boolean } {
+  const move = MOVES[moveId];
+  const own = move.hitbox.kind === 'projectile' ? null : moveCue(move);
+  return own ? { cue: own, held: true } : { cue: projectileCue(move.type, move.id), held: false };
+}
+
+export function enemyShotCue(moveId: MoveId): FxCue {
+  return enemyShotArt(moveId).cue;
+}
+
 /** A landed hit. `strong`: super effective, a finisher or a heavy move. */
 export function impactCue(type: PokemonType, strong: boolean): FxCue {
   if (strong) return cue('impacts/crit-hit', type, 6, 360);

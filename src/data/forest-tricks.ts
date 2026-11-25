@@ -39,9 +39,9 @@ export const FOREST_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   // A ghost flame left where each lunge ends.
   'pumpkaboo-small': [{ minDifficulty: 'hard', patch: { ember: { power: 12, type: 'ghost', radius: 16, lifetimeMs: 2200 } } }],
   // The slam throws a ring of ghost flames.
-  'pumpkaboo-super': [{ minDifficulty: 'hard', patch: { ring: { count: 8, projectile: { power: 18, type: 'ghost', speed: 80, radius: 6, lifetimeMs: 3500 } } } }],
+  'pumpkaboo-super': [{ minDifficulty: 'hard', patch: { ring: { count: 8, projectile: { power: 18, type: 'ghost', move: 'hex', speed: 80, radius: 6, lifetimeMs: 3500 } } } }],
   // The puff also lets go of a ring of slow spores.
-  foongus: [{ minDifficulty: 'hard', patch: { burst: { count: 6, shot: { power: 14, type: 'poison', speed: 50, radius: 6, lifetimeMs: 3000 } } } }],
+  foongus: [{ minDifficulty: 'hard', patch: { burst: { count: 6, shot: { power: 14, type: 'poison', move: 'sludge-bomb', speed: 50, radius: 6, lifetimeMs: 3000 } } } }],
   // Five threads instead of three.
   spinarak: [{ minDifficulty: 'hard', patch: { spread: { count: 5, degrees: 48 } } }],
   // A second dive, re-aimed.
@@ -49,7 +49,7 @@ export const FOREST_TRICKS: Partial<Record<SpeciesId, readonly Trick[]>> = {
   // Two feints before the real lunge.
   impidimp: [{ minDifficulty: 'hard', patch: { feint: { ...IMPIDIMP.feint!, count: 2 } } }],
   // Spores fly out where it lands.
-  shroomish: [{ minDifficulty: 'hard', patch: { ring: { count: 6, projectile: { power: 14, type: 'grass', speed: 70, radius: 6, lifetimeMs: 3000 } } } }],
+  shroomish: [{ minDifficulty: 'hard', patch: { ring: { count: 6, projectile: { power: 14, type: 'grass', move: 'energy-ball', speed: 70, radius: 6, lifetimeMs: 3000 } } } }],
   // A second ring, turned half a step, right behind the first.
   drifloon: [{ minDifficulty: 'hard', patch: { ring: { ...DRIFLOON.ring!, waves: 2, waveGapMs: 350 } } }],
   // Evolved forms (data/evolved-enemies.ts): a third ring; a third dive.

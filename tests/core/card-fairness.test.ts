@@ -78,7 +78,7 @@ describe('every dungeon boss has its new cards where decision 2b puts them', () 
 });
 
 describe('the family limits catch what they should', () => {
-  const shot = { power: 10, type: 'ghost' as const, speed: 100, radius: 5, lifetimeMs: 4000 };
+  const shot = { power: 10, type: 'ghost' as const, move: 'shadow-ball' as const, speed: 100, radius: 5, lifetimeMs: 4000 };
   it('flags a laser without warning, a fast orbit, a sharp curve, double bounces and strong homing', () => {
     expect(familyViolations({ kind: 'laser', volleys: 1, everyMs: 1000, lines: 1, fanDeg: 0, turnDeg: 0, warnMs: 200, fireMs: 300, beamEveryMs: 50, shot })).toHaveLength(1);
     expect(familyViolations({ kind: 'familiars', count: 2, radius: 80, degPerSec: 90, centre: 'boss', atOnce: 1, volleys: 2, gapMs: 500, perVolley: 1, spreadDeg: 0, aim: 'target', shot })).toHaveLength(1);

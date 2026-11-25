@@ -247,21 +247,24 @@ function decodeEnemy(w: unknown): EnemySnapshot | null {
 
 function encodeProjectile(p: ProjectileSnapshot): unknown[] {
   const out: unknown[] = [p.id, p.type, p.attackerTypes, p.power, r1(p.pos.x), r1(p.pos.y), r1(p.vel.x), r1(p.vel.y), r1(p.radius), ri(p.remainingMs)];
-  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move, an enemy shot's kinematics, an enemy shot's curse (0 fills a gap).
+  // Optional and in this order: positional flag, a weakened enemy's damage multiplier, a player shot's move, an enemy shot's kinematics,
+  // an enemy shot's curse, the move an enemy shot is drawn as (0 fills a gap).
   const kin = p.kin;
   const curse = p.curseMs !== undefined;
-  if (p.pierceRoll || p.mult !== undefined || p.moveId || kin || curse) out.push(p.pierceRoll ? 1 : 0);
-  if (p.mult !== undefined || p.moveId || kin || curse) out.push(p.mult === undefined ? 0 : r3(p.mult));
-  if (p.moveId || kin || curse) out.push(p.moveId ?? 0);
-  if (kin || curse) out.push(kin ? [r3(kin.acc.x), r3(kin.acc.y), r3(kin.curve), r1(kin.max), kin.bounces, kin.stop ? 1 : 0] : 0);
-  if (curse) out.push(ri(p.curseMs!));
+  const look = p.shotMove;
+  if (p.pierceRoll || p.mult !== undefined || p.moveId || kin || curse || look) out.push(p.pierceRoll ? 1 : 0);
+  if (p.mult !== undefined || p.moveId || kin || curse || look) out.push(p.mult === undefined ? 0 : r3(p.mult));
+  if (p.moveId || kin || curse || look) out.push(p.moveId ?? 0);
+  if (kin || curse || look) out.push(kin ? [r3(kin.acc.x), r3(kin.acc.y), r3(kin.curve), r1(kin.max), kin.bounces, kin.stop ? 1 : 0] : 0);
+  if (curse || look) out.push(curse ? ri(p.curseMs!) : 0);
+  if (look) out.push(look);
   return out;
 }
 
 /** A projectile from the wire, or null when its id, type or a number is off. */
 function decodeProjectile(w: unknown): ProjectileSnapshot | null {
   if (!Array.isArray(w)) return null;
-  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId, kin, curseMs] = w as [
+  const [id, type, attackerTypes, power, x, y, vx, vy, radius, remainingMs, pierce, mult, moveId, kin, curseMs, shotMove] = w as [
     string,
     PokemonType,
     PokemonType[],
@@ -273,6 +276,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     number,
     number,
     number | undefined,
+    unknown,
     unknown,
     unknown,
     unknown,
@@ -292,6 +296,7 @@ function decodeProjectile(w: unknown): ProjectileSnapshot | null {
     ...(finite(mult) && mult > 0 && mult <= MAX_SHOT_MULT ? { mult } : {}),
     ...(isMove(moveId) ? { moveId } : {}),
     ...(finite(curseMs) && curseMs > 0 && curseMs <= MAX_CURSE_MS ? { curseMs } : {}),
+    ...(isMove(shotMove) ? { shotMove } : {}),
     ...decodeKin(kin),
   };
 }
