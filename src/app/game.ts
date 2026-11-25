@@ -248,7 +248,7 @@ export interface GameOptions {
   /** Touch settings, read live (src/adapters/touch.ts); the on-screen controls exist only while `html.touch` is set. */
   touch?: { autoAim(): boolean; haptics(): boolean };
   /** The controller: in combat it plays, otherwise it acts as keys (adapters/gamepad.ts). */
-  gamepad?: Pick<Gamepads, 'take' | 'setCombat'>;
+  gamepad?: Pick<Gamepads, 'take' | 'setCombat' | 'lost'>;
   /**
    * The Sima as this player remembers it (app/sima-lore.ts): names, epithets
    * and silhouettes of its bosses. Presentation only; absent, every boss goes
@@ -629,7 +629,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
   let bonfire: { run: RunState; world: WorldState; tally: CoinTally; spent: number } | null = null;
   let bonfireUsed = 0;
   let wiped = false;
-  /** Co-op, fainted: the teammate the camera follows (./spectate.ts), and the button that moves on to the next one (touch and mouse; Q on the keyboard). */
+  /** Co-op, fainted: the teammate the camera follows (./spectate.ts), and the button that moves on to the next one (touch and mouse; Q on the keyboard; the D-pad sides on a pad). */
   let watching: string | null = null;
   const spectateButton = document.createElement('button');
   spectateButton.className = 'spectate-next';
@@ -1699,6 +1699,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
       const padNow = options.gamepad?.take() ?? IDLE_TOUCH;
       if (padNow.item) useQueued = true;
       if (padNow.itemCycle) bagSelected = nextSlot(bag, bagSelected, padNow.itemCycle > 0 ? 1 : -1);
+      // Fainted in co-op: the D-pad sides (which switch target while standing) watch the next or previous teammate.
+      if (padNow.swipe && watching !== null && !closeMenu) watching = nextSpectate(watchable(), watching, padNow.swipe > 0 ? 1 : -1);
       const padInput = touchToPlayerInput(padNow, aimContext);
       if (hadInput(padInput)) padInUse = true;
       else if (hadInput(keys)) padInUse = false;
@@ -1922,6 +1924,8 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     if (sampler && paused) sampler.pause();
     const timed = perf !== null || (sampler !== null && !paused);
     const simAt = timed ? performance.now() : 0;
+    // The controller playing went away (issue #32): the run's menu opens, as Start would (solo, the run waits; a shared run never stops, the player stands still).
+    if (options.gamepad?.lost() && padInUse) showMenu();
     if (!frozen && !(ended && world.player.hp <= 0)) simulate(frameMs);
     if (resume && !ended && frameMs > 0) {
       sinceKeptMs += frameMs;
@@ -1940,7 +1944,7 @@ export function startGame(canvas: HTMLCanvasElement, sheets: SheetStore, options
     // Co-op, fainted: the camera follows a standing teammate instead of the body.
     watching = net && world.player.hp <= 0 && !ended ? spectateTarget(watchable(), watching) : null;
     spectateButton.hidden = watching === null;
-    if (watching !== null) spectateButton.textContent = isTouchUi() ? t('spectate.next') : fillBindings(t('spectate.nextKey'));
+    if (watching !== null) spectateButton.textContent = isTouchUi() ? t('spectate.next') : device.current() === 'gamepad' ? t('spectate.nextKey.pad') : fillBindings(t('spectate.nextKey'));
     const watched = watching !== null ? world.remotes.find((r) => r.id === watching) : undefined;
     camera = followCamera(camera, watched ? watched.player.pos : lerpVec(prev.player.pos, world.player.pos, alpha), frameMs);
     view = cameraView(camera, viewWidth, viewHeight, world.arena);

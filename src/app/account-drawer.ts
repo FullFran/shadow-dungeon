@@ -465,6 +465,9 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
     const picker = h('input', { type: 'file', className: 'acct-file' });
     picker.accept = 'application/json,.json';
     picker.hidden = true;
+    const importButton = button(t('sync.backup.import'), 'rk-wide', () => picker.click());
+    // The pad cannot drive the system's file dialog: its note says so (ui/pad-field-note.ts).
+    importButton.dataset.padLimit = 'file';
     picker.addEventListener('change', () => {
       const file = picker.files?.[0];
       if (!file) return;
@@ -493,7 +496,7 @@ export function openAccountDrawer(options: AccountDrawerOptions): AccountDrawer 
         h('div', { className: 'acct-backups' }, rows),
         picker,
         button(t('sync.backup.export'), 'rk-wide', () => saveFile(account.exportText())),
-        button(t('sync.backup.import'), 'rk-wide', () => picker.click()),
+        importButton,
         button(t('menu.back'), 'rk-wide', () => ((view = 'main'), (error = null), render())),
         h('p', { className: 'acct-note', textContent: t('sync.backup.note') }),
       ]),

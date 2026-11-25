@@ -90,6 +90,7 @@ import { httpFriendsApi } from '../adapters/friends-api';
 import { httpAdminApi } from '../adapters/admin-api';
 import { createGamepads } from '../adapters/gamepad';
 import { installPadClass } from '../adapters/pad-class';
+import { installPadFieldNote } from '../ui/pad-field-note';
 import { controlsWindow, initialStyle as savedPadStyle } from './gamepad-help';
 import { setActiveBindings } from '../adapters/bindings';
 import { profilePublisher } from './profile-publish';
@@ -209,6 +210,8 @@ const { account, store } = setupAccount({
 });
 /** `html.pad` while the controller was used last: hints show their pad wording (ui/device-hint.ts). */
 installPadClass();
+/** Text fields with the pad: no on-screen keyboard, a note under the focused field says it needs one (issue #32). */
+installPadFieldNote();
 /** The controller, for the whole page: every screen hears it as keys, a run takes it over (adapters/gamepad.ts). */
 const gamepads = createGamepads({
   onConnect: () => {

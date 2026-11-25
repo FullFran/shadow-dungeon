@@ -24,4 +24,11 @@ describe('spectate', () => {
     expect(nextSpectate(team(true), 'p2')).toBe('p2');
     expect(nextSpectate(team(false), 'p2')).toBeNull();
   });
+
+  it('goes back to the previous standing teammate too (the pad: D-pad left), wrapping round', () => {
+    const t = team(true, false, true, true);
+    expect(nextSpectate(t, 'p4', -1)).toBe('p2');
+    expect(nextSpectate(t, 'p2', -1)).toBe('p5');
+    expect(nextSpectate(t, 'p2', 1)).toBe('p4');
+  });
 });
