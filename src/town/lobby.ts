@@ -34,6 +34,33 @@ export function roomStatus({ isHost, admitted, held = false, waitedMs }: { isHos
 }
 
 /**
+ * A guest's wait for the host (issue #3). It runs from the room's opening,
+ * and starts over when the guest falls out of the roster after being in (the
+ * host dropped its link and it knocks again), so the room says "connecting"
+ * again instead of "the host is not answering" at once. `seen` takes every
+ * roster change: in the roster or not.
+ */
+export interface AdmitClock {
+  seen(admitted: boolean, nowMs: number): void;
+  waitedMs(nowMs: number): number;
+}
+
+export function createAdmitClock(openedAt: number): AdmitClock {
+  let since = openedAt;
+  let wasIn = false;
+  return {
+    seen(admitted, nowMs) {
+      if (wasIn && !admitted) since = nowMs;
+      wasIn = admitted;
+    },
+    waitedMs: (nowMs) => nowMs - since,
+  };
+}
+
+/** The host's room window line for a player linked to the room whose hello has not landed yet (issue #3). */
+export const connectingLine = (name: string): string => t('lobby.peerConnecting').replace('{name}', name);
+
+/**
  * The version-refusal notice (issue #7): the guest's message names both
  * builds and says how to update, the host's toast names the guest's build.
  * Without the other side's label (an older peer) the older wording stays.
@@ -105,6 +132,8 @@ export interface TownLobby {
   setDifficulty?(next: Difficulty): void;
   /** Guest: whether the host has let it in yet (absent: in). */
   status?(): RoomStatus;
+  /** Host: the names of the players linked to the room but not let in yet (absent: none). */
+  connecting?(): readonly string[];
 }
 
 /** A tier row for a town window: label, value, ◀ ▶ steps and a confirm cycles. */

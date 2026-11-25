@@ -73,6 +73,58 @@ describe('lobby', () => {
     expect(a.roster.map((r) => r.species)).toEqual(['cubone', 'zorua']);
   });
 
+  it('the host knows who is linked to the room but not let in yet, until their hello lands (#3)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(1, 1, 'mimikyu', { lobby: true });
+    expect(host.session.connecting()).toEqual([]);
+    // Linked (Trystero found the peer) but its hello is not there yet.
+    const a = peer(hub, 'a', scheduler);
+    const b = peer(hub, 'b', scheduler);
+    expect(host.session.connecting()).toEqual(['a', 'b']);
+    a.session.join('mimikyu', LOADOUT);
+    expect(host.session.connecting()).toEqual(['b']);
+    b.session.join('mimikyu', LOADOUT);
+    expect(host.session.connecting()).toEqual([]);
+    // A guest's own session lists nobody: only the host lets players in.
+    expect(a.session.connecting()).toEqual([]);
+  });
+
+  it('a peer gone from the room, or one the host turned away, is not connecting (#3)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(1, 1, 'mimikyu', { lobby: true });
+    const guests = ['a', 'b', 'c', 'd'].map((id) => peer(hub, id, scheduler));
+    for (const g of guests) g.session.join('mimikyu', LOADOUT);
+    // The fifth player was told the room is full: it is not on its way in.
+    expect(guests[3]!.full).toBe(true);
+    expect(host.session.connecting()).toEqual([]);
+    // Another version is turned away too.
+    const other = hub.connect('o');
+    expect(host.session.connecting()).toEqual(['o']);
+    other.send(JSON.stringify({ t: 'hello', species: 'mimikyu', loadout: [] }), true);
+    expect(host.session.connecting()).toEqual([]);
+    // Linked, then gone before any hello.
+    hub.connect('x');
+    hub.drop('x');
+    expect(host.session.connecting()).toEqual([]);
+  });
+
+  it('a guest held for the next floor is waiting, not connecting (#3)', () => {
+    const scheduler = createFakeScheduler();
+    const hub = createMemoryHub<string>();
+    const host = peer(hub, 'h', scheduler);
+    host.session.host(3, 1, 'mimikyu', { lobby: true });
+    host.session.begin();
+    stepFloor(host.session, 1);
+    const late = peer(hub, 'l', scheduler);
+    late.session.join('mimikyu', LOADOUT);
+    expect(late.session.held()).toBe(true);
+    expect(host.session.connecting()).toEqual([]);
+  });
+
   it('tells a fifth player the room is full and leaves the four others alone', () => {
     const scheduler = createFakeScheduler();
     const hub = createMemoryHub<string>();

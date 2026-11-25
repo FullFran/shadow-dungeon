@@ -48,3 +48,33 @@ export async function fetchIceServers(baseUrl: string, fetchFn: FetchFn = fetch,
     clearTimeout(timer);
   }
 }
+
+/** How long fetched credentials are reused (the server mints them for 2 h: `credentialTTL`, server/internal/turn/turnapi). */
+export const ICE_CACHE_MS = 30 * 60_000;
+
+/**
+ * The relay credentials fetched ahead (issue #51: joining was slow). The
+ * online screen starts the fetch (`prefetch`) while the player types the
+ * code, and opening the room (`get`) reuses it instead of waiting up to
+ * `TURN_TIMEOUT_MS` again. A fetch that brought no relay is not kept, so the
+ * next room asks again; credentials older than `maxAgeMs` are fetched anew.
+ */
+export interface IceCache {
+  prefetch(): void;
+  get(): Promise<IceServer[]>;
+}
+
+export function createIceCache(fetcher: () => Promise<IceServer[]>, now: () => number = Date.now, maxAgeMs = ICE_CACHE_MS): IceCache {
+  let entry: { at: number; servers: Promise<IceServer[]> } | null = null;
+  const get = (): Promise<IceServer[]> => {
+    if (!entry || now() - entry.at >= maxAgeMs) {
+      const mine = { at: now(), servers: fetcher() };
+      entry = mine;
+      void mine.servers.then((servers) => {
+        if (servers.length === 0 && entry === mine) entry = null;
+      });
+    }
+    return entry.servers;
+  };
+  return { prefetch: () => void get(), get };
+}
